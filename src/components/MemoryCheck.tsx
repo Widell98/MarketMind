@@ -90,7 +90,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
         {earnedBadge && (
           <div className="mt-2 mb-4">
             <div className="text-xl mb-2">{earnedBadge.icon}</div>
-            <Badge text={earnedBadge.name} variant="success" icon="🎉" />
+            <Badge className="bg-green-500 text-white" variant="secondary">{earnedBadge.name}</Badge>
             <p className="text-xs text-gray-600 mt-2">{earnedBadge.description}</p>
           </div>
         )}
