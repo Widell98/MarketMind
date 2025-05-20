@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { quizQuestions, badges } from '../mockData/quizData';
-import Badge from './ui/badge';
+import { Badge } from './ui/badge';
 
 interface MemoryCheckProps {
   onComplete: () => void;
