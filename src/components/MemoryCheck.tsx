@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { quizQuestions, badges, UserProgress, defaultUserProgress } from '../mockData/quizData';
+import { quizQuestions, badges, UserProgress, defaultUserProgress, userLevels } from '../mockData/quizData';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";

@@ -9,7 +9,7 @@ export interface QuizQuestion {
   correctAnswer: number;
   explanation: string;
   difficulty: 'novice' | 'analyst' | 'pro';
-  category: 'macro' | 'stocks' | 'technical' | 'historical' | 'concept';
+  category: 'macro' | 'stocks' | 'technical' | 'historical' | 'concept' | 'commodities';
   relatedSymbols?: string[];
   learningModule?: {
     title: string;
