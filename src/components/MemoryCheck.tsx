@@ -1,9 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
-import { quizQuestions, badges, UserProgress, defaultUserProgress, userLevels } from '../mockData/quizData';
+import { 
+  quizQuestions, 
+  badges, 
+  UserProgress, 
+  defaultUserProgress, 
+  userLevels, 
+  getAdaptiveQuestions 
+} from '../mockData/quizData';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ExternalLink, BookOpen, Award, ChevronRight } from "lucide-react";
 
 interface MemoryCheckProps {
   onComplete: () => void;
@@ -23,6 +32,8 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
   const [showLearningModule, setShowLearningModule] = useState(false);
   const [streakGained, setStreakGained] = useState(false);
   const [earnedBadge, setEarnedBadge] = useState<typeof badges[0] | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("content");
+  const [adaptiveDifficulty, setAdaptiveDifficulty] = useState<boolean>(true);
   
   // Load user progress on mount
   useEffect(() => {
@@ -47,7 +58,13 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
     : quizQuestions.filter(q => q.difficulty === difficulty);
   
   // Use day-specific questions if available, otherwise fall back to difficulty-filtered
-  const questions = filteredQuestions.length > 0 ? filteredQuestions : matchingDayQuestions;
+  const allAvailableQuestions = filteredQuestions.length > 0 ? filteredQuestions : matchingDayQuestions;
+  
+  // Apply adaptive question selection if enabled
+  const questions = adaptiveDifficulty 
+    ? getAdaptiveQuestions(userProgress, allAvailableQuestions)
+    : allAvailableQuestions;
+    
   const currentQuestion = questions[currentQuestionIndex];
   
   // Check for streak and update progress
@@ -58,6 +75,18 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
     const today = new Date().toISOString().split('T')[0];
     const lastQuizDate = newProgress.lastQuizDate;
     
+    // Ensure totalQuizzesTaken is initialized
+    if (newProgress.totalQuizzesTaken === undefined) {
+      newProgress.totalQuizzesTaken = 0;
+    }
+    
+    // Update total quizzes count
+    newProgress.totalQuizzesTaken += 1;
+    
+    // Calculate accuracy
+    const totalCorrect = Object.values(newProgress.correctByCategory).reduce((sum, val) => sum + val, 0);
+    newProgress.quizAccuracy = totalCorrect / newProgress.totalQuizzesTaken * 100;
+    
     if (lastQuizDate) {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
@@ -66,6 +95,11 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
       if (lastQuizDate === yesterdayStr) {
         newProgress.streakDays += 1;
         setStreakGained(true);
+        
+        // Update longest streak
+        if (!newProgress.longestStreak || newProgress.streakDays > newProgress.longestStreak) {
+          newProgress.longestStreak = newProgress.streakDays;
+        }
         
         // Check for streak badges
         if (newProgress.streakDays === 3 && !newProgress.badges.includes('streak_3')) {
@@ -93,7 +127,10 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
       newProgress.points += 10;
       
       const category = currentQuestion.category;
-      newProgress.correctByCategory[category] = (newProgress.correctByCategory[category] || 0) + 1;
+      if (!newProgress.correctByCategory[category]) {
+        newProgress.correctByCategory[category] = 0;
+      }
+      newProgress.correctByCategory[category] += 1;
       
       // Check for category mastery badges
       const categoryBadgeMap = {
@@ -108,6 +145,12 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
       if (badgeId && newProgress.correctByCategory[category] >= 10 && !newProgress.badges.includes(badgeId)) {
         newProgress.badges.push(badgeId);
         setEarnedBadge(badges.find(b => b.id === badgeId) || null);
+      }
+      
+      // Specifically check for commodities expert badge
+      if (category === 'commodities' && newProgress.correctByCategory.commodities >= 8 && !newProgress.badges.includes('commodities_expert')) {
+        newProgress.badges.push('commodities_expert');
+        setEarnedBadge(badges.find(b => b.id === 'commodities_expert') || null);
       }
     }
     
@@ -124,9 +167,53 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
       }
     }
     
+    // Check for Golden Analyst badge
+    const analystCategories = Object.entries(newProgress.correctByCategory)
+      .filter(([_, count]) => count >= 5)
+      .length;
+      
+    if (analystCategories >= 3 && !newProgress.badges.includes('golden_analyst')) {
+      newProgress.badges.push('golden_analyst');
+      setEarnedBadge(badges.find(b => b.id === 'golden_analyst') || null);
+    }
+    
+    // Track viewed learning modules
+    if (!newProgress.viewedLearningModules) {
+      newProgress.viewedLearningModules = [];
+    }
+    
     // Save progress and update state
     localStorage.setItem('marketMentor_progress', JSON.stringify(newProgress));
     setUserProgress(newProgress);
+  };
+  
+  const trackLearningModuleView = () => {
+    if (!currentQuestion || !currentQuestion.learningModule) return;
+    
+    const newProgress = { ...userProgress };
+    if (!newProgress.viewedLearningModules) {
+      newProgress.viewedLearningModules = [];
+    }
+    
+    const moduleId = `${currentQuestion.category}_${currentQuestion.id}`;
+    
+    if (!newProgress.viewedLearningModules.includes(moduleId)) {
+      newProgress.viewedLearningModules.push(moduleId);
+      
+      // Check for knowledge seeker badge
+      if (newProgress.viewedLearningModules.length >= 5 && !newProgress.badges.includes('learning_streak')) {
+        newProgress.badges.push('learning_streak');
+        setEarnedBadge(badges.find(b => b.id === 'learning_streak') || null);
+        
+        // Save progress and update state
+        localStorage.setItem('marketMentor_progress', JSON.stringify(newProgress));
+        setUserProgress(newProgress);
+      } else {
+        // Just save progress
+        localStorage.setItem('marketMentor_progress', JSON.stringify(newProgress));
+        setUserProgress(newProgress);
+      }
+    }
   };
   
   if (!currentQuestion) {
@@ -192,6 +279,8 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
   const openLearningModule = () => {
     if (currentQuestion.learningModule) {
       setShowLearningModule(true);
+      trackLearningModuleView();
+      setActiveTab("content");
     }
   };
   
@@ -206,7 +295,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
         
         {earnedBadge && (
           <div className="mt-2 mb-4">
-            <div className="text-xl mb-2">{earnedBadge.icon}</div>
+            <div className="text-3xl mb-3 animate-scale-in">{earnedBadge.icon}</div>
             <Badge className="bg-green-500 text-white" variant="secondary">{earnedBadge.name}</Badge>
             <p className="text-xs text-gray-600 mt-2 dark:text-gray-400">{earnedBadge.description}</p>
           </div>
@@ -273,6 +362,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
                   onClick={openLearningModule}
                   className="text-finance-blue dark:text-blue-400 dark:border-blue-900"
                 >
+                  <BookOpen className="w-4 h-4 mr-2" />
                   Learn More
                 </Button>
               )}
@@ -282,6 +372,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
                 className="w-full sm:w-auto bg-finance-lightBlue text-white hover:bg-finance-blue dark:bg-blue-700 dark:hover:bg-blue-600"
               >
                 {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'Complete Quiz'}
+                <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
             
@@ -306,30 +397,77 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
             </DialogDescription>
           </DialogHeader>
           
-          <div className="py-4">
-            <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
-              {currentQuestion.learningModule?.content}
-            </p>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="content">Content</TabsTrigger>
+              <TabsTrigger value="resources">Resources</TabsTrigger>
+            </TabsList>
             
-            {currentQuestion.learningModule?.videoUrl && (
-              <div className="aspect-video bg-gray-100 dark:bg-gray-700 rounded-md flex items-center justify-center text-gray-500 dark:text-gray-400 mt-4">
-                <span>Video content would load here</span>
-              </div>
-            )}
+            <TabsContent value="content" className="pt-4">
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
+                {currentQuestion.learningModule?.content}
+              </p>
+              
+              {currentQuestion.learningModule?.videoUrl && (
+                <div className="aspect-video bg-gray-100 dark:bg-gray-700 rounded-md flex items-center justify-center text-gray-500 dark:text-gray-400 mt-4">
+                  <span>Video content would load here</span>
+                </div>
+              )}
+              
+              {currentQuestion.relatedSymbols && currentQuestion.relatedSymbols.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium mb-2 dark:text-gray-300">Related Symbols:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {currentQuestion.relatedSymbols.map(symbol => (
+                      <Badge key={symbol} variant="outline" className="dark:border-gray-600">
+                        {symbol}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </TabsContent>
             
-            {currentQuestion.relatedSymbols && currentQuestion.relatedSymbols.length > 0 && (
-              <div className="mt-4">
-                <h4 className="text-sm font-medium mb-2 dark:text-gray-300">Related Symbols:</h4>
-                <div className="flex flex-wrap gap-2">
-                  {currentQuestion.relatedSymbols.map(symbol => (
-                    <Badge key={symbol} variant="outline" className="dark:border-gray-600">
-                      {symbol}
-                    </Badge>
+            <TabsContent value="resources" className="pt-4">
+              {currentQuestion.learningModule?.resources && currentQuestion.learningModule.resources.length > 0 ? (
+                <div className="space-y-3">
+                  {currentQuestion.learningModule.resources.map((resource, idx) => (
+                    <div 
+                      key={idx} 
+                      className="p-3 border rounded-md flex items-center justify-between dark:border-gray-700"
+                    >
+                      <div>
+                        <Badge variant="outline" className="mb-2">
+                          {resource.type.charAt(0).toUpperCase() + resource.type.slice(1)}
+                        </Badge>
+                        <p className="text-sm font-medium dark:text-gray-200">{resource.title}</p>
+                      </div>
+                      <Button variant="ghost" size="icon">
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </div>
                   ))}
                 </div>
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400">No additional resources available for this topic.</p>
+              )}
+            </TabsContent>
+          </Tabs>
+          
+          <DialogFooter>
+            <div className="flex items-center justify-between w-full">
+              <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                <Award className="h-3 w-3 mr-1" />
+                <span>+1 towards Knowledge Seeker badge</span>
               </div>
-            )}
-          </div>
+              <Button 
+                onClick={() => setShowLearningModule(false)}
+                variant="outline"
+              >
+                Close
+              </Button>
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

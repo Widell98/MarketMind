@@ -5,7 +5,10 @@ import MarketPulse from '../components/MarketPulse';
 import FlashBriefs from '../components/FlashBriefs';
 import MemoryCheck from '../components/MemoryCheck';
 import Onboarding from '../components/Onboarding';
-import { UserProgress, defaultUserProgress } from '../mockData/quizData';
+import { UserProgress, defaultUserProgress, getLearningPathRecommendations } from '../mockData/quizData';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { BookOpen } from 'lucide-react';
 
 const Index = () => {
   const [isOnboarded, setIsOnboarded] = useState(false);
@@ -13,6 +16,7 @@ const Index = () => {
   const [userLevel, setUserLevel] = useState<'novice' | 'analyst' | 'pro'>('novice');
   const [userInterests, setUserInterests] = useState<string[]>([]);
   const [userProgress, setUserProgress] = useState<UserProgress>(defaultUserProgress);
+  const [recommendations, setRecommendations] = useState<string[]>([]);
 
   // Check onboarding status and user progress
   useEffect(() => {
@@ -36,6 +40,10 @@ const Index = () => {
       if (savedProgress) {
         const progress = JSON.parse(savedProgress);
         setUserProgress(progress);
+        
+        // Generate learning recommendations
+        const learningRecs = getLearningPathRecommendations(progress);
+        setRecommendations(learningRecs);
         
         // Use progress level if available
         if (progress.level) {
@@ -88,6 +96,9 @@ const Index = () => {
     };
     localStorage.setItem('marketMentor_progress', JSON.stringify(initialProgress));
     setUserProgress(initialProgress);
+    
+    // Set initial recommendations
+    setRecommendations(getLearningPathRecommendations(initialProgress));
   };
 
   const handleQuizComplete = () => {
@@ -96,7 +107,11 @@ const Index = () => {
     // Reload progress after quiz completion
     const savedProgress = localStorage.getItem('marketMentor_progress');
     if (savedProgress) {
-      setUserProgress(JSON.parse(savedProgress));
+      const progress = JSON.parse(savedProgress);
+      setUserProgress(progress);
+      
+      // Update recommendations based on new progress
+      setRecommendations(getLearningPathRecommendations(progress));
     }
   };
 
@@ -118,7 +133,7 @@ const Index = () => {
           </p>
           
           {/* User Stats */}
-          <div className="flex items-center mt-2 space-x-3">
+          <div className="flex flex-wrap items-center mt-2 gap-2">
             {userProgress.streakDays > 0 && (
               <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full dark:bg-amber-900 dark:bg-opacity-30 dark:text-amber-300">
                 🔥 {userProgress.streakDays} day streak
@@ -130,8 +145,33 @@ const Index = () => {
             <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full dark:bg-purple-900 dark:bg-opacity-30 dark:text-purple-300">
               {userProgress.points} pts
             </span>
+            {userProgress.quizAccuracy !== undefined && (
+              <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full dark:bg-green-900 dark:bg-opacity-30 dark:text-green-300">
+                Accuracy: {Math.round(userProgress.quizAccuracy)}%
+              </span>
+            )}
           </div>
         </div>
+
+        {/* Learning Recommendations */}
+        {recommendations.length > 0 && (
+          <div className="mb-6 animate-fade-in">
+            <Alert className="bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-900">
+              <BookOpen className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+              <AlertTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                Learning Path
+              </AlertTitle>
+              <AlertDescription className="text-xs text-blue-700 dark:text-blue-400">
+                <p className="mb-2">Based on your progress, we recommend:</p>
+                <ul className="pl-5 list-disc space-y-1">
+                  {recommendations.slice(0, 3).map((rec, idx) => (
+                    <li key={idx}>{rec}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
 
         {/* Show Quiz if it's quiz day */}
         {showQuiz && (
