@@ -48,7 +48,21 @@ const Index = () => {
             // User has a profile, consider them onboarded
             setIsOnboarded(true);
             setUserLevel(data.level as 'novice' | 'analyst' | 'pro');
-            setUserInterests(data.interests || []);
+            
+            // Fix for the type error: properly convert interests to string array
+            if (data.interests) {
+              // Check if interests is an array and convert it properly
+              if (Array.isArray(data.interests)) {
+                setUserInterests(data.interests.map(item => String(item)));
+              } else {
+                // If it's not an array, set it to empty array as fallback
+                console.warn('Interests data is not an array:', data.interests);
+                setUserInterests([]);
+              }
+            } else {
+              setUserInterests([]);
+            }
+            
             console.log('Profile loaded:', data);
           }
         } catch (error) {
