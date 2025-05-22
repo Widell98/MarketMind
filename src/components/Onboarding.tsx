@@ -1,15 +1,20 @@
 
 import React, { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Loader2 } from 'lucide-react';
 
 interface OnboardingProps {
   onComplete: (level: string, interests: string[]) => void;
 }
 
 const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [level, setLevel] = useState<string>('');
   const [interests, setInterests] = useState<string[]>([]);
-  const [name, setName] = useState<string>('');
+  const [displayName, setDisplayName] = useState<string>(user?.user_metadata?.display_name || '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const handleLevelSelect = (selectedLevel: string) => {
     setLevel(selectedLevel);
@@ -24,9 +29,24 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     }
   };
   
-  const handleComplete = () => {
+  const handleComplete = async () => {
     if (interests.length > 0) {
+      setIsSubmitting(true);
+      
+      // If display name was changed, update user metadata
+      if (displayName && displayName !== user?.user_metadata?.display_name) {
+        try {
+          await supabase.auth.updateUser({
+            data: { display_name: displayName }
+          });
+        } catch (error) {
+          console.error('Error updating user metadata:', error);
+        }
+      }
+      
+      // Complete onboarding
       onComplete(level, interests);
+      setIsSubmitting(false);
     }
   };
   
@@ -98,11 +118,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           </div>
           
           <div className="mt-8 mb-6">
-            <label className="block text-sm mb-2">Ditt namn (frivilligt)</label>
+            <label className="block text-sm mb-2">Ditt namn</label>
             <input
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Skriv ditt namn"
               className="w-full p-3 border rounded-md"
             />
@@ -110,14 +130,21 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           
           <button
             onClick={handleComplete}
-            disabled={interests.length === 0}
+            disabled={interests.length === 0 || isSubmitting}
             className={`w-full py-3 px-4 rounded-md text-white transition-colors ${
-              interests.length > 0 
+              interests.length > 0 && !isSubmitting
                 ? 'bg-finance-navy hover:bg-finance-blue' 
                 : 'bg-gray-300 cursor-not-allowed'
             }`}
           >
-            Starta din marknadspuls
+            {isSubmitting ? (
+              <>
+                <Loader2 className="inline-block mr-2 h-4 w-4 animate-spin" />
+                Laddar...
+              </>
+            ) : (
+              'Starta din marknadspuls'
+            )}
           </button>
           
           <div className="mt-8 flex justify-center">

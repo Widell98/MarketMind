@@ -1,84 +1,130 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import MarketPulse from '../components/MarketPulse';
 import FlashBriefs from '../components/FlashBriefs';
 import MemoryCheck from '../components/MemoryCheck';
 import Onboarding from '../components/Onboarding';
+import { useAuth } from '@/contexts/AuthContext';
 import { UserProgress, defaultUserProgress, getLearningPathRecommendations } from '../mockData/quizData';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
   const [isOnboarded, setIsOnboarded] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
   const [userLevel, setUserLevel] = useState<'novice' | 'analyst' | 'pro'>('novice');
   const [userInterests, setUserInterests] = useState<string[]>([]);
   const [userProgress, setUserProgress] = useState<UserProgress>(defaultUserProgress);
   const [recommendations, setRecommendations] = useState<string[]>([]);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  // Check auth status first
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
+
+  // Fetch user profile data after authentication
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (user) {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+          
+          if (error) throw error;
+          
+          if (data) {
+            // User has a profile, consider them onboarded
+            setIsOnboarded(true);
+            setUserLevel(data.level as 'novice' | 'analyst' | 'pro');
+            setUserInterests(data.interests || []);
+            console.log('Profile loaded:', data);
+          }
+        } catch (error) {
+          console.error('Error fetching profile:', error);
+        } finally {
+          setProfileLoading(false);
+        }
+      }
+    };
+
+    if (user) {
+      fetchUserProfile();
+    }
+  }, [user]);
 
   // Check onboarding status and user progress
   useEffect(() => {
-    // Check for onboarding status
-    const savedOnboardingState = localStorage.getItem('marketMentor_onboarded');
-    if (savedOnboardingState === 'true') {
-      setIsOnboarded(true);
-      
-      const savedLevel = localStorage.getItem('marketMentor_level') as 'novice' | 'analyst' | 'pro';
-      if (savedLevel) {
-        setUserLevel(savedLevel);
-      }
-      
-      const savedInterests = localStorage.getItem('marketMentor_interests');
-      if (savedInterests) {
-        setUserInterests(JSON.parse(savedInterests));
-      }
-      
-      // Load user progress
-      const savedProgress = localStorage.getItem('marketMentor_progress');
-      if (savedProgress) {
-        const progress = JSON.parse(savedProgress);
-        setUserProgress(progress);
+    if (isOnboarded) {
+      // Check for onboarding status
+      const savedOnboardingState = localStorage.getItem('marketMentor_onboarded');
+      if (savedOnboardingState === 'true') {
+        const savedLevel = localStorage.getItem('marketMentor_level') as 'novice' | 'analyst' | 'pro';
+        if (savedLevel) {
+          setUserLevel(savedLevel);
+        }
         
-        // Generate learning recommendations
-        const learningRecs = getLearningPathRecommendations(progress);
-        setRecommendations(learningRecs);
+        const savedInterests = localStorage.getItem('marketMentor_interests');
+        if (savedInterests) {
+          setUserInterests(JSON.parse(savedInterests));
+        }
         
-        // Use progress level if available
-        if (progress.level) {
-          setUserLevel(progress.level as 'novice' | 'analyst' | 'pro');
+        // Load user progress
+        const savedProgress = localStorage.getItem('marketMentor_progress');
+        if (savedProgress) {
+          const progress = JSON.parse(savedProgress);
+          setUserProgress(progress);
+          
+          // Generate learning recommendations
+          const learningRecs = getLearningPathRecommendations(progress);
+          setRecommendations(learningRecs);
+          
+          // Use progress level if available
+          if (progress.level) {
+            setUserLevel(progress.level as 'novice' | 'analyst' | 'pro');
+          }
         }
       }
-    }
-    
-    // Determine if we should show quiz today
-    const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 (Sunday) to 6 (Saturday)
-    
-    // For demo purposes we'll show the quiz if:
-    // 1. User is onboarded
-    // 2. It's a weekday (Monday-Friday)
-    // 3. User hasn't completed a quiz today
-    if (savedOnboardingState === 'true' && dayOfWeek >= 1 && dayOfWeek <= 5) {
-      const savedProgress = localStorage.getItem('marketMentor_progress');
-      if (savedProgress) {
-        const progress = JSON.parse(savedProgress);
-        const lastQuizDate = progress.lastQuizDate;
-        const todayStr = today.toISOString().split('T')[0];
-        
-        // Show quiz if user hasn't completed one today
-        if (lastQuizDate !== todayStr) {
+      
+      // Determine if we should show quiz today
+      const today = new Date();
+      const dayOfWeek = today.getDay(); // 0 (Sunday) to 6 (Saturday)
+      
+      // For demo purposes we'll show the quiz if:
+      // 1. User is onboarded
+      // 2. It's a weekday (Monday-Friday)
+      // 3. User hasn't completed a quiz today
+      if (savedOnboardingState === 'true' && dayOfWeek >= 1 && dayOfWeek <= 5) {
+        const savedProgress = localStorage.getItem('marketMentor_progress');
+        if (savedProgress) {
+          const progress = JSON.parse(savedProgress);
+          const lastQuizDate = progress.lastQuizDate;
+          const todayStr = today.toISOString().split('T')[0];
+          
+          // Show quiz if user hasn't completed one today
+          if (lastQuizDate !== todayStr) {
+            setShowQuiz(true);
+          }
+        } else {
+          // No progress saved, show quiz
           setShowQuiz(true);
         }
-      } else {
-        // No progress saved, show quiz
-        setShowQuiz(true);
       }
     }
-  }, []);
+  }, [isOnboarded]);
 
-  const handleOnboardingComplete = (level: string, interests: string[]) => {
+  const handleOnboardingComplete = async (level: string, interests: string[]) => {
     setIsOnboarded(true);
     setUserLevel(level as 'novice' | 'analyst' | 'pro');
     setUserInterests(interests);
@@ -99,6 +145,23 @@ const Index = () => {
     
     // Set initial recommendations
     setRecommendations(getLearningPathRecommendations(initialProgress));
+    
+    // Update user profile in Supabase
+    if (user) {
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ 
+            level: level, 
+            interests: interests 
+          })
+          .eq('id', user.id);
+        
+        if (error) throw error;
+      } catch (error) {
+        console.error('Error updating profile:', error);
+      }
+    }
   };
 
   const handleQuizComplete = () => {
@@ -115,8 +178,19 @@ const Index = () => {
     }
   };
 
+  // Show loading state during authentication
+  if (loading || profileLoading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-[70vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-finance-navy" />
+        </div>
+      </Layout>
+    );
+  }
+
   // Show onboarding if not onboarded
-  if (!isOnboarded) {
+  if (!isOnboarded && user) {
     return <Onboarding onComplete={handleOnboardingComplete} />;
   }
 
@@ -126,7 +200,7 @@ const Index = () => {
         {/* Greeting */}
         <div className="mb-6">
           <h1 className="text-xl font-semibold text-finance-navy dark:text-gray-200">
-            {getGreeting()}, {userLevel === 'pro' ? 'Expert' : userLevel === 'analyst' ? 'Analyst' : 'Investor'}
+            {getGreeting()}, {user?.user_metadata?.display_name || 'Investor'}
           </h1>
           <p className="text-finance-gray dark:text-gray-400">
             {new Date().toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -140,7 +214,7 @@ const Index = () => {
               </span>
             )}
             <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full dark:bg-blue-900 dark:bg-opacity-30 dark:text-blue-300">
-              Level: {userProgress.level}
+              Level: {userLevel}
             </span>
             <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full dark:bg-purple-900 dark:bg-opacity-30 dark:text-purple-300">
               {userProgress.points} pts
