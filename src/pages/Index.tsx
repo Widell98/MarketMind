@@ -169,8 +169,8 @@ const Index = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="flex justify-center items-center h-[70vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-finance-navy" />
+        <div className="flex justify-center items-center h-[60vh] sm:h-[70vh]">
+          <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-finance-navy" />
         </div>
       </Layout>
     );
@@ -183,96 +183,108 @@ const Index = () => {
 
   return (
     <Layout>
-      <div className="max-w-md mx-auto">
-        {/* Greeting */}
-        <div className="mb-6">
-          <h1 className="text-xl font-semibold text-finance-navy dark:text-gray-200">
-            {getGreeting()}{user ? `, ${user?.user_metadata?.display_name || 'Investor'}` : ''}
-          </h1>
-          <p className="text-finance-gray dark:text-gray-400">
-            {new Date().toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </p>
-          
-          {/* User Stats - only for authenticated users */}
-          {user && (
-            <div className="flex flex-wrap items-center mt-2 gap-2">
-              {userProgress.streakDays > 0 && (
-                <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full dark:bg-amber-900 dark:bg-opacity-30 dark:text-amber-300">
-                  🔥 {userProgress.streakDays} day streak
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+        {/* Main Content - Takes full width on mobile, 2 columns on desktop */}
+        <div className="lg:col-span-2">
+          {/* Greeting Section */}
+          <div className="mb-6">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-finance-navy dark:text-gray-200">
+              {getGreeting()}{user ? `, ${user?.user_metadata?.display_name || 'Investor'}` : ''}
+            </h1>
+            <p className="text-sm sm:text-base text-finance-gray dark:text-gray-400 mt-1">
+              {new Date().toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
+            
+            {/* User Stats - only for authenticated users */}
+            {user && (
+              <div className="flex flex-wrap items-center mt-3 gap-2">
+                {userProgress.streakDays > 0 && (
+                  <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full dark:bg-amber-900 dark:bg-opacity-30 dark:text-amber-300">
+                    🔥 {userProgress.streakDays} day streak
+                  </span>
+                )}
+                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full dark:bg-blue-900 dark:bg-opacity-30 dark:text-blue-300">
+                  Level: {userLevel}
                 </span>
-              )}
-              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full dark:bg-blue-900 dark:bg-opacity-30 dark:text-blue-300">
-                Level: {userLevel}
-              </span>
-              <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full dark:bg-purple-900 dark:bg-opacity-30 dark:text-purple-300">
-                {userProgress.points} pts
-              </span>
-              {userProgress.quizAccuracy !== undefined && (
-                <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full dark:bg-green-900 dark:bg-opacity-30 dark:text-green-300">
-                  Accuracy: {Math.round(userProgress.quizAccuracy)}%
+                <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full dark:bg-purple-900 dark:bg-opacity-30 dark:text-purple-300">
+                  {userProgress.points} pts
                 </span>
-              )}
+                {userProgress.quizAccuracy !== undefined && (
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full dark:bg-green-900 dark:bg-opacity-30 dark:text-green-300">
+                    Accuracy: {Math.round(userProgress.quizAccuracy)}%
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Quiz Section */}
+          <div className="mb-6 lg:mb-8">
+            {/* Show Quiz for authenticated users */}
+            {user && showQuiz && (
+              <MemoryCheck onComplete={handleQuizComplete} difficulty={userLevel} />
+            )}
+
+            {/* Show Quiz for guests but with basic difficulty */}
+            {!user && (
+              <MemoryCheck onComplete={() => {}} difficulty="novice" />
+            )}
+          </div>
+        </div>
+
+        {/* Sidebar - Full width on mobile, 1 column on desktop */}
+        <div className="lg:col-span-1">
+          {/* Guest Call-to-Action */}
+          {!user && (
+            <div className="mb-6 animate-fade-in">
+              <Alert className="bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-900">
+                <UserPlus className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                <AlertTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                  Få personaliserade frågor
+                </AlertTitle>
+                <AlertDescription className="text-xs text-blue-700 dark:text-blue-400">
+                  <p className="mb-3">Registrera dig för att få frågor anpassade till din nivå och dina intressen!</p>
+                  <Button 
+                    size="sm" 
+                    className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
+                    onClick={() => navigate('/auth')}
+                  >
+                    Registrera dig
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+
+          {/* Learning Recommendations - only for authenticated users */}
+          {user && recommendations.length > 0 && (
+            <div className="mb-6 animate-fade-in">
+              <Alert className="bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-900">
+                <BookOpen className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                <AlertTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                  Learning Path
+                </AlertTitle>
+                <AlertDescription className="text-xs text-blue-700 dark:text-blue-400">
+                  <p className="mb-2">Based on your progress, we recommend:</p>
+                  <ul className="pl-5 list-disc space-y-1">
+                    {recommendations.slice(0, 3).map((rec, idx) => (
+                      <li key={idx}>{rec}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
             </div>
           )}
         </div>
 
-        {/* Guest Call-to-Action */}
-        {!user && (
-          <div className="mb-6 animate-fade-in">
-            <Alert className="bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-900">
-              <UserPlus className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-              <AlertTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                Få personaliserade frågor
-              </AlertTitle>
-              <AlertDescription className="text-xs text-blue-700 dark:text-blue-400">
-                <p className="mb-2">Registrera dig för att få frågor anpassade till din nivå och dina intressen!</p>
-                <Button 
-                  size="sm" 
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                  onClick={() => navigate('/auth')}
-                >
-                  Registrera dig
-                </Button>
-              </AlertDescription>
-            </Alert>
+        {/* Full width content sections */}
+        <div className="lg:col-span-3 space-y-6 lg:space-y-8">
+          {/* Market Pulse Section */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <MarketPulse />
+            <FlashBriefs />
           </div>
-        )}
-
-        {/* Learning Recommendations - only for authenticated users */}
-        {user && recommendations.length > 0 && (
-          <div className="mb-6 animate-fade-in">
-            <Alert className="bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-900">
-              <BookOpen className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-              <AlertTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                Learning Path
-              </AlertTitle>
-              <AlertDescription className="text-xs text-blue-700 dark:text-blue-400">
-                <p className="mb-2">Based on your progress, we recommend:</p>
-                <ul className="pl-5 list-disc space-y-1">
-                  {recommendations.slice(0, 3).map((rec, idx) => (
-                    <li key={idx}>{rec}</li>
-                  ))}
-                </ul>
-              </AlertDescription>
-            </Alert>
-          </div>
-        )}
-
-        {/* Show Quiz for authenticated users */}
-        {user && showQuiz && (
-          <MemoryCheck onComplete={handleQuizComplete} difficulty={userLevel} />
-        )}
-
-        {/* Show Quiz for guests but with basic difficulty */}
-        {!user && (
-          <MemoryCheck onComplete={() => {}} difficulty="novice" />
-        )}
-
-        {/* Market Pulse Section */}
-        <MarketPulse />
-        
-        {/* Flash Briefs Section */}
-        <FlashBriefs />
+        </div>
       </div>
     </Layout>
   );
