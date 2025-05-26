@@ -10,7 +10,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { UserProgress, defaultUserProgress, getLearningPathRecommendations } from '../mockData/quizData';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Loader2 } from 'lucide-react';
+import { BookOpen, Loader2, UserPlus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
@@ -22,19 +23,13 @@ const Index = () => {
   const [userInterests, setUserInterests] = useState<string[]>([]);
   const [userProgress, setUserProgress] = useState<UserProgress>(defaultUserProgress);
   const [recommendations, setRecommendations] = useState<string[]>([]);
-  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
 
-  // Check auth status first
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/auth');
-    }
-  }, [user, loading, navigate]);
-
-  // Fetch user profile data after authentication
+  // Fetch user profile data only if authenticated
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (user) {
+        setProfileLoading(true);
         try {
           const { data, error } = await supabase
             .from('profiles')
@@ -45,17 +40,13 @@ const Index = () => {
           if (error) throw error;
           
           if (data) {
-            // User has a profile, consider them onboarded
             setIsOnboarded(true);
             setUserLevel(data.level as 'novice' | 'analyst' | 'pro');
             
-            // Fix for the type error: properly convert interests to string array
             if (data.interests) {
-              // Check if interests is an array and convert it properly
               if (Array.isArray(data.interests)) {
                 setUserInterests(data.interests.map(item => String(item)));
               } else {
-                // If it's not an array, set it to empty array as fallback
                 console.warn('Interests data is not an array:', data.interests);
                 setUserInterests([]);
               }
@@ -78,10 +69,9 @@ const Index = () => {
     }
   }, [user]);
 
-  // Check onboarding status and user progress
+  // Check onboarding status and user progress for authenticated users
   useEffect(() => {
-    if (isOnboarded) {
-      // Check for onboarding status
+    if (user && isOnboarded) {
       const savedOnboardingState = localStorage.getItem('marketMentor_onboarded');
       if (savedOnboardingState === 'true') {
         const savedLevel = localStorage.getItem('marketMentor_level') as 'novice' | 'analyst' | 'pro';
@@ -94,31 +84,23 @@ const Index = () => {
           setUserInterests(JSON.parse(savedInterests));
         }
         
-        // Load user progress
         const savedProgress = localStorage.getItem('marketMentor_progress');
         if (savedProgress) {
           const progress = JSON.parse(savedProgress);
           setUserProgress(progress);
           
-          // Generate learning recommendations
           const learningRecs = getLearningPathRecommendations(progress);
           setRecommendations(learningRecs);
           
-          // Use progress level if available
           if (progress.level) {
             setUserLevel(progress.level as 'novice' | 'analyst' | 'pro');
           }
         }
       }
       
-      // Determine if we should show quiz today
       const today = new Date();
-      const dayOfWeek = today.getDay(); // 0 (Sunday) to 6 (Saturday)
+      const dayOfWeek = today.getDay();
       
-      // For demo purposes we'll show the quiz if:
-      // 1. User is onboarded
-      // 2. It's a weekday (Monday-Friday)
-      // 3. User hasn't completed a quiz today
       if (savedOnboardingState === 'true' && dayOfWeek >= 1 && dayOfWeek <= 5) {
         const savedProgress = localStorage.getItem('marketMentor_progress');
         if (savedProgress) {
@@ -126,30 +108,26 @@ const Index = () => {
           const lastQuizDate = progress.lastQuizDate;
           const todayStr = today.toISOString().split('T')[0];
           
-          // Show quiz if user hasn't completed one today
           if (lastQuizDate !== todayStr) {
             setShowQuiz(true);
           }
         } else {
-          // No progress saved, show quiz
           setShowQuiz(true);
         }
       }
     }
-  }, [isOnboarded]);
+  }, [user, isOnboarded]);
 
   const handleOnboardingComplete = async (level: string, interests: string[]) => {
     setIsOnboarded(true);
     setUserLevel(level as 'novice' | 'analyst' | 'pro');
     setUserInterests(interests);
-    setShowQuiz(true); // Show quiz after onboarding
+    setShowQuiz(true);
     
-    // Save onboarding state
     localStorage.setItem('marketMentor_onboarded', 'true');
     localStorage.setItem('marketMentor_level', level);
     localStorage.setItem('marketMentor_interests', JSON.stringify(interests));
     
-    // Initialize user progress
     const initialProgress = {
       ...defaultUserProgress,
       level: level
@@ -157,10 +135,8 @@ const Index = () => {
     localStorage.setItem('marketMentor_progress', JSON.stringify(initialProgress));
     setUserProgress(initialProgress);
     
-    // Set initial recommendations
     setRecommendations(getLearningPathRecommendations(initialProgress));
     
-    // Update user profile in Supabase
     if (user) {
       try {
         const { error } = await supabase
@@ -181,19 +157,16 @@ const Index = () => {
   const handleQuizComplete = () => {
     setShowQuiz(false);
     
-    // Reload progress after quiz completion
     const savedProgress = localStorage.getItem('marketMentor_progress');
     if (savedProgress) {
       const progress = JSON.parse(savedProgress);
       setUserProgress(progress);
-      
-      // Update recommendations based on new progress
       setRecommendations(getLearningPathRecommendations(progress));
     }
   };
 
-  // Show loading state during authentication
-  if (loading || profileLoading) {
+  // Show loading state only during authentication, not for the entire page
+  if (loading) {
     return (
       <Layout>
         <div className="flex justify-center items-center h-[70vh]">
@@ -203,8 +176,8 @@ const Index = () => {
     );
   }
 
-  // Show onboarding if not onboarded
-  if (!isOnboarded && user) {
+  // Show onboarding only for authenticated users who haven't completed it
+  if (user && !isOnboarded && !profileLoading) {
     return <Onboarding onComplete={handleOnboardingComplete} />;
   }
 
@@ -214,35 +187,59 @@ const Index = () => {
         {/* Greeting */}
         <div className="mb-6">
           <h1 className="text-xl font-semibold text-finance-navy dark:text-gray-200">
-            {getGreeting()}, {user?.user_metadata?.display_name || 'Investor'}
+            {getGreeting()}{user ? `, ${user?.user_metadata?.display_name || 'Investor'}` : ''}
           </h1>
           <p className="text-finance-gray dark:text-gray-400">
             {new Date().toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
           
-          {/* User Stats */}
-          <div className="flex flex-wrap items-center mt-2 gap-2">
-            {userProgress.streakDays > 0 && (
-              <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full dark:bg-amber-900 dark:bg-opacity-30 dark:text-amber-300">
-                🔥 {userProgress.streakDays} day streak
+          {/* User Stats - only for authenticated users */}
+          {user && (
+            <div className="flex flex-wrap items-center mt-2 gap-2">
+              {userProgress.streakDays > 0 && (
+                <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full dark:bg-amber-900 dark:bg-opacity-30 dark:text-amber-300">
+                  🔥 {userProgress.streakDays} day streak
+                </span>
+              )}
+              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full dark:bg-blue-900 dark:bg-opacity-30 dark:text-blue-300">
+                Level: {userLevel}
               </span>
-            )}
-            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full dark:bg-blue-900 dark:bg-opacity-30 dark:text-blue-300">
-              Level: {userLevel}
-            </span>
-            <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full dark:bg-purple-900 dark:bg-opacity-30 dark:text-purple-300">
-              {userProgress.points} pts
-            </span>
-            {userProgress.quizAccuracy !== undefined && (
-              <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full dark:bg-green-900 dark:bg-opacity-30 dark:text-green-300">
-                Accuracy: {Math.round(userProgress.quizAccuracy)}%
+              <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full dark:bg-purple-900 dark:bg-opacity-30 dark:text-purple-300">
+                {userProgress.points} pts
               </span>
-            )}
-          </div>
+              {userProgress.quizAccuracy !== undefined && (
+                <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full dark:bg-green-900 dark:bg-opacity-30 dark:text-green-300">
+                  Accuracy: {Math.round(userProgress.quizAccuracy)}%
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Learning Recommendations */}
-        {recommendations.length > 0 && (
+        {/* Guest Call-to-Action */}
+        {!user && (
+          <div className="mb-6 animate-fade-in">
+            <Alert className="bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-900">
+              <UserPlus className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+              <AlertTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                Få personaliserade frågor
+              </AlertTitle>
+              <AlertDescription className="text-xs text-blue-700 dark:text-blue-400">
+                <p className="mb-2">Registrera dig för att få frågor anpassade till din nivå och dina intressen!</p>
+                <Button 
+                  size="sm" 
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => navigate('/auth')}
+                >
+                  Registrera dig
+                </Button>
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
+
+        {/* Learning Recommendations - only for authenticated users */}
+        {user && recommendations.length > 0 && (
           <div className="mb-6 animate-fade-in">
             <Alert className="bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-900">
               <BookOpen className="h-4 w-4 text-blue-500 dark:text-blue-400" />
@@ -261,9 +258,14 @@ const Index = () => {
           </div>
         )}
 
-        {/* Show Quiz if it's quiz day */}
-        {showQuiz && (
+        {/* Show Quiz for authenticated users */}
+        {user && showQuiz && (
           <MemoryCheck onComplete={handleQuizComplete} difficulty={userLevel} />
+        )}
+
+        {/* Show Quiz for guests but with basic difficulty */}
+        {!user && (
+          <MemoryCheck onComplete={() => {}} difficulty="novice" />
         )}
 
         {/* Market Pulse Section */}
@@ -276,7 +278,6 @@ const Index = () => {
   );
 };
 
-// Helper function to get appropriate greeting based on time of day
 const getGreeting = () => {
   const hour = new Date().getHours();
   if (hour < 12) return 'God morgon';
