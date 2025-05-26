@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   quizQuestions, 
@@ -11,8 +10,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ExternalLink, BookOpen, Award, ChevronRight } from "lucide-react";
+import { ExternalLink, BookOpen, Award, ChevronRight, UserPlus, Zap, Target, TrendingUp } from "lucide-react";
+import { useAuth } from '@/contexts/AuthContext';
+import { Link } from 'react-router-dom';
 
 interface MemoryCheckProps {
   onComplete: () => void;
@@ -23,6 +25,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
   onComplete, 
   difficulty = 'novice' 
 }) => {
+  const { user } = useAuth();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -34,6 +37,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
   const [earnedBadge, setEarnedBadge] = useState<typeof badges[0] | null>(null);
   const [activeTab, setActiveTab] = useState<string>("content");
   const [adaptiveDifficulty, setAdaptiveDifficulty] = useState<boolean>(true);
+  const [showRegistrationPrompt, setShowRegistrationPrompt] = useState(false);
   
   // Load user progress on mount
   useEffect(() => {
@@ -231,7 +235,10 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
       setCorrectAnswers(correctAnswers + 1);
     }
     
-    updateUserProgress(isCorrect);
+    // Only update progress if user is logged in
+    if (user) {
+      updateUserProgress(isCorrect);
+    }
   };
   
   const handleNextQuestion = () => {
@@ -242,9 +249,15 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
       setEarnedBadge(null);
       setStreakGained(false);
     } else {
+      // If user is not logged in, show registration prompt instead of completing
+      if (!user) {
+        setShowRegistrationPrompt(true);
+        return;
+      }
+      
       setIsCompleted(true);
       
-      // Check for perfect score badge
+      // Check for perfect score badge (only for logged in users)
       if (correctAnswers + 1 === questions.length) {
         const newProgress = { ...userProgress };
         if (!newProgress.badges.includes('perfect_score')) {
@@ -311,7 +324,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
           Memory Check: {currentQuestion.theme}
         </h2>
         <div className="flex items-center space-x-2">
-          {userProgress.streakDays > 1 && (
+          {user && userProgress.streakDays > 1 && (
             <span className="badge-finance bg-amber-100 text-amber-800 dark:bg-amber-900 dark:bg-opacity-30 dark:text-amber-300">
               🔥 {userProgress.streakDays} day streak
             </span>
@@ -376,7 +389,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
               </Button>
             </div>
             
-            {streakGained && (
+            {user && streakGained && (
               <div className="mt-3 text-xs text-amber-600 dark:text-amber-400 font-medium">
                 🔥 Streak increased to {userProgress.streakDays} days!
               </div>
@@ -384,6 +397,62 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
           </div>
         )}
       </div>
+      
+      {/* Registration Prompt Dialog for Non-logged users */}
+      <AlertDialog open={showRegistrationPrompt} onOpenChange={setShowRegistrationPrompt}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center text-finance-navy dark:text-gray-200">
+              <UserPlus className="w-5 h-5 mr-2 text-blue-500" />
+              Skapa konto för full upplevelse
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-left space-y-3">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Bra jobbat! Du svarade rätt på <span className="font-semibold text-finance-navy dark:text-gray-200">{correctAnswers} av {questions.length}</span> frågor.
+              </p>
+              
+              <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
+                <h4 className="font-medium text-blue-900 dark:text-blue-300 mb-2">Med ett konto får du:</h4>
+                <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-400">
+                  <li className="flex items-center">
+                    <Target className="w-4 h-4 mr-2" />
+                    Personaliserade frågor baserat på din nivå
+                  </li>
+                  <li className="flex items-center">
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    Spåra din progress och statistik
+                  </li>
+                  <li className="flex items-center">
+                    <Zap className="w-4 h-4 mr-2" />
+                    Dagliga streaks och belöningar
+                  </li>
+                  <li className="flex items-center">
+                    <Award className="w-4 h-4 mr-2" />
+                    Tjäna märken och nivåer
+                  </li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel onClick={() => {
+              setShowRegistrationPrompt(false);
+              onComplete();
+            }}>
+              Fortsätt utan konto
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Link 
+                to="/auth" 
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                Skapa konto gratis
+              </Link>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       
       {/* Learning Module Dialog */}
       <Dialog open={showLearningModule} onOpenChange={setShowLearningModule}>
