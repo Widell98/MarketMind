@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, TrendingUp, Building, DollarSign, Percent } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Building, DollarSign } from 'lucide-react';
 
 const StockCaseDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -63,7 +63,7 @@ const StockCaseDetail = () => {
               <div className="aspect-video w-full">
                 <img
                   src={stockCase.image_url}
-                  alt={stockCase.company_name}
+                  alt={`${stockCase.company_name} aktiekurs chart`}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -79,7 +79,7 @@ const StockCaseDetail = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {stockCase.sector && (
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
                     <TrendingUp className="w-8 h-8 text-blue-600 mx-auto mb-2" />
@@ -92,20 +92,6 @@ const StockCaseDetail = () => {
                     <DollarSign className="w-8 h-8 text-green-600 mx-auto mb-2" />
                     <h3 className="font-semibold text-gray-900">Börsvärde</h3>
                     <p className="text-gray-700">{stockCase.market_cap}</p>
-                  </div>
-                )}
-                {stockCase.pe_ratio && (
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <Percent className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-                    <h3 className="font-semibold text-gray-900">P/E-tal</h3>
-                    <p className="text-gray-700">{stockCase.pe_ratio}</p>
-                  </div>
-                )}
-                {stockCase.dividend_yield && (
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <TrendingUp className="w-8 h-8 text-orange-600 mx-auto mb-2" />
-                    <h3 className="font-semibold text-gray-900">Direktavkastning</h3>
-                    <p className="text-gray-700">{stockCase.dividend_yield}</p>
                   </div>
                 )}
               </div>

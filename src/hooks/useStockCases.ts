@@ -50,13 +50,37 @@ export const useStockCases = () => {
 
   const createStockCase = async (stockCase: Omit<StockCase, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      console.log('Creating stock case with data:', stockCase);
+      
+      // Check current user and their profile
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      
+      console.log('Current user:', user?.id);
+      
+      // Check user profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('level')
+        .eq('id', user?.id)
+        .single();
+        
+      console.log('User profile:', profile);
+      if (profileError) {
+        console.error('Profile error:', profileError);
+        throw new Error('Kunde inte hämta användarprofil');
+      }
+
       const { data, error } = await supabase
         .from('stock_cases')
         .insert([stockCase])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Insert error:', error);
+        throw error;
+      }
 
       setStockCases(prev => [data, ...prev]);
       toast({

@@ -24,8 +24,6 @@ const AdminStockCases = () => {
     company_name: '',
     sector: '',
     market_cap: '',
-    pe_ratio: '',
-    dividend_yield: '',
     description: '',
     admin_comment: '',
   });
@@ -119,6 +117,8 @@ const AdminStockCases = () => {
       await createStockCase({
         ...formData,
         image_url: imageUrl,
+        pe_ratio: null,
+        dividend_yield: null,
       });
 
       // Reset form
@@ -127,8 +127,6 @@ const AdminStockCases = () => {
         company_name: '',
         sector: '',
         market_cap: '',
-        pe_ratio: '',
-        dividend_yield: '',
         description: '',
         admin_comment: '',
       });
@@ -215,32 +213,10 @@ const AdminStockCases = () => {
                     placeholder="Ex: 800 miljarder USD"
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="pe_ratio">P/E-tal</Label>
-                  <Input
-                    id="pe_ratio"
-                    name="pe_ratio"
-                    value={formData.pe_ratio}
-                    onChange={handleInputChange}
-                    placeholder="Ex: 25.4"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="dividend_yield">Direktavkastning</Label>
-                  <Input
-                    id="dividend_yield"
-                    name="dividend_yield"
-                    value={formData.dividend_yield}
-                    onChange={handleInputChange}
-                    placeholder="Ex: 2.1%"
-                  />
-                </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="image">Företagsbild (JPG, PNG, WebP - max 5MB)</Label>
+                <Label htmlFor="image">Aktiekurs Chart (JPG, PNG, WebP - max 5MB)</Label>
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
                     <Input
