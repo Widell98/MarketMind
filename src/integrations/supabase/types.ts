@@ -39,6 +39,51 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_cases: {
+        Row: {
+          admin_comment: string | null
+          company_name: string
+          created_at: string
+          description: string | null
+          dividend_yield: string | null
+          id: string
+          image_url: string | null
+          market_cap: string | null
+          pe_ratio: string | null
+          sector: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          admin_comment?: string | null
+          company_name: string
+          created_at?: string
+          description?: string | null
+          dividend_yield?: string | null
+          id?: string
+          image_url?: string | null
+          market_cap?: string | null
+          pe_ratio?: string | null
+          sector?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          admin_comment?: string | null
+          company_name?: string
+          created_at?: string
+          description?: string | null
+          dividend_yield?: string | null
+          id?: string
+          image_url?: string | null
+          market_cap?: string | null
+          pe_ratio?: string | null
+          sector?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
