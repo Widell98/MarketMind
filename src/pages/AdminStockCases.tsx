@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, ArrowLeft } from 'lucide-react';
+import { Upload, ArrowLeft, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const AdminStockCases = () => {
@@ -18,6 +18,7 @@ const AdminStockCases = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     company_name: '',
@@ -50,8 +51,48 @@ const AdminStockCases = () => {
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setImageFile(e.target.files[0]);
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "Fel filtyp",
+          description: "Endast JPG, PNG och WebP-filer är tillåtna",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024;
+      if (file.size > maxSize) {
+        toast({
+          title: "Fil för stor",
+          description: "Maximal filstorlek är 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setImageFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    // Reset file input
+    const fileInput = document.getElementById('image') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
     }
   };
 
@@ -70,7 +111,9 @@ const AdminStockCases = () => {
     try {
       let imageUrl = null;
       if (imageFile) {
+        console.log('Uploading image file:', imageFile.name);
         imageUrl = await uploadImage(imageFile);
+        console.log('Image uploaded successfully:', imageUrl);
       }
 
       await createStockCase({
@@ -90,12 +133,14 @@ const AdminStockCases = () => {
         admin_comment: '',
       });
       setImageFile(null);
+      setImagePreview(null);
 
       toast({
         title: "Framgång",
         description: "Akticase skapat framgångsrikt!",
       });
     } catch (error) {
+      console.error('Error in handleSubmit:', error);
       // Error handled in hook
     } finally {
       setLoading(false);
@@ -195,20 +240,42 @@ const AdminStockCases = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="image">Företagsbild</Label>
-                <div className="flex items-center space-x-2">
-                  <Input
-                    id="image"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="flex-1"
-                  />
-                  <Upload className="w-4 h-4 text-gray-400" />
+                <Label htmlFor="image">Företagsbild (JPG, PNG, WebP - max 5MB)</Label>
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      id="image"
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                      onChange={handleImageChange}
+                      className="flex-1"
+                    />
+                    <Upload className="w-4 h-4 text-gray-400" />
+                  </div>
+                  
+                  {imagePreview && (
+                    <div className="relative inline-block">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-32 h-32 object-cover rounded-lg border"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                        onClick={removeImage}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {imageFile && (
+                    <p className="text-sm text-gray-600">Vald fil: {imageFile.name}</p>
+                  )}
                 </div>
-                {imageFile && (
-                  <p className="text-sm text-gray-600">Vald fil: {imageFile.name}</p>
-                )}
               </div>
 
               <div className="space-y-2">

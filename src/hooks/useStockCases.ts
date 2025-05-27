@@ -33,6 +33,7 @@ export const useStockCases = () => {
       if (error) throw error;
       setStockCases(data || []);
     } catch (error: any) {
+      console.error('Error fetching stock cases:', error);
       toast({
         title: "Fel",
         description: "Kunde inte ladda aktiecases",
@@ -65,6 +66,7 @@ export const useStockCases = () => {
 
       return data;
     } catch (error: any) {
+      console.error('Error creating stock case:', error);
       toast({
         title: "Fel",
         description: error.message || "Kunde inte skapa akticase",
@@ -76,24 +78,50 @@ export const useStockCases = () => {
 
   const uploadImage = async (file: File) => {
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
+      console.log('Starting image upload:', file.name, file.type, file.size);
+      
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error('Endast JPG, PNG och WebP-filer är tillåtna');
+      }
+
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024;
+      if (file.size > maxSize) {
+        throw new Error('Filen är för stor. Maximal storlek är 5MB');
+      }
+
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      
+      console.log('Uploading to storage with filename:', fileName);
       
       const { data, error } = await supabase.storage
         .from('stock-cases')
-        .upload(fileName, file);
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Storage upload error:', error);
+        throw error;
+      }
+
+      console.log('Upload successful:', data);
 
       const { data: { publicUrl } } = supabase.storage
         .from('stock-cases')
         .getPublicUrl(fileName);
 
+      console.log('Public URL generated:', publicUrl);
       return publicUrl;
     } catch (error: any) {
+      console.error('Image upload error:', error);
       toast({
         title: "Fel",
-        description: "Kunde inte ladda upp bild",
+        description: error.message || "Kunde inte ladda upp bild",
         variant: "destructive",
       });
       throw error;
@@ -126,6 +154,7 @@ export const useStockCase = (id: string) => {
         if (error) throw error;
         setStockCase(data);
       } catch (error: any) {
+        console.error('Error fetching stock case:', error);
         toast({
           title: "Fel",
           description: "Kunde inte ladda akticase",
