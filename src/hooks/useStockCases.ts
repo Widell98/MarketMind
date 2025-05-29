@@ -52,24 +52,15 @@ export const useStockCases = () => {
     try {
       console.log('Creating stock case with data:', stockCase);
       
-      // Check current user and their profile
+      // Check current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
       
-      console.log('Current user:', user?.id);
-      
-      // Check user profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('level')
-        .eq('id', user?.id)
-        .single();
-        
-      console.log('User profile:', profile);
-      if (profileError) {
-        console.error('Profile error:', profileError);
-        throw new Error('Kunde inte hämta användarprofil');
+      if (!user) {
+        throw new Error('Du måste vara inloggad för att skapa aktiecase');
       }
+      
+      console.log('Current user:', user?.id);
 
       const { data, error } = await supabase
         .from('stock_cases')
