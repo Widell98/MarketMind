@@ -1,6 +1,6 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
 import { useStockCases } from '@/hooks/useStockCases';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 
 const AdminStockCases = () => {
   const { user } = useAuth();
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const { createStockCase, uploadImage } = useStockCases();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -28,13 +29,34 @@ const AdminStockCases = () => {
     admin_comment: '',
   });
 
-  // Check if user is admin (you'll need to implement this check)
-  if (!user) {
+  // Show loading while checking role
+  if (roleLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Kontrollerar behörigheter...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user is logged in and is admin
+  if (!user || !isAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="w-96">
-          <CardContent className="pt-6">
-            <p className="text-center">Du måste vara inloggad som admin för att komma åt denna sida.</p>
+          <CardContent className="pt-6 text-center">
+            <h2 className="text-xl font-semibold mb-2">Åtkomst nekad</h2>
+            <p className="text-gray-600 mb-4">
+              {!user 
+                ? "Du måste vara inloggad som admin för att komma åt denna sida."
+                : "Du har inte administratörsbehörighet för att komma åt denna sida."
+              }
+            </p>
+            <Button onClick={() => navigate('/')}>
+              Tillbaka till startsidan
+            </Button>
           </CardContent>
         </Card>
       </div>
