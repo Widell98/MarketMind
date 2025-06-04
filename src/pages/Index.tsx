@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -6,17 +5,20 @@ import MarketPulse from '../components/MarketPulse';
 import FlashBriefs from '../components/FlashBriefs';
 import MemoryCheck from '../components/MemoryCheck';
 import Onboarding from '../components/Onboarding';
+import StockCaseCard from '../components/StockCaseCard';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStockCases } from '@/hooks/useStockCases';
 import { UserProgress, defaultUserProgress, getLearningPathRecommendations } from '../mockData/quizData';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Loader2, UserPlus } from 'lucide-react';
+import { BookOpen, Loader2, UserPlus, TrendingUp, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const { stockCases, loading: stockCasesLoading } = useStockCases();
   const [isOnboarded, setIsOnboarded] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
   const [userLevel, setUserLevel] = useState<'novice' | 'analyst' | 'pro'>('novice');
@@ -165,7 +167,10 @@ const Index = () => {
     }
   };
 
-  // Show loading state only during authentication, not for the entire page
+  const handleViewStockCaseDetails = (id: string) => {
+    navigate(`/stock-cases/${id}`);
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -176,115 +181,149 @@ const Index = () => {
     );
   }
 
-  // Show onboarding only for authenticated users who haven't completed it
   if (user && !isOnboarded && !profileLoading) {
     return <Onboarding onComplete={handleOnboardingComplete} />;
   }
 
   return (
     <Layout>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-        {/* Main Content - Takes full width on mobile, 2 columns on desktop */}
-        <div className="lg:col-span-2">
-          {/* Greeting Section */}
+      <div className="space-y-6 lg:space-y-8">
+        {/* Header Section */}
+        <div className="text-center">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+            {getGreeting()}{user ? `, ${user?.user_metadata?.display_name || 'Investor'}` : ''}
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+            {new Date().toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </p>
+          
+          {/* User Stats */}
+          {user && (
+            <div className="flex flex-wrap justify-center items-center mt-3 gap-2">
+              {userProgress.streakDays > 0 && (
+                <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                  🔥 {userProgress.streakDays} day streak
+                </Badge>
+              )}
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                Level: {userLevel}
+              </Badge>
+              <Badge variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+                {userProgress.points} pts
+              </Badge>
+            </div>
+          )}
+        </div>
+
+        {/* Quiz Section */}
+        {user && showQuiz && (
           <div className="mb-6">
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-finance-navy dark:text-gray-200">
-              {getGreeting()}{user ? `, ${user?.user_metadata?.display_name || 'Investor'}` : ''}
-            </h1>
-            <p className="text-sm sm:text-base text-finance-gray dark:text-gray-400 mt-1">
-              {new Date().toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </p>
-            
-            {/* User Stats - only for authenticated users */}
+            <MemoryCheck onComplete={handleQuizComplete} difficulty={userLevel} />
+          </div>
+        )}
+
+        {/* Stock Cases Section - Now Primary Content */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                {user ? 'Dina följda aktiecases' : 'Populära aktiecases'}
+              </h2>
+            </div>
             {user && (
-              <div className="flex flex-wrap items-center mt-3 gap-2">
-                {userProgress.streakDays > 0 && (
-                  <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full dark:bg-amber-900 dark:bg-opacity-30 dark:text-amber-300">
-                    🔥 {userProgress.streakDays} day streak
-                  </span>
-                )}
-                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full dark:bg-blue-900 dark:bg-opacity-30 dark:text-blue-300">
-                  Level: {userLevel}
-                </span>
-                <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full dark:bg-purple-900 dark:bg-opacity-30 dark:text-purple-300">
-                  {userProgress.points} pts
-                </span>
-                {userProgress.quizAccuracy !== undefined && (
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full dark:bg-green-900 dark:bg-opacity-30 dark:text-green-300">
-                    Accuracy: {Math.round(userProgress.quizAccuracy)}%
-                  </span>
-                )}
-              </div>
+              <Button 
+                onClick={() => navigate('/admin/stock-cases')}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Skapa case
+              </Button>
             )}
           </div>
 
-          {/* Quiz Section */}
-          <div className="mb-6 lg:mb-8">
-            {/* Show Quiz for authenticated users */}
-            {user && showQuiz && (
-              <MemoryCheck onComplete={handleQuizComplete} difficulty={userLevel} />
-            )}
-
-            {/* Show Quiz for guests but with basic difficulty */}
-            {!user && (
-              <MemoryCheck onComplete={() => {}} difficulty="novice" />
-            )}
-          </div>
-        </div>
-
-        {/* Sidebar - Full width on mobile, 1 column on desktop */}
-        <div className="lg:col-span-1">
-          {/* Guest Call-to-Action */}
-          {!user && (
-            <div className="mb-6 animate-fade-in">
-              <Alert className="bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-900">
-                <UserPlus className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-                <AlertTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                  Få personaliserade frågor
-                </AlertTitle>
-                <AlertDescription className="text-xs text-blue-700 dark:text-blue-400">
-                  <p className="mb-3">Registrera dig för att få frågor anpassade till din nivå och dina intressen!</p>
-                  <Button 
-                    size="sm" 
-                    className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
-                    onClick={() => navigate('/auth')}
-                  >
-                    Registrera dig
-                  </Button>
-                </AlertDescription>
-              </Alert>
+          {stockCasesLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
             </div>
-          )}
-
-          {/* Learning Recommendations - only for authenticated users */}
-          {user && recommendations.length > 0 && (
-            <div className="mb-6 animate-fade-in">
-              <Alert className="bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-900">
-                <BookOpen className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-                <AlertTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                  Learning Path
-                </AlertTitle>
-                <AlertDescription className="text-xs text-blue-700 dark:text-blue-400">
-                  <p className="mb-2">Based on your progress, we recommend:</p>
-                  <ul className="pl-5 list-disc space-y-1">
-                    {recommendations.slice(0, 3).map((rec, idx) => (
-                      <li key={idx}>{rec}</li>
-                    ))}
-                  </ul>
-                </AlertDescription>
-              </Alert>
+          ) : stockCases.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <TrendingUp className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                {user ? 'Inga aktiecases än' : 'Inga publika aktiecases än'}
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                {user 
+                  ? 'Börja följa andra användare eller skapa ditt första aktiecase!'
+                  : 'Registrera dig för att se och skapa aktiecases.'
+                }
+              </p>
+              {user ? (
+                <Button onClick={() => navigate('/admin/stock-cases')}>
+                  Skapa ditt första case
+                </Button>
+              ) : (
+                <Button onClick={() => navigate('/auth')}>
+                  Registrera dig
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {stockCases.map((stockCase) => (
+                <StockCaseCard
+                  key={stockCase.id}
+                  stockCase={stockCase}
+                  onViewDetails={handleViewStockCaseDetails}
+                />
+              ))}
             </div>
           )}
         </div>
 
-        {/* Full width content sections */}
-        <div className="lg:col-span-3 space-y-6 lg:space-y-8">
-          {/* Market Pulse Section */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <MarketPulse />
-            <FlashBriefs />
-          </div>
+        {/* Guest Call-to-Action */}
+        {!user && (
+          <Alert className="bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-900">
+            <UserPlus className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+            <AlertTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">
+              Gå med i communityn
+            </AlertTitle>
+            <AlertDescription className="text-xs text-blue-700 dark:text-blue-400">
+              <p className="mb-3">Registrera dig för att följa andra investerare, skapa egna aktiecases och få personaliserade frågor!</p>
+              <Button 
+                size="sm" 
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => navigate('/auth')}
+              >
+                Registrera dig
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Secondary Content */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <MarketPulse />
+          <FlashBriefs />
         </div>
+
+        {/* Learning Recommendations */}
+        {user && recommendations.length > 0 && (
+          <Alert className="bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-900">
+            <BookOpen className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+            <AlertTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">
+              Learning Path
+            </AlertTitle>
+            <AlertDescription className="text-xs text-blue-700 dark:text-blue-400">
+              <p className="mb-2">Baserat på dina framsteg rekommenderar vi:</p>
+              <ul className="pl-5 list-disc space-y-1">
+                {recommendations.slice(0, 3).map((rec, idx) => (
+                  <li key={idx}>{rec}</li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
     </Layout>
   );

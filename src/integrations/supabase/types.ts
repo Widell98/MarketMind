@@ -9,6 +9,27 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      case_categories: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -42,45 +63,104 @@ export type Database = {
       stock_cases: {
         Row: {
           admin_comment: string | null
+          category_id: string | null
+          closed_at: string | null
           company_name: string
           created_at: string
+          current_price: number | null
           description: string | null
           dividend_yield: string | null
+          entry_price: number | null
           id: string
           image_url: string | null
+          is_public: boolean | null
           market_cap: string | null
           pe_ratio: string | null
+          performance_percentage: number | null
           sector: string | null
+          status: string | null
+          stop_loss: number | null
+          target_price: number | null
           title: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           admin_comment?: string | null
+          category_id?: string | null
+          closed_at?: string | null
           company_name: string
           created_at?: string
+          current_price?: number | null
           description?: string | null
           dividend_yield?: string | null
+          entry_price?: number | null
           id?: string
           image_url?: string | null
+          is_public?: boolean | null
           market_cap?: string | null
           pe_ratio?: string | null
+          performance_percentage?: number | null
           sector?: string | null
+          status?: string | null
+          stop_loss?: number | null
+          target_price?: number | null
           title: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           admin_comment?: string | null
+          category_id?: string | null
+          closed_at?: string | null
           company_name?: string
           created_at?: string
+          current_price?: number | null
           description?: string | null
           dividend_yield?: string | null
+          entry_price?: number | null
           id?: string
           image_url?: string | null
+          is_public?: boolean | null
           market_cap?: string | null
           pe_ratio?: string | null
+          performance_percentage?: number | null
           sector?: string | null
+          status?: string | null
+          stop_loss?: number | null
+          target_price?: number | null
           title?: string
           updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_cases_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "case_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
         }
         Relationships: []
       }
