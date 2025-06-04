@@ -141,6 +141,16 @@ const AdminStockCases = () => {
         image_url: imageUrl,
         pe_ratio: null,
         dividend_yield: null,
+        user_id: null, // Will be set in the hook
+        status: 'active' as const,
+        entry_price: null,
+        current_price: null,
+        target_price: null,
+        stop_loss: null,
+        performance_percentage: null,
+        closed_at: null,
+        is_public: true,
+        category_id: null,
       });
 
       // Reset form

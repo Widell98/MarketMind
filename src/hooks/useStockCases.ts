@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -35,6 +36,15 @@ export type StockCase = {
   };
 };
 
+// Helper function to ensure proper typing from database
+const transformStockCase = (rawCase: any): StockCase => {
+  return {
+    ...rawCase,
+    status: (rawCase.status || 'active') as 'active' | 'winner' | 'loser',
+    is_public: rawCase.is_public ?? true,
+  };
+};
+
 export const useStockCases = () => {
   const [stockCases, setStockCases] = useState<StockCase[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +63,8 @@ export const useStockCases = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setStockCases(data || []);
+      const transformedData = (data || []).map(transformStockCase);
+      setStockCases(transformedData);
     } catch (error: any) {
       console.error('Error fetching stock cases:', error);
       toast({
@@ -90,7 +101,8 @@ export const useStockCases = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setStockCases(data || []);
+      const transformedData = (data || []).map(transformStockCase);
+      setStockCases(transformedData);
     } catch (error: any) {
       console.error('Error fetching followed stock cases:', error);
       toast({
@@ -143,13 +155,14 @@ export const useStockCases = () => {
 
       if (error) throw error;
 
-      setStockCases(prev => [data, ...prev]);
+      const transformedCase = transformStockCase(data);
+      setStockCases(prev => [transformedCase, ...prev]);
       toast({
         title: "Framgång",
         description: "Akticase skapat framgångsrikt",
       });
 
-      return data;
+      return transformedCase;
     } catch (error: any) {
       console.error('Error creating stock case:', error);
       toast({
@@ -231,7 +244,8 @@ export const useStockCase = (id: string) => {
           .single();
 
         if (error) throw error;
-        setStockCase(data);
+        const transformedCase = transformStockCase(data);
+        setStockCase(transformedCase);
       } catch (error: any) {
         console.error('Error fetching stock case:', error);
         toast({
