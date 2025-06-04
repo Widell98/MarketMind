@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import ProfileMenu from './ProfileMenu';
+import ThemeToggle from './ThemeToggle';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -18,7 +19,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <span className="sm:hidden">MM</span>
           </Link>
           
-          <div className="flex items-center">
+          <div className="flex items-center space-x-4">
+            <ThemeToggle />
             {user ? (
               <ProfileMenu />
             ) : (
