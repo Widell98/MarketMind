@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -11,7 +12,7 @@ import { useStockCases } from '@/hooks/useStockCases';
 import { UserProgress, defaultUserProgress, getLearningPathRecommendations } from '../mockData/quizData';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Loader2, UserPlus, TrendingUp, Plus } from 'lucide-react';
+import { BookOpen, Loader2, UserPlus, TrendingUp, Plus, Newspaper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
@@ -217,98 +218,17 @@ const Index = () => {
         </div>
 
         {/* Main Tabs */}
-        <Tabs defaultValue="feed" className="w-full">
+        <Tabs defaultValue="learning" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="feed">Feed</TabsTrigger>
-            <TabsTrigger value="learning">Lärodel</TabsTrigger>
+            <TabsTrigger value="learning" className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4" />
+              Lärodel
+            </TabsTrigger>
+            <TabsTrigger value="news" className="flex items-center gap-2">
+              <Newspaper className="w-4 h-4" />
+              Nyheter
+            </TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="feed" className="space-y-6">
-            {/* Stock Cases Section */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    {user ? 'Dina följda aktiecases' : 'Populära aktiecases'}
-                  </h2>
-                </div>
-                {user && (
-                  <Button 
-                    onClick={() => navigate('/admin/stock-cases')}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Skapa case
-                  </Button>
-                )}
-              </div>
-
-              {stockCasesLoading ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                </div>
-              ) : stockCases.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <TrendingUp className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                    {user ? 'Inga aktiecases än' : 'Inga publika aktiecases än'}
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    {user 
-                      ? 'Börja följa andra användare eller skapa ditt första aktiecase!'
-                      : 'Registrera dig för att se och skapa aktiecases.'
-                    }
-                  </p>
-                  {user ? (
-                    <Button onClick={() => navigate('/admin/stock-cases')}>
-                      Skapa ditt första case
-                    </Button>
-                  ) : (
-                    <Button onClick={() => navigate('/auth')}>
-                      Registrera dig
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {stockCases.map((stockCase) => (
-                    <StockCaseCard
-                      key={stockCase.id}
-                      stockCase={stockCase}
-                      onViewDetails={handleViewStockCaseDetails}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Guest Call-to-Action */}
-            {!user && (
-              <Alert className="bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-900">
-                <UserPlus className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-                <AlertTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                  Gå med i communityn
-                </AlertTitle>
-                <AlertDescription className="text-xs text-blue-700 dark:text-blue-400">
-                  <p className="mb-3">Registrera dig för att följa andra investerare, skapa egna aktiecases och få personaliserade frågor!</p>
-                  <Button 
-                    size="sm" 
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                    onClick={() => navigate('/auth')}
-                  >
-                    Registrera dig
-                  </Button>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Secondary Content */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              <MarketPulse />
-              <FlashBriefs />
-            </div>
-          </TabsContent>
           
           <TabsContent value="learning" className="space-y-6">
             {/* Quiz Section */}
@@ -343,23 +263,121 @@ const Index = () => {
               </div>
             )}
 
-            {/* Learning Content Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {/* Learning Content */}
+            <div className="space-y-6">
               <MarketPulse />
+              
+              {/* Guest Call-to-Action for Learning */}
+              {!user && (
+                <Alert className="bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-900">
+                  <UserPlus className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                  <AlertTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                    Gå med för personaliserad inlärning
+                  </AlertTitle>
+                  <AlertDescription className="text-xs text-blue-700 dark:text-blue-400">
+                    <p className="mb-3">Registrera dig för att få anpassade frågor baserat på din nivå och spåra dina framsteg!</p>
+                    <Button 
+                      size="sm" 
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={() => navigate('/auth')}
+                    >
+                      Registrera dig
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="news" className="space-y-6">
+            {/* News Content */}
+            <div className="space-y-6">
               <FlashBriefs />
+              
+              {/* Stock Cases Section */}
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {user ? 'Dina följda aktiecases' : 'Populära aktiecases'}
+                    </h2>
+                  </div>
+                  {user && (
+                    <Button 
+                      onClick={() => navigate('/admin/stock-cases')}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Skapa case
+                    </Button>
+                  )}
+                </div>
+
+                {stockCasesLoading ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                  </div>
+                ) : stockCases.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <TrendingUp className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                      {user ? 'Inga aktiecases än' : 'Inga publika aktiecases än'}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      {user 
+                        ? 'Börja följa andra användare eller skapa ditt första aktiecase!'
+                        : 'Registrera dig för att se och skapa aktiecases.'
+                      }
+                    </p>
+                    {user ? (
+                      <Button onClick={() => navigate('/admin/stock-cases')}>
+                        Skapa ditt första case
+                      </Button>
+                    ) : (
+                      <Button onClick={() => navigate('/auth')}>
+                        Registrera dig
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {stockCases.map((stockCase) => (
+                      <StockCaseCard
+                        key={stockCase.id}
+                        stockCase={stockCase}
+                        onViewDetails={handleViewStockCaseDetails}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Guest Call-to-Action for News */}
+              {!user && (
+                <Alert className="bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-900">
+                  <UserPlus className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                  <AlertTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                    Gå med i communityn
+                  </AlertTitle>
+                  <AlertDescription className="text-xs text-blue-700 dark:text-blue-400">
+                    <p className="mb-3">Registrera dig för att följa andra investerare och skapa egna aktiecases!</p>
+                    <Button 
+                      size="sm" 
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={() => navigate('/auth')}
+                    >
+                      Registrera dig
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           </TabsContent>
         </Tabs>
       </div>
     </Layout>
   );
-};
-
-const getGreeting = () => {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'God morgon';
-  if (hour < 18) return 'God eftermiddag';
-  return 'God kväll';
 };
 
 export default Index;
