@@ -56,7 +56,7 @@ export const useStockCases = () => {
         .from('stock_cases')
         .select(`
           *,
-          profiles:user_id (username, display_name),
+          profiles!stock_cases_user_id_fkey (username, display_name),
           case_categories (name, color)
         `)
         .eq('is_public', true)
@@ -90,7 +90,7 @@ export const useStockCases = () => {
         .from('stock_cases')
         .select(`
           *,
-          profiles:user_id (username, display_name),
+          profiles!stock_cases_user_id_fkey (username, display_name),
           case_categories (name, color)
         `)
         .in('user_id', [
@@ -148,7 +148,7 @@ export const useStockCases = () => {
         .insert([caseData])
         .select(`
           *,
-          profiles:user_id (username, display_name),
+          profiles!stock_cases_user_id_fkey (username, display_name),
           case_categories (name, color)
         `)
         .single();
@@ -237,7 +237,7 @@ export const useStockCase = (id: string) => {
           .from('stock_cases')
           .select(`
             *,
-            profiles:user_id (username, display_name),
+            profiles!stock_cases_user_id_fkey (username, display_name),
             case_categories (name, color)
           `)
           .eq('id', id)
