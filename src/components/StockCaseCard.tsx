@@ -4,8 +4,10 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { TrendingUp, TrendingDown, Clock, Eye } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, Eye, Heart } from 'lucide-react';
 import { StockCase } from '@/hooks/useStockCases';
+import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
+import { cn } from '@/lib/utils';
 
 interface StockCaseCardProps {
   stockCase: StockCase;
@@ -13,6 +15,8 @@ interface StockCaseCardProps {
 }
 
 const StockCaseCard: React.FC<StockCaseCardProps> = ({ stockCase, onViewDetails }) => {
+  const { likeCount, isLiked, loading, toggleLike } = useStockCaseLikes(stockCase.id);
+
   const getStatusIcon = () => {
     switch (stockCase.status) {
       case 'winner':
@@ -80,15 +84,40 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({ stockCase, onViewDetails 
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mt-2">
-          <Avatar className="w-6 h-6">
-            <AvatarFallback className="text-xs bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300">
-              {getUserInitials()}
-            </AvatarFallback>
-          </Avatar>
-          <span className="text-sm text-gray-600 dark:text-gray-400">
-            {getUserDisplayName()}
-          </span>
+        <div className="flex items-center justify-between mt-2">
+          <div className="flex items-center gap-2">
+            <Avatar className="w-6 h-6">
+              <AvatarFallback className="text-xs bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300">
+                {getUserInitials()}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              {getUserDisplayName()}
+            </span>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleLike();
+            }}
+            disabled={loading}
+            className="flex items-center gap-1 p-1 h-auto"
+          >
+            <Heart 
+              className={cn(
+                "w-4 h-4 transition-colors",
+                isLiked 
+                  ? "fill-red-500 text-red-500" 
+                  : "text-gray-400 hover:text-red-500"
+              )}
+            />
+            <span className="text-xs text-gray-600 dark:text-gray-400">
+              {likeCount}
+            </span>
+          </Button>
         </div>
       </CardHeader>
 
