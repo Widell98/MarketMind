@@ -1,21 +1,25 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, User, PenLine, Award } from 'lucide-react';
+import { Loader2, User, PenLine, Award, Plus, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 
 const ProfilePage = () => {
   const { user, loading } = useAuth();
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
   const [profileData, setProfileData] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [canCreateCases, setCanCreateCases] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -36,6 +40,10 @@ const ProfilePage = () => {
           if (error) throw error;
           
           setProfileData(data);
+          
+          // Check if user can create cases (for now, all logged in users can)
+          // You can modify this logic to check for specific permissions
+          setCanCreateCases(true);
         } catch (error) {
           console.error('Error fetching profile:', error);
           toast({
@@ -54,7 +62,7 @@ const ProfilePage = () => {
     }
   }, [user]);
 
-  if (loading || profileLoading) {
+  if (loading || profileLoading || roleLoading) {
     return (
       <Layout>
         <div className="flex justify-center items-center h-[70vh]">
@@ -83,17 +91,33 @@ const ProfilePage = () => {
               <CardTitle className="text-xl">{profileData?.display_name}</CardTitle>
               <div className="text-sm text-muted-foreground">@{profileData?.username}</div>
               
-              <div className="mt-3">
+              <div className="mt-3 space-y-2">
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
                   {profileData?.level || 'novice'}
                 </Badge>
+                {isAdmin && (
+                  <Badge variant="outline" className="bg-purple-50 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                    Admin
+                  </Badge>
+                )}
               </div>
             </CardHeader>
-            <CardContent className="text-center">
-              <Button variant="outline" size="sm" className="mt-2">
+            <CardContent className="text-center space-y-2">
+              <Button variant="outline" size="sm" className="w-full">
                 <PenLine className="h-4 w-4 mr-2" />
                 Edit Profile
               </Button>
+              
+              {canCreateCases && (
+                <Button 
+                  onClick={() => navigate('/admin/stock-cases')}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Skapa aktiecase
+                </Button>
+              )}
             </CardContent>
           </Card>
           
@@ -140,10 +164,19 @@ const ProfilePage = () => {
               
               <Separator />
               
-              <div className="pt-2">
+              <div className="pt-2 space-y-2">
                 <Button variant="outline" className="w-full">
                   <Award className="h-4 w-4 mr-2" />
                   View Your Learning Progress
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => navigate('/stock-cases')}
+                >
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  View All Stock Cases
                 </Button>
               </div>
             </CardContent>

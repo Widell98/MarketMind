@@ -12,9 +12,10 @@ import { useStockCases } from '@/hooks/useStockCases';
 import { UserProgress, defaultUserProgress, getLearningPathRecommendations } from '../mockData/quizData';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Loader2, UserPlus, TrendingUp, Plus, Newspaper } from 'lucide-react';
+import { BookOpen, Loader2, UserPlus, TrendingUp, Newspaper, Users, Activity, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
@@ -229,24 +230,61 @@ const Index = () => {
 
           {/* Aktiecases Tab */}
           <TabsContent value="aktiecases" className="space-y-6">
+            {/* Community Section */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <CardTitle className="text-lg text-blue-800 dark:text-blue-200">Community</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-900 dark:text-blue-100 mb-1">
+                    {user ? '1,234' : '---'}
+                  </div>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">Aktiva medlemmar</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200 dark:border-green-800">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    <CardTitle className="text-lg text-green-800 dark:text-green-200">Cases idag</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-900 dark:text-green-100 mb-1">
+                    {stockCases.length}
+                  </div>
+                  <p className="text-sm text-green-700 dark:text-green-300">Nya aktiecases</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                    <CardTitle className="text-lg text-purple-800 dark:text-purple-200">Topplista</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-purple-900 dark:text-purple-100 mb-1">
+                    {user ? '#47' : '---'}
+                  </div>
+                  <p className="text-sm text-purple-700 dark:text-purple-300">Din ranking</p>
+                </CardContent>
+              </Card>
+            </div>
+
             {/* Stock Cases Section */}
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    {user ? 'Dina följda aktiecases' : 'Populära aktiecases'}
-                  </h2>
-                </div>
-                {user && (
-                  <Button 
-                    onClick={() => navigate('/admin/stock-cases')}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Skapa case
-                  </Button>
-                )}
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {user ? 'Dina följda aktiecases' : 'Populära aktiecases'}
+                </h2>
               </div>
 
               {stockCasesLoading ? (
@@ -266,8 +304,8 @@ const Index = () => {
                     }
                   </p>
                   {user ? (
-                    <Button onClick={() => navigate('/admin/stock-cases')}>
-                      Skapa ditt första case
+                    <Button onClick={() => navigate('/profile')}>
+                      Gå till profil för att skapa case
                     </Button>
                   ) : (
                     <Button onClick={() => navigate('/auth')}>
