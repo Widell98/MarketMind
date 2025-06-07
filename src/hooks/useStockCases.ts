@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -55,7 +56,7 @@ export const useStockCases = () => {
         .from('stock_cases')
         .select(`
           *,
-          profiles!stock_cases_user_id_fkey (username, display_name),
+          profiles (username, display_name),
           case_categories (name, color)
         `)
         .eq('is_public', true)
@@ -89,7 +90,7 @@ export const useStockCases = () => {
         .from('stock_cases')
         .select(`
           *,
-          profiles!stock_cases_user_id_fkey (username, display_name),
+          profiles (username, display_name),
           case_categories (name, color)
         `)
         .in('user_id', [
@@ -170,19 +171,32 @@ export const useStockCases = () => {
         user_id: user.id
       };
 
-      const { data, error } = await supabase
+      // First, insert the stock case without trying to join with profiles
+      const { data: insertedCase, error: insertError } = await supabase
         .from('stock_cases')
         .insert([caseData])
-        .select(`
-          *,
-          profiles!stock_cases_user_id_fkey (username, display_name),
-          case_categories (name, color)
-        `)
+        .select('*')
         .single();
 
-      if (error) throw error;
+      if (insertError) throw insertError;
 
-      const transformedCase = transformStockCase(data);
+      // Then, fetch the profile data separately
+      const { data: profileInfo, error: profileFetchError } = await supabase
+        .from('profiles')
+        .select('username, display_name')
+        .eq('id', user.id)
+        .single();
+
+      if (profileFetchError) {
+        console.error('Profile fetch error:', profileFetchError);
+      }
+
+      // Combine the data manually
+      const transformedCase = transformStockCase({
+        ...insertedCase,
+        profiles: profileInfo || { username: 'unknown', display_name: null }
+      });
+
       setStockCases(prev => [transformedCase, ...prev]);
       toast({
         title: "Framgång",
@@ -264,7 +278,7 @@ export const useStockCase = (id: string) => {
           .from('stock_cases')
           .select(`
             *,
-            profiles!stock_cases_user_id_fkey (username, display_name),
+            profiles (username, display_name),
             case_categories (name, color)
           `)
           .eq('id', id)
