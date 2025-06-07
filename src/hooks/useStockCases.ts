@@ -194,6 +194,55 @@ export const useStockCases = () => {
     return data.map(follow => follow.following_id);
   };
 
+  const deleteStockCase = async (stockCaseId: string) => {
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      
+      if (!user) {
+        throw new Error('Du måste vara inloggad för att ta bort aktiecase');
+      }
+
+      // First check if the user owns this stock case
+      const { data: stockCase, error: fetchError } = await supabase
+        .from('stock_cases')
+        .select('user_id')
+        .eq('id', stockCaseId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      if (stockCase.user_id !== user.id) {
+        throw new Error('Du kan bara ta bort dina egna aktiecases');
+      }
+
+      // Delete the stock case
+      const { error: deleteError } = await supabase
+        .from('stock_cases')
+        .delete()
+        .eq('id', stockCaseId);
+
+      if (deleteError) throw deleteError;
+
+      // Remove from local state
+      setStockCases(prev => prev.filter(case => case.id !== stockCaseId));
+      
+      toast({
+        title: "Framgång",
+        description: "Akticase borttaget",
+      });
+
+    } catch (error: any) {
+      console.error('Error deleting stock case:', error);
+      toast({
+        title: "Fel",
+        description: error.message || "Kunde inte ta bort akticase",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   useEffect(() => {
     // For now, let's load all public stock cases instead of just followed ones
     // to show cases on the homepage
@@ -333,7 +382,8 @@ export const useStockCases = () => {
     loading,
     createStockCase,
     uploadImage,
-    refetch: fetchStockCases, // Changed to fetchStockCases to show all public cases
+    deleteStockCase,
+    refetch: fetchStockCases,
   };
 };
 

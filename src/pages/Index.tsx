@@ -20,7 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const { stockCases, loading: stockCasesLoading } = useStockCases();
+  const { stockCases, loading: stockCasesLoading, deleteStockCase } = useStockCases();
   const [isOnboarded, setIsOnboarded] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
   const [userLevel, setUserLevel] = useState<'novice' | 'analyst' | 'pro'>('novice');
@@ -173,6 +173,14 @@ const Index = () => {
     navigate(`/stock-cases/${id}`);
   };
 
+  const handleDeleteStockCase = async (id: string) => {
+    try {
+      await deleteStockCase(id);
+    } catch (error) {
+      // Error is already handled in the deleteStockCase function
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -320,6 +328,7 @@ const Index = () => {
                         key={stockCase.id}
                         stockCase={stockCase}
                         onViewDetails={handleViewStockCaseDetails}
+                        onDelete={handleDeleteStockCase}
                       />
                     ))}
                   </div>

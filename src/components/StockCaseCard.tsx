@@ -4,18 +4,21 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { TrendingUp, TrendingDown, Clock, Eye, Heart } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, Eye, Heart, Trash2 } from 'lucide-react';
 import { StockCase } from '@/hooks/useStockCases';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
 interface StockCaseCardProps {
   stockCase: StockCase;
   onViewDetails: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-const StockCaseCard: React.FC<StockCaseCardProps> = ({ stockCase, onViewDetails }) => {
+const StockCaseCard: React.FC<StockCaseCardProps> = ({ stockCase, onViewDetails, onDelete }) => {
   const { likeCount, isLiked, loading, toggleLike } = useStockCaseLikes(stockCase.id);
+  const { user } = useAuth();
 
   const getStatusIcon = () => {
     switch (stockCase.status) {
@@ -52,6 +55,15 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({ stockCase, onViewDetails 
   const getUserInitials = () => {
     const name = getUserDisplayName();
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  const isOwner = user?.id === stockCase.user_id;
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDelete && window.confirm('Är du säker på att du vill ta bort detta aktiecase?')) {
+      onDelete(stockCase.id);
+    }
   };
 
   return (
@@ -96,28 +108,41 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({ stockCase, onViewDetails 
             </span>
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleLike();
-            }}
-            disabled={loading}
-            className="flex items-center gap-1 p-1 h-auto"
-          >
-            <Heart 
-              className={cn(
-                "w-4 h-4 transition-colors",
-                isLiked 
-                  ? "fill-red-500 text-red-500" 
-                  : "text-gray-400 hover:text-red-500"
-              )}
-            />
-            <span className="text-xs text-gray-600 dark:text-gray-400">
-              {likeCount}
-            </span>
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleLike();
+              }}
+              disabled={loading}
+              className="flex items-center gap-1 p-1 h-auto"
+            >
+              <Heart 
+                className={cn(
+                  "w-4 h-4 transition-colors",
+                  isLiked 
+                    ? "fill-red-500 text-red-500" 
+                    : "text-gray-400 hover:text-red-500"
+                )}
+              />
+              <span className="text-xs text-gray-600 dark:text-gray-400">
+                {likeCount}
+              </span>
+            </Button>
+
+            {isOwner && onDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDelete}
+                className="flex items-center gap-1 p-1 h-auto text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
 
