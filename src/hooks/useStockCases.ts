@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -136,6 +135,34 @@ export const useStockCases = () => {
       
       if (!user) {
         throw new Error('Du måste vara inloggad för att skapa aktiecase');
+      }
+
+      // Ensure user profile exists
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('Profile check error:', profileError);
+        throw new Error('Kunde inte verifiera användarprofil');
+      }
+
+      // If profile doesn't exist, create it
+      if (!profileData) {
+        const { error: createProfileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            username: user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`,
+            display_name: user.user_metadata?.display_name || 'Ny användare'
+          });
+
+        if (createProfileError) {
+          console.error('Profile creation error:', createProfileError);
+          throw new Error('Kunde inte skapa användarprofil');
+        }
       }
 
       const caseData = {
