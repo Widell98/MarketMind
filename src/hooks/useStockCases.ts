@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -52,18 +51,53 @@ export const useStockCases = () => {
 
   const fetchStockCases = async () => {
     try {
-      const { data, error } = await supabase
+      // First, get all public stock cases
+      const { data: casesData, error: casesError } = await supabase
         .from('stock_cases')
-        .select(`
-          *,
-          profiles (username, display_name),
-          case_categories (name, color)
-        `)
+        .select('*')
         .eq('is_public', true)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      const transformedData = (data || []).map(transformStockCase);
+      if (casesError) throw casesError;
+
+      // Get unique user IDs
+      const userIds = [...new Set(casesData?.map(c => c.user_id).filter(Boolean) || [])];
+      
+      // Fetch profiles for these users
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, display_name')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error('Profiles fetch error:', profilesError);
+      }
+
+      // Get unique category IDs
+      const categoryIds = [...new Set(casesData?.map(c => c.category_id).filter(Boolean) || [])];
+      
+      // Fetch categories
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('case_categories')
+        .select('id, name, color')
+        .in('id', categoryIds);
+
+      if (categoriesError) {
+        console.error('Categories fetch error:', categoriesError);
+      }
+
+      // Combine the data manually
+      const transformedData = (casesData || []).map(stockCase => {
+        const profile = profilesData?.find(p => p.id === stockCase.user_id);
+        const category = categoriesData?.find(c => c.id === stockCase.category_id);
+        
+        return transformStockCase({
+          ...stockCase,
+          profiles: profile ? { username: profile.username, display_name: profile.display_name } : null,
+          case_categories: category ? { name: category.name, color: category.color } : null
+        });
+      });
+
       setStockCases(transformedData);
     } catch (error: any) {
       console.error('Error fetching stock cases:', error);
@@ -86,22 +120,57 @@ export const useStockCases = () => {
         return;
       }
 
-      const { data, error } = await supabase
+      const followedUserIds = await getFollowedUserIds(user.id);
+      const allUserIds = [user.id, ...followedUserIds];
+
+      // First, get stock cases from followed users
+      const { data: casesData, error: casesError } = await supabase
         .from('stock_cases')
-        .select(`
-          *,
-          profiles (username, display_name),
-          case_categories (name, color)
-        `)
-        .in('user_id', [
-          user.id,
-          ...await getFollowedUserIds(user.id)
-        ])
+        .select('*')
+        .in('user_id', allUserIds)
         .eq('is_public', true)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      const transformedData = (data || []).map(transformStockCase);
+      if (casesError) throw casesError;
+
+      // Get unique user IDs
+      const userIds = [...new Set(casesData?.map(c => c.user_id).filter(Boolean) || [])];
+      
+      // Fetch profiles for these users
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, display_name')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error('Profiles fetch error:', profilesError);
+      }
+
+      // Get unique category IDs
+      const categoryIds = [...new Set(casesData?.map(c => c.category_id).filter(Boolean) || [])];
+      
+      // Fetch categories
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('case_categories')
+        .select('id, name, color')
+        .in('id', categoryIds);
+
+      if (categoriesError) {
+        console.error('Categories fetch error:', categoriesError);
+      }
+
+      // Combine the data manually
+      const transformedData = (casesData || []).map(stockCase => {
+        const profile = profilesData?.find(p => p.id === stockCase.user_id);
+        const category = categoriesData?.find(c => c.id === stockCase.category_id);
+        
+        return transformStockCase({
+          ...stockCase,
+          profiles: profile ? { username: profile.username, display_name: profile.display_name } : null,
+          case_categories: category ? { name: category.name, color: category.color } : null
+        });
+      });
+
       setStockCases(transformedData);
     } catch (error: any) {
       console.error('Error fetching followed stock cases:', error);
@@ -126,7 +195,9 @@ export const useStockCases = () => {
   };
 
   useEffect(() => {
-    fetchFollowedStockCases();
+    // For now, let's load all public stock cases instead of just followed ones
+    // to show cases on the homepage
+    fetchStockCases();
   }, []);
 
   const createStockCase = async (stockCase: Omit<StockCase, 'id' | 'created_at' | 'updated_at'>) => {
@@ -262,7 +333,7 @@ export const useStockCases = () => {
     loading,
     createStockCase,
     uploadImage,
-    refetch: fetchFollowedStockCases,
+    refetch: fetchStockCases, // Changed to fetchStockCases to show all public cases
   };
 };
 
@@ -274,18 +345,54 @@ export const useStockCase = (id: string) => {
   useEffect(() => {
     const fetchStockCase = async () => {
       try {
-        const { data, error } = await supabase
+        // First get the stock case
+        const { data: caseData, error: caseError } = await supabase
           .from('stock_cases')
-          .select(`
-            *,
-            profiles (username, display_name),
-            case_categories (name, color)
-          `)
+          .select('*')
           .eq('id', id)
           .single();
 
-        if (error) throw error;
-        const transformedCase = transformStockCase(data);
+        if (caseError) throw caseError;
+
+        // Then get the profile if user_id exists
+        let profileData = null;
+        if (caseData.user_id) {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('username, display_name')
+            .eq('id', caseData.user_id)
+            .single();
+
+          if (profileError) {
+            console.error('Profile fetch error:', profileError);
+          } else {
+            profileData = profile;
+          }
+        }
+
+        // Then get the category if category_id exists
+        let categoryData = null;
+        if (caseData.category_id) {
+          const { data: category, error: categoryError } = await supabase
+            .from('case_categories')
+            .select('name, color')
+            .eq('id', caseData.category_id)
+            .single();
+
+          if (categoryError) {
+            console.error('Category fetch error:', categoryError);
+          } else {
+            categoryData = category;
+          }
+        }
+
+        // Combine the data manually
+        const transformedCase = transformStockCase({
+          ...caseData,
+          profiles: profileData,
+          case_categories: categoryData
+        });
+
         setStockCase(transformedCase);
       } catch (error: any) {
         console.error('Error fetching stock case:', error);
