@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -9,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, ArrowLeft, X, Edit, Trash2, Plus, Save, Cancel } from 'lucide-react';
+import { Upload, ArrowLeft, X, Edit, Trash2, Plus, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -140,7 +139,13 @@ const AdminStockCases = () => {
 
       if (error) throw error;
 
-      setAllCases(data || []);
+      // Transform the data to ensure proper typing
+      const transformedData = (data || []).map(stockCase => ({
+        ...stockCase,
+        status: (stockCase.status || 'active') as 'active' | 'winner' | 'loser'
+      }));
+
+      setAllCases(transformedData);
     } catch (error: any) {
       console.error('Error fetching cases:', error);
       toast({
@@ -603,7 +608,7 @@ const AdminStockCases = () => {
                     onClick={resetForm}
                     className="flex-1"
                   >
-                    <Cancel className="w-4 h-4 mr-2" />
+                    <X className="w-4 h-4 mr-2" />
                     Avbryt
                   </Button>
                 </div>
