@@ -88,36 +88,12 @@ const AdminStockCases = () => {
     stop_loss: '',
   });
 
-  // Show loading while checking role
-  if (roleLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Kontrollerar behörigheter...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Check if user is logged in
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="w-96">
-          <CardContent className="pt-6 text-center">
-            <h2 className="text-xl font-semibold mb-2">Åtkomst nekad</h2>
-            <p className="text-gray-600 mb-4">
-              Du måste vara inloggad för att komma åt denna sida.
-            </p>
-            <Button onClick={() => navigate('/')}>
-              Tillbaka till startsidan
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Move useEffect here, before any conditional returns
+  useEffect(() => {
+    if (user?.id && !roleLoading) {
+      fetchAllCases();
+    }
+  }, [user?.id, isAdmin, roleLoading]);
 
   const fetchAllCases = async () => {
     try {
@@ -130,7 +106,7 @@ const AdminStockCases = () => {
 
       // If not admin, only show user's own cases
       if (!isAdmin) {
-        query = query.eq('user_id', user.id);
+        query = query.eq('user_id', user?.id);
       }
 
       const { data: casesData, error } = await query;
@@ -205,9 +181,36 @@ const AdminStockCases = () => {
     }
   };
 
-  useEffect(() => {
-    fetchAllCases();
-  }, [user.id, isAdmin]);
+  // Show loading while checking role
+  if (roleLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Kontrollerar behörigheter...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user is logged in
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-96">
+          <CardContent className="pt-6 text-center">
+            <h2 className="text-xl font-semibold mb-2">Åtkomst nekad</h2>
+            <p className="text-gray-600 mb-4">
+              Du måste vara inloggad för att komma åt denna sida.
+            </p>
+            <Button onClick={() => navigate('/')}>
+              Tillbaka till startsidan
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({
