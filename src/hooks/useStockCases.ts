@@ -226,7 +226,7 @@ export const useStockCases = () => {
       if (deleteError) throw deleteError;
 
       // Remove from local state
-      setStockCases(prev => prev.filter(case => case.id !== stockCaseId));
+      setStockCases(prev => prev.filter(stockCase => stockCase.id !== stockCaseId));
       
       toast({
         title: "Framgång",
