@@ -123,11 +123,7 @@ const AdminStockCases = () => {
       
       let query = supabase
         .from('stock_cases')
-        .select(`
-          *,
-          profiles:user_id (username, display_name),
-          case_categories:category_id (name, color)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       // If not admin, only show user's own cases
@@ -135,15 +131,64 @@ const AdminStockCases = () => {
         query = query.eq('user_id', user.id);
       }
 
-      const { data, error } = await query;
+      const { data: casesData, error } = await query;
 
       if (error) throw error;
 
+      // Get unique user IDs for profiles
+      const userIds = [...new Set(casesData?.map(c => c.user_id).filter(Boolean) || [])];
+      
+      // Fetch profiles for these users
+      let profilesData: any[] = [];
+      if (userIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, username, display_name')
+          .in('id', userIds);
+
+        if (profilesError) {
+          console.error('Profiles fetch error:', profilesError);
+        } else {
+          profilesData = profiles || [];
+        }
+      }
+
+      // Get unique category IDs
+      const categoryIds = [...new Set(casesData?.map(c => c.category_id).filter(Boolean) || [])];
+      
+      // Fetch categories
+      let categoriesData: any[] = [];
+      if (categoryIds.length > 0) {
+        const { data: categories, error: categoriesError } = await supabase
+          .from('case_categories')
+          .select('id, name, color')
+          .in('id', categoryIds);
+
+        if (categoriesError) {
+          console.error('Categories fetch error:', categoriesError);
+        } else {
+          categoriesData = categories || [];
+        }
+      }
+
       // Transform the data to ensure proper typing
-      const transformedData = (data || []).map(stockCase => ({
-        ...stockCase,
-        status: (stockCase.status || 'active') as 'active' | 'winner' | 'loser'
-      }));
+      const transformedData: StockCaseWithActions[] = (casesData || []).map(stockCase => {
+        const profile = profilesData.find(p => p.id === stockCase.user_id);
+        const category = categoriesData.find(c => c.id === stockCase.category_id);
+        
+        return {
+          ...stockCase,
+          status: (stockCase.status || 'active') as 'active' | 'winner' | 'loser',
+          profiles: profile ? { 
+            username: profile.username, 
+            display_name: profile.display_name 
+          } : undefined,
+          case_categories: category ? { 
+            name: category.name, 
+            color: category.color 
+          } : undefined
+        };
+      });
 
       setAllCases(transformedData);
     } catch (error: any) {
