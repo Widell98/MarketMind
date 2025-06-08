@@ -67,6 +67,8 @@ const AdminStockCases = () => {
   const { createStockCase, uploadImage, deleteStockCase } = useStockCases();
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  // All useState hooks must be called before any conditional returns
   const [loading, setLoading] = useState(false);
   const [allCases, setAllCases] = useState<StockCaseWithActions[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
