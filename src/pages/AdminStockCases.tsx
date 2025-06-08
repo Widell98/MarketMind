@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useStockCases } from '@/hooks/useStockCases';
@@ -8,16 +9,69 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, ArrowLeft, X } from 'lucide-react';
+import { Upload, ArrowLeft, X, Edit, Trash2, Plus, Save, Cancel } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+
+type StockCaseWithActions = {
+  id: string;
+  title: string;
+  company_name: string;
+  image_url: string | null;
+  sector: string | null;
+  market_cap: string | null;
+  pe_ratio: string | null;
+  dividend_yield: string | null;
+  description: string | null;
+  admin_comment: string | null;
+  user_id: string | null;
+  status: 'active' | 'winner' | 'loser';
+  entry_price: number | null;
+  current_price: number | null;
+  target_price: number | null;
+  stop_loss: number | null;
+  performance_percentage: number | null;
+  closed_at: string | null;
+  is_public: boolean;
+  category_id: string | null;
+  created_at: string;
+  updated_at: string;
+  profiles?: {
+    username: string;
+    display_name: string | null;
+  };
+  case_categories?: {
+    name: string;
+    color: string;
+  };
+};
 
 const AdminStockCases = () => {
   const { user } = useAuth();
   const { isAdmin, loading: roleLoading } = useUserRole();
-  const { createStockCase, uploadImage } = useStockCases();
+  const { createStockCase, uploadImage, deleteStockCase } = useStockCases();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [allCases, setAllCases] = useState<StockCaseWithActions[]>([]);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingCase, setEditingCase] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -27,6 +81,10 @@ const AdminStockCases = () => {
     market_cap: '',
     description: '',
     admin_comment: '',
+    entry_price: '',
+    current_price: '',
+    target_price: '',
+    stop_loss: '',
   });
 
   // Show loading while checking role
@@ -41,18 +99,15 @@ const AdminStockCases = () => {
     );
   }
 
-  // Check if user is logged in and is admin
-  if (!user || !isAdmin) {
+  // Check if user is logged in
+  if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="w-96">
           <CardContent className="pt-6 text-center">
             <h2 className="text-xl font-semibold mb-2">Åtkomst nekad</h2>
             <p className="text-gray-600 mb-4">
-              {!user 
-                ? "Du måste vara inloggad som admin för att komma åt denna sida."
-                : "Du har inte administratörsbehörighet för att komma åt denna sida."
-              }
+              Du måste vara inloggad för att komma åt denna sida.
             </p>
             <Button onClick={() => navigate('/')}>
               Tillbaka till startsidan
@@ -62,6 +117,45 @@ const AdminStockCases = () => {
       </div>
     );
   }
+
+  const fetchAllCases = async () => {
+    try {
+      setLoading(true);
+      
+      let query = supabase
+        .from('stock_cases')
+        .select(`
+          *,
+          profiles:user_id (username, display_name),
+          case_categories:category_id (name, color)
+        `)
+        .order('created_at', { ascending: false });
+
+      // If not admin, only show user's own cases
+      if (!isAdmin) {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      setAllCases(data || []);
+    } catch (error: any) {
+      console.error('Error fetching cases:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte ladda aktiecases",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllCases();
+  }, [user.id, isAdmin]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({
@@ -73,7 +167,6 @@ const AdminStockCases = () => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
         toast({
@@ -84,7 +177,6 @@ const AdminStockCases = () => {
         return;
       }
 
-      // Validate file size (max 5MB)
       const maxSize = 5 * 1024 * 1024;
       if (file.size > maxSize) {
         toast({
@@ -97,7 +189,6 @@ const AdminStockCases = () => {
 
       setImageFile(file);
       
-      // Create preview
       const reader = new FileReader();
       reader.onload = (e) => {
         setImagePreview(e.target?.result as string);
@@ -109,11 +200,29 @@ const AdminStockCases = () => {
   const removeImage = () => {
     setImageFile(null);
     setImagePreview(null);
-    // Reset file input
     const fileInput = document.getElementById('image') as HTMLInputElement;
     if (fileInput) {
       fileInput.value = '';
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      company_name: '',
+      sector: '',
+      market_cap: '',
+      description: '',
+      admin_comment: '',
+      entry_price: '',
+      current_price: '',
+      target_price: '',
+      stop_loss: '',
+    });
+    setImageFile(null);
+    setImagePreview(null);
+    setShowCreateForm(false);
+    setEditingCase(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -131,55 +240,151 @@ const AdminStockCases = () => {
     try {
       let imageUrl = null;
       if (imageFile) {
-        console.log('Uploading image file:', imageFile.name);
         imageUrl = await uploadImage(imageFile);
-        console.log('Image uploaded successfully:', imageUrl);
       }
 
-      await createStockCase({
+      const caseData = {
         ...formData,
         image_url: imageUrl,
         pe_ratio: null,
         dividend_yield: null,
-        user_id: null, // Will be set in the hook
+        user_id: null,
         status: 'active' as const,
-        entry_price: null,
-        current_price: null,
-        target_price: null,
-        stop_loss: null,
+        entry_price: formData.entry_price ? parseFloat(formData.entry_price) : null,
+        current_price: formData.current_price ? parseFloat(formData.current_price) : null,
+        target_price: formData.target_price ? parseFloat(formData.target_price) : null,
+        stop_loss: formData.stop_loss ? parseFloat(formData.stop_loss) : null,
         performance_percentage: null,
         closed_at: null,
         is_public: true,
         category_id: null,
-      });
+      };
 
-      // Reset form
-      setFormData({
-        title: '',
-        company_name: '',
-        sector: '',
-        market_cap: '',
-        description: '',
-        admin_comment: '',
-      });
-      setImageFile(null);
-      setImagePreview(null);
+      if (editingCase) {
+        await updateStockCase(editingCase, caseData);
+      } else {
+        await createStockCase(caseData);
+      }
+
+      resetForm();
+      fetchAllCases();
 
       toast({
         title: "Framgång",
-        description: "Akticase skapat framgångsrikt!",
+        description: editingCase ? "Akticase uppdaterat framgångsrikt!" : "Akticase skapat framgångsrikt!",
       });
     } catch (error) {
       console.error('Error in handleSubmit:', error);
-      // Error handled in hook
     } finally {
       setLoading(false);
     }
   };
 
+  const updateStockCase = async (caseId: string, caseData: any) => {
+    const { error } = await supabase
+      .from('stock_cases')
+      .update(caseData)
+      .eq('id', caseId);
+
+    if (error) throw error;
+  };
+
+  const handleEdit = (stockCase: StockCaseWithActions) => {
+    setFormData({
+      title: stockCase.title,
+      company_name: stockCase.company_name,
+      sector: stockCase.sector || '',
+      market_cap: stockCase.market_cap || '',
+      description: stockCase.description || '',
+      admin_comment: stockCase.admin_comment || '',
+      entry_price: stockCase.entry_price?.toString() || '',
+      current_price: stockCase.current_price?.toString() || '',
+      target_price: stockCase.target_price?.toString() || '',
+      stop_loss: stockCase.stop_loss?.toString() || '',
+    });
+    if (stockCase.image_url) {
+      setImagePreview(stockCase.image_url);
+    }
+    setEditingCase(stockCase.id);
+    setShowCreateForm(true);
+  };
+
+  const handleStatusChange = async (caseId: string, newStatus: 'active' | 'winner' | 'loser') => {
+    try {
+      const updateData: any = { 
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      };
+      
+      if (newStatus !== 'active') {
+        updateData.closed_at = new Date().toISOString();
+      } else {
+        updateData.closed_at = null;
+      }
+
+      const { error } = await supabase
+        .from('stock_cases')
+        .update(updateData)
+        .eq('id', caseId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Framgång",
+        description: "Status uppdaterat framgångsrikt",
+      });
+
+      fetchAllCases();
+    } catch (error: any) {
+      console.error('Error updating status:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte uppdatera status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async (caseId: string) => {
+    if (!window.confirm('Är du säker på att du vill ta bort detta aktiecase?')) {
+      return;
+    }
+
+    try {
+      await deleteStockCase(caseId);
+      fetchAllCases();
+    } catch (error) {
+      console.error('Error deleting case:', error);
+    }
+  };
+
+  const canEditCase = (stockCase: StockCaseWithActions) => {
+    return isAdmin || stockCase.user_id === user.id;
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusColors = {
+      active: 'bg-yellow-100 text-yellow-800',
+      winner: 'bg-green-100 text-green-800',
+      loser: 'bg-red-100 text-red-800'
+    };
+    
+    const statusLabels = {
+      active: 'Aktiv',
+      winner: 'Vinnare',
+      loser: 'Förlorare'
+    };
+
+    return (
+      <Badge className={statusColors[status as keyof typeof statusColors]}>
+        {statusLabels[status as keyof typeof statusLabels]}
+      </Badge>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4">
         <div className="mb-6">
           <Button
             variant="ghost"
@@ -189,135 +394,324 @@ const AdminStockCases = () => {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Tillbaka till startsidan
           </Button>
-          <h1 className="text-3xl font-bold text-gray-900">Admin - Skapa Akticase</h1>
-          <p className="text-gray-600 mt-2">Ladda upp nya aktiecases för användarna att utforska</p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                {isAdmin ? 'Admin - Hantera Aktiecases' : 'Mina Aktiecases'}
+              </h1>
+              <p className="text-gray-600 mt-2">
+                {isAdmin 
+                  ? 'Hantera alla aktiecases i systemet' 
+                  : 'Hantera dina egna aktiecases'
+                }
+              </p>
+            </div>
+            <Button
+              onClick={() => setShowCreateForm(true)}
+              className="flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Skapa nytt case
+            </Button>
+          </div>
         </div>
+
+        {showCreateForm && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>
+                {editingCase ? 'Redigera Akticase' : 'Skapa nytt Akticase'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Titel *</Label>
+                    <Input
+                      id="title"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleInputChange}
+                      placeholder="Ex: Tesla - Framtidens mobilitet"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="company_name">Företagsnamn *</Label>
+                    <Input
+                      id="company_name"
+                      name="company_name"
+                      value={formData.company_name}
+                      onChange={handleInputChange}
+                      placeholder="Ex: Tesla Inc."
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="sector">Sektor</Label>
+                    <Input
+                      id="sector"
+                      name="sector"
+                      value={formData.sector}
+                      onChange={handleInputChange}
+                      placeholder="Ex: Bilindustri"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="market_cap">Börsvärde</Label>
+                    <Input
+                      id="market_cap"
+                      name="market_cap"
+                      value={formData.market_cap}
+                      onChange={handleInputChange}
+                      placeholder="Ex: 800 miljarder USD"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="entry_price">Inköpspris (kr)</Label>
+                    <Input
+                      id="entry_price"
+                      name="entry_price"
+                      type="number"
+                      step="0.01"
+                      value={formData.entry_price}
+                      onChange={handleInputChange}
+                      placeholder="Ex: 1250.50"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="current_price">Nuvarande pris (kr)</Label>
+                    <Input
+                      id="current_price"
+                      name="current_price"
+                      type="number"
+                      step="0.01"
+                      value={formData.current_price}
+                      onChange={handleInputChange}
+                      placeholder="Ex: 1450.75"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="target_price">Målpris (kr)</Label>
+                    <Input
+                      id="target_price"
+                      name="target_price"
+                      type="number"
+                      step="0.01"
+                      value={formData.target_price}
+                      onChange={handleInputChange}
+                      placeholder="Ex: 1800.00"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="stop_loss">Stop Loss (kr)</Label>
+                    <Input
+                      id="stop_loss"
+                      name="stop_loss"
+                      type="number"
+                      step="0.01"
+                      value={formData.stop_loss}
+                      onChange={handleInputChange}
+                      placeholder="Ex: 1100.00"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="image">Aktiekurs Chart (JPG, PNG, WebP - max 5MB)</Label>
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Input
+                        id="image"
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                        onChange={handleImageChange}
+                        className="flex-1"
+                      />
+                      <Upload className="w-4 h-4 text-gray-400" />
+                    </div>
+                    
+                    {imagePreview && (
+                      <div className="relative inline-block">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="w-32 h-32 object-cover rounded-lg border"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                          onClick={removeImage}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {imageFile && (
+                      <p className="text-sm text-gray-600">Vald fil: {imageFile.name}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Beskrivning</Label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    placeholder="Kort beskrivning av företaget..."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="admin_comment">Admin Kommentar</Label>
+                  <Textarea
+                    id="admin_comment"
+                    name="admin_comment"
+                    value={formData.admin_comment}
+                    onChange={handleInputChange}
+                    placeholder="Varför är detta en bra aktie att köpa? Din analys och rekommendation..."
+                    rows={4}
+                  />
+                </div>
+
+                <div className="flex gap-4">
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    {loading ? 'Sparar...' : editingCase ? 'Uppdatera Case' : 'Skapa Case'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={resetForm}
+                    className="flex-1"
+                  >
+                    <Cancel className="w-4 h-4 mr-2" />
+                    Avbryt
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
-            <CardTitle>Nytt Akticase</CardTitle>
+            <CardTitle>
+              {isAdmin ? 'Alla Aktiecases' : 'Mina Aktiecases'}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Titel *</Label>
-                  <Input
-                    id="title"
-                    name="title"
-                    value={formData.title}
-                    onChange={handleInputChange}
-                    placeholder="Ex: Tesla - Framtidens mobilitet"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="company_name">Företagsnamn *</Label>
-                  <Input
-                    id="company_name"
-                    name="company_name"
-                    value={formData.company_name}
-                    onChange={handleInputChange}
-                    placeholder="Ex: Tesla Inc."
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="sector">Sektor</Label>
-                  <Input
-                    id="sector"
-                    name="sector"
-                    value={formData.sector}
-                    onChange={handleInputChange}
-                    placeholder="Ex: Bilindustri"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="market_cap">Börsvärde</Label>
-                  <Input
-                    id="market_cap"
-                    name="market_cap"
-                    value={formData.market_cap}
-                    onChange={handleInputChange}
-                    placeholder="Ex: 800 miljarder USD"
-                  />
-                </div>
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Laddar aktiecases...</p>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="image">Aktiekurs Chart (JPG, PNG, WebP - max 5MB)</Label>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      id="image"
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/webp"
-                      onChange={handleImageChange}
-                      className="flex-1"
-                    />
-                    <Upload className="w-4 h-4 text-gray-400" />
-                  </div>
-                  
-                  {imagePreview && (
-                    <div className="relative inline-block">
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="w-32 h-32 object-cover rounded-lg border"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
-                        onClick={removeImage}
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  )}
-                  
-                  {imageFile && (
-                    <p className="text-sm text-gray-600">Vald fil: {imageFile.name}</p>
-                  )}
-                </div>
+            ) : allCases.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-600">Inga aktiecases hittades.</p>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Beskrivning</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  placeholder="Kort beskrivning av företaget..."
-                  rows={3}
-                />
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Titel</TableHead>
+                      <TableHead>Företag</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Skapare</TableHead>
+                      <TableHead>Inköp/Mål</TableHead>
+                      <TableHead>Skapad</TableHead>
+                      <TableHead>Åtgärder</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allCases.map((stockCase) => (
+                      <TableRow key={stockCase.id}>
+                        <TableCell className="font-medium">
+                          {stockCase.title}
+                        </TableCell>
+                        <TableCell>{stockCase.company_name}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getStatusBadge(stockCase.status)}
+                            <Select
+                              value={stockCase.status}
+                              onValueChange={(value) => handleStatusChange(stockCase.id, value as 'active' | 'winner' | 'loser')}
+                              disabled={!canEditCase(stockCase)}
+                            >
+                              <SelectTrigger className="w-32 h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="active">Aktiv</SelectItem>
+                                <SelectItem value="winner">Vinnare</SelectItem>
+                                <SelectItem value="loser">Förlorare</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {stockCase.profiles?.display_name || stockCase.profiles?.username || 'Admin'}
+                        </TableCell>
+                        <TableCell>
+                          {stockCase.entry_price && stockCase.target_price ? (
+                            <div className="text-sm">
+                              <div>{stockCase.entry_price} kr</div>
+                              <div className="text-gray-500">→ {stockCase.target_price} kr</div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {new Date(stockCase.created_at).toLocaleDateString('sv-SE')}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            {canEditCase(stockCase) && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEdit(stockCase)}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => handleDelete(stockCase.id)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="admin_comment">Admin Kommentar</Label>
-                <Textarea
-                  id="admin_comment"
-                  name="admin_comment"
-                  value={formData.admin_comment}
-                  onChange={handleInputChange}
-                  placeholder="Varför är detta en bra aktie att köpa? Din analys och rekommendation..."
-                  rows={4}
-                />
-              </div>
-
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full"
-              >
-                {loading ? 'Skapar...' : 'Skapa Akticase'}
-              </Button>
-            </form>
+            )}
           </CardContent>
         </Card>
       </div>
