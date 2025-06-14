@@ -60,6 +60,27 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_case_follows: {
+        Row: {
+          created_at: string
+          id: string
+          stock_case_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          stock_case_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          stock_case_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       stock_case_likes: {
         Row: {
           created_at: string
@@ -219,6 +240,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_stock_case_follow_count: {
+        Args: { case_id: string }
+        Returns: number
+      }
       get_stock_case_like_count: {
         Args: { case_id: string }
         Returns: number
@@ -228,6 +253,10 @@ export type Database = {
           _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
         }
+        Returns: boolean
+      }
+      user_follows_case: {
+        Args: { case_id: string; user_id: string }
         Returns: boolean
       }
       user_has_liked_case: {

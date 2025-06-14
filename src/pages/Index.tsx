@@ -15,12 +15,14 @@ import { BookOpen, Loader2, UserPlus, TrendingUp, Newspaper, Users, Activity, Tr
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const { stockCases, loading: stockCasesLoading, deleteStockCase } = useStockCases();
+  const [showFollowedOnly, setShowFollowedOnly] = useState(false);
+  const { stockCases, loading: stockCasesLoading, deleteStockCase } = useStockCases(showFollowedOnly);
   const [isOnboarded, setIsOnboarded] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
   const [userLevel, setUserLevel] = useState<'novice' | 'analyst' | 'pro'>('novice');
@@ -288,11 +290,25 @@ const Index = () => {
             <TabsContent value="aktiecases" className="space-y-6 mt-6">
               {/* Stock Cases Section */}
               <div className="space-y-6">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    {user ? 'Dina följda aktiecases' : 'Populära aktiecases'}
-                  </h2>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {showFollowedOnly ? 'Följda aktiecases' : 'Alla aktiecases'}
+                    </h2>
+                  </div>
+                  
+                  {user && (
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {showFollowedOnly ? 'Följda' : 'Alla'}
+                      </span>
+                      <Switch
+                        checked={showFollowedOnly}
+                        onCheckedChange={setShowFollowedOnly}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {stockCasesLoading ? (
@@ -303,12 +319,19 @@ const Index = () => {
                   <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <TrendingUp className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
                     <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                      {user ? 'Inga aktiecases än' : 'Inga publika aktiecases än'}
+                      {showFollowedOnly 
+                        ? 'Du följer inga aktiecases än' 
+                        : user 
+                          ? 'Inga aktiecases än' 
+                          : 'Inga publika aktiecases än'
+                      }
                     </h3>
                     <p className="text-gray-600 dark:text-gray-400 mb-4">
-                      {user 
-                        ? 'Börja följa andra användare eller skapa ditt första aktiecase!'
-                        : 'Registrera dig för att se och skapa aktiecases.'
+                      {showFollowedOnly
+                        ? 'Börja följa andra användares aktiecases för att se dem här!'
+                        : user 
+                          ? 'Börja följa andra användare eller skapa ditt första aktiecase!'
+                          : 'Registrera dig för att se och skapa aktiecases.'
                       }
                     </p>
                     {user ? (

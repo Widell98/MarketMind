@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -45,7 +44,7 @@ const transformStockCase = (rawCase: any): StockCase => {
   };
 };
 
-export const useStockCases = () => {
+export const useStockCases = (showFollowedOnly: boolean = false) => {
   const [stockCases, setStockCases] = useState<StockCase[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -121,14 +120,27 @@ export const useStockCases = () => {
         return;
       }
 
-      const followedUserIds = await getFollowedUserIds(user.id);
-      const allUserIds = [user.id, ...followedUserIds];
+      // First get the stock case IDs that the user follows
+      const { data: followsData, error: followsError } = await supabase
+        .from('stock_case_follows')
+        .select('stock_case_id')
+        .eq('user_id', user.id);
 
-      // First, get stock cases from followed users
+      if (followsError) throw followsError;
+
+      const followedCaseIds = followsData?.map(f => f.stock_case_id) || [];
+
+      if (followedCaseIds.length === 0) {
+        setStockCases([]);
+        setLoading(false);
+        return;
+      }
+
+      // Now get the stock cases that are followed
       const { data: casesData, error: casesError } = await supabase
         .from('stock_cases')
         .select('*')
-        .in('user_id', allUserIds)
+        .in('id', followedCaseIds)
         .eq('is_public', true)
         .order('created_at', { ascending: false });
 
@@ -177,22 +189,12 @@ export const useStockCases = () => {
       console.error('Error fetching followed stock cases:', error);
       toast({
         title: "Fel",
-        description: "Kunde inte ladda aktiecases",
+        description: "Kunde inte ladda följda aktiecases",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  };
-
-  const getFollowedUserIds = async (userId: string): Promise<string[]> => {
-    const { data, error } = await supabase
-      .from('user_follows')
-      .select('following_id')
-      .eq('follower_id', userId);
-    
-    if (error) return [];
-    return data.map(follow => follow.following_id);
   };
 
   const deleteStockCase = async (stockCaseId: string) => {
@@ -245,10 +247,12 @@ export const useStockCases = () => {
   };
 
   useEffect(() => {
-    // For now, let's load all public stock cases instead of just followed ones
-    // to show cases on the homepage
-    fetchStockCases();
-  }, []);
+    if (showFollowedOnly) {
+      fetchFollowedStockCases();
+    } else {
+      fetchStockCases();
+    }
+  }, [showFollowedOnly]);
 
   const createStockCase = async (stockCase: Omit<StockCase, 'id' | 'created_at' | 'updated_at'>) => {
     try {
@@ -384,7 +388,7 @@ export const useStockCases = () => {
     createStockCase,
     uploadImage,
     deleteStockCase,
-    refetch: fetchStockCases,
+    refetch: showFollowedOnly ? fetchFollowedStockCases : fetchStockCases,
   };
 };
 

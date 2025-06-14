@@ -1,12 +1,12 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { TrendingUp, TrendingDown, Clock, Eye, Heart, Trash2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, Eye, Heart, Trash2, UserPlus, UserCheck } from 'lucide-react';
 import { StockCase } from '@/hooks/useStockCases';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
+import { useStockCaseFollows } from '@/hooks/useStockCaseFollows';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -17,7 +17,8 @@ interface StockCaseCardProps {
 }
 
 const StockCaseCard: React.FC<StockCaseCardProps> = ({ stockCase, onViewDetails, onDelete }) => {
-  const { likeCount, isLiked, loading, toggleLike } = useStockCaseLikes(stockCase.id);
+  const { likeCount, isLiked, loading: likesLoading, toggleLike } = useStockCaseLikes(stockCase.id);
+  const { followCount, isFollowing, loading: followLoading, toggleFollow } = useStockCaseFollows(stockCase.id);
   const { user } = useAuth();
 
   const getStatusIcon = () => {
@@ -116,7 +117,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({ stockCase, onViewDetails,
                 e.stopPropagation();
                 toggleLike();
               }}
-              disabled={loading}
+              disabled={likesLoading}
               className="flex items-center gap-1 p-1 h-auto"
             >
               <Heart 
@@ -129,6 +130,26 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({ stockCase, onViewDetails,
               />
               <span className="text-xs text-gray-600 dark:text-gray-400">
                 {likeCount}
+              </span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFollow();
+              }}
+              disabled={followLoading}
+              className="flex items-center gap-1 p-1 h-auto"
+            >
+              {isFollowing ? (
+                <UserCheck className="w-4 h-4 text-blue-500" />
+              ) : (
+                <UserPlus className="w-4 h-4 text-gray-400 hover:text-blue-500" />
+              )}
+              <span className="text-xs text-gray-600 dark:text-gray-400">
+                {followCount}
               </span>
             </Button>
 
