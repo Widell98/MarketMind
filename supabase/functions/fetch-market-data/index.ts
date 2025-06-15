@@ -43,7 +43,11 @@ async function fetchLiveMarketData() {
     const batchRequests = symbols.map(symbol => 
       fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${alphaVantageKey}`)
         .then(r => r.json())
-        .catch(() => null)
+        .then(data => ({ symbol, data }))
+        .catch(error => {
+          console.error(`Error fetching ${symbol}:`, error);
+          return { symbol, data: null };
+        })
     );
 
     const responses = await Promise.all(batchRequests);
@@ -52,14 +56,22 @@ async function fetchLiveMarketData() {
     const topStocks = [];
     const bottomStocks = [];
 
-    responses.forEach((data, index) => {
-      if (!data || !data['Global Quote']) return;
+    responses.forEach(({ symbol, data }) => {
+      if (!data || !data['Global Quote'] || !data['Global Quote']['05. price']) {
+        console.log(`Invalid data for ${symbol}, skipping`);
+        return;
+      }
       
       const quote = data['Global Quote'];
-      const symbol = symbols[index];
       const price = parseFloat(quote['05. price'] || '0');
       const change = parseFloat(quote['09. change'] || '0');
       const changePercent = parseFloat(quote['10. change percent']?.replace('%', '') || '0');
+      
+      // Skip if we don't have valid price data
+      if (price === 0) {
+        console.log(`No valid price for ${symbol}, skipping`);
+        return;
+      }
       
       const stockData = {
         symbol,
@@ -84,12 +96,21 @@ async function fetchLiveMarketData() {
     topStocks.sort((a, b) => b.changePercent - a.changePercent);
     bottomStocks.sort((a, b) => a.changePercent - b.changePercent);
 
-    return {
-      marketIndices: marketIndices.slice(0, 3),
-      topStocks: topStocks.slice(0, 5),
-      bottomStocks: bottomStocks.slice(0, 5),
+    // If we don't have enough data from the API, supplement with mock data
+    const result = {
+      marketIndices: marketIndices.length > 0 ? marketIndices.slice(0, 3) : getMockMarketData().marketIndices,
+      topStocks: topStocks.length > 0 ? topStocks.slice(0, 5) : getMockMarketData().topStocks,
+      bottomStocks: bottomStocks.length > 0 ? bottomStocks.slice(0, 5) : getMockMarketData().bottomStocks,
       lastUpdated: new Date().toISOString()
     };
+
+    console.log('Market data fetched successfully:', {
+      marketIndices: result.marketIndices.length,
+      topStocks: result.topStocks.length,
+      bottomStocks: result.bottomStocks.length
+    });
+
+    return result;
   } catch (error) {
     console.error('Error fetching live market data:', error);
     return getMockMarketData();
@@ -159,6 +180,14 @@ function getMockMarketData() {
         price: 185.64,
         change: 2.11,
         changePercent: 1.15,
+        sparklineData: generateSparklineData()
+      },
+      {
+        symbol: 'MSFT',
+        name: 'Microsoft Corp.',
+        price: 411.22,
+        change: 5.78,
+        changePercent: 1.43,
         sparklineData: generateSparklineData()
       }
     ],
