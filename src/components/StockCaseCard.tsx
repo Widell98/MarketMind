@@ -53,7 +53,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({ stockCase, onViewDetails,
   };
 
   const getUserDisplayName = () => {
-    return stockCase.profiles?.display_name || stockCase.profiles?.username || 'Anonym';
+    return stockCase.profiles?.display_name || stockCase.profiles?.username || 'Anonymous';
   };
 
   const getUserInitials = () => {
@@ -62,19 +62,19 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({ stockCase, onViewDetails,
   };
 
   const isOwner = user?.id === stockCase.user_id;
-  const canDelete = isOwner || isAdmin; // Admin can delete any case, owner can delete their own
+  const canDelete = isOwner || isAdmin;
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (onDelete && window.confirm('Är du säker på att du vill ta bort detta aktiecase?')) {
+    if (onDelete && window.confirm('Are you sure you want to delete this stock case?')) {
       onDelete(stockCase.id);
     }
   };
 
   return (
-    <Card className="group cursor-pointer bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl dark:hover:shadow-2xl hover:-translate-y-2">
+    <Card className="group cursor-pointer bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl dark:hover:shadow-2xl hover:-translate-y-2 w-full max-w-sm mx-auto">
       {stockCase.image_url && (
-        <div className="aspect-[4/3] lg:aspect-[3/2] xl:aspect-video w-full overflow-hidden rounded-t-lg">
+        <div className="aspect-video w-full overflow-hidden rounded-t-lg">
           <img
             src={stockCase.image_url}
             alt={stockCase.company_name}
@@ -83,37 +83,37 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({ stockCase, onViewDetails,
         </div>
       )}
       
-      <CardHeader className="pb-3 lg:pb-4 xl:pb-5">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <h3 className="text-lg lg:text-xl xl:text-2xl font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">
+      <CardHeader className="p-4 pb-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">
               {stockCase.title}
             </h3>
-            <p className="text-sm lg:text-base xl:text-lg text-gray-600 dark:text-gray-400 font-medium">
+            <p className="text-sm text-gray-600 dark:text-gray-400 font-medium truncate">
               {stockCase.company_name}
             </p>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-shrink-0">
             {getStatusIcon()}
-            <Badge className={`text-xs lg:text-sm ${getStatusColor()}`}>
-              {stockCase.status === 'active' ? 'Aktiv' : stockCase.status === 'winner' ? 'Vinnare' : 'Förlorare'}
+            <Badge className={`text-xs ${getStatusColor()}`}>
+              {stockCase.status === 'active' ? 'Active' : stockCase.status === 'winner' ? 'Winner' : 'Loser'}
             </Badge>
           </div>
         </div>
 
-        <div className="flex items-center justify-between mt-2 lg:mt-3">
-          <div className="flex items-center gap-2">
-            <Avatar className="w-6 h-6 lg:w-7 lg:h-7 xl:w-8 xl:h-8">
-              <AvatarFallback className="text-xs lg:text-sm bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300">
+        <div className="flex items-center justify-between mt-3">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Avatar className="w-6 h-6 flex-shrink-0">
+              <AvatarFallback className="text-xs bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300">
                 {getUserInitials()}
               </AvatarFallback>
             </Avatar>
-            <span className="text-sm lg:text-base text-gray-600 dark:text-gray-400">
+            <span className="text-sm text-gray-600 dark:text-gray-400 truncate">
               {getUserDisplayName()}
             </span>
           </div>
 
-          <div className="flex items-center gap-1 lg:gap-2">
+          <div className="flex items-center gap-1 flex-shrink-0">
             <Button
               variant="ghost"
               size="sm"
@@ -122,17 +122,17 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({ stockCase, onViewDetails,
                 toggleLike();
               }}
               disabled={likesLoading}
-              className="flex items-center gap-1 p-1 h-auto lg:p-2"
+              className="flex items-center gap-1 p-1.5 h-auto min-w-0"
             >
               <Heart 
                 className={cn(
-                  "w-4 h-4 lg:w-5 lg:h-5 transition-colors",
+                  "w-4 h-4 transition-colors flex-shrink-0",
                   isLiked 
                     ? "fill-red-500 text-red-500" 
                     : "text-gray-400 hover:text-red-500"
                 )}
               />
-              <span className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">
+              <span className="text-xs text-gray-600 dark:text-gray-400">
                 {likeCount}
               </span>
             </Button>
@@ -145,14 +145,14 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({ stockCase, onViewDetails,
                 toggleFollow();
               }}
               disabled={followLoading}
-              className="flex items-center gap-1 p-1 h-auto lg:p-2"
+              className="flex items-center gap-1 p-1.5 h-auto min-w-0"
             >
               {isFollowing ? (
-                <UserCheck className="w-4 h-4 lg:w-5 lg:h-5 text-blue-500" />
+                <UserCheck className="w-4 h-4 text-blue-500 flex-shrink-0" />
               ) : (
-                <UserPlus className="w-4 h-4 lg:w-5 lg:h-5 text-gray-400 hover:text-blue-500" />
+                <UserPlus className="w-4 h-4 text-gray-400 hover:text-blue-500 flex-shrink-0" />
               )}
-              <span className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">
+              <span className="text-xs text-gray-600 dark:text-gray-400">
                 {followCount}
               </span>
             </Button>
@@ -162,22 +162,22 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({ stockCase, onViewDetails,
                 variant="ghost"
                 size="sm"
                 onClick={handleDelete}
-                className="flex items-center gap-1 p-1 h-auto lg:p-2 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                title={isAdmin && !isOwner ? "Ta bort som admin" : "Ta bort ditt case"}
+                className="flex items-center p-1.5 h-auto text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 min-w-0"
+                title={isAdmin && !isOwner ? "Delete as admin" : "Delete your case"}
               >
-                <Trash2 className="w-4 h-4 lg:w-5 lg:h-5" />
+                <Trash2 className="w-4 h-4 flex-shrink-0" />
               </Button>
             )}
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0 lg:pt-2">
-        <div className="space-y-3 lg:space-y-4">
+      <CardContent className="p-4 pt-0">
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
             {stockCase.case_categories && (
               <Badge 
-                className="text-xs lg:text-sm"
+                className="text-xs"
                 style={{ 
                   backgroundColor: `${stockCase.case_categories.color}20`,
                   color: stockCase.case_categories.color,
@@ -188,38 +188,38 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({ stockCase, onViewDetails,
               </Badge>
             )}
             {stockCase.performance_percentage !== null && (
-              <span className={`text-sm lg:text-base xl:text-lg font-semibold ${stockCase.performance_percentage >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <span className={`text-sm font-semibold ${stockCase.performance_percentage >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {formatPerformance()}
               </span>
             )}
           </div>
 
           {stockCase.entry_price && stockCase.target_price && (
-            <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400 space-y-1 lg:space-y-2">
+            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
               <div className="flex justify-between">
-                <span>Inköp:</span>
+                <span>Entry:</span>
                 <span className="font-medium">{stockCase.entry_price} kr</span>
               </div>
               <div className="flex justify-between">
-                <span>Mål:</span>
+                <span>Target:</span>
                 <span className="font-medium">{stockCase.target_price} kr</span>
               </div>
             </div>
           )}
 
           {stockCase.description && (
-            <p className="text-sm lg:text-base text-gray-700 dark:text-gray-300 line-clamp-2 leading-relaxed">
+            <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2 leading-relaxed">
               {stockCase.description}
             </p>
           )}
           
           <Button 
             onClick={() => onViewDetails(stockCase.id)}
-            className="w-full mt-4 lg:mt-6 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 dark:from-blue-500 dark:to-blue-600 dark:hover:from-blue-600 dark:hover:to-blue-700 text-white border-0 transition-all duration-200 transform group-hover:scale-105 lg:py-3 xl:py-4 lg:text-base xl:text-lg"
+            className="w-full mt-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 dark:from-blue-500 dark:to-blue-600 dark:hover:from-blue-600 dark:hover:to-blue-700 text-white border-0 transition-all duration-200 transform group-hover:scale-105"
             variant="outline"
           >
-            <Eye className="w-4 h-4 lg:w-5 lg:h-5 mr-2" />
-            Visa detaljer
+            <Eye className="w-4 h-4 mr-2" />
+            View Details
           </Button>
         </div>
       </CardContent>
