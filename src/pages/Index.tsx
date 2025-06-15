@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -207,6 +206,22 @@ const Index = () => {
           <h1 className="heading-responsive font-bold text-gray-900 dark:text-gray-100 mb-2 lg:mb-4 xl:mb-6">
             Market Mentor
           </h1>
+          {/* User level badges under main title */}
+          {user && (
+            <div className="flex flex-wrap justify-center items-center mt-3 lg:mt-4 xl:mt-6 gap-2 lg:gap-3 xl:gap-4">
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 lg:text-base xl:text-lg lg:px-4 lg:py-2">
+                Level: {userLevel}
+              </Badge>
+              <Badge variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 lg:text-base xl:text-lg lg:px-4 lg:py-2">
+                {userProgress.points} pts
+              </Badge>
+              {userProgress.streakDays > 0 && (
+                <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 lg:text-base xl:text-lg lg:px-4 lg:py-2">
+                  🔥 {userProgress.streakDays} day streak
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Community Section - visas ENDAST på aktiecases */}
@@ -272,22 +287,7 @@ const Index = () => {
                 Lärodel
               </TabsTrigger>
             </TabsList>
-            {/* "level" och "pts" visas nu ENDAST när man är inne på Lärodel */}
-            {user && activeTab === "larodel" && (
-              <div className="flex flex-wrap justify-center items-center mt-3 lg:mt-4 xl:mt-6 gap-2 lg:gap-3 xl:gap-4">
-                <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 lg:text-base xl:text-lg lg:px-4 lg:py-2">
-                  Level: {userLevel}
-                </Badge>
-                <Badge variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 lg:text-base xl:text-lg lg:px-4 lg:py-2">
-                  {userProgress.points} pts
-                </Badge>
-                {userProgress.streakDays > 0 && (
-                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 lg:text-base xl:text-lg lg:px-4 lg:py-2">
-                    🔥 {userProgress.streakDays} day streak
-                  </Badge>
-                )}
-              </div>
-            )}
+            
             {/* Aktiecases Tab */}
             <TabsContent value="aktiecases" className="section-spacing mt-6 lg:mt-8">
               {/* Stock Cases Section */}
