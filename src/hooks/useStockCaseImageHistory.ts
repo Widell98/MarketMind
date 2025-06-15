@@ -21,7 +21,7 @@ export const useStockCaseImageHistory = (stockCaseId: string) => {
 
   const fetchImageHistory = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('stock_case_image_history')
         .select('*')
         .eq('stock_case_id', stockCaseId)
@@ -32,7 +32,7 @@ export const useStockCaseImageHistory = (stockCaseId: string) => {
       setImages(data || []);
       
       // Find current image or default to first
-      const currentIndex = data?.findIndex(img => img.is_current) ?? 0;
+      const currentIndex = data?.findIndex((img: StockCaseImageHistory) => img.is_current) ?? 0;
       setCurrentImageIndex(Math.max(0, currentIndex));
     } catch (error) {
       console.error('Error fetching image history:', error);
@@ -47,13 +47,13 @@ export const useStockCaseImageHistory = (stockCaseId: string) => {
     try {
       // If setting as current, first unset all other current flags
       if (setCurrent) {
-        await supabase
+        await (supabase as any)
           .from('stock_case_image_history')
           .update({ is_current: false })
           .eq('stock_case_id', stockCaseId);
       }
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('stock_case_image_history')
         .insert({
           stock_case_id: stockCaseId,
@@ -75,13 +75,13 @@ export const useStockCaseImageHistory = (stockCaseId: string) => {
   const setCurrentImage = async (imageId: string) => {
     try {
       // Unset all current flags
-      await supabase
+      await (supabase as any)
         .from('stock_case_image_history')
         .update({ is_current: false })
         .eq('stock_case_id', stockCaseId);
 
       // Set the selected image as current
-      await supabase
+      await (supabase as any)
         .from('stock_case_image_history')
         .update({ is_current: true })
         .eq('id', imageId);
