@@ -5,7 +5,6 @@ import FlashBriefs from '@/components/FlashBriefs';
 import MarketPulse from '@/components/MarketPulse';
 import TrendingCases from '@/components/TrendingCases';
 import LatestCases from '@/components/LatestCases';
-import TrendingCasesGrid from '@/components/TrendingCasesGrid';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { TrendingUp, Users, BookOpen, Target } from 'lucide-react';
@@ -93,9 +92,6 @@ const Index = () => {
           </Card>
         </div>
 
-        {/* Trending Cases as Large Cards */}
-        <TrendingCasesGrid />
-
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Flash Briefs */}
@@ -103,8 +99,9 @@ const Index = () => {
             <FlashBriefs />
           </div>
 
-          {/* Right Column - Latest Cases and Market Pulse */}
+          {/* Right Column - Trending Cases, Latest Cases and Market Pulse */}
           <div className="space-y-6">
+            <TrendingCases />
             <LatestCases />
             <MarketPulse />
           </div>
