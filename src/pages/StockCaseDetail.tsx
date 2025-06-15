@@ -1,16 +1,23 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
+import { useStockCaseImageHistory } from '@/hooks/useStockCaseImageHistory';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, TrendingUp, Building, ZoomIn, User, Target, DollarSign, BarChart3, Calendar } from 'lucide-react';
 import ImageModal from '@/components/ImageModal';
+import ImageHistoryNavigation from '@/components/ImageHistoryNavigation';
 
 const StockCaseDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { isAdmin } = useUserRole();
   const { stockCase, loading } = useStockCase(id!);
+  const { images, loading: historyLoading, currentImageIndex, setCurrentImageIndex, setCurrentImage } = useStockCaseImageHistory(id!);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   if (loading) {
@@ -53,6 +60,13 @@ const StockCaseDetail = () => {
     });
   };
 
+  // Determine which image to show - from history if available, otherwise fallback to main image
+  const displayImage = images.length > 0 ? images[currentImageIndex] : null;
+  const imageUrl = displayImage?.image_url || stockCase.image_url;
+  
+  // Check if user can edit (is admin or case owner)
+  const canEdit = isAdmin || (user && stockCase.user_id === user.id);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -77,21 +91,34 @@ const StockCaseDetail = () => {
           </div>
 
           {/* Image */}
-          {stockCase.image_url && (
-            <Card className="overflow-hidden group cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300" onClick={() => setIsImageModalOpen(true)}>
-              <div className="relative aspect-video w-full">
-                <img
-                  src={stockCase.image_url}
-                  alt={`${stockCase.title} stock price chart`}
-                  className="w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 dark:bg-gray-800/90 rounded-full p-3 shadow-lg">
-                    <ZoomIn className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+          {imageUrl && (
+            <div className="space-y-4">
+              <Card className="overflow-hidden group cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300" onClick={() => setIsImageModalOpen(true)}>
+                <div className="relative aspect-video w-full">
+                  <img
+                    src={imageUrl}
+                    alt={`${stockCase.title} stock price chart`}
+                    className="w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 dark:bg-gray-800/90 rounded-full p-3 shadow-lg">
+                      <ZoomIn className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Card>
+              </Card>
+
+              {/* Image History Navigation */}
+              {!historyLoading && (
+                <ImageHistoryNavigation
+                  images={images}
+                  currentIndex={currentImageIndex}
+                  onIndexChange={setCurrentImageIndex}
+                  onSetCurrent={setCurrentImage}
+                  canEdit={canEdit}
+                />
+              )}
+            </div>
           )}
 
           {/* User Analysis - moved directly below image */}
@@ -192,7 +219,7 @@ const StockCaseDetail = () => {
       <ImageModal
         isOpen={isImageModalOpen}
         onClose={() => setIsImageModalOpen(false)}
-        imageUrl={stockCase.image_url || ''}
+        imageUrl={imageUrl || ''}
         altText={`${stockCase.title} stock price chart`}
       />
     </div>
