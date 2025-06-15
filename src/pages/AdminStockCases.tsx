@@ -241,9 +241,18 @@ const AdminStockCases = () => {
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    let value = e.target.value;
+    
+    // Handle ticker field with automatic $ prefix
+    if (e.target.name === 'company_name') {
+      if (value && !value.startsWith('$')) {
+        value = '$' + value;
+      }
+    }
+    
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [e.target.name]: value,
     }));
   };
 
@@ -541,13 +550,13 @@ const AdminStockCases = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="company_name">Företagsnamn *</Label>
+                    <Label htmlFor="company_name">Ticker *</Label>
                     <Input
                       id="company_name"
                       name="company_name"
                       value={formData.company_name}
                       onChange={handleInputChange}
-                      placeholder="Ex: Tesla Inc."
+                      placeholder="Ex: $TSLA"
                       required
                     />
                   </div>
@@ -759,7 +768,7 @@ const AdminStockCases = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Titel</TableHead>
-                      <TableHead>Företag</TableHead>
+                      <TableHead>Ticker</TableHead>
                       <TableHead>Kategori</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Skapare</TableHead>

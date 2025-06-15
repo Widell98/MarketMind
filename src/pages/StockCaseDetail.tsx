@@ -53,10 +53,9 @@ const StockCaseDetail = () => {
         </Button>
 
         <div className="space-y-8">
-          {/* Header */}
+          {/* Header - removed company_name display */}
           <div className="text-center space-y-4">
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100">{stockCase.title}</h1>
-            <h2 className="text-xl sm:text-2xl text-gray-700 dark:text-gray-300">{stockCase.company_name}</h2>
           </div>
 
           {/* Image */}
@@ -65,7 +64,7 @@ const StockCaseDetail = () => {
               <div className="relative aspect-video w-full">
                 <img
                   src={stockCase.image_url}
-                  alt={`${stockCase.company_name} stock price chart`}
+                  alt={`${stockCase.title} stock price chart`}
                   className="w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
@@ -153,7 +152,7 @@ const StockCaseDetail = () => {
         isOpen={isImageModalOpen}
         onClose={() => setIsImageModalOpen(false)}
         imageUrl={stockCase.image_url || ''}
-        altText={`${stockCase.company_name} stock price chart`}
+        altText={`${stockCase.title} stock price chart`}
       />
     </div>
   );
