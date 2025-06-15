@@ -2,18 +2,42 @@
 import React, { useState } from 'react';
 import { useStockCases } from '@/hooks/useStockCases';
 import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
+import { useStockCasesFilters } from '@/hooks/useStockCasesFilters';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, TrendingUp, Users, Activity, Trophy, Filter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import StockCaseCard from '@/components/StockCaseCard';
+import StockCaseListItem from '@/components/StockCaseListItem';
+import StockCasesFilters from '@/components/StockCasesFilters';
+import StockCaseSkeletonCard from '@/components/StockCaseSkeletonCard';
 
 const StockCases = () => {
   const { stockCases, loading, deleteStockCase } = useStockCases();
   const { trendingCases, loading: trendingLoading } = useTrendingStockCases(20);
   const [viewMode, setViewMode] = useState<'all' | 'trending'>('all');
   const navigate = useNavigate();
+
+  const displayCases = viewMode === 'all' ? stockCases : trendingCases;
+  const isLoading = viewMode === 'all' ? loading : trendingLoading;
+
+  const {
+    searchTerm,
+    setSearchTerm,
+    selectedCategory,
+    setSelectedCategory,
+    performanceFilter,
+    setPerformanceFilter,
+    sortBy,
+    setSortBy,
+    sortOrder,
+    setSortOrder,
+    viewMode: displayViewMode,
+    setViewMode: setDisplayViewMode,
+    filteredAndSortedCases,
+    categories,
+  } = useStockCasesFilters({ stockCases: displayCases });
 
   const handleViewStockCaseDetails = (id: string) => {
     navigate(`/stock-cases/${id}`);
@@ -27,16 +51,36 @@ const StockCases = () => {
     }
   };
 
-  const isLoading = viewMode === 'all' ? loading : trendingLoading;
-  const displayCases = viewMode === 'all' ? stockCases : trendingCases;
-
   if (isLoading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">Loading stock cases...</p>
+        <div className="space-y-6 lg:space-y-8">
+          {/* Header Section */}
+          <div className="space-y-4">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/')}
+              className="hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Homepage
+            </Button>
+            
+            <div className="text-center space-y-2">
+              <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100">
+                Stock Cases
+              </h1>
+              <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                Explore our hand-picked stock cases and learn about interesting investment opportunities
+              </p>
+            </div>
+          </div>
+
+          {/* Loading Skeletons */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, index) => (
+              <StockCaseSkeletonCard key={index} />
+            ))}
           </div>
         </div>
       </Layout>
@@ -135,6 +179,31 @@ const StockCases = () => {
           </Card>
         </div>
 
+        {/* Filters */}
+        <StockCasesFilters
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          selectedCategory={selectedCategory}
+          onCategoryChange={setSelectedCategory}
+          performanceFilter={performanceFilter}
+          onPerformanceFilterChange={setPerformanceFilter}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          sortOrder={sortOrder}
+          onSortOrderChange={setSortOrder}
+          viewMode={displayViewMode}
+          onViewModeChange={setDisplayViewMode}
+          categories={categories}
+        />
+
+        {/* Results Count */}
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Showing {filteredAndSortedCases.length} of {displayCases.length} cases
+            {searchTerm && ` for "${searchTerm}"`}
+          </p>
+        </div>
+
         {/* Stock Cases Section */}
         <div className="space-y-6">
           <div className="flex items-center gap-2">
@@ -148,34 +217,65 @@ const StockCases = () => {
             </h2>
           </div>
 
-          {displayCases.length === 0 ? (
+          {filteredAndSortedCases.length === 0 ? (
             <Card className="text-center py-12 bg-gray-50 dark:bg-gray-800">
               <CardContent className="pt-6">
                 <Activity className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
                 <CardTitle className="text-xl mb-2 text-gray-900 dark:text-gray-100">
-                  {viewMode === 'trending' ? 'No trending cases yet' : 'No stock cases yet'}
+                  {searchTerm || selectedCategory !== 'all' || performanceFilter !== 'all'
+                    ? 'No cases match your filters'
+                    : viewMode === 'trending' 
+                    ? 'No trending cases yet' 
+                    : 'No stock cases yet'
+                  }
                 </CardTitle>
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  {viewMode === 'trending' 
+                  {searchTerm || selectedCategory !== 'all' || performanceFilter !== 'all'
+                    ? 'Try adjusting your search criteria or filters.'
+                    : viewMode === 'trending' 
                     ? 'Cases will appear here when they start getting likes from the community.'
                     : 'Stock cases will be displayed here when they are added by our experts.'
                   }
                 </p>
-                <Button onClick={() => navigate('/profile')}>
-                  Create Your First Case
-                </Button>
+                {(searchTerm || selectedCategory !== 'all' || performanceFilter !== 'all') && (
+                  <Button 
+                    onClick={() => {
+                      setSearchTerm('');
+                      setSelectedCategory('all');
+                      setPerformanceFilter('all');
+                    }}
+                    variant="outline"
+                  >
+                    Clear Filters
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {displayCases.map((stockCase) => (
-                <StockCaseCard
-                  key={stockCase.id}
-                  stockCase={stockCase}
-                  onViewDetails={handleViewStockCaseDetails}
-                  onDelete={handleDeleteStockCase}
-                />
-              ))}
+            <div>
+              {displayViewMode === 'grid' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredAndSortedCases.map((stockCase) => (
+                    <StockCaseCard
+                      key={stockCase.id}
+                      stockCase={stockCase}
+                      onViewDetails={handleViewStockCaseDetails}
+                      onDelete={handleDeleteStockCase}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredAndSortedCases.map((stockCase) => (
+                    <StockCaseListItem
+                      key={stockCase.id}
+                      stockCase={stockCase}
+                      onViewDetails={handleViewStockCaseDetails}
+                      onDelete={handleDeleteStockCase}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
