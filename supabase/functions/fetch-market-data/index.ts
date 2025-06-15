@@ -1,0 +1,185 @@
+
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const alphaVantageKey = Deno.env.get('ALPHA_VANTAGE_API_KEY');
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    console.log('Fetching live market data...');
+    
+    const marketData = await fetchLiveMarketData();
+    
+    return new Response(JSON.stringify(marketData), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error('Error fetching market data:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});
+
+async function fetchLiveMarketData() {
+  if (!alphaVantageKey) {
+    console.log('No Alpha Vantage key, using mock data');
+    return getMockMarketData();
+  }
+
+  try {
+    // Fetch market indices and top stocks
+    const symbols = ['SPY', 'QQQ', 'DIA', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META'];
+    const batchRequests = symbols.map(symbol => 
+      fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${alphaVantageKey}`)
+        .then(r => r.json())
+        .catch(() => null)
+    );
+
+    const responses = await Promise.all(batchRequests);
+    
+    const marketIndices = [];
+    const topStocks = [];
+    const bottomStocks = [];
+
+    responses.forEach((data, index) => {
+      if (!data || !data['Global Quote']) return;
+      
+      const quote = data['Global Quote'];
+      const symbol = symbols[index];
+      const price = parseFloat(quote['05. price'] || '0');
+      const change = parseFloat(quote['09. change'] || '0');
+      const changePercent = parseFloat(quote['10. change percent']?.replace('%', '') || '0');
+      
+      const stockData = {
+        symbol,
+        name: getCompanyName(symbol),
+        price,
+        change,
+        changePercent,
+        sparklineData: generateSparklineData()
+      };
+
+      // Categorize data
+      if (['SPY', 'QQQ', 'DIA'].includes(symbol)) {
+        marketIndices.push(stockData);
+      } else if (changePercent > 0) {
+        topStocks.push(stockData);
+      } else {
+        bottomStocks.push(stockData);
+      }
+    });
+
+    // Sort stocks by performance
+    topStocks.sort((a, b) => b.changePercent - a.changePercent);
+    bottomStocks.sort((a, b) => a.changePercent - b.changePercent);
+
+    return {
+      marketIndices: marketIndices.slice(0, 3),
+      topStocks: topStocks.slice(0, 5),
+      bottomStocks: bottomStocks.slice(0, 5),
+      lastUpdated: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error fetching live market data:', error);
+    return getMockMarketData();
+  }
+}
+
+function getCompanyName(symbol: string): string {
+  const companies: { [key: string]: string } = {
+    'SPY': 'SPDR S&P 500 ETF',
+    'QQQ': 'Invesco QQQ ETF',
+    'DIA': 'SPDR Dow Jones ETF',
+    'AAPL': 'Apple Inc.',
+    'MSFT': 'Microsoft Corp.',
+    'GOOGL': 'Alphabet Inc.',
+    'AMZN': 'Amazon.com Inc.',
+    'TSLA': 'Tesla Inc.',
+    'NVDA': 'NVIDIA Corp.',
+    'META': 'Meta Platforms Inc.'
+  };
+  return companies[symbol] || symbol;
+}
+
+function generateSparklineData(): number[] {
+  return Array.from({ length: 20 }, () => Math.random() * 100 + 50);
+}
+
+function getMockMarketData() {
+  return {
+    marketIndices: [
+      {
+        symbol: 'SPY',
+        name: 'SPDR S&P 500 ETF',
+        price: 415.23,
+        change: 1.23,
+        changePercent: 0.30,
+        sparklineData: generateSparklineData()
+      },
+      {
+        symbol: 'QQQ',
+        name: 'Invesco QQQ ETF',
+        price: 367.45,
+        change: -2.15,
+        changePercent: -0.58,
+        sparklineData: generateSparklineData()
+      },
+      {
+        symbol: 'DIA',
+        name: 'SPDR Dow Jones ETF',
+        price: 339.87,
+        change: 0.95,
+        changePercent: 0.28,
+        sparklineData: generateSparklineData()
+      }
+    ],
+    topStocks: [
+      {
+        symbol: 'NVDA',
+        name: 'NVIDIA Corp.',
+        price: 875.28,
+        change: 15.44,
+        changePercent: 1.80,
+        sparklineData: generateSparklineData()
+      },
+      {
+        symbol: 'AAPL',
+        name: 'Apple Inc.',
+        price: 185.64,
+        change: 2.11,
+        changePercent: 1.15,
+        sparklineData: generateSparklineData()
+      }
+    ],
+    bottomStocks: [
+      {
+        symbol: 'TSLA',
+        name: 'Tesla Inc.',
+        price: 248.50,
+        change: -8.22,
+        changePercent: -3.20,
+        sparklineData: generateSparklineData()
+      },
+      {
+        symbol: 'META',
+        name: 'Meta Platforms Inc.',
+        price: 485.20,
+        change: -12.40,
+        changePercent: -2.49,
+        sparklineData: generateSparklineData()
+      }
+    ],
+    lastUpdated: new Date().toISOString()
+  };
+}

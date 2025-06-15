@@ -1,19 +1,75 @@
 
 import React from 'react';
-import { topStocks, bottomStocks, marketIndices } from '../mockData/marketData';
+import { useMarketData } from '../hooks/useMarketData';
 import Sparkline from './ui/Sparkline';
+import { Loader2, RefreshCw } from 'lucide-react';
+import { Button } from './ui/button';
 
 const MarketPulse = () => {
+  const { marketData, loading, error, refetch } = useMarketData();
+
+  const formatTime = (timestamp: string) => {
+    return new Date(timestamp).toLocaleTimeString('sv-SE', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
+
+  if (loading && !marketData) {
+    return (
+      <div className="w-full">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg sm:text-xl font-semibold text-finance-navy dark:text-white">Market Pulse</h2>
+        </div>
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !marketData) {
+    return (
+      <div className="w-full">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg sm:text-xl font-semibold text-finance-navy dark:text-white">Market Pulse</h2>
+        </div>
+        <div className="text-center py-8">
+          <p className="text-red-600 dark:text-red-400 mb-4">Failed to load market data</p>
+          <Button onClick={refetch} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const data = marketData || { marketIndices: [], topStocks: [], bottomStocks: [], lastUpdated: new Date().toISOString() };
+
   return (
     <div className="w-full">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg sm:text-xl font-semibold text-finance-navy dark:text-white">Market Pulse</h2>
-        <span className="text-xs text-finance-gray dark:text-gray-400">Uppdaterad 08:30</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-finance-gray dark:text-gray-400">
+            Uppdaterad {formatTime(data.lastUpdated)}
+          </span>
+          <Button 
+            onClick={refetch} 
+            variant="ghost" 
+            size="sm"
+            disabled={loading}
+            className="h-6 w-6 p-0"
+          >
+            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
       {/* Market Indices Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-2 mb-6">
-        {marketIndices.map((index) => (
+        {data.marketIndices.map((index) => (
           <div key={index.symbol} className="card-finance p-3 sm:p-2 flex flex-col">
             <div className="text-xs text-finance-gray dark:text-gray-400 mb-0.5">{index.symbol}</div>
             <div className="font-medium text-sm sm:text-base dark:text-white">{index.price.toLocaleString('sv-SE')}</div>
@@ -25,56 +81,60 @@ const MarketPulse = () => {
       </div>
 
       {/* Top Performers */}
-      <div className="mb-6">
-        <h3 className="text-sm font-medium mb-3 text-finance-blue dark:text-blue-400">Topprestanda</h3>
-        <div className="space-y-3 sm:space-y-2">
-          {topStocks.map((stock) => (
-            <div key={stock.symbol} className="card-finance p-4 sm:p-3 flex justify-between items-center">
-              <div className="flex flex-col min-w-0 flex-1">
-                <div className="font-medium text-sm dark:text-white">{stock.symbol}</div>
-                <div className="text-xs text-finance-gray dark:text-gray-400 truncate">{stock.name}</div>
-              </div>
-              <div className="flex items-center ml-4">
-                <div className="hidden sm:block">
-                  <Sparkline data={stock.sparklineData} color="#22C55E" />
+      {data.topStocks.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-sm font-medium mb-3 text-finance-blue dark:text-blue-400">Topprestanda</h3>
+          <div className="space-y-3 sm:space-y-2">
+            {data.topStocks.map((stock) => (
+              <div key={stock.symbol} className="card-finance p-4 sm:p-3 flex justify-between items-center">
+                <div className="flex flex-col min-w-0 flex-1">
+                  <div className="font-medium text-sm dark:text-white">{stock.symbol}</div>
+                  <div className="text-xs text-finance-gray dark:text-gray-400 truncate">{stock.name}</div>
                 </div>
-                <div className="ml-2 text-right">
-                  <div className="font-medium text-sm dark:text-white">${stock.price.toFixed(2)}</div>
-                  <div className="stock-up text-xs">
-                    +{stock.change.toFixed(2)} ({stock.changePercent.toFixed(2)}%)
+                <div className="flex items-center ml-4">
+                  <div className="hidden sm:block">
+                    <Sparkline data={stock.sparklineData} color="#22C55E" />
+                  </div>
+                  <div className="ml-2 text-right">
+                    <div className="font-medium text-sm dark:text-white">${stock.price.toFixed(2)}</div>
+                    <div className="stock-up text-xs">
+                      +{stock.change.toFixed(2)} ({stock.changePercent.toFixed(2)}%)
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Bottom Performers */}
-      <div>
-        <h3 className="text-sm font-medium mb-3 text-finance-blue dark:text-blue-400">Lägsta prestanda</h3>
-        <div className="space-y-3 sm:space-y-2">
-          {bottomStocks.map((stock) => (
-            <div key={stock.symbol} className="card-finance p-4 sm:p-3 flex justify-between items-center">
-              <div className="flex flex-col min-w-0 flex-1">
-                <div className="font-medium text-sm dark:text-white">{stock.symbol}</div>
-                <div className="text-xs text-finance-gray dark:text-gray-400 truncate">{stock.name}</div>
-              </div>
-              <div className="flex items-center ml-4">
-                <div className="hidden sm:block">
-                  <Sparkline data={stock.sparklineData} color="#EF4444" />
+      {data.bottomStocks.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium mb-3 text-finance-blue dark:text-blue-400">Lägsta prestanda</h3>
+          <div className="space-y-3 sm:space-y-2">
+            {data.bottomStocks.map((stock) => (
+              <div key={stock.symbol} className="card-finance p-4 sm:p-3 flex justify-between items-center">
+                <div className="flex flex-col min-w-0 flex-1">
+                  <div className="font-medium text-sm dark:text-white">{stock.symbol}</div>
+                  <div className="text-xs text-finance-gray dark:text-gray-400 truncate">{stock.name}</div>
                 </div>
-                <div className="ml-2 text-right">
-                  <div className="font-medium text-sm dark:text-white">${stock.price.toFixed(2)}</div>
-                  <div className="stock-down text-xs">
-                    {stock.change.toFixed(2)} ({stock.changePercent.toFixed(2)}%)
+                <div className="flex items-center ml-4">
+                  <div className="hidden sm:block">
+                    <Sparkline data={stock.sparklineData} color="#EF4444" />
+                  </div>
+                  <div className="ml-2 text-right">
+                    <div className="font-medium text-sm dark:text-white">${stock.price.toFixed(2)}</div>
+                    <div className="stock-down text-xs">
+                      {stock.change.toFixed(2)} ({stock.changePercent.toFixed(2)}%)
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

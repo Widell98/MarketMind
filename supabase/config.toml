@@ -41,6 +41,12 @@ enable_manual_linking = false
 [functions.generate-quiz-questions]
 verify_jwt = false
 
+[functions.fetch-market-data]
+verify_jwt = false
+
+[functions.fetch-news-data]
+verify_jwt = false
+
 [edge_runtime]
 ip_version = "ipv4"
 policy = "per_worker"
