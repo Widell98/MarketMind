@@ -44,7 +44,7 @@ const FlashBriefs = () => {
         <div className="flex items-center space-x-2">
           <h2 className="text-lg sm:text-xl font-semibold text-finance-navy dark:text-white">Flash Briefs</h2>
           <span className="badge-finance bg-finance-lightBlue bg-opacity-10 text-finance-lightBlue dark:bg-blue-900 dark:bg-opacity-30 dark:text-blue-300 text-xs">
-            {newsData.length} nyheter
+            {newsData.length} news
           </span>
         </div>
         <Button 

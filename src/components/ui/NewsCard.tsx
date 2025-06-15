@@ -13,7 +13,7 @@ const NewsCard: React.FC<NewsCardProps> = ({ news }) => {
   // Format the published time in a readable format
   const formatPublishedTime = (dateString: string) => {
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat('sv-SE', { 
+    return new Intl.DateTimeFormat('en-US', { 
       hour: '2-digit', 
       minute: '2-digit' 
     }).format(date);
@@ -58,7 +58,7 @@ const NewsCard: React.FC<NewsCardProps> = ({ news }) => {
             onClick={handleReadMoreClick}
             className="text-xs text-finance-lightBlue font-medium hover:text-finance-blue dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer"
           >
-            Läs mer →
+            Read more →
           </button>
         </div>
       </div>

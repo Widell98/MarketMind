@@ -34,12 +34,12 @@ const EditProfileDialog: React.FC<EditProfileDialogProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!displayName.trim()) {
-      toast({ title: "Namn saknas", description: "Du måste ange ett namn.", variant: "destructive" });
+      toast({ title: "Name missing", description: "You must enter a name.", variant: "destructive" });
       return;
     }
     setSaving(true);
 
-    // Kolla om namnet redan är taget (ignorera mitt eget)
+    // Check if the name is already taken (ignore my own)
     const { data, error } = await supabase
       .from("profiles")
       .select("id")
@@ -48,26 +48,26 @@ const EditProfileDialog: React.FC<EditProfileDialogProps> = ({
       .maybeSingle();
 
     if (error) {
-      toast({ title: "Fel", description: "Kunde inte kontrollera namnet. Försök igen.", variant: "destructive" });
+      toast({ title: "Error", description: "Could not check the name. Try again.", variant: "destructive" });
       setSaving(false);
       return;
     }
     if (data) {
-      toast({ title: "Namnet upptaget", description: "Det valda namnet är redan upptaget.", variant: "destructive" });
+      toast({ title: "Name taken", description: "The chosen name is already taken.", variant: "destructive" });
       setSaving(false);
       return;
     }
 
-    // Uppdatera display_name
+    // Update display_name
     const { error: updateError } = await supabase
       .from("profiles")
       .update({ display_name: displayName.trim() })
       .eq("id", userId);
 
     if (updateError) {
-      toast({ title: "Fel vid uppdatering", description: updateError.message, variant: "destructive" });
+      toast({ title: "Update error", description: updateError.message, variant: "destructive" });
     } else {
-      toast({ title: "Profil uppdaterad", description: "Ditt namn har uppdaterats." });
+      toast({ title: "Profile updated", description: "Your name has been updated." });
       onSaved?.(displayName.trim());
       onOpenChange(false);
     }
@@ -80,27 +80,27 @@ const EditProfileDialog: React.FC<EditProfileDialogProps> = ({
         <form onSubmit={handleSubmit} className="space-y-5">
           <DialogHeader className="mb-2">
             <DialogTitle className="text-xl font-semibold text-finance-navy dark:text-gray-200">
-              Ändra namn
+              Change name
             </DialogTitle>
           </DialogHeader>
           <label htmlFor="displayName" className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-            Nytt visningsnamn
+            New display name
           </label>
           <Input
             id="displayName"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="Nytt visningsnamn"
+            placeholder="New display name"
             maxLength={32}
             autoFocus
             className="bg-background"
           />
           <DialogFooter className="mt-4 flex gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-              Avbryt
+              Cancel
             </Button>
             <Button type="submit" disabled={saving}>
-              Spara
+              Save
             </Button>
           </DialogFooter>
         </form>

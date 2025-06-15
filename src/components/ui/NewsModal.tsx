@@ -25,7 +25,7 @@ const NewsModal: React.FC<NewsModalProps> = ({ news, isOpen, onClose }) => {
 
   const formatPublishedTime = (dateString: string) => {
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat('sv-SE', { 
+    return new Intl.DateTimeFormat('en-US', { 
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -82,19 +82,19 @@ const NewsModal: React.FC<NewsModalProps> = ({ news, isOpen, onClose }) => {
             {/* Extended content - in a real app this would come from the API */}
             <div className="mt-6 space-y-4 text-sm text-gray-700 dark:text-gray-300">
               <p>
-                Denna nyhet representerar en viktig utveckling inom {news.category.toLowerCase()}-sektorn 
-                och kan ha betydande påverkan på marknaderna framöver.
+                This news represents an important development in the {news.category.toLowerCase()} sector 
+                and could have significant impact on markets moving forward.
               </p>
               
               <p>
-                Analytiker följer situationen noga och förväntar sig ytterligare utveckling 
-                inom de närmaste dagarna. Investerare rekommenderas att hålla sig uppdaterade 
-                om denna utveckling.
+                Analysts are closely monitoring the situation and expect further developments 
+                in the coming days. Investors are recommended to stay updated 
+                on this development.
               </p>
               
               <p>
-                För mer detaljerad analys och de senaste uppdateringarna, 
-                besök originalartikeln via länken nedan.
+                For more detailed analysis and the latest updates, 
+                visit the original article via the link below.
               </p>
             </div>
           </div>
@@ -106,7 +106,7 @@ const NewsModal: React.FC<NewsModalProps> = ({ news, isOpen, onClose }) => {
               rel="noopener noreferrer"
               className="inline-flex items-center text-finance-lightBlue font-medium hover:text-finance-blue dark:text-blue-400 dark:hover:text-blue-300"
             >
-              Läs hela artikeln på {news.source} →
+              Read the full article on {news.source} →
             </a>
           </div>
         </div>

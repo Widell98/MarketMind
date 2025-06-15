@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -30,7 +31,7 @@ const Index = () => {
   const [userProgress, setUserProgress] = useState<UserProgress>(defaultUserProgress);
   const [recommendations, setRecommendations] = useState<string[]>([]);
   const [profileLoading, setProfileLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>("aktiecases");
+  const [activeTab, setActiveTab] = useState<string>("stock-cases");
 
   // Fetch user profile data only if authenticated
   useEffect(() => {
@@ -224,8 +225,8 @@ const Index = () => {
           )}
         </div>
 
-        {/* Community Section - visas ENDAST på aktiecases */}
-        {activeTab === "aktiecases" && (
+        {/* Community Section - shows ONLY on stock-cases tab */}
+        {activeTab === "stock-cases" && (
           <div className="dashboard-grid">
             <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800 card-hover-desktop">
               <CardHeader className="pb-2 lg:pb-3">
@@ -238,7 +239,7 @@ const Index = () => {
                 <div className="text-2xl lg:text-3xl xl:text-4xl font-bold text-blue-900 dark:text-blue-100 mb-1 lg:mb-2">
                   {user ? '1,234' : '---'}
                 </div>
-                <p className="text-sm lg:text-base xl:text-lg text-blue-700 dark:text-blue-300">Aktiva medlemmar</p>
+                <p className="text-sm lg:text-base xl:text-lg text-blue-700 dark:text-blue-300">Active members</p>
               </CardContent>
             </Card>
 
@@ -246,14 +247,14 @@ const Index = () => {
               <CardHeader className="pb-2 lg:pb-3">
                 <div className="flex items-center gap-2 lg:gap-3">
                   <Activity className="w-5 h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7 text-green-600 dark:text-green-400" />
-                  <CardTitle className="text-lg lg:text-xl xl:text-2xl text-green-800 dark:text-green-200">Cases idag</CardTitle>
+                  <CardTitle className="text-lg lg:text-xl xl:text-2xl text-green-800 dark:text-green-200">Cases today</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl lg:text-3xl xl:text-4xl font-bold text-green-900 dark:text-green-100 mb-1 lg:mb-2">
                   {stockCases.length}
                 </div>
-                <p className="text-sm lg:text-base xl:text-lg text-green-700 dark:text-green-300">Nya aktiecases</p>
+                <p className="text-sm lg:text-base xl:text-lg text-green-700 dark:text-green-300">New stock cases</p>
               </CardContent>
             </Card>
 
@@ -261,14 +262,14 @@ const Index = () => {
               <CardHeader className="pb-2 lg:pb-3">
                 <div className="flex items-center gap-2 lg:gap-3">
                   <Trophy className="w-5 h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7 text-purple-600 dark:text-purple-400" />
-                  <CardTitle className="text-lg lg:text-xl xl:text-2xl text-purple-800 dark:text-purple-200">Topplista</CardTitle>
+                  <CardTitle className="text-lg lg:text-xl xl:text-2xl text-purple-800 dark:text-purple-200">Leaderboard</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl lg:text-3xl xl:text-4xl font-bold text-purple-900 dark:text-purple-100 mb-1 lg:mb-2">
                   {user ? '#47' : '---'}
                 </div>
-                <p className="text-sm lg:text-base xl:text-lg text-purple-700 dark:text-purple-300">Din ranking</p>
+                <p className="text-sm lg:text-base xl:text-lg text-purple-700 dark:text-purple-300">Your ranking</p>
               </CardContent>
             </Card>
           </div>
@@ -276,34 +277,34 @@ const Index = () => {
 
         {/* Tabs Section */}
         <div className="pt-6 lg:pt-8 xl:pt-10">
-          <Tabs defaultValue="aktiecases" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs defaultValue="stock-cases" value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-flex lg:h-12 xl:h-14">
-              <TabsTrigger value="aktiecases" className="flex items-center gap-2 lg:px-6 xl:px-8 lg:text-base xl:text-lg">
+              <TabsTrigger value="stock-cases" className="flex items-center gap-2 lg:px-6 xl:px-8 lg:text-base xl:text-lg">
                 <TrendingUp className="w-4 h-4 lg:w-5 lg:h-5" />
-                Aktiecases
+                Stock Cases
               </TabsTrigger>
-              <TabsTrigger value="larodel" className="flex items-center gap-2 lg:px-6 xl:px-8 lg:text-base xl:text-lg">
+              <TabsTrigger value="learning" className="flex items-center gap-2 lg:px-6 xl:px-8 lg:text-base xl:text-lg">
                 <BookOpen className="w-4 h-4 lg:w-5 lg:h-5" />
-                Lärodel
+                Learning
               </TabsTrigger>
             </TabsList>
             
-            {/* Aktiecases Tab */}
-            <TabsContent value="aktiecases" className="section-spacing mt-6 lg:mt-8">
+            {/* Stock Cases Tab */}
+            <TabsContent value="stock-cases" className="section-spacing mt-6 lg:mt-8">
               {/* Stock Cases Section */}
               <div className="section-spacing">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 lg:gap-3 xl:gap-4">
                     <TrendingUp className="w-6 h-6 lg:w-8 lg:h-8 xl:w-10 xl:h-10 text-blue-600 dark:text-blue-400" />
                     <h2 className="subheading-responsive font-bold text-gray-900 dark:text-gray-100">
-                      {showFollowedOnly ? 'Följda aktiecases' : 'Alla aktiecases'}
+                      {showFollowedOnly ? 'Followed stock cases' : 'All stock cases'}
                     </h2>
                   </div>
                   
                   {user && (
                     <div className="flex items-center space-x-2 lg:space-x-3">
                       <span className="text-sm lg:text-base xl:text-lg text-gray-600 dark:text-gray-400">
-                        {showFollowedOnly ? 'Följda' : 'Alla'}
+                        {showFollowedOnly ? 'Followed' : 'All'}
                       </span>
                       <Switch
                         checked={showFollowedOnly}
@@ -323,27 +324,27 @@ const Index = () => {
                     <TrendingUp className="w-16 h-16 lg:w-20 lg:h-20 xl:w-24 xl:h-24 text-gray-400 dark:text-gray-600 mx-auto mb-4 lg:mb-6" />
                     <h3 className="text-xl lg:text-2xl xl:text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-2 lg:mb-4">
                       {showFollowedOnly 
-                        ? 'Du följer inga aktiecases än' 
+                        ? "You're not following any stock cases yet" 
                         : user 
-                          ? 'Inga aktiecases än' 
-                          : 'Inga publika aktiecases än'
+                          ? 'No stock cases yet' 
+                          : 'No public stock cases yet'
                       }
                     </h3>
                     <p className="text-gray-600 dark:text-gray-400 mb-4 lg:mb-6 lg:text-lg xl:text-xl">
                       {showFollowedOnly
-                        ? 'Börja följa andra användares aktiecases för att se dem här!'
+                        ? 'Start following other users\' stock cases to see them here!'
                         : user 
-                          ? 'Börja följa andra användare eller skapa ditt första aktiecase!'
-                          : 'Registrera dig för att se och skapa aktiecases.'
+                          ? 'Start following other users or create your first stock case!'
+                          : 'Sign up to see and create stock cases.'
                       }
                     </p>
                     {user ? (
                       <Button onClick={() => navigate('/profile')} className="btn-responsive lg:text-base xl:text-lg">
-                        Gå till profil för att skapa case
+                        Go to profile to create case
                       </Button>
                     ) : (
                       <Button onClick={() => navigate('/auth')} className="btn-responsive lg:text-base xl:text-lg">
-                        Registrera dig
+                        Sign up
                       </Button>
                     )}
                   </div>
@@ -361,29 +362,29 @@ const Index = () => {
                 )}
               </div>
 
-              {/* Guest Call-to-Action for Aktiecases */}
+              {/* Guest Call-to-Action for Stock Cases */}
               {!user && (
                 <Alert className="bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-900 lg:p-6 xl:p-8">
                   <UserPlus className="h-4 w-4 lg:h-5 lg:w-5 xl:h-6 xl:w-6 text-blue-500 dark:text-blue-400" />
                   <AlertTitle className="text-sm lg:text-base xl:text-lg font-medium text-blue-800 dark:text-blue-300">
-                    Gå med i communityn
+                    Join the community
                   </AlertTitle>
                   <AlertDescription className="text-xs lg:text-sm xl:text-base text-blue-700 dark:text-blue-400">
-                    <p className="mb-3 lg:mb-4">Registrera dig för att följa andra investerare och skapa egna aktiecases!</p>
+                    <p className="mb-3 lg:mb-4">Sign up to follow other investors and create your own stock cases!</p>
                     <Button 
                       size="sm" 
                       className="bg-blue-600 hover:bg-blue-700 text-white btn-responsive"
                       onClick={() => navigate('/auth')}
                     >
-                      Registrera dig
+                      Sign up
                     </Button>
                   </AlertDescription>
                 </Alert>
               )}
             </TabsContent>
 
-            {/* Lärodel Tab */}
-            <TabsContent value="larodel" className="section-spacing mt-6 lg:mt-8">
+            {/* Learning Tab */}
+            <TabsContent value="learning" className="section-spacing mt-6 lg:mt-8">
               {/* Quiz Section */}
               {user && showQuiz && (
                 <div className="mb-6 lg:mb-8 xl:mb-10">
@@ -399,7 +400,7 @@ const Index = () => {
                     Learning Path
                   </AlertTitle>
                   <AlertDescription className="text-xs lg:text-sm xl:text-base text-blue-700 dark:text-blue-400">
-                    <p className="mb-2 lg:mb-3">Baserat på dina framsteg rekommenderar vi:</p>
+                    <p className="mb-2 lg:mb-3">Based on your progress we recommend:</p>
                     <ul className="pl-5 list-disc space-y-1 lg:space-y-2">
                       {recommendations.slice(0, 3).map((rec, idx) => (
                         <li key={idx}>{rec}</li>

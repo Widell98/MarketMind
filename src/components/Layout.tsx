@@ -31,7 +31,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 asChild
               >
                 <Link to="/auth">
-                  <span className="hidden sm:inline">Logga in</span>
+                  <span className="hidden sm:inline">Sign In</span>
                   <span className="sm:hidden">Login</span>
                 </Link>
               </Button>

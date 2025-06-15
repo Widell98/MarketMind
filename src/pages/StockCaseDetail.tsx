@@ -16,7 +16,7 @@ const StockCaseDetail = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Laddar akticase...</p>
+          <p className="text-gray-600">Loading stock case...</p>
         </div>
       </div>
     );
@@ -27,10 +27,10 @@ const StockCaseDetail = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="w-96">
           <CardContent className="pt-6 text-center">
-            <h2 className="text-xl font-semibold mb-2">Akticase hittades inte</h2>
-            <p className="text-gray-600 mb-4">Det begärda aktiecaset kunde inte hittas.</p>
+            <h2 className="text-xl font-semibold mb-2">Stock case not found</h2>
+            <p className="text-gray-600 mb-4">The requested stock case could not be found.</p>
             <Button onClick={() => navigate('/stock-cases')}>
-              Tillbaka till aktiecases
+              Back to stock cases
             </Button>
           </CardContent>
         </Card>
@@ -47,7 +47,7 @@ const StockCaseDetail = () => {
           className="mb-6"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Tillbaka till aktiecases
+          Back to stock cases
         </Button>
 
         <div className="space-y-6">
@@ -63,7 +63,7 @@ const StockCaseDetail = () => {
               <div className="aspect-video w-full">
                 <img
                   src={stockCase.image_url}
-                  alt={`${stockCase.company_name} aktiekurs chart`}
+                  alt={`${stockCase.company_name} stock price chart`}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -75,7 +75,7 @@ const StockCaseDetail = () => {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Building className="w-5 h-5 mr-2" />
-                Företagsfakta
+                Company Facts
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -83,14 +83,14 @@ const StockCaseDetail = () => {
                 {stockCase.sector && (
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
                     <TrendingUp className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                    <h3 className="font-semibold text-gray-900">Sektor</h3>
+                    <h3 className="font-semibold text-gray-900">Sector</h3>
                     <p className="text-gray-700">{stockCase.sector}</p>
                   </div>
                 )}
                 {stockCase.market_cap && (
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
                     <DollarSign className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                    <h3 className="font-semibold text-gray-900">Börsvärde</h3>
+                    <h3 className="font-semibold text-gray-900">Market Cap</h3>
                     <p className="text-gray-700">{stockCase.market_cap}</p>
                   </div>
                 )}
@@ -102,7 +102,7 @@ const StockCaseDetail = () => {
           {stockCase.description && (
             <Card>
               <CardHeader>
-                <CardTitle>Om företaget</CardTitle>
+                <CardTitle>About the company</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
@@ -116,7 +116,7 @@ const StockCaseDetail = () => {
           {stockCase.admin_comment && (
             <Card className="border-l-4 border-l-blue-600">
               <CardHeader>
-                <CardTitle className="text-blue-900">Expertanalys & Rekommendation</CardTitle>
+                <CardTitle className="text-blue-900">Expert Analysis & Recommendation</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="bg-blue-50 p-4 rounded-lg">
@@ -132,12 +132,12 @@ const StockCaseDetail = () => {
           <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
             <CardContent className="pt-6">
               <div className="text-center">
-                <h3 className="text-2xl font-bold mb-2">Intresserad av att investera?</h3>
+                <h3 className="text-2xl font-bold mb-2">Interested in investing?</h3>
                 <p className="mb-4 opacity-90">
-                  Kom ihåg att alltid göra din egen research innan du investerar. Detta är endast ett utbildningsexempel.
+                  Remember to always do your own research before investing. This is only an educational example.
                 </p>
                 <Button variant="secondary" className="bg-white text-blue-600 hover:bg-gray-100">
-                  Läs mer om investeringar
+                  Learn more about investing
                 </Button>
               </div>
             </CardContent>
