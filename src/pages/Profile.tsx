@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -12,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Loader2, User, PenLine, Award, Plus, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
+import EditProfileDialog from "@/components/EditProfileDialog";
 
 const ProfilePage = () => {
   const { user, loading } = useAuth();
@@ -20,6 +20,7 @@ const ProfilePage = () => {
   const [profileData, setProfileData] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [canCreateCases, setCanCreateCases] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -62,6 +63,11 @@ const ProfilePage = () => {
     }
   }, [user]);
 
+  // Hantera efter namnändring lokalt
+  const handleNameChange = (newName: string) => {
+    setProfileData((old: any) => ({ ...old, display_name: newName }));
+  };
+
   if (loading || profileLoading || roleLoading) {
     return (
       <Layout>
@@ -79,6 +85,14 @@ const ProfilePage = () => {
           Your Profile
         </h1>
         
+        <EditProfileDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          currentName={profileData?.display_name || ""}
+          userId={user?.id}
+          onSaved={handleNameChange}
+        />
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Profile Card */}
           <Card className="col-span-1">
@@ -90,7 +104,6 @@ const ProfilePage = () => {
               </Avatar>
               <CardTitle className="text-xl">{profileData?.display_name}</CardTitle>
               <div className="text-sm text-muted-foreground">@{profileData?.username}</div>
-              
               <div className="mt-3 space-y-2">
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
                   {profileData?.level || 'novice'}
@@ -103,11 +116,15 @@ const ProfilePage = () => {
               </div>
             </CardHeader>
             <CardContent className="text-center space-y-2">
-              <Button variant="outline" size="sm" className="w-full">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => setEditOpen(true)}
+              >
                 <PenLine className="h-4 w-4 mr-2" />
                 Edit Profile
               </Button>
-              
               {canCreateCases && (
                 <Button 
                   onClick={() => navigate('/admin/stock-cases')}
