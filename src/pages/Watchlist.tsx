@@ -102,7 +102,7 @@ const Watchlist = () => {
               <div className="text-2xl font-bold text-orange-900 dark:text-orange-100 mb-1">
                 {followedCases.filter(c => c.performance < -5).length}
               </div>
-              <p className="text-sm text-orange-700 dark:text-orange-300">Down >5%</p>
+              <p className="text-sm text-orange-700 dark:text-orange-300">Down {'>'}5%</p>
             </CardContent>
           </Card>
         </div>
