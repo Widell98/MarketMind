@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import FlashBriefs from '@/components/FlashBriefs';
@@ -6,7 +7,8 @@ import TrendingCases from '@/components/TrendingCases';
 import LatestCases from '@/components/LatestCases';
 import CommunityStats from '@/components/CommunityStats';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, Users, BookOpen, Target } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TrendingUp, Users, BookOpen, Target, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -89,9 +91,26 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Mobile: Show Trending Cases */}
+        {/* Mobile: Show both Trending and Latest Cases in tabs */}
         <div className="md:hidden">
-          <TrendingCases />
+          <Tabs defaultValue="trending" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="trending" className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                Trending
+              </TabsTrigger>
+              <TabsTrigger value="latest" className="flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                Latest
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="trending" className="mt-4">
+              <TrendingCases />
+            </TabsContent>
+            <TabsContent value="latest" className="mt-4">
+              <LatestCases />
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* Stats Section - Less prominent on mobile */}
