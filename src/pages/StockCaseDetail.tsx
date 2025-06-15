@@ -1,15 +1,17 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, TrendingUp, Building, DollarSign } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Building, DollarSign, ZoomIn } from 'lucide-react';
+import ImageModal from '@/components/ImageModal';
 
 const StockCaseDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { stockCase, loading } = useStockCase(id!);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   if (loading) {
     return (
@@ -39,7 +41,7 @@ const StockCaseDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-4xl mx-auto px-4">
         <Button
           variant="ghost"
@@ -53,19 +55,24 @@ const StockCaseDetail = () => {
         <div className="space-y-6">
           {/* Header */}
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">{stockCase.title}</h1>
-            <h2 className="text-2xl text-gray-700 mb-4">{stockCase.company_name}</h2>
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-2">{stockCase.title}</h1>
+            <h2 className="text-2xl text-gray-700 dark:text-gray-300 mb-4">{stockCase.company_name}</h2>
           </div>
 
           {/* Image */}
           {stockCase.image_url && (
-            <Card className="overflow-hidden">
-              <div className="aspect-video w-full">
+            <Card className="overflow-hidden group cursor-pointer" onClick={() => setIsImageModalOpen(true)}>
+              <div className="relative aspect-video w-full">
                 <img
                   src={stockCase.image_url}
                   alt={`${stockCase.company_name} stock price chart`}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
                 />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 dark:bg-gray-800/90 rounded-full p-3">
+                    <ZoomIn className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+                  </div>
+                </div>
               </div>
             </Card>
           )}
@@ -81,17 +88,17 @@ const StockCaseDetail = () => {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {stockCase.sector && (
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <TrendingUp className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                    <h3 className="font-semibold text-gray-900">Sector</h3>
-                    <p className="text-gray-700">{stockCase.sector}</p>
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">Sector</h3>
+                    <p className="text-gray-700 dark:text-gray-300">{stockCase.sector}</p>
                   </div>
                 )}
                 {stockCase.market_cap && (
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <DollarSign className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                    <h3 className="font-semibold text-gray-900">Market Cap</h3>
-                    <p className="text-gray-700">{stockCase.market_cap}</p>
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">Market Cap</h3>
+                    <p className="text-gray-700 dark:text-gray-300">{stockCase.market_cap}</p>
                   </div>
                 )}
               </div>
@@ -105,7 +112,7 @@ const StockCaseDetail = () => {
                 <CardTitle>About the company</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
                   {stockCase.description}
                 </p>
               </CardContent>
@@ -116,11 +123,11 @@ const StockCaseDetail = () => {
           {stockCase.admin_comment && (
             <Card className="border-l-4 border-l-blue-600">
               <CardHeader>
-                <CardTitle className="text-blue-900">Expert Analysis & Recommendation</CardTitle>
+                <CardTitle className="text-blue-900 dark:text-blue-300">Expert Analysis & Recommendation</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <p className="text-blue-800 leading-relaxed whitespace-pre-wrap">
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                  <p className="text-blue-800 dark:text-blue-200 leading-relaxed whitespace-pre-wrap">
                     {stockCase.admin_comment}
                   </p>
                 </div>
@@ -144,6 +151,14 @@ const StockCaseDetail = () => {
           </Card>
         </div>
       </div>
+
+      {/* Image Modal */}
+      <ImageModal
+        isOpen={isImageModalOpen}
+        onClose={() => setIsImageModalOpen(false)}
+        imageUrl={stockCase.image_url || ''}
+        altText={`${stockCase.company_name} stock price chart`}
+      />
     </div>
   );
 };
