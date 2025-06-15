@@ -8,6 +8,7 @@ import { StockCase } from '@/hooks/useStockCases';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useStockCaseFollows } from '@/hooks/useStockCaseFollows';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
 import { cn } from '@/lib/utils';
 
 interface StockCaseCardProps {
@@ -20,6 +21,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({ stockCase, onViewDetails,
   const { likeCount, isLiked, loading: likesLoading, toggleLike } = useStockCaseLikes(stockCase.id);
   const { followCount, isFollowing, loading: followLoading, toggleFollow } = useStockCaseFollows(stockCase.id);
   const { user } = useAuth();
+  const { isAdmin } = useUserRole();
 
   const getStatusIcon = () => {
     switch (stockCase.status) {
@@ -59,6 +61,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({ stockCase, onViewDetails,
   };
 
   const isOwner = user?.id === stockCase.user_id;
+  const canDelete = isOwner || isAdmin; // Admin can delete any case, owner can delete their own
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -153,12 +156,13 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({ stockCase, onViewDetails,
               </span>
             </Button>
 
-            {isOwner && onDelete && (
+            {canDelete && onDelete && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleDelete}
                 className="flex items-center gap-1 p-1 h-auto text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                title={isAdmin && !isOwner ? "Ta bort som admin" : "Ta bort ditt case"}
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
