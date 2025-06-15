@@ -211,9 +211,9 @@
     @apply grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8 xl:gap-10;
   }
   
-  /* Stock case specific layouts */
+  /* Stock case specific layouts - updated for 4 per row on large screens */
   .stock-case-grid {
-    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6 xl:gap-8;
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-4 lg:gap-6 xl:gap-8;
   }
   
   /* Market data layouts */
