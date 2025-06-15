@@ -208,53 +208,55 @@ const Index = () => {
           </h1>
         </div>
 
-        {/* Community Section - moved above tabs for better hierarchy */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                <CardTitle className="text-lg text-blue-800 dark:text-blue-200">Community</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-900 dark:text-blue-100 mb-1">
-                {user ? '1,234' : '---'}
-              </div>
-              <p className="text-sm text-blue-700 dark:text-blue-300">Aktiva medlemmar</p>
-            </CardContent>
-          </Card>
+        {/* Community Section - visas ENDAST på aktiecases */}
+        {activeTab === "aktiecases" && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <CardTitle className="text-lg text-blue-800 dark:text-blue-200">Community</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-900 dark:text-blue-100 mb-1">
+                  {user ? '1,234' : '---'}
+                </div>
+                <p className="text-sm text-blue-700 dark:text-blue-300">Aktiva medlemmar</p>
+              </CardContent>
+            </Card>
 
-          <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200 dark:border-green-800">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-green-600 dark:text-green-400" />
-                <CardTitle className="text-lg text-green-800 dark:text-green-200">Cases idag</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-900 dark:text-green-100 mb-1">
-                {stockCases.length}
-              </div>
-              <p className="text-sm text-green-700 dark:text-green-300">Nya aktiecases</p>
-            </CardContent>
-          </Card>
+            <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200 dark:border-green-800">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  <CardTitle className="text-lg text-green-800 dark:text-green-200">Cases idag</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-900 dark:text-green-100 mb-1">
+                  {stockCases.length}
+                </div>
+                <p className="text-sm text-green-700 dark:text-green-300">Nya aktiecases</p>
+              </CardContent>
+            </Card>
 
-          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                <CardTitle className="text-lg text-purple-800 dark:text-purple-200">Topplista</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-900 dark:text-purple-100 mb-1">
-                {user ? '#47' : '---'}
-              </div>
-              <p className="text-sm text-purple-700 dark:text-purple-300">Din ranking</p>
-            </CardContent>
-          </Card>
-        </div>
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                  <CardTitle className="text-lg text-purple-800 dark:text-purple-200">Topplista</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-900 dark:text-purple-100 mb-1">
+                  {user ? '#47' : '---'}
+                </div>
+                <p className="text-sm text-purple-700 dark:text-purple-300">Din ranking</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Tabs Section */}
         <div className="pt-6">
