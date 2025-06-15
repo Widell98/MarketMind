@@ -45,8 +45,8 @@ export const useStockCaseLikes = (stockCaseId: string) => {
   const toggleLike = async () => {
     if (!user) {
       toast({
-        title: "Login Required",
-        description: "You must be logged in to like cases",
+        title: "Logga in",
+        description: "Du måste vara inloggad för att gilla cases",
         variant: "destructive",
       });
       return;
@@ -65,11 +65,6 @@ export const useStockCaseLikes = (stockCaseId: string) => {
         if (error) throw error;
         setIsLiked(false);
         setLikeCount(prev => prev - 1);
-        
-        toast({
-          title: "Like Removed",
-          description: "You've unliked this case",
-        });
       } else {
         // Add like
         const { error } = await supabase
@@ -82,17 +77,12 @@ export const useStockCaseLikes = (stockCaseId: string) => {
         if (error) throw error;
         setIsLiked(true);
         setLikeCount(prev => prev + 1);
-        
-        toast({
-          title: "Case Liked!",
-          description: "You've liked this case",
-        });
       }
     } catch (error: any) {
       console.error('Error toggling like:', error);
       toast({
-        title: "Error",
-        description: "Could not update like status",
+        title: "Fel",
+        description: "Kunde inte uppdatera gillning",
         variant: "destructive",
       });
     } finally {
