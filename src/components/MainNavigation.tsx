@@ -1,0 +1,84 @@
+
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger } from '@/components/ui/navigation-menu';
+import { Button } from '@/components/ui/button';
+import { BookOpen, TrendingUp, Target, BarChart3, Users } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
+
+const MainNavigation = () => {
+  const location = useLocation();
+  const { user } = useAuth();
+
+  const isActive = (path: string) => location.pathname === path;
+
+  return (
+    <NavigationMenu className="hidden md:flex">
+      <NavigationMenuList>
+        <NavigationMenuItem>
+          <NavigationMenuTrigger>
+            <BookOpen className="w-4 h-4 mr-2" />
+            Learning
+          </NavigationMenuTrigger>
+          <NavigationMenuContent>
+            <div className="grid gap-3 p-6 w-[400px]">
+              <NavigationMenuLink asChild>
+                <Link
+                  to="/learning"
+                  className={cn(
+                    "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+                    isActive('/learning') && "bg-accent text-accent-foreground"
+                  )}
+                >
+                  <div className="text-sm font-medium leading-none">Learning Center</div>
+                  <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                    Interactive quizzes and educational content
+                  </p>
+                </Link>
+              </NavigationMenuLink>
+            </div>
+          </NavigationMenuContent>
+        </NavigationMenuItem>
+
+        <NavigationMenuItem>
+          <NavigationMenuTrigger>
+            <TrendingUp className="w-4 h-4 mr-2" />
+            Stock Cases
+          </NavigationMenuTrigger>
+          <NavigationMenuContent>
+            <div className="grid gap-3 p-6 w-[400px]">
+              <NavigationMenuLink asChild>
+                <Link
+                  to="/stock-cases"
+                  className={cn(
+                    "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+                    isActive('/stock-cases') && "bg-accent text-accent-foreground"
+                  )}
+                >
+                  <div className="text-sm font-medium leading-none">Browse Cases</div>
+                  <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                    Explore curated investment opportunities
+                  </p>
+                </Link>
+              </NavigationMenuLink>
+            </div>
+          </NavigationMenuContent>
+        </NavigationMenuItem>
+
+        {user && (
+          <NavigationMenuItem>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/watchlist" className={cn(isActive('/watchlist') && "bg-accent text-accent-foreground")}>
+                <Target className="w-4 h-4 mr-2" />
+                Watchlist
+              </Link>
+            </Button>
+          </NavigationMenuItem>
+        )}
+      </NavigationMenuList>
+    </NavigationMenu>
+  );
+};
+
+export default MainNavigation;

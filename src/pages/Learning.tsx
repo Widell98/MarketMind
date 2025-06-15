@@ -4,9 +4,10 @@ import Layout from '@/components/Layout';
 import MemoryCheck from '@/components/MemoryCheck';
 import MarketPulse from '@/components/MarketPulse';
 import TrendingCases from '@/components/TrendingCases';
+import ProgressDashboard from '@/components/ProgressDashboard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, BookOpen, TrendingUp, Target } from 'lucide-react';
+import { BookOpen, TrendingUp, Target, Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Learning = () => {
@@ -21,25 +22,17 @@ const Learning = () => {
     <Layout>
       <div className="space-y-8">
         {/* Header Section */}
-        <div className="space-y-4">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/')}
-            className="hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Homepage
-          </Button>
-          
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100">
-              Learning Center
-            </h1>
-            <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-              Test your knowledge with daily quizzes and discover top-performing stocks
-            </p>
-          </div>
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100">
+            Learning Center
+          </h1>
+          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+            Test your knowledge with daily quizzes and discover top-performing stocks
+          </p>
         </div>
+
+        {/* Progress Dashboard */}
+        <ProgressDashboard />
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -65,36 +58,43 @@ const Learning = () => {
             {/* Memory Check Component */}
             <MemoryCheck onComplete={handleQuizComplete} difficulty="novice" />
 
-            {/* Learning Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-950 dark:to-emerald-900 border-green-200 dark:border-green-800">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-green-100 dark:bg-green-900 rounded-full">
-                      <Target className="w-6 h-6 text-green-600 dark:text-green-400" />
+            {/* Learning Modules */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Play className="w-5 h-5" />
+                  Learning Modules
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Button variant="outline" className="h-auto p-4 justify-start">
+                    <div className="text-left">
+                      <div className="font-medium">Stock Basics</div>
+                      <div className="text-sm text-muted-foreground">Learn fundamental concepts</div>
                     </div>
-                    <div>
-                      <div className="text-2xl font-bold text-green-900 dark:text-green-100">85%</div>
-                      <p className="text-green-700 dark:text-green-300">Quiz Accuracy</p>
+                  </Button>
+                  <Button variant="outline" className="h-auto p-4 justify-start">
+                    <div className="text-left">
+                      <div className="font-medium">Risk Management</div>
+                      <div className="text-sm text-muted-foreground">Understand investment risks</div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-purple-50 to-pink-100 dark:from-purple-950 dark:to-pink-900 border-purple-200 dark:border-purple-800">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
-                      <TrendingUp className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                  </Button>
+                  <Button variant="outline" className="h-auto p-4 justify-start">
+                    <div className="text-left">
+                      <div className="font-medium">Portfolio Strategy</div>
+                      <div className="text-sm text-muted-foreground">Build balanced portfolios</div>
                     </div>
-                    <div>
-                      <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">12</div>
-                      <p className="text-purple-700 dark:text-purple-300">Day Streak</p>
+                  </Button>
+                  <Button variant="outline" className="h-auto p-4 justify-start">
+                    <div className="text-left">
+                      <div className="font-medium">Market Analysis</div>
+                      <div className="text-sm text-muted-foreground">Technical and fundamental analysis</div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Right Column - Market Performance */}
