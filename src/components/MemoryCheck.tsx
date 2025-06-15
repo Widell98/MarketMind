@@ -12,9 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ExternalLink, BookOpen, Award, ChevronRight, UserPlus, Zap, Target, TrendingUp } from "lucide-react";
+import { ExternalLink, BookOpen, Award, ChevronRight, UserPlus, Zap, Target, TrendingUp, ToggleLeft, ToggleRight } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
+import DynamicMemoryCheck from './DynamicMemoryCheck';
 
 interface MemoryCheckProps {
   onComplete: () => void;
@@ -26,6 +27,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
   difficulty = 'novice' 
 }) => {
   const { user } = useAuth();
+  const [isDynamicMode, setIsDynamicMode] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -46,6 +48,40 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
       setUserProgress(JSON.parse(savedProgress));
     }
   }, []);
+
+  // If dynamic mode is enabled and user is logged in, show the dynamic component
+  if (isDynamicMode && user) {
+    return (
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold text-finance-navy dark:text-gray-200">
+            AI-Powered Quiz
+          </h2>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600 dark:text-gray-400">Static</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsDynamicMode(!isDynamicMode)}
+              className="p-1"
+            >
+              {isDynamicMode ? (
+                <ToggleRight className="w-6 h-6 text-blue-600" />
+              ) : (
+                <ToggleLeft className="w-6 h-6 text-gray-400" />
+              )}
+            </Button>
+            <span className="text-sm text-gray-600 dark:text-gray-400">AI</span>
+          </div>
+        </div>
+        <DynamicMemoryCheck 
+          onComplete={onComplete} 
+          difficulty={difficulty}
+          userProgress={userProgress}
+        />
+      </div>
+    );
+  }
   
   // Set day of week for quiz theme
   const today = new Date();
@@ -324,6 +360,24 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
           Memory Check: {currentQuestion.theme}
         </h2>
         <div className="flex items-center space-x-2">
+          {user && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Static</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsDynamicMode(!isDynamicMode)}
+                className="p-1"
+              >
+                {isDynamicMode ? (
+                  <ToggleRight className="w-6 h-6 text-blue-600" />
+                ) : (
+                  <ToggleLeft className="w-6 h-6 text-gray-400" />
+                )}
+              </Button>
+              <span className="text-sm text-gray-600 dark:text-gray-400">AI</span>
+            </div>
+          )}
           {user && userProgress.streakDays > 1 && (
             <span className="badge-finance bg-amber-100 text-amber-800 dark:bg-amber-900 dark:bg-opacity-30 dark:text-amber-300">
               🔥 {userProgress.streakDays} day streak
