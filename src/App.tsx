@@ -12,6 +12,7 @@ import Profile from "./pages/Profile";
 import AdminStockCases from "./pages/AdminStockCases";
 import StockCases from "./pages/StockCases";
 import StockCaseDetail from "./pages/StockCaseDetail";
+import Learning from "./pages/Learning";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
               <Route path="/admin/stock-cases" element={<AdminStockCases />} />
               <Route path="/stock-cases" element={<StockCases />} />
               <Route path="/stock-cases/:id" element={<StockCaseDetail />} />
+              <Route path="/learning" element={<Learning />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
