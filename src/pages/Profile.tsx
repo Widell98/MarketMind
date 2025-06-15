@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -9,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, User, PenLine, Award, Plus, TrendingUp } from 'lucide-react';
+import { Loader2, User, PenLine, Plus, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import EditProfileDialog from "@/components/EditProfileDialog";
@@ -188,11 +187,6 @@ const ProfilePage = () => {
               <Separator />
               
               <div className="pt-2 space-y-2">
-                <Button variant="outline" className="w-full">
-                  <Award className="h-4 w-4 mr-2" />
-                  View Your Learning Progress
-                </Button>
-                
                 <Button 
                   variant="outline" 
                   className="w-full"

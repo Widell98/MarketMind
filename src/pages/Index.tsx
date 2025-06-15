@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import FlashBriefs from '@/components/FlashBriefs';
@@ -125,13 +126,12 @@ const Index = () => {
             <FlashBriefs />
           </div>
 
-          {/* Right Column - Desktop: Trending Cases, Latest Cases and Market Pulse */}
+          {/* Right Column - Desktop: Trending Cases and Market Pulse */}
           <div className="space-y-6">
             {/* Desktop: Show trending cases here */}
             <div className="hidden md:block">
               <TrendingCases />
             </div>
-            <LatestCases />
             <MarketPulse />
           </div>
         </div>
@@ -141,3 +141,4 @@ const Index = () => {
 };
 
 export default Index;
+
