@@ -4,6 +4,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { StockCase } from '@/hooks/useStockCases';
 
+// Helper function to ensure proper typing from database
+const transformStockCase = (rawCase: any): StockCase => {
+  return {
+    ...rawCase,
+    status: (rawCase.status || 'active') as 'active' | 'winner' | 'loser',
+    is_public: rawCase.is_public ?? true,
+  };
+};
+
 export const useTrendingStockCases = (limit: number = 10) => {
   const [trendingCases, setTrendingCases] = useState<StockCase[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,7 +56,7 @@ export const useTrendingStockCases = (limit: number = 10) => {
           })
         );
 
-        // Sort by like count (trending), then by creation date
+        // Sort by like count (trending), then by creation date and transform properly
         const sortedCases = casesWithLikes
           .sort((a, b) => {
             if (b.likeCount !== a.likeCount) {
@@ -55,7 +64,8 @@ export const useTrendingStockCases = (limit: number = 10) => {
             }
             return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
           })
-          .slice(0, limit);
+          .slice(0, limit)
+          .map(stockCase => transformStockCase(stockCase));
 
         setTrendingCases(sortedCases);
       } catch (error: any) {
