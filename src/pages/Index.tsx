@@ -3,25 +3,14 @@ import React from 'react';
 import Layout from '@/components/Layout';
 import FlashBriefs from '@/components/FlashBriefs';
 import MarketPulse from '@/components/MarketPulse';
+import TrendingCases from '@/components/TrendingCases';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { TrendingUp, Users, BookOpen, Target, Activity, ArrowRight } from 'lucide-react';
+import { TrendingUp, Users, BookOpen, Target } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
-import { useStockCases } from '@/hooks/useStockCases';
-import StockCaseCard from '@/components/StockCaseCard';
 
 const Index = () => {
   const navigate = useNavigate();
-  const { trendingCases, loading: trendingLoading } = useTrendingStockCases(6);
-  const { stockCases, loading: stockCasesLoading } = useStockCases();
-
-  const handleViewStockCaseDetails = (id: string) => {
-    navigate(`/stock-cases/${id}`);
-  };
-
-  // Get the 6 most recent cases
-  const recentCases = stockCases.slice(0, 6);
 
   return (
     <Layout>
@@ -66,7 +55,7 @@ const Index = () => {
                   <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-green-900 dark:text-green-100">{stockCases.length}</div>
+                  <div className="text-2xl font-bold text-green-900 dark:text-green-100">156</div>
                   <p className="text-green-700 dark:text-green-300">Active Cases</p>
                 </div>
               </div>
@@ -102,115 +91,16 @@ const Index = () => {
           </Card>
         </div>
 
-        {/* Trending Cases Section */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-6 h-6 text-orange-500" />
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Trending Cases</h2>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => navigate('/stock-cases')}
-              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-            >
-              View All
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </Button>
-          </div>
-
-          {trendingLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <Card key={i} className="animate-pulse">
-                  <div className="aspect-video bg-gray-200 dark:bg-gray-700 rounded-t-lg"></div>
-                  <CardContent className="p-4">
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : trendingCases.length === 0 ? (
-            <Card className="text-center py-8">
-              <CardContent className="pt-6">
-                <TrendingUp className="w-12 h-12 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-600 dark:text-gray-400">No trending cases yet. Be the first to like a case!</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {trendingCases.map((stockCase) => (
-                <StockCaseCard
-                  key={stockCase.id}
-                  stockCase={stockCase}
-                  onViewDetails={handleViewStockCaseDetails}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Recent Cases Section */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Activity className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Recently Added</h2>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => navigate('/stock-cases')}
-              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-            >
-              View All
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </Button>
-          </div>
-
-          {stockCasesLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <Card key={i} className="animate-pulse">
-                  <div className="aspect-video bg-gray-200 dark:bg-gray-700 rounded-t-lg"></div>
-                  <CardContent className="p-4">
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : recentCases.length === 0 ? (
-            <Card className="text-center py-8">
-              <CardContent className="pt-6">
-                <Activity className="w-12 h-12 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-600 dark:text-gray-400">No cases available yet.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {recentCases.map((stockCase) => (
-                <StockCaseCard
-                  key={stockCase.id}
-                  stockCase={stockCase}
-                  onViewDetails={handleViewStockCaseDetails}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Main Content Grid - Flash Briefs and Market Pulse */}
+        {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Flash Briefs */}
           <div className="lg:col-span-2">
             <FlashBriefs />
           </div>
 
-          {/* Right Column - Market Pulse */}
-          <div>
+          {/* Right Column - Trending Cases and Market Pulse */}
+          <div className="space-y-6">
+            <TrendingCases />
             <MarketPulse />
           </div>
         </div>
