@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, TrendingUp, Building, DollarSign, ZoomIn, User } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Building, ZoomIn, User } from 'lucide-react';
 import ImageModal from '@/components/ImageModal';
 
 const StockCaseDetail = () => {
@@ -77,49 +77,7 @@ const StockCaseDetail = () => {
             </Card>
           )}
 
-          {/* Company Facts */}
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center text-gray-900 dark:text-gray-100">
-                <Building className="w-5 h-5 mr-2 text-blue-600" />
-                Company Facts
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {stockCase.sector && (
-                  <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl border border-blue-200 dark:border-blue-800">
-                    <TrendingUp className="w-8 h-8 text-blue-600 mx-auto mb-3" />
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Sector</h3>
-                    <p className="text-gray-700 dark:text-gray-300">{stockCase.sector}</p>
-                  </div>
-                )}
-                {stockCase.market_cap && (
-                  <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl border border-green-200 dark:border-green-800">
-                    <DollarSign className="w-8 h-8 text-green-600 mx-auto mb-3" />
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Market Cap</h3>
-                    <p className="text-gray-700 dark:text-gray-300">{stockCase.market_cap}</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Description */}
-          {stockCase.description && (
-            <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-gray-100">About the company</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                  {stockCase.description}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* User Analysis */}
+          {/* User Analysis - moved directly below image */}
           {stockCase.admin_comment && (
             <Card className="border-l-4 border-l-purple-500 shadow-lg">
               <CardHeader>
@@ -134,6 +92,41 @@ const StockCaseDetail = () => {
                     {stockCase.admin_comment}
                   </p>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Company Facts - only show sector, removed market cap */}
+          {stockCase.sector && (
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center text-gray-900 dark:text-gray-100">
+                  <Building className="w-5 h-5 mr-2 text-blue-600" />
+                  Company Facts
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-center">
+                  <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                    <TrendingUp className="w-8 h-8 text-blue-600 mx-auto mb-3" />
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Sector</h3>
+                    <p className="text-gray-700 dark:text-gray-300">{stockCase.sector}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Description */}
+          {stockCase.description && (
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-gray-900 dark:text-gray-100">About the company</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                  {stockCase.description}
+                </p>
               </CardContent>
             </Card>
           )}
