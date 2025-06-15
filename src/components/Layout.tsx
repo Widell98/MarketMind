@@ -7,6 +7,7 @@ import ProfileMenu from './ProfileMenu';
 import ThemeToggle from './ThemeToggle';
 import MainNavigation from './MainNavigation';
 import BreadcrumbNavigation from './Breadcrumb';
+import BackToHomeButton from './BackToHomeButton';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -51,6 +52,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {children}
         </div>
       </main>
+      
+      <BackToHomeButton />
       
       <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4 sm:py-6 lg:py-8 xl:py-10 mt-auto">
         <div className="container-responsive text-center text-xs sm:text-sm lg:text-base text-finance-gray dark:text-gray-400">
