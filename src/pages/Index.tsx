@@ -1,436 +1,110 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Layout from '../components/Layout';
-import MarketPulse from '../components/MarketPulse';
-import FlashBriefs from '../components/FlashBriefs';
-import MemoryCheck from '../components/MemoryCheck';
-import Onboarding from '../components/Onboarding';
-import StockCaseCard from '../components/StockCaseCard';
-import { useAuth } from '@/contexts/AuthContext';
-import { useStockCases } from '@/hooks/useStockCases';
-import { UserProgress, defaultUserProgress, getLearningPathRecommendations } from '../mockData/quizData';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { BookOpen, Loader2, UserPlus, TrendingUp, Newspaper, Users, Activity, Trophy } from 'lucide-react';
+import React from 'react';
+import Layout from '@/components/Layout';
+import FlashBriefs from '@/components/FlashBriefs';
+import MarketPulse from '@/components/MarketPulse';
+import TrendingCases from '@/components/TrendingCases';
+import LatestCases from '@/components/LatestCases';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
-import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent } from '@/components/ui/card';
+import { TrendingUp, Users, BookOpen, Target } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
-  const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [showFollowedOnly, setShowFollowedOnly] = useState(false);
-  const { stockCases, loading: stockCasesLoading, deleteStockCase } = useStockCases(showFollowedOnly);
-  const [isOnboarded, setIsOnboarded] = useState(false);
-  const [showQuiz, setShowQuiz] = useState(false);
-  const [userLevel, setUserLevel] = useState<'novice' | 'analyst' | 'pro'>('novice');
-  const [userInterests, setUserInterests] = useState<string[]>([]);
-  const [userProgress, setUserProgress] = useState<UserProgress>(defaultUserProgress);
-  const [recommendations, setRecommendations] = useState<string[]>([]);
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>("stock-cases");
-
-  // Fetch user profile data only if authenticated
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (user) {
-        setProfileLoading(true);
-        try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-          
-          if (error) throw error;
-          
-          if (data) {
-            setIsOnboarded(true);
-            setUserLevel(data.level as 'novice' | 'analyst' | 'pro');
-            
-            if (data.interests) {
-              if (Array.isArray(data.interests)) {
-                setUserInterests(data.interests.map(item => String(item)));
-              } else {
-                console.warn('Interests data is not an array:', data.interests);
-                setUserInterests([]);
-              }
-            } else {
-              setUserInterests([]);
-            }
-            
-            console.log('Profile loaded:', data);
-          }
-        } catch (error) {
-          console.error('Error fetching profile:', error);
-        } finally {
-          setProfileLoading(false);
-        }
-      }
-    };
-
-    if (user) {
-      fetchUserProfile();
-    }
-  }, [user]);
-
-  // Check onboarding status and user progress for authenticated users
-  useEffect(() => {
-    if (user && isOnboarded) {
-      const savedOnboardingState = localStorage.getItem('marketMentor_onboarded');
-      if (savedOnboardingState === 'true') {
-        const savedLevel = localStorage.getItem('marketMentor_level') as 'novice' | 'analyst' | 'pro';
-        if (savedLevel) {
-          setUserLevel(savedLevel);
-        }
-        
-        const savedInterests = localStorage.getItem('marketMentor_interests');
-        if (savedInterests) {
-          setUserInterests(JSON.parse(savedInterests));
-        }
-        
-        const savedProgress = localStorage.getItem('marketMentor_progress');
-        if (savedProgress) {
-          const progress = JSON.parse(savedProgress);
-          setUserProgress(progress);
-          
-          const learningRecs = getLearningPathRecommendations(progress);
-          setRecommendations(learningRecs);
-          
-          if (progress.level) {
-            setUserLevel(progress.level as 'novice' | 'analyst' | 'pro');
-          }
-        }
-      }
-      
-      const today = new Date();
-      const dayOfWeek = today.getDay();
-      
-      if (savedOnboardingState === 'true' && dayOfWeek >= 1 && dayOfWeek <= 5) {
-        const savedProgress = localStorage.getItem('marketMentor_progress');
-        if (savedProgress) {
-          const progress = JSON.parse(savedProgress);
-          const lastQuizDate = progress.lastQuizDate;
-          const todayStr = today.toISOString().split('T')[0];
-          
-          if (lastQuizDate !== todayStr) {
-            setShowQuiz(true);
-          }
-        } else {
-          setShowQuiz(true);
-        }
-      }
-    }
-  }, [user, isOnboarded]);
-
-  const handleOnboardingComplete = async (level: string, interests: string[]) => {
-    setIsOnboarded(true);
-    setUserLevel(level as 'novice' | 'analyst' | 'pro');
-    setUserInterests(interests);
-    setShowQuiz(true);
-    
-    localStorage.setItem('marketMentor_onboarded', 'true');
-    localStorage.setItem('marketMentor_level', level);
-    localStorage.setItem('marketMentor_interests', JSON.stringify(interests));
-    
-    const initialProgress = {
-      ...defaultUserProgress,
-      level: level
-    };
-    localStorage.setItem('marketMentor_progress', JSON.stringify(initialProgress));
-    setUserProgress(initialProgress);
-    
-    setRecommendations(getLearningPathRecommendations(initialProgress));
-    
-    if (user) {
-      try {
-        const { error } = await supabase
-          .from('profiles')
-          .update({ 
-            level: level, 
-            interests: interests 
-          })
-          .eq('id', user.id);
-        
-        if (error) throw error;
-      } catch (error) {
-        console.error('Error updating profile:', error);
-      }
-    }
-  };
-
-  const handleQuizComplete = () => {
-    setShowQuiz(false);
-    
-    const savedProgress = localStorage.getItem('marketMentor_progress');
-    if (savedProgress) {
-      const progress = JSON.parse(savedProgress);
-      setUserProgress(progress);
-      setRecommendations(getLearningPathRecommendations(progress));
-    }
-  };
-
-  const handleViewStockCaseDetails = (id: string) => {
-    navigate(`/stock-cases/${id}`);
-  };
-
-  const handleDeleteStockCase = async (id: string) => {
-    try {
-      await deleteStockCase(id);
-    } catch (error) {
-      // Error is already handled in the deleteStockCase function
-    }
-  };
-
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex justify-center items-center h-[60vh] sm:h-[70vh] lg:h-[80vh]">
-          <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 lg:h-12 lg:w-12 animate-spin text-finance-navy" />
-        </div>
-      </Layout>
-    );
-  }
-
-  if (user && !isOnboarded && !profileLoading) {
-    return <Onboarding onComplete={handleOnboardingComplete} />;
-  }
 
   return (
     <Layout>
-      <div className="section-spacing">
-        {/* Header Section */}
-        <div className="text-center">
-          <h1 className="heading-responsive font-bold text-gray-900 dark:text-gray-100 mb-2 lg:mb-4 xl:mb-6">
-            Market Mentor
+      <div className="space-y-8">
+        {/* Hero Section */}
+        <div className="text-center space-y-6 py-12 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-900 rounded-2xl">
+          <h1 className="text-4xl lg:text-6xl font-bold text-gray-900 dark:text-gray-100">
+            Master the{' '}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+              Stock Market
+            </span>
           </h1>
-          {/* User level badges under main title */}
-          {user && (
-            <div className="flex flex-wrap justify-center items-center mt-3 lg:mt-4 xl:mt-6 gap-2 lg:gap-3 xl:gap-4">
-              <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 lg:text-base xl:text-lg lg:px-4 lg:py-2">
-                Level: {userLevel}
-              </Badge>
-              <Badge variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 lg:text-base xl:text-lg lg:px-4 lg:py-2">
-                {userProgress.points} pts
-              </Badge>
-              {userProgress.streakDays > 0 && (
-                <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 lg:text-base xl:text-lg lg:px-4 lg:py-2">
-                  🔥 {userProgress.streakDays} day streak
-                </Badge>
-              )}
-            </div>
-          )}
+          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+            Learn through real cases, follow trending investments, and build your financial knowledge with our interactive platform.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button 
+              size="lg" 
+              onClick={() => navigate('/stock-cases')}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+            >
+              <BookOpen className="w-5 h-5 mr-2" />
+              Explore Cases
+            </Button>
+            <Button 
+              size="lg" 
+              variant="outline"
+              onClick={() => navigate('/stock-cases')}
+            >
+              <Target className="w-5 h-5 mr-2" />
+              Start Learning
+            </Button>
+          </div>
         </div>
 
-        {/* Community Section - shows ONLY on stock-cases tab */}
-        {activeTab === "stock-cases" && (
-          <div className="dashboard-grid">
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800 card-hover-desktop">
-              <CardHeader className="pb-2 lg:pb-3">
-                <div className="flex items-center gap-2 lg:gap-3">
-                  <Users className="w-5 h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7 text-blue-600 dark:text-blue-400" />
-                  <CardTitle className="text-lg lg:text-xl xl:text-2xl text-blue-800 dark:text-blue-200">Community</CardTitle>
+        {/* Stats Section */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-950 dark:to-emerald-900 border-green-200 dark:border-green-800">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-green-100 dark:bg-green-900 rounded-full">
+                  <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl lg:text-3xl xl:text-4xl font-bold text-blue-900 dark:text-blue-100 mb-1 lg:mb-2">
-                  {user ? '1,234' : '---'}
+                <div>
+                  <div className="text-2xl font-bold text-green-900 dark:text-green-100">156</div>
+                  <p className="text-green-700 dark:text-green-300">Active Cases</p>
                 </div>
-                <p className="text-sm lg:text-base xl:text-lg text-blue-700 dark:text-blue-300">Active members</p>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200 dark:border-green-800 card-hover-desktop">
-              <CardHeader className="pb-2 lg:pb-3">
-                <div className="flex items-center gap-2 lg:gap-3">
-                  <Activity className="w-5 h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7 text-green-600 dark:text-green-400" />
-                  <CardTitle className="text-lg lg:text-xl xl:text-2xl text-green-800 dark:text-green-200">Cases today</CardTitle>
+          <Card className="bg-gradient-to-br from-blue-50 to-cyan-100 dark:from-blue-950 dark:to-cyan-900 border-blue-200 dark:border-blue-800">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
+                  <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl lg:text-3xl xl:text-4xl font-bold text-green-900 dark:text-green-100 mb-1 lg:mb-2">
-                  {stockCases.length}
+                <div>
+                  <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">2.5K</div>
+                  <p className="text-blue-700 dark:text-blue-300">Active Users</p>
                 </div>
-                <p className="text-sm lg:text-base xl:text-lg text-green-700 dark:text-green-300">New stock cases</p>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800 card-hover-desktop">
-              <CardHeader className="pb-2 lg:pb-3">
-                <div className="flex items-center gap-2 lg:gap-3">
-                  <Trophy className="w-5 h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7 text-purple-600 dark:text-purple-400" />
-                  <CardTitle className="text-lg lg:text-xl xl:text-2xl text-purple-800 dark:text-purple-200">Leaderboard</CardTitle>
+          <Card className="bg-gradient-to-br from-purple-50 to-pink-100 dark:from-purple-950 dark:to-pink-900 border-purple-200 dark:border-purple-800">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
+                  <Target className="w-6 h-6 text-purple-600 dark:text-purple-400" />
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl lg:text-3xl xl:text-4xl font-bold text-purple-900 dark:text-purple-100 mb-1 lg:mb-2">
-                  {user ? '#47' : '---'}
+                <div>
+                  <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">78%</div>
+                  <p className="text-purple-700 dark:text-purple-300">Success Rate</p>
                 </div>
-                <p className="text-sm lg:text-base xl:text-lg text-purple-700 dark:text-purple-300">Your ranking</p>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Flash Briefs */}
+          <div className="lg:col-span-2">
+            <FlashBriefs />
           </div>
-        )}
 
-        {/* Tabs Section */}
-        <div className="pt-6 lg:pt-8 xl:pt-10">
-          <Tabs defaultValue="stock-cases" value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-flex lg:h-12 xl:h-14">
-              <TabsTrigger value="stock-cases" className="flex items-center gap-2 lg:px-6 xl:px-8 lg:text-base xl:text-lg">
-                <TrendingUp className="w-4 h-4 lg:w-5 lg:h-5" />
-                Stock Cases
-              </TabsTrigger>
-              <TabsTrigger value="learning" className="flex items-center gap-2 lg:px-6 xl:px-8 lg:text-base xl:text-lg">
-                <BookOpen className="w-4 h-4 lg:w-5 lg:h-5" />
-                Learning
-              </TabsTrigger>
-            </TabsList>
-            
-            {/* Stock Cases Tab */}
-            <TabsContent value="stock-cases" className="section-spacing mt-6 lg:mt-8">
-              {/* Stock Cases Section */}
-              <div className="section-spacing">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 lg:gap-3 xl:gap-4">
-                    <TrendingUp className="w-6 h-6 lg:w-8 lg:h-8 xl:w-10 xl:h-10 text-blue-600 dark:text-blue-400" />
-                    <h2 className="subheading-responsive font-bold text-gray-900 dark:text-gray-100">
-                      {showFollowedOnly ? 'Followed stock cases' : 'All stock cases'}
-                    </h2>
-                  </div>
-                  
-                  {user && (
-                    <div className="flex items-center space-x-2 lg:space-x-3">
-                      <span className="text-sm lg:text-base xl:text-lg text-gray-600 dark:text-gray-400">
-                        {showFollowedOnly ? 'Followed' : 'All'}
-                      </span>
-                      <Switch
-                        checked={showFollowedOnly}
-                        onCheckedChange={setShowFollowedOnly}
-                        className="lg:scale-110 xl:scale-125"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {stockCasesLoading ? (
-                  <div className="flex justify-center py-12 lg:py-16 xl:py-20">
-                    <Loader2 className="h-8 w-8 lg:h-12 lg:w-12 xl:h-16 xl:w-16 animate-spin text-blue-600" />
-                  </div>
-                ) : stockCases.length === 0 ? (
-                  <div className="text-center py-12 lg:py-16 xl:py-20 bg-gray-50 dark:bg-gray-800 rounded-lg lg:rounded-xl">
-                    <TrendingUp className="w-16 h-16 lg:w-20 lg:h-20 xl:w-24 xl:h-24 text-gray-400 dark:text-gray-600 mx-auto mb-4 lg:mb-6" />
-                    <h3 className="text-xl lg:text-2xl xl:text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-2 lg:mb-4">
-                      {showFollowedOnly 
-                        ? "You're not following any stock cases yet" 
-                        : user 
-                          ? 'No stock cases yet' 
-                          : 'No public stock cases yet'
-                      }
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 mb-4 lg:mb-6 lg:text-lg xl:text-xl">
-                      {showFollowedOnly
-                        ? 'Start following other users\' stock cases to see them here!'
-                        : user 
-                          ? 'Start following other users or create your first stock case!'
-                          : 'Sign up to see and create stock cases.'
-                      }
-                    </p>
-                    {user ? (
-                      <Button onClick={() => navigate('/profile')} className="btn-responsive lg:text-base xl:text-lg">
-                        Go to profile to create case
-                      </Button>
-                    ) : (
-                      <Button onClick={() => navigate('/auth')} className="btn-responsive lg:text-base xl:text-lg">
-                        Sign up
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="stock-case-grid">
-                    {stockCases.map((stockCase) => (
-                      <StockCaseCard
-                        key={stockCase.id}
-                        stockCase={stockCase}
-                        onViewDetails={handleViewStockCaseDetails}
-                        onDelete={handleDeleteStockCase}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Guest Call-to-Action for Stock Cases */}
-              {!user && (
-                <Alert className="bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-900 lg:p-6 xl:p-8">
-                  <UserPlus className="h-4 w-4 lg:h-5 lg:w-5 xl:h-6 xl:w-6 text-blue-500 dark:text-blue-400" />
-                  <AlertTitle className="text-sm lg:text-base xl:text-lg font-medium text-blue-800 dark:text-blue-300">
-                    Join the community
-                  </AlertTitle>
-                  <AlertDescription className="text-xs lg:text-sm xl:text-base text-blue-700 dark:text-blue-400">
-                    <p className="mb-3 lg:mb-4">Sign up to follow other investors and create your own stock cases!</p>
-                    <Button 
-                      size="sm" 
-                      className="bg-blue-600 hover:bg-blue-700 text-white btn-responsive"
-                      onClick={() => navigate('/auth')}
-                    >
-                      Sign up
-                    </Button>
-                  </AlertDescription>
-                </Alert>
-              )}
-            </TabsContent>
-
-            {/* Learning Tab */}
-            <TabsContent value="learning" className="section-spacing mt-6 lg:mt-8">
-              {/* Quiz Section */}
-              {user && showQuiz && (
-                <div className="mb-6 lg:mb-8 xl:mb-10">
-                  <MemoryCheck onComplete={handleQuizComplete} difficulty={userLevel} />
-                </div>
-              )}
-
-              {/* Learning Recommendations */}
-              {user && recommendations.length > 0 && (
-                <Alert className="bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-900 lg:p-6 xl:p-8">
-                  <BookOpen className="h-4 w-4 lg:h-5 lg:w-5 xl:h-6 xl:w-6 text-blue-500 dark:text-blue-400" />
-                  <AlertTitle className="text-sm lg:text-base xl:text-lg font-medium text-blue-800 dark:text-blue-300">
-                    Learning Path
-                  </AlertTitle>
-                  <AlertDescription className="text-xs lg:text-sm xl:text-base text-blue-700 dark:text-blue-400">
-                    <p className="mb-2 lg:mb-3">Based on your progress we recommend:</p>
-                    <ul className="pl-5 list-disc space-y-1 lg:space-y-2">
-                      {recommendations.slice(0, 3).map((rec, idx) => (
-                        <li key={idx}>{rec}</li>
-                      ))}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {/* Always show quiz for guests or when not daily quiz time */}
-              {(!user || !showQuiz) && (
-                <div className="mb-6 lg:mb-8 xl:mb-10">
-                  <MemoryCheck onComplete={handleQuizComplete} difficulty={userLevel} />
-                </div>
-              )}
-
-              {/* Desktop layout for Market Pulse and Flash Briefs */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 xl:gap-10">
-                {/* Market Pulse Section */}
-                <div>
-                  <MarketPulse />
-                </div>
-
-                {/* Flash Briefs Section */}
-                <div>
-                  <FlashBriefs />
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
+          {/* Right Column - Trending Cases, Latest Cases and Market Pulse */}
+          <div className="space-y-6">
+            <TrendingCases />
+            <LatestCases />
+            <MarketPulse />
+          </div>
         </div>
       </div>
     </Layout>
