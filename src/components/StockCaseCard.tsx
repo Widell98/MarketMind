@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Heart, ThumbsUp, TrendingUp, TrendingDown, Calendar, User, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Eye, Heart, TrendingUp, TrendingDown, Calendar, User, MoreHorizontal, Trash2 } from 'lucide-react';
 import { StockCase } from '@/hooks/useStockCases';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -30,7 +30,6 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
 }) => {
   const { user } = useAuth();
   const { isAdmin } = useUserRole();
-  const { likeCount, isLiked, toggleLike } = useStockCaseLikes(stockCase.id);
   const { followCount, isFollowing, toggleFollow } = useStockCaseFollows(stockCase.id);
 
   const getStatusColor = (status: string) => {
@@ -187,17 +186,6 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
               
               <Button
                 size="sm"
-                variant={isLiked ? "default" : "outline"}
-                onClick={toggleLike}
-                className="flex items-center gap-1 min-w-0"
-              >
-                <ThumbsUp className="w-4 h-4" />
-                <span className="hidden lg:inline">{likeCount}</span>
-                <span className="lg:hidden">{likeCount > 99 ? '99+' : likeCount}</span>
-              </Button>
-              
-              <Button
-                size="sm"
                 variant={isFollowing ? "default" : "outline"}
                 onClick={toggleFollow}
                 className="flex items-center gap-1 min-w-0"
@@ -212,16 +200,6 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
 
             {/* Mobile layout - compact buttons */}
             <div className="flex items-center gap-1 sm:hidden">
-              <Button
-                size="sm"
-                variant={isLiked ? "default" : "outline"}
-                onClick={toggleLike}
-                className="flex-1 flex items-center justify-center gap-1 px-2"
-              >
-                <ThumbsUp className="w-4 h-4" />
-                <span className="text-xs">{likeCount}</span>
-              </Button>
-              
               <Button
                 size="sm"
                 variant={isFollowing ? "default" : "outline"}

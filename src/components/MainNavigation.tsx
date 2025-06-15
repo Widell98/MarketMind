@@ -18,31 +18,6 @@ const MainNavigation = () => {
       <NavigationMenuList>
         <NavigationMenuItem>
           <NavigationMenuTrigger className="h-10 px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50">
-            <BookOpen className="w-4 h-4 mr-2" />
-            Learning
-          </NavigationMenuTrigger>
-          <NavigationMenuContent>
-            <div className="grid gap-3 p-6 w-[400px]">
-              <NavigationMenuLink asChild>
-                <Link
-                  to="/learning"
-                  className={cn(
-                    "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
-                    isActive('/learning') && "bg-accent text-accent-foreground"
-                  )}
-                >
-                  <div className="text-sm font-medium leading-none">Learning Center</div>
-                  <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                    Interactive quizzes and educational content
-                  </p>
-                </Link>
-              </NavigationMenuLink>
-            </div>
-          </NavigationMenuContent>
-        </NavigationMenuItem>
-
-        <NavigationMenuItem>
-          <NavigationMenuTrigger className="h-10 px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50">
             <TrendingUp className="w-4 h-4 mr-2" />
             Stock Cases
           </NavigationMenuTrigger>
@@ -81,6 +56,31 @@ const MainNavigation = () => {
                   </Link>
                 </NavigationMenuLink>
               )}
+            </div>
+          </NavigationMenuContent>
+        </NavigationMenuItem>
+
+        <NavigationMenuItem>
+          <NavigationMenuTrigger className="h-10 px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50">
+            <BookOpen className="w-4 h-4 mr-2" />
+            Learning
+          </NavigationMenuTrigger>
+          <NavigationMenuContent>
+            <div className="grid gap-3 p-6 w-[400px]">
+              <NavigationMenuLink asChild>
+                <Link
+                  to="/learning"
+                  className={cn(
+                    "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+                    isActive('/learning') && "bg-accent text-accent-foreground"
+                  )}
+                >
+                  <div className="text-sm font-medium leading-none">Learning Center</div>
+                  <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                    Interactive quizzes and educational content
+                  </p>
+                </Link>
+              </NavigationMenuLink>
             </div>
           </NavigationMenuContent>
         </NavigationMenuItem>

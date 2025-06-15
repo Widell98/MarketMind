@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { TrendingUp, TrendingDown, Clock, Eye, Heart, Trash2, UserPlus, UserCheck } from 'lucide-react';
 import { StockCase } from '@/hooks/useStockCases';
-import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useStockCaseFollows } from '@/hooks/useStockCaseFollows';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -18,7 +17,6 @@ interface StockCaseListItemProps {
 }
 
 const StockCaseListItem: React.FC<StockCaseListItemProps> = ({ stockCase, onViewDetails, onDelete }) => {
-  const { likeCount, isLiked, loading: likesLoading, toggleLike } = useStockCaseLikes(stockCase.id);
   const { followCount, isFollowing, loading: followLoading, toggleFollow } = useStockCaseFollows(stockCase.id);
   const { user } = useAuth();
   const { isAdmin } = useUserRole();
@@ -152,27 +150,6 @@ const StockCaseListItem: React.FC<StockCaseListItemProps> = ({ stockCase, onView
 
         {/* Actions */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleLike();
-            }}
-            disabled={likesLoading}
-            className="flex items-center gap-1 p-2"
-          >
-            <Heart 
-              className={cn(
-                "w-4 h-4 transition-colors",
-                isLiked 
-                  ? "fill-red-500 text-red-500" 
-                  : "text-gray-400 hover:text-red-500"
-              )}
-            />
-            <span className="text-xs">{likeCount}</span>
-          </Button>
-
           <Button
             variant="ghost"
             size="sm"
