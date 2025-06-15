@@ -5,7 +5,7 @@ import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
 import { useStockCasesFilters } from '@/hooks/useStockCasesFilters';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, TrendingUp, Users, Activity, Clock, Filter } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Users, Activity, Clock, Filter, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import StockCaseCard from '@/components/StockCaseCard';
@@ -14,13 +14,28 @@ import StockCasesFilters from '@/components/StockCasesFilters';
 import StockCaseSkeletonCard from '@/components/StockCaseSkeletonCard';
 
 const StockCases = () => {
-  const { stockCases, loading, deleteStockCase } = useStockCases();
+  const [viewMode, setViewMode] = useState<'all' | 'trending' | 'followed'>('all');
+  
+  const { stockCases: allStockCases, loading: allLoading, deleteStockCase } = useStockCases(false);
+  const { stockCases: followedStockCases, loading: followedLoading } = useStockCases(true);
   const { trendingCases, loading: trendingLoading } = useTrendingStockCases(20);
-  const [viewMode, setViewMode] = useState<'all' | 'trending'>('all');
+  
   const navigate = useNavigate();
 
-  const displayCases = viewMode === 'all' ? stockCases : trendingCases;
-  const isLoading = viewMode === 'all' ? loading : trendingLoading;
+  const getDisplayData = () => {
+    switch (viewMode) {
+      case 'all':
+        return { cases: allStockCases, loading: allLoading };
+      case 'trending':
+        return { cases: trendingCases, loading: trendingLoading };
+      case 'followed':
+        return { cases: followedStockCases, loading: followedLoading };
+      default:
+        return { cases: allStockCases, loading: allLoading };
+    }
+  };
+
+  const { cases: displayCases, loading: isLoading } = getDisplayData();
 
   const {
     searchTerm,
@@ -129,6 +144,14 @@ const StockCases = () => {
             <TrendingUp className="w-4 h-4" />
             Trending
           </Button>
+          <Button
+            variant={viewMode === 'followed' ? 'default' : 'outline'}
+            onClick={() => setViewMode('followed')}
+            className="flex items-center gap-2"
+          >
+            <Heart className="w-4 h-4" />
+            Followed
+          </Button>
         </div>
 
         {/* Stats Section */}
@@ -157,7 +180,7 @@ const StockCases = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-900 dark:text-green-100 mb-1">
-                {stockCases.length}
+                {allStockCases.length}
               </div>
               <p className="text-sm text-green-700 dark:text-green-300">Stock Cases</p>
             </CardContent>
@@ -172,7 +195,7 @@ const StockCases = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-900 dark:text-orange-100 mb-1">
-                {stockCases.filter(c => c.status === 'active').length}
+                {allStockCases.filter(c => c.status === 'active').length}
               </div>
               <p className="text-sm text-orange-700 dark:text-orange-300">Currently Tracking</p>
             </CardContent>
@@ -209,23 +232,33 @@ const StockCases = () => {
           <div className="flex items-center gap-2">
             {viewMode === 'trending' ? (
               <TrendingUp className="w-6 h-6 text-orange-500" />
+            ) : viewMode === 'followed' ? (
+              <Heart className="w-6 h-6 text-red-500" />
             ) : (
               <Activity className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             )}
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {viewMode === 'trending' ? 'Trending Stock Cases' : 'All Stock Cases'}
+              {viewMode === 'trending' ? 'Trending Stock Cases' : 
+               viewMode === 'followed' ? 'Followed Stock Cases' : 
+               'All Stock Cases'}
             </h2>
           </div>
 
           {filteredAndSortedCases.length === 0 ? (
             <Card className="text-center py-12 bg-gray-50 dark:bg-gray-800">
               <CardContent className="pt-6">
-                <Activity className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+                {viewMode === 'followed' ? (
+                  <Heart className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+                ) : (
+                  <Activity className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+                )}
                 <CardTitle className="text-xl mb-2 text-gray-900 dark:text-gray-100">
                   {searchTerm || selectedCategory !== 'all' || performanceFilter !== 'all'
                     ? 'No cases match your filters'
                     : viewMode === 'trending' 
-                    ? 'No trending cases yet' 
+                    ? 'No trending cases yet'
+                    : viewMode === 'followed'
+                    ? 'No followed cases yet'
                     : 'No stock cases yet'
                   }
                 </CardTitle>
@@ -234,6 +267,8 @@ const StockCases = () => {
                     ? 'Try adjusting your search criteria or filters.'
                     : viewMode === 'trending' 
                     ? 'Cases will appear here when they start getting likes from the community.'
+                    : viewMode === 'followed'
+                    ? 'Start following some cases to see them here. You need to be logged in to follow cases.'
                     : 'Stock cases will be displayed here when they are added by our experts.'
                   }
                 </p>
