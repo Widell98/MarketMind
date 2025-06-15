@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
@@ -186,21 +185,6 @@ const StockCaseDetail = () => {
               </CardContent>
             </Card>
           )}
-
-          {/* Call to Action */}
-          <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-xl">
-            <CardContent className="pt-6">
-              <div className="text-center space-y-4">
-                <h3 className="text-2xl font-bold">Interested in investing?</h3>
-                <p className="opacity-90 max-w-2xl mx-auto">
-                  Remember to always do your own research before investing. This is only an educational example.
-                </p>
-                <Button variant="secondary" className="bg-white text-blue-600 hover:bg-gray-100 font-medium px-8 py-3">
-                  Learn more about investing
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
 
