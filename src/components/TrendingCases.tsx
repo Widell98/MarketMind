@@ -72,45 +72,52 @@ const TrendingCases = () => {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
+        <div className="space-y-3">
           {trendingCases.map((stockCase, index) => (
             <div
               key={stockCase.id}
-              className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+              className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 cursor-pointer border border-transparent hover:border-orange-200 dark:hover:border-orange-800"
               onClick={() => navigate(`/stock-cases/${stockCase.id}`)}
             >
+              {/* Ranking Badge - Smaller and more elegant */}
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center text-white font-bold text-sm">
-                  #{index + 1}
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center text-white font-semibold text-xs shadow-sm">
+                  {index + 1}
                 </div>
               </div>
 
-              {stockCase.image_url && (
-                <div className="flex-shrink-0">
+              {/* Company Image - Larger and more prominent */}
+              <div className="flex-shrink-0">
+                {stockCase.image_url ? (
                   <img
                     src={stockCase.image_url}
                     alt={stockCase.company_name}
-                    className="w-12 h-12 rounded-lg object-cover"
+                    className="w-16 h-16 rounded-lg object-cover shadow-sm border border-gray-200 dark:border-gray-700"
                   />
-                </div>
-              )}
+                ) : (
+                  <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center border border-gray-200 dark:border-gray-700">
+                    <TrendingUp className="w-6 h-6 text-gray-400" />
+                  </div>
+                )}
+              </div>
               
+              {/* Content */}
               <div className="flex-1 min-w-0">
-                <h4 className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100 truncate text-sm">
                   {stockCase.company_name}
                 </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                <p className="text-xs text-gray-600 dark:text-gray-400 truncate mb-2">
                   {stockCase.title}
                 </p>
                 
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-2">
                   {stockCase.case_categories && (
                     <Badge 
-                      className="text-xs"
+                      className="text-xs px-2 py-0.5"
                       style={{ 
-                        backgroundColor: `${stockCase.case_categories.color}20`,
+                        backgroundColor: `${stockCase.case_categories.color}15`,
                         color: stockCase.case_categories.color,
-                        border: `1px solid ${stockCase.case_categories.color}40`
+                        border: `1px solid ${stockCase.case_categories.color}30`
                       }}
                     >
                       {stockCase.case_categories.name}
@@ -124,10 +131,11 @@ const TrendingCases = () => {
                 </div>
               </div>
               
+              {/* Performance */}
               {stockCase.performance_percentage !== null && (
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 text-right">
                   <span className={`text-sm font-semibold ${
-                    stockCase.performance_percentage >= 0 ? 'text-green-600' : 'text-red-600'
+                    stockCase.performance_percentage >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                   }`}>
                     {stockCase.performance_percentage > 0 ? '+' : ''}
                     {stockCase.performance_percentage.toFixed(1)}%
