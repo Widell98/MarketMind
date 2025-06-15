@@ -117,4 +117,155 @@
   .progress-value {
     @apply h-full rounded-full;
   }
+  
+  /* Desktop optimizations */
+  @screen xl {
+    .card-finance {
+      @apply p-6;
+    }
+  }
+  
+  /* Large desktop optimizations */
+  @screen 2xl {
+    .card-finance {
+      @apply p-8;
+    }
+  }
+  
+  /* Container utilities for better desktop layout */
+  .container-responsive {
+    @apply w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16;
+    max-width: 1400px;
+  }
+  
+  /* Grid improvements for larger screens */
+  .grid-responsive {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6 xl:gap-8;
+  }
+  
+  .grid-responsive-2 {
+    @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6 xl:gap-8;
+  }
+  
+  /* Better spacing for desktop */
+  .section-spacing {
+    @apply space-y-6 lg:space-y-8 xl:space-y-10 2xl:space-y-12;
+  }
+  
+  /* Typography scaling for larger screens */
+  .heading-responsive {
+    @apply text-2xl sm:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl;
+  }
+  
+  .subheading-responsive {
+    @apply text-lg sm:text-xl lg:text-2xl xl:text-3xl;
+  }
+  
+  /* Card hover effects enhanced for desktop */
+  .card-hover-desktop {
+    @apply transition-all duration-300 ease-in-out;
+  }
+  
+  @screen lg {
+    .card-hover-desktop {
+      @apply hover:scale-105 hover:shadow-2xl hover:-translate-y-2;
+    }
+  }
+  
+  /* Better button sizing for desktop */
+  .btn-responsive {
+    @apply px-4 py-2 lg:px-6 lg:py-3 xl:px-8 xl:py-4;
+  }
+  
+  /* Sidebar improvements for desktop */
+  .sidebar-desktop {
+    @apply hidden lg:block lg:w-64 xl:w-80 2xl:w-96;
+  }
+  
+  /* Content area adjustments */
+  .main-content-desktop {
+    @apply lg:ml-64 xl:ml-80 2xl:ml-96;
+  }
+  
+  /* Better form layouts for desktop */
+  .form-desktop {
+    @apply max-w-md lg:max-w-lg xl:max-w-xl 2xl:max-w-2xl;
+  }
+  
+  /* Navigation improvements */
+  .nav-desktop {
+    @apply hidden lg:flex lg:space-x-6 xl:space-x-8 2xl:space-x-10;
+  }
+  
+  /* Image scaling for larger screens */
+  .img-responsive {
+    @apply w-full h-auto max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl 2xl:max-w-2xl;
+  }
+  
+  /* Dashboard grid layouts */
+  .dashboard-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6 xl:gap-8;
+  }
+  
+  .dashboard-main-grid {
+    @apply grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8 xl:gap-10;
+  }
+  
+  /* Stock case specific layouts */
+  .stock-case-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6 xl:gap-8;
+  }
+  
+  /* Market data layouts */
+  .market-data-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3 lg:gap-4 xl:gap-6;
+  }
+  
+  /* Better modal sizing */
+  .modal-desktop {
+    @apply max-w-lg lg:max-w-2xl xl:max-w-4xl 2xl:max-w-6xl;
+  }
+  
+  /* Improved text readability on large screens */
+  .text-content-desktop {
+    @apply max-w-none lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto;
+  }
+}
+
+/* Custom breakpoints for ultra-wide screens */
+@media (min-width: 1920px) {
+  .container-ultra-wide {
+    max-width: 1800px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+}
+
+@media (min-width: 2560px) {
+  .container-ultra-wide {
+    max-width: 2200px;
+    padding: 0 3rem;
+  }
+}
+
+/* Enhanced scrollbar styling for desktop */
+@media (min-width: 1024px) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100 dark:bg-gray-800;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 dark:bg-gray-600;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400 dark:bg-gray-500;
+  }
 }
