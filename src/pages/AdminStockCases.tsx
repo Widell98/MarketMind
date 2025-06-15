@@ -250,7 +250,7 @@ const AdminStockCases = () => {
   const handleCategoryChange = (value: string) => {
     setFormData(prev => ({
       ...prev,
-      category_id: value,
+      category_id: value === "none" ? "" : value,
     }));
   };
 
@@ -554,12 +554,12 @@ const AdminStockCases = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="category">Kategori/Sektor</Label>
-                    <Select value={formData.category_id} onValueChange={handleCategoryChange}>
+                    <Select value={formData.category_id || "none"} onValueChange={handleCategoryChange}>
                       <SelectTrigger>
                         <SelectValue placeholder="Välj kategori..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Ingen kategori</SelectItem>
+                        <SelectItem value="none">Ingen kategori</SelectItem>
                         {categories.map((category) => (
                           <SelectItem key={category.id} value={category.id}>
                             <div className="flex items-center gap-2">
