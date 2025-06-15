@@ -1,6 +1,13 @@
 
 import React, { useState } from "react";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
@@ -69,17 +76,24 @@ const EditProfileDialog: React.FC<EditProfileDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>Redigera namn</DialogTitle>
+      <DialogContent className="bg-card max-w-md rounded-lg px-8 py-7 border shadow text-left">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-xl font-semibold text-finance-navy dark:text-gray-200">
+              Ändra namn
+            </DialogTitle>
           </DialogHeader>
+          <label htmlFor="displayName" className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+            Nytt visningsnamn
+          </label>
           <Input
+            id="displayName"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             placeholder="Nytt visningsnamn"
             maxLength={32}
             autoFocus
+            className="bg-background"
           />
           <DialogFooter className="mt-4 flex gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>

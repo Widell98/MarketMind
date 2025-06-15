@@ -123,7 +123,7 @@ const ProfilePage = () => {
                 onClick={() => setEditOpen(true)}
               >
                 <PenLine className="h-4 w-4 mr-2" />
-                Edit Profile
+                Ändra namn
               </Button>
               {canCreateCases && (
                 <Button 
