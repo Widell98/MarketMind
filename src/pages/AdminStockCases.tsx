@@ -61,6 +61,12 @@ type StockCaseWithActions = {
   };
 };
 
+type Category = {
+  id: string;
+  name: string;
+  color: string;
+};
+
 const AdminStockCases = () => {
   const { user } = useAuth();
   const { isAdmin, loading: roleLoading } = useUserRole();
@@ -71,6 +77,7 @@ const AdminStockCases = () => {
   // All useState hooks must be called before any conditional returns
   const [loading, setLoading] = useState(false);
   const [allCases, setAllCases] = useState<StockCaseWithActions[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingCase, setEditingCase] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -86,14 +93,35 @@ const AdminStockCases = () => {
     current_price: '',
     target_price: '',
     stop_loss: '',
+    category_id: '',
   });
 
   // Move useEffect here, before any conditional returns
   useEffect(() => {
     if (user?.id && !roleLoading) {
       fetchAllCases();
+      fetchCategories();
     }
   }, [user?.id, isAdmin, roleLoading]);
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('case_categories')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error: any) {
+      console.error('Error fetching categories:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte ladda kategorier",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchAllCases = async () => {
     try {
@@ -219,6 +247,13 @@ const AdminStockCases = () => {
     }));
   };
 
+  const handleCategoryChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      category_id: value,
+    }));
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -273,6 +308,7 @@ const AdminStockCases = () => {
       current_price: '',
       target_price: '',
       stop_loss: '',
+      category_id: '',
     });
     setImageFile(null);
     setImagePreview(null);
@@ -312,7 +348,7 @@ const AdminStockCases = () => {
         performance_percentage: null,
         closed_at: null,
         is_public: true,
-        category_id: null,
+        category_id: formData.category_id || null,
       };
 
       if (editingCase) {
@@ -356,6 +392,7 @@ const AdminStockCases = () => {
       current_price: stockCase.current_price?.toString() || '',
       target_price: stockCase.target_price?.toString() || '',
       stop_loss: stockCase.stop_loss?.toString() || '',
+      category_id: stockCase.category_id || '',
     });
     if (stockCase.image_url) {
       setImagePreview(stockCase.image_url);
@@ -437,6 +474,16 @@ const AdminStockCases = () => {
     );
   };
 
+  const getCategoryBadge = (category: { name: string; color: string } | undefined) => {
+    if (!category) return null;
+    
+    return (
+      <Badge style={{ backgroundColor: category.color + '20', color: category.color, borderColor: category.color }}>
+        {category.name}
+      </Badge>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
@@ -506,7 +553,30 @@ const AdminStockCases = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="sector">Sektor</Label>
+                    <Label htmlFor="category">Kategori/Sektor</Label>
+                    <Select value={formData.category_id} onValueChange={handleCategoryChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Välj kategori..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Ingen kategori</SelectItem>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full" 
+                                style={{ backgroundColor: category.color }}
+                              />
+                              {category.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="sector">Sektor (fritext)</Label>
                     <Input
                       id="sector"
                       name="sector"
@@ -690,6 +760,7 @@ const AdminStockCases = () => {
                     <TableRow>
                       <TableHead>Titel</TableHead>
                       <TableHead>Företag</TableHead>
+                      <TableHead>Kategori</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Skapare</TableHead>
                       <TableHead>Inköp/Mål</TableHead>
@@ -704,6 +775,9 @@ const AdminStockCases = () => {
                           {stockCase.title}
                         </TableCell>
                         <TableCell>{stockCase.company_name}</TableCell>
+                        <TableCell>
+                          {getCategoryBadge(stockCase.case_categories)}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {getStatusBadge(stockCase.status)}
