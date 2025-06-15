@@ -1,12 +1,15 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { NewsItem } from '../../mockData/newsData';
+import NewsModal from './NewsModal';
 
 interface NewsCardProps {
   news: NewsItem;
 }
 
 const NewsCard: React.FC<NewsCardProps> = ({ news }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   // Format the published time in a readable format
   const formatPublishedTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -33,26 +36,39 @@ const NewsCard: React.FC<NewsCardProps> = ({ news }) => {
     }
   };
 
+  const handleReadMoreClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsModalOpen(true);
+  };
+
   return (
-    <div className="card-finance mb-3 animate-fade-in">
-      <div className="flex justify-between items-start mb-1.5">
-        <span className={`badge-finance ${getCategoryBadgeClass(news.category)}`}>
-          {news.category.charAt(0).toUpperCase() + news.category.slice(1)}
-        </span>
-        <span className="text-xs text-gray-500 dark:text-gray-400">{formatPublishedTime(news.publishedAt)}</span>
+    <>
+      <div className="card-finance mb-3 animate-fade-in">
+        <div className="flex justify-between items-start mb-1.5">
+          <span className={`badge-finance ${getCategoryBadgeClass(news.category)}`}>
+            {news.category.charAt(0).toUpperCase() + news.category.slice(1)}
+          </span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">{formatPublishedTime(news.publishedAt)}</span>
+        </div>
+        <h3 className="font-medium text-sm mb-1.5 dark:text-white">{news.headline}</h3>
+        <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">{news.summary}</p>
+        <div className="flex justify-between items-center">
+          <span className="text-xs text-gray-500 dark:text-gray-400">{news.source}</span>
+          <button 
+            onClick={handleReadMoreClick}
+            className="text-xs text-finance-lightBlue font-medium hover:text-finance-blue dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer"
+          >
+            Läs mer →
+          </button>
+        </div>
       </div>
-      <h3 className="font-medium text-sm mb-1.5 dark:text-white">{news.headline}</h3>
-      <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">{news.summary}</p>
-      <div className="flex justify-between items-center">
-        <span className="text-xs text-gray-500 dark:text-gray-400">{news.source}</span>
-        <a 
-          href={news.url} 
-          className="text-xs text-finance-lightBlue font-medium hover:text-finance-blue dark:text-blue-400 dark:hover:text-blue-300"
-        >
-          Läs mer →
-        </a>
-      </div>
-    </div>
+      
+      <NewsModal 
+        news={news}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
+    </>
   );
 };
 
