@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './dialog';
-import { X } from 'lucide-react';
 import { Button } from './button';
 
 interface NewsItem {
@@ -59,9 +58,6 @@ const NewsModal: React.FC<NewsModalProps> = ({ news, isOpen, onClose }) => {
             <span className={`badge-finance ${getCategoryBadgeClass(news.category)} text-sm`}>
               {news.category.charAt(0).toUpperCase() + news.category.slice(1)}
             </span>
-            <Button variant="ghost" size="sm" onClick={onClose} className="h-6 w-6 p-0">
-              <X className="h-4 w-4" />
-            </Button>
           </div>
           <DialogTitle className="text-xl font-semibold text-left dark:text-white">
             {news.headline}
@@ -101,7 +97,7 @@ const NewsModal: React.FC<NewsModalProps> = ({ news, isOpen, onClose }) => {
           
           <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
             <a 
-              href={news.url} 
+              href={news.url && news.url !== '#' ? news.url : `https://www.google.com/search?q=${encodeURIComponent(news.headline + ' ' + news.source)}`}
               target="_blank" 
               rel="noopener noreferrer"
               className="inline-flex items-center text-finance-lightBlue font-medium hover:text-finance-blue dark:text-blue-400 dark:hover:text-blue-300"
