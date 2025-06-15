@@ -70,16 +70,16 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
     <Card className="h-full flex flex-col hover:shadow-lg transition-shadow duration-200 group">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <Badge variant="secondary" className={`${getStatusColor(stockCase.status || 'active')} text-white`}>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <Badge variant="secondary" className={`${getStatusColor(stockCase.status || 'active')} text-white text-xs`}>
                 {stockCase.status || 'active'}
               </Badge>
-              <Badge variant="outline">
+              <Badge variant="outline" className="text-xs">
                 {stockCase.case_categories?.name || stockCase.sector || 'General'}
               </Badge>
             </div>
-            <CardTitle className="text-lg leading-tight group-hover:text-primary transition-colors cursor-pointer"
+            <CardTitle className="text-base sm:text-lg leading-tight group-hover:text-primary transition-colors cursor-pointer line-clamp-2"
                       onClick={() => onViewDetails(stockCase.id)}>
               {stockCase.title}
             </CardTitle>
@@ -88,7 +88,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
           {(isAdmin || (user && onDelete)) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ml-2 flex-shrink-0">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -108,11 +108,11 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
         </div>
       </CardHeader>
       
-      <CardContent className="flex-1 flex flex-col">
+      <CardContent className="flex-1 flex flex-col space-y-3">
         {/* Stock Image - Responsive */}
         {stockCase.image_url && (
           <div 
-            className="mb-4 cursor-pointer"
+            className="cursor-pointer"
             onClick={() => onViewDetails(stockCase.id)}
           >
             <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group/image">
@@ -126,73 +126,116 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
           </div>
         )}
 
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-3 flex-1">
+        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 sm:line-clamp-3 flex-1">
           {stockCase.description}
         </p>
         
-        <div className="space-y-3">
+        <div className="space-y-3 mt-auto">
           {/* Performance and Target */}
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
               {performance >= 0 ? (
-                <TrendingUp className="w-4 h-4 text-green-500" />
+                <TrendingUp className="w-4 h-4 text-green-500 flex-shrink-0" />
               ) : (
-                <TrendingDown className="w-4 h-4 text-red-500" />
+                <TrendingDown className="w-4 h-4 text-red-500 flex-shrink-0" />
               )}
-              <span className={`font-semibold ${getPerformanceColor(performance)}`}>
+              <span className={`font-semibold text-sm ${getPerformanceColor(performance)}`}>
                 {performance > 0 ? '+' : ''}{performance.toFixed(1)}%
               </span>
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-xs sm:text-sm text-gray-500 truncate ml-2">
               Target: {stockCase.target_price ? `$${stockCase.target_price}` : 'N/A'}
             </div>
           </div>
 
           {/* Meta information */}
           <div className="flex justify-between items-center text-xs text-gray-500">
-            <div className="flex items-center gap-1">
-              <Calendar className="w-3 h-3" />
-              {formatDate(stockCase.created_at)}
+            <div className="flex items-center gap-1 min-w-0">
+              <Calendar className="w-3 h-3 flex-shrink-0" />
+              <span className="truncate">{formatDate(stockCase.created_at)}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <User className="w-3 h-3" />
-              {stockCase.profiles?.display_name || stockCase.profiles?.username || 'Expert'}
+            <div className="flex items-center gap-1 min-w-0 ml-2">
+              <User className="w-3 h-3 flex-shrink-0" />
+              <span className="truncate">{stockCase.profiles?.display_name || stockCase.profiles?.username || 'Expert'}</span>
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-2 pt-2 border-t">
+          {/* Action buttons - Responsive layout */}
+          <div className="pt-2 border-t">
+            {/* Primary action button - full width on mobile */}
             <Button
               size="sm"
               variant="outline"
               onClick={() => onViewDetails(stockCase.id)}
-              className="flex-1"
+              className="w-full mb-2 sm:hidden"
             >
-              <Eye className="w-4 h-4 mr-1" />
-              View
+              <Eye className="w-4 h-4 mr-2" />
+              View Details
             </Button>
             
-            <Button
-              size="sm"
-              variant={isLiked ? "default" : "outline"}
-              onClick={toggleLike}
-              className="flex items-center gap-1"
-            >
-              <ThumbsUp className="w-4 h-4" />
-              {likeCount}
-            </Button>
-            
-            <Button
-              size="sm"
-              variant={isFollowing ? "default" : "outline"}
-              onClick={toggleFollow}
-              className="flex items-center gap-1"
-            >
-              <Heart className="w-4 h-4" />
-              {followCount}
-            </Button>
+            {/* Desktop layout */}
+            <div className="hidden sm:flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onViewDetails(stockCase.id)}
+                className="flex-1"
+              >
+                <Eye className="w-4 h-4 mr-1" />
+                View
+              </Button>
+              
+              <Button
+                size="sm"
+                variant={isLiked ? "default" : "outline"}
+                onClick={toggleLike}
+                className="flex items-center gap-1 min-w-0"
+              >
+                <ThumbsUp className="w-4 h-4" />
+                <span className="hidden lg:inline">{likeCount}</span>
+                <span className="lg:hidden">{likeCount > 99 ? '99+' : likeCount}</span>
+              </Button>
+              
+              <Button
+                size="sm"
+                variant={isFollowing ? "default" : "outline"}
+                onClick={toggleFollow}
+                className="flex items-center gap-1 min-w-0"
+              >
+                <Heart className="w-4 h-4" />
+                <span className="hidden lg:inline">{followCount}</span>
+                <span className="lg:hidden">{followCount > 99 ? '99+' : followCount}</span>
+              </Button>
 
-            <ShareStockCase stockCaseId={stockCase.id} title={stockCase.title} />
+              <ShareStockCase stockCaseId={stockCase.id} title={stockCase.title} />
+            </div>
+
+            {/* Mobile layout - compact buttons */}
+            <div className="flex items-center gap-1 sm:hidden">
+              <Button
+                size="sm"
+                variant={isLiked ? "default" : "outline"}
+                onClick={toggleLike}
+                className="flex-1 flex items-center justify-center gap-1 px-2"
+              >
+                <ThumbsUp className="w-4 h-4" />
+                <span className="text-xs">{likeCount}</span>
+              </Button>
+              
+              <Button
+                size="sm"
+                variant={isFollowing ? "default" : "outline"}
+                onClick={toggleFollow}
+                className="flex-1 flex items-center justify-center gap-1 px-2"
+              >
+                <Heart className="w-4 h-4" />
+                <span className="text-xs">{followCount}</span>
+              </Button>
+
+              <div className="flex-1">
+                <ShareStockCase stockCaseId={stockCase.id} title={stockCase.title} />
+              </div>
+            </div>
           </div>
         </div>
       </CardContent>
