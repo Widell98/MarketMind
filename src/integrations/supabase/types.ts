@@ -81,6 +81,44 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_case_image_history: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          image_url: string
+          is_current: boolean
+          stock_case_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          image_url: string
+          is_current?: boolean
+          stock_case_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string
+          is_current?: boolean
+          stock_case_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_case_image_history_stock_case_id_fkey"
+            columns: ["stock_case_id"]
+            isOneToOne: false
+            referencedRelation: "stock_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_case_likes: {
         Row: {
           created_at: string

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
@@ -10,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, TrendingUp, Building, ZoomIn, User, Target, DollarSign, BarChart3, Calendar } from 'lucide-react';
 import ImageModal from '@/components/ImageModal';
 import ImageHistoryNavigation from '@/components/ImageHistoryNavigation';
+import ImageUploadDialog from '@/components/ImageUploadDialog';
 
 const StockCaseDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -17,7 +19,14 @@ const StockCaseDetail = () => {
   const { user } = useAuth();
   const { isAdmin } = useUserRole();
   const { stockCase, loading } = useStockCase(id!);
-  const { images, loading: historyLoading, currentImageIndex, setCurrentImageIndex, setCurrentImage } = useStockCaseImageHistory(id!);
+  const { 
+    images, 
+    loading: historyLoading, 
+    currentImageIndex, 
+    setCurrentImageIndex, 
+    setCurrentImage, 
+    addImageToHistory 
+  } = useStockCaseImageHistory(id!);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   if (loading) {
@@ -67,6 +76,15 @@ const StockCaseDetail = () => {
   // Check if user can edit (is admin or case owner)
   const canEdit = isAdmin || (user && stockCase.user_id === user.id);
 
+  const handleImageAdded = async (imageUrl: string, description?: string) => {
+    try {
+      // Add the image to history and set it as current
+      await addImageToHistory(imageUrl, description, true);
+    } catch (error) {
+      console.error('Error adding image to history:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -90,7 +108,7 @@ const StockCaseDetail = () => {
             </Badge>
           </div>
 
-          {/* Image */}
+          {/* Image with history controls */}
           {imageUrl && (
             <div className="space-y-4">
               <Card className="overflow-hidden group cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300" onClick={() => setIsImageModalOpen(true)}>
@@ -108,16 +126,41 @@ const StockCaseDetail = () => {
                 </div>
               </Card>
 
-              {/* Image History Navigation */}
-              {!historyLoading && (
-                <ImageHistoryNavigation
-                  images={images}
-                  currentIndex={currentImageIndex}
-                  onIndexChange={setCurrentImageIndex}
-                  onSetCurrent={setCurrentImage}
-                  canEdit={canEdit}
-                />
-              )}
+              {/* Image history controls and upload */}
+              <div className="space-y-4">
+                {/* Upload new image button */}
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    {displayImage?.description && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {displayImage.description}
+                      </p>
+                    )}
+                    {displayImage?.created_at && (
+                      <span className="text-xs text-gray-500 dark:text-gray-500">
+                        {formatDate(displayImage.created_at)}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <ImageUploadDialog
+                    stockCaseId={id!}
+                    onImageAdded={handleImageAdded}
+                    canEdit={canEdit}
+                  />
+                </div>
+
+                {/* Image History Navigation */}
+                {!historyLoading && images.length > 0 && (
+                  <ImageHistoryNavigation
+                    images={images}
+                    currentIndex={currentImageIndex}
+                    onIndexChange={setCurrentImageIndex}
+                    onSetCurrent={setCurrentImage}
+                    canEdit={canEdit}
+                  />
+                )}
+              </div>
             </div>
           )}
 
