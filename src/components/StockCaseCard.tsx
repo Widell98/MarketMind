@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Eye, Heart, ThumbsUp, TrendingUp, TrendingDown, Calendar, User, MoreHorizontal, Trash2 } from 'lucide-react';
-import { StockCase } from '@/integrations/supabase/types';
+import { StockCase } from '@/hooks/useStockCases';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
@@ -56,17 +56,27 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
     });
   };
 
+  // Calculate performance based on entry_price and current_price
+  const calculatePerformance = () => {
+    if (stockCase.entry_price && stockCase.current_price) {
+      return ((stockCase.current_price - stockCase.entry_price) / stockCase.entry_price) * 100;
+    }
+    return stockCase.performance_percentage || 0;
+  };
+
+  const performance = calculatePerformance();
+
   return (
     <Card className="h-full flex flex-col hover:shadow-lg transition-shadow duration-200 group">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <Badge variant="secondary" className={`${getStatusColor(stockCase.status)} text-white`}>
-                {stockCase.status}
+              <Badge variant="secondary" className={`${getStatusColor(stockCase.status || 'active')} text-white`}>
+                {stockCase.status || 'active'}
               </Badge>
               <Badge variant="outline">
-                {stockCase.category}
+                {stockCase.case_categories?.name || stockCase.sector || 'General'}
               </Badge>
             </div>
             <CardTitle className="text-lg leading-tight group-hover:text-primary transition-colors cursor-pointer"
@@ -107,13 +117,13 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
           {/* Performance and Target */}
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              {stockCase.performance >= 0 ? (
+              {performance >= 0 ? (
                 <TrendingUp className="w-4 h-4 text-green-500" />
               ) : (
                 <TrendingDown className="w-4 h-4 text-red-500" />
               )}
-              <span className={`font-semibold ${getPerformanceColor(stockCase.performance)}`}>
-                {stockCase.performance > 0 ? '+' : ''}{stockCase.performance.toFixed(1)}%
+              <span className={`font-semibold ${getPerformanceColor(performance)}`}>
+                {performance > 0 ? '+' : ''}{performance.toFixed(1)}%
               </span>
             </div>
             <div className="text-sm text-gray-500">
@@ -129,7 +139,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
             </div>
             <div className="flex items-center gap-1">
               <User className="w-3 h-3" />
-              {stockCase.author || 'Expert'}
+              {stockCase.profiles?.display_name || stockCase.profiles?.username || 'Expert'}
             </div>
           </div>
 

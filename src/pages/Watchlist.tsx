@@ -18,6 +18,14 @@ const Watchlist = () => {
     navigate(`/stock-cases/${id}`);
   };
 
+  // Helper function to calculate performance
+  const calculatePerformance = (stockCase: any) => {
+    if (stockCase.entry_price && stockCase.current_price) {
+      return ((stockCase.current_price - stockCase.entry_price) / stockCase.entry_price) * 100;
+    }
+    return stockCase.performance_percentage || 0;
+  };
+
   if (!user) {
     return (
       <Layout>
@@ -85,7 +93,7 @@ const Watchlist = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-900 dark:text-green-100 mb-1">
-                {followedCases.filter(c => c.performance > 0).length}
+                {followedCases.filter(c => calculatePerformance(c) > 0).length}
               </div>
               <p className="text-sm text-green-700 dark:text-green-300">Positive Performance</p>
             </CardContent>
@@ -100,7 +108,7 @@ const Watchlist = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-900 dark:text-orange-100 mb-1">
-                {followedCases.filter(c => c.performance < -5).length}
+                {followedCases.filter(c => calculatePerformance(c) < -5).length}
               </div>
               <p className="text-sm text-orange-700 dark:text-orange-300">Down {'>'}5%</p>
             </CardContent>

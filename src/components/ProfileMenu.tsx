@@ -18,13 +18,12 @@ import { useUserRole } from '@/hooks/useUserRole';
 import NotificationCenter from './NotificationCenter';
 
 const ProfileMenu = () => {
-  const { user, setUser } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { isAdmin } = useUserRole();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    setUser(null);
     navigate('/');
   };
 
