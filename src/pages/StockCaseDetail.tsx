@@ -124,14 +124,6 @@ const StockCaseDetail = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {stockCase.sector && (
-                  <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl border border-blue-200 dark:border-blue-800">
-                    <TrendingUp className="w-8 h-8 text-blue-600 mx-auto mb-3" />
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Sektor</h3>
-                    <p className="text-gray-700 dark:text-gray-300">{stockCase.sector}</p>
-                  </div>
-                )}
-                
                 {stockCase.entry_price && (
                   <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl border border-green-200 dark:border-green-800">
                     <DollarSign className="w-8 h-8 text-green-600 mx-auto mb-3" />
@@ -169,6 +161,14 @@ const StockCaseDetail = () => {
                   <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Skapad</h3>
                   <p className="text-gray-700 dark:text-gray-300">{formatDate(stockCase.created_at)}</p>
                 </div>
+
+                {stockCase.sector && (
+                  <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                    <TrendingUp className="w-8 h-8 text-blue-600 mx-auto mb-3" />
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Sektor</h3>
+                    <p className="text-gray-700 dark:text-gray-300">{stockCase.sector}</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
