@@ -84,6 +84,16 @@ const TrendingCases = () => {
                   #{index + 1}
                 </div>
               </div>
+
+              {stockCase.image_url && (
+                <div className="flex-shrink-0">
+                  <img
+                    src={stockCase.image_url}
+                    alt={stockCase.company_name}
+                    className="w-12 h-12 rounded-lg object-cover"
+                  />
+                </div>
+              )}
               
               <div className="flex-1 min-w-0">
                 <h4 className="font-medium text-gray-900 dark:text-gray-100 truncate">
