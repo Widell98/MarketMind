@@ -5,7 +5,7 @@ import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
 import { useStockCasesFilters } from '@/hooks/useStockCasesFilters';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, TrendingUp, Users, Activity, Trophy, Filter } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Users, Activity, Clock, Filter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import StockCaseCard from '@/components/StockCaseCard';
@@ -163,18 +163,18 @@ const StockCases = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800">
+          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900 border-orange-200 dark:border-orange-800">
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                <CardTitle className="text-lg text-purple-800 dark:text-purple-200">Top Rated</CardTitle>
+                <Clock className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                <CardTitle className="text-lg text-orange-800 dark:text-orange-200">Active Cases</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-900 dark:text-purple-100 mb-1">
-                {stockCases.filter(c => c.status === 'winner').length}
+              <div className="text-2xl font-bold text-orange-900 dark:text-orange-100 mb-1">
+                {stockCases.filter(c => c.status === 'active').length}
               </div>
-              <p className="text-sm text-purple-700 dark:text-purple-300">Winners</p>
+              <p className="text-sm text-orange-700 dark:text-orange-300">Currently Tracking</p>
             </CardContent>
           </Card>
         </div>
