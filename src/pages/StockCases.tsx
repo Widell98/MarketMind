@@ -12,6 +12,7 @@ import StockCaseCard from '@/components/StockCaseCard';
 import StockCaseListItem from '@/components/StockCaseListItem';
 import StockCasesFilters from '@/components/StockCasesFilters';
 import StockCaseSkeletonCard from '@/components/StockCaseSkeletonCard';
+import CommunityStats from '@/components/CommunityStats';
 
 const StockCases = () => {
   const [viewMode, setViewMode] = useState<'all' | 'trending' | 'followed'>('all');
@@ -159,53 +160,8 @@ const StockCases = () => {
           </Button>
         </div>
 
-        {/* Stats Section - Mobile Responsive */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
-                <CardTitle className="text-base sm:text-lg text-blue-800 dark:text-blue-200">Community</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl sm:text-2xl font-bold text-blue-900 dark:text-blue-100 mb-1">
-                1,234
-              </div>
-              <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300">Active Members</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200 dark:border-green-800">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
-                <CardTitle className="text-base sm:text-lg text-green-800 dark:text-green-200">Total Cases</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl sm:text-2xl font-bold text-green-900 dark:text-green-100 mb-1">
-                {allStockCases.length}
-              </div>
-              <p className="text-xs sm:text-sm text-green-700 dark:text-green-300">Stock Cases</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900 border-orange-200 dark:border-orange-800 sm:col-span-2 lg:col-span-1">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 dark:text-orange-400" />
-                <CardTitle className="text-base sm:text-lg text-orange-800 dark:text-orange-200">Active Cases</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl sm:text-2xl font-bold text-orange-900 dark:text-orange-100 mb-1">
-                {allStockCases.filter(c => c.status === 'active').length}
-              </div>
-              <p className="text-xs sm:text-sm text-orange-700 dark:text-orange-300">Currently Tracking</p>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Stats Section - Using CommunityStats component */}
+        <CommunityStats />
 
         {/* Filters */}
         <StockCasesFilters
