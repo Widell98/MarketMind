@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import AdminImageHistoryManager from '@/components/AdminImageHistoryManager';
 
 type StockCaseWithActions = {
   id: string;
@@ -742,6 +743,14 @@ const AdminStockCases = () => {
                   </Button>
                 </div>
               </form>
+
+              {/* Add image history manager for editing mode */}
+              {editingCase && (
+                <AdminImageHistoryManager
+                  stockCaseId={editingCase}
+                  canEdit={true}
+                />
+              )}
             </CardContent>
           </Card>
         )}

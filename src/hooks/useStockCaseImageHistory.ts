@@ -93,6 +93,23 @@ export const useStockCaseImageHistory = (stockCaseId: string) => {
     }
   };
 
+  const deleteImage = async (imageId: string) => {
+    try {
+      const { error } = await (supabase as any)
+        .from('stock_case_image_history')
+        .delete()
+        .eq('id', imageId);
+
+      if (error) throw error;
+
+      // Refresh the list
+      await fetchImageHistory();
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     if (stockCaseId) {
       fetchImageHistory();
@@ -106,6 +123,7 @@ export const useStockCaseImageHistory = (stockCaseId: string) => {
     setCurrentImageIndex,
     addImageToHistory,
     setCurrentImage,
+    deleteImage,
     refetch: fetchImageHistory
   };
 };
