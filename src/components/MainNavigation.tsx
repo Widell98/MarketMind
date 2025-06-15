@@ -3,7 +3,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger } from '@/components/ui/navigation-menu';
 import { Button } from '@/components/ui/button';
-import { BookOpen, TrendingUp, Target, BarChart3, Users, Heart } from 'lucide-react';
+import { BookOpen, TrendingUp, Heart } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -17,7 +17,7 @@ const MainNavigation = () => {
     <NavigationMenu className="hidden md:flex">
       <NavigationMenuList>
         <NavigationMenuItem>
-          <NavigationMenuTrigger>
+          <NavigationMenuTrigger className="h-10 px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50">
             <BookOpen className="w-4 h-4 mr-2" />
             Learning
           </NavigationMenuTrigger>
@@ -42,7 +42,7 @@ const MainNavigation = () => {
         </NavigationMenuItem>
 
         <NavigationMenuItem>
-          <NavigationMenuTrigger>
+          <NavigationMenuTrigger className="h-10 px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50">
             <TrendingUp className="w-4 h-4 mr-2" />
             Stock Cases
           </NavigationMenuTrigger>
@@ -84,17 +84,6 @@ const MainNavigation = () => {
             </div>
           </NavigationMenuContent>
         </NavigationMenuItem>
-
-        {user && (
-          <NavigationMenuItem>
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/watchlist" className={cn(isActive('/watchlist') && "bg-accent text-accent-foreground")}>
-                <Target className="w-4 h-4 mr-2" />
-                Watchlist
-              </Link>
-            </Button>
-          </NavigationMenuItem>
-        )}
       </NavigationMenuList>
     </NavigationMenu>
   );

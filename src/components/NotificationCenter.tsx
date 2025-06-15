@@ -81,26 +81,35 @@ const NotificationCenter = () => {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="relative">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="relative h-10 w-10 rounded-full hover:bg-accent focus:bg-accent transition-colors"
+        >
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
             <Badge 
               variant="destructive" 
-              className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+              className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs font-medium"
             >
               {unreadCount}
             </Badge>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
-        <Card className="border-0 shadow-none">
-          <CardHeader className="pb-3">
+      <PopoverContent className="w-80 p-0" align="end" sideOffset={8}>
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="pb-3 border-b">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Notifications</CardTitle>
+              <CardTitle className="text-lg font-semibold">Notifications</CardTitle>
               {unreadCount > 0 && (
-                <Button variant="ghost" size="sm" onClick={markAllAsRead}>
-                  <Check className="w-4 h-4 mr-1" />
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={markAllAsRead}
+                  className="h-8 px-2 text-xs hover:bg-accent"
+                >
+                  <Check className="w-3 h-3 mr-1" />
                   Mark all read
                 </Button>
               )}
@@ -108,43 +117,46 @@ const NotificationCenter = () => {
           </CardHeader>
           <CardContent className="p-0">
             {notifications.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-muted-foreground">
                 <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>No notifications yet</p>
+                <p className="text-sm">No notifications yet</p>
               </div>
             ) : (
               <div className="max-h-96 overflow-y-auto">
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`p-4 border-b last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
-                      !notification.read ? 'bg-blue-50 dark:bg-blue-950' : ''
+                    className={`p-4 border-b last:border-b-0 hover:bg-accent/50 transition-colors cursor-pointer ${
+                      !notification.read ? 'bg-blue-50/50 dark:bg-blue-950/30' : ''
                     }`}
                   >
                     <div className="flex items-start gap-3">
-                      <div className="mt-1">
+                      <div className="mt-1 flex-shrink-0">
                         {getNotificationIcon(notification.type)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-sm font-medium text-foreground truncate">
                             {notification.title}
                           </p>
                           {!notification.read && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => markAsRead(notification.id)}
-                              className="h-6 w-6 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                markAsRead(notification.id);
+                              }}
+                              className="h-6 w-6 p-0 hover:bg-accent rounded-full flex-shrink-0 ml-2"
                             >
                               <X className="w-3 h-3" />
                             </Button>
                           )}
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                        <p className="text-sm text-muted-foreground line-clamp-2 mb-1">
                           {notification.message}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                        <p className="text-xs text-muted-foreground">
                           {notification.timestamp}
                         </p>
                       </div>
