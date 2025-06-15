@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import FlashBriefs from '@/components/FlashBriefs';
@@ -9,9 +8,36 @@ import CommunityStats from '@/components/CommunityStats';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, Users, BookOpen, Target } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const navigate = useNavigate();
+
+  // Fetch real data for mobile stats
+  const { data: memberCount } = useQuery({
+    queryKey: ['community-members-mobile'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+      
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
+  const { data: totalCases } = useQuery({
+    queryKey: ['total-cases-mobile'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('stock_cases')
+        .select('*', { count: 'exact', head: true });
+      
+      if (error) throw error;
+      return count || 0;
+    },
+  });
 
   return (
     <Layout>
@@ -47,7 +73,23 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Mobile: Show Trending Cases First */}
+        {/* Mobile: Show compact stats first */}
+        <div className="md:hidden">
+          <div className="flex justify-center gap-8 text-sm text-gray-600 dark:text-gray-400 py-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <span className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-purple-500" />
+              <span className="font-medium">{totalCases || 0}</span>
+              <span className="hidden xs:inline">Cases</span>
+            </span>
+            <span className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-blue-500" />
+              <span className="font-medium">{memberCount || 0}</span>
+              <span className="hidden xs:inline">Members</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Mobile: Show Trending Cases */}
         <div className="md:hidden">
           <TrendingCases />
         </div>
@@ -55,22 +97,6 @@ const Index = () => {
         {/* Stats Section - Less prominent on mobile */}
         <div className="hidden md:block">
           <CommunityStats />
-        </div>
-        
-        {/* Mobile compact stats */}
-        <div className="md:hidden">
-          <div className="flex justify-center gap-6 text-sm text-gray-600 dark:text-gray-400 py-2">
-            <span className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-green-500" />
-              <span className="font-medium">156</span>
-              <span className="hidden xs:inline">Active Cases</span>
-            </span>
-            <span className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-blue-500" />
-              <span className="font-medium">2.5K</span>
-              <span className="hidden xs:inline">Members</span>
-            </span>
-          </div>
         </div>
 
         {/* Main Content Grid */}
