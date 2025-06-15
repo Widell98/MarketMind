@@ -3,7 +3,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger } from '@/components/ui/navigation-menu';
 import { Button } from '@/components/ui/button';
-import { BookOpen, TrendingUp, Target, BarChart3, Users } from 'lucide-react';
+import { BookOpen, TrendingUp, Target, BarChart3, Users, Heart } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -62,6 +62,25 @@ const MainNavigation = () => {
                   </p>
                 </Link>
               </NavigationMenuLink>
+              {user && (
+                <NavigationMenuLink asChild>
+                  <Link
+                    to="/watchlist"
+                    className={cn(
+                      "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+                      isActive('/watchlist') && "bg-accent text-accent-foreground"
+                    )}
+                  >
+                    <div className="text-sm font-medium leading-none flex items-center">
+                      <Heart className="w-4 h-4 mr-2" />
+                      Watchlist
+                    </div>
+                    <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                      Track your followed stock cases
+                    </p>
+                  </Link>
+                </NavigationMenuLink>
+              )}
             </div>
           </NavigationMenuContent>
         </NavigationMenuItem>
