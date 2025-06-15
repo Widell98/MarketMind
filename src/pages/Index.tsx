@@ -30,6 +30,7 @@ const Index = () => {
   const [userProgress, setUserProgress] = useState<UserProgress>(defaultUserProgress);
   const [recommendations, setRecommendations] = useState<string[]>([]);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("aktiecases");
 
   // Fetch user profile data only if authenticated
   useEffect(() => {
@@ -205,23 +206,6 @@ const Index = () => {
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-2">
             Market Mentor
           </h1>
-          
-          {/* User Stats */}
-          {user && (
-            <div className="flex flex-wrap justify-center items-center mt-3 gap-2">
-              {userProgress.streakDays > 0 && (
-                <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-                  🔥 {userProgress.streakDays} day streak
-                </Badge>
-              )}
-              <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                Level: {userLevel}
-              </Badge>
-              <Badge variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
-                {userProgress.points} pts
-              </Badge>
-            </div>
-          )}
         </div>
 
         {/* Community Section - moved above tabs for better hierarchy */}
@@ -272,9 +256,9 @@ const Index = () => {
           </Card>
         </div>
 
-        {/* Tabs Section - Added proper spacing from community section */}
+        {/* Tabs Section */}
         <div className="pt-6">
-          <Tabs defaultValue="aktiecases" className="w-full">
+          <Tabs defaultValue="aktiecases" value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="aktiecases" className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4" />
@@ -285,7 +269,22 @@ const Index = () => {
                 Lärodel
               </TabsTrigger>
             </TabsList>
-
+            {/* "level" och "pts" visas nu ENDAST när man är inne på Lärodel */}
+            {user && activeTab === "larodel" && (
+              <div className="flex flex-wrap justify-center items-center mt-3 gap-2">
+                <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                  Level: {userLevel}
+                </Badge>
+                <Badge variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+                  {userProgress.points} pts
+                </Badge>
+                {userProgress.streakDays > 0 && (
+                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                    🔥 {userProgress.streakDays} day streak
+                  </Badge>
+                )}
+              </div>
+            )}
             {/* Aktiecases Tab */}
             <TabsContent value="aktiecases" className="space-y-6 mt-6">
               {/* Stock Cases Section */}
