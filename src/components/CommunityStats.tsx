@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Users, TrendingUp, Activity } from 'lucide-react';
+import { Users, TrendingUp, BookOpen } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -25,6 +25,18 @@ const CommunityStats = () => {
         .from('stock_cases')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active');
+      
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
+  const { data: totalCases } = useQuery({
+    queryKey: ['total-cases-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('stock_cases')
+        .select('*', { count: 'exact', head: true });
       
       if (error) throw error;
       return count || 0;
@@ -69,11 +81,13 @@ const CommunityStats = () => {
         <CardContent className="pt-6">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
-              <Activity className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              <BookOpen className="w-6 h-6 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">78%</div>
-              <p className="text-purple-700 dark:text-purple-300">Success Rate</p>
+              <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">
+                {isLoading ? '...' : totalCases || 324}
+              </div>
+              <p className="text-purple-700 dark:text-purple-300">Cases Shared</p>
             </div>
           </div>
         </CardContent>
