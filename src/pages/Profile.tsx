@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -63,9 +64,14 @@ const ProfilePage = () => {
     }
   }, [user]);
 
-  // Hantera efter namnändring lokalt
+  // Handle name change locally and show success feedback
   const handleNameChange = (newName: string) => {
     setProfileData((old: any) => ({ ...old, display_name: newName }));
+    toast({
+      title: 'Name Updated',
+      description: `Your display name has been changed to "${newName}"`,
+      variant: 'default',
+    });
   };
 
   if (loading || profileLoading || roleLoading) {
@@ -123,7 +129,7 @@ const ProfilePage = () => {
                 onClick={() => setEditOpen(true)}
               >
                 <PenLine className="h-4 w-4 mr-2" />
-                Ändra namn
+                Change Name
               </Button>
               {canCreateCases && (
                 <Button 
@@ -132,7 +138,7 @@ const ProfilePage = () => {
                   size="sm"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Skapa aktiecase
+                  Create Stock Case
                 </Button>
               )}
             </CardContent>
