@@ -71,8 +71,8 @@ const StockCases = () => {
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6 lg:space-y-8">
-          {/* Header Section */}
-          <div className="space-y-3 sm:space-y-4">
+          {/* Header Section - More compact */}
+          <div className="space-y-2 sm:space-y-3">
             <Button
               variant="ghost"
               onClick={() => navigate('/')}
@@ -83,12 +83,12 @@ const StockCases = () => {
               <span className="sm:hidden">Back</span>
             </Button>
             
-            <div className="text-center space-y-2">
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100">
+            <div className="text-center space-y-1">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">
                 Stock Cases
               </h1>
-              <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto px-4">
-                Explore our hand-picked stock cases and learn about interesting investment opportunities
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 max-w-2xl mx-auto px-4">
+                Explore hand-picked stock cases and investment opportunities
               </p>
             </div>
           </div>
@@ -106,9 +106,9 @@ const StockCases = () => {
 
   return (
     <Layout>
-      <div className="space-y-4 sm:space-y-6 lg:space-y-8">
-        {/* Header Section */}
-        <div className="space-y-3 sm:space-y-4">
+      <div className="space-y-3 sm:space-y-4 lg:space-y-6">
+        {/* Header Section - More compact */}
+        <div className="space-y-2 sm:space-y-3">
           <Button
             variant="ghost"
             onClick={() => navigate('/')}
@@ -119,49 +119,65 @@ const StockCases = () => {
             <span className="sm:hidden">Back</span>
           </Button>
           
-          <div className="text-center space-y-2">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100">
+          <div className="text-center space-y-1">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">
               Stock Cases
             </h1>
-            <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto px-4">
-              Explore our hand-picked stock cases and learn about interesting investment opportunities
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 max-w-2xl mx-auto px-4">
+              Explore hand-picked stock cases and investment opportunities
             </p>
           </div>
         </div>
 
-        {/* Filter Section - Mobile Optimized */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 px-2 sm:px-0">
+        {/* Filter Section - More compact on mobile */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 sm:px-0">
           <Button
             variant={viewMode === 'all' ? 'default' : 'outline'}
             onClick={() => setViewMode('all')}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm sm:text-base px-3 sm:px-4"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2"
           >
-            <Filter className="w-4 h-4" />
+            <Filter className="w-3 h-3 sm:w-4 sm:h-4" />
             <span className="hidden sm:inline">All Cases</span>
             <span className="sm:hidden">All</span>
           </Button>
           <Button
             variant={viewMode === 'trending' ? 'default' : 'outline'}
             onClick={() => setViewMode('trending')}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm sm:text-base px-3 sm:px-4"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2"
           >
-            <TrendingUp className="w-4 h-4" />
+            <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4" />
             <span className="hidden sm:inline">Trending</span>
             <span className="sm:hidden">Trending</span>
           </Button>
           <Button
             variant={viewMode === 'followed' ? 'default' : 'outline'}
             onClick={() => setViewMode('followed')}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm sm:text-base px-3 sm:px-4"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2"
           >
-            <Heart className="w-4 h-4" />
+            <Heart className="w-3 h-3 sm:w-4 sm:h-4" />
             <span className="hidden sm:inline">Followed</span>
             <span className="sm:hidden">Followed</span>
           </Button>
         </div>
 
-        {/* Stats Section - Using CommunityStats component */}
-        <CommunityStats />
+        {/* Stats Section - Compact version */}
+        <div className="hidden sm:block">
+          <CommunityStats />
+        </div>
+        
+        {/* Mobile stats - Very compact */}
+        <div className="sm:hidden px-2">
+          <div className="flex justify-center gap-4 text-xs text-gray-600 dark:text-gray-400">
+            <span className="flex items-center gap-1">
+              <TrendingUp className="w-3 h-3" />
+              156 Active
+            </span>
+            <span className="flex items-center gap-1">
+              <Users className="w-3 h-3" />
+              2.5K Members
+            </span>
+          </div>
+        </div>
 
         {/* Filters */}
         <StockCasesFilters
@@ -192,16 +208,16 @@ const StockCases = () => {
         </div>
 
         {/* Stock Cases Section */}
-        <div className="space-y-4 sm:space-y-6">
+        <div className="space-y-3 sm:space-y-4">
           <div className="flex items-center gap-2 px-2 sm:px-0">
             {viewMode === 'trending' ? (
-              <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-orange-500" />
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
             ) : viewMode === 'followed' ? (
-              <Heart className="w-5 h-5 sm:w-6 sm:h-6 text-red-500" />
+              <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
             ) : (
-              <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
+              <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
             )}
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
               {viewMode === 'trending' ? (
                 <>
                   <span className="hidden sm:inline">Trending Stock Cases</span>
@@ -222,14 +238,14 @@ const StockCases = () => {
           </div>
 
           {filteredAndSortedCases.length === 0 ? (
-            <Card className="text-center py-8 sm:py-12 bg-gray-50 dark:bg-gray-800 mx-2 sm:mx-0">
-              <CardContent className="pt-6">
+            <Card className="text-center py-6 sm:py-8 bg-gray-50 dark:bg-gray-800 mx-2 sm:mx-0">
+              <CardContent className="pt-4">
                 {viewMode === 'followed' ? (
-                  <Heart className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+                  <Heart className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
                 ) : (
-                  <Activity className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+                  <Activity className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
                 )}
-                <CardTitle className="text-lg sm:text-xl mb-2 text-gray-900 dark:text-gray-100">
+                <CardTitle className="text-base sm:text-lg mb-2 text-gray-900 dark:text-gray-100">
                   {searchTerm || selectedCategory !== 'all' || performanceFilter !== 'all'
                     ? 'No cases match your filters'
                     : viewMode === 'trending' 
@@ -239,7 +255,7 @@ const StockCases = () => {
                     : 'No stock cases yet'
                   }
                 </CardTitle>
-                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4 px-4">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 px-4">
                   {searchTerm || selectedCategory !== 'all' || performanceFilter !== 'all'
                     ? 'Try adjusting your search criteria or filters.'
                     : viewMode === 'trending' 
@@ -257,7 +273,8 @@ const StockCases = () => {
                       setPerformanceFilter('all');
                     }}
                     variant="outline"
-                    className="text-sm sm:text-base"
+                    size="sm"
+                    className="text-xs sm:text-sm"
                   >
                     Clear Filters
                   </Button>
