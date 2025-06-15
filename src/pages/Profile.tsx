@@ -19,7 +19,6 @@ const ProfilePage = () => {
   const navigate = useNavigate();
   const [profileData, setProfileData] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
-  const [canCreateCases, setCanCreateCases] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
@@ -41,10 +40,6 @@ const ProfilePage = () => {
           if (error) throw error;
           
           setProfileData(data);
-          
-          // Check if user can create cases (for now, all logged in users can)
-          // You can modify this logic to check for specific permissions
-          setCanCreateCases(true);
         } catch (error) {
           console.error('Error fetching profile:', error);
           toast({
@@ -130,7 +125,7 @@ const ProfilePage = () => {
                 <PenLine className="h-4 w-4 mr-2" />
                 Change Name
               </Button>
-              {canCreateCases && (
+              {isAdmin && (
                 <Button 
                   onClick={() => navigate('/admin/stock-cases')}
                   className="w-full bg-blue-600 hover:bg-blue-700"

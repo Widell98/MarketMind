@@ -216,17 +216,8 @@ export const useStockCases = (showFollowedOnly: boolean = false) => {
 
       const isAdmin = !!adminCheck && !adminError;
 
-      // First check if the user owns this stock case or is admin
-      const { data: stockCase, error: fetchError } = await supabase
-        .from('stock_cases')
-        .select('user_id')
-        .eq('id', stockCaseId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      if (stockCase.user_id !== user.id && !isAdmin) {
-        throw new Error('Du kan bara ta bort dina egna aktiecases');
+      if (!isAdmin) {
+        throw new Error('Du måste vara admin för att ta bort aktiecases');
       }
 
       // Delete the stock case
@@ -242,9 +233,7 @@ export const useStockCases = (showFollowedOnly: boolean = false) => {
       
       toast({
         title: "Framgång",
-        description: isAdmin && stockCase.user_id !== user.id 
-          ? "Akticase borttaget som admin" 
-          : "Akticase borttaget",
+        description: "Akticase borttaget som admin",
       });
 
     } catch (error: any) {
@@ -273,6 +262,20 @@ export const useStockCases = (showFollowedOnly: boolean = false) => {
       
       if (!user) {
         throw new Error('Du måste vara inloggad för att skapa aktiecase');
+      }
+
+      // Check if user is admin
+      const { data: adminCheck, error: adminError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .single();
+
+      const isAdmin = !!adminCheck && !adminError;
+
+      if (!isAdmin) {
+        throw new Error('Du måste vara admin för att skapa aktiecases');
       }
 
       // Ensure user profile exists
