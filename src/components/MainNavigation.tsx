@@ -3,7 +3,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger } from '@/components/ui/navigation-menu';
 import { Button } from '@/components/ui/button';
-import { BookOpen, TrendingUp, Heart, Brain } from 'lucide-react';
+import { BookOpen, TrendingUp, Heart, Brain, Briefcase } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -70,8 +70,8 @@ const MainNavigation = () => {
                   isActive('/portfolio-advisor') && "bg-accent text-accent-foreground"
                 )}
               >
-                <Brain className="w-4 h-4 mr-2" />
-                AI Portfolio
+                <Briefcase className="w-4 h-4 mr-2" />
+                Portfolio
               </Link>
             </NavigationMenuLink>
           </NavigationMenuItem>
