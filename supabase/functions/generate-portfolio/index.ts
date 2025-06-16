@@ -8,6 +8,137 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Local portfolio generation logic
+const generateLocalPortfolio = (riskProfile: any) => {
+  // Determine base allocation based on risk tolerance
+  let baseAllocation: any;
+  let expectedReturn: number;
+  let riskScore: number;
+
+  switch (riskProfile.risk_tolerance) {
+    case 'conservative':
+      baseAllocation = { stocks: 30, bonds: 50, real_estate: 10, cash: 10 };
+      expectedReturn = 4.5;
+      riskScore = 3;
+      break;
+    case 'aggressive':
+      baseAllocation = { stocks: 80, bonds: 10, real_estate: 5, cash: 5 };
+      expectedReturn = 9.2;
+      riskScore = 8;
+      break;
+    default: // moderate
+      baseAllocation = { stocks: 60, bonds: 25, real_estate: 10, cash: 5 };
+      expectedReturn = 6.8;
+      riskScore = 5;
+      break;
+  }
+
+  // Adjust for age (younger = more aggressive)
+  if (riskProfile.age && riskProfile.age < 35) {
+    baseAllocation.stocks += 10;
+    baseAllocation.bonds -= 5;
+    baseAllocation.cash -= 5;
+    expectedReturn += 0.8;
+    riskScore += 1;
+  } else if (riskProfile.age && riskProfile.age > 50) {
+    baseAllocation.stocks -= 10;
+    baseAllocation.bonds += 8;
+    baseAllocation.cash += 2;
+    expectedReturn -= 0.6;
+    riskScore -= 1;
+  }
+
+  // Adjust for investment horizon
+  if (riskProfile.investment_horizon === 'short') {
+    baseAllocation.stocks -= 15;
+    baseAllocation.bonds += 10;
+    baseAllocation.cash += 5;
+    expectedReturn -= 1.2;
+    riskScore -= 2;
+  } else if (riskProfile.investment_horizon === 'long') {
+    baseAllocation.stocks += 10;
+    baseAllocation.bonds -= 8;
+    baseAllocation.real_estate += 3;
+    baseAllocation.cash -= 5;
+    expectedReturn += 1.0;
+    riskScore += 1;
+  }
+
+  // Ensure allocations are within bounds and sum to 100
+  baseAllocation.stocks = Math.max(20, Math.min(85, baseAllocation.stocks));
+  baseAllocation.bonds = Math.max(5, Math.min(60, baseAllocation.bonds));
+  baseAllocation.real_estate = Math.max(0, Math.min(20, baseAllocation.real_estate));
+  baseAllocation.cash = Math.max(2, Math.min(20, baseAllocation.cash));
+
+  // Normalize to 100%
+  const total = Object.values(baseAllocation).reduce((sum: number, val: any) => sum + val, 0);
+  Object.keys(baseAllocation).forEach(key => {
+    baseAllocation[key] = Math.round((baseAllocation[key] / total) * 100);
+  });
+
+  // Generate stock recommendations
+  const availableStocks: any = {
+    Technology: [
+      { symbol: 'AAPL', name: 'Apple Inc.' },
+      { symbol: 'MSFT', name: 'Microsoft Corporation' },
+      { symbol: 'GOOGL', name: 'Alphabet Inc.' }
+    ],
+    Healthcare: [
+      { symbol: 'JNJ', name: 'Johnson & Johnson' },
+      { symbol: 'PFE', name: 'Pfizer Inc.' },
+      { symbol: 'UNH', name: 'UnitedHealth Group' }
+    ],
+    Financial: [
+      { symbol: 'JPM', name: 'JPMorgan Chase & Co.' },
+      { symbol: 'BAC', name: 'Bank of America Corp.' }
+    ],
+    Consumer: [
+      { symbol: 'AMZN', name: 'Amazon.com Inc.' },
+      { symbol: 'TSLA', name: 'Tesla Inc.' }
+    ]
+  };
+
+  const recommendedStocks: any[] = [];
+  const sectorInterests = riskProfile.sector_interests || [];
+  
+  // Add sector-based recommendations
+  if (sectorInterests.length > 0) {
+    sectorInterests.forEach((sector: string) => {
+      const stocks = availableStocks[sector];
+      if (stocks && stocks.length > 0) {
+        const stock = stocks[0];
+        recommendedStocks.push({
+          symbol: stock.symbol,
+          name: stock.name,
+          sector: sector,
+          allocation: Math.round((baseAllocation.stocks / sectorInterests.length) * 0.6)
+        });
+      }
+    });
+  }
+
+  // Add diversified ETFs
+  const remainingAllocation = baseAllocation.stocks - recommendedStocks.reduce((sum, stock) => sum + stock.allocation, 0);
+  if (remainingAllocation > 0) {
+    recommendedStocks.push({
+      symbol: 'VTI',
+      name: 'Vanguard Total Stock Market ETF',
+      sector: 'ETF',
+      allocation: remainingAllocation
+    });
+  }
+
+  const reasoning = `Based on your ${riskProfile.risk_tolerance} risk profile, I've created a portfolio with ${baseAllocation.stocks}% stocks, ${baseAllocation.bonds}% bonds, ${baseAllocation.real_estate}% real estate, and ${baseAllocation.cash}% cash. This allocation considers your age (${riskProfile.age}), investment horizon (${riskProfile.investment_horizon}), and monthly investment capacity (${riskProfile.monthly_investment_amount} SEK). Expected annual return: ${expectedReturn.toFixed(1)}% with risk score ${riskScore}/10.`;
+
+  return {
+    asset_allocation: baseAllocation,
+    recommended_stocks: recommendedStocks,
+    expected_return: expectedReturn,
+    risk_score: riskScore,
+    reasoning: reasoning
+  };
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -72,64 +203,9 @@ serve(async (req) => {
 
     console.log('Found risk profile:', riskProfile);
 
-    // Generate portfolio using OpenAI
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
-    }
-
-    const prompt = `You are a professional Swedish financial advisor. Based on this user profile, create a personalized investment portfolio:
-
-Age: ${riskProfile.age}
-Annual Income: ${riskProfile.annual_income} SEK
-Investment Horizon: ${riskProfile.investment_horizon}
-Investment Goal: ${riskProfile.investment_goal}
-Risk Tolerance: ${riskProfile.risk_tolerance}
-Experience: ${riskProfile.investment_experience}
-Monthly Investment: ${riskProfile.monthly_investment_amount} SEK
-Current Portfolio Value: ${riskProfile.current_portfolio_value} SEK
-Sector Interests: ${riskProfile.sector_interests?.join(', ') || 'None specified'}
-
-Return a JSON object with:
-1. asset_allocation: Object with percentages for different asset classes (stocks, bonds, real_estate, cash, etc.) - must sum to 100
-2. recommended_stocks: Array of 5-10 specific Swedish/Nordic stock recommendations with ticker symbols
-3. expected_return: Annual expected return percentage
-4. risk_score: Risk score from 1-10
-5. reasoning: Detailed explanation of the strategy
-
-Focus on Swedish and Nordic markets. Consider the user's preferences and create a balanced, suitable portfolio.`;
-
-    console.log('Calling OpenAI API...');
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'You are a professional financial advisor specializing in Swedish markets.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.7,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
-    }
-
-    const aiResponse = await response.json();
-    console.log('OpenAI response received');
-    
-    let portfolioData;
-    try {
-      portfolioData = JSON.parse(aiResponse.choices[0].message.content);
-    } catch (parseError) {
-      console.error('Failed to parse OpenAI response:', aiResponse.choices[0].message.content);
-      throw new Error('Invalid portfolio data received from AI');
-    }
+    // Generate portfolio using local algorithm instead of OpenAI
+    console.log('Generating portfolio using local algorithm...');
+    const portfolioData = generateLocalPortfolio(riskProfile);
 
     // First, deactivate any existing active portfolios for this user
     const { error: deactivateError } = await supabaseClient
@@ -174,7 +250,7 @@ Focus on Swedish and Nordic markets. Consider the user's preferences and create 
         recommendation_type: 'general_advice',
         title: 'Welcome to Your New Portfolio',
         description: portfolioData.reasoning,
-        ai_reasoning: 'Initial portfolio generation based on risk assessment',
+        ai_reasoning: 'Initial portfolio generation based on risk assessment using local algorithm',
         priority: 'high'
       });
 
