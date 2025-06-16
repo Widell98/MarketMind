@@ -25,23 +25,39 @@ serve(async (req) => {
     );
 
     const { risk_profile_id } = await req.json();
+    console.log('Received request for risk profile ID:', risk_profile_id);
 
     // Get user ID from auth
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    if (authError || !user) {
-      throw new Error('Unauthorized');
+    if (authError) {
+      console.error('Auth error:', authError);
+      throw new Error(`Authentication failed: ${authError.message}`);
     }
+    if (!user) {
+      console.error('No user found in auth context');
+      throw new Error('User not authenticated');
+    }
+
+    console.log('Authenticated user:', user.id);
 
     // Fetch risk profile
     const { data: riskProfile, error: profileError } = await supabaseClient
       .from('user_risk_profiles')
       .select('*')
+      .eq('id', risk_profile_id)
       .eq('user_id', user.id)
       .single();
 
-    if (profileError || !riskProfile) {
+    if (profileError) {
+      console.error('Profile fetch error:', profileError);
+      throw new Error(`Failed to fetch risk profile: ${profileError.message}`);
+    }
+    if (!riskProfile) {
+      console.error('No risk profile found for ID:', risk_profile_id);
       throw new Error('Risk profile not found');
     }
+
+    console.log('Found risk profile:', riskProfile);
 
     // Generate portfolio using OpenAI
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -70,6 +86,7 @@ Return a JSON object with:
 
 Focus on Swedish and Nordic markets. Consider the user's preferences and create a balanced, suitable portfolio.`;
 
+    console.log('Calling OpenAI API...');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -86,8 +103,31 @@ Focus on Swedish and Nordic markets. Consider the user's preferences and create 
       }),
     });
 
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+    }
+
     const aiResponse = await response.json();
-    const portfolioData = JSON.parse(aiResponse.choices[0].message.content);
+    console.log('OpenAI response received');
+    
+    let portfolioData;
+    try {
+      portfolioData = JSON.parse(aiResponse.choices[0].message.content);
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI response:', aiResponse.choices[0].message.content);
+      throw new Error('Invalid portfolio data received from AI');
+    }
+
+    // First, deactivate any existing active portfolios for this user
+    const { error: deactivateError } = await supabaseClient
+      .from('user_portfolios')
+      .update({ is_active: false })
+      .eq('user_id', user.id)
+      .eq('is_active', true);
+
+    if (deactivateError) {
+      console.error('Error deactivating existing portfolios:', deactivateError);
+    }
 
     // Save portfolio to database
     const { data: portfolio, error: portfolioError } = await supabaseClient
@@ -106,11 +146,14 @@ Focus on Swedish and Nordic markets. Consider the user's preferences and create 
       .single();
 
     if (portfolioError) {
+      console.error('Portfolio save error:', portfolioError);
       throw portfolioError;
     }
 
+    console.log('Portfolio saved successfully:', portfolio.id);
+
     // Create initial recommendation
-    await supabaseClient
+    const { error: recommendationError } = await supabaseClient
       .from('portfolio_recommendations')
       .insert({
         user_id: user.id,
@@ -121,6 +164,11 @@ Focus on Swedish and Nordic markets. Consider the user's preferences and create 
         ai_reasoning: 'Initial portfolio generation based on risk assessment',
         priority: 'high'
       });
+
+    if (recommendationError) {
+      console.error('Recommendation save error:', recommendationError);
+      // Don't fail the entire operation for this
+    }
 
     return new Response(JSON.stringify({ success: true, portfolio }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,6 +16,9 @@ const PortfolioAdvisor = () => {
   const { riskProfile, loading: profileLoading, refetch: refetchRiskProfile } = useRiskProfile();
   const { activePortfolio, recommendations, loading: portfolioLoading, generatePortfolio } = usePortfolio();
   const [showAssessment, setShowAssessment] = useState(false);
+  
+  // Use ref to track if we've already attempted to generate portfolio for this risk profile
+  const portfolioGeneratedForProfile = useRef<string | null>(null);
 
   if (!user) {
     return (
@@ -43,6 +46,7 @@ const PortfolioAdvisor = () => {
         const updatedProfile = await refetchRiskProfile();
         if (updatedProfile?.id) {
           console.log('Generating portfolio for updated risk profile:', updatedProfile.id);
+          portfolioGeneratedForProfile.current = updatedProfile.id;
           await generatePortfolio(updatedProfile.id);
           setShowAssessment(false);
         } else {
@@ -52,13 +56,19 @@ const PortfolioAdvisor = () => {
     }
   };
 
-  // Auto-generate portfolio when risk profile becomes available
+  // Only auto-generate portfolio if we haven't already done so for this risk profile
   useEffect(() => {
-    if (riskProfile?.id && !activePortfolio && !portfolioLoading) {
+    if (
+      riskProfile?.id && 
+      !activePortfolio && 
+      !portfolioLoading && 
+      portfolioGeneratedForProfile.current !== riskProfile.id
+    ) {
       console.log('Auto-generating portfolio for newly available risk profile:', riskProfile.id);
+      portfolioGeneratedForProfile.current = riskProfile.id;
       generatePortfolio(riskProfile.id);
     }
-  }, [riskProfile, activePortfolio, portfolioLoading, generatePortfolio]);
+  }, [riskProfile?.id, activePortfolio, portfolioLoading, generatePortfolio]);
 
   if (profileLoading || portfolioLoading) {
     return (
@@ -104,6 +114,7 @@ const PortfolioAdvisor = () => {
               <Button 
                 onClick={() => {
                   console.log('Manual portfolio generation clicked for risk profile:', riskProfile.id);
+                  portfolioGeneratedForProfile.current = riskProfile.id;
                   generatePortfolio(riskProfile.id);
                 }}
                 className="w-full"
