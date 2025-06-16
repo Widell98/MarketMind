@@ -126,8 +126,25 @@ export const usePortfolio = () => {
       console.log('Starting portfolio generation for risk profile:', riskProfileId);
       setLoading(true);
       
+      // Get the current session to ensure we have a valid token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        console.error('No valid session found:', sessionError);
+        toast({
+          title: "Error",
+          description: "Please sign in again to generate portfolio",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Calling edge function with session token...');
       const response = await supabase.functions.invoke('generate-portfolio', {
-        body: { risk_profile_id: riskProfileId }
+        body: { risk_profile_id: riskProfileId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
       console.log('Portfolio generation response:', response);

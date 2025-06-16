@@ -22,6 +22,7 @@ const BreadcrumbNavigation = () => {
     'auth': 'Authentication',
     'profile': 'Profile',
     'admin': 'Admin',
+    'portfolio-advisor': 'Portfolio Advisor',
   };
 
   if (pathnames.length === 0) return null;
@@ -42,7 +43,7 @@ const BreadcrumbNavigation = () => {
           const displayName = breadcrumbNameMap[name] || name.charAt(0).toUpperCase() + name.slice(1);
 
           return (
-            <React.Fragment key={name}>
+            <div key={name}>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
                 {isLast ? (
@@ -53,7 +54,7 @@ const BreadcrumbNavigation = () => {
                   </BreadcrumbLink>
                 )}
               </BreadcrumbItem>
-            </React.Fragment>
+            </div>
           );
         })}
       </BreadcrumbList>
