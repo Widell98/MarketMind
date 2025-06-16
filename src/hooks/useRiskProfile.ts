@@ -33,16 +33,30 @@ export const useRiskProfile = () => {
   }, [user]);
 
   const fetchRiskProfile = async () => {
+    if (!user) {
+      setLoading(false);
+      return null;
+    }
+
     try {
       console.log('Fetching risk profile for user:', user?.id);
+      setLoading(true);
+      
       const { data, error } = await supabase
         .from('user_risk_profiles')
         .select('*')
-        .eq('user_id', user?.id)
-        .single();
+        .eq('user_id', user.id)
+        .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no data exists
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error fetching risk profile:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch risk profile",
+          variant: "destructive",
+        });
+        setRiskProfile(null);
+        return null;
       } else if (data) {
         console.log('Fetched risk profile:', data);
         // Cast the database data to our interface type with proper type conversion
@@ -57,12 +71,16 @@ export const useRiskProfile = () => {
           investment_experience: data.investment_experience as RiskProfile['investment_experience']
         };
         setRiskProfile(typedData);
+        return typedData;
       } else {
         console.log('No risk profile found');
         setRiskProfile(null);
+        return null;
       }
     } catch (error) {
       console.error('Error fetching risk profile:', error);
+      setRiskProfile(null);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -107,13 +125,15 @@ export const useRiskProfile = () => {
           investment_experience: data.investment_experience as RiskProfile['investment_experience']
         };
         setRiskProfile(typedData);
+        
+        toast({
+          title: "Success",
+          description: "Risk profile saved successfully",
+        });
+        return typedData; // Return the typed data instead of just data
       }
       
-      toast({
-        title: "Success",
-        description: "Risk profile saved successfully",
-      });
-      return data;
+      return false;
     } catch (error) {
       console.error('Error saving risk profile:', error);
       toast({
