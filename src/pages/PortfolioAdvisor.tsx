@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,17 +39,26 @@ const PortfolioAdvisor = () => {
       // Refetch the risk profile to get the latest data
       await refetchRiskProfile();
       
-      // Small delay to ensure the data is updated
-      setTimeout(async () => {
-        const { riskProfile: updatedProfile } = await refetchRiskProfile();
-        if (updatedProfile?.id) {
-          console.log('Generating portfolio for updated risk profile:', updatedProfile.id);
-          await generatePortfolio(updatedProfile.id);
+      // Small delay to ensure the data is updated, then check the current riskProfile state
+      setTimeout(() => {
+        if (riskProfile?.id) {
+          console.log('Generating portfolio for risk profile:', riskProfile.id);
+          generatePortfolio(riskProfile.id);
           setShowAssessment(false);
+        } else {
+          console.log('Risk profile not yet available, will rely on useEffect');
         }
-      }, 500);
+      }, 1000);
     }
   };
+
+  // Auto-generate portfolio when risk profile becomes available
+  useEffect(() => {
+    if (riskProfile?.id && !activePortfolio && !portfolioLoading) {
+      console.log('Auto-generating portfolio for newly available risk profile:', riskProfile.id);
+      generatePortfolio(riskProfile.id);
+    }
+  }, [riskProfile, activePortfolio, portfolioLoading, generatePortfolio]);
 
   if (profileLoading || portfolioLoading) {
     return (
