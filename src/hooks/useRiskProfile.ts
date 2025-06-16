@@ -42,8 +42,17 @@ export const useRiskProfile = () => {
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching risk profile:', error);
-      } else {
-        setRiskProfile(data);
+      } else if (data) {
+        // Cast the database data to our interface type
+        const typedData: RiskProfile = {
+          ...data,
+          sector_interests: Array.isArray(data.sector_interests) ? data.sector_interests : [],
+          investment_horizon: data.investment_horizon as RiskProfile['investment_horizon'],
+          investment_goal: data.investment_goal as RiskProfile['investment_goal'],
+          risk_tolerance: data.risk_tolerance as RiskProfile['risk_tolerance'],
+          investment_experience: data.investment_experience as RiskProfile['investment_experience']
+        };
+        setRiskProfile(typedData);
       }
     } catch (error) {
       console.error('Error fetching risk profile:', error);
@@ -77,7 +86,18 @@ export const useRiskProfile = () => {
         return false;
       }
 
-      setRiskProfile(data);
+      if (data) {
+        const typedData: RiskProfile = {
+          ...data,
+          sector_interests: Array.isArray(data.sector_interests) ? data.sector_interests : [],
+          investment_horizon: data.investment_horizon as RiskProfile['investment_horizon'],
+          investment_goal: data.investment_goal as RiskProfile['investment_goal'],
+          risk_tolerance: data.risk_tolerance as RiskProfile['risk_tolerance'],
+          investment_experience: data.investment_experience as RiskProfile['investment_experience']
+        };
+        setRiskProfile(typedData);
+      }
+      
       toast({
         title: "Success",
         description: "Risk profile saved successfully",

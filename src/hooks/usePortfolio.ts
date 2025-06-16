@@ -59,9 +59,18 @@ export const usePortfolio = () => {
 
       if (error) {
         console.error('Error fetching portfolios:', error);
-      } else {
-        setPortfolios(data || []);
-        const active = data?.find(p => p.is_active);
+      } else if (data) {
+        // Cast the database data to our interface type
+        const typedPortfolios: Portfolio[] = data.map(item => ({
+          ...item,
+          asset_allocation: typeof item.asset_allocation === 'object' && item.asset_allocation !== null 
+            ? item.asset_allocation as Record<string, number>
+            : {},
+          recommended_stocks: Array.isArray(item.recommended_stocks) ? item.recommended_stocks : []
+        }));
+        
+        setPortfolios(typedPortfolios);
+        const active = typedPortfolios.find(p => p.is_active);
         setActivePortfolio(active || null);
       }
     } catch (error) {
