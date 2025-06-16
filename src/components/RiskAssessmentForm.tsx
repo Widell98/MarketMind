@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -78,10 +77,10 @@ const RiskAssessmentForm: React.FC<RiskAssessmentFormProps> = ({ onComplete }) =
       current_portfolio_value: formData.current_portfolio_value ? parseFloat(formData.current_portfolio_value) : null
     };
 
-    const success = await saveRiskProfile(profileData);
-    if (success) {
-      // The risk profile ID will be available after saving
-      onComplete('generated');
+    const result = await saveRiskProfile(profileData);
+    if (result) {
+      // Trigger portfolio generation with a signal that the profile was just created
+      onComplete('profile-created');
     }
   };
 

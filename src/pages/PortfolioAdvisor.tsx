@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,10 +31,19 @@ const PortfolioAdvisor = () => {
     );
   }
 
-  const handleAssessmentComplete = async (riskProfileId: string) => {
-    if (riskProfile?.id) {
+  const handleAssessmentComplete = async (signal: string) => {
+    console.log('Assessment completed with signal:', signal);
+    
+    if (signal === 'profile-created' && riskProfile?.id) {
+      console.log('Generating portfolio for risk profile:', riskProfile.id);
       await generatePortfolio(riskProfile.id);
       setShowAssessment(false);
+    } else {
+      // Refetch risk profile to get the latest data, then generate portfolio
+      setTimeout(async () => {
+        // Small delay to ensure the risk profile is saved and available
+        window.location.reload(); // Simple approach to refresh and get the new data
+      }, 1000);
     }
   };
 
@@ -83,8 +91,9 @@ const PortfolioAdvisor = () => {
               <Button 
                 onClick={() => generatePortfolio(riskProfile.id)}
                 className="w-full"
+                disabled={portfolioLoading}
               >
-                Generate My Portfolio
+                {portfolioLoading ? 'Generating...' : 'Generate My Portfolio'}
               </Button>
             </CardContent>
           </Card>
