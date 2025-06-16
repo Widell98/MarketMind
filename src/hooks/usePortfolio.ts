@@ -51,6 +51,7 @@ export const usePortfolio = () => {
 
   const fetchPortfolios = async () => {
     try {
+      console.log('Fetching portfolios for user:', user?.id);
       const { data, error } = await supabase
         .from('user_portfolios')
         .select('*')
@@ -59,7 +60,13 @@ export const usePortfolio = () => {
 
       if (error) {
         console.error('Error fetching portfolios:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch portfolios",
+          variant: "destructive",
+        });
       } else if (data) {
+        console.log('Fetched portfolios:', data);
         // Cast the database data to our interface type
         const typedPortfolios: Portfolio[] = data.map(item => ({
           ...item,
@@ -71,10 +78,16 @@ export const usePortfolio = () => {
         
         setPortfolios(typedPortfolios);
         const active = typedPortfolios.find(p => p.is_active);
+        console.log('Active portfolio:', active);
         setActivePortfolio(active || null);
       }
     } catch (error) {
       console.error('Error fetching portfolios:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch portfolios",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -100,31 +113,52 @@ export const usePortfolio = () => {
   };
 
   const generatePortfolio = async (riskProfileId: string) => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to generate a portfolio",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
+      console.log('Starting portfolio generation for risk profile:', riskProfileId);
       setLoading(true);
+      
       const response = await supabase.functions.invoke('generate-portfolio', {
         body: { risk_profile_id: riskProfileId }
       });
+
+      console.log('Portfolio generation response:', response);
 
       if (response.error) {
         console.error('Error generating portfolio:', response.error);
         toast({
           title: "Error",
-          description: "Failed to generate portfolio",
+          description: response.error.message || "Failed to generate portfolio",
           variant: "destructive",
         });
         return;
       }
 
-      await fetchPortfolios();
-      await fetchRecommendations();
-      
-      toast({
-        title: "Success",
-        description: "Portfolio generated successfully",
-      });
+      if (response.data?.success) {
+        console.log('Portfolio generated successfully, refetching data...');
+        await fetchPortfolios();
+        await fetchRecommendations();
+        
+        toast({
+          title: "Success",
+          description: "Portfolio generated successfully",
+        });
+      } else {
+        console.error('Portfolio generation failed:', response.data);
+        toast({
+          title: "Error",
+          description: "Failed to generate portfolio",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error('Error generating portfolio:', error);
       toast({

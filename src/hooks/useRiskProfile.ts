@@ -34,6 +34,7 @@ export const useRiskProfile = () => {
 
   const fetchRiskProfile = async () => {
     try {
+      console.log('Fetching risk profile for user:', user?.id);
       const { data, error } = await supabase
         .from('user_risk_profiles')
         .select('*')
@@ -43,6 +44,7 @@ export const useRiskProfile = () => {
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching risk profile:', error);
       } else if (data) {
+        console.log('Fetched risk profile:', data);
         // Cast the database data to our interface type with proper type conversion
         const typedData: RiskProfile = {
           ...data,
@@ -55,6 +57,9 @@ export const useRiskProfile = () => {
           investment_experience: data.investment_experience as RiskProfile['investment_experience']
         };
         setRiskProfile(typedData);
+      } else {
+        console.log('No risk profile found');
+        setRiskProfile(null);
       }
     } catch (error) {
       console.error('Error fetching risk profile:', error);
@@ -64,9 +69,10 @@ export const useRiskProfile = () => {
   };
 
   const saveRiskProfile = async (profileData: Omit<RiskProfile, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
-    if (!user) return;
+    if (!user) return false;
 
     try {
+      console.log('Saving risk profile:', profileData);
       setLoading(true);
       const { data, error } = await supabase
         .from('user_risk_profiles')
@@ -89,6 +95,7 @@ export const useRiskProfile = () => {
       }
 
       if (data) {
+        console.log('Risk profile saved successfully:', data);
         const typedData: RiskProfile = {
           ...data,
           sector_interests: Array.isArray(data.sector_interests) 
@@ -106,7 +113,7 @@ export const useRiskProfile = () => {
         title: "Success",
         description: "Risk profile saved successfully",
       });
-      return true;
+      return data;
     } catch (error) {
       console.error('Error saving risk profile:', error);
       toast({

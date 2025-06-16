@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const PortfolioAdvisor = () => {
   const { user } = useAuth();
-  const { riskProfile, loading: profileLoading } = useRiskProfile();
+  const { riskProfile, loading: profileLoading, refetch: refetchRiskProfile } = useRiskProfile();
   const { activePortfolio, recommendations, loading: portfolioLoading, generatePortfolio } = usePortfolio();
   const [showAssessment, setShowAssessment] = useState(false);
 
@@ -34,16 +35,20 @@ const PortfolioAdvisor = () => {
   const handleAssessmentComplete = async (signal: string) => {
     console.log('Assessment completed with signal:', signal);
     
-    if (signal === 'profile-created' && riskProfile?.id) {
-      console.log('Generating portfolio for risk profile:', riskProfile.id);
-      await generatePortfolio(riskProfile.id);
-      setShowAssessment(false);
-    } else {
-      // Refetch risk profile to get the latest data, then generate portfolio
+    if (signal === 'profile-created') {
+      console.log('Refetching risk profile after creation...');
+      // Refetch the risk profile to get the latest data
+      await refetchRiskProfile();
+      
+      // Small delay to ensure the data is updated
       setTimeout(async () => {
-        // Small delay to ensure the risk profile is saved and available
-        window.location.reload(); // Simple approach to refresh and get the new data
-      }, 1000);
+        const { riskProfile: updatedProfile } = await refetchRiskProfile();
+        if (updatedProfile?.id) {
+          console.log('Generating portfolio for updated risk profile:', updatedProfile.id);
+          await generatePortfolio(updatedProfile.id);
+          setShowAssessment(false);
+        }
+      }, 500);
     }
   };
 
@@ -89,7 +94,10 @@ const PortfolioAdvisor = () => {
             </CardHeader>
             <CardContent>
               <Button 
-                onClick={() => generatePortfolio(riskProfile.id)}
+                onClick={() => {
+                  console.log('Manual portfolio generation clicked for risk profile:', riskProfile.id);
+                  generatePortfolio(riskProfile.id);
+                }}
                 className="w-full"
                 disabled={portfolioLoading}
               >
