@@ -43,10 +43,12 @@ export const useRiskProfile = () => {
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching risk profile:', error);
       } else if (data) {
-        // Cast the database data to our interface type
+        // Cast the database data to our interface type with proper type conversion
         const typedData: RiskProfile = {
           ...data,
-          sector_interests: Array.isArray(data.sector_interests) ? data.sector_interests : [],
+          sector_interests: Array.isArray(data.sector_interests) 
+            ? data.sector_interests.map(item => String(item)) 
+            : [],
           investment_horizon: data.investment_horizon as RiskProfile['investment_horizon'],
           investment_goal: data.investment_goal as RiskProfile['investment_goal'],
           risk_tolerance: data.risk_tolerance as RiskProfile['risk_tolerance'],
@@ -89,7 +91,9 @@ export const useRiskProfile = () => {
       if (data) {
         const typedData: RiskProfile = {
           ...data,
-          sector_interests: Array.isArray(data.sector_interests) ? data.sector_interests : [],
+          sector_interests: Array.isArray(data.sector_interests) 
+            ? data.sector_interests.map(item => String(item)) 
+            : [],
           investment_horizon: data.investment_horizon as RiskProfile['investment_horizon'],
           investment_goal: data.investment_goal as RiskProfile['investment_goal'],
           risk_tolerance: data.risk_tolerance as RiskProfile['risk_tolerance'],
