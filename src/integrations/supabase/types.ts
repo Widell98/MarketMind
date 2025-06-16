@@ -30,6 +30,94 @@ export type Database = {
         }
         Relationships: []
       }
+      portfolio_chat_history: {
+        Row: {
+          context_data: Json | null
+          created_at: string
+          id: string
+          message: string
+          message_type: string
+          portfolio_id: string | null
+          user_id: string
+        }
+        Insert: {
+          context_data?: Json | null
+          created_at?: string
+          id?: string
+          message: string
+          message_type: string
+          portfolio_id?: string | null
+          user_id: string
+        }
+        Update: {
+          context_data?: Json | null
+          created_at?: string
+          id?: string
+          message?: string
+          message_type?: string
+          portfolio_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_chat_history_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "user_portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portfolio_recommendations: {
+        Row: {
+          ai_reasoning: string | null
+          created_at: string
+          description: string
+          id: string
+          is_implemented: boolean | null
+          portfolio_id: string
+          priority: string | null
+          recommendation_type: string
+          title: string
+          user_id: string
+          valid_until: string | null
+        }
+        Insert: {
+          ai_reasoning?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          is_implemented?: boolean | null
+          portfolio_id: string
+          priority?: string | null
+          recommendation_type: string
+          title: string
+          user_id: string
+          valid_until?: string | null
+        }
+        Update: {
+          ai_reasoning?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          is_implemented?: boolean | null
+          portfolio_id?: string
+          priority?: string | null
+          recommendation_type?: string
+          title?: string
+          user_id?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_recommendations_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "user_portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -249,6 +337,110 @@ export type Database = {
           follower_id?: string
           following_id?: string
           id?: string
+        }
+        Relationships: []
+      }
+      user_portfolios: {
+        Row: {
+          asset_allocation: Json
+          created_at: string
+          expected_return: number | null
+          id: string
+          is_active: boolean | null
+          last_rebalanced_at: string | null
+          portfolio_name: string
+          recommended_stocks: Json | null
+          risk_profile_id: string
+          risk_score: number | null
+          total_value: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asset_allocation: Json
+          created_at?: string
+          expected_return?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_rebalanced_at?: string | null
+          portfolio_name?: string
+          recommended_stocks?: Json | null
+          risk_profile_id: string
+          risk_score?: number | null
+          total_value?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          asset_allocation?: Json
+          created_at?: string
+          expected_return?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_rebalanced_at?: string | null
+          portfolio_name?: string
+          recommended_stocks?: Json | null
+          risk_profile_id?: string
+          risk_score?: number | null
+          total_value?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_portfolios_risk_profile_id_fkey"
+            columns: ["risk_profile_id"]
+            isOneToOne: false
+            referencedRelation: "user_risk_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_risk_profiles: {
+        Row: {
+          age: number | null
+          annual_income: number | null
+          created_at: string
+          current_portfolio_value: number | null
+          id: string
+          investment_experience: string | null
+          investment_goal: string | null
+          investment_horizon: string | null
+          monthly_investment_amount: number | null
+          risk_tolerance: string | null
+          sector_interests: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          age?: number | null
+          annual_income?: number | null
+          created_at?: string
+          current_portfolio_value?: number | null
+          id?: string
+          investment_experience?: string | null
+          investment_goal?: string | null
+          investment_horizon?: string | null
+          monthly_investment_amount?: number | null
+          risk_tolerance?: string | null
+          sector_interests?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          age?: number | null
+          annual_income?: number | null
+          created_at?: string
+          current_portfolio_value?: number | null
+          id?: string
+          investment_experience?: string | null
+          investment_goal?: string | null
+          investment_horizon?: string | null
+          monthly_investment_amount?: number | null
+          risk_tolerance?: string | null
+          sector_interests?: Json | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
