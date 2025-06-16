@@ -23,6 +23,9 @@ serve(async (req) => {
 
     console.log('Authorization header found:', authHeader ? 'Yes' : 'No');
 
+    // Extract the JWT token from the Authorization header
+    const jwt = authHeader.replace('Bearer ', '');
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -30,24 +33,25 @@ serve(async (req) => {
         global: {
           headers: { Authorization: authHeader },
         },
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
       }
     );
 
-    const { risk_profile_id } = await req.json();
-    console.log('Received request for risk profile ID:', risk_profile_id);
-
-    // Get user ID from auth
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    if (authError) {
-      console.error('Auth error:', authError);
-      throw new Error(`Authentication failed: ${authError.message}`);
-    }
-    if (!user) {
-      console.error('No user found in auth context');
-      throw new Error('User not authenticated');
+    // Set the session using the JWT token
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(jwt);
+    
+    if (userError || !user) {
+      console.error('Failed to get user from token:', userError);
+      throw new Error(`Authentication failed: ${userError?.message || 'Invalid token'}`);
     }
 
     console.log('Authenticated user:', user.id);
+
+    const { risk_profile_id } = await req.json();
+    console.log('Received request for risk profile ID:', risk_profile_id);
 
     // Fetch risk profile
     const { data: riskProfile, error: profileError } = await supabaseClient
