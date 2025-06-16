@@ -42,11 +42,14 @@ export const useRiskProfile = () => {
       console.log('Fetching risk profile for user:', user?.id);
       setLoading(true);
       
+      // Get the most recent risk profile for the user
       const { data, error } = await supabase
         .from('user_risk_profiles')
         .select('*')
         .eq('user_id', user.id)
-        .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no data exists
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching risk profile:', error);
