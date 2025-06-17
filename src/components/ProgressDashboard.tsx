@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +6,16 @@ import { Trophy, Target, Calendar, TrendingUp, Star, Flame } from 'lucide-react'
 import { useProgressTracking } from '@/hooks/useProgressTracking';
 
 const ProgressDashboard = () => {
-  const { progress, loading } = useProgressTracking();
+  const { progress, loading, refetch } = useProgressTracking();
+
+  // Auto-refresh progress data every 5 seconds to keep it up to date
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetch();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [refetch]);
 
   if (loading) {
     return (
