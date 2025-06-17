@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Heart, TrendingUp, TrendingDown, Calendar, User, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Eye, Heart, Bookmark, TrendingUp, TrendingDown, Calendar, User, MoreHorizontal, Trash2 } from 'lucide-react';
 import { StockCase } from '@/hooks/useStockCases';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -30,6 +30,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
 }) => {
   const { user } = useAuth();
   const { isAdmin } = useUserRole();
+  const { likeCount, isLiked, toggleLike } = useStockCaseLikes(stockCase.id);
   const { followCount, isFollowing, toggleFollow } = useStockCaseFollows(stockCase.id);
 
   const getStatusColor = (status: string) => {
@@ -184,15 +185,28 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
                 View
               </Button>
               
+              {/* Follow Button - Controls Watchlist */}
               <Button
                 size="sm"
                 variant={isFollowing ? "default" : "outline"}
                 onClick={toggleFollow}
                 className="flex items-center gap-1 min-w-0"
               >
-                <Heart className="w-4 h-4" />
+                <Bookmark className="w-4 h-4" />
                 <span className="hidden lg:inline">{followCount}</span>
                 <span className="lg:hidden">{followCount > 99 ? '99+' : followCount}</span>
+              </Button>
+
+              {/* Like Button - For appreciation */}
+              <Button
+                size="sm"
+                variant={isLiked ? "default" : "outline"}
+                onClick={toggleLike}
+                className="flex items-center gap-1 min-w-0"
+              >
+                <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+                <span className="hidden lg:inline">{likeCount}</span>
+                <span className="lg:hidden">{likeCount > 99 ? '99+' : likeCount}</span>
               </Button>
 
               <ShareStockCase stockCaseId={stockCase.id} title={stockCase.title} />
@@ -200,14 +214,26 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
 
             {/* Mobile layout - compact buttons */}
             <div className="flex items-center gap-1 sm:hidden">
+              {/* Follow Button - Mobile */}
               <Button
                 size="sm"
                 variant={isFollowing ? "default" : "outline"}
                 onClick={toggleFollow}
                 className="flex-1 flex items-center justify-center gap-1 px-2"
               >
-                <Heart className="w-4 h-4" />
+                <Bookmark className="w-4 h-4" />
                 <span className="text-xs">{followCount}</span>
+              </Button>
+
+              {/* Like Button - Mobile */}
+              <Button
+                size="sm"
+                variant={isLiked ? "default" : "outline"}
+                onClick={toggleLike}
+                className="flex-1 flex items-center justify-center gap-1 px-2"
+              >
+                <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+                <span className="text-xs">{likeCount}</span>
               </Button>
 
               <div className="flex-1">
