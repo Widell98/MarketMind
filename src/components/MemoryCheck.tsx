@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExternalLink, BookOpen, Award, ChevronRight, UserPlus, Zap, Target, TrendingUp, ToggleLeft, ToggleRight } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
 import { useProgressTracking } from '@/hooks/useProgressTracking';
+import { useCompletedQuestions } from '@/hooks/useCompletedQuestions';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import DynamicMemoryCheck from './DynamicMemoryCheck';
@@ -30,6 +31,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
 }) => {
   const { user } = useAuth();
   const { updateProgress } = useProgressTracking();
+  const { completedQuestions, markQuestionCompleted } = useCompletedQuestions();
   const [isDynamicMode, setIsDynamicMode] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -103,7 +105,17 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
     : quizQuestions.filter(q => q.difficulty === difficulty);
   
   // Use day-specific questions if available, otherwise fall back to difficulty-filtered
-  const allAvailableQuestions = filteredQuestions.length > 0 ? filteredQuestions : matchingDayQuestions;
+  let allAvailableQuestions = filteredQuestions.length > 0 ? filteredQuestions : matchingDayQuestions;
+  
+  // Filter out completed questions for logged-in users
+  if (user && completedQuestions.length > 0) {
+    allAvailableQuestions = allAvailableQuestions.filter(q => !completedQuestions.includes(q.id));
+  }
+  
+  // If all questions are completed, reset and show all questions again
+  if (allAvailableQuestions.length === 0) {
+    allAvailableQuestions = filteredQuestions.length > 0 ? filteredQuestions : quizQuestions.filter(q => q.difficulty === difficulty);
+  }
   
   // Apply adaptive question selection if enabled
   const questions = adaptiveDifficulty 
@@ -112,22 +124,36 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
     
   const currentQuestion = questions[currentQuestionIndex];
   
-  // Database-based progress update for logged-in users
-  const updateUserProgressDB = async (isCorrect: boolean) => {
-    if (!user || !currentQuestion) return;
-
-    try {
-      // Update quiz progress
-      await updateProgress(isCorrect ? 100 : 0, isCorrect);
-
-      // Add completed quiz
-      await supabase
-        .from('user_completed_quizzes')
-        .upsert({
-          user_id: user.id,
-          quiz_id: currentQuestion.id
-        });
-
+  if (!currentQuestion) {
+    return (
+      <div className="card-finance p-5 text-center animate-fade-in dark:bg-gray-800 dark:border-gray-700">
+        <h3 className="text-lg font-medium mb-2 dark:text-white">No Questions Available</h3>
+        <p className="text-sm mb-4 dark:text-gray-300">
+          You've completed all available questions for your difficulty level. Great job!
+        </p>
+        <Button onClick={onComplete} className="bg-finance-lightBlue text-white">
+          Continue Learning
+        </Button>
+      </div>
+    );
+  }
+  
+  const handleOptionSelect = async (optionIndex: number) => {
+    if (isAnswered) return;
+    
+    setSelectedOption(optionIndex);
+    setIsAnswered(true);
+    
+    const isCorrect = optionIndex === currentQuestion.correctAnswer;
+    if (isCorrect) {
+      setCorrectAnswers(correctAnswers + 1);
+    }
+    
+    // Update progress based on user login status
+    if (user) {
+      await updateProgress(isCorrect);
+      await markQuestionCompleted(currentQuestion.id);
+      
       // Update category progress
       if (isCorrect) {
         const { data: categoryData } = await supabase
@@ -197,14 +223,14 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
           }
         }
       }
-
-    } catch (error) {
-      console.error('Error updating user progress:', error);
+    } else {
+      updateUserProgressLocal(isCorrect);
     }
   };
-
-  // LocalStorage-based progress update for non-logged users
+  
+  // LocalStorage-based progress update for non-logged users (keep existing code)
   const updateUserProgressLocal = (isCorrect: boolean) => {
+    // ... keep existing code (localStorage progress update logic)
     const newProgress = { ...userProgress };
     
     const today = new Date().toISOString().split('T')[0];
@@ -273,29 +299,6 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
     
     localStorage.setItem('marketMentor_progress', JSON.stringify(newProgress));
     setUserProgress(newProgress);
-  };
-  
-  if (!currentQuestion) {
-    return null;
-  }
-  
-  const handleOptionSelect = (optionIndex: number) => {
-    if (isAnswered) return;
-    
-    setSelectedOption(optionIndex);
-    setIsAnswered(true);
-    
-    const isCorrect = optionIndex === currentQuestion.correctAnswer;
-    if (isCorrect) {
-      setCorrectAnswers(correctAnswers + 1);
-    }
-    
-    // Update progress based on user login status
-    if (user) {
-      updateUserProgressDB(isCorrect);
-    } else {
-      updateUserProgressLocal(isCorrect);
-    }
   };
   
   const handleNextQuestion = () => {
@@ -467,7 +470,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
         {isAnswered && (
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
             <div className={`text-sm ${selectedOption === currentQuestion.correctAnswer ? 'text-finance-green dark:text-green-400' : 'text-finance-red dark:text-red-400'} mb-3`}>
-              {selectedOption === currentQuestion.correctAnswer ? 'Korrekt! 🎯' : 'Fel svar 🧐'}
+              {selectedOption === currentQuestion.correctAnswer ? 'Correct! 🎯' : 'Incorrect 🧐'}
             </div>
             <p className="text-xs text-finance-gray mb-4 dark:text-gray-400">{currentQuestion.explanation}</p>
             
@@ -508,31 +511,31 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center text-finance-navy dark:text-gray-200">
               <UserPlus className="w-5 h-5 mr-2 text-blue-500" />
-              Skapa konto för full upplevelse
+              Create Account for Full Experience
             </AlertDialogTitle>
             <AlertDialogDescription className="text-left space-y-3">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Bra jobbat! Du svarade rätt på <span className="font-semibold text-finance-navy dark:text-gray-200">{correctAnswers} av {questions.length}</span> frågor.
+                Great job! You answered <span className="font-semibold text-finance-navy dark:text-gray-200">{correctAnswers} out of {questions.length}</span> questions correctly.
               </p>
               
               <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
-                <h4 className="font-medium text-blue-900 dark:text-blue-300 mb-2">Med ett konto får du:</h4>
+                <h4 className="font-medium text-blue-900 dark:text-blue-300 mb-2">With an account you get:</h4>
                 <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-400">
                   <li className="flex items-center">
                     <Target className="w-4 h-4 mr-2" />
-                    Personaliserade frågor baserat på din nivå
+                    Personalized questions based on your level
                   </li>
                   <li className="flex items-center">
                     <TrendingUp className="w-4 h-4 mr-2" />
-                    Spåra din progress och statistik
+                    Track your progress and statistics
                   </li>
                   <li className="flex items-center">
                     <Zap className="w-4 h-4 mr-2" />
-                    Dagliga streaks och belöningar
+                    Daily streaks and rewards
                   </li>
                   <li className="flex items-center">
                     <Award className="w-4 h-4 mr-2" />
-                    Tjäna märken och nivåer
+                    Earn badges and levels
                   </li>
                 </ul>
               </div>
@@ -544,14 +547,14 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
               setShowRegistrationPrompt(false);
               onComplete();
             }}>
-              Fortsätt utan konto
+              Continue without account
             </AlertDialogCancel>
             <AlertDialogAction asChild>
               <Link 
                 to="/auth" 
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
               >
-                Skapa konto gratis
+                Create free account
               </Link>
             </AlertDialogAction>
           </AlertDialogFooter>
