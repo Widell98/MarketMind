@@ -11,13 +11,23 @@ export const useStockCaseFollows = (stockCaseId: string) => {
   const { user } = useAuth();
 
   const fetchFollowStatus = async () => {
-    // If no user, not following
+    // If no user, definitely not following
     if (!user) {
+      console.log('No user logged in, setting isFollowing to false');
+      setIsFollowing(false);
+      return;
+    }
+
+    // If no stockCaseId, can't determine follow status
+    if (!stockCaseId || stockCaseId.trim() === '') {
+      console.log('No stockCaseId provided, setting isFollowing to false');
       setIsFollowing(false);
       return;
     }
 
     try {
+      console.log(`Checking follow status for user ${user.id} and case ${stockCaseId}`);
+      
       const { data: followingData, error: followingError } = await supabase
         .rpc('user_follows_case', { case_id: stockCaseId, user_id: user.id });
 
@@ -25,7 +35,9 @@ export const useStockCaseFollows = (stockCaseId: string) => {
         console.error('Error checking follow status:', followingError);
         setIsFollowing(false);
       } else {
-        setIsFollowing(followingData || false);
+        const followStatus = followingData || false;
+        console.log(`Follow status result: ${followStatus}`);
+        setIsFollowing(followStatus);
       }
     } catch (error: any) {
       console.error('Error fetching follow status:', error);
@@ -58,6 +70,8 @@ export const useStockCaseFollows = (stockCaseId: string) => {
     try {
       if (isFollowing) {
         // Unfollow
+        console.log(`Unfollowing case ${stockCaseId} for user ${user.id}`);
+        
         const { error } = await supabase
           .from('stock_case_follows')
           .delete()
@@ -79,6 +93,8 @@ export const useStockCaseFollows = (stockCaseId: string) => {
         });
       } else {
         // Follow
+        console.log(`Following case ${stockCaseId} for user ${user.id}`);
+        
         const { error } = await supabase
           .from('stock_case_follows')
           .insert({
@@ -92,6 +108,7 @@ export const useStockCaseFollows = (stockCaseId: string) => {
           }
           if (error.code === '23505') {
             // Duplicate entry - user already follows this case
+            console.log('User already follows this case, setting state to true');
             setIsFollowing(true);
             return;
           }
@@ -123,18 +140,33 @@ export const useStockCaseFollows = (stockCaseId: string) => {
   };
 
   useEffect(() => {
+    console.log(`useStockCaseFollows effect triggered - stockCaseId: ${stockCaseId}, user: ${user?.id}`);
+    
     if (stockCaseId && stockCaseId.trim() !== '') {
       fetchFollowStatus();
+    } else {
+      // Reset state if no valid stockCaseId
+      setIsFollowing(false);
     }
   }, [stockCaseId, user?.id]);
 
-  // Cleanup effect when component unmounts or user changes
+  // Enhanced cleanup effect when user changes or component unmounts
   useEffect(() => {
     return () => {
+      console.log('Cleaning up useStockCaseFollows state');
       setIsFollowing(false);
       setLoading(false);
     };
   }, [user?.id]);
+
+  // Additional effect to handle user logout
+  useEffect(() => {
+    if (!user) {
+      console.log('User logged out, resetting follow state');
+      setIsFollowing(false);
+      setLoading(false);
+    }
+  }, [user]);
 
   return {
     isFollowing,

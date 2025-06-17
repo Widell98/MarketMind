@@ -184,7 +184,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
                 View
               </Button>
               
-              {/* Follow Button - Simple toggle without counter */}
+              {/* Follow Button - Only show for logged in users */}
               {user && (
                 <Button
                   size="sm"
@@ -215,7 +215,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
 
             {/* Mobile layout - compact buttons */}
             <div className="flex items-center gap-1 sm:hidden">
-              {/* Follow Button - Mobile */}
+              {/* Follow Button - Mobile - Only show for logged in users */}
               {user && (
                 <Button
                   size="sm"

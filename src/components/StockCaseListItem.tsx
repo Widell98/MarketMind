@@ -1,13 +1,13 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { TrendingUp, TrendingDown, Clock, Eye, Heart, Trash2, UserPlus, UserCheck } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, Eye, UserPlus, UserCheck, Trash2 } from 'lucide-react';
 import { StockCase } from '@/hooks/useStockCases';
 import { useStockCaseFollows } from '@/hooks/useStockCaseFollows';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { cn } from '@/lib/utils';
 
 interface StockCaseListItemProps {
   stockCase: StockCase;
@@ -16,9 +16,9 @@ interface StockCaseListItemProps {
 }
 
 const StockCaseListItem: React.FC<StockCaseListItemProps> = ({ stockCase, onViewDetails, onDelete }) => {
-  const { isFollowing, loading: followLoading, toggleFollow } = useStockCaseFollows(stockCase.id);
   const { user } = useAuth();
   const { isAdmin } = useUserRole();
+  const { isFollowing, loading: followLoading, toggleFollow } = useStockCaseFollows(stockCase.id);
 
   const getStatusIcon = () => {
     switch (stockCase.status) {
@@ -149,7 +149,7 @@ const StockCaseListItem: React.FC<StockCaseListItemProps> = ({ stockCase, onView
 
         {/* Actions */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Follow Button - Simple toggle without counter */}
+          {/* Follow Button - Only show for logged in users */}
           {user && (
             <Button
               variant="ghost"
