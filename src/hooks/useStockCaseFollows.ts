@@ -28,12 +28,19 @@ export const useStockCaseFollows = (stockCaseId: string) => {
     try {
       console.log(`Checking follow status for user ${user.id} and case ${stockCaseId}`);
       
+      // Use the secure database function which respects RLS policies
       const { data: followingData, error: followingError } = await supabase
         .rpc('user_follows_case', { case_id: stockCaseId, user_id: user.id });
 
       if (followingError) {
         console.error('Error checking follow status:', followingError);
-        setIsFollowing(false);
+        // Handle RLS policy errors gracefully
+        if (followingError.code === '42501' || followingError.message?.includes('permission')) {
+          console.log('RLS policy restricting access - user not following');
+          setIsFollowing(false);
+        } else {
+          setIsFollowing(false);
+        }
       } else {
         const followStatus = followingData || false;
         console.log(`Follow status result: ${followStatus}`);
@@ -69,7 +76,7 @@ export const useStockCaseFollows = (stockCaseId: string) => {
 
     try {
       if (isFollowing) {
-        // Unfollow
+        // Unfollow - RLS policy ensures users can only delete their own follows
         console.log(`Unfollowing case ${stockCaseId} for user ${user.id}`);
         
         const { error } = await supabase
@@ -92,7 +99,7 @@ export const useStockCaseFollows = (stockCaseId: string) => {
           description: "Du följer inte längre detta aktiecase",
         });
       } else {
-        // Follow
+        // Follow - RLS policy ensures users can only create follows for themselves
         console.log(`Following case ${stockCaseId} for user ${user.id}`);
         
         const { error } = await supabase
