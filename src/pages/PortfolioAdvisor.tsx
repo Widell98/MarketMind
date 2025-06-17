@@ -133,43 +133,47 @@ const PortfolioAdvisor = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Portfolio Advisor</h1>
-          <p className="text-muted-foreground">
+      <div className="container mx-auto px-4 py-6 sm:py-8">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2">Portfolio Advisor</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
             Your personalized AI-powered investment dashboard
           </p>
         </div>
 
-        <Tabs defaultValue="dashboard" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+        <Tabs defaultValue="dashboard" className="space-y-4 sm:space-y-6">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto p-1">
+            <TabsTrigger value="dashboard" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-1.5">
               <BarChart3 className="w-4 h-4" />
-              Dashboard
+              <span className="hidden sm:inline">Dashboard</span>
+              <span className="sm:hidden">Dash</span>
             </TabsTrigger>
-            <TabsTrigger value="chat" className="flex items-center gap-2">
+            <TabsTrigger value="chat" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-1.5">
               <MessageSquare className="w-4 h-4" />
-              AI Chat
+              <span className="hidden sm:inline">AI Chat</span>
+              <span className="sm:hidden">Chat</span>
             </TabsTrigger>
-            <TabsTrigger value="recommendations" className="flex items-center gap-2">
+            <TabsTrigger value="recommendations" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-1.5">
               <Brain className="w-4 h-4" />
-              Recommendations
+              <span className="hidden sm:inline">Recommendations</span>
+              <span className="sm:hidden">Recs</span>
             </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
+            <TabsTrigger value="settings" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-1.5">
               <Settings className="w-4 h-4" />
-              Settings
+              <span className="hidden sm:inline">Settings</span>
+              <span className="sm:hidden">Set</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="dashboard" className="space-y-6">
+          <TabsContent value="dashboard" className="space-y-4 sm:space-y-6 mt-4">
             <PortfolioDashboard portfolio={activePortfolio} recommendations={recommendations} />
           </TabsContent>
 
-          <TabsContent value="chat" className="space-y-6">
+          <TabsContent value="chat" className="space-y-4 sm:space-y-6 mt-4">
             <Card>
               <CardHeader>
-                <CardTitle>AI Portfolio Chat</CardTitle>
-                <CardDescription>Ask questions about your portfolio and get AI-powered advice</CardDescription>
+                <CardTitle className="text-lg sm:text-xl">AI Portfolio Chat</CardTitle>
+                <CardDescription className="text-sm">Ask questions about your portfolio and get AI-powered advice</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="text-center text-muted-foreground py-8">
@@ -179,11 +183,11 @@ const PortfolioAdvisor = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="recommendations" className="space-y-6">
+          <TabsContent value="recommendations" className="space-y-4 sm:space-y-6 mt-4">
             <Card>
               <CardHeader>
-                <CardTitle>All Recommendations</CardTitle>
-                <CardDescription>Review all AI-generated advice for your portfolio</CardDescription>
+                <CardTitle className="text-lg sm:text-xl">All Recommendations</CardTitle>
+                <CardDescription className="text-sm">Review all AI-generated advice for your portfolio</CardDescription>
               </CardHeader>
               <CardContent>
                 {recommendations.length === 0 ? (
@@ -193,14 +197,14 @@ const PortfolioAdvisor = () => {
                 ) : (
                   <div className="space-y-4">
                     {recommendations.map((rec) => (
-                      <div key={rec.id} className="p-4 border rounded-lg">
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-medium">{rec.title}</h4>
+                      <div key={rec.id} className="p-3 sm:p-4 border rounded-lg">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2 gap-2">
+                          <h4 className="font-medium text-sm sm:text-base">{rec.title}</h4>
                           <span className="text-xs text-muted-foreground">
                             {new Date(rec.created_at).toLocaleDateString()}
                           </span>
                         </div>
-                        <p className="text-sm text-muted-foreground mb-2">{rec.description}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground mb-2">{rec.description}</p>
                         {rec.ai_reasoning && (
                           <p className="text-xs text-muted-foreground italic">{rec.ai_reasoning}</p>
                         )}
@@ -212,16 +216,17 @@ const PortfolioAdvisor = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="settings" className="space-y-6">
+          <TabsContent value="settings" className="space-y-4 sm:space-y-6 mt-4">
             <Card>
               <CardHeader>
-                <CardTitle>Portfolio Settings</CardTitle>
-                <CardDescription>Manage your risk profile and portfolio preferences</CardDescription>
+                <CardTitle className="text-lg sm:text-xl">Portfolio Settings</CardTitle>
+                <CardDescription className="text-sm">Manage your risk profile and portfolio preferences</CardDescription>
               </CardHeader>
               <CardContent>
                 <Button 
                   variant="outline"
                   onClick={() => setShowAssessment(true)}
+                  className="w-full sm:w-auto"
                 >
                   Retake Risk Assessment
                 </Button>
