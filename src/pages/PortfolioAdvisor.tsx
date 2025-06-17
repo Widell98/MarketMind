@@ -12,6 +12,7 @@ import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
 
 const PortfolioAdvisor = () => {
+  // ALL HOOKS MUST BE CALLED FIRST - BEFORE ANY CONDITIONAL LOGIC
   const { user } = useAuth();
   const { riskProfile, loading: profileLoading, refetch: refetchRiskProfile } = useRiskProfile();
   const { activePortfolio, recommendations, loading: portfolioLoading, generatePortfolio } = usePortfolio();
@@ -20,20 +21,19 @@ const PortfolioAdvisor = () => {
   // Use ref to track if we've already attempted to generate portfolio for this risk profile
   const portfolioGeneratedForProfile = useRef<string | null>(null);
 
-  if (!user) {
-    return (
-      <Layout>
-        <div className="container mx-auto px-4 py-8">
-          <Card className="max-w-md mx-auto">
-            <CardHeader>
-              <CardTitle>Authentication Required</CardTitle>
-              <CardDescription>Please sign in to access the Portfolio Advisor</CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-      </Layout>
-    );
-  }
+  // Only auto-generate portfolio if we haven't already done so for this risk profile
+  useEffect(() => {
+    if (
+      riskProfile?.id && 
+      !activePortfolio && 
+      !portfolioLoading && 
+      portfolioGeneratedForProfile.current !== riskProfile.id
+    ) {
+      console.log('Auto-generating portfolio for newly available risk profile:', riskProfile.id);
+      portfolioGeneratedForProfile.current = riskProfile.id;
+      generatePortfolio(riskProfile.id);
+    }
+  }, [riskProfile?.id, activePortfolio, portfolioLoading, generatePortfolio]);
 
   const handleAssessmentComplete = async (signal: string) => {
     console.log('Assessment completed with signal:', signal);
@@ -56,19 +56,21 @@ const PortfolioAdvisor = () => {
     }
   };
 
-  // Only auto-generate portfolio if we haven't already done so for this risk profile
-  useEffect(() => {
-    if (
-      riskProfile?.id && 
-      !activePortfolio && 
-      !portfolioLoading && 
-      portfolioGeneratedForProfile.current !== riskProfile.id
-    ) {
-      console.log('Auto-generating portfolio for newly available risk profile:', riskProfile.id);
-      portfolioGeneratedForProfile.current = riskProfile.id;
-      generatePortfolio(riskProfile.id);
-    }
-  }, [riskProfile?.id, activePortfolio, portfolioLoading, generatePortfolio]);
+  // NOW ALL CONDITIONAL RENDERING LOGIC COMES AFTER ALL HOOKS ARE CALLED
+  if (!user) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <Card className="max-w-md mx-auto">
+            <CardHeader>
+              <CardTitle>Authentication Required</CardTitle>
+              <CardDescription>Please sign in to access the Portfolio Advisor</CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
 
   if (profileLoading || portfolioLoading) {
     return (
