@@ -5,7 +5,7 @@ import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
 import { useStockCasesFilters } from '@/hooks/useStockCasesFilters';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, TrendingUp, Users, Activity, Clock, Filter, Heart } from 'lucide-react';
+import { TrendingUp, Users, Activity, Clock, Filter, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import StockCaseCard from '@/components/StockCaseCard';
@@ -73,16 +73,6 @@ const StockCases = () => {
         <div className="space-y-4 sm:space-y-6 lg:space-y-8">
           {/* Header Section - More compact */}
           <div className="space-y-2 sm:space-y-3">
-            <Button
-              variant="ghost"
-              onClick={() => navigate('/')}
-              className="hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm sm:text-base"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Back to Homepage</span>
-              <span className="sm:hidden">Back</span>
-            </Button>
-            
             <div className="text-center space-y-1">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">
                 Stock Cases
@@ -109,16 +99,6 @@ const StockCases = () => {
       <div className="space-y-3 sm:space-y-4 lg:space-y-6">
         {/* Header Section - More compact */}
         <div className="space-y-2 sm:space-y-3">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/')}
-            className="hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm sm:text-base"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">Back to Homepage</span>
-            <span className="sm:hidden">Back</span>
-          </Button>
-          
           <div className="text-center space-y-1">
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">
               Stock Cases

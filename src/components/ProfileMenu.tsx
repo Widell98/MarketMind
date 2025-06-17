@@ -31,7 +31,7 @@ const ProfileMenu = () => {
   const userInitials = user?.email?.slice(0, 2).toUpperCase() || 'U';
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2 md:gap-3">
       <NotificationCenter />
       
       <DropdownMenu>
