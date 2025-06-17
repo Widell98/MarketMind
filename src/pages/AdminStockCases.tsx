@@ -107,6 +107,19 @@ const AdminStockCases = () => {
     }
   }, [user?.id, isAdmin, roleLoading]);
 
+  // Add redirect effect for non-admin users
+  useEffect(() => {
+    if (!roleLoading && user && !isAdmin) {
+      console.log('Non-admin user trying to access admin page, redirecting...');
+      toast({
+        title: "Åtkomst nekad",
+        description: "Du har inte behörighet att komma åt den här sidan",
+        variant: "destructive",
+      });
+      navigate('/');
+    }
+  }, [roleLoading, user, isAdmin, navigate, toast]);
+
   const fetchCategories = async () => {
     try {
       const { data, error } = await supabase
@@ -233,6 +246,26 @@ const AdminStockCases = () => {
             <h2 className="text-xl font-semibold mb-2">Åtkomst nekad</h2>
             <p className="text-gray-600 mb-4">
               Du måste vara inloggad för att komma åt denna sida.
+            </p>
+            <Button onClick={() => navigate('/')}>
+              Tillbaka till startsidan
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Check if user is admin - this will now be handled by the useEffect redirect above
+  // but we keep this as a fallback
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-96">
+          <CardContent className="pt-6 text-center">
+            <h2 className="text-xl font-semibold mb-2">Åtkomst nekad</h2>
+            <p className="text-gray-600 mb-4">
+              Du har inte administratörsbehörighet för att komma åt denna sida.
             </p>
             <Button onClick={() => navigate('/')}>
               Tillbaka till startsidan
@@ -458,7 +491,7 @@ const AdminStockCases = () => {
 
       toast({
         title: "Framgång",
-        description: "Status uppdaterat framgångsrikt",
+        description: "Status uppdaterad framgångsrikt",
       });
 
       fetchAllCases();
