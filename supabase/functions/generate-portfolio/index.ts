@@ -16,8 +16,34 @@ serve(async (req) => {
   try {
     console.log('Generate portfolio function called')
     
+    // Check environment variables first
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
+    
+    console.log('Environment check:', {
+      hasUrl: !!supabaseUrl,
+      hasKey: !!supabaseAnonKey,
+      urlPreview: supabaseUrl?.substring(0, 20) + '...'
+    })
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Missing Supabase environment variables')
+      return new Response(
+        JSON.stringify({ 
+          error: 'Server configuration error',
+          details: 'Missing required environment variables'
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+    
     // Security: Verify JWT token and get user
     const authHeader = req.headers.get('Authorization')
+    console.log('Auth header present:', !!authHeader)
+    
     if (!authHeader) {
       console.error('Missing authorization header')
       return new Response(
@@ -30,8 +56,8 @@ serve(async (req) => {
     }
 
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      supabaseUrl,
+      supabaseAnonKey,
       {
         global: {
           headers: { Authorization: authHeader },
@@ -39,8 +65,16 @@ serve(async (req) => {
       }
     )
 
+    console.log('Supabase client created successfully')
+
     // Verify the user is authenticated
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
+    
+    console.log('Auth check result:', {
+      hasUser: !!user,
+      userId: user?.id,
+      authError: authError?.message
+    })
     
     if (authError || !user) {
       console.error('Authentication failed:', authError)
@@ -55,7 +89,23 @@ serve(async (req) => {
 
     console.log('User authenticated:', user.id)
 
-    const { risk_profile_id } = await req.json()
+    // Parse request body
+    let requestBody
+    try {
+      requestBody = await req.json()
+      console.log('Request body parsed:', requestBody)
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError)
+      return new Response(
+        JSON.stringify({ error: 'Invalid request body' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    const { risk_profile_id } = requestBody
 
     // Security: Validate input
     if (!risk_profile_id || typeof risk_profile_id !== 'string') {
@@ -72,12 +122,19 @@ serve(async (req) => {
     console.log('Risk profile ID:', risk_profile_id)
 
     // Security: Verify the risk profile belongs to the authenticated user
+    console.log('Fetching risk profile...')
     const { data: riskProfile, error: profileError } = await supabaseClient
       .from('user_risk_profiles')
       .select('*')
       .eq('id', risk_profile_id)
       .eq('user_id', user.id)
       .single()
+
+    console.log('Risk profile query result:', {
+      hasData: !!riskProfile,
+      error: profileError?.message,
+      profileId: riskProfile?.id
+    })
 
     if (profileError || !riskProfile) {
       console.error('Risk profile not found or access denied:', profileError)
@@ -93,6 +150,7 @@ serve(async (req) => {
     console.log('Risk profile found:', riskProfile)
 
     // Security: Rate limiting check (basic implementation)
+    console.log('Checking rate limits...')
     const { data: existingPortfolios } = await supabaseClient
       .from('user_portfolios')
       .select('created_at')
@@ -116,33 +174,47 @@ serve(async (req) => {
     console.log('Portfolio data generated:', portfolioData)
 
     // Deactivate any existing active portfolios
-    await supabaseClient
+    console.log('Deactivating existing active portfolios...')
+    const { error: deactivateError } = await supabaseClient
       .from('user_portfolios')
       .update({ is_active: false })
       .eq('user_id', user.id)
       .eq('is_active', true)
 
+    if (deactivateError) {
+      console.error('Error deactivating existing portfolios:', deactivateError)
+      // Continue anyway, this is not critical
+    }
+
     // Save portfolio to database
+    console.log('Saving portfolio to database...')
+    const portfolioInsert = {
+      user_id: user.id,
+      risk_profile_id: risk_profile_id,
+      portfolio_name: `${getPortfolioName(riskProfile)} Portfolio`,
+      asset_allocation: portfolioData.assetAllocation,
+      recommended_stocks: portfolioData.recommendedStocks,
+      expected_return: portfolioData.expectedReturn,
+      risk_score: portfolioData.riskScore,
+      total_value: riskProfile.current_portfolio_value || 0,
+      is_active: true
+    }
+    
+    console.log('Portfolio insert data:', portfolioInsert)
+    
     const { data: portfolio, error: saveError } = await supabaseClient
       .from('user_portfolios')
-      .insert({
-        user_id: user.id,
-        risk_profile_id: risk_profile_id,
-        portfolio_name: `${getPortfolioName(riskProfile)} Portfolio`,
-        asset_allocation: portfolioData.assetAllocation,
-        recommended_stocks: portfolioData.recommendedStocks,
-        expected_return: portfolioData.expectedReturn,
-        risk_score: portfolioData.riskScore,
-        total_value: riskProfile.current_portfolio_value || 0,
-        is_active: true
-      })
+      .insert(portfolioInsert)
       .select()
       .single()
 
     if (saveError) {
       console.error('Error saving portfolio:', saveError)
       return new Response(
-        JSON.stringify({ error: 'Failed to save portfolio' }),
+        JSON.stringify({ 
+          error: 'Failed to save portfolio',
+          details: saveError.message 
+        }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -165,11 +237,13 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Portfolio generation error:', error)
+    console.error('Error stack:', error.stack)
     
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error',
-        details: error.message 
+        details: error.message,
+        stack: error.stack
       }),
       { 
         status: 500,
@@ -180,6 +254,8 @@ serve(async (req) => {
 })
 
 function generatePortfolioFromProfile(riskProfile: any) {
+  console.log('Generating portfolio for profile:', riskProfile)
+  
   // Security: Validate profile data
   const safeProfile = {
     risk_tolerance: riskProfile.risk_tolerance || 'moderate',
@@ -190,6 +266,8 @@ function generatePortfolioFromProfile(riskProfile: any) {
     age: Math.max(18, Math.min(100, riskProfile.age || 35)),
     monthly_investment_amount: Math.max(0, riskProfile.monthly_investment_amount || 1000)
   }
+
+  console.log('Safe profile data:', safeProfile)
 
   // Generate asset allocation based on risk tolerance
   let stocksPercent = 60
@@ -233,12 +311,15 @@ function generatePortfolioFromProfile(riskProfile: any) {
   // Calculate risk score
   const riskScore = calculateRiskScore(safeProfile)
 
-  return {
+  const result = {
     assetAllocation,
     recommendedStocks,
     expectedReturn,
     riskScore
   }
+  
+  console.log('Generated portfolio result:', result)
+  return result
 }
 
 function generateStockRecommendations(profile: any) {

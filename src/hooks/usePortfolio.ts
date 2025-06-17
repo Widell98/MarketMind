@@ -139,9 +139,14 @@ export const usePortfolio = () => {
         return;
       }
 
-      console.log('Calling edge function with session token...');
+      console.log('Calling edge function with session token and risk_profile_id:', riskProfileId);
+      
+      // Make sure we're sending the correct payload format
+      const requestBody = { risk_profile_id: riskProfileId };
+      console.log('Request body being sent:', requestBody);
+      
       const response = await supabase.functions.invoke('generate-portfolio', {
-        body: { risk_profile_id: riskProfileId },
+        body: requestBody,
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
@@ -172,7 +177,7 @@ export const usePortfolio = () => {
         console.error('Portfolio generation failed:', response.data);
         toast({
           title: "Error",
-          description: "Failed to generate portfolio",
+          description: response.data?.error || "Failed to generate portfolio",
           variant: "destructive",
         });
       }
