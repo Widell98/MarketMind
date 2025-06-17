@@ -14,9 +14,12 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Generate portfolio function called')
+    
     // Security: Verify JWT token and get user
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
+      console.error('Missing authorization header')
       return new Response(
         JSON.stringify({ error: 'Missing authorization header' }),
         { 
@@ -40,6 +43,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
     
     if (authError || !user) {
+      console.error('Authentication failed:', authError)
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { 
@@ -49,10 +53,13 @@ serve(async (req) => {
       )
     }
 
-    const { riskProfileId } = await req.json()
+    console.log('User authenticated:', user.id)
+
+    const { risk_profile_id } = await req.json()
 
     // Security: Validate input
-    if (!riskProfileId || typeof riskProfileId !== 'string') {
+    if (!risk_profile_id || typeof risk_profile_id !== 'string') {
+      console.error('Invalid risk profile ID:', risk_profile_id)
       return new Response(
         JSON.stringify({ error: 'Invalid risk profile ID' }),
         { 
@@ -62,15 +69,18 @@ serve(async (req) => {
       )
     }
 
+    console.log('Risk profile ID:', risk_profile_id)
+
     // Security: Verify the risk profile belongs to the authenticated user
     const { data: riskProfile, error: profileError } = await supabaseClient
       .from('user_risk_profiles')
       .select('*')
-      .eq('id', riskProfileId)
+      .eq('id', risk_profile_id)
       .eq('user_id', user.id)
       .single()
 
     if (profileError || !riskProfile) {
+      console.error('Risk profile not found or access denied:', profileError)
       return new Response(
         JSON.stringify({ error: 'Risk profile not found or access denied' }),
         { 
@@ -80,6 +90,8 @@ serve(async (req) => {
       )
     }
 
+    console.log('Risk profile found:', riskProfile)
+
     // Security: Rate limiting check (basic implementation)
     const { data: existingPortfolios } = await supabaseClient
       .from('user_portfolios')
@@ -88,6 +100,7 @@ serve(async (req) => {
       .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
 
     if (existingPortfolios && existingPortfolios.length >= 5) {
+      console.error('Rate limit exceeded')
       return new Response(
         JSON.stringify({ error: 'Rate limit exceeded. Maximum 5 portfolios per day.' }),
         { 
@@ -98,30 +111,50 @@ serve(async (req) => {
     }
 
     // Generate portfolio based on risk profile
+    console.log('Generating portfolio data...')
     const portfolioData = generatePortfolioFromProfile(riskProfile)
+    console.log('Portfolio data generated:', portfolioData)
+
+    // Deactivate any existing active portfolios
+    await supabaseClient
+      .from('user_portfolios')
+      .update({ is_active: false })
+      .eq('user_id', user.id)
+      .eq('is_active', true)
 
     // Save portfolio to database
     const { data: portfolio, error: saveError } = await supabaseClient
       .from('user_portfolios')
       .insert({
         user_id: user.id,
-        risk_profile_id: riskProfileId,
+        risk_profile_id: risk_profile_id,
         portfolio_name: `${getPortfolioName(riskProfile)} Portfolio`,
         asset_allocation: portfolioData.assetAllocation,
         recommended_stocks: portfolioData.recommendedStocks,
         expected_return: portfolioData.expectedReturn,
         risk_score: portfolioData.riskScore,
-        total_value: riskProfile.current_portfolio_value || 0
+        total_value: riskProfile.current_portfolio_value || 0,
+        is_active: true
       })
       .select()
       .single()
 
     if (saveError) {
-      throw saveError
+      console.error('Error saving portfolio:', saveError)
+      return new Response(
+        JSON.stringify({ error: 'Failed to save portfolio' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     }
+
+    console.log('Portfolio saved successfully:', portfolio)
 
     return new Response(
       JSON.stringify({ 
+        success: true,
         portfolio,
         message: 'Portfolio generated successfully'
       }),
@@ -135,7 +168,8 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ 
-        error: 'Internal server error' 
+        error: 'Internal server error',
+        details: error.message 
       }),
       { 
         status: 500,
