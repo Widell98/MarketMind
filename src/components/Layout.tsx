@@ -24,11 +24,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <div className="flex items-center space-x-4 md:space-x-8">
               {/* Mobile menu trigger - only visible on mobile */}
               <div className="md:hidden">
-                <SidebarTrigger asChild>
-                  <Button variant="ghost" size="sm" className="p-2">
-                    <Menu className="w-5 h-5" />
-                    <span className="sr-only">Open menu</span>
-                  </Button>
+                <SidebarTrigger className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
+                  <Menu className="w-5 h-5" />
+                  <span className="sr-only">Open menu</span>
                 </SidebarTrigger>
               </div>
               
