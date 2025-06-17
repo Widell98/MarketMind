@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, Users, Activity, Clock, Filter, Bookmark } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import Layout from '@/components/Layout';
 import StockCaseCard from '@/components/StockCaseCard';
 import StockCaseListItem from '@/components/StockCaseListItem';
@@ -22,6 +24,32 @@ const StockCases = () => {
   const { trendingCases, loading: trendingLoading } = useTrendingStockCases(20);
   
   const navigate = useNavigate();
+
+  // Fetch real data for mobile stats (same as on Index page)
+  const { data: memberCount } = useQuery({
+    queryKey: ['community-members-mobile'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+      
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
+  const { data: activeCases } = useQuery({
+    queryKey: ['active-cases-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('stock_cases')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+      
+      if (error) throw error;
+      return count || 0;
+    },
+  });
 
   const getDisplayData = () => {
     switch (viewMode) {
@@ -145,16 +173,16 @@ const StockCases = () => {
           <CommunityStats />
         </div>
         
-        {/* Mobile stats - Very compact */}
+        {/* Mobile stats - Using real data instead of hardcoded */}
         <div className="sm:hidden px-2">
           <div className="flex justify-center gap-4 text-xs text-gray-600 dark:text-gray-400">
             <span className="flex items-center gap-1">
               <TrendingUp className="w-3 h-3" />
-              156 Active
+              {activeCases || 0} Active
             </span>
             <span className="flex items-center gap-1">
               <Users className="w-3 h-3" />
-              2.5K Members
+              {memberCount ? `${memberCount > 1000 ? `${(memberCount / 1000).toFixed(1)}K` : memberCount}` : '0'} Members
             </span>
           </div>
         </div>
