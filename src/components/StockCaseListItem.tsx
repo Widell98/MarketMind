@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { TrendingUp, TrendingDown, Clock, Eye, UserPlus, UserCheck, Trash2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, UserPlus, UserCheck, Trash2 } from 'lucide-react';
 import { StockCase } from '@/hooks/useStockCases';
 import { useStockCaseFollows } from '@/hooks/useStockCaseFollows';
 import { useAuth } from '@/contexts/AuthContext';
@@ -68,7 +67,7 @@ const StockCaseListItem: React.FC<StockCaseListItemProps> = ({ stockCase, onView
   };
 
   return (
-    <div className="group border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200 hover:shadow-md bg-white dark:bg-gray-800 cursor-pointer">
+    <div className="group border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200 hover:shadow-md bg-white dark:bg-gray-800 cursor-pointer" onClick={() => onViewDetails(stockCase.id)}>
       <div className="flex items-center gap-4">
         {/* Image */}
         {stockCase.image_url && (
@@ -181,18 +180,6 @@ const StockCaseListItem: React.FC<StockCaseListItemProps> = ({ stockCase, onView
               <Trash2 className="w-4 h-4" />
             </Button>
           )}
-
-          <Button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onViewDetails(stockCase.id);
-            }}
-            size="sm"
-            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
-          >
-            <Eye className="w-4 h-4 mr-1" />
-            View
-          </Button>
         </div>
       </div>
     </div>

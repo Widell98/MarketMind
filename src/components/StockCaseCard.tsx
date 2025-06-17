@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Heart, Bookmark, TrendingUp, TrendingDown, Calendar, User, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Heart, Bookmark, TrendingUp, TrendingDown, Calendar, User, MoreHorizontal, Trash2 } from 'lucide-react';
 import { StockCase } from '@/hooks/useStockCases';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -66,7 +66,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
   const performance = calculatePerformance();
 
   return (
-    <Card className="h-full flex flex-col hover:shadow-lg transition-shadow duration-200 group">
+    <Card className="h-full flex flex-col hover:shadow-lg transition-shadow duration-200 group cursor-pointer" onClick={() => onViewDetails(stockCase.id)}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
@@ -78,8 +78,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
                 {stockCase.case_categories?.name || stockCase.sector || 'General'}
               </Badge>
             </div>
-            <CardTitle className="text-base sm:text-lg leading-tight group-hover:text-primary transition-colors cursor-pointer line-clamp-2"
-                      onClick={() => onViewDetails(stockCase.id)}>
+            <CardTitle className="text-base sm:text-lg leading-tight group-hover:text-primary transition-colors line-clamp-2">
               {stockCase.title}
             </CardTitle>
           </div>
@@ -87,14 +86,17 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
           {(isAdmin || (user && onDelete)) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ml-2 flex-shrink-0">
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ml-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {onDelete && (
                   <DropdownMenuItem 
-                    onClick={() => onDelete(stockCase.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(stockCase.id);
+                    }}
                     className="text-red-600 hover:text-red-700"
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
@@ -110,18 +112,13 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
       <CardContent className="flex-1 flex flex-col space-y-3">
         {/* Stock Image - Responsive */}
         {stockCase.image_url && (
-          <div 
-            className="cursor-pointer"
-            onClick={() => onViewDetails(stockCase.id)}
-          >
-            <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group/image">
-              <img
-                src={stockCase.image_url}
-                alt={`${stockCase.company_name} stock chart`}
-                className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105"
-              />
-              <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/10 transition-all duration-300" />
-            </div>
+          <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group/image">
+            <img
+              src={stockCase.image_url}
+              alt={`${stockCase.company_name} stock chart`}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105"
+            />
+            <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/10 transition-all duration-300" />
           </div>
         )}
 
@@ -161,36 +158,18 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
 
           {/* Action buttons - Responsive layout */}
           <div className="pt-2 border-t">
-            {/* Primary action button - full width on mobile */}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onViewDetails(stockCase.id)}
-              className="w-full mb-2 sm:hidden"
-            >
-              <Eye className="w-4 h-4 mr-2" />
-              View Details
-            </Button>
-            
             {/* Desktop layout */}
             <div className="hidden sm:flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onViewDetails(stockCase.id)}
-                className="flex-1"
-              >
-                <Eye className="w-4 h-4 mr-1" />
-                View
-              </Button>
-              
               {/* Follow Button - Only show for logged in users */}
               {user && (
                 <Button
                   size="sm"
                   variant={isFollowing ? "default" : "outline"}
-                  onClick={toggleFollow}
-                  className="flex items-center gap-1 min-w-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleFollow();
+                  }}
+                  className="flex-1 flex items-center gap-1 min-w-0"
                   title={isFollowing ? "Sluta följa" : "Följ case"}
                 >
                   <Bookmark className={`w-4 h-4 ${isFollowing ? 'fill-current' : ''}`} />
@@ -202,15 +181,20 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
               <Button
                 size="sm"
                 variant={isLiked ? "default" : "outline"}
-                onClick={toggleLike}
-                className="flex items-center gap-1 min-w-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleLike();
+                }}
+                className="flex-1 flex items-center gap-1 min-w-0"
               >
                 <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
                 <span className="hidden lg:inline">{likeCount}</span>
                 <span className="lg:hidden">{likeCount > 99 ? '99+' : likeCount}</span>
               </Button>
 
-              <ShareStockCase stockCaseId={stockCase.id} title={stockCase.title} />
+              <div className="flex-1">
+                <ShareStockCase stockCaseId={stockCase.id} title={stockCase.title} />
+              </div>
             </div>
 
             {/* Mobile layout - compact buttons */}
@@ -220,7 +204,10 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
                 <Button
                   size="sm"
                   variant={isFollowing ? "default" : "outline"}
-                  onClick={toggleFollow}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleFollow();
+                  }}
                   className="flex-1 flex items-center justify-center gap-1 px-2"
                   title={isFollowing ? "Sluta följa" : "Följ case"}
                 >
@@ -233,7 +220,10 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
               <Button
                 size="sm"
                 variant={isLiked ? "default" : "outline"}
-                onClick={toggleLike}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleLike();
+                }}
                 className="flex-1 flex items-center justify-center gap-1 px-2"
               >
                 <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />

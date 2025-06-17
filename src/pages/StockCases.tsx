@@ -5,7 +5,7 @@ import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
 import { useStockCasesFilters } from '@/hooks/useStockCasesFilters';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, Users, Activity, Clock, Filter, Heart } from 'lucide-react';
+import { TrendingUp, Users, Activity, Clock, Filter, Bookmark } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import StockCaseCard from '@/components/StockCaseCard';
@@ -134,7 +134,7 @@ const StockCases = () => {
             onClick={() => setViewMode('followed')}
             className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2"
           >
-            <Heart className="w-3 h-3 sm:w-4 sm:h-4" />
+            <Bookmark className="w-3 h-3 sm:w-4 sm:h-4" />
             <span className="hidden sm:inline">Followed</span>
             <span className="sm:hidden">Followed</span>
           </Button>
@@ -193,7 +193,7 @@ const StockCases = () => {
             {viewMode === 'trending' ? (
               <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
             ) : viewMode === 'followed' ? (
-              <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
+              <Bookmark className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
             ) : (
               <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
             )}
@@ -221,7 +221,7 @@ const StockCases = () => {
             <Card className="text-center py-6 sm:py-8 bg-gray-50 dark:bg-gray-800 mx-2 sm:mx-0">
               <CardContent className="pt-4">
                 {viewMode === 'followed' ? (
-                  <Heart className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
+                  <Bookmark className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
                 ) : (
                   <Activity className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
                 )}
