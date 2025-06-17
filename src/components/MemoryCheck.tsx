@@ -151,7 +151,9 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
     
     // Update progress based on user login status
     if (user) {
-      await updateProgress(isCorrect);
+      // Calculate quiz score (0-100 based on correctness)
+      const quizScore = isCorrect ? 100 : 0;
+      await updateProgress(quizScore, isCorrect);
       await markQuestionCompleted(currentQuestion.id);
       
       // Update category progress
