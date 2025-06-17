@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
@@ -130,7 +129,7 @@ const StockCaseDetail = () => {
 
           {/* Image with history controls */}
           {imageUrl && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <Card className="overflow-hidden group cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300" onClick={() => setIsImageModalOpen(true)}>
                 <div className="relative aspect-video w-full">
                   <img
@@ -146,41 +145,25 @@ const StockCaseDetail = () => {
                 </div>
               </Card>
 
-              {/* Image history controls and upload */}
-              <div className="space-y-4">
-                {/* Upload new image button */}
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    {displayImage?.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {displayImage.description}
-                      </p>
-                    )}
-                    {displayImage?.created_at && (
-                      <span className="text-xs text-gray-500 dark:text-gray-500">
-                        {formatDate(displayImage.created_at)}
-                      </span>
-                    )}
-                  </div>
-                  
-                  <ImageUploadDialog
-                    stockCaseId={id!}
-                    onImageAdded={handleImageAdded}
-                    canEdit={canEdit}
-                  />
-                </div>
-
-                {/* Image History Navigation - always show if we have images */}
-                {!historyLoading && images.length > 1 && (
-                  <ImageHistoryNavigation
-                    images={images}
-                    currentIndex={currentImageIndex}
-                    onIndexChange={setCurrentImageIndex}
-                    onSetCurrent={setCurrentImage}
-                    canEdit={canEdit}
-                  />
-                )}
+              {/* Upload new image button */}
+              <div className="flex justify-end">
+                <ImageUploadDialog
+                  stockCaseId={id!}
+                  onImageAdded={handleImageAdded}
+                  canEdit={canEdit}
+                />
               </div>
+
+              {/* Image History Navigation - only show if we have multiple images */}
+              {!historyLoading && images.length > 1 && (
+                <ImageHistoryNavigation
+                  images={images}
+                  currentIndex={currentImageIndex}
+                  onIndexChange={setCurrentImageIndex}
+                  onSetCurrent={setCurrentImage}
+                  canEdit={canEdit}
+                />
+              )}
             </div>
           )}
 
