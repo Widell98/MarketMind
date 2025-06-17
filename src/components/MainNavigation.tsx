@@ -19,7 +19,7 @@ const MainNavigation = () => {
         <NavigationMenuItem>
           <NavigationMenuTrigger className="h-10 px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50">
             <TrendingUp className="w-4 h-4 mr-2" />
-            Stock Cases
+            Investing
           </NavigationMenuTrigger>
           <NavigationMenuContent>
             <div className="grid gap-3 p-6 w-[400px]">
@@ -38,44 +38,46 @@ const MainNavigation = () => {
                 </Link>
               </NavigationMenuLink>
               {user && (
-                <NavigationMenuLink asChild>
-                  <Link
-                    to="/watchlist"
-                    className={cn(
-                      "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
-                      isActive('/watchlist') && "bg-accent text-accent-foreground"
-                    )}
-                  >
-                    <div className="text-sm font-medium leading-none flex items-center">
-                      <Heart className="w-4 h-4 mr-2" />
-                      Watchlist
-                    </div>
-                    <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                      Track your followed stock cases
-                    </p>
-                  </Link>
-                </NavigationMenuLink>
+                <>
+                  <NavigationMenuLink asChild>
+                    <Link
+                      to="/watchlist"
+                      className={cn(
+                        "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+                        isActive('/watchlist') && "bg-accent text-accent-foreground"
+                      )}
+                    >
+                      <div className="text-sm font-medium leading-none flex items-center">
+                        <Heart className="w-4 h-4 mr-2" />
+                        Watchlist
+                      </div>
+                      <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                        Track your followed stock cases
+                      </p>
+                    </Link>
+                  </NavigationMenuLink>
+                  <NavigationMenuLink asChild>
+                    <Link
+                      to="/portfolio-advisor"
+                      className={cn(
+                        "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+                        isActive('/portfolio-advisor') && "bg-accent text-accent-foreground"
+                      )}
+                    >
+                      <div className="text-sm font-medium leading-none flex items-center">
+                        <Briefcase className="w-4 h-4 mr-2" />
+                        Portfolio
+                      </div>
+                      <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                        AI-powered portfolio advisor
+                      </p>
+                    </Link>
+                  </NavigationMenuLink>
+                </>
               )}
             </div>
           </NavigationMenuContent>
         </NavigationMenuItem>
-
-        {user && (
-          <NavigationMenuItem>
-            <NavigationMenuLink asChild>
-              <Link
-                to="/portfolio-advisor"
-                className={cn(
-                  "h-10 px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 inline-flex items-center justify-center rounded-md",
-                  isActive('/portfolio-advisor') && "bg-accent text-accent-foreground"
-                )}
-              >
-                <Briefcase className="w-4 h-4 mr-2" />
-                Portfolio
-              </Link>
-            </NavigationMenuLink>
-          </NavigationMenuItem>
-        )}
 
         <NavigationMenuItem>
           <NavigationMenuTrigger className="h-10 px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50">
