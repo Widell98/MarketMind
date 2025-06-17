@@ -11,67 +11,94 @@ export const useStockCaseLikes = (stockCaseId: string) => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchLikeData = async () => {
-      try {
-        // Get like count
-        const { data: countData, error: countError } = await supabase
-          .rpc('get_stock_case_like_count', { case_id: stockCaseId });
+  const fetchLikeData = async () => {
+    try {
+      // Get like count
+      const { data: countData, error: countError } = await supabase
+        .rpc('get_stock_case_like_count', { case_id: stockCaseId });
 
-        if (countError) throw countError;
+      if (countError) {
+        console.error('Error fetching like count:', countError);
+        // Don't throw error for like count - just log it
+        setLikeCount(0);
+      } else {
         setLikeCount(countData || 0);
+      }
 
-        // Check if user has liked (only if authenticated)
-        if (user) {
-          const { data: likedData, error: likedError } = await supabase
-            .rpc('user_has_liked_case', { 
-              case_id: stockCaseId, 
-              user_id: user.id 
-            });
+      // Check if current user has liked (only if authenticated)
+      if (user) {
+        const { data: likedData, error: likedError } = await supabase
+          .rpc('user_has_liked_case', { 
+            case_id: stockCaseId, 
+            user_id: user.id 
+          });
 
-          if (likedError) throw likedError;
+        if (likedError) {
+          console.error('Error checking like status:', likedError);
+          setIsLiked(false);
+        } else {
           setIsLiked(likedData || false);
         }
-      } catch (error: any) {
-        console.error('Error fetching like data:', error);
+      } else {
+        // If no user, reset like state
+        setIsLiked(false);
       }
-    };
-
-    if (stockCaseId) {
-      fetchLikeData();
+    } catch (error: any) {
+      console.error('Error fetching like data:', error);
+      // Security: Don't expose internal errors to user
+      setLikeCount(0);
+      setIsLiked(false);
     }
-  }, [stockCaseId, user]);
+  };
 
   const toggleLike = async () => {
     if (!user) {
       toast({
-        title: "Login Required",
-        description: "You must be logged in to like cases",
+        title: "Inloggning krävs",
+        description: "Du måste vara inloggad för att gilla aktiecases",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Security: Validate stockCaseId
+    if (!stockCaseId || stockCaseId.trim() === '') {
+      toast({
+        title: "Fel",
+        description: "Ogiltigt aktiecase ID",
         variant: "destructive",
       });
       return;
     }
 
     setLoading(true);
+
     try {
       if (isLiked) {
-        // Remove like
+        // Remove like - RLS ensures user can only delete their own likes
         const { error } = await supabase
           .from('stock_case_likes')
           .delete()
           .eq('user_id', user.id)
           .eq('stock_case_id', stockCaseId);
 
-        if (error) throw error;
+        if (error) {
+          // Security: Check for specific error types
+          if (error.code === '42501') {
+            throw new Error('Du har inte behörighet att utföra denna åtgärd');
+          }
+          throw error;
+        }
+
         setIsLiked(false);
-        setLikeCount(prev => prev - 1);
+        setLikeCount(prev => Math.max(0, prev - 1));
         
         toast({
-          title: "Like Removed",
-          description: "You've unliked this case",
+          title: "Gillning borttagen",
+          description: "Du gillar inte längre detta aktiecase",
         });
       } else {
-        // Add like
+        // Add like - RLS ensures user can only create likes for themselves
         const { error } = await supabase
           .from('stock_case_likes')
           .insert({
@@ -79,26 +106,59 @@ export const useStockCaseLikes = (stockCaseId: string) => {
             stock_case_id: stockCaseId
           });
 
-        if (error) throw error;
+        if (error) {
+          // Security: Check for specific error types
+          if (error.code === '42501') {
+            throw new Error('Du har inte behörighet att utföra denna åtgärd');
+          }
+          if (error.code === '23505') {
+            // Duplicate entry - user already likes this case
+            setIsLiked(true);
+            return;
+          }
+          throw error;
+        }
+
         setIsLiked(true);
         setLikeCount(prev => prev + 1);
         
         toast({
-          title: "Case Liked!",
-          description: "You've liked this case",
+          title: "Aktiecase gillat!",
+          description: "Du gillar nu detta aktiecase",
         });
       }
     } catch (error: any) {
       console.error('Error toggling like:', error);
+      
+      // Security: Don't expose internal error details
+      const userMessage = error.message?.includes('behörighet') 
+        ? error.message 
+        : "Kunde inte uppdatera gillning. Försök igen.";
+        
       toast({
-        title: "Error",
-        description: "Could not update like status",
+        title: "Fel",
+        description: userMessage,
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (stockCaseId && stockCaseId.trim() !== '') {
+      fetchLikeData();
+    }
+  }, [stockCaseId, user?.id]);
+
+  // Cleanup effect when component unmounts or user changes
+  useEffect(() => {
+    return () => {
+      setLikeCount(0);
+      setIsLiked(false);
+      setLoading(false);
+    };
+  }, [user?.id]);
 
   return {
     likeCount,

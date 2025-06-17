@@ -148,6 +148,15 @@ export const useStockCaseFollows = (stockCaseId: string) => {
     }
   }, [stockCaseId, user?.id]);
 
+  // Cleanup effect when component unmounts or user changes
+  useEffect(() => {
+    return () => {
+      setFollowCount(0);
+      setIsFollowing(false);
+      setLoading(false);
+    };
+  }, [user?.id]);
+
   return {
     followCount,
     isFollowing,
