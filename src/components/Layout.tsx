@@ -26,7 +26,10 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </div>
           
           <div className="flex items-center space-x-3 lg:space-x-4 xl:space-x-6">
-            <ThemeToggle />
+            {/* Show ThemeToggle on mobile, hide on larger screens */}
+            <div className="md:hidden">
+              <ThemeToggle />
+            </div>
             {user ? (
               <ProfileMenu />
             ) : (
