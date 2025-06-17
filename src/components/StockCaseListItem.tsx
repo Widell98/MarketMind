@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +16,7 @@ interface StockCaseListItemProps {
 }
 
 const StockCaseListItem: React.FC<StockCaseListItemProps> = ({ stockCase, onViewDetails, onDelete }) => {
-  const { followCount, isFollowing, loading: followLoading, toggleFollow } = useStockCaseFollows(stockCase.id);
+  const { isFollowing, loading: followLoading, toggleFollow } = useStockCaseFollows(stockCase.id);
   const { user } = useAuth();
   const { isAdmin } = useUserRole();
 
@@ -150,23 +149,26 @@ const StockCaseListItem: React.FC<StockCaseListItemProps> = ({ stockCase, onView
 
         {/* Actions */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleFollow();
-            }}
-            disabled={followLoading}
-            className="flex items-center gap-1 p-2"
-          >
-            {isFollowing ? (
-              <UserCheck className="w-4 h-4 text-blue-500" />
-            ) : (
-              <UserPlus className="w-4 h-4 text-gray-400 hover:text-blue-500" />
-            )}
-            <span className="text-xs">{followCount}</span>
-          </Button>
+          {/* Follow Button - Simple toggle without counter */}
+          {user && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFollow();
+              }}
+              disabled={followLoading}
+              className="flex items-center gap-1 p-2"
+              title={isFollowing ? "Sluta följa" : "Följ case"}
+            >
+              {isFollowing ? (
+                <UserCheck className="w-4 h-4 text-blue-500" />
+              ) : (
+                <UserPlus className="w-4 h-4 text-gray-400 hover:text-blue-500" />
+              )}
+            </Button>
+          )}
 
           {canDelete && onDelete && (
             <Button

@@ -5,45 +5,30 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
 export const useStockCaseFollows = (stockCaseId: string) => {
-  const [followCount, setFollowCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const fetchFollowData = async () => {
+  const fetchFollowStatus = async () => {
+    // If no user, not following
+    if (!user) {
+      setIsFollowing(false);
+      return;
+    }
+
     try {
-      // Get follow count
-      const { data: countData, error: countError } = await supabase
-        .rpc('get_stock_case_follow_count', { case_id: stockCaseId });
+      const { data: followingData, error: followingError } = await supabase
+        .rpc('user_follows_case', { case_id: stockCaseId, user_id: user.id });
 
-      if (countError) {
-        console.error('Error fetching follow count:', countError);
-        // Don't throw error for follow count - just log it
-        setFollowCount(0);
-      } else {
-        setFollowCount(countData || 0);
-      }
-
-      // Check if current user is following (only if authenticated)
-      if (user) {
-        const { data: followingData, error: followingError } = await supabase
-          .rpc('user_follows_case', { case_id: stockCaseId, user_id: user.id });
-
-        if (followingError) {
-          console.error('Error checking follow status:', followingError);
-          setIsFollowing(false);
-        } else {
-          setIsFollowing(followingData || false);
-        }
-      } else {
-        // If no user, reset following state
+      if (followingError) {
+        console.error('Error checking follow status:', followingError);
         setIsFollowing(false);
+      } else {
+        setIsFollowing(followingData || false);
       }
     } catch (error: any) {
-      console.error('Error fetching follow data:', error);
-      // Security: Don't expose internal errors to user
-      setFollowCount(0);
+      console.error('Error fetching follow status:', error);
       setIsFollowing(false);
     }
   };
@@ -72,7 +57,7 @@ export const useStockCaseFollows = (stockCaseId: string) => {
 
     try {
       if (isFollowing) {
-        // Unfollow - RLS ensures user can only delete their own follows
+        // Unfollow
         const { error } = await supabase
           .from('stock_case_follows')
           .delete()
@@ -80,7 +65,6 @@ export const useStockCaseFollows = (stockCaseId: string) => {
           .eq('user_id', user.id);
 
         if (error) {
-          // Security: Check for specific error types
           if (error.code === '42501') {
             throw new Error('Du har inte behörighet att utföra denna åtgärd');
           }
@@ -88,14 +72,13 @@ export const useStockCaseFollows = (stockCaseId: string) => {
         }
 
         setIsFollowing(false);
-        setFollowCount(prev => Math.max(0, prev - 1));
         
         toast({
           title: "Slutade följa",
           description: "Du följer inte längre detta aktiecase",
         });
       } else {
-        // Follow - RLS ensures user can only create follows for themselves
+        // Follow
         const { error } = await supabase
           .from('stock_case_follows')
           .insert({
@@ -104,7 +87,6 @@ export const useStockCaseFollows = (stockCaseId: string) => {
           });
 
         if (error) {
-          // Security: Check for specific error types
           if (error.code === '42501') {
             throw new Error('Du har inte behörighet att utföra denna åtgärd');
           }
@@ -117,7 +99,6 @@ export const useStockCaseFollows = (stockCaseId: string) => {
         }
 
         setIsFollowing(true);
-        setFollowCount(prev => prev + 1);
         
         toast({
           title: "Följer nu",
@@ -127,7 +108,6 @@ export const useStockCaseFollows = (stockCaseId: string) => {
     } catch (error: any) {
       console.error('Error toggling follow:', error);
       
-      // Security: Don't expose internal error details
       const userMessage = error.message?.includes('behörighet') 
         ? error.message 
         : "Kunde inte uppdatera följning. Försök igen.";
@@ -144,21 +124,19 @@ export const useStockCaseFollows = (stockCaseId: string) => {
 
   useEffect(() => {
     if (stockCaseId && stockCaseId.trim() !== '') {
-      fetchFollowData();
+      fetchFollowStatus();
     }
   }, [stockCaseId, user?.id]);
 
   // Cleanup effect when component unmounts or user changes
   useEffect(() => {
     return () => {
-      setFollowCount(0);
       setIsFollowing(false);
       setLoading(false);
     };
   }, [user?.id]);
 
   return {
-    followCount,
     isFollowing,
     loading,
     toggleFollow

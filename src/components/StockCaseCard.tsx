@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,7 +30,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
   const { user } = useAuth();
   const { isAdmin } = useUserRole();
   const { likeCount, isLiked, toggleLike } = useStockCaseLikes(stockCase.id);
-  const { followCount, isFollowing, toggleFollow } = useStockCaseFollows(stockCase.id);
+  const { isFollowing, toggleFollow } = useStockCaseFollows(stockCase.id);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -185,19 +184,21 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
                 View
               </Button>
               
-              {/* Follow Button - Controls Watchlist */}
-              <Button
-                size="sm"
-                variant={isFollowing ? "default" : "outline"}
-                onClick={toggleFollow}
-                className="flex items-center gap-1 min-w-0"
-              >
-                <Bookmark className="w-4 h-4" />
-                <span className="hidden lg:inline">{followCount}</span>
-                <span className="lg:hidden">{followCount > 99 ? '99+' : followCount}</span>
-              </Button>
+              {/* Follow Button - Simple toggle without counter */}
+              {user && (
+                <Button
+                  size="sm"
+                  variant={isFollowing ? "default" : "outline"}
+                  onClick={toggleFollow}
+                  className="flex items-center gap-1 min-w-0"
+                  title={isFollowing ? "Sluta följa" : "Följ case"}
+                >
+                  <Bookmark className={`w-4 h-4 ${isFollowing ? 'fill-current' : ''}`} />
+                  <span className="hidden lg:inline">{isFollowing ? 'Följer' : 'Följ'}</span>
+                </Button>
+              )}
 
-              {/* Like Button - For appreciation */}
+              {/* Like Button - For appreciation with counter */}
               <Button
                 size="sm"
                 variant={isLiked ? "default" : "outline"}
@@ -215,15 +216,18 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
             {/* Mobile layout - compact buttons */}
             <div className="flex items-center gap-1 sm:hidden">
               {/* Follow Button - Mobile */}
-              <Button
-                size="sm"
-                variant={isFollowing ? "default" : "outline"}
-                onClick={toggleFollow}
-                className="flex-1 flex items-center justify-center gap-1 px-2"
-              >
-                <Bookmark className="w-4 h-4" />
-                <span className="text-xs">{followCount}</span>
-              </Button>
+              {user && (
+                <Button
+                  size="sm"
+                  variant={isFollowing ? "default" : "outline"}
+                  onClick={toggleFollow}
+                  className="flex-1 flex items-center justify-center gap-1 px-2"
+                  title={isFollowing ? "Sluta följa" : "Följ case"}
+                >
+                  <Bookmark className={`w-4 h-4 ${isFollowing ? 'fill-current' : ''}`} />
+                  <span className="text-xs">{isFollowing ? 'Följer' : 'Följ'}</span>
+                </Button>
+              )}
 
               {/* Like Button - Mobile */}
               <Button
