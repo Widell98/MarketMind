@@ -69,7 +69,10 @@ const Auth = () => {
 
   const onSignupSubmit = async (data: SignupFormValues) => {
     try {
-      await signUp(data.email, data.password, data.username, data.displayName);
+      await signUp(data.email, data.password, {
+        username: data.username,
+        displayName: data.displayName
+      });
       setActiveTab('login');
     } catch (error) {
       console.error("Signup error:", error);
