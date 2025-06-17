@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, ArrowLeft, X, Edit, Trash2, Plus, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -83,6 +84,7 @@ const AdminStockCases = () => {
   const [editingCase, setEditingCase] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isCreatingIndex, setIsCreatingIndex] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     company_name: '',
@@ -264,6 +266,28 @@ const AdminStockCases = () => {
     }));
   };
 
+  const handleIndexCheckboxChange = (checked: boolean) => {
+    setIsCreatingIndex(checked);
+    
+    if (checked) {
+      // Find the "Index" category or create default values for index
+      const indexCategory = categories.find(cat => cat.name.toLowerCase().includes('index'));
+      setFormData(prev => ({
+        ...prev,
+        sector: 'Index',
+        market_cap: '', // Clear market cap for index
+        category_id: indexCategory ? indexCategory.id : '',
+      }));
+    } else {
+      // Reset to normal values
+      setFormData(prev => ({
+        ...prev,
+        sector: '',
+        market_cap: '',
+      }));
+    }
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -324,6 +348,7 @@ const AdminStockCases = () => {
     setImagePreview(null);
     setShowCreateForm(false);
     setEditingCase(null);
+    setIsCreatingIndex(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -537,6 +562,23 @@ const AdminStockCases = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Index checkbox - only show when creating new case */}
+                {!editingCase && (
+                  <div className="flex items-center space-x-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <Checkbox
+                      id="creating-index"
+                      checked={isCreatingIndex}
+                      onCheckedChange={handleIndexCheckboxChange}
+                    />
+                    <Label htmlFor="creating-index" className="text-sm font-medium">
+                      Skapar nytt index
+                    </Label>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 ml-2">
+                      (Ställer automatiskt in kategori till "Index" och döljer irrelevanta fält)
+                    </p>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="title">Titel *</Label>
@@ -545,7 +587,7 @@ const AdminStockCases = () => {
                       name="title"
                       value={formData.title}
                       onChange={handleInputChange}
-                      placeholder="Ex: Tesla - Framtidens mobilitet"
+                      placeholder={isCreatingIndex ? "Ex: S&P 500 - Amerikanska storbolag" : "Ex: Tesla - Framtidens mobilitet"}
                       required
                     />
                   </div>
@@ -557,14 +599,18 @@ const AdminStockCases = () => {
                       name="company_name"
                       value={formData.company_name}
                       onChange={handleInputChange}
-                      placeholder="Ex: $TSLA"
+                      placeholder={isCreatingIndex ? "Ex: $SPY" : "Ex: $TSLA"}
                       required
                     />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="category">Kategori/Sektor</Label>
-                    <Select value={formData.category_id || "none"} onValueChange={handleCategoryChange}>
+                    <Select 
+                      value={formData.category_id || "none"} 
+                      onValueChange={handleCategoryChange}
+                      disabled={isCreatingIndex}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Välj kategori..." />
                       </SelectTrigger>
@@ -583,6 +629,11 @@ const AdminStockCases = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {isCreatingIndex && (
+                      <p className="text-xs text-blue-600 dark:text-blue-400">
+                        Kategori sätts automatiskt till "Index"
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -592,20 +643,29 @@ const AdminStockCases = () => {
                       name="sector"
                       value={formData.sector}
                       onChange={handleInputChange}
-                      placeholder="Ex: Bilindustri"
+                      placeholder={isCreatingIndex ? "Index" : "Ex: Bilindustri"}
+                      disabled={isCreatingIndex}
                     />
+                    {isCreatingIndex && (
+                      <p className="text-xs text-blue-600 dark:text-blue-400">
+                        Sektor sätts automatiskt till "Index"
+                      </p>
+                    )}
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="market_cap">Börsvärde</Label>
-                    <Input
-                      id="market_cap"
-                      name="market_cap"
-                      value={formData.market_cap}
-                      onChange={handleInputChange}
-                      placeholder="Ex: 800 miljarder USD"
-                    />
-                  </div>
+                  {/* Hide market cap field when creating index */}
+                  {!isCreatingIndex && (
+                    <div className="space-y-2">
+                      <Label htmlFor="market_cap">Börsvärde</Label>
+                      <Input
+                        id="market_cap"
+                        name="market_cap"
+                        value={formData.market_cap}
+                        onChange={handleInputChange}
+                        placeholder="Ex: 800 miljarder USD"
+                      />
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="entry_price">Inköpspris (kr)</Label>
@@ -661,7 +721,9 @@ const AdminStockCases = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="image">Aktiekurs Chart (JPG, PNG, WebP - max 5MB)</Label>
+                  <Label htmlFor="image">
+                    {isCreatingIndex ? 'Index Chart (JPG, PNG, WebP - max 5MB)' : 'Aktiekurs Chart (JPG, PNG, WebP - max 5MB)'}
+                  </Label>
                   <div className="space-y-4">
                     <div className="flex items-center space-x-2">
                       <Input
@@ -706,7 +768,7 @@ const AdminStockCases = () => {
                     name="description"
                     value={formData.description}
                     onChange={handleInputChange}
-                    placeholder="Kort beskrivning av företaget..."
+                    placeholder={isCreatingIndex ? "Kort beskrivning av indexet..." : "Kort beskrivning av företaget..."}
                     rows={3}
                   />
                 </div>
@@ -718,7 +780,7 @@ const AdminStockCases = () => {
                     name="admin_comment"
                     value={formData.admin_comment}
                     onChange={handleInputChange}
-                    placeholder="Varför är detta en bra aktie att köpa? Din analys och rekommendation..."
+                    placeholder={isCreatingIndex ? "Varför är detta ett bra index att investera i? Din analys och rekommendation..." : "Varför är detta en bra aktie att köpa? Din analys och rekommendation..."}
                     rows={4}
                   />
                 </div>
