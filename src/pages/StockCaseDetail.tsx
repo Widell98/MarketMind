@@ -80,7 +80,7 @@ const StockCaseDetail = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('sv-SE', {
+    return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
@@ -117,13 +117,13 @@ const StockCaseDetail = () => {
         </Button>
 
         <div className="space-y-8">
-          {/* Header - improved title font */}
+          {/* Header */}
           <div className="text-center space-y-4">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold font-heading bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent leading-tight">
               {stockCase.title}
             </h1>
             <Badge variant="outline" className="text-lg px-4 py-2">
-              {stockCase.status === 'active' ? 'Aktiv analys' : 'Avslutad analys'}
+              {stockCase.status === 'active' ? 'Active Analysis' : 'Completed Analysis'}
             </Badge>
           </div>
 
@@ -154,7 +154,7 @@ const StockCaseDetail = () => {
                 />
               </div>
 
-              {/* Image History Navigation - only show if we have multiple images */}
+              {/* Image History Navigation */}
               {!historyLoading && images.length > 1 && (
                 <ImageHistoryNavigation
                   images={images}
@@ -167,13 +167,13 @@ const StockCaseDetail = () => {
             </div>
           )}
 
-          {/* User Analysis - moved directly below image */}
+          {/* User Analysis */}
           {stockCase.admin_comment && (
             <Card className="border-l-4 border-l-purple-500 shadow-lg">
               <CardHeader>
                 <CardTitle className="text-purple-900 dark:text-purple-300 flex items-center">
                   <User className="w-5 h-5 mr-2" />
-                  Min Analys & Reflektion
+                  My Analysis & Reflection
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -186,7 +186,7 @@ const StockCaseDetail = () => {
             </Card>
           )}
 
-          {/* Company Facts - enhanced with more information */}
+          {/* Company Facts */}
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center text-gray-900 dark:text-gray-100">
@@ -199,7 +199,7 @@ const StockCaseDetail = () => {
                 {stockCase.entry_price && (
                   <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl border border-green-200 dark:border-green-800">
                     <DollarSign className="w-8 h-8 text-green-600 mx-auto mb-3" />
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Ingångspris</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Entry Price</h3>
                     <p className="text-gray-700 dark:text-gray-300 font-mono">{formatPrice(stockCase.entry_price)}</p>
                   </div>
                 )}
@@ -207,7 +207,7 @@ const StockCaseDetail = () => {
                 {stockCase.target_price && (
                   <div className="text-center p-6 bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-xl border border-yellow-200 dark:border-yellow-800">
                     <Target className="w-8 h-8 text-yellow-600 mx-auto mb-3" />
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Målkurs</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Target Price</h3>
                     <p className="text-gray-700 dark:text-gray-300 font-mono">{formatPrice(stockCase.target_price)}</p>
                   </div>
                 )}
@@ -215,7 +215,7 @@ const StockCaseDetail = () => {
                 {stockCase.current_price && (
                   <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl border border-purple-200 dark:border-purple-800">
                     <BarChart3 className="w-8 h-8 text-purple-600 mx-auto mb-3" />
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Nuvarande Kurs</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Current Price</h3>
                     <p className="text-gray-700 dark:text-gray-300 font-mono">{formatPrice(stockCase.current_price)}</p>
                   </div>
                 )}
@@ -230,14 +230,14 @@ const StockCaseDetail = () => {
 
                 <div className="text-center p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/20 dark:to-gray-700/20 rounded-xl border border-gray-200 dark:border-gray-700">
                   <Calendar className="w-8 h-8 text-gray-600 mx-auto mb-3" />
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Skapad</h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Created</h3>
                   <p className="text-gray-700 dark:text-gray-300">{formatDate(stockCase.created_at)}</p>
                 </div>
 
                 {stockCase.sector && (
                   <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl border border-blue-200 dark:border-blue-800">
                     <TrendingUp className="w-8 h-8 text-blue-600 mx-auto mb-3" />
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Sektor</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Sector</h3>
                     <p className="text-gray-700 dark:text-gray-300">{stockCase.sector}</p>
                   </div>
                 )}

@@ -25,7 +25,7 @@ const ImageHistoryNavigation: React.FC<ImageHistoryNavigationProps> = ({
   const currentImage = images[currentIndex];
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('sv-SE', {
+    return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -47,7 +47,7 @@ const ImageHistoryNavigation: React.FC<ImageHistoryNavigationProps> = ({
   };
 
   return (
-    <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-4 shadow-sm">
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg">
@@ -55,7 +55,7 @@ const ImageHistoryNavigation: React.FC<ImageHistoryNavigationProps> = ({
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-              Bildhistorik
+              Image History
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {formatDate(currentImage?.created_at || '')}
@@ -65,12 +65,12 @@ const ImageHistoryNavigation: React.FC<ImageHistoryNavigationProps> = ({
         
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="bg-white dark:bg-gray-800">
-            {currentIndex + 1} av {images.length}
+            {currentIndex + 1} of {images.length}
           </Badge>
           {currentImage?.is_current && (
             <Badge className="bg-green-500 hover:bg-green-600">
               <CheckCircle className="w-3 h-3 mr-1" />
-              Aktuell
+              Current
             </Badge>
           )}
         </div>
@@ -88,14 +88,14 @@ const ImageHistoryNavigation: React.FC<ImageHistoryNavigationProps> = ({
         </Button>
 
         <div className="flex-1 text-center px-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
             {currentImage?.description ? (
               <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
                 {currentImage.description}
               </p>
             ) : (
               <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-                Ingen beskrivning
+                No description
               </p>
             )}
           </div>
@@ -120,7 +120,7 @@ const ImageHistoryNavigation: React.FC<ImageHistoryNavigationProps> = ({
             onClick={() => onSetCurrent(currentImage.id)}
             className="w-full bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200"
           >
-            Markera som aktuell bild
+            Mark as current image
           </Button>
         </div>
       )}

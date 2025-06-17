@@ -42,7 +42,7 @@ const StockCasesFilters: React.FC<StockCasesFiltersProps> = ({
       <div className="relative">
         <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
         <Input
-          placeholder="Sök bolag eller titel..."
+          placeholder="Search companies or titles..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
           className="pl-9 pr-3 py-2 text-sm rounded-md sm:pl-10 sm:py-2"
@@ -55,10 +55,10 @@ const StockCasesFilters: React.FC<StockCasesFiltersProps> = ({
           {/* Category Filter */}
           <Select value={selectedCategory} onValueChange={onCategoryChange}>
             <SelectTrigger className="min-w-28 max-w-[115px] sm:w-48 text-xs sm:text-sm h-8 sm:h-10 px-2">
-              <SelectValue placeholder="Kategori" />
+              <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Alla kategorier</SelectItem>
+              <SelectItem value="all">All categories</SelectItem>
               {categories.map((category) => (
                 <SelectItem key={category.id} value={category.id}>
                   <div className="flex items-center gap-2">
@@ -76,26 +76,26 @@ const StockCasesFilters: React.FC<StockCasesFiltersProps> = ({
           {/* Performance Filter */}
           <Select value={performanceFilter} onValueChange={onPerformanceFilterChange}>
             <SelectTrigger className="min-w-28 max-w-[115px] sm:w-48 text-xs sm:text-sm h-8 sm:h-10 px-2">
-              <SelectValue placeholder="Utveckling" />
+              <SelectValue placeholder="Performance" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All utveckling</SelectItem>
-              <SelectItem value="positive">Positiv (+)</SelectItem>
-              <SelectItem value="negative">Negativ (-)</SelectItem>
-              <SelectItem value="neutral">Ingen data</SelectItem>
+              <SelectItem value="all">All performance</SelectItem>
+              <SelectItem value="positive">Positive (+)</SelectItem>
+              <SelectItem value="negative">Negative (-)</SelectItem>
+              <SelectItem value="neutral">No data</SelectItem>
             </SelectContent>
           </Select>
 
           {/* Sort Options */}
           <Select value={sortBy} onValueChange={onSortChange}>
             <SelectTrigger className="min-w-28 max-w-[115px] sm:w-48 text-xs sm:text-sm h-8 sm:h-10 px-2">
-              <SelectValue placeholder="Sortera" />
+              <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="created_at">Skapad</SelectItem>
-              <SelectItem value="performance_percentage">Utveckling</SelectItem>
-              <SelectItem value="company_name">Bolagsnamn</SelectItem>
-              <SelectItem value="title">Titel</SelectItem>
+              <SelectItem value="created_at">Created</SelectItem>
+              <SelectItem value="performance_percentage">Performance</SelectItem>
+              <SelectItem value="company_name">Company name</SelectItem>
+              <SelectItem value="title">Title</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -107,7 +107,7 @@ const StockCasesFilters: React.FC<StockCasesFiltersProps> = ({
             size="icon"
             onClick={() => onSortOrderChange(sortOrder === 'asc' ? 'desc' : 'asc')}
             className="p-1 w-8 h-8 sm:p-2 sm:w-9 sm:h-9"
-            aria-label="Sortera"
+            aria-label="Sort order"
           >
             {sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
           </Button>
@@ -117,7 +117,7 @@ const StockCasesFilters: React.FC<StockCasesFiltersProps> = ({
               size="icon"
               onClick={() => onViewModeChange('grid')}
               className="rounded-none w-8 h-8 sm:w-9 sm:h-9"
-              aria-label="Rutnätsvy"
+              aria-label="Grid view"
             >
               <Grid className="w-4 h-4" />
             </Button>
@@ -126,7 +126,7 @@ const StockCasesFilters: React.FC<StockCasesFiltersProps> = ({
               size="icon"
               onClick={() => onViewModeChange('list')}
               className="rounded-none w-8 h-8 sm:w-9 sm:h-9 border-l"
-              aria-label="Listvy"
+              aria-label="List view"
             >
               <List className="w-4 h-4" />
             </Button>

@@ -17,8 +17,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <div className="container-responsive py-3 lg:py-4 xl:py-5 flex justify-between items-center">
           <div className="flex items-center space-x-8">
             <Link to="/" className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-finance-navy dark:text-gray-200 flex items-center">
-              <span className="mr-2 text-xl lg:text-2xl xl:text-3xl">📈</span>
-              <span className="hidden sm:inline">Market Mentor</span>
+              <span className="mr-2 text-xl lg:text-2xl xl:text-3xl">🧠</span>
+              <span className="hidden sm:inline">Market Mind</span>
               <span className="sm:hidden">MM</span>
             </Link>
             <MainNavigation />
@@ -57,7 +57,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       
       <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4 sm:py-6 lg:py-8 xl:py-10 mt-auto">
         <div className="container-responsive text-center text-xs sm:text-sm lg:text-base text-finance-gray dark:text-gray-400">
-          © {new Date().getFullYear()} Market Mentor. All rights reserved.
+          © {new Date().getFullYear()} Market Mind. All rights reserved.
         </div>
       </footer>
     </div>
