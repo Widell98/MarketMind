@@ -319,6 +319,48 @@ export type Database = {
           },
         ]
       }
+      user_badges: {
+        Row: {
+          badge_id: string
+          earned_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          badge_id: string
+          earned_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          badge_id?: string
+          earned_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_completed_quizzes: {
+        Row: {
+          completed_at: string
+          id: string
+          quiz_id: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          quiz_id: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          quiz_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_follows: {
         Row: {
           created_at: string
@@ -337,6 +379,27 @@ export type Database = {
           follower_id?: string
           following_id?: string
           id?: string
+        }
+        Relationships: []
+      }
+      user_learning_modules: {
+        Row: {
+          id: string
+          module_id: string
+          user_id: string
+          viewed_at: string
+        }
+        Insert: {
+          id?: string
+          module_id: string
+          user_id: string
+          viewed_at?: string
+        }
+        Update: {
+          id?: string
+          module_id?: string
+          user_id?: string
+          viewed_at?: string
         }
         Relationships: []
       }
@@ -395,6 +458,75 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_quiz_categories: {
+        Row: {
+          category: string
+          correct_answers: number
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          correct_answers?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          correct_answers?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_quiz_progress: {
+        Row: {
+          correct_answers: number
+          created_at: string
+          current_streak: number
+          id: string
+          last_quiz_date: string | null
+          level: string
+          longest_streak: number
+          points: number
+          total_quizzes_taken: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          correct_answers?: number
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_quiz_date?: string | null
+          level?: string
+          longest_streak?: number
+          points?: number
+          total_quizzes_taken?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          correct_answers?: number
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_quiz_date?: string | null
+          level?: string
+          longest_streak?: number
+          points?: number
+          total_quizzes_taken?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_risk_profiles: {
         Row: {

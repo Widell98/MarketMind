@@ -14,6 +14,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExternalLink, BookOpen, Award, ChevronRight, UserPlus, Zap, Target, TrendingUp, ToggleLeft, ToggleRight } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
+import { useProgressTracking } from '@/hooks/useProgressTracking';
+import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import DynamicMemoryCheck from './DynamicMemoryCheck';
 
@@ -27,6 +29,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
   difficulty = 'novice' 
 }) => {
   const { user } = useAuth();
+  const { updateProgress } = useProgressTracking();
   const [isDynamicMode, setIsDynamicMode] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -41,13 +44,15 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
   const [adaptiveDifficulty, setAdaptiveDifficulty] = useState<boolean>(true);
   const [showRegistrationPrompt, setShowRegistrationPrompt] = useState(false);
   
-  // Load user progress on mount
+  // Load user progress on mount (fallback to localStorage for non-logged users)
   useEffect(() => {
-    const savedProgress = localStorage.getItem('marketMentor_progress');
-    if (savedProgress) {
-      setUserProgress(JSON.parse(savedProgress));
+    if (!user) {
+      const savedProgress = localStorage.getItem('marketMentor_progress');
+      if (savedProgress) {
+        setUserProgress(JSON.parse(savedProgress));
+      }
     }
-  }, []);
+  }, [user]);
 
   // If dynamic mode is enabled and user is logged in, show the dynamic component
   if (isDynamicMode && user) {
@@ -107,23 +112,110 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
     
   const currentQuestion = questions[currentQuestionIndex];
   
-  // Check for streak and update progress
-  const updateUserProgress = (isCorrect: boolean) => {
+  // Database-based progress update for logged-in users
+  const updateUserProgressDB = async (isCorrect: boolean) => {
+    if (!user || !currentQuestion) return;
+
+    try {
+      // Update quiz progress
+      await updateProgress(isCorrect ? 100 : 0, isCorrect);
+
+      // Add completed quiz
+      await supabase
+        .from('user_completed_quizzes')
+        .upsert({
+          user_id: user.id,
+          quiz_id: currentQuestion.id
+        });
+
+      // Update category progress
+      if (isCorrect) {
+        const { data: categoryData } = await supabase
+          .from('user_quiz_categories')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('category', currentQuestion.category)
+          .maybeSingle();
+
+        if (categoryData) {
+          await supabase
+            .from('user_quiz_categories')
+            .update({
+              correct_answers: categoryData.correct_answers + 1,
+              updated_at: new Date().toISOString()
+            })
+            .eq('user_id', user.id)
+            .eq('category', currentQuestion.category);
+        } else {
+          await supabase
+            .from('user_quiz_categories')
+            .insert({
+              user_id: user.id,
+              category: currentQuestion.category,
+              correct_answers: 1
+            });
+        }
+      }
+
+      // Check and award badges
+      if (isCorrect) {
+        const { data: categoryProgress } = await supabase
+          .from('user_quiz_categories')
+          .select('correct_answers')
+          .eq('user_id', user.id)
+          .eq('category', currentQuestion.category)
+          .single();
+
+        if (categoryProgress && categoryProgress.correct_answers >= 5) {
+          const categoryBadgeMap = {
+            'macro': 'macro_master',
+            'stocks': 'tech_titan',
+            'commodities': 'wildcard_wizard',
+            'historical': 'history_buff',
+            'concept': 'fundamental_fanatic'
+          };
+
+          const badgeId = categoryBadgeMap[currentQuestion.category as keyof typeof categoryBadgeMap];
+          if (badgeId) {
+            const { data: existingBadge } = await supabase
+              .from('user_badges')
+              .select('*')
+              .eq('user_id', user.id)
+              .eq('badge_id', badgeId)
+              .maybeSingle();
+
+            if (!existingBadge) {
+              await supabase
+                .from('user_badges')
+                .insert({
+                  user_id: user.id,
+                  badge_id: badgeId
+                });
+
+              setEarnedBadge(badges.find(b => b.id === badgeId) || null);
+            }
+          }
+        }
+      }
+
+    } catch (error) {
+      console.error('Error updating user progress:', error);
+    }
+  };
+
+  // LocalStorage-based progress update for non-logged users
+  const updateUserProgressLocal = (isCorrect: boolean) => {
     const newProgress = { ...userProgress };
     
-    // Update last quiz date and check streak
     const today = new Date().toISOString().split('T')[0];
     const lastQuizDate = newProgress.lastQuizDate;
     
-    // Ensure totalQuizzesTaken is initialized
     if (newProgress.totalQuizzesTaken === undefined) {
       newProgress.totalQuizzesTaken = 0;
     }
     
-    // Update total quizzes count
     newProgress.totalQuizzesTaken += 1;
     
-    // Calculate accuracy
     const totalCorrect = Object.values(newProgress.correctByCategory).reduce((sum, val) => sum + val, 0);
     newProgress.quizAccuracy = totalCorrect / newProgress.totalQuizzesTaken * 100;
     
@@ -136,12 +228,10 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
         newProgress.streakDays += 1;
         setStreakGained(true);
         
-        // Update longest streak
         if (!newProgress.longestStreak || newProgress.streakDays > newProgress.longestStreak) {
           newProgress.longestStreak = newProgress.streakDays;
         }
         
-        // Check for streak badges
         if (newProgress.streakDays === 3 && !newProgress.badges.includes('streak_3')) {
           newProgress.badges.push('streak_3');
           setEarnedBadge(badges.find(b => b.id === 'streak_3') || null);
@@ -150,11 +240,9 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
           setEarnedBadge(badges.find(b => b.id === 'streak_7') || null);
         }
       } else if (lastQuizDate !== today) {
-        // Reset streak if not yesterday and not today
         newProgress.streakDays = 1;
       }
     } else {
-      // First quiz ever
       newProgress.streakDays = 1;
       newProgress.badges.push('first_quiz');
       setEarnedBadge(badges.find(b => b.id === 'first_quiz') || null);
@@ -162,7 +250,6 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
     
     newProgress.lastQuizDate = today;
     
-    // Add points and update category stats if correct
     if (isCorrect && currentQuestion) {
       newProgress.points += 10;
       
@@ -171,35 +258,12 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
         newProgress.correctByCategory[category] = 0;
       }
       newProgress.correctByCategory[category] += 1;
-      
-      // Check for category mastery badges
-      const categoryBadgeMap = {
-        'macro': 'macro_master',
-        'stocks': 'tech_titan',
-        'commodities': 'wildcard_wizard',
-        'historical': 'history_buff',
-        'concept': 'fundamental_fanatic'
-      };
-      
-      const badgeId = categoryBadgeMap[category as keyof typeof categoryBadgeMap];
-      if (badgeId && newProgress.correctByCategory[category] >= 10 && !newProgress.badges.includes(badgeId)) {
-        newProgress.badges.push(badgeId);
-        setEarnedBadge(badges.find(b => b.id === badgeId) || null);
-      }
-      
-      // Specifically check for commodities expert badge
-      if (category === 'commodities' && newProgress.correctByCategory.commodities >= 8 && !newProgress.badges.includes('commodities_expert')) {
-        newProgress.badges.push('commodities_expert');
-        setEarnedBadge(badges.find(b => b.id === 'commodities_expert') || null);
-      }
     }
     
-    // Add to completed quizzes
     if (currentQuestion && !newProgress.completedQuizzes.includes(currentQuestion.id)) {
       newProgress.completedQuizzes.push(currentQuestion.id);
     }
     
-    // Update level based on points
     for (let i = userLevels.length - 1; i >= 0; i--) {
       if (newProgress.points >= userLevels[i].requiredPoints) {
         newProgress.level = userLevels[i].id;
@@ -207,53 +271,8 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
       }
     }
     
-    // Check for Golden Analyst badge
-    const analystCategories = Object.entries(newProgress.correctByCategory)
-      .filter(([_, count]) => count >= 5)
-      .length;
-      
-    if (analystCategories >= 3 && !newProgress.badges.includes('golden_analyst')) {
-      newProgress.badges.push('golden_analyst');
-      setEarnedBadge(badges.find(b => b.id === 'golden_analyst') || null);
-    }
-    
-    // Track viewed learning modules
-    if (!newProgress.viewedLearningModules) {
-      newProgress.viewedLearningModules = [];
-    }
-    
-    // Save progress and update state
     localStorage.setItem('marketMentor_progress', JSON.stringify(newProgress));
     setUserProgress(newProgress);
-  };
-  
-  const trackLearningModuleView = () => {
-    if (!currentQuestion || !currentQuestion.learningModule) return;
-    
-    const newProgress = { ...userProgress };
-    if (!newProgress.viewedLearningModules) {
-      newProgress.viewedLearningModules = [];
-    }
-    
-    const moduleId = `${currentQuestion.category}_${currentQuestion.id}`;
-    
-    if (!newProgress.viewedLearningModules.includes(moduleId)) {
-      newProgress.viewedLearningModules.push(moduleId);
-      
-      // Check for knowledge seeker badge
-      if (newProgress.viewedLearningModules.length >= 5 && !newProgress.badges.includes('learning_streak')) {
-        newProgress.badges.push('learning_streak');
-        setEarnedBadge(badges.find(b => b.id === 'learning_streak') || null);
-        
-        // Save progress and update state
-        localStorage.setItem('marketMentor_progress', JSON.stringify(newProgress));
-        setUserProgress(newProgress);
-      } else {
-        // Just save progress
-        localStorage.setItem('marketMentor_progress', JSON.stringify(newProgress));
-        setUserProgress(newProgress);
-      }
-    }
   };
   
   if (!currentQuestion) {
@@ -271,9 +290,11 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
       setCorrectAnswers(correctAnswers + 1);
     }
     
-    // Only update progress if user is logged in
+    // Update progress based on user login status
     if (user) {
-      updateUserProgress(isCorrect);
+      updateUserProgressDB(isCorrect);
+    } else {
+      updateUserProgressLocal(isCorrect);
     }
   };
   
@@ -285,7 +306,6 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
       setEarnedBadge(null);
       setStreakGained(false);
     } else {
-      // If user is not logged in, show registration prompt instead of completing
       if (!user) {
         setShowRegistrationPrompt(true);
         return;
@@ -293,18 +313,29 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
       
       setIsCompleted(true);
       
-      // Check for perfect score badge (only for logged in users)
-      if (correctAnswers + 1 === questions.length) {
-        const newProgress = { ...userProgress };
-        if (!newProgress.badges.includes('perfect_score')) {
-          newProgress.badges.push('perfect_score');
-          setEarnedBadge(badges.find(b => b.id === 'perfect_score') || null);
-          localStorage.setItem('marketMentor_progress', JSON.stringify(newProgress));
-          setUserProgress(newProgress);
-        }
+      if (correctAnswers + 1 === questions.length && user) {
+        // Award perfect score badge for logged users
+        const checkPerfectScoreBadge = async () => {
+          const { data: existingBadge } = await supabase
+            .from('user_badges')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('badge_id', 'perfect_score')
+            .maybeSingle();
+
+          if (!existingBadge) {
+            await supabase
+              .from('user_badges')
+              .insert({
+                user_id: user.id,
+                badge_id: 'perfect_score'
+              });
+            setEarnedBadge(badges.find(b => b.id === 'perfect_score') || null);
+          }
+        };
+        checkPerfectScoreBadge();
       }
       
-      // Give the user a moment to see their final result
       setTimeout(() => onComplete(), 3000);
     }
   };
@@ -325,10 +356,29 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
     return 'border-gray-200 opacity-70 dark:border-gray-700 dark:opacity-50';
   };
   
+  const trackLearningModuleView = async () => {
+    if (!currentQuestion || !currentQuestion.learningModule || !user) return;
+    
+    const moduleId = `${currentQuestion.category}_${currentQuestion.id}`;
+    
+    try {
+      await supabase
+        .from('user_learning_modules')
+        .upsert({
+          user_id: user.id,
+          module_id: moduleId
+        });
+    } catch (error) {
+      console.error('Error tracking learning module view:', error);
+    }
+  };
+  
   const openLearningModule = () => {
     if (currentQuestion.learningModule) {
       setShowLearningModule(true);
-      trackLearningModuleView();
+      if (user) {
+        trackLearningModuleView();
+      }
       setActiveTab("content");
     }
   };
@@ -445,7 +495,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
             
             {user && streakGained && (
               <div className="mt-3 text-xs text-amber-600 dark:text-amber-400 font-medium">
-                🔥 Streak increased to {userProgress.streakDays} days!
+                🔥 Streak increased!
               </div>
             )}
           </div>
