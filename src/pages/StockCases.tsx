@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useStockCases } from '@/hooks/useStockCases';
 import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
@@ -69,18 +68,7 @@ const StockCases = () => {
   const {
     searchTerm,
     setSearchTerm,
-    selectedCategory,
-    setSelectedCategory,
-    performanceFilter,
-    setPerformanceFilter,
-    sortBy,
-    setSortBy,
-    sortOrder,
-    setSortOrder,
-    viewMode: displayViewMode,
-    setViewMode: setDisplayViewMode,
     filteredAndSortedCases,
-    categories,
   } = useStockCasesFilters({ stockCases: displayCases });
 
   const handleViewStockCaseDetails = (id: string) => {
@@ -191,17 +179,17 @@ const StockCases = () => {
         <StockCasesFilters
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
-          selectedCategory={selectedCategory}
-          onCategoryChange={setSelectedCategory}
-          performanceFilter={performanceFilter}
-          onPerformanceFilterChange={setPerformanceFilter}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          sortOrder={sortOrder}
-          onSortOrderChange={setSortOrder}
-          viewMode={displayViewMode}
-          onViewModeChange={setDisplayViewMode}
-          categories={categories}
+          selectedCategory=""
+          onCategoryChange={() => {}}
+          performanceFilter=""
+          onPerformanceFilterChange={() => {}}
+          sortBy=""
+          onSortChange={() => {}}
+          sortOrder="desc"
+          onSortOrderChange={() => {}}
+          viewMode="grid"
+          onViewModeChange={() => {}}
+          categories={[]}
         />
 
         {/* Results Count */}
@@ -254,8 +242,8 @@ const StockCases = () => {
                   <Activity className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
                 )}
                 <CardTitle className="text-base sm:text-lg mb-2 text-gray-900 dark:text-gray-100">
-                  {searchTerm || selectedCategory !== 'all' || performanceFilter !== 'all'
-                    ? 'No cases match your filters'
+                  {searchTerm
+                    ? 'No cases match your search'
                     : viewMode === 'trending' 
                     ? 'No trending cases yet'
                     : viewMode === 'followed'
@@ -264,8 +252,8 @@ const StockCases = () => {
                   }
                 </CardTitle>
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 px-4">
-                  {searchTerm || selectedCategory !== 'all' || performanceFilter !== 'all'
-                    ? 'Try adjusting your search criteria or filters.'
+                  {searchTerm
+                    ? 'Try adjusting your search criteria.'
                     : viewMode === 'trending' 
                     ? 'Cases will appear here when they start getting likes from the community.'
                     : viewMode === 'followed'
@@ -273,47 +261,30 @@ const StockCases = () => {
                     : 'Stock cases will be displayed here when they are added by our experts.'
                   }
                 </p>
-                {(searchTerm || selectedCategory !== 'all' || performanceFilter !== 'all') && (
+                {searchTerm && (
                   <Button 
-                    onClick={() => {
-                      setSearchTerm('');
-                      setSelectedCategory('all');
-                      setPerformanceFilter('all');
-                    }}
+                    onClick={() => setSearchTerm('')}
                     variant="outline"
                     size="sm"
                     className="text-xs sm:text-sm"
                   >
-                    Clear Filters
+                    Clear Search
                   </Button>
                 )}
               </CardContent>
             </Card>
           ) : (
             <div className="px-2 sm:px-0">
-              {displayViewMode === 'grid' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                  {filteredAndSortedCases.map((stockCase) => (
-                    <StockCaseCard
-                      key={stockCase.id}
-                      stockCase={stockCase}
-                      onViewDetails={handleViewStockCaseDetails}
-                      onDelete={handleDeleteStockCase}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {filteredAndSortedCases.map((stockCase) => (
-                    <StockCaseListItem
-                      key={stockCase.id}
-                      stockCase={stockCase}
-                      onViewDetails={handleViewStockCaseDetails}
-                      onDelete={handleDeleteStockCase}
-                    />
-                  ))}
-                </div>
-              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                {filteredAndSortedCases.map((stockCase) => (
+                  <StockCaseCard
+                    key={stockCase.id}
+                    stockCase={stockCase}
+                    onViewDetails={handleViewStockCaseDetails}
+                    onDelete={handleDeleteStockCase}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>

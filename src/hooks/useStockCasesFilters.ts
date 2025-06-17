@@ -17,14 +17,15 @@ export const useStockCasesFilters = ({ stockCases }: UseStockCasesFiltersProps) 
   const filteredAndSortedCases = useMemo(() => {
     let filtered = [...stockCases];
 
-    // Search filter
+    // Search filter - now includes category search
     if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (stockCase) =>
           stockCase.company_name.toLowerCase().includes(search) ||
           stockCase.title.toLowerCase().includes(search) ||
-          (stockCase.description && stockCase.description.toLowerCase().includes(search))
+          (stockCase.description && stockCase.description.toLowerCase().includes(search)) ||
+          (stockCase.case_categories && stockCase.case_categories.name.toLowerCase().includes(search))
       );
     }
 
