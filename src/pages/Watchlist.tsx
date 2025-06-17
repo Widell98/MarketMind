@@ -49,22 +49,16 @@ const Watchlist = () => {
     <Layout>
       <div className="space-y-6">
         {/* Header Section */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Bookmark className="w-8 h-8 text-blue-500" />
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                My Watchlist
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Track your followed stock cases and investment opportunities
-              </p>
-            </div>
+        <div className="flex items-center gap-3">
+          <Bookmark className="w-8 h-8 text-blue-500" />
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+              My Watchlist
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Track your followed stock cases and investment opportunities
+            </p>
           </div>
-          <Button onClick={() => navigate('/stock-cases')} variant="outline">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Cases
-          </Button>
         </div>
 
         {/* Stats Cards */}
