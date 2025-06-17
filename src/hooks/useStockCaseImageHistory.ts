@@ -41,7 +41,7 @@ export const useStockCaseImageHistory = (stockCaseId: string) => {
     }
   };
 
-  const addImageToHistory = async (imageUrl: string, description?: string, setCurrent = false) => {
+  const addImageToHistory = async (imageUrl: string, description?: string, setCurrent = true) => {
     if (!user) return;
 
     try {
@@ -53,6 +53,7 @@ export const useStockCaseImageHistory = (stockCaseId: string) => {
           .eq('stock_case_id', stockCaseId);
       }
 
+      // Always insert the new image into history
       const { error } = await (supabase as any)
         .from('stock_case_image_history')
         .insert({
@@ -65,10 +66,11 @@ export const useStockCaseImageHistory = (stockCaseId: string) => {
 
       if (error) throw error;
 
-      // Refresh the list
+      // Refresh the list to get the updated history
       await fetchImageHistory();
     } catch (error) {
       console.error('Error adding image to history:', error);
+      throw error;
     }
   };
 

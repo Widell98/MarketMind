@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
 import { useStockCaseImageHistory } from '@/hooks/useStockCaseImageHistory';
@@ -28,6 +28,25 @@ const StockCaseDetail = () => {
     addImageToHistory 
   } = useStockCaseImageHistory(id!);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+
+  // Initialize image history with the main stock case image if no history exists
+  useEffect(() => {
+    const initializeImageHistory = async () => {
+      if (stockCase && !historyLoading && images.length === 0 && stockCase.image_url) {
+        try {
+          await addImageToHistory(
+            stockCase.image_url, 
+            'Initial analysis chart', 
+            true
+          );
+        } catch (error) {
+          console.error('Error initializing image history:', error);
+        }
+      }
+    };
+
+    initializeImageHistory();
+  }, [stockCase, historyLoading, images.length, addImageToHistory]);
 
   if (loading) {
     return (
@@ -78,10 +97,11 @@ const StockCaseDetail = () => {
 
   const handleImageAdded = async (imageUrl: string, description?: string) => {
     try {
-      // Add the image to history and set it as current
+      // Add the new image to history and set it as current
       await addImageToHistory(imageUrl, description, true);
     } catch (error) {
       console.error('Error adding image to history:', error);
+      throw error;
     }
   };
 
@@ -150,8 +170,8 @@ const StockCaseDetail = () => {
                   />
                 </div>
 
-                {/* Image History Navigation */}
-                {!historyLoading && images.length > 0 && (
+                {/* Image History Navigation - always show if we have images */}
+                {!historyLoading && images.length > 1 && (
                   <ImageHistoryNavigation
                     images={images}
                     currentIndex={currentImageIndex}
