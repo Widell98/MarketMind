@@ -130,47 +130,34 @@ const StockCaseDetail = () => {
 
           {/* Image with history controls */}
           {imageUrl && (
-            <div className="space-y-6">
-              <div className="relative">
-                <Card className="overflow-hidden group cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300" onClick={() => setIsImageModalOpen(true)}>
-                  <div className="relative aspect-video w-full">
-                    <img
-                      src={imageUrl}
-                      alt={`${stockCase.title} stock price chart`}
-                      className="w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 dark:bg-gray-800/90 rounded-full p-3 shadow-lg">
-                        <ZoomIn className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-                      </div>
+            <div className="space-y-4">
+              <Card className="overflow-hidden group cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300" onClick={() => setIsImageModalOpen(true)}>
+                <div className="relative aspect-video w-full">
+                  <img
+                    src={imageUrl}
+                    alt={`${stockCase.title} stock price chart`}
+                    className="w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 dark:bg-gray-800/90 rounded-full p-3 shadow-lg">
+                      <ZoomIn className="w-6 h-6 text-gray-700 dark:text-gray-300" />
                     </div>
-                    
-                    {/* Compact navigation overlay for images */}
-                    {!historyLoading && images.length > 1 && (
-                      <ImageHistoryNavigation
-                        images={images}
-                        currentIndex={currentImageIndex}
-                        onIndexChange={setCurrentImageIndex}
-                        variant="compact"
-                      />
-                    )}
                   </div>
-                </Card>
-              </div>
+                </div>
+              </Card>
 
-              {/* Image metadata and upload */}
+              {/* Image history controls and upload */}
               <div className="space-y-4">
+                {/* Upload new image button */}
                 <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     {displayImage?.description && (
-                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-2">
-                        <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                          {displayImage.description}
-                        </p>
-                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {displayImage.description}
+                      </p>
                     )}
                     {displayImage?.created_at && (
-                      <span className="text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">
+                      <span className="text-xs text-gray-500 dark:text-gray-500">
                         {formatDate(displayImage.created_at)}
                       </span>
                     )}
@@ -183,7 +170,7 @@ const StockCaseDetail = () => {
                   />
                 </div>
 
-                {/* Full Image History Navigation */}
+                {/* Image History Navigation - always show if we have images */}
                 {!historyLoading && images.length > 1 && (
                   <ImageHistoryNavigation
                     images={images}
@@ -191,7 +178,6 @@ const StockCaseDetail = () => {
                     onIndexChange={setCurrentImageIndex}
                     onSetCurrent={setCurrentImage}
                     canEdit={canEdit}
-                    variant="full"
                   />
                 )}
               </div>
