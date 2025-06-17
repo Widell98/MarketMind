@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import MemoryCheck from '@/components/MemoryCheck';
@@ -6,11 +5,15 @@ import ProgressDashboard from '@/components/ProgressDashboard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookOpen, Play } from 'lucide-react';
+import { useProgressTracking } from '@/hooks/useProgressTracking';
 
 const Learning = () => {
+  const { refetch } = useProgressTracking();
+
   const handleQuizComplete = () => {
-    // Quiz completion logic - could show results or reload new questions
+    // Quiz completion logic - reload progress data immediately
     console.log('Quiz completed!');
+    refetch(); // This will update the progress dashboard immediately
   };
 
   return (
