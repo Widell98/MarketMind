@@ -46,7 +46,12 @@ const AdminImageHistoryManager: React.FC<AdminImageHistoryManagerProps> = ({
 
     try {
       setDeletingImageId(imageId);
+      console.log('Starting delete process for image:', imageId);
+      
       await deleteImage(imageId);
+      
+      // Force a manual refetch to ensure the UI updates
+      await refetch();
       
       toast({
         title: "Framgång",
@@ -56,7 +61,7 @@ const AdminImageHistoryManager: React.FC<AdminImageHistoryManagerProps> = ({
       console.error('Error deleting image:', error);
       toast({
         title: "Fel",
-        description: "Kunde inte radera bilden",
+        description: "Kunde inte radera bilden. Kontrollera att du har behörighet.",
         variant: "destructive",
       });
     } finally {

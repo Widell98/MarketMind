@@ -21,6 +21,7 @@ export const useStockCaseImageHistory = (stockCaseId: string) => {
 
   const fetchImageHistory = async () => {
     try {
+      setLoading(true);
       const { data, error } = await (supabase as any)
         .from('stock_case_image_history')
         .select('*')
@@ -97,15 +98,32 @@ export const useStockCaseImageHistory = (stockCaseId: string) => {
 
   const deleteImage = async (imageId: string) => {
     try {
+      console.log('Attempting to delete image with ID:', imageId);
+      
       const { error } = await (supabase as any)
         .from('stock_case_image_history')
         .delete()
         .eq('id', imageId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
 
-      // Refresh the list
+      console.log('Image deleted successfully, refreshing list...');
+      
+      // Force refresh the list after successful deletion
       await fetchImageHistory();
+      
+      // Adjust current index if needed
+      setCurrentImageIndex(prevIndex => {
+        const newImagesLength = images.length - 1; // Account for deleted image
+        if (prevIndex >= newImagesLength && newImagesLength > 0) {
+          return newImagesLength - 1;
+        }
+        return prevIndex;
+      });
+      
     } catch (error) {
       console.error('Error deleting image:', error);
       throw error;
