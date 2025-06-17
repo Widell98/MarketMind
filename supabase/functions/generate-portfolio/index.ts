@@ -1,161 +1,30 @@
 
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-// Local portfolio generation logic
-const generateLocalPortfolio = (riskProfile: any) => {
-  // Determine base allocation based on risk tolerance
-  let baseAllocation: any;
-  let expectedReturn: number;
-  let riskScore: number;
-
-  switch (riskProfile.risk_tolerance) {
-    case 'conservative':
-      baseAllocation = { stocks: 30, bonds: 50, real_estate: 10, cash: 10 };
-      expectedReturn = 4.5;
-      riskScore = 3;
-      break;
-    case 'aggressive':
-      baseAllocation = { stocks: 80, bonds: 10, real_estate: 5, cash: 5 };
-      expectedReturn = 9.2;
-      riskScore = 8;
-      break;
-    default: // moderate
-      baseAllocation = { stocks: 60, bonds: 25, real_estate: 10, cash: 5 };
-      expectedReturn = 6.8;
-      riskScore = 5;
-      break;
-  }
-
-  // Adjust for age (younger = more aggressive)
-  if (riskProfile.age && riskProfile.age < 35) {
-    baseAllocation.stocks += 10;
-    baseAllocation.bonds -= 5;
-    baseAllocation.cash -= 5;
-    expectedReturn += 0.8;
-    riskScore += 1;
-  } else if (riskProfile.age && riskProfile.age > 50) {
-    baseAllocation.stocks -= 10;
-    baseAllocation.bonds += 8;
-    baseAllocation.cash += 2;
-    expectedReturn -= 0.6;
-    riskScore -= 1;
-  }
-
-  // Adjust for investment horizon
-  if (riskProfile.investment_horizon === 'short') {
-    baseAllocation.stocks -= 15;
-    baseAllocation.bonds += 10;
-    baseAllocation.cash += 5;
-    expectedReturn -= 1.2;
-    riskScore -= 2;
-  } else if (riskProfile.investment_horizon === 'long') {
-    baseAllocation.stocks += 10;
-    baseAllocation.bonds -= 8;
-    baseAllocation.real_estate += 3;
-    baseAllocation.cash -= 5;
-    expectedReturn += 1.0;
-    riskScore += 1;
-  }
-
-  // Ensure allocations are within bounds and sum to 100
-  baseAllocation.stocks = Math.max(20, Math.min(85, baseAllocation.stocks));
-  baseAllocation.bonds = Math.max(5, Math.min(60, baseAllocation.bonds));
-  baseAllocation.real_estate = Math.max(0, Math.min(20, baseAllocation.real_estate));
-  baseAllocation.cash = Math.max(2, Math.min(20, baseAllocation.cash));
-
-  // Normalize to 100%
-  const total = Object.values(baseAllocation).reduce((sum: number, val: any) => sum + val, 0);
-  Object.keys(baseAllocation).forEach(key => {
-    baseAllocation[key] = Math.round((baseAllocation[key] / total) * 100);
-  });
-
-  // Generate stock recommendations
-  const availableStocks: any = {
-    Technology: [
-      { symbol: 'AAPL', name: 'Apple Inc.' },
-      { symbol: 'MSFT', name: 'Microsoft Corporation' },
-      { symbol: 'GOOGL', name: 'Alphabet Inc.' }
-    ],
-    Healthcare: [
-      { symbol: 'JNJ', name: 'Johnson & Johnson' },
-      { symbol: 'PFE', name: 'Pfizer Inc.' },
-      { symbol: 'UNH', name: 'UnitedHealth Group' }
-    ],
-    Financial: [
-      { symbol: 'JPM', name: 'JPMorgan Chase & Co.' },
-      { symbol: 'BAC', name: 'Bank of America Corp.' }
-    ],
-    Consumer: [
-      { symbol: 'AMZN', name: 'Amazon.com Inc.' },
-      { symbol: 'TSLA', name: 'Tesla Inc.' }
-    ]
-  };
-
-  const recommendedStocks: any[] = [];
-  const sectorInterests = riskProfile.sector_interests || [];
-  
-  // Add sector-based recommendations
-  if (sectorInterests.length > 0) {
-    sectorInterests.forEach((sector: string) => {
-      const stocks = availableStocks[sector];
-      if (stocks && stocks.length > 0) {
-        const stock = stocks[0];
-        recommendedStocks.push({
-          symbol: stock.symbol,
-          name: stock.name,
-          sector: sector,
-          allocation: Math.round((baseAllocation.stocks / sectorInterests.length) * 0.6)
-        });
-      }
-    });
-  }
-
-  // Add diversified ETFs
-  const remainingAllocation = baseAllocation.stocks - recommendedStocks.reduce((sum, stock) => sum + stock.allocation, 0);
-  if (remainingAllocation > 0) {
-    recommendedStocks.push({
-      symbol: 'VTI',
-      name: 'Vanguard Total Stock Market ETF',
-      sector: 'ETF',
-      allocation: remainingAllocation
-    });
-  }
-
-  const reasoning = `Based on your ${riskProfile.risk_tolerance} risk profile, I've created a portfolio with ${baseAllocation.stocks}% stocks, ${baseAllocation.bonds}% bonds, ${baseAllocation.real_estate}% real estate, and ${baseAllocation.cash}% cash. This allocation considers your age (${riskProfile.age}), investment horizon (${riskProfile.investment_horizon}), and monthly investment capacity (${riskProfile.monthly_investment_amount} SEK). Expected annual return: ${expectedReturn.toFixed(1)}% with risk score ${riskScore}/10.`;
-
-  return {
-    asset_allocation: baseAllocation,
-    recommended_stocks: recommendedStocks,
-    expected_return: expectedReturn,
-    risk_score: riskScore,
-    reasoning: reasoning
-  };
-};
+}
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // Get the authorization header from the request
-    const authHeader = req.headers.get('Authorization');
+    // Security: Verify JWT token and get user
+    const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      console.error('No authorization header found');
-      throw new Error('No authorization header provided');
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     }
-
-    console.log('Authorization header found:', authHeader ? 'Yes' : 'No');
-
-    // Extract the JWT token from the Authorization header
-    const jwt = authHeader.replace('Bearer ', '');
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -164,110 +33,272 @@ serve(async (req) => {
         global: {
           headers: { Authorization: authHeader },
         },
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
       }
-    );
+    )
 
-    // Set the session using the JWT token
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(jwt);
+    // Verify the user is authenticated
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
     
-    if (userError || !user) {
-      console.error('Failed to get user from token:', userError);
-      throw new Error(`Authentication failed: ${userError?.message || 'Invalid token'}`);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     }
 
-    console.log('Authenticated user:', user.id);
+    const { riskProfileId } = await req.json()
 
-    const { risk_profile_id } = await req.json();
-    console.log('Received request for risk profile ID:', risk_profile_id);
+    // Security: Validate input
+    if (!riskProfileId || typeof riskProfileId !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'Invalid risk profile ID' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
 
-    // Fetch risk profile
+    // Security: Verify the risk profile belongs to the authenticated user
     const { data: riskProfile, error: profileError } = await supabaseClient
       .from('user_risk_profiles')
       .select('*')
-      .eq('id', risk_profile_id)
+      .eq('id', riskProfileId)
       .eq('user_id', user.id)
-      .single();
+      .single()
 
-    if (profileError) {
-      console.error('Profile fetch error:', profileError);
-      throw new Error(`Failed to fetch risk profile: ${profileError.message}`);
+    if (profileError || !riskProfile) {
+      return new Response(
+        JSON.stringify({ error: 'Risk profile not found or access denied' }),
+        { 
+          status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     }
-    if (!riskProfile) {
-      console.error('No risk profile found for ID:', risk_profile_id);
-      throw new Error('Risk profile not found');
-    }
 
-    console.log('Found risk profile:', riskProfile);
-
-    // Generate portfolio using local algorithm instead of OpenAI
-    console.log('Generating portfolio using local algorithm...');
-    const portfolioData = generateLocalPortfolio(riskProfile);
-
-    // First, deactivate any existing active portfolios for this user
-    const { error: deactivateError } = await supabaseClient
+    // Security: Rate limiting check (basic implementation)
+    const { data: existingPortfolios } = await supabaseClient
       .from('user_portfolios')
-      .update({ is_active: false })
+      .select('created_at')
       .eq('user_id', user.id)
-      .eq('is_active', true);
+      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
 
-    if (deactivateError) {
-      console.error('Error deactivating existing portfolios:', deactivateError);
+    if (existingPortfolios && existingPortfolios.length >= 5) {
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded. Maximum 5 portfolios per day.' }),
+        { 
+          status: 429, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     }
+
+    // Generate portfolio based on risk profile
+    const portfolioData = generatePortfolioFromProfile(riskProfile)
 
     // Save portfolio to database
-    const { data: portfolio, error: portfolioError } = await supabaseClient
+    const { data: portfolio, error: saveError } = await supabaseClient
       .from('user_portfolios')
       .insert({
         user_id: user.id,
-        risk_profile_id: risk_profile_id,
-        portfolio_name: 'AI Generated Portfolio',
-        asset_allocation: portfolioData.asset_allocation,
-        recommended_stocks: portfolioData.recommended_stocks,
-        expected_return: portfolioData.expected_return,
-        risk_score: portfolioData.risk_score,
-        is_active: true
+        risk_profile_id: riskProfileId,
+        portfolio_name: `${getPortfolioName(riskProfile)} Portfolio`,
+        asset_allocation: portfolioData.assetAllocation,
+        recommended_stocks: portfolioData.recommendedStocks,
+        expected_return: portfolioData.expectedReturn,
+        risk_score: portfolioData.riskScore,
+        total_value: riskProfile.current_portfolio_value || 0
       })
       .select()
-      .single();
+      .single()
 
-    if (portfolioError) {
-      console.error('Portfolio save error:', portfolioError);
-      throw portfolioError;
+    if (saveError) {
+      throw saveError
     }
 
-    console.log('Portfolio saved successfully:', portfolio.id);
-
-    // Create initial recommendation
-    const { error: recommendationError } = await supabaseClient
-      .from('portfolio_recommendations')
-      .insert({
-        user_id: user.id,
-        portfolio_id: portfolio.id,
-        recommendation_type: 'general_advice',
-        title: 'Welcome to Your New Portfolio',
-        description: portfolioData.reasoning,
-        ai_reasoning: 'Initial portfolio generation based on risk assessment using local algorithm',
-        priority: 'high'
-      });
-
-    if (recommendationError) {
-      console.error('Recommendation save error:', recommendationError);
-      // Don't fail the entire operation for this
-    }
-
-    return new Response(JSON.stringify({ success: true, portfolio }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ 
+        portfolio,
+        message: 'Portfolio generated successfully'
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
 
   } catch (error) {
-    console.error('Error in generate-portfolio function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    console.error('Portfolio generation error:', error)
+    
+    return new Response(
+      JSON.stringify({ 
+        error: 'Internal server error' 
+      }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
   }
-});
+})
+
+function generatePortfolioFromProfile(riskProfile: any) {
+  // Security: Validate profile data
+  const safeProfile = {
+    risk_tolerance: riskProfile.risk_tolerance || 'moderate',
+    investment_horizon: riskProfile.investment_horizon || 'medium',
+    investment_goal: riskProfile.investment_goal || 'balanced',
+    investment_experience: riskProfile.investment_experience || 'beginner',
+    sector_interests: Array.isArray(riskProfile.sector_interests) ? riskProfile.sector_interests : [],
+    age: Math.max(18, Math.min(100, riskProfile.age || 35)),
+    monthly_investment_amount: Math.max(0, riskProfile.monthly_investment_amount || 1000)
+  }
+
+  // Generate asset allocation based on risk tolerance
+  let stocksPercent = 60
+  let bondsPercent = 30
+  let cashPercent = 10
+
+  switch (safeProfile.risk_tolerance) {
+    case 'conservative':
+      stocksPercent = 40
+      bondsPercent = 50
+      cashPercent = 10
+      break
+    case 'aggressive':
+      stocksPercent = 80
+      bondsPercent = 15
+      cashPercent = 5
+      break
+  }
+
+  // Adjust based on age (younger = more aggressive)
+  if (safeProfile.age < 30) {
+    stocksPercent = Math.min(stocksPercent + 10, 90)
+    bondsPercent = Math.max(bondsPercent - 10, 5)
+  } else if (safeProfile.age > 50) {
+    stocksPercent = Math.max(stocksPercent - 10, 30)
+    bondsPercent = Math.min(bondsPercent + 10, 60)
+  }
+
+  const assetAllocation = {
+    stocks: stocksPercent,
+    bonds: bondsPercent,
+    cash: cashPercent
+  }
+
+  // Generate recommended stocks based on sector interests
+  const recommendedStocks = generateStockRecommendations(safeProfile)
+
+  // Calculate expected return
+  const expectedReturn = calculateExpectedReturn(assetAllocation, safeProfile.risk_tolerance)
+
+  // Calculate risk score
+  const riskScore = calculateRiskScore(safeProfile)
+
+  return {
+    assetAllocation,
+    recommendedStocks,
+    expectedReturn,
+    riskScore
+  }
+}
+
+function generateStockRecommendations(profile: any) {
+  const stockDatabase = {
+    'Technology': ['AAPL', 'MSFT', 'GOOGL', 'META', 'NVDA'],
+    'Healthcare': ['JNJ', 'PFE', 'UNH', 'ABBV', 'MRK'],
+    'Finance': ['JPM', 'BAC', 'WFC', 'GS', 'MS'],
+    'Energy': ['XOM', 'CVX', 'COP', 'EOG', 'SLB'],
+    'Consumer Goods': ['PG', 'KO', 'PEP', 'WMT', 'HD']
+  }
+
+  const recommendations = []
+  const maxStocksPerSector = 3
+  const maxTotalStocks = 10
+
+  // If user has sector interests, prioritize those
+  if (profile.sector_interests && profile.sector_interests.length > 0) {
+    for (const sector of profile.sector_interests) {
+      if (stockDatabase[sector] && recommendations.length < maxTotalStocks) {
+        const sectorStocks = stockDatabase[sector]
+          .slice(0, maxStocksPerSector)
+          .map(symbol => ({
+            symbol,
+            sector,
+            allocation: Math.round((100 / Math.min(profile.sector_interests.length * maxStocksPerSector, maxTotalStocks)) * 100) / 100
+          }))
+        
+        recommendations.push(...sectorStocks)
+      }
+    }
+  } else {
+    // Default diversified portfolio
+    const defaultSectors = ['Technology', 'Healthcare', 'Finance']
+    for (const sector of defaultSectors) {
+      if (recommendations.length < maxTotalStocks) {
+        const sectorStocks = stockDatabase[sector]
+          .slice(0, 2)
+          .map(symbol => ({
+            symbol,
+            sector,
+            allocation: Math.round((100 / 6) * 100) / 100
+          }))
+        
+        recommendations.push(...sectorStocks)
+      }
+    }
+  }
+
+  return recommendations.slice(0, maxTotalStocks)
+}
+
+function calculateExpectedReturn(allocation: any, riskTolerance: string) {
+  const stockReturn = 8.5 // Historical average
+  const bondReturn = 4.0
+  const cashReturn = 1.5
+
+  const weightedReturn = 
+    (allocation.stocks / 100) * stockReturn +
+    (allocation.bonds / 100) * bondReturn +
+    (allocation.cash / 100) * cashReturn
+
+  // Adjust based on risk tolerance
+  const riskAdjustment = {
+    'conservative': -0.5,
+    'moderate': 0,
+    'aggressive': 0.5
+  }
+
+  return Math.round((weightedReturn + (riskAdjustment[riskTolerance] || 0)) * 100) / 100
+}
+
+function calculateRiskScore(profile: any) {
+  let score = 50 // Base score
+
+  // Risk tolerance adjustment
+  switch (profile.risk_tolerance) {
+    case 'conservative': score -= 20; break
+    case 'aggressive': score += 20; break
+  }
+
+  // Age adjustment
+  if (profile.age < 30) score += 10
+  if (profile.age > 50) score -= 10
+
+  // Investment horizon adjustment
+  switch (profile.investment_horizon) {
+    case 'short': score -= 15; break
+    case 'long': score += 15; break
+  }
+
+  return Math.max(10, Math.min(90, score))
+}
+
+function getPortfolioName(profile: any) {
+  const riskLevel = profile.risk_tolerance || 'moderate'
+  return riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)
+}

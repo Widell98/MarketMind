@@ -47,6 +47,10 @@ verify_jwt = false
 [functions.fetch-news-data]
 verify_jwt = false
 
+# Security enhancement: Enable JWT verification for portfolio generation
+[functions.generate-portfolio]
+verify_jwt = true
+
 [edge_runtime]
 ip_version = "ipv4"
 policy = "per_worker"
