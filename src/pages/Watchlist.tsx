@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useStockCases } from '@/hooks/useStockCases';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Heart, TrendingUp, AlertCircle, Plus } from 'lucide-react';
+import { Bookmark, TrendingUp, AlertCircle, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import StockCaseCard from '@/components/StockCaseCard';
@@ -51,7 +51,7 @@ const Watchlist = () => {
         {/* Header Section */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Heart className="w-8 h-8 text-red-500" />
+            <Bookmark className="w-8 h-8 text-blue-500" />
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                 My Watchlist
@@ -69,18 +69,18 @@ const Watchlist = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="bg-gradient-to-br from-red-50 to-pink-100 dark:from-red-950 dark:to-pink-900 border-red-200 dark:border-red-800">
+          <Card className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-900 border-blue-200 dark:border-blue-800">
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2">
-                <Heart className="w-5 h-5 text-red-600 dark:text-red-400" />
-                <CardTitle className="text-lg text-red-800 dark:text-red-200">Followed Cases</CardTitle>
+                <Bookmark className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <CardTitle className="text-lg text-blue-800 dark:text-blue-200">Followed Cases</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-900 dark:text-red-100 mb-1">
+              <div className="text-2xl font-bold text-blue-900 dark:text-blue-100 mb-1">
                 {followedCases.length}
               </div>
-              <p className="text-sm text-red-700 dark:text-red-300">Active Follows</p>
+              <p className="text-sm text-blue-700 dark:text-blue-300">Active Follows</p>
             </CardContent>
           </Card>
 
@@ -129,12 +129,12 @@ const Watchlist = () => {
         ) : followedCases.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent className="pt-6">
-              <Heart className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+              <Bookmark className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
               <CardTitle className="text-xl mb-2 text-gray-900 dark:text-gray-100">
                 Your watchlist is empty
               </CardTitle>
               <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Start following stock cases to see them here. Browse our curated cases and click the heart icon to add them to your watchlist.
+                Start following stock cases to see them here. Browse our curated cases and click the bookmark icon to add them to your watchlist.
               </p>
               <Button onClick={() => navigate('/stock-cases')}>
                 <Plus className="w-4 h-4 mr-2" />

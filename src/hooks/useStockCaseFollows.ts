@@ -27,6 +27,9 @@ export const useStockCaseFollows = (stockCaseId: string) => {
 
         if (followingError) throw followingError;
         setIsFollowing(followingData || false);
+      } else {
+        // If no user, reset following state
+        setIsFollowing(false);
       }
     } catch (error: any) {
       console.error('Error fetching follow data:', error);
@@ -95,8 +98,10 @@ export const useStockCaseFollows = (stockCaseId: string) => {
   };
 
   useEffect(() => {
-    fetchFollowData();
-  }, [stockCaseId, user]);
+    if (stockCaseId) {
+      fetchFollowData();
+    }
+  }, [stockCaseId, user?.id]); // Added user?.id as dependency to refetch when user changes
 
   return {
     followCount,
