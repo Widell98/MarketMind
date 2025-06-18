@@ -50,18 +50,18 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   <span className="hidden sm:inline">Sign In</span>
                   <span className="sm:hidden">Login</span>
                 </Link>
-              </Link>
+              </Button>
             )}
           </div>
         </div>
       </header>
       
-      <main className="container-responsive py-4 sm:py-6 lg:py-8">
+      <main className="container-responsive py-4 sm:py-6">
         <BreadcrumbNavigation />
         {children}
       </main>
       
-      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4 sm:py-6 lg:py-8 mt-auto">
+      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4 sm:py-6 mt-auto">
         <div className="container-responsive text-center text-xs sm:text-sm lg:text-base text-finance-gray dark:text-gray-400">
           © {new Date().getFullYear()} Market Mind. All rights reserved.
         </div>
