@@ -25,7 +25,45 @@ interface MemoryCheckProps {
   difficulty?: 'novice' | 'analyst' | 'pro';
 }
 
-const DAILY_QUIZ_LIMIT = 3;
+const DAILY_QUIZ_QUESTIONS = 3;
+
+// Function to get today's 3 questions deterministically
+const getTodayQuestions = (difficulty: string, allQuestions: any[], completedQuestions: string[]) => {
+  // Use today's date as seed for consistent daily questions
+  const today = new Date();
+  const dateString = today.toISOString().split('T')[0]; // YYYY-MM-DD
+  const seed = dateString.split('-').reduce((acc, val) => acc + parseInt(val), 0);
+  
+  // Filter questions by difficulty and remove completed ones for logged-in users
+  let availableQuestions = allQuestions.filter(q => q.difficulty === difficulty);
+  
+  // For logged-in users, filter out completed questions from today's selection
+  if (completedQuestions.length > 0) {
+    availableQuestions = availableQuestions.filter(q => !completedQuestions.includes(q.id));
+  }
+  
+  // If we don't have enough questions, include all questions for the difficulty
+  if (availableQuestions.length < DAILY_QUIZ_QUESTIONS) {
+    availableQuestions = allQuestions.filter(q => q.difficulty === difficulty);
+  }
+  
+  // Use seeded random to select the same 3 questions each day
+  const seededRandom = (seed: number) => {
+    const x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
+  };
+  
+  const selectedQuestions = [];
+  const questionsCopy = [...availableQuestions];
+  
+  for (let i = 0; i < Math.min(DAILY_QUIZ_QUESTIONS, questionsCopy.length); i++) {
+    const randomIndex = Math.floor(seededRandom(seed + i) * questionsCopy.length);
+    selectedQuestions.push(questionsCopy[randomIndex]);
+    questionsCopy.splice(randomIndex, 1);
+  }
+  
+  return selectedQuestions;
+};
 
 const MemoryCheck: React.FC<MemoryCheckProps> = ({ 
   onComplete, 
@@ -39,7 +77,6 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [correctAnswers, setCorrectAnswers] = useState(0);
-  const [totalQuestionsAnswered, setTotalQuestionsAnswered] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [userProgress, setUserProgress] = useState<UserProgress>(defaultUserProgress);
   const [showLearningModule, setShowLearningModule] = useState(false);
@@ -48,18 +85,18 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
   const [activeTab, setActiveTab] = useState<string>("content");
   const [adaptiveDifficulty, setAdaptiveDifficulty] = useState<boolean>(true);
   const [showRegistrationPrompt, setShowRegistrationPrompt] = useState(false);
-  const [dailyQuestionsCompleted, setDailyQuestionsCompleted] = useState(0);
+  const [dailyQuizCompleted, setDailyQuizCompleted] = useState(false);
   
-  // Check how many questions user has completed today
+  // Check if user has completed today's quiz
   useEffect(() => {
     if (user) {
-      checkDailyQuizProgress();
+      checkDailyQuizCompletion();
     } else {
-      checkLocalDailyProgress();
+      checkLocalDailyCompletion();
     }
   }, [user]);
 
-  const checkDailyQuizProgress = async () => {
+  const checkDailyQuizCompletion = async () => {
     if (!user) return;
 
     const today = new Date().toISOString().split('T')[0];
@@ -74,30 +111,17 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
 
       if (error) throw error;
 
-      setDailyQuestionsCompleted(data?.length || 0);
+      // Check if user completed a full quiz today (3 questions)
+      setDailyQuizCompleted((data?.length || 0) >= DAILY_QUIZ_QUESTIONS);
     } catch (error) {
-      console.error('Error checking daily quiz progress:', error);
+      console.error('Error checking daily quiz completion:', error);
     }
   };
 
-  const checkLocalDailyProgress = () => {
-    const savedProgress = localStorage.getItem('marketMentor_progress');
-    if (savedProgress) {
-      const progress = JSON.parse(savedProgress);
-      setUserProgress(progress);
-      
-      const today = new Date().toISOString().split('T')[0];
-      if (progress.lastQuizDate === today) {
-        // Count today's completed quizzes from localStorage
-        const todayQuizzes = progress.completedQuizzes?.filter((id: string) => {
-          // For localStorage, we'll track by checking if it's in today's completed list
-          return true; // Simplified - in localStorage we'll reset daily
-        });
-        setDailyQuestionsCompleted(Math.min(todayQuizzes?.length || 0, DAILY_QUIZ_LIMIT));
-      } else {
-        setDailyQuestionsCompleted(0);
-      }
-    }
+  const checkLocalDailyCompletion = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const savedCompletion = localStorage.getItem(`marketMentor_dailyQuiz_${today}`);
+    setDailyQuizCompleted(savedCompletion === 'completed');
   };
 
   // If dynamic mode is enabled and user is logged in, show the dynamic component
@@ -134,66 +158,30 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
     );
   }
 
-  // Check if user has reached daily limit
-  if (dailyQuestionsCompleted >= DAILY_QUIZ_LIMIT) {
+  // Check if user has completed today's quiz
+  if (dailyQuizCompleted) {
     return (
       <div className="card-finance p-5 text-center animate-fade-in dark:bg-gray-800 dark:border-gray-700">
-        <h3 className="text-lg font-medium mb-2 dark:text-white">Daily Limit Reached!</h3>
+        <h3 className="text-lg font-medium mb-2 dark:text-white">Daily Quiz Completed!</h3>
         <p className="text-sm mb-4 dark:text-gray-300">
-          You've completed your {DAILY_QUIZ_LIMIT} daily questions. Come back tomorrow for more!
+          You've completed today's {DAILY_QUIZ_QUESTIONS} quiz questions. Come back tomorrow for more!
         </p>
         <div className="text-2xl mb-3">🎯</div>
         <Badge className="bg-green-500 text-white" variant="secondary">
-          {dailyQuestionsCompleted}/{DAILY_QUIZ_LIMIT} Questions Complete
+          {DAILY_QUIZ_QUESTIONS}/{DAILY_QUIZ_QUESTIONS} Daily Questions Complete
         </Badge>
       </div>
     );
   }
   
-  // Set day of week for quiz theme
-  const today = new Date();
-  const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][today.getDay()];
-  
-  // Find today's questions (or use difficulty filtered questions if none match)
-  const matchingDayQuestions = quizQuestions.filter(q => 
-    q.day === dayOfWeek as 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday'
-  );
-  
-  // Filter by difficulty if no day-specific questions or if we want to ensure difficulty level
-  const filteredQuestions = matchingDayQuestions.length > 0 
-    ? matchingDayQuestions.filter(q => q.difficulty === difficulty)
-    : quizQuestions.filter(q => q.difficulty === difficulty);
-  
-  // Use day-specific questions if available, otherwise fall back to difficulty-filtered
-  let allAvailableQuestions = filteredQuestions.length > 0 ? filteredQuestions : matchingDayQuestions;
-  
-  // Filter out completed questions for logged-in users
-  if (user && completedQuestions.length > 0) {
-    allAvailableQuestions = allAvailableQuestions.filter(q => !completedQuestions.includes(q.id));
-  }
-  
-  // If all questions are completed, reset and show all questions again
-  if (allAvailableQuestions.length === 0) {
-    allAvailableQuestions = filteredQuestions.length > 0 ? filteredQuestions : quizQuestions.filter(q => q.difficulty === difficulty);
-  }
-  
-  // Apply adaptive question selection if enabled
-  const availableQuestions = adaptiveDifficulty 
-    ? getAdaptiveQuestions(userProgress, allAvailableQuestions)
-    : allAvailableQuestions;
-
-  // Limit to remaining questions for today - but ensure we always have at least 1 question
-  const remainingQuestions = Math.max(1, DAILY_QUIZ_LIMIT - dailyQuestionsCompleted);
-  const questions = availableQuestions.slice(0, remainingQuestions);
-    
+  // Get today's 3 questions
+  const questions = getTodayQuestions(difficulty, quizQuestions, user ? completedQuestions : []);
   const currentQuestion = questions[currentQuestionIndex];
   
   console.log('Quiz State Debug:', {
     currentQuestionIndex,
     totalQuestions: questions.length,
-    totalQuestionsAnswered,
-    dailyQuestionsCompleted,
-    remainingQuestions,
+    correctAnswers,
     isCompleted
   });
   
@@ -221,9 +209,6 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
     if (isCorrect) {
       setCorrectAnswers(correctAnswers + 1);
     }
-    
-    // Increment the total questions answered counter
-    setTotalQuestionsAnswered(prev => prev + 1);
     
     // Update progress based on user login status
     if (user) {
@@ -384,26 +369,28 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
   const handleNextQuestion = () => {
     console.log('handleNextQuestion called - Current state:', {
       currentQuestionIndex,
-      totalQuestions: questions.length,
-      totalQuestionsAnswered,
-      dailyQuestionsCompleted
+      totalQuestions: questions.length
     });
     
-    // Check if this is the last question in our quiz set
-    const isLastQuestionInSet = currentQuestionIndex >= questions.length - 1;
+    // Check if this is the last question (question 3 of 3)
+    const isLastQuestion = currentQuestionIndex >= questions.length - 1;
     
     console.log('Next question logic:', {
-      isLastQuestionInSet,
-      shouldComplete: isLastQuestionInSet
+      isLastQuestion,
+      shouldComplete: isLastQuestion
     });
     
-    if (isLastQuestionInSet) {
-      console.log('Completing quiz - reached end of questions');
+    if (isLastQuestion) {
+      console.log('Completing daily quiz - answered all 3 questions');
       
-      // Update daily questions completed count
-      setDailyQuestionsCompleted(prev => prev + 1);
-      
-      if (!user) {
+      // Mark daily quiz as completed
+      if (user) {
+        // For logged-in users, this is handled by the database
+        setDailyQuizCompleted(true);
+      } else {
+        // For non-logged users, store completion in localStorage
+        const today = new Date().toISOString().split('T')[0];
+        localStorage.setItem(`marketMentor_dailyQuiz_${today}`, 'completed');
         setShowRegistrationPrompt(true);
         return;
       }
@@ -411,7 +398,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
       setIsCompleted(true);
       
       // Check for perfect score badge
-      if (correctAnswers === totalQuestionsAnswered && user) {
+      if (correctAnswers === DAILY_QUIZ_QUESTIONS && user) {
         const checkPerfectScoreBadge = async () => {
           const { data: existingBadge } = await supabase
             .from('user_badges')
@@ -492,11 +479,11 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
       <div className="card-finance p-5 text-center animate-fade-in dark:bg-gray-800 dark:border-gray-700">
         <h3 className="text-lg font-medium mb-2 dark:text-white">Daily Quiz Completed!</h3>
         <p className="text-sm mb-4 dark:text-gray-300">
-          You got <span className="font-semibold">{correctAnswers}</span> out of <span className="font-semibold">{totalQuestionsAnswered}</span> correct
+          You got <span className="font-semibold">{correctAnswers}</span> out of <span className="font-semibold">{DAILY_QUIZ_QUESTIONS}</span> correct
         </p>
         <div className="text-2xl mb-3">🎯</div>
         <Badge className="bg-green-500 text-white mb-4" variant="secondary">
-          {dailyQuestionsCompleted}/{DAILY_QUIZ_LIMIT} Daily Questions Complete
+          {DAILY_QUIZ_QUESTIONS}/{DAILY_QUIZ_QUESTIONS} Daily Questions Complete
         </Badge>
         
         {earnedBadge && (
@@ -508,7 +495,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
         )}
         
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-          Come back tomorrow for {DAILY_QUIZ_LIMIT} new questions!
+          Come back tomorrow for {DAILY_QUIZ_QUESTIONS} new questions!
         </p>
       </div>
     );
@@ -518,7 +505,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
     <div className="mb-8 animate-slide-up">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold text-finance-navy dark:text-gray-200">
-          Memory Check: {currentQuestion.theme}
+          Daily Quiz: {currentQuestion.theme}
         </h2>
         <div className="flex items-center space-x-2">
           {user && (
@@ -539,11 +526,8 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
               <span className="text-sm text-gray-600 dark:text-gray-400">AI</span>
             </div>
           )}
-          <span className="badge-finance bg-amber-100 text-amber-800 dark:bg-amber-900 dark:bg-opacity-30 dark:text-amber-300">
-            {dailyQuestionsCompleted + 1}/{DAILY_QUIZ_LIMIT} Today
-          </span>
           <span className="badge-finance bg-finance-lightBlue bg-opacity-10 text-finance-lightBlue dark:bg-blue-900 dark:bg-opacity-30 dark:text-blue-300">
-            Question {currentQuestionIndex + 1}/{questions.length}
+            Question {currentQuestionIndex + 1}/{DAILY_QUIZ_QUESTIONS}
           </span>
         </div>
       </div>
@@ -621,7 +605,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
             </AlertDialogTitle>
             <AlertDialogDescription className="text-left space-y-3">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Great job! You answered <span className="font-semibold text-finance-navy dark:text-gray-200">{correctAnswers} out of {totalQuestionsAnswered}</span> questions correctly.
+                Great job! You answered <span className="font-semibold text-finance-navy dark:text-gray-200">{correctAnswers} out of {DAILY_QUIZ_QUESTIONS}</span> questions correctly.
               </p>
               
               <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
