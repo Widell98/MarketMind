@@ -3,7 +3,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Menu } from 'lucide-react';
 import ProfileMenu from './ProfileMenu';
 import ThemeToggle from './ThemeToggle';
@@ -15,71 +14,59 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 w-full">
-        <MobileNavigation />
-        
-        <header className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-          <div className="container-responsive py-3 lg:py-4 xl:py-5 flex justify-between items-center">
-            <div className="flex items-center space-x-4 md:space-x-8">
-              {/* Mobile menu trigger - only visible on mobile */}
-              <div className="md:hidden">
-                <SidebarTrigger className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
-                  <Menu className="w-5 h-5" />
-                  <span className="sr-only">Open menu</span>
-                </SidebarTrigger>
-              </div>
-              
-              <Link to="/" className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-finance-navy dark:text-gray-200 flex items-center">
-                <span className="mr-2 text-xl lg:text-2xl xl:text-3xl">🧠</span>
-                <span className="hidden sm:inline">Market Mind</span>
-                <span className="sm:hidden">MM</span>
-              </Link>
-              
-              {/* Desktop navigation - hidden on mobile */}
-              <div className="hidden md:block">
-                <MainNavigation />
-              </div>
-            </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 w-full">
+      <MobileNavigation />
+      
+      <header className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="container-responsive py-3 lg:py-4 flex justify-between items-center">
+          <div className="flex items-center space-x-4 md:space-x-8">
+            <Link to="/" className="text-lg sm:text-xl lg:text-2xl font-bold text-finance-navy dark:text-gray-200 flex items-center">
+              <span className="mr-2 text-xl lg:text-2xl">🧠</span>
+              <span className="hidden sm:inline">Market Mind</span>
+              <span className="sm:hidden">MM</span>
+            </Link>
             
-            <div className="flex items-center space-x-2 md:space-x-3 lg:space-x-4">
-              {/* Show ThemeToggle on mobile, hide on larger screens */}
-              <div className="md:hidden">
-                <ThemeToggle />
-              </div>
-              {user ? (
-                <ProfileMenu />
-              ) : (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="lg:px-6 lg:py-2 xl:px-8 xl:py-3"
-                  asChild
-                >
-                  <Link to="/auth">
-                    <span className="hidden sm:inline">Sign In</span>
-                    <span className="sm:hidden">Login</span>
-                  </Link>
-                </Button>
-              )}
+            {/* Desktop navigation - hidden on mobile */}
+            <div className="hidden md:block">
+              <MainNavigation />
             </div>
           </div>
-        </header>
-        
-        <main className="container-responsive py-4 sm:py-6 lg:py-8 xl:py-10 2xl:py-12">
-          <div className="text-content-desktop">
-            <BreadcrumbNavigation />
-            {children}
+          
+          <div className="flex items-center space-x-2 md:space-x-3 lg:space-x-4">
+            {/* Show ThemeToggle on mobile, hide on larger screens */}
+            <div className="md:hidden">
+              <ThemeToggle />
+            </div>
+            {user ? (
+              <ProfileMenu />
+            ) : (
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="lg:px-6 lg:py-2"
+                asChild
+              >
+                <Link to="/auth">
+                  <span className="hidden sm:inline">Sign In</span>
+                  <span className="sm:hidden">Login</span>
+                </Link>
+              </Link>
+            )}
           </div>
-        </main>
-        
-        <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4 sm:py-6 lg:py-8 xl:py-10 mt-auto">
-          <div className="container-responsive text-center text-xs sm:text-sm lg:text-base text-finance-gray dark:text-gray-400">
-            © {new Date().getFullYear()} Market Mind. All rights reserved.
-          </div>
-        </footer>
-      </div>
-    </SidebarProvider>
+        </div>
+      </header>
+      
+      <main className="container-responsive py-4 sm:py-6 lg:py-8">
+        <BreadcrumbNavigation />
+        {children}
+      </main>
+      
+      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4 sm:py-6 lg:py-8 mt-auto">
+        <div className="container-responsive text-center text-xs sm:text-sm lg:text-base text-finance-gray dark:text-gray-400">
+          © {new Date().getFullYear()} Market Mind. All rights reserved.
+        </div>
+      </footer>
+    </div>
   );
 };
 

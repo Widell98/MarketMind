@@ -43,7 +43,7 @@ const Index = () => {
 
   return (
     <Layout>
-      <div className="space-y-6 md:space-y-8">
+      <div className="space-y-6">
         {/* Hero Section */}
         <div className="text-center space-y-6 py-8 md:py-12 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-900 rounded-2xl">
           <h1 className="text-3xl md:text-4xl lg:text-6xl font-bold text-gray-900 dark:text-gray-100">
@@ -119,7 +119,7 @@ const Index = () => {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Flash Briefs */}
           <div className="lg:col-span-2">
             <FlashBriefs />
