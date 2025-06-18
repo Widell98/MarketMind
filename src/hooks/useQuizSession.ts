@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProgressTracking } from '@/hooks/useProgressTracking';
@@ -21,6 +20,7 @@ export const useQuizSession = () => {
   const [streakGained, setStreakGained] = useState(false);
   const [earnedBadge, setEarnedBadge] = useState<typeof badges[0] | null>(null);
   const [dailyQuizCompleted, setDailyQuizCompleted] = useState(false);
+  const [todayCompletedCount, setTodayCompletedCount] = useState(0);
 
   const checkDailyQuizCompletion = async () => {
     if (!user) return;
@@ -37,7 +37,9 @@ export const useQuizSession = () => {
 
       if (error) throw error;
 
-      setDailyQuizCompleted((data?.length || 0) >= DAILY_QUIZ_QUESTIONS);
+      const completedToday = data?.length || 0;
+      setTodayCompletedCount(completedToday);
+      setDailyQuizCompleted(completedToday >= DAILY_QUIZ_QUESTIONS);
     } catch (error) {
       console.error('Error checking daily quiz completion:', error);
     }
@@ -46,7 +48,10 @@ export const useQuizSession = () => {
   const checkLocalDailyCompletion = () => {
     const today = new Date().toISOString().split('T')[0];
     const savedCompletion = localStorage.getItem(`marketMentor_dailyQuiz_${today}`);
-    setDailyQuizCompleted(savedCompletion === 'completed');
+    const savedCount = parseInt(localStorage.getItem(`marketMentor_dailyQuizCount_${today}`) || '0');
+    
+    setTodayCompletedCount(savedCount);
+    setDailyQuizCompleted(savedCount >= DAILY_QUIZ_QUESTIONS);
   };
 
   const updateUserProgressLocal = (isCorrect: boolean, currentQuestion: any) => {
@@ -211,14 +216,25 @@ export const useQuizSession = () => {
   };
 
   const handleNextQuestion = (questions: any[], onComplete: () => void, showRegistrationPrompt: () => void) => {
-    const isLastQuestion = currentQuestionIndex >= questions.length - 1;
+    const newCompletedCount = todayCompletedCount + 1;
+    const isLastQuestion = currentQuestionIndex >= questions.length - 1 || newCompletedCount >= DAILY_QUIZ_QUESTIONS;
+    
+    console.log('Quiz progression debug:', {
+      currentQuestionIndex,
+      questionsLength: questions.length,
+      newCompletedCount,
+      DAILY_QUIZ_QUESTIONS,
+      isLastQuestion
+    });
     
     if (isLastQuestion) {
       if (user) {
         setDailyQuizCompleted(true);
+        setTodayCompletedCount(newCompletedCount);
       } else {
         const today = new Date().toISOString().split('T')[0];
         localStorage.setItem(`marketMentor_dailyQuiz_${today}`, 'completed');
+        localStorage.setItem(`marketMentor_dailyQuizCount_${today}`, newCompletedCount.toString());
         showRegistrationPrompt();
         return;
       }
@@ -249,6 +265,14 @@ export const useQuizSession = () => {
       
       setTimeout(() => onComplete(), 3000);
     } else {
+      // Update the completed count for tracking
+      if (user) {
+        setTodayCompletedCount(newCompletedCount);
+      } else {
+        const today = new Date().toISOString().split('T')[0];
+        localStorage.setItem(`marketMentor_dailyQuizCount_${today}`, newCompletedCount.toString());
+      }
+      
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setSelectedOption(null);
       setIsAnswered(false);
@@ -276,6 +300,7 @@ export const useQuizSession = () => {
     earnedBadge,
     dailyQuizCompleted,
     completedQuestions,
+    todayCompletedCount,
     handleOptionSelect,
     handleNextQuestion,
     setEarnedBadge,

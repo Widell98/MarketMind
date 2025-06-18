@@ -11,6 +11,7 @@ interface QuizProgressProps {
   isDynamicMode: boolean;
   setIsDynamicMode: (mode: boolean) => void;
   user: any;
+  todayCompletedCount?: number;
 }
 
 const QuizProgress: React.FC<QuizProgressProps> = ({
@@ -18,8 +19,11 @@ const QuizProgress: React.FC<QuizProgressProps> = ({
   questionTheme,
   isDynamicMode,
   setIsDynamicMode,
-  user
+  user,
+  todayCompletedCount = 0
 }) => {
+  const currentQuestionNumber = Math.min(todayCompletedCount + currentQuestionIndex + 1, DAILY_QUIZ_QUESTIONS);
+  
   return (
     <div className="flex justify-between items-center mb-4">
       <h2 className="text-lg font-semibold text-finance-navy dark:text-gray-200">
@@ -45,7 +49,7 @@ const QuizProgress: React.FC<QuizProgressProps> = ({
           </div>
         )}
         <span className="badge-finance bg-finance-lightBlue bg-opacity-10 text-finance-lightBlue dark:bg-blue-900 dark:bg-opacity-30 dark:text-blue-300">
-          Question {currentQuestionIndex + 1}/{DAILY_QUIZ_QUESTIONS}
+          Question {currentQuestionNumber}/{DAILY_QUIZ_QUESTIONS}
         </span>
       </div>
     </div>

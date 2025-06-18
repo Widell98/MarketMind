@@ -2,23 +2,20 @@
 export const DAILY_QUIZ_QUESTIONS = 3;
 
 // Function to get today's 3 questions deterministically
-export const getTodayQuestions = (difficulty: string, allQuestions: any[], completedQuestions: string[]) => {
+export const getTodayQuestions = (difficulty: string, allQuestions: any[], completedQuestions: string[] = []) => {
   // Use today's date as seed for consistent daily questions
   const today = new Date();
   const dateString = today.toISOString().split('T')[0]; // YYYY-MM-DD
   const seed = dateString.split('-').reduce((acc, val) => acc + parseInt(val), 0);
   
-  // Filter questions by difficulty and remove completed ones for logged-in users
+  // Filter questions by difficulty - DON'T filter out completed questions for daily quiz
+  // The daily quiz should always be the same 3 questions for everyone each day
   let availableQuestions = allQuestions.filter(q => q.difficulty === difficulty);
   
-  // For logged-in users, filter out completed questions from today's selection
-  if (completedQuestions.length > 0) {
-    availableQuestions = availableQuestions.filter(q => !completedQuestions.includes(q.id));
-  }
-  
-  // If we don't have enough questions, include all questions for the difficulty
+  // If we don't have enough questions for the difficulty, return what we have
   if (availableQuestions.length < DAILY_QUIZ_QUESTIONS) {
-    availableQuestions = allQuestions.filter(q => q.difficulty === difficulty);
+    console.warn(`Not enough questions for difficulty ${difficulty}. Available: ${availableQuestions.length}`);
+    return availableQuestions;
   }
   
   // Use seeded random to select the same 3 questions each day
@@ -35,6 +32,14 @@ export const getTodayQuestions = (difficulty: string, allQuestions: any[], compl
     selectedQuestions.push(questionsCopy[randomIndex]);
     questionsCopy.splice(randomIndex, 1);
   }
+  
+  console.log('Daily questions selected:', {
+    difficulty,
+    totalAvailable: availableQuestions.length,
+    selected: selectedQuestions.length,
+    seed,
+    dateString
+  });
   
   return selectedQuestions;
 };

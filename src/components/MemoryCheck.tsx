@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { quizQuestions } from '../mockData/quizData';
 import { Button } from "@/components/ui/button";
@@ -39,6 +38,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
     earnedBadge,
     dailyQuizCompleted,
     completedQuestions,
+    todayCompletedCount,
     handleOptionSelect,
     handleNextQuestion,
     setEarnedBadge,
@@ -79,15 +79,17 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
     );
   }
 
-  // Get today's 3 questions
-  const questions = getTodayQuestions(difficulty, quizQuestions, user ? completedQuestions : []);
+  // Get today's 3 questions - always the same for everyone each day
+  const questions = getTodayQuestions(difficulty, quizQuestions, []);
   const currentQuestion = questions[currentQuestionIndex];
   
   console.log('Quiz State Debug:', {
     currentQuestionIndex,
     totalQuestions: questions.length,
     correctAnswers,
-    isCompleted
+    isCompleted,
+    dailyQuizCompleted,
+    todayCompletedCount
   });
 
   // Show completion card if quiz is completed or daily quiz is already done
@@ -160,6 +162,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
         isDynamicMode={isDynamicMode}
         setIsDynamicMode={setIsDynamicMode}
         user={user}
+        todayCompletedCount={todayCompletedCount}
       />
       
       <QuizQuestionCard
