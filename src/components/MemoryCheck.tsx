@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   quizQuestions, 
@@ -39,6 +40,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [correctAnswers, setCorrectAnswers] = useState(0);
+  const [totalQuestionsAnswered, setTotalQuestionsAnswered] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [userProgress, setUserProgress] = useState<UserProgress>(defaultUserProgress);
   const [showLearningModule, setShowLearningModule] = useState(false);
@@ -181,11 +183,20 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
     ? getAdaptiveQuestions(userProgress, allAvailableQuestions)
     : allAvailableQuestions;
 
-  // Limit to remaining questions for today
-  const remainingQuestions = DAILY_QUIZ_LIMIT - dailyQuestionsCompleted;
+  // Limit to remaining questions for today - but ensure we always have at least 1 question
+  const remainingQuestions = Math.max(1, DAILY_QUIZ_LIMIT - dailyQuestionsCompleted);
   const questions = availableQuestions.slice(0, remainingQuestions);
     
   const currentQuestion = questions[currentQuestionIndex];
+  
+  console.log('Quiz State Debug:', {
+    currentQuestionIndex,
+    totalQuestions: questions.length,
+    totalQuestionsAnswered,
+    dailyQuestionsCompleted,
+    remainingQuestions,
+    isCompleted
+  });
   
   if (!currentQuestion) {
     return (
@@ -212,15 +223,15 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
       setCorrectAnswers(correctAnswers + 1);
     }
     
+    // Increment the total questions answered counter
+    setTotalQuestionsAnswered(prev => prev + 1);
+    
     // Update progress based on user login status
     if (user) {
       // Calculate quiz score (0-100 based on correctness)
       const quizScore = isCorrect ? 100 : 0;
       await updateProgress(quizScore, isCorrect);
       await markQuestionCompleted(currentQuestion.id);
-      
-      // Update daily questions completed count
-      setDailyQuestionsCompleted(prev => prev + 1);
       
       // Update category progress
       if (isCorrect) {
@@ -369,24 +380,33 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
     
     localStorage.setItem('marketMentor_progress', JSON.stringify(newProgress));
     setUserProgress(newProgress);
-    setDailyQuestionsCompleted(prev => prev + 1);
   };
   
   const handleNextQuestion = () => {
-    console.log('Current question index:', currentQuestionIndex);
-    console.log('Total questions length:', questions.length);
-    console.log('Daily questions completed:', dailyQuestionsCompleted);
-    console.log('Daily quiz limit:', DAILY_QUIZ_LIMIT);
+    console.log('handleNextQuestion called - Current state:', {
+      currentQuestionIndex,
+      totalQuestions: questions.length,
+      totalQuestionsAnswered,
+      dailyQuestionsCompleted
+    });
     
-    // Check if this is the last question OR if we've reached the daily limit
-    const isLastQuestion = currentQuestionIndex >= questions.length - 1;
-    const hasReachedDailyLimit = (dailyQuestionsCompleted + 1) >= DAILY_QUIZ_LIMIT;
+    // Check if this is the last question in our quiz set
+    const isLastQuestionInSet = currentQuestionIndex >= questions.length - 1;
     
-    console.log('Is last question:', isLastQuestion);
-    console.log('Has reached daily limit:', hasReachedDailyLimit);
+    // Check if we've reached the daily limit after this question
+    const willReachDailyLimit = (totalQuestionsAnswered) >= DAILY_QUIZ_LIMIT;
     
-    if (isLastQuestion || hasReachedDailyLimit) {
-      console.log('Quiz should complete');
+    console.log('Next question logic:', {
+      isLastQuestionInSet,
+      willReachDailyLimit,
+      shouldComplete: isLastQuestionInSet || willReachDailyLimit
+    });
+    
+    if (isLastQuestionInSet || willReachDailyLimit) {
+      console.log('Completing quiz');
+      
+      // Update daily questions completed count
+      setDailyQuestionsCompleted(prev => prev + 1);
       
       if (!user) {
         setShowRegistrationPrompt(true);
@@ -396,7 +416,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
       setIsCompleted(true);
       
       // Check for perfect score badge
-      if (correctAnswers === questions.length && user) {
+      if (correctAnswers === totalQuestionsAnswered && user) {
         const checkPerfectScoreBadge = async () => {
           const { data: existingBadge } = await supabase
             .from('user_badges')
@@ -477,11 +497,11 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
       <div className="card-finance p-5 text-center animate-fade-in dark:bg-gray-800 dark:border-gray-700">
         <h3 className="text-lg font-medium mb-2 dark:text-white">Daily Quiz Completed!</h3>
         <p className="text-sm mb-4 dark:text-gray-300">
-          You got <span className="font-semibold">{correctAnswers}</span> out of <span className="font-semibold">{questions.length}</span> correct
+          You got <span className="font-semibold">{correctAnswers}</span> out of <span className="font-semibold">{totalQuestionsAnswered}</span> correct
         </p>
         <div className="text-2xl mb-3">🎯</div>
         <Badge className="bg-green-500 text-white mb-4" variant="secondary">
-          {dailyQuestionsCompleted}/{DAILY_QUIZ_LIMIT} Daily Questions Complete
+          {dailyQuestionsCompleted + 1}/{DAILY_QUIZ_LIMIT} Daily Questions Complete
         </Badge>
         
         {earnedBadge && (
@@ -525,7 +545,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
             </div>
           )}
           <span className="badge-finance bg-amber-100 text-amber-800 dark:bg-amber-900 dark:bg-opacity-30 dark:text-amber-300">
-            {dailyQuestionsCompleted + 1}/{DAILY_QUIZ_LIMIT} Today
+            {dailyQuestionsCompleted + totalQuestionsAnswered + 1}/{DAILY_QUIZ_LIMIT} Today
           </span>
           <span className="badge-finance bg-finance-lightBlue bg-opacity-10 text-finance-lightBlue dark:bg-blue-900 dark:bg-opacity-30 dark:text-blue-300">
             Question {currentQuestionIndex + 1}/{questions.length}
@@ -582,7 +602,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
                 onClick={handleNextQuestion}
                 className="w-full sm:w-auto bg-finance-lightBlue text-white hover:bg-finance-blue dark:bg-blue-700 dark:hover:bg-blue-600"
               >
-                {(currentQuestionIndex < questions.length - 1 && (dailyQuestionsCompleted + 1) < DAILY_QUIZ_LIMIT) ? 'Next Question' : 'Complete Quiz'}
+                {(currentQuestionIndex < questions.length - 1 && totalQuestionsAnswered < DAILY_QUIZ_LIMIT) ? 'Next Question' : 'Complete Quiz'}
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
@@ -606,7 +626,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
             </AlertDialogTitle>
             <AlertDialogDescription className="text-left space-y-3">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Great job! You answered <span className="font-semibold text-finance-navy dark:text-gray-200">{correctAnswers} out of {questions.length}</span> questions correctly.
+                Great job! You answered <span className="font-semibold text-finance-navy dark:text-gray-200">{correctAnswers} out of {totalQuestionsAnswered}</span> questions correctly.
               </p>
               
               <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
