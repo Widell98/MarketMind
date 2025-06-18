@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   quizQuestions, 
@@ -393,17 +392,13 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
     // Check if this is the last question in our quiz set
     const isLastQuestionInSet = currentQuestionIndex >= questions.length - 1;
     
-    // Check if we've reached the daily limit after this question
-    const willReachDailyLimit = (totalQuestionsAnswered) >= DAILY_QUIZ_LIMIT;
-    
     console.log('Next question logic:', {
       isLastQuestionInSet,
-      willReachDailyLimit,
-      shouldComplete: isLastQuestionInSet || willReachDailyLimit
+      shouldComplete: isLastQuestionInSet
     });
     
-    if (isLastQuestionInSet || willReachDailyLimit) {
-      console.log('Completing quiz');
+    if (isLastQuestionInSet) {
+      console.log('Completing quiz - reached end of questions');
       
       // Update daily questions completed count
       setDailyQuestionsCompleted(prev => prev + 1);
@@ -501,7 +496,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
         </p>
         <div className="text-2xl mb-3">🎯</div>
         <Badge className="bg-green-500 text-white mb-4" variant="secondary">
-          {dailyQuestionsCompleted + 1}/{DAILY_QUIZ_LIMIT} Daily Questions Complete
+          {dailyQuestionsCompleted}/{DAILY_QUIZ_LIMIT} Daily Questions Complete
         </Badge>
         
         {earnedBadge && (
@@ -545,7 +540,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
             </div>
           )}
           <span className="badge-finance bg-amber-100 text-amber-800 dark:bg-amber-900 dark:bg-opacity-30 dark:text-amber-300">
-            {dailyQuestionsCompleted + totalQuestionsAnswered + 1}/{DAILY_QUIZ_LIMIT} Today
+            {dailyQuestionsCompleted + 1}/{DAILY_QUIZ_LIMIT} Today
           </span>
           <span className="badge-finance bg-finance-lightBlue bg-opacity-10 text-finance-lightBlue dark:bg-blue-900 dark:bg-opacity-30 dark:text-blue-300">
             Question {currentQuestionIndex + 1}/{questions.length}
@@ -602,7 +597,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
                 onClick={handleNextQuestion}
                 className="w-full sm:w-auto bg-finance-lightBlue text-white hover:bg-finance-blue dark:bg-blue-700 dark:hover:bg-blue-600"
               >
-                {(currentQuestionIndex < questions.length - 1 && totalQuestionsAnswered < DAILY_QUIZ_LIMIT) ? 'Next Question' : 'Complete Quiz'}
+                {currentQuestionIndex < questions.length - 1 ? 'Continue Quiz' : 'Complete Quiz'}
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
