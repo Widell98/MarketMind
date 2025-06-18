@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   quizQuestions, 
@@ -374,15 +373,21 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
   };
   
   const handleNextQuestion = () => {
-    const remainingQuestions = DAILY_QUIZ_LIMIT - dailyQuestionsCompleted;
+    console.log('Current question index:', currentQuestionIndex);
+    console.log('Total questions length:', questions.length);
+    console.log('Daily questions completed:', dailyQuestionsCompleted);
+    console.log('Daily quiz limit:', DAILY_QUIZ_LIMIT);
     
-    if (currentQuestionIndex < questions.length - 1 && dailyQuestionsCompleted < DAILY_QUIZ_LIMIT - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setSelectedOption(null);
-      setIsAnswered(false);
-      setEarnedBadge(null);
-      setStreakGained(false);
-    } else {
+    // Check if this is the last question OR if we've reached the daily limit
+    const isLastQuestion = currentQuestionIndex >= questions.length - 1;
+    const hasReachedDailyLimit = (dailyQuestionsCompleted + 1) >= DAILY_QUIZ_LIMIT;
+    
+    console.log('Is last question:', isLastQuestion);
+    console.log('Has reached daily limit:', hasReachedDailyLimit);
+    
+    if (isLastQuestion || hasReachedDailyLimit) {
+      console.log('Quiz should complete');
+      
       if (!user) {
         setShowRegistrationPrompt(true);
         return;
@@ -390,8 +395,8 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
       
       setIsCompleted(true);
       
-      if (correctAnswers + 1 === questions.length && user) {
-        // Award perfect score badge for logged users
+      // Check for perfect score badge
+      if (correctAnswers === questions.length && user) {
         const checkPerfectScoreBadge = async () => {
           const { data: existingBadge } = await supabase
             .from('user_badges')
@@ -414,6 +419,13 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
       }
       
       setTimeout(() => onComplete(), 3000);
+    } else {
+      console.log('Moving to next question');
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setSelectedOption(null);
+      setIsAnswered(false);
+      setEarnedBadge(null);
+      setStreakGained(false);
     }
   };
   
@@ -570,7 +582,7 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
                 onClick={handleNextQuestion}
                 className="w-full sm:w-auto bg-finance-lightBlue text-white hover:bg-finance-blue dark:bg-blue-700 dark:hover:bg-blue-600"
               >
-                {(currentQuestionIndex < questions.length - 1 && dailyQuestionsCompleted < DAILY_QUIZ_LIMIT - 1) ? 'Next Question' : 'Complete Quiz'}
+                {(currentQuestionIndex < questions.length - 1 && (dailyQuestionsCompleted + 1) < DAILY_QUIZ_LIMIT) ? 'Next Question' : 'Complete Quiz'}
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </div>

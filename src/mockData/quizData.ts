@@ -1,4 +1,3 @@
-
 export interface QuizQuestion {
   id: string;
   day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday';
@@ -28,32 +27,27 @@ export const quizQuestions: QuizQuestion[] = [
     id: '1',
     day: 'Monday',
     theme: 'Macro Monday',
-    question: "How did the S&P 500 react to yesterday's Fed announcement?",
-    context: "The Federal Reserve announced they're keeping rates steady but signaled potential cuts later this year.",
+    question: "What typically happens to stock prices when central banks lower interest rates?",
+    context: "Central banks use interest rate policy as a tool to influence economic activity and market conditions.",
     options: [
-      "Rose by over 1%",
-      "Fell slightly by 0.2-0.5%",
-      "Remained relatively unchanged",
-      "Dropped sharply by over 1.5%"
+      "Stock prices typically rise",
+      "Stock prices typically fall",
+      "Interest rates have no effect on stock prices",
+      "Only tech stocks are affected"
     ],
     correctAnswer: 0,
-    explanation: "Markets typically react positively to signals of potential rate cuts, as lower borrowing costs can boost corporate profits and economic activity.",
+    explanation: "Lower interest rates reduce borrowing costs for companies and make bonds less attractive, typically leading investors to move money into stocks, driving prices higher.",
     difficulty: 'novice',
     category: 'macro',
     relatedSymbols: ['SPY', 'DIA', 'QQQ'],
     learningModule: {
-      title: "Understanding Central Bank Impacts",
-      content: "Central banks like the Federal Reserve influence markets through monetary policy decisions. When the Fed signals potential rate cuts, it typically creates a positive market reaction as investors anticipate cheaper borrowing costs for businesses and consumers, potentially boosting economic activity and corporate profits.",
+      title: "Understanding Interest Rates and Markets",
+      content: "Interest rates are one of the most important factors affecting stock markets. When rates are low, companies can borrow money more cheaply to grow their business, and investors seek higher returns in stocks rather than bonds.",
       resources: [
         {
-          title: "How Fed Rate Decisions Impact Stocks",
-          url: "https://example.com/fed-impacts",
+          title: "How Interest Rates Affect Stock Markets",
+          url: "https://example.com/interest-rates",
           type: "article"
-        },
-        {
-          title: "Chart: S&P 500 Reaction to Fed Announcements",
-          url: "https://example.com/fed-chart",
-          type: "chart"
         }
       ]
     }
@@ -62,32 +56,27 @@ export const quizQuestions: QuizQuestion[] = [
     id: '2',
     day: 'Tuesday',
     theme: 'Tech Tuesday',
-    question: "What happened to Nvidia's stock after their AI chip announcement yesterday?",
-    context: "Nvidia unveiled their next-generation AI chips with 50% better performance than the previous generation.",
+    question: "What is a key advantage of investing in technology ETFs compared to individual tech stocks?",
+    context: "Technology sector investing can be approached through individual stocks or diversified funds.",
     options: [
-      "Dropped by 2% on sell-the-news reaction",
-      "Rose by over 3% on strong demand forecast",
-      "Remained flat as the announcement was already priced in",
-      "Initially jumped but ended the day lower on profit-taking"
+      "Higher potential returns",
+      "Reduced risk through diversification",
+      "Lower fees",
+      "Better tax treatment"
     ],
     correctAnswer: 1,
-    explanation: "Strong product announcements with improved performance metrics typically boost investor confidence in tech companies, especially when paired with positive demand outlooks.",
+    explanation: "Technology ETFs spread investment across multiple tech companies, reducing the risk of any single company significantly impacting your investment.",
     difficulty: 'analyst',
     category: 'stocks',
-    relatedSymbols: ['NVDA', 'SMH'],
+    relatedSymbols: ['QQQ', 'XLK', 'VGT'],
     learningModule: {
-      title: "Tech Product Cycles and Stock Performance",
-      content: "Technology companies often experience stock price movements around product announcements. When companies like Nvidia reveal significant improvements in their products along with strong demand forecasts, investors typically respond positively as this signals potential revenue and profit growth.",
+      title: "ETF vs Individual Stock Investing",
+      content: "Exchange-Traded Funds (ETFs) offer instant diversification by holding many stocks in a single fund. This reduces company-specific risk while still providing exposure to sector growth.",
       resources: [
         {
-          title: "Tech Product Cycle Investing",
-          url: "https://example.com/tech-cycles",
+          title: "Guide to Technology ETFs",
+          url: "https://example.com/tech-etfs",
           type: "article"
-        },
-        {
-          title: "Semiconductor Industry Deep Dive",
-          url: "https://example.com/semiconductor-podcast",
-          type: "podcast"
         }
       ]
     }
@@ -96,32 +85,27 @@ export const quizQuestions: QuizQuestion[] = [
     id: '3',
     day: 'Wednesday',
     theme: 'Wildcard Wednesday',
-    question: "How did crude oil prices respond to yesterday's unexpected inventory report?",
-    context: "The EIA report showed a surprising decline in U.S. crude inventories despite analysts expecting an increase.",
+    question: "What is the primary factor that drives long-term commodity prices?",
+    context: "Commodity markets are influenced by various economic and physical factors.",
     options: [
-      "Jumped over 2% on supply concerns",
-      "Fell due to concerns about demand",
-      "Remained flat as traders awaited OPEC's response",
-      "Initially rose but gave up gains after the dollar strengthened"
+      "Government regulations",
+      "Supply and demand fundamentals",
+      "Currency exchange rates",
+      "Stock market performance"
     ],
-    correctAnswer: 0,
-    explanation: "Oil markets typically respond positively to unexpected inventory draws as they indicate stronger demand or lower supply than anticipated, both of which can lead to higher prices.",
+    correctAnswer: 1,
+    explanation: "Like all markets, commodity prices are fundamentally driven by the balance between supply (production) and demand (consumption) over time.",
     difficulty: 'analyst',
     category: 'commodities',
-    relatedSymbols: ['CL=F', 'USO', 'XLE'],
+    relatedSymbols: ['GLD', 'USO', 'DBC'],
     learningModule: {
-      title: "Understanding Crude Oil Price Drivers",
-      content: "Crude oil prices are highly sensitive to inventory reports as they provide insights into supply and demand dynamics. Unexpected inventory declines typically signal either stronger demand or lower supply than forecasted, which can lead to higher oil prices as traders adjust their market view.",
+      title: "Understanding Commodity Markets",
+      content: "Commodity prices fluctuate based on supply and demand dynamics. Factors like weather, geopolitical events, and economic growth affect both the supply of and demand for raw materials.",
       resources: [
         {
-          title: "How to Read EIA Oil Inventory Reports",
-          url: "https://example.com/eia-guide",
+          title: "Commodity Market Fundamentals",
+          url: "https://example.com/commodities",
           type: "article"
-        },
-        {
-          title: "Oil Market Technical Analysis",
-          url: "https://example.com/oil-video",
-          type: "video"
         }
       ]
     }
@@ -130,33 +114,27 @@ export const quizQuestions: QuizQuestion[] = [
     id: '4',
     day: 'Thursday',
     theme: 'Throwback Thursday',
-    question: "During the 2008 financial crisis, what happened to gold prices?",
-    context: "The global financial system was under extreme stress with major banks failing.",
+    question: "What lesson did the 2008 financial crisis teach investors about diversification?",
+    context: "The 2008 financial crisis revealed important lessons about portfolio construction and risk management.",
     options: [
-      "Crashed along with stocks",
-      "Remained stable throughout the crisis",
-      "Initially fell but then rose significantly",
-      "Immediately shot up as a safe haven"
+      "Diversification doesn't work during market crashes",
+      "Geographic diversification is more important than asset diversification",  
+      "Correlations between assets can increase during crisis periods",
+      "Only cash investments are truly safe"
     ],
     correctAnswer: 2,
-    explanation: "During the initial panic of the 2008 crisis, gold actually fell as investors sold assets for cash, but it later rose significantly as a safe haven when confidence in the financial system deteriorated further.",
+    explanation: "During the 2008 crisis, many asset classes that normally moved independently began moving together, showing that correlations can spike during market stress.",
     difficulty: 'pro',
     category: 'historical',
-    relatedSymbols: ['GLD', 'IAU'],
+    relatedSymbols: ['VTI', 'VXUS', 'BND'],
     learningModule: {
-      title: "Safe Haven Assets During Market Crashes",
-      content: "During market crashes, traditional safe haven assets like gold often exhibit complex behavior. In the initial phase of a crisis, gold may fall as investors liquidate positions for cash. However, as fear intensifies and confidence in the financial system wanes, gold typically attracts significant investment, driving prices higher.",
-      videoUrl: "https://example.com/safehaven-video",
+      title: "Crisis Lessons for Portfolio Construction",
+      content: "The 2008 financial crisis taught investors that during extreme market stress, correlations between different assets can increase dramatically, reducing the effectiveness of traditional diversification strategies.",
       resources: [
         {
-          title: "Gold Performance in Historical Crises",
-          url: "https://example.com/gold-history",
-          type: "chart"
-        },
-        {
-          title: "Understanding Safe Haven Asset Dynamics",
-          url: "https://example.com/safe-haven-podcast",
-          type: "podcast"
+          title: "Lessons from the 2008 Financial Crisis",
+          url: "https://example.com/2008-lessons",
+          type: "article"
         }
       ]
     }
@@ -166,7 +144,7 @@ export const quizQuestions: QuizQuestion[] = [
     day: 'Friday',
     theme: 'Fundamental Friday',
     question: "What does a high P/E ratio generally indicate about a company?",
-    context: "You're analyzing a tech stock with a P/E ratio of 45 compared to the sector average of 22.",
+    context: "The Price-to-Earnings ratio is a fundamental metric used to evaluate stock valuations.",
     options: [
       "The company is undervalued",
       "Investors expect high future growth",
@@ -179,17 +157,12 @@ export const quizQuestions: QuizQuestion[] = [
     category: 'concept',
     learningModule: {
       title: "Understanding P/E Ratios",
-      content: "The Price-to-Earnings (P/E) ratio compares a company's share price to its earnings per share. A high P/E suggests investors expect higher growth in the future, while a low P/E may indicate undervaluation or concerns about future performance. Industry context is crucial - technology companies often have higher P/E ratios than more mature industries.",
+      content: "The Price-to-Earnings (P/E) ratio compares a company's share price to its earnings per share. A high P/E suggests investors expect higher growth in the future, while a low P/E may indicate undervaluation or concerns about future performance.",
       resources: [
         {
-          title: "P/E Ratio Analysis Fundamentals",
+          title: "P/E Ratio Analysis Guide",
           url: "https://example.com/pe-guide",
           type: "article"
-        },
-        {
-          title: "Historical P/E Ranges by Sector",
-          url: "https://example.com/pe-sectors",
-          type: "chart"
         }
       ]
     }
@@ -198,32 +171,27 @@ export const quizQuestions: QuizQuestion[] = [
     id: '6',
     day: 'Monday',
     theme: 'Macro Monday',
-    question: "How did the European markets react to yesterday's ECB interest rate decision?",
-    context: "The European Central Bank raised interest rates by 25 basis points, which was higher than the expected 10 basis points.",
+    question: "What is inflation's typical effect on stock investments over the long term?",
+    context: "Inflation is a persistent increase in the general price level of goods and services.",
     options: [
-      "European indices rose as investors saw the move as confidence in economic strength",
-      "Markets fell sharply as higher rates threatened to slow economic growth",
-      "European bank stocks rose while tech stocks declined",
-      "Markets were relatively flat as the decision was largely priced in"
+      "Stocks generally provide protection against moderate inflation",
+      "Inflation always destroys stock returns",
+      "Only commodity stocks benefit from inflation",
+      "Inflation has no effect on stock prices"
     ],
-    correctAnswer: 1,
-    explanation: "When central banks raise rates more aggressively than expected, markets often react negatively as higher borrowing costs can slow economic activity and reduce corporate profits.",
+    correctAnswer: 0,
+    explanation: "Over time, stocks have historically provided better protection against inflation than bonds or cash, as companies can often raise prices and grow earnings with inflation.",
     difficulty: 'analyst',
     category: 'macro',
-    relatedSymbols: ['FEZ', 'EZU', 'EUFN'],
+    relatedSymbols: ['SPY', 'VTI', 'TIPS'],
     learningModule: {
-      title: "Interest Rate Surprises and Market Reactions",
-      content: "When central banks like the ECB make unexpected interest rate decisions, markets often experience significant volatility. Higher-than-expected rate increases typically cause negative market reactions as they suggest tighter monetary conditions, potentially slowing economic growth and reducing corporate profitability.",
+      title: "Stocks and Inflation Protection",
+      content: "While inflation can hurt stocks in the short term, over longer periods, stocks have historically outpaced inflation as companies can adjust their prices and grow their earnings along with rising price levels.",
       resources: [
         {
-          title: "ECB Rate History and Market Effects",
-          url: "https://example.com/ecb-rates",
-          type: "chart"
-        },
-        {
-          title: "European Banking Sector Analysis",
-          url: "https://example.com/eubanks-video",
-          type: "video"
+          title: "Inflation and Investment Returns",
+          url: "https://example.com/inflation-stocks",
+          type: "article"
         }
       ]
     }
@@ -232,32 +200,112 @@ export const quizQuestions: QuizQuestion[] = [
     id: '7',
     day: 'Tuesday',
     theme: 'Tech Tuesday',
-    question: "What happened to Apple's stock price after their latest earnings report exceeded analyst expectations by 15%?",
-    context: "Apple reported quarterly earnings that beat Wall Street forecasts significantly, with especially strong iPhone sales in emerging markets.",
+    question: "What is a key risk when investing in individual technology stocks?",
+    context: "Technology companies can offer high growth potential but also come with specific risks.",
     options: [
-      "Jumped 8% to a new all-time high",
-      "Rose moderately by 2-3%",
-      "Surprisingly declined despite the good news",
-      "Initially jumped but closed flat due to cautious forward guidance"
+      "Technology companies never pay dividends",
+      "High volatility and rapid business model changes",
+      "Technology stocks are not affected by economic cycles",
+      "Government regulation is minimal in tech"
     ],
-    correctAnswer: 3,
-    explanation: "Strong earnings often boost a stock initially, but cautious guidance about future quarters can temper or reverse gains, as investors focus more on future prospects than past performance.",
+    correctAnswer: 1,
+    explanation: "Technology stocks often experience high volatility due to rapid innovation cycles, changing consumer preferences, and the potential for business models to become obsolete quickly.",
     difficulty: 'pro',
     category: 'stocks',
-    relatedSymbols: ['AAPL', 'QQQ', 'XLK'],
+    relatedSymbols: ['AAPL', 'GOOGL', 'MSFT'],
     learningModule: {
-      title: "Earnings Reports vs. Forward Guidance",
-      content: "While beating earnings expectations is generally positive for stock prices, forward guidance often carries more weight with investors. Companies that report strong results but issue cautious outlooks may see limited stock price gains or even declines, as the market is primarily focused on future performance rather than past results.",
+      title: "Technology Stock Investment Risks",
+      content: "While technology stocks can provide substantial returns, they also carry unique risks including rapid technological change, high valuations, regulatory challenges, and intense competition that can quickly change market dynamics.",
       resources: [
         {
-          title: "How to Analyze Earnings Reports",
-          url: "https://example.com/earnings-analysis",
+          title: "Understanding Tech Stock Volatility",
+          url: "https://example.com/tech-volatility",
           type: "article"
-        },
+        }
+      ]
+    }
+  },
+  {
+    id: '8',
+    day: 'Wednesday',
+    theme: 'Wildcard Wednesday',
+    question: "What is dollar-cost averaging?",
+    context: "Dollar-cost averaging is a popular investment strategy for building long-term wealth.",
+    options: [
+      "Buying stocks only when prices are low",
+      "Investing a fixed amount regularly regardless of market conditions",
+      "Converting foreign investments to dollars",
+      "Averaging down on losing positions"
+    ],
+    correctAnswer: 1,
+    explanation: "Dollar-cost averaging involves investing a fixed amount at regular intervals, which helps reduce the impact of market volatility by buying more shares when prices are low and fewer when prices are high.",
+    difficulty: 'novice',
+    category: 'concept',
+    learningModule: {
+      title: "Dollar-Cost Averaging Strategy",
+      content: "Dollar-cost averaging is an investment technique where you invest a fixed amount of money at regular intervals regardless of market conditions. This strategy can help reduce the impact of volatility and remove emotion from investment decisions.",
+      resources: [
         {
-          title: "Tech Sector Earnings Patterns",
-          url: "https://example.com/tech-earnings-podcast",
-          type: "podcast"
+          title: "Dollar-Cost Averaging Explained",
+          url: "https://example.com/dca-guide",
+          type: "article"
+        }
+      ]
+    }
+  },
+  {
+    id: '9',
+    day: 'Thursday',
+    theme: 'Throwback Thursday',
+    question: "What was a key characteristic of the dot-com bubble of the late 1990s?",
+    context: "The dot-com bubble was a significant market event that offers lessons for modern investors.",
+    options: [
+      "Technology companies had very low valuations",
+      "Investors focused heavily on company profits",
+      "Many internet companies were valued highly despite having no profits",
+      "Traditional industries outperformed technology stocks"
+    ],
+    correctAnswer: 2,
+    explanation: "During the dot-com bubble, many internet companies achieved extremely high valuations based on growth potential and website traffic rather than actual profits or sustainable business models.",
+    difficulty: 'analyst',
+    category: 'historical',
+    relatedSymbols: ['QQQ', 'XLK'],
+    learningModule: {
+      title: "Lessons from the Dot-Com Bubble",
+      content: "The dot-com bubble of the late 1990s demonstrated the dangers of speculative investing and the importance of fundamental analysis. Many companies with no profits commanded huge valuations based solely on potential.",
+      resources: [
+        {
+          title: "The Rise and Fall of the Dot-Com Bubble",
+          url: "https://example.com/dotcom-bubble",
+          type: "article"
+        }
+      ]
+    }
+  },
+  {
+    id: '10',
+    day: 'Friday',
+    theme: 'Fundamental Friday',
+    question: "What does a company's debt-to-equity ratio measure?",
+    context: "Financial ratios help investors assess a company's financial health and risk profile.",
+    options: [
+      "How much profit the company makes relative to its size",
+      "The company's financial leverage and risk level",
+      "How quickly the company can pay its short-term bills",
+      "The company's stock price performance"
+    ],
+    correctAnswer: 1,
+    explanation: "The debt-to-equity ratio measures how much debt a company has relative to shareholder equity, indicating the level of financial leverage and associated risk.",
+    difficulty: 'analyst',
+    category: 'concept',
+    learningModule: {
+      title: "Understanding Financial Ratios",
+      content: "The debt-to-equity ratio is calculated by dividing total debt by total equity. A higher ratio indicates more leverage and potentially higher financial risk, while a lower ratio suggests a more conservative capital structure.",
+      resources: [
+        {
+          title: "Financial Ratio Analysis Guide",
+          url: "https://example.com/financial-ratios",
+          type: "article"
         }
       ]
     }
@@ -426,4 +474,44 @@ export const getLearningPathRecommendations = (userProgress: UserProgress): stri
   }
   
   return recommendations;
+};
+
+// Update fallback questions in useQuizAPI to also be timeless
+export const getTimelessFallbackQuestions = (userLevel: string, category?: string) => {
+  return [
+    {
+      id: 'fall back_1',
+      theme: 'Investment Basics',
+      question: 'What is the primary benefit of diversifying your investment portfolio?',
+      context: 'Diversification is a fundamental principle of risk management in investing.',
+      options: [
+        'To maximize returns in bull markets',
+        'To reduce overall portfolio risk',
+        'To minimize trading costs',
+        'To focus on the best performing assets'
+      ],
+      correctAnswer: 1,
+      explanation: 'Diversification helps reduce risk by spreading investments across different assets, sectors, or geographic regions, so that poor performance in one area doesn\'t severely impact the entire portfolio.',
+      difficulty: userLevel as 'novice' | 'analyst' | 'pro',
+      category: (category as any) || 'concept',
+      isGenerated: true
+    },
+    {
+      id: 'fallback_2',
+      theme: 'Risk Management',
+      question: 'What is compound interest?',
+      context: 'Understanding compound interest is crucial for long-term wealth building.',
+      options: [
+        'Interest paid only on the initial investment',
+        'Interest earned on both the initial investment and previously earned interest',
+        'A type of bank fee',
+        'Interest that decreases over time'
+      ],
+      correctAnswer: 1,
+      explanation: 'Compound interest is the interest earned on both the original principal and the accumulated interest from previous periods, leading to exponential growth over time.',
+      difficulty: userLevel as 'novice' | 'analyst' | 'pro',
+      category: (category as any) || 'concept',
+      isGenerated: true
+    }
+  ];
 };

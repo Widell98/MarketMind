@@ -1,7 +1,7 @@
 
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { QuizQuestion } from '@/mockData/quizData';
+import { QuizQuestion, getTimelessFallbackQuestions } from '@/mockData/quizData';
 
 export interface APIQuizQuestion extends Omit<QuizQuestion, 'day'> {
   isGenerated?: boolean;
@@ -51,8 +51,8 @@ export const useQuizAPI = (): UseQuizAPIReturn => {
       setError(errorMessage);
       console.error('Error generating questions:', err);
       
-      // Return fallback questions on error
-      return getFallbackQuestions(userLevel, category);
+      // Return timeless fallback questions on error
+      return getTimelessFallbackQuestions(userLevel, category);
     } finally {
       setLoading(false);
     }
@@ -60,42 +60,3 @@ export const useQuizAPI = (): UseQuizAPIReturn => {
 
   return { generateQuestions, loading, error };
 };
-
-function getFallbackQuestions(userLevel: string, category?: string): APIQuizQuestion[] {
-  return [
-    {
-      id: 'fallback_market_1',
-      theme: 'Market Basics',
-      question: 'What is a stock market index?',
-      context: 'Understanding market indices is fundamental to investing.',
-      options: [
-        'A measure of a section of the stock market',
-        'A single company stock price',
-        'The total value of all stocks',
-        'A government bond rating'
-      ],
-      correctAnswer: 0,
-      explanation: 'A stock market index measures the performance of a section of the stock market, like the S&P 500 which tracks 500 large US companies.',
-      difficulty: userLevel as 'novice' | 'analyst' | 'pro',
-      category: (category as any) || 'concept',
-      isGenerated: true
-    },
-    {
-      id: 'fallback_market_2',
-      theme: 'Investment Principles',
-      question: 'What does diversification mean in investing?',
-      context: 'Diversification is a key risk management strategy.',
-      options: [
-        'Buying only one type of investment',
-        'Spreading investments across different assets',
-        'Investing only in your home country',
-        'Buying stocks at different times'
-      ],
-      correctAnswer: 1,
-      explanation: 'Diversification means spreading investments across different assets, sectors, or geographies to reduce risk.',
-      difficulty: userLevel as 'novice' | 'analyst' | 'pro',
-      category: (category as any) || 'concept',
-      isGenerated: true
-    }
-  ];
-}
