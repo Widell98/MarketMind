@@ -414,7 +414,6 @@ const AdminStockCases = () => {
         image_url: imageUrl,
         pe_ratio: null,
         dividend_yield: null,
-        user_id: null,
         status: 'active' as const,
         entry_price: formData.entry_price ? parseFloat(formData.entry_price) : null,
         current_price: formData.current_price ? parseFloat(formData.current_price) : null,
@@ -427,9 +426,15 @@ const AdminStockCases = () => {
       };
 
       if (editingCase) {
+        // When editing, preserve the original user_id and don't overwrite it
         await updateStockCase(editingCase, caseData);
       } else {
-        await createStockCase(caseData);
+        // When creating new, set user_id to null (admin-created)
+        const newCaseData = {
+          ...caseData,
+          user_id: null,
+        };
+        await createStockCase(newCaseData);
       }
 
       resetForm();
