@@ -398,7 +398,14 @@ const AdminStockCases = () => {
     setLoading(true);
     try {
       let imageUrl = null;
-      if (imageFile) {
+      
+      // If editing and no new image file, preserve existing image
+      if (editingCase && !imageFile && imagePreview) {
+        // Find the existing case to get its current image_url
+        const existingCase = allCases.find(c => c.id === editingCase);
+        imageUrl = existingCase?.image_url || null;
+      } else if (imageFile) {
+        // Only upload new image if one was selected
         imageUrl = await uploadImage(imageFile);
       }
 
