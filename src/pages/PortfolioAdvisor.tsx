@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Brain, MessageSquare, BarChart3, Settings, Zap } from 'lucide-react';
+import { Brain, MessageSquare, BarChart3, Settings, Zap, TrendingUp } from 'lucide-react';
 import Layout from '@/components/Layout';
 import EnhancedRiskAssessmentForm from '@/components/EnhancedRiskAssessmentForm';
 import EnhancedPortfolioDashboard from '@/components/EnhancedPortfolioDashboard';
@@ -10,6 +10,8 @@ import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
 import AIChat from '@/components/AIChat';
+import AIInsightsPanel from '@/components/AIInsightsPanel';
+import PredictiveAnalytics from '@/components/PredictiveAnalytics';
 
 const PortfolioAdvisor = () => {
   const { user } = useAuth();

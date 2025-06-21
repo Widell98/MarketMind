@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -206,6 +205,120 @@ export const useAIChat = (portfolioId?: string) => {
     await sendMessage(question, 'quick_analysis');
   }, [sendMessage]);
 
+  const generateInsight = useCallback(async (insightType: string) => {
+    if (!user) return;
+
+    setIsAnalyzing(true);
+    
+    try {
+      console.log('Generating AI insight:', insightType);
+      
+      const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
+        body: {
+          message: `Generera en djupgående ${insightType} för min portfölj med fokus på aktuella marknadsförhållanden`,
+          userId: user.id,
+          portfolioId,
+          analysisType: 'insight_generation',
+          insightType
+        }
+      });
+
+      if (error) {
+        console.error('Error generating insight:', error);
+        throw error;
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to generate insight');
+      }
+
+      toast({
+        title: "AI Insikt Genererad",
+        description: "En ny AI-insikt har skapats baserat på din portfölj.",
+      });
+
+      return data;
+    } catch (error) {
+      console.error('Error generating insight:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte generera AI-insikt. Försök igen.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [user, portfolioId, toast]);
+
+  const generateMarketAlert = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
+        body: {
+          message: 'Analysera aktuella marknadsförhållanden och skapa relevanta alerts för min portfölj',
+          userId: user.id,
+          portfolioId,
+          analysisType: 'market_alert_generation'
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error generating market alert:', error);
+    }
+  }, [user, portfolioId]);
+
+  const generatePredictiveAnalysis = useCallback(async (timeframe: '1month' | '6months' | '2years') => {
+    if (!user) return;
+
+    setIsAnalyzing(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
+        body: {
+          message: `Skapa en prediktiv analys för min portfölj för ${timeframe} framåt`,
+          userId: user.id,
+          portfolioId,
+          analysisType: 'predictive_analysis',
+          timeframe
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error generating predictive analysis:', error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [user, portfolioId]);
+
+  const generateRebalancingSuggestions = useCallback(async () => {
+    if (!user) return;
+
+    setIsAnalyzing(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
+        body: {
+          message: 'Analysera min portfölj och föreslå optimala rebalanseringsåtgärder',
+          userId: user.id,
+          portfolioId,
+          analysisType: 'rebalancing_optimization'
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error generating rebalancing suggestions:', error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [user, portfolioId]);
+
   return {
     messages,
     sessions,
@@ -217,6 +330,10 @@ export const useAIChat = (portfolioId?: string) => {
     createNewSession,
     loadSession,
     clearMessages,
-    getQuickAnalysis
+    getQuickAnalysis,
+    generateInsight,
+    generateMarketAlert,
+    generatePredictiveAnalysis,
+    generateRebalancingSuggestions
   };
 };

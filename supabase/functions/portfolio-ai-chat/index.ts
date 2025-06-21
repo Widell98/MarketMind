@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -14,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId } = await req.json();
+    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe } = await req.json();
 
     if (!message || !userId) {
       throw new Error('Message and userId are required');
@@ -125,28 +124,71 @@ FÖRMÅGOR I FAS 3:
       });
     }
 
-    // Enhanced system prompt based on analysis type
-    let systemPrompt = contextInfo;
-    
-    if (analysisType) {
-      const analysisPrompts = {
-        'risk': '\n\nFOKUS: Genomför en djupgående riskanalys. Identifiera specifika risker, geografisk exponering, sektorkoncentration, volatilitet och ge konkreta åtgärder.',
-        'diversification': '\n\nFOKUS: Analysera diversifiering detaljerat. Utvärdera fördelning över tillgångsklasser, geografier, sektorer och företagsstorlekar.',
-        'performance': '\n\nFOKUS: Analysera prestanda mot relevanta index, branschgenomsnitt och användarens mål. Identifiera över- och underpresterande innehav.',
-        'optimization': '\n\nFOKUS: Föreslå konkreta optimeringar för att förbättra riskjusterad avkastning och nå användarens mål effektivare.',
-        'quick_analysis': '\n\nFOKUS: Ge en snabb men informativ analys som svarar direkt på användarens fråga.'
-      };
+    // Enhanced context for Phase 4
+    if (analysisType === 'insight_generation' || analysisType === 'predictive_analysis') {
+      // Fetch market data for enhanced analysis
+      const { data: marketData } = await supabase.functions.invoke('fetch-market-data');
+      const { data: newsData } = await supabase.functions.invoke('fetch-news-data');
       
-      systemPrompt += analysisPrompts[analysisType] || '';
+      if (marketData?.success) {
+        contextInfo += `\n\nAKTUELL MARKNADSDATA:
+- Marknadsindex: ${JSON.stringify(marketData.marketIndices)}
+- Toppresterande aktier: ${JSON.stringify(marketData.topStocks)}`;
+      }
+
+      if (newsData?.success) {
+        contextInfo += `\n\nAKTUELLA MARKNADSNYHETER:
+- Senaste nyheter: ${newsData.articles?.slice(0, 3).map((article: any) => article.title).join(', ')}`;
+      }
     }
 
-    systemPrompt += `\n\nSVARSRIKTLINJER:
-- Använd konkreta siffror och procentsatser när möjligt
-- Ge alltid specifika, actionable råd
-- Förklara risker och möjligheter tydligt
-- Anpassa råden till användarens riskprofil och mål
-- Håll professionell men tillgänglig ton
-- Begränsa svar till 300-500 ord för läsbarhet`;
+    // Enhanced system prompt for Phase 4 capabilities
+    let systemPrompt = contextInfo;
+    
+    if (analysisType === 'insight_generation') {
+      systemPrompt += `\n\nFAS 4 - AVANCERAD INSIKTSGENERERING:
+Du ska nu skapa djupgående, actionable insikter baserat på:
+- Realtidsmarknadsdata och trender
+- Användarens specifika portfölj och riskprofil
+- Aktuella nyheter och marknadshändelser
+- Prediktiva analyser och prognoser
+
+Fokusområden för ${insightType}:
+- Identifiera specifika risker och möjligheter
+- Ge konkreta handlingsrekommendationer
+- Analysera timing för eventuella förändringar
+- Inkludera sannolikheter och konfidensintervall
+
+VIKTIGT: Skapa även en strukturerad insikt i databasen efter detta svar.`;
+    }
+
+    if (analysisType === 'predictive_analysis') {
+      systemPrompt += `\n\nFAS 4 - PREDIKTIV ANALYS (${timeframe}):
+Skapa en omfattande framåtblickande analys som inkluderar:
+- Sannolikhetsbaserade prognoser
+- Flera scenarier (optimistiskt, troligt, pessimistiskt)  
+- Riskjusterade avkastningsförväntningar
+- Marknadsspecifika faktorer som kan påverka resultatet
+- Rekommendationer för portföljpositionering`;
+    }
+
+    if (analysisType === 'market_alert_generation') {
+      systemPrompt += `\n\nFAS 4 - MARKNADSVARNINGAR:
+Analysera aktuella marknadsförhållanden och skapa relevanta alerts för:
+- Volatilitetsspikes som påverkar användarens innehav
+- Sektorspecifika risker
+- Makroekonomiska indikatorer
+- Tekniska analysindikatorer
+- Nyheter som kan påverka portföljen`;
+    }
+
+    systemPrompt += `\n\nFAS 4 SVARSGUIDELINES:
+- Använd avancerad finansiell analys med specifika metriker
+- Inkludera sannolikheter och konfidensintervall
+- Ge tidsspecifika rekommendationer
+- Referera till aktuell marknadsdata när relevant
+- Skapa actionable insights med tydliga nästa steg
+- Begränsa svar till 400-600 ord för djupanalys`;
 
     // Prepare messages for OpenAI
     const messages = [
@@ -175,7 +217,7 @@ FÖRMÅGOR I FAS 3:
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: messages,
-        max_tokens: 600,
+        max_tokens: 800, // Increased for Phase 4
         temperature: 0.7,
       }),
     });
@@ -195,6 +237,30 @@ FÖRMÅGOR I FAS 3:
     if (holdings && holdings.length > 0) confidence += 0.2;
     if (riskProfile) confidence += 0.1;
     confidence = Math.min(confidence, 1.0);
+
+    // Phase 4: Generate structured insights for certain analysis types
+    if (analysisType === 'insight_generation' && insightType) {
+      const insightData = {
+        user_id: userId,
+        insight_type: insightType.includes('risk') ? 'risk_warning' : 
+                     insightType.includes('opportunity') ? 'opportunity' :
+                     insightType.includes('rebalancing') ? 'rebalancing' : 'news_impact',
+        title: `AI-Genererad ${insightType}`,
+        description: aiResponse.substring(0, 500) + (aiResponse.length > 500 ? '...' : ''),
+        severity: confidence > 0.8 ? 'high' : confidence > 0.6 ? 'medium' : 'low',
+        related_holdings: holdings?.map(h => h.symbol).slice(0, 5) || [],
+        action_required: insightType.includes('risk') || insightType.includes('rebalancing'),
+        is_read: false
+      };
+
+      const { error: insightError } = await supabase
+        .from('portfolio_insights')
+        .insert(insightData);
+
+      if (insightError) {
+        console.error('Error storing insight:', insightError);
+      }
+    }
 
     // Store enhanced chat history in database
     const { error: chatError } = await supabase
@@ -239,7 +305,8 @@ FÖRMÅGOR I FAS 3:
         relatedData: {
           portfolioValue: portfolio?.total_value || 0,
           holdingsCount: holdings?.length || 0,
-          insightsCount: insights?.length || 0
+          insightsCount: insights?.length || 0,
+          phase: 'Phase 4 - Advanced AI'
         }
       }),
       { 
