@@ -26,8 +26,12 @@ export interface Recommendation {
   title: string;
   description: string;
   ai_reasoning?: string;
+  priority?: string;
   created_at: string;
 }
+
+// Add the missing PortfolioRecommendation export (alias for Recommendation)
+export type PortfolioRecommendation = Recommendation;
 
 export const usePortfolio = () => {
   const [activePortfolio, setActivePortfolio] = useState<Portfolio | null>(null);
@@ -68,7 +72,12 @@ export const usePortfolio = () => {
 
       if (data) {
         console.log('Found active portfolio:', data.id);
-        setActivePortfolio(data);
+        // Convert the data to match our Portfolio interface
+        const portfolio: Portfolio = {
+          ...data,
+          recommended_stocks: Array.isArray(data.recommended_stocks) ? data.recommended_stocks : []
+        };
+        setActivePortfolio(portfolio);
       } else {
         console.log('No active portfolio found');
         setActivePortfolio(null);
@@ -141,7 +150,13 @@ export const usePortfolio = () => {
       }
 
       console.log('Portfolio generated successfully:', data.portfolio);
-      setActivePortfolio(data.portfolio);
+      
+      // Convert the response data to match our Portfolio interface
+      const portfolio: Portfolio = {
+        ...data.portfolio,
+        recommended_stocks: Array.isArray(data.portfolio.recommended_stocks) ? data.portfolio.recommended_stocks : []
+      };
+      setActivePortfolio(portfolio);
       
       // Refresh recommendations after portfolio creation
       await fetchRecommendations();

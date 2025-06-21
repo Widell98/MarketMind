@@ -107,9 +107,9 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ portfolio, reco
                       <span className="text-lg">{getAssetIcon(asset)}</span>
                       <span className="capitalize font-medium">{asset.replace('_', ' ')}</span>
                     </div>
-                    <span className="font-bold">{percentage}%</span>
+                    <span className="font-bold">{String(percentage)}%</span>
                   </div>
-                  <Progress value={percentage as number} className="h-3" />
+                  <Progress value={Number(percentage)} className="h-3" />
                 </div>
               ))}
             </div>
@@ -122,7 +122,7 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ portfolio, reco
                     <div className={`w-3 h-3 rounded-full ${getAssetColor(asset)}`}></div>
                     <span className="text-sm font-medium capitalize">{asset.replace('_', ' ')}</span>
                   </div>
-                  <div className="text-2xl font-bold">{percentage}%</div>
+                  <div className="text-2xl font-bold">{String(percentage)}%</div>
                   <div className="text-xs text-muted-foreground">
                     {asset === 'stocks' && 'Growth potential'}
                     {asset === 'bonds' && 'Stable income'}
@@ -162,8 +162,8 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ portfolio, reco
                   <div className="text-sm">
                     <span className="font-medium">Sector:</span> {stock.sector}
                   </div>
-                  {stock.reason && (
-                    <div className="text-xs text-muted-foreground mt-2 italic">{stock.reason}</div>
+                  {stock.reasoning && (
+                    <div className="text-xs text-muted-foreground mt-2 italic">{stock.reasoning}</div>
                   )}
                 </div>
               ))}
@@ -189,7 +189,7 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ portfolio, reco
                   <div className="flex justify-between items-start mb-2">
                     <h4 className="font-medium">{rec.title}</h4>
                     <Badge variant={rec.priority === 'high' ? 'destructive' : rec.priority === 'medium' ? 'default' : 'secondary'}>
-                      {rec.priority}
+                      {rec.priority || 'medium'}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">{rec.description}</p>
