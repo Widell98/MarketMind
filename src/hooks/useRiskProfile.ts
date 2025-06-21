@@ -109,9 +109,7 @@ export const useRiskProfile = () => {
         const typedData: RiskProfile = {
           ...data,
           sector_interests: jsonToStringArray(data.sector_interests),
-          investment_purpose: Array.isArray(data.investment_purpose)
-            ? data.investment_purpose
-            : [],
+          investment_purpose: jsonToStringArray(data.investment_purpose),
           current_holdings: data.current_holdings || [],
           investment_horizon: data.investment_horizon as RiskProfile['investment_horizon'],
           investment_goal: data.investment_goal as RiskProfile['investment_goal'],
@@ -165,9 +163,7 @@ export const useRiskProfile = () => {
         const typedData: RiskProfile = {
           ...data,
           sector_interests: jsonToStringArray(data.sector_interests),
-          investment_purpose: Array.isArray(data.investment_purpose)
-            ? data.investment_purpose
-            : [],
+          investment_purpose: jsonToStringArray(data.investment_purpose),
           current_holdings: data.current_holdings || [],
           investment_horizon: data.investment_horizon as RiskProfile['investment_horizon'],
           investment_goal: data.investment_goal as RiskProfile['investment_goal'],
