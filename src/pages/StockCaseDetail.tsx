@@ -132,33 +132,28 @@ const StockCaseDetail = () => {
             </Badge>
           </div>
 
-          {/* Enhanced Image with better resolution and sizing */}
+          {/* Image with better hover effects but original size */}
           {imageUrl && (
             <div className="space-y-6">
-              <Card className="overflow-hidden group cursor-pointer shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2" onClick={handleImageClick}>
-                <div className="relative w-full" style={{ aspectRatio: '16/10' }}>
+              <Card className="overflow-hidden group cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300" onClick={handleImageClick}>
+                <div className="relative">
                   <img
                     src={imageUrl}
                     alt={`${stockCase.title} stock price chart`}
-                    className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110"
+                    className="w-full h-auto object-cover transition-all duration-300 group-hover:scale-105"
                     style={{
-                      imageRendering: 'crisp-edges',
-                      imageResolution: 'from-image',
-                      maxWidth: '100%',
-                      height: 'auto',
-                      minHeight: '500px'
+                      imageRendering: 'crisp-edges'
                     }}
                     loading="eager"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500">
-                    <div className="bg-white/95 dark:bg-gray-800/95 rounded-full p-4 shadow-2xl backdrop-blur-sm border border-white/20">
-                      <ZoomIn className="w-8 h-8 text-gray-700 dark:text-gray-300" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+                    <div className="bg-white/95 dark:bg-gray-800/95 rounded-full p-3 shadow-lg backdrop-blur-sm border border-white/20">
+                      <ZoomIn className="w-6 h-6 text-gray-700 dark:text-gray-300" />
                     </div>
                   </div>
                   {/* Click hint overlay */}
-                  <div className="absolute bottom-4 right-4 bg-black/70 text-white px-3 py-2 rounded-lg text-sm opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-sm">
+                  <div className="absolute bottom-3 right-3 bg-black/70 text-white px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-sm">
                     Click to enlarge
                   </div>
                 </div>

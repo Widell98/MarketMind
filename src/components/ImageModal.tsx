@@ -130,8 +130,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose, imageUrl, altT
               maxHeight: zoom === 1 ? '90vh' : 'none',
               width: zoom === 1 ? 'auto' : '90vw',
               height: zoom === 1 ? 'auto' : 'auto',
-              imageRendering: 'high-quality',
-              imageResolution: 'from-image'
+              imageRendering: 'crisp-edges'
             }}
             draggable={false}
           />
