@@ -132,7 +132,7 @@ const StockCaseDetail = () => {
             </Badge>
           </div>
 
-          {/* Image with better hover effects but original size */}
+          {/* Image with better hover effects and proper sizing */}
           {imageUrl && (
             <div className="space-y-6">
               <Card className="overflow-hidden group cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300" onClick={handleImageClick}>
@@ -140,7 +140,7 @@ const StockCaseDetail = () => {
                   <img
                     src={imageUrl}
                     alt={`${stockCase.title} stock price chart`}
-                    className="w-full h-auto object-cover transition-all duration-300 group-hover:scale-105"
+                    className="w-full h-auto object-contain transition-all duration-300 group-hover:scale-105 max-h-[600px] mx-auto"
                     style={{
                       imageRendering: 'crisp-edges'
                     }}
