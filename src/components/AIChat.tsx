@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Brain, Send, Loader2, MessageSquare, BarChart3, Shield, TrendingUp, Zap, Plus, History } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Brain, Send, Loader2, MessageSquare, BarChart3, Shield, TrendingUp, Zap, Plus, History, AlertCircle } from 'lucide-react';
 import { useAIChat } from '@/hooks/useAIChat';
 
 interface AIChatProps {
@@ -22,6 +23,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     currentSessionId,
     isLoading, 
     isAnalyzing,
+    quotaExceeded,
     sendMessage, 
     analyzePortfolio,
     createNewSession,
@@ -43,7 +45,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputMessage.trim() || isLoading) return;
+    if (!inputMessage.trim() || isLoading || quotaExceeded) return;
 
     const message = inputMessage.trim();
     setInputMessage('');
@@ -56,6 +58,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
   };
 
   const handleQuickAnalysis = async (type: 'risk' | 'diversification' | 'performance' | 'optimization') => {
+    if (quotaExceeded) return;
     setSelectedAnalysis(type);
     await analyzePortfolio(type);
     setSelectedAnalysis(null);
@@ -104,16 +107,26 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
       <CardHeader className="flex-shrink-0">
         <CardTitle className="flex items-center gap-2">
           <Brain className="w-5 h-5 text-blue-600" />
-          AI Portfolio Assistent - Fas 3
+          AI Portfolio Assistent - Fas 4
         </CardTitle>
         <CardDescription>
           Avancerad AI-analys med djupgående portföljinsikter och sessionshantering
         </CardDescription>
         
+        {quotaExceeded && (
+          <Alert className="border-orange-200 bg-orange-50">
+            <AlertCircle className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-orange-800">
+              <strong>OpenAI API-kvot överskriden:</strong> Du har nått din dagliga gräns för AI-användning. 
+              Kontrollera din OpenAI-fakturering eller försök igen senare.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <Tabs defaultValue="chat" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="chat">Chat</TabsTrigger>
-            <TabsTrigger value="analysis">Analys</TabsTrigger>
+            <TabsTrigger value="analysis" disabled={quotaExceeded}>Analys</TabsTrigger>
             <TabsTrigger value="sessions">Sessioner</TabsTrigger>
           </TabsList>
           
@@ -125,7 +138,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
                   variant="outline"
                   size="sm"
                   onClick={q.action}
-                  disabled={isLoading}
+                  disabled={isLoading || quotaExceeded}
                   className="text-xs"
                 >
                   {q.text}
@@ -144,7 +157,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
                     variant="outline"
                     size="sm"
                     onClick={() => handleQuickAnalysis(analysis.type)}
-                    disabled={isAnalyzing}
+                    disabled={isAnalyzing || quotaExceeded}
                     className={`flex flex-col h-16 ${selectedAnalysis === analysis.type ? 'ring-2 ring-blue-500' : ''}`}
                   >
                     <Icon className={`w-4 h-4 ${analysis.color}`} />
@@ -201,12 +214,15 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
           {messages.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-medium mb-2">Välkommen till Fas 3!</h3>
+              <h3 className="text-lg font-medium mb-2">Välkommen till Fas 4!</h3>
               <p className="text-sm mb-4">
                 Nu med avancerad analys, sessionshantering och djupare AI-insikter.
               </p>
               <div className="text-xs text-muted-foreground">
-                Använd snabbknapparna ovan eller ställ dina egna frågor nedan.
+                {quotaExceeded ? 
+                  'AI-funktioner är tillfälligt otillgängliga på grund av API-kvotgräns.' :
+                  'Använd snabbknapparna ovan eller ställ dina egna frågor nedan.'
+                }
               </div>
             </div>
           ) : (
@@ -266,13 +282,13 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
               ref={inputRef}
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              placeholder="Ställ en avancerad fråga om din portfölj..."
-              disabled={isLoading || isAnalyzing}
+              placeholder={quotaExceeded ? "AI-funktioner är tillfälligt otillgängliga..." : "Ställ en avancerad fråga om din portfölj..."}
+              disabled={isLoading || isAnalyzing || quotaExceeded}
               className="flex-1"
             />
             <Button 
               type="submit" 
-              disabled={!inputMessage.trim() || isLoading || isAnalyzing}
+              disabled={!inputMessage.trim() || isLoading || isAnalyzing || quotaExceeded}
               size="icon"
             >
               {(isLoading || isAnalyzing) ? (

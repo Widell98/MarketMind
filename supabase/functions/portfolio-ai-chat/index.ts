@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -207,6 +206,38 @@ Analysera aktuella marknadsförhållanden och skapa relevanta alerts för:
     if (!response.ok) {
       const errorData = await response.json();
       console.error('OpenAI API error:', errorData);
+      
+      // Handle specific quota exceeded error
+      if (response.status === 429) {
+        const errorType = errorData.error?.type;
+        
+        if (errorType === 'insufficient_quota') {
+          return new Response(
+            JSON.stringify({ 
+              error: 'quota_exceeded',
+              message: 'Du har nått din dagliga gräns för OpenAI API-användning. Vänligen kontrollera din fakturering eller försök igen senare.',
+              success: false 
+            }),
+            { 
+              status: 429,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        } else if (errorType === 'rate_limit_exceeded') {
+          return new Response(
+            JSON.stringify({ 
+              error: 'rate_limit_exceeded',
+              message: 'För många förfrågningar. Vänligen vänta en stund innan du försöker igen.',
+              success: false 
+            }),
+            { 
+              status: 429,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        }
+      }
+      
       throw new Error(`OpenAI API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
     }
 
@@ -298,6 +329,22 @@ Analysera aktuella marknadsförhållanden och skapa relevanta alerts för:
 
   } catch (error) {
     console.error('Error in portfolio-ai-chat function:', error);
+    
+    // Check if it's a quota-related error
+    if (error.message.includes('quota') || error.message.includes('insufficient_quota')) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'quota_exceeded',
+          message: 'Du har nått din dagliga gräns för OpenAI API-användning. Vänligen kontrollera din fakturering eller försök igen senare.',
+          success: false 
+        }),
+        { 
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
     return new Response(
       JSON.stringify({ 
         error: error.message || 'An unexpected error occurred',

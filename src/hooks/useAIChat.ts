@@ -28,11 +28,53 @@ export const useAIChat = (portfolioId?: string) => {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
+  const handleAPIError = (error: any, data: any) => {
+    console.error('AI chat function error:', error, data);
+    
+    // Check for quota exceeded errors
+    if (data?.error === 'quota_exceeded' || error.message?.includes('429')) {
+      setQuotaExceeded(true);
+      toast({
+        title: "OpenAI Kvot Överskriden",
+        description: "Du har nått din dagliga gräns för AI-användning. Kontrollera din OpenAI-fakturering eller försök igen senare.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (data?.error === 'rate_limit_exceeded') {
+      toast({
+        title: "För Många Förfrågningar",
+        description: "Vänligen vänta en stund innan du försöker igen.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Generic error handling
+    toast({
+      title: "Fel",
+      description: data?.message || "Kunde inte skicka meddelandet. Försök igen.",
+      variant: "destructive",
+    });
+  };
+
   const sendMessage = useCallback(async (message: string, analysisType?: string) => {
     if (!user || !message.trim()) return;
+    
+    // Check if quota is exceeded
+    if (quotaExceeded) {
+      toast({
+        title: "OpenAI Kvot Överskriden",
+        description: "Du har nått din dagliga gräns för AI-användning. Kontrollera din OpenAI-fakturering.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsLoading(true);
     
@@ -62,13 +104,21 @@ export const useAIChat = (portfolioId?: string) => {
       });
 
       if (error) {
-        console.error('AI chat function error:', error);
-        throw error;
+        handleAPIError(error, data);
+        // Remove the user message if there was an error
+        setMessages(prev => prev.filter(msg => msg.id !== userMessage.id));
+        return;
       }
 
       if (!data.success) {
-        throw new Error(data.error || 'Failed to get AI response');
+        handleAPIError(new Error(data.error || 'Failed to get AI response'), data);
+        // Remove the user message if there was an error
+        setMessages(prev => prev.filter(msg => msg.id !== userMessage.id));
+        return;
       }
+
+      // Reset quota exceeded flag on successful response
+      setQuotaExceeded(false);
 
       // Add AI response to messages
       const aiMessage: ChatMessage = {
@@ -96,22 +146,17 @@ export const useAIChat = (portfolioId?: string) => {
 
     } catch (error) {
       console.error('Error sending message:', error);
+      handleAPIError(error, null);
       
       // Remove the user message if there was an error
       setMessages(prev => prev.filter(msg => msg.id !== userMessage.id));
-      
-      toast({
-        title: "Fel",
-        description: "Kunde inte skicka meddelandet. Försök igen.",
-        variant: "destructive",
-      });
     } finally {
       setIsLoading(false);
     }
-  }, [user, portfolioId, messages, toast, currentSessionId]);
+  }, [user, portfolioId, messages, toast, currentSessionId, quotaExceeded]);
 
   const analyzePortfolio = useCallback(async (analysisType: 'risk' | 'diversification' | 'performance' | 'optimization') => {
-    if (!user) return;
+    if (!user || quotaExceeded) return;
 
     setIsAnalyzing(true);
     
@@ -124,7 +169,7 @@ export const useAIChat = (portfolioId?: string) => {
 
     await sendMessage(analysisPrompts[analysisType], analysisType);
     setIsAnalyzing(false);
-  }, [sendMessage, user]);
+  }, [sendMessage, user, quotaExceeded]);
 
   const createNewSession = useCallback(async (name: string) => {
     if (!user) return;
@@ -199,6 +244,7 @@ export const useAIChat = (portfolioId?: string) => {
   const clearMessages = useCallback(() => {
     setMessages([]);
     setCurrentSessionId(null);
+    setQuotaExceeded(false); // Reset quota state when clearing
   }, []);
 
   const getQuickAnalysis = useCallback(async (question: string) => {
@@ -206,7 +252,7 @@ export const useAIChat = (portfolioId?: string) => {
   }, [sendMessage]);
 
   const generateInsight = useCallback(async (insightType: string) => {
-    if (!user) return;
+    if (!user || quotaExceeded) return;
 
     setIsAnalyzing(true);
     
@@ -224,12 +270,13 @@ export const useAIChat = (portfolioId?: string) => {
       });
 
       if (error) {
-        console.error('Error generating insight:', error);
-        throw error;
+        handleAPIError(error, data);
+        return;
       }
 
       if (!data.success) {
-        throw new Error(data.error || 'Failed to generate insight');
+        handleAPIError(new Error(data.error || 'Failed to generate insight'), data);
+        return;
       }
 
       toast({
@@ -240,18 +287,14 @@ export const useAIChat = (portfolioId?: string) => {
       return data;
     } catch (error) {
       console.error('Error generating insight:', error);
-      toast({
-        title: "Fel",
-        description: "Kunde inte generera AI-insikt. Försök igen.",
-        variant: "destructive",
-      });
+      handleAPIError(error, null);
     } finally {
       setIsAnalyzing(false);
     }
-  }, [user, portfolioId, toast]);
+  }, [user, portfolioId, toast, quotaExceeded]);
 
   const generateMarketAlert = useCallback(async () => {
-    if (!user) return;
+    if (!user || quotaExceeded) return;
 
     try {
       const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
@@ -263,15 +306,19 @@ export const useAIChat = (portfolioId?: string) => {
         }
       });
 
-      if (error) throw error;
+      if (error || !data.success) {
+        handleAPIError(error, data);
+        return;
+      }
       return data;
     } catch (error) {
       console.error('Error generating market alert:', error);
+      handleAPIError(error, null);
     }
-  }, [user, portfolioId]);
+  }, [user, portfolioId, quotaExceeded]);
 
   const generatePredictiveAnalysis = useCallback(async (timeframe: '1month' | '6months' | '2years') => {
-    if (!user) return;
+    if (!user || quotaExceeded) return;
 
     setIsAnalyzing(true);
     
@@ -286,17 +333,21 @@ export const useAIChat = (portfolioId?: string) => {
         }
       });
 
-      if (error) throw error;
+      if (error || !data.success) {
+        handleAPIError(error, data);
+        return;
+      }
       return data;
     } catch (error) {
       console.error('Error generating predictive analysis:', error);
+      handleAPIError(error, null);
     } finally {
       setIsAnalyzing(false);
     }
-  }, [user, portfolioId]);
+  }, [user, portfolioId, quotaExceeded]);
 
   const generateRebalancingSuggestions = useCallback(async () => {
-    if (!user) return;
+    if (!user || quotaExceeded) return;
 
     setIsAnalyzing(true);
     
@@ -310,14 +361,18 @@ export const useAIChat = (portfolioId?: string) => {
         }
       });
 
-      if (error) throw error;
+      if (error || !data.success) {
+        handleAPIError(error, data);
+        return;
+      }
       return data;
     } catch (error) {
       console.error('Error generating rebalancing suggestions:', error);
+      handleAPIError(error, null);
     } finally {
       setIsAnalyzing(false);
     }
-  }, [user, portfolioId]);
+  }, [user, portfolioId, quotaExceeded]);
 
   return {
     messages,
@@ -325,6 +380,7 @@ export const useAIChat = (portfolioId?: string) => {
     currentSessionId,
     isLoading,
     isAnalyzing,
+    quotaExceeded,
     sendMessage,
     analyzePortfolio,
     createNewSession,
