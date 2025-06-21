@@ -7,15 +7,44 @@ import { useToast } from '@/hooks/use-toast';
 export interface RiskProfile {
   id: string;
   user_id: string;
+  // Grundläggande information
   age: number | null;
   annual_income: number | null;
+  housing_situation: string | null;
+  has_loans: boolean | null;
+  loan_details: string | null;
+  has_children: boolean | null;
+  liquid_capital: number | null;
+  emergency_buffer_months: number | null;
+  
+  // Sparmål och tidshorisont
+  investment_purpose: string[] | null;
+  target_amount: number | null;
+  target_date: string | null;
   investment_horizon: 'short' | 'medium' | 'long' | null;
   investment_goal: 'growth' | 'income' | 'preservation' | 'balanced' | null;
-  risk_tolerance: 'conservative' | 'moderate' | 'aggressive' | null;
-  investment_experience: 'beginner' | 'intermediate' | 'advanced' | null;
-  sector_interests: string[];
   monthly_investment_amount: number | null;
+  
+  // Riskprofil och psykologi
+  risk_tolerance: 'conservative' | 'moderate' | 'aggressive' | null;
+  risk_comfort_level: number | null;
+  panic_selling_history: boolean | null;
+  control_importance: number | null;
+  market_crash_reaction: string | null;
+  
+  // Investeringsstil
+  portfolio_change_frequency: string | null;
+  activity_preference: string | null;
+  investment_style_preference: string | null;
+  investment_experience: 'beginner' | 'intermediate' | 'advanced' | null;
+  
+  // Nuvarande innehav
   current_portfolio_value: number | null;
+  overexposure_awareness: string | null;
+  sector_interests: string[];
+  current_holdings: any[] | null;
+  current_allocation: any | null;
+  
   created_at: string;
   updated_at: string;
 }
@@ -42,7 +71,6 @@ export const useRiskProfile = () => {
       console.log('Fetching risk profile for user:', user?.id);
       setLoading(true);
       
-      // Get the most recent risk profile for the user
       const { data, error } = await supabase
         .from('user_risk_profiles')
         .select('*')
@@ -62,12 +90,15 @@ export const useRiskProfile = () => {
         return null;
       } else if (data) {
         console.log('Fetched risk profile:', data);
-        // Cast the database data to our interface type with proper type conversion
         const typedData: RiskProfile = {
           ...data,
           sector_interests: Array.isArray(data.sector_interests) 
             ? data.sector_interests.map(item => String(item)) 
             : [],
+          investment_purpose: Array.isArray(data.investment_purpose)
+            ? data.investment_purpose
+            : [],
+          current_holdings: data.current_holdings || [],
           investment_horizon: data.investment_horizon as RiskProfile['investment_horizon'],
           investment_goal: data.investment_goal as RiskProfile['investment_goal'],
           risk_tolerance: data.risk_tolerance as RiskProfile['risk_tolerance'],
@@ -122,6 +153,10 @@ export const useRiskProfile = () => {
           sector_interests: Array.isArray(data.sector_interests) 
             ? data.sector_interests.map(item => String(item)) 
             : [],
+          investment_purpose: Array.isArray(data.investment_purpose)
+            ? data.investment_purpose
+            : [],
+          current_holdings: data.current_holdings || [],
           investment_horizon: data.investment_horizon as RiskProfile['investment_horizon'],
           investment_goal: data.investment_goal as RiskProfile['investment_goal'],
           risk_tolerance: data.risk_tolerance as RiskProfile['risk_tolerance'],
@@ -133,7 +168,7 @@ export const useRiskProfile = () => {
           title: "Success",
           description: "Risk profile saved successfully",
         });
-        return typedData; // Return the typed data instead of just data
+        return typedData;
       }
       
       return false;

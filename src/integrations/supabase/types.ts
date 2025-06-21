@@ -9,6 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ai_chat_sessions: {
+        Row: {
+          context_data: Json | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          session_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          context_data?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          session_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          context_data?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          session_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       case_categories: {
         Row: {
           color: string
@@ -32,33 +62,52 @@ export type Database = {
       }
       portfolio_chat_history: {
         Row: {
+          ai_confidence_score: number | null
+          chat_session_id: string | null
           context_data: Json | null
           created_at: string
           id: string
           message: string
           message_type: string
           portfolio_id: string | null
+          response_time_ms: number | null
+          user_feedback: number | null
           user_id: string
         }
         Insert: {
+          ai_confidence_score?: number | null
+          chat_session_id?: string | null
           context_data?: Json | null
           created_at?: string
           id?: string
           message: string
           message_type: string
           portfolio_id?: string | null
+          response_time_ms?: number | null
+          user_feedback?: number | null
           user_id: string
         }
         Update: {
+          ai_confidence_score?: number | null
+          chat_session_id?: string | null
           context_data?: Json | null
           created_at?: string
           id?: string
           message?: string
           message_type?: string
           portfolio_id?: string | null
+          response_time_ms?: number | null
+          user_feedback?: number | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "portfolio_chat_history_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "ai_chat_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "portfolio_chat_history_portfolio_id_fkey"
             columns: ["portfolio_id"]
@@ -67,6 +116,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      portfolio_insights: {
+        Row: {
+          action_required: boolean | null
+          created_at: string
+          description: string
+          expires_at: string | null
+          id: string
+          insight_type: string
+          is_read: boolean | null
+          related_holdings: Json | null
+          severity: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          action_required?: boolean | null
+          created_at?: string
+          description: string
+          expires_at?: string | null
+          id?: string
+          insight_type: string
+          is_read?: boolean | null
+          related_holdings?: Json | null
+          severity?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          action_required?: boolean | null
+          created_at?: string
+          description?: string
+          expires_at?: string | null
+          id?: string
+          insight_type?: string
+          is_read?: boolean | null
+          related_holdings?: Json | null
+          severity?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       portfolio_recommendations: {
         Row: {
@@ -382,6 +473,57 @@ export type Database = {
         }
         Relationships: []
       }
+      user_holdings: {
+        Row: {
+          created_at: string
+          currency: string | null
+          current_value: number | null
+          holding_type: string
+          id: string
+          market: string | null
+          name: string
+          purchase_date: string | null
+          purchase_price: number | null
+          quantity: number | null
+          sector: string | null
+          symbol: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string | null
+          current_value?: number | null
+          holding_type: string
+          id?: string
+          market?: string | null
+          name: string
+          purchase_date?: string | null
+          purchase_price?: number | null
+          quantity?: number | null
+          sector?: string | null
+          symbol?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string | null
+          current_value?: number | null
+          holding_type?: string
+          id?: string
+          market?: string | null
+          name?: string
+          purchase_date?: string | null
+          purchase_price?: number | null
+          quantity?: number | null
+          sector?: string | null
+          symbol?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_learning_modules: {
         Row: {
           id: string
@@ -530,47 +672,104 @@ export type Database = {
       }
       user_risk_profiles: {
         Row: {
+          activity_preference: string | null
           age: number | null
           annual_income: number | null
+          control_importance: number | null
           created_at: string
+          current_allocation: Json | null
+          current_holdings: Json | null
           current_portfolio_value: number | null
+          emergency_buffer_months: number | null
+          has_children: boolean | null
+          has_loans: boolean | null
+          housing_situation: string | null
           id: string
           investment_experience: string | null
           investment_goal: string | null
           investment_horizon: string | null
+          investment_purpose: string[] | null
+          investment_style_preference: string | null
+          liquid_capital: number | null
+          loan_details: string | null
+          market_crash_reaction: string | null
           monthly_investment_amount: number | null
+          overexposure_awareness: string | null
+          panic_selling_history: boolean | null
+          portfolio_change_frequency: string | null
+          risk_comfort_level: number | null
           risk_tolerance: string | null
           sector_interests: Json | null
+          target_amount: number | null
+          target_date: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          activity_preference?: string | null
           age?: number | null
           annual_income?: number | null
+          control_importance?: number | null
           created_at?: string
+          current_allocation?: Json | null
+          current_holdings?: Json | null
           current_portfolio_value?: number | null
+          emergency_buffer_months?: number | null
+          has_children?: boolean | null
+          has_loans?: boolean | null
+          housing_situation?: string | null
           id?: string
           investment_experience?: string | null
           investment_goal?: string | null
           investment_horizon?: string | null
+          investment_purpose?: string[] | null
+          investment_style_preference?: string | null
+          liquid_capital?: number | null
+          loan_details?: string | null
+          market_crash_reaction?: string | null
           monthly_investment_amount?: number | null
+          overexposure_awareness?: string | null
+          panic_selling_history?: boolean | null
+          portfolio_change_frequency?: string | null
+          risk_comfort_level?: number | null
           risk_tolerance?: string | null
           sector_interests?: Json | null
+          target_amount?: number | null
+          target_date?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          activity_preference?: string | null
           age?: number | null
           annual_income?: number | null
+          control_importance?: number | null
           created_at?: string
+          current_allocation?: Json | null
+          current_holdings?: Json | null
           current_portfolio_value?: number | null
+          emergency_buffer_months?: number | null
+          has_children?: boolean | null
+          has_loans?: boolean | null
+          housing_situation?: string | null
           id?: string
           investment_experience?: string | null
           investment_goal?: string | null
           investment_horizon?: string | null
+          investment_purpose?: string[] | null
+          investment_style_preference?: string | null
+          liquid_capital?: number | null
+          loan_details?: string | null
+          market_crash_reaction?: string | null
           monthly_investment_amount?: number | null
+          overexposure_awareness?: string | null
+          panic_selling_history?: boolean | null
+          portfolio_change_frequency?: string | null
+          risk_comfort_level?: number | null
           risk_tolerance?: string | null
           sector_interests?: Json | null
+          target_amount?: number | null
+          target_date?: string | null
           updated_at?: string
           user_id?: string
         }

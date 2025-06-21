@@ -3,25 +3,21 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Brain, MessageSquare, BarChart3, Settings } from 'lucide-react';
+import { Brain, MessageSquare, BarChart3, Settings, Zap } from 'lucide-react';
 import Layout from '@/components/Layout';
-import RiskAssessmentForm from '@/components/RiskAssessmentForm';
-import PortfolioDashboard from '@/components/PortfolioDashboard';
+import EnhancedRiskAssessmentForm from '@/components/EnhancedRiskAssessmentForm';
+import EnhancedPortfolioDashboard from '@/components/EnhancedPortfolioDashboard';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
 
 const PortfolioAdvisor = () => {
-  // ALL HOOKS MUST BE CALLED FIRST - BEFORE ANY CONDITIONAL LOGIC
   const { user } = useAuth();
   const { riskProfile, loading: profileLoading, refetch: refetchRiskProfile } = useRiskProfile();
   const { activePortfolio, recommendations, loading: portfolioLoading, generatePortfolio } = usePortfolio();
   const [showAssessment, setShowAssessment] = useState(false);
-  
-  // Use ref to track if we've already attempted to generate portfolio for this risk profile
   const portfolioGeneratedForProfile = useRef<string | null>(null);
 
-  // Only auto-generate portfolio if we haven't already done so for this risk profile
   useEffect(() => {
     if (
       riskProfile?.id && 
@@ -41,7 +37,6 @@ const PortfolioAdvisor = () => {
     if (signal === 'profile-created') {
       console.log('Refetching risk profile after creation...');
       
-      // Wait a moment then refetch to get the updated profile
       setTimeout(async () => {
         const updatedProfile = await refetchRiskProfile();
         if (updatedProfile?.id) {
@@ -56,7 +51,6 @@ const PortfolioAdvisor = () => {
     }
   };
 
-  // NOW ALL CONDITIONAL RENDERING LOGIC COMES AFTER ALL HOOKS ARE CALLED
   if (!user) {
     return (
       <Layout>
@@ -87,12 +81,15 @@ const PortfolioAdvisor = () => {
       <Layout>
         <div className="container mx-auto px-4 py-8">
           <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold mb-2">AI Portfolio Advisor</h1>
+            <h1 className="text-3xl font-bold mb-2 flex items-center justify-center gap-2">
+              <Zap className="w-8 h-8 text-blue-600" />
+              Förbättrad AI Portfolio Advisor
+            </h1>
             <p className="text-muted-foreground">
-              Get personalized investment advice powered by artificial intelligence
+              Personaliserad investeringsrådgivning med djup analys av din ekonomiska profil
             </p>
           </div>
-          <RiskAssessmentForm onComplete={handleAssessmentComplete} />
+          <EnhancedRiskAssessmentForm onComplete={handleAssessmentComplete} />
         </div>
       </Layout>
     );
@@ -109,7 +106,7 @@ const PortfolioAdvisor = () => {
                 Ready to Generate Portfolio
               </CardTitle>
               <CardDescription>
-                Your risk profile is complete. Let's create your personalized portfolio.
+                Your enhanced risk profile is complete. Let's create your personalized portfolio.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -122,7 +119,7 @@ const PortfolioAdvisor = () => {
                 className="w-full"
                 disabled={portfolioLoading}
               >
-                {portfolioLoading ? 'Generating...' : 'Generate My Portfolio'}
+                {portfolioLoading ? 'Generating...' : 'Generate My Enhanced Portfolio'}
               </Button>
             </CardContent>
           </Card>
@@ -135,9 +132,12 @@ const PortfolioAdvisor = () => {
     <Layout>
       <div className="container mx-auto px-4 py-6 sm:py-8">
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold mb-2">Portfolio Advisor</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-2">
+            <Zap className="w-8 h-8 text-blue-600" />
+            Förbättrad Portfolio Advisor
+          </h1>
           <p className="text-muted-foreground text-sm sm:text-base">
-            Your personalized AI-powered investment dashboard
+            Din personaliserade AI-drivna investeringsdashboard med djup analys
           </p>
         </div>
 
@@ -166,18 +166,23 @@ const PortfolioAdvisor = () => {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-4 sm:space-y-6 mt-4">
-            <PortfolioDashboard portfolio={activePortfolio} recommendations={recommendations} />
+            <EnhancedPortfolioDashboard portfolio={activePortfolio} recommendations={recommendations} />
           </TabsContent>
 
           <TabsContent value="chat" className="space-y-4 sm:space-y-6 mt-4">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg sm:text-xl">AI Portfolio Chat</CardTitle>
-                <CardDescription className="text-sm">Ask questions about your portfolio and get AI-powered advice</CardDescription>
+                <CardDescription className="text-sm">Ställ frågor om din portfölj och få AI-driven rådgivning</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="text-center text-muted-foreground py-8">
-                  Chat interface coming soon...
+                  <Brain className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-medium mb-2">AI Chat kommer snart</h3>
+                  <p className="text-sm">
+                    Snart kan du ställa frågor som "Vad tycker du om att jag köpte Nvidia nu?" 
+                    och få personlig rådgivning baserat på din profil.
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -186,13 +191,14 @@ const PortfolioAdvisor = () => {
           <TabsContent value="recommendations" className="space-y-4 sm:space-y-6 mt-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg sm:text-xl">All Recommendations</CardTitle>
-                <CardDescription className="text-sm">Review all AI-generated advice for your portfolio</CardDescription>
+                <CardTitle className="text-lg sm:text-xl">Alla Rekommendationer</CardTitle>
+                <CardDescription className="text-sm">Granska all AI-genererad rådgivning för din portfölj</CardDescription>
               </CardHeader>
               <CardContent>
                 {recommendations.length === 0 ? (
                   <div className="text-center text-muted-foreground py-8">
-                    No recommendations available yet
+                    <Brain className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>Inga rekommendationer tillgängliga än</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -201,7 +207,7 @@ const PortfolioAdvisor = () => {
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2 gap-2">
                           <h4 className="font-medium text-sm sm:text-base">{rec.title}</h4>
                           <span className="text-xs text-muted-foreground">
-                            {new Date(rec.created_at).toLocaleDateString()}
+                            {new Date(rec.created_at).toLocaleDateString('sv-SE')}
                           </span>
                         </div>
                         <p className="text-xs sm:text-sm text-muted-foreground mb-2">{rec.description}</p>
@@ -220,16 +226,34 @@ const PortfolioAdvisor = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg sm:text-xl">Portfolio Settings</CardTitle>
-                <CardDescription className="text-sm">Manage your risk profile and portfolio preferences</CardDescription>
+                <CardDescription className="text-sm">Hantera din riskprofil och portföljpreferenser</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <Button 
                   variant="outline"
                   onClick={() => setShowAssessment(true)}
                   className="w-full sm:w-auto"
                 >
-                  Retake Risk Assessment
+                  Gör om förbättrad riskbedömning
                 </Button>
+                
+                <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                  <h4 className="font-medium mb-2">Din nuvarande profil</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Ålder:</span> {riskProfile.age || 'Ej angivet'}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Risktolerans:</span> {riskProfile.risk_tolerance || 'Ej angivet'}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Tidshorisont:</span> {riskProfile.investment_horizon || 'Ej angivet'}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Erfarenhet:</span> {riskProfile.investment_experience || 'Ej angivet'}
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
