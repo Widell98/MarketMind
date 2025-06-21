@@ -65,6 +65,22 @@ const jsonToStringArray = (jsonValue: any): string[] => {
   return [];
 };
 
+// Helper function to safely convert Json to any array
+const jsonToArray = (jsonValue: any): any[] => {
+  if (Array.isArray(jsonValue)) {
+    return jsonValue;
+  }
+  if (typeof jsonValue === 'string') {
+    try {
+      const parsed = JSON.parse(jsonValue);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
 export const useRiskProfile = () => {
   const [riskProfile, setRiskProfile] = useState<RiskProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -110,7 +126,7 @@ export const useRiskProfile = () => {
           ...data,
           sector_interests: jsonToStringArray(data.sector_interests),
           investment_purpose: jsonToStringArray(data.investment_purpose),
-          current_holdings: data.current_holdings || [],
+          current_holdings: jsonToArray(data.current_holdings),
           investment_horizon: data.investment_horizon as RiskProfile['investment_horizon'],
           investment_goal: data.investment_goal as RiskProfile['investment_goal'],
           risk_tolerance: data.risk_tolerance as RiskProfile['risk_tolerance'],
@@ -164,7 +180,7 @@ export const useRiskProfile = () => {
           ...data,
           sector_interests: jsonToStringArray(data.sector_interests),
           investment_purpose: jsonToStringArray(data.investment_purpose),
-          current_holdings: data.current_holdings || [],
+          current_holdings: jsonToArray(data.current_holdings),
           investment_horizon: data.investment_horizon as RiskProfile['investment_horizon'],
           investment_goal: data.investment_goal as RiskProfile['investment_goal'],
           risk_tolerance: data.risk_tolerance as RiskProfile['risk_tolerance'],
