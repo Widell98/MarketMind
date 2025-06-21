@@ -49,6 +49,22 @@ export interface RiskProfile {
   updated_at: string;
 }
 
+// Helper function to safely convert Json to string array
+const jsonToStringArray = (jsonValue: any): string[] => {
+  if (Array.isArray(jsonValue)) {
+    return jsonValue.map(item => String(item));
+  }
+  if (typeof jsonValue === 'string') {
+    try {
+      const parsed = JSON.parse(jsonValue);
+      return Array.isArray(parsed) ? parsed.map(item => String(item)) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
 export const useRiskProfile = () => {
   const [riskProfile, setRiskProfile] = useState<RiskProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -92,9 +108,7 @@ export const useRiskProfile = () => {
         console.log('Fetched risk profile:', data);
         const typedData: RiskProfile = {
           ...data,
-          sector_interests: Array.isArray(data.sector_interests) 
-            ? data.sector_interests.map(item => String(item)) 
-            : [],
+          sector_interests: jsonToStringArray(data.sector_interests),
           investment_purpose: Array.isArray(data.investment_purpose)
             ? data.investment_purpose
             : [],
@@ -150,9 +164,7 @@ export const useRiskProfile = () => {
         console.log('Risk profile saved successfully:', data);
         const typedData: RiskProfile = {
           ...data,
-          sector_interests: Array.isArray(data.sector_interests) 
-            ? data.sector_interests.map(item => String(item)) 
-            : [],
+          sector_interests: jsonToStringArray(data.sector_interests),
           investment_purpose: Array.isArray(data.investment_purpose)
             ? data.investment_purpose
             : [],
