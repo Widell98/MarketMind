@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Brain, MessageSquare, BarChart3, Settings, Zap, TrendingUp } from 'lucide-react';
+import { Brain, MessageSquare, BarChart3, Settings, Zap, TrendingUp, Lightbulb } from 'lucide-react';
 import Layout from '@/components/Layout';
 import EnhancedRiskAssessmentForm from '@/components/EnhancedRiskAssessmentForm';
 import EnhancedPortfolioDashboard from '@/components/EnhancedPortfolioDashboard';
@@ -85,10 +86,10 @@ const PortfolioAdvisor = () => {
           <div className="mb-8 text-center">
             <h1 className="text-3xl font-bold mb-2 flex items-center justify-center gap-2">
               <Zap className="w-8 h-8 text-blue-600" />
-              Förbättrad AI Portfolio Advisor
+              AI Portfolio Advisor - Phase 4
             </h1>
             <p className="text-muted-foreground">
-              Personaliserad investeringsrådgivning med djup analys av din ekonomiska profil
+              Avancerad AI-driven investeringsrådgivning med prediktiv analys och realtidsmarknadsdata
             </p>
           </div>
           <EnhancedRiskAssessmentForm onComplete={handleAssessmentComplete} />
@@ -121,7 +122,7 @@ const PortfolioAdvisor = () => {
                 className="w-full"
                 disabled={portfolioLoading}
               >
-                {portfolioLoading ? 'Generating...' : 'Generate My Enhanced Portfolio'}
+                {portfolioLoading ? 'Generating...' : 'Generate My AI-Enhanced Portfolio'}
               </Button>
             </CardContent>
           </Card>
@@ -136,15 +137,15 @@ const PortfolioAdvisor = () => {
         <div className="mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-2">
             <Zap className="w-8 h-8 text-blue-600" />
-            Förbättrad Portfolio Advisor
+            AI Portfolio Advisor - Phase 4
           </h1>
           <p className="text-muted-foreground text-sm sm:text-base">
-            Din personaliserade AI-drivna investeringsdashboard med djup analys
+            Din AI-drivna investeringsdashboard med prediktiv analys och realtidsmarknadsdata
           </p>
         </div>
 
         <Tabs defaultValue="dashboard" className="space-y-4 sm:space-y-6">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 h-auto p-1">
             <TabsTrigger value="dashboard" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-1.5">
               <BarChart3 className="w-4 h-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -155,10 +156,15 @@ const PortfolioAdvisor = () => {
               <span className="hidden sm:inline">AI Chat</span>
               <span className="sm:hidden">Chat</span>
             </TabsTrigger>
-            <TabsTrigger value="recommendations" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-1.5">
-              <Brain className="w-4 h-4" />
-              <span className="hidden sm:inline">Recommendations</span>
-              <span className="sm:hidden">Recs</span>
+            <TabsTrigger value="insights" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-1.5">
+              <Lightbulb className="w-4 h-4" />
+              <span className="hidden sm:inline">AI Insights</span>
+              <span className="sm:hidden">Insights</span>
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-1.5">
+              <TrendingUp className="w-4 h-4" />
+              <span className="hidden sm:inline">Predictive</span>
+              <span className="sm:hidden">Pred</span>
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-1.5">
               <Settings className="w-4 h-4" />
@@ -175,38 +181,12 @@ const PortfolioAdvisor = () => {
             <AIChat portfolioId={activePortfolio?.id} />
           </TabsContent>
 
-          <TabsContent value="recommendations" className="space-y-4 sm:space-y-6 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg sm:text-xl">Alla Rekommendationer</CardTitle>
-                <CardDescription className="text-sm">Granska all AI-genererad rådgivning för din portfölj</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {recommendations.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-8">
-                    <Brain className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Inga rekommendationer tillgängliga än</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {recommendations.map((rec) => (
-                      <div key={rec.id} className="p-3 sm:p-4 border rounded-lg">
-                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2 gap-2">
-                          <h4 className="font-medium text-sm sm:text-base">{rec.title}</h4>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(rec.created_at).toLocaleDateString('sv-SE')}
-                          </span>
-                        </div>
-                        <p className="text-xs sm:text-sm text-muted-foreground mb-2">{rec.description}</p>
-                        {rec.ai_reasoning && (
-                          <p className="text-xs text-muted-foreground italic">{rec.ai_reasoning}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <TabsContent value="insights" className="space-y-4 sm:space-y-6 mt-4">
+            <AIInsightsPanel portfolioId={activePortfolio?.id} />
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-4 sm:space-y-6 mt-4">
+            <PredictiveAnalytics portfolioId={activePortfolio?.id} />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-4 sm:space-y-6 mt-4">

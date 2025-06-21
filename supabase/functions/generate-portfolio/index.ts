@@ -1,419 +1,278 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('Generate portfolio function called')
-    
-    // Check environment variables first
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
-    
-    console.log('Environment check:', {
-      hasUrl: !!supabaseUrl,
-      hasKey: !!supabaseAnonKey,
-      urlPreview: supabaseUrl?.substring(0, 20) + '...'
-    })
-    
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('Missing Supabase environment variables')
-      return new Response(
-        JSON.stringify({ 
-          error: 'Server configuration error',
-          details: 'Missing required environment variables'
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
-    
-    // Security: Verify JWT token and get user
-    const authHeader = req.headers.get('Authorization')
-    console.log('Auth header present:', !!authHeader)
+    // Get the authorization header
+    const authHeader = req.headers.get('Authorization');
     
     if (!authHeader) {
-      console.error('Missing authorization header')
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+      console.error('No authorization header provided');
+      throw new Error('Authorization required');
     }
 
-    const supabaseClient = createClient(
-      supabaseUrl,
-      supabaseAnonKey,
+    // Initialize Supabase client with service role key for admin operations
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Initialize regular client for user operations
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
           headers: { Authorization: authHeader },
         },
       }
-    )
+    );
 
-    console.log('Supabase client created successfully')
-
-    // Verify the user is authenticated
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
+    // Get user from JWT token
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
     
-    console.log('Auth check result:', {
-      hasUser: !!user,
-      userId: user?.id,
-      authError: authError?.message
-    })
-    
-    if (authError || !user) {
-      console.error('Authentication failed:', authError)
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+    if (userError || !user) {
+      console.error('Auth error:', userError);
+      throw new Error('Invalid authentication');
     }
 
-    console.log('User authenticated:', user.id)
+    console.log('Authenticated user:', user.id);
 
-    // Parse request body
-    let requestBody
-    try {
-      requestBody = await req.json()
-      console.log('Request body parsed:', requestBody)
-    } catch (parseError) {
-      console.error('Failed to parse request body:', parseError)
-      return new Response(
-        JSON.stringify({ error: 'Invalid request body' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+    const { riskProfileId } = await req.json();
+
+    if (!riskProfileId) {
+      throw new Error('Risk profile ID is required');
     }
 
-    const { risk_profile_id } = requestBody
-
-    // Security: Validate input
-    if (!risk_profile_id || typeof risk_profile_id !== 'string') {
-      console.error('Invalid risk profile ID:', risk_profile_id)
-      return new Response(
-        JSON.stringify({ error: 'Invalid risk profile ID' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
-
-    console.log('Risk profile ID:', risk_profile_id)
-
-    // Security: Verify the risk profile belongs to the authenticated user
-    console.log('Fetching risk profile...')
-    const { data: riskProfile, error: profileError } = await supabaseClient
+    // Fetch risk profile using admin client
+    const { data: riskProfile, error: profileError } = await supabaseAdmin
       .from('user_risk_profiles')
       .select('*')
-      .eq('id', risk_profile_id)
+      .eq('id', riskProfileId)
       .eq('user_id', user.id)
-      .single()
-
-    console.log('Risk profile query result:', {
-      hasData: !!riskProfile,
-      error: profileError?.message,
-      profileId: riskProfile?.id
-    })
+      .single();
 
     if (profileError || !riskProfile) {
-      console.error('Risk profile not found or access denied:', profileError)
-      return new Response(
-        JSON.stringify({ error: 'Risk profile not found or access denied' }),
-        { 
-          status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+      console.error('Risk profile error:', profileError);
+      throw new Error('Risk profile not found');
     }
 
-    console.log('Risk profile found:', riskProfile)
+    console.log('Found risk profile:', riskProfile.id);
 
-    // Security: Rate limiting check (basic implementation)
-    console.log('Checking rate limits...')
-    const { data: existingPortfolios } = await supabaseClient
+    // Generate portfolio recommendations based on risk profile
+    const portfolioData = generatePortfolioRecommendations(riskProfile);
+
+    // Store the generated portfolio using admin client
+    const { data: portfolio, error: portfolioError } = await supabaseAdmin
       .from('user_portfolios')
-      .select('created_at')
-      .eq('user_id', user.id)
-      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+      .insert({
+        user_id: user.id,
+        risk_profile_id: riskProfileId,
+        portfolio_name: `${riskProfile.risk_tolerance || 'Balanced'} Portfolio`,
+        asset_allocation: portfolioData.allocation,
+        recommended_stocks: portfolioData.stocks,
+        total_value: portfolioData.targetValue,
+        expected_return: portfolioData.expectedReturn,
+        risk_score: portfolioData.riskScore,
+        is_active: true
+      })
+      .select()
+      .single();
 
-    if (existingPortfolios && existingPortfolios.length >= 5) {
-      console.error('Rate limit exceeded')
-      return new Response(
-        JSON.stringify({ error: 'Rate limit exceeded. Maximum 5 portfolios per day.' }),
-        { 
-          status: 429, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+    if (portfolioError) {
+      console.error('Portfolio creation error:', portfolioError);
+      throw new Error('Failed to create portfolio');
     }
 
-    // Generate portfolio based on risk profile
-    console.log('Generating portfolio data...')
-    const portfolioData = generatePortfolioFromProfile(riskProfile)
-    console.log('Portfolio data generated:', portfolioData)
-
-    // Deactivate any existing active portfolios
-    console.log('Deactivating existing active portfolios...')
-    const { error: deactivateError } = await supabaseClient
+    // Deactivate other portfolios for this user
+    await supabaseAdmin
       .from('user_portfolios')
       .update({ is_active: false })
       .eq('user_id', user.id)
-      .eq('is_active', true)
+      .neq('id', portfolio.id);
 
-    if (deactivateError) {
-      console.error('Error deactivating existing portfolios:', deactivateError)
-      // Continue anyway, this is not critical
-    }
-
-    // Save portfolio to database
-    console.log('Saving portfolio to database...')
-    const portfolioInsert = {
-      user_id: user.id,
-      risk_profile_id: risk_profile_id,
-      portfolio_name: `${getPortfolioName(riskProfile)} Portfolio`,
-      asset_allocation: portfolioData.assetAllocation,
-      recommended_stocks: portfolioData.recommendedStocks,
-      expected_return: portfolioData.expectedReturn,
-      risk_score: portfolioData.riskScore,
-      total_value: riskProfile.current_portfolio_value || 0,
-      is_active: true
-    }
+    // Generate initial recommendations using admin client
+    const recommendations = generateInitialRecommendations(riskProfile, portfolioData);
     
-    console.log('Portfolio insert data:', portfolioInsert)
-    
-    const { data: portfolio, error: saveError } = await supabaseClient
-      .from('user_portfolios')
-      .insert(portfolioInsert)
-      .select()
-      .single()
-
-    if (saveError) {
-      console.error('Error saving portfolio:', saveError)
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to save portfolio',
-          details: saveError.message 
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+    if (recommendations.length > 0) {
+      await supabaseAdmin
+        .from('portfolio_recommendations')
+        .insert(
+          recommendations.map(rec => ({
+            user_id: user.id,
+            portfolio_id: portfolio.id,
+            title: rec.title,
+            description: rec.description,
+            ai_reasoning: rec.reasoning
+          }))
+        );
     }
 
-    console.log('Portfolio saved successfully:', portfolio)
+    console.log('Portfolio generated successfully:', portfolio.id);
 
     return new Response(
       JSON.stringify({ 
-        success: true,
+        success: true, 
         portfolio,
         message: 'Portfolio generated successfully'
       }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
-    )
+    );
 
   } catch (error) {
-    console.error('Portfolio generation error:', error)
-    console.error('Error stack:', error.stack)
-    
+    console.error('Error in generate-portfolio function:', error);
     return new Response(
       JSON.stringify({ 
-        error: 'Internal server error',
-        details: error.message,
-        stack: error.stack
+        error: error.message || 'An unexpected error occurred',
+        success: false 
       }),
       { 
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
-    )
+    );
   }
-})
+});
 
-function generatePortfolioFromProfile(riskProfile: any) {
-  console.log('Generating portfolio for profile:', riskProfile)
+function generatePortfolioRecommendations(riskProfile: any) {
+  const age = riskProfile.age || 35;
+  const riskTolerance = riskProfile.risk_tolerance || 'moderate';
+  const investmentHorizon = riskProfile.investment_horizon || 'medium';
+  const monthlyAmount = riskProfile.monthly_investment_amount || 5000;
   
-  // Security: Validate profile data
-  const safeProfile = {
-    risk_tolerance: riskProfile.risk_tolerance || 'moderate',
-    investment_horizon: riskProfile.investment_horizon || 'medium',
-    investment_goal: riskProfile.investment_goal || 'balanced',
-    investment_experience: riskProfile.investment_experience || 'beginner',
-    sector_interests: Array.isArray(riskProfile.sector_interests) ? riskProfile.sector_interests : [],
-    age: Math.max(18, Math.min(100, riskProfile.age || 35)),
-    monthly_investment_amount: Math.max(0, riskProfile.monthly_investment_amount || 1000)
-  }
-
-  console.log('Safe profile data:', safeProfile)
-
-  // Generate asset allocation based on risk tolerance
-  let stocksPercent = 60
-  let bondsPercent = 30
-  let cashPercent = 10
-
-  switch (safeProfile.risk_tolerance) {
+  // Calculate target portfolio value (12 months of investment)
+  const targetValue = monthlyAmount * 12;
+  
+  // Asset allocation based on risk profile
+  let allocation: any = {};
+  let expectedReturn = 0;
+  let riskScore = 5;
+  
+  switch (riskTolerance) {
     case 'conservative':
-      stocksPercent = 40
-      bondsPercent = 50
-      cashPercent = 10
-      break
+      allocation = {
+        stocks: 30,
+        bonds: 50,
+        real_estate: 15,
+        cash: 5
+      };
+      expectedReturn = 4.5;
+      riskScore = 3;
+      break;
     case 'aggressive':
-      stocksPercent = 80
-      bondsPercent = 15
-      cashPercent = 5
-      break
+      allocation = {
+        stocks: 80,
+        bonds: 10,
+        real_estate: 5,
+        commodities: 5
+      };
+      expectedReturn = 9.2;
+      riskScore = 8;
+      break;
+    default: // moderate
+      allocation = {
+        stocks: 60,
+        bonds: 25,
+        real_estate: 10,
+        cash: 5
+      };
+      expectedReturn = 6.8;
+      riskScore = 5;
   }
-
-  // Adjust based on age (younger = more aggressive)
-  if (safeProfile.age < 30) {
-    stocksPercent = Math.min(stocksPercent + 10, 90)
-    bondsPercent = Math.max(bondsPercent - 10, 5)
-  } else if (safeProfile.age > 50) {
-    stocksPercent = Math.max(stocksPercent - 10, 30)
-    bondsPercent = Math.min(bondsPercent + 10, 60)
+  
+  // Adjust for age (younger = more aggressive)
+  if (age < 30) {
+    allocation.stocks = Math.min(allocation.stocks + 10, 85);
+    allocation.bonds = Math.max(allocation.bonds - 5, 10);
+    expectedReturn += 0.5;
+    riskScore = Math.min(riskScore + 1, 10);
+  } else if (age > 50) {
+    allocation.stocks = Math.max(allocation.stocks - 10, 20);
+    allocation.bonds = Math.min(allocation.bonds + 10, 60);
+    expectedReturn -= 0.5;
+    riskScore = Math.max(riskScore - 1, 1);
   }
-
-  const assetAllocation = {
-    stocks: stocksPercent,
-    bonds: bondsPercent,
-    cash: cashPercent
-  }
-
-  // Generate recommended stocks based on sector interests
-  const recommendedStocks = generateStockRecommendations(safeProfile)
-
-  // Calculate expected return
-  const expectedReturn = calculateExpectedReturn(assetAllocation, safeProfile.risk_tolerance)
-
-  // Calculate risk score
-  const riskScore = calculateRiskScore(safeProfile)
-
-  const result = {
-    assetAllocation,
-    recommendedStocks,
+  
+  // Generate stock recommendations
+  const stockPools = {
+    conservative: [
+      { name: 'Investor AB', symbol: 'INVE-B.ST', sector: 'Financial Services', allocation: 8, reasoning: 'Stabil investmentbolag med diversifierad portfölj' },
+      { name: 'Volvo AB', symbol: 'VOLV-B.ST', sector: 'Automotive', allocation: 7, reasoning: 'Välkänt svenskt industriföretag med stark position' },
+      { name: 'Ericsson', symbol: 'ERIC-B.ST', sector: 'Technology', allocation: 6, reasoning: 'Ledande telekomteknologi med 5G-potential' }
+    ],
+    moderate: [
+      { name: 'Investor AB', symbol: 'INVE-B.ST', sector: 'Financial Services', allocation: 10, reasoning: 'Stabil investmentbolag med diversifierad portfölj' },
+      { name: 'Atlas Copco', symbol: 'ATCO-A.ST', sector: 'Industrial', allocation: 8, reasoning: 'Stark industriell tillväxt och innovation' },
+      { name: 'H&M', symbol: 'HM-B.ST', sector: 'Consumer Goods', allocation: 7, reasoning: 'Global detaljhandel med omställning till hållbarhet' },
+      { name: 'Spotify', symbol: 'SPOT', sector: 'Technology', allocation: 9, reasoning: 'Växande musikstreaming-marknad' }
+    ],
+    aggressive: [
+      { name: 'Spotify', symbol: 'SPOT', sector: 'Technology', allocation: 15, reasoning: 'Hög tillväxtpotential inom streaming' },
+      { name: 'Evolution Gaming', symbol: 'EVO.ST', sector: 'Technology', allocation: 12, reasoning: 'Ledande inom online-gaming med stark tillväxt' },
+      { name: 'Klarna Bank', symbol: 'Private', sector: 'Financial Technology', allocation: 10, reasoning: 'Fintech-innovation med global expansion' },
+      { name: 'Northvolt', symbol: 'Private', sector: 'Clean Energy', allocation: 8, reasoning: 'Batteriteknologi för den gröna omställningen' }
+    ]
+  };
+  
+  const selectedStocks = stockPools[riskTolerance as keyof typeof stockPools] || stockPools.moderate;
+  
+  return {
+    allocation,
+    stocks: selectedStocks,
+    targetValue,
     expectedReturn,
     riskScore
+  };
+}
+
+function generateInitialRecommendations(riskProfile: any, portfolioData: any) {
+  const recommendations = [];
+  
+  // Age-based recommendation
+  if (riskProfile.age && riskProfile.age < 30) {
+    recommendations.push({
+      title: 'Ung Investerare - Maximal Tillväxt',
+      description: 'Som ung investerare kan du ta högre risk för potentiellt högre avkastning. Överväg att öka aktieandelen.',
+      reasoning: 'Lång tidshorisont ger möjlighet att återhämta sig från marknadsfluktuationer'
+    });
   }
   
-  console.log('Generated portfolio result:', result)
-  return result
-}
-
-function generateStockRecommendations(profile: any) {
-  const stockDatabase = {
-    'Technology': ['AAPL', 'MSFT', 'GOOGL', 'META', 'NVDA'],
-    'Healthcare': ['JNJ', 'PFE', 'UNH', 'ABBV', 'MRK'],
-    'Finance': ['JPM', 'BAC', 'WFC', 'GS', 'MS'],
-    'Energy': ['XOM', 'CVX', 'COP', 'EOG', 'SLB'],
-    'Consumer Goods': ['PG', 'KO', 'PEP', 'WMT', 'HD']
+  // Monthly investment recommendation
+  if (riskProfile.monthly_investment_amount) {
+    recommendations.push({
+      title: 'Månadssparande Strategi',
+      description: `Med ${riskProfile.monthly_investment_amount} SEK/månad kan du bygga en solid portfölj genom dollar-cost averaging.`,
+      reasoning: 'Regelbundet sparande minskar volatilitetsrisken över tid'
+    });
   }
-
-  const recommendations = []
-  const maxStocksPerSector = 3
-  const maxTotalStocks = 10
-
-  // If user has sector interests, prioritize those
-  if (profile.sector_interests && profile.sector_interests.length > 0) {
-    for (const sector of profile.sector_interests) {
-      if (stockDatabase[sector] && recommendations.length < maxTotalStocks) {
-        const sectorStocks = stockDatabase[sector]
-          .slice(0, maxStocksPerSector)
-          .map(symbol => ({
-            symbol,
-            sector,
-            allocation: Math.round((100 / Math.min(profile.sector_interests.length * maxStocksPerSector, maxTotalStocks)) * 100) / 100
-          }))
-        
-        recommendations.push(...sectorStocks)
-      }
-    }
-  } else {
-    // Default diversified portfolio
-    const defaultSectors = ['Technology', 'Healthcare', 'Finance']
-    for (const sector of defaultSectors) {
-      if (recommendations.length < maxTotalStocks) {
-        const sectorStocks = stockDatabase[sector]
-          .slice(0, 2)
-          .map(symbol => ({
-            symbol,
-            sector,
-            allocation: Math.round((100 / 6) * 100) / 100
-          }))
-        
-        recommendations.push(...sectorStocks)
-      }
-    }
+  
+  // Risk-specific recommendation
+  if (riskProfile.risk_tolerance === 'conservative') {
+    recommendations.push({
+      title: 'Stabil Inkomstgenerering',
+      description: 'Din konservativa profil passar dividendbetalande aktier och obligationer för stabil inkomst.',
+      reasoning: 'Fokus på kapitalbevarande med måttlig tillväxt'
+    });
+  } else if (riskProfile.risk_tolerance === 'aggressive') {
+    recommendations.push({
+      title: 'Tillväxtfokuserad Strategi',
+      description: 'Din aggressiva profil möjliggör investering i tillväxtaktier och innovativa sektorer.',
+      reasoning: 'Högre risk för potentiellt högre långsiktig avkastning'
+    });
   }
-
-  return recommendations.slice(0, maxTotalStocks)
-}
-
-function calculateExpectedReturn(allocation: any, riskTolerance: string) {
-  const stockReturn = 8.5 // Historical average
-  const bondReturn = 4.0
-  const cashReturn = 1.5
-
-  const weightedReturn = 
-    (allocation.stocks / 100) * stockReturn +
-    (allocation.bonds / 100) * bondReturn +
-    (allocation.cash / 100) * cashReturn
-
-  // Adjust based on risk tolerance
-  const riskAdjustment = {
-    'conservative': -0.5,
-    'moderate': 0,
-    'aggressive': 0.5
-  }
-
-  return Math.round((weightedReturn + (riskAdjustment[riskTolerance] || 0)) * 100) / 100
-}
-
-function calculateRiskScore(profile: any) {
-  let score = 50 // Base score
-
-  // Risk tolerance adjustment
-  switch (profile.risk_tolerance) {
-    case 'conservative': score -= 20; break
-    case 'aggressive': score += 20; break
-  }
-
-  // Age adjustment
-  if (profile.age < 30) score += 10
-  if (profile.age > 50) score -= 10
-
-  // Investment horizon adjustment
-  switch (profile.investment_horizon) {
-    case 'short': score -= 15; break
-    case 'long': score += 15; break
-  }
-
-  return Math.max(10, Math.min(90, score))
-}
-
-function getPortfolioName(profile: any) {
-  const riskLevel = profile.risk_tolerance || 'moderate'
-  return riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)
+  
+  return recommendations;
 }
