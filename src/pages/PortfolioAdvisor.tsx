@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +9,7 @@ import EnhancedPortfolioDashboard from '@/components/EnhancedPortfolioDashboard'
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
+import AIChat from '@/components/AIChat';
 
 const PortfolioAdvisor = () => {
   const { user } = useAuth();
@@ -170,22 +170,7 @@ const PortfolioAdvisor = () => {
           </TabsContent>
 
           <TabsContent value="chat" className="space-y-4 sm:space-y-6 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg sm:text-xl">AI Portfolio Chat</CardTitle>
-                <CardDescription className="text-sm">Ställ frågor om din portfölj och få AI-driven rådgivning</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center text-muted-foreground py-8">
-                  <Brain className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <h3 className="text-lg font-medium mb-2">AI Chat kommer snart</h3>
-                  <p className="text-sm">
-                    Snart kan du ställa frågor som "Vad tycker du om att jag köpte Nvidia nu?" 
-                    och få personlig rådgivning baserat på din profil.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <AIChat portfolioId={activePortfolio?.id} />
           </TabsContent>
 
           <TabsContent value="recommendations" className="space-y-4 sm:space-y-6 mt-4">
