@@ -54,7 +54,15 @@ export const usePortfolioInsights = () => {
         return;
       }
 
-      setInsights(data || []);
+      // Type cast the data properly
+      const typedData: PortfolioInsight[] = (data || []).map(item => ({
+        ...item,
+        insight_type: item.insight_type as PortfolioInsight['insight_type'],
+        severity: item.severity as PortfolioInsight['severity'],
+        related_holdings: Array.isArray(item.related_holdings) ? item.related_holdings : []
+      }));
+
+      setInsights(typedData);
     } catch (error) {
       console.error('Error fetching insights:', error);
     } finally {

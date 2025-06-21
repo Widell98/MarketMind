@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -196,7 +195,9 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
         // Innehav
         current_portfolio_value: formData.current_portfolio_value ? parseFloat(formData.current_portfolio_value) : null,
         overexposure_awareness: formData.overexposure_awareness,
-        sector_interests: formData.sector_interests
+        sector_interests: formData.sector_interests,
+        current_holdings: [],
+        current_allocation: {}
       };
 
       const result = await saveRiskProfile(profileData);

@@ -129,7 +129,7 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
                 <div key={asset} className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="capitalize">{asset.replace('_', ' ')}</span>
-                    <span>{percentage}%</span>
+                    <span>{String(percentage)}%</span>
                   </div>
                   <Progress 
                     value={percentage as number} 

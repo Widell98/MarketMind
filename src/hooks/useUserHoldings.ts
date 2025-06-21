@@ -57,7 +57,13 @@ export const useUserHoldings = () => {
         return;
       }
 
-      setHoldings(data || []);
+      // Type cast the data properly
+      const typedData: UserHolding[] = (data || []).map(item => ({
+        ...item,
+        holding_type: item.holding_type as UserHolding['holding_type']
+      }));
+
+      setHoldings(typedData);
     } catch (error) {
       console.error('Error fetching holdings:', error);
     } finally {
@@ -89,7 +95,11 @@ export const useUserHoldings = () => {
       }
 
       if (data) {
-        setHoldings(prev => [data, ...prev]);
+        const typedData: UserHolding = {
+          ...data,
+          holding_type: data.holding_type as UserHolding['holding_type']
+        };
+        setHoldings(prev => [typedData, ...prev]);
         toast({
           title: "Success",
           description: "Holding added successfully",
@@ -128,7 +138,11 @@ export const useUserHoldings = () => {
       }
 
       if (data) {
-        setHoldings(prev => prev.map(h => h.id === id ? data : h));
+        const typedData: UserHolding = {
+          ...data,
+          holding_type: data.holding_type as UserHolding['holding_type']
+        };
+        setHoldings(prev => prev.map(h => h.id === id ? typedData : h));
         toast({
           title: "Success",
           description: "Holding updated successfully",
