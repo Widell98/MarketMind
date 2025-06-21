@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -66,9 +67,9 @@ serve(async (req) => {
       .limit(3);
 
     // Build enhanced context for AI
-    let contextInfo = `Du är en avancerad AI-assistent för portföljanalys (Fas 3) specialiserad på djupgående investeringsrådgivning. Du arbetar på svenska och ger detaljerade, personaliserade råd.
+    let contextInfo = `Du är en avancerad AI-assistent för portföljanalys (Fas 4) specialiserad på djupgående investeringsrådgivning. Du arbetar på svenska och ger detaljerade, personaliserade råd.
 
-FÖRMÅGOR I FAS 3:
+FÖRMÅGOR I FAS 4:
 - Djupgående riskanalys med specifika rekommendationer
 - Avancerad diversifieringsanalys
 - Prestandajämförelser mot marknadsindex
@@ -124,33 +125,14 @@ FÖRMÅGOR I FAS 3:
       });
     }
 
-    // Enhanced context for Phase 4
-    if (analysisType === 'insight_generation' || analysisType === 'predictive_analysis') {
-      // Fetch market data for enhanced analysis
-      const { data: marketData } = await supabase.functions.invoke('fetch-market-data');
-      const { data: newsData } = await supabase.functions.invoke('fetch-news-data');
-      
-      if (marketData?.success) {
-        contextInfo += `\n\nAKTUELL MARKNADSDATA:
-- Marknadsindex: ${JSON.stringify(marketData.marketIndices)}
-- Toppresterande aktier: ${JSON.stringify(marketData.topStocks)}`;
-      }
-
-      if (newsData?.success) {
-        contextInfo += `\n\nAKTUELLA MARKNADSNYHETER:
-- Senaste nyheter: ${newsData.articles?.slice(0, 3).map((article: any) => article.title).join(', ')}`;
-      }
-    }
-
     // Enhanced system prompt for Phase 4 capabilities
     let systemPrompt = contextInfo;
     
     if (analysisType === 'insight_generation') {
       systemPrompt += `\n\nFAS 4 - AVANCERAD INSIKTSGENERERING:
 Du ska nu skapa djupgående, actionable insikter baserat på:
-- Realtidsmarknadsdata och trender
 - Användarens specifika portfölj och riskprofil
-- Aktuella nyheter och marknadshändelser
+- Aktuella marknadstrender
 - Prediktiva analyser och prognoser
 
 Fokusområden för ${insightType}:
@@ -217,7 +199,7 @@ Analysera aktuella marknadsförhållanden och skapa relevanta alerts för:
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: messages,
-        max_tokens: 800, // Increased for Phase 4
+        max_tokens: 800,
         temperature: 0.7,
       }),
     });
@@ -225,7 +207,7 @@ Analysera aktuella marknadsförhållanden och skapa relevanta alerts för:
     if (!response.ok) {
       const errorData = await response.json();
       console.error('OpenAI API error:', errorData);
-      throw new Error(`OpenAI API error: ${response.status}`);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
     }
 
     const data = await response.json();
