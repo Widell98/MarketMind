@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Crown, Zap, Settings, CheckCircle } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useToast } from '@/hooks/use-toast';
 
 const SubscriptionCard: React.FC = () => {
   const { 
@@ -16,6 +16,21 @@ const SubscriptionCard: React.FC = () => {
     openCustomerPortal,
     getRemainingUsage 
   } = useSubscription();
+  
+  const { toast } = useToast();
+
+  const handleUpgrade = async (tier: 'premium' | 'pro') => {
+    try {
+      await createCheckout(tier);
+    } catch (error) {
+      console.error('Upgrade error:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte starta uppgradering. Kontrollera att du är inloggad och försök igen.",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -96,14 +111,14 @@ const SubscriptionCard: React.FC = () => {
 
             <div className="space-y-2">
               <Button 
-                onClick={() => createCheckout('premium')}
+                onClick={() => handleUpgrade('premium')}
                 className="w-full bg-blue-600 hover:bg-blue-700"
               >
                 <Crown className="w-4 h-4 mr-2" />
                 Uppgradera till Premium - 99 SEK/mån
               </Button>
               <Button 
-                onClick={() => createCheckout('pro')}
+                onClick={() => handleUpgrade('pro')}
                 variant="outline"
                 className="w-full"
               >
