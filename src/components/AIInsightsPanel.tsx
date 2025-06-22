@@ -26,13 +26,13 @@ interface AIInsightsPanelProps {
 
 const AIInsightsPanel: React.FC<AIInsightsPanelProps> = ({ portfolioId }) => {
   const { insights, loading, unreadCount, criticalInsights, markAsRead, refetch } = usePortfolioInsights();
-  const { generateInsight, isAnalyzing } = useAIChat(portfolioId);
+  const { getQuickAnalysis, isAnalyzing } = useAIChat(portfolioId);
   const [generatingInsights, setGeneratingInsights] = useState(false);
 
   const handleGenerateInsights = async () => {
     setGeneratingInsights(true);
     try {
-      await generateInsight('comprehensive_market_analysis');
+      await getQuickAnalysis('Ge mig en omfattande marknadsanalys och insikter om min portfölj baserat på aktuella marknadsförhållanden');
       await refetch();
     } finally {
       setGeneratingInsights(false);
@@ -342,8 +342,6 @@ const AIInsightsPanel: React.FC<AIInsightsPanelProps> = ({ portfolioId }) => {
                               variant="ghost"
                               size="sm"
                               onClick={() => markAsRead(insight.id)}
-                            >
-                              <Eye className="w-3 h-3" />
                             </Button>
                           )}
                         </div>
