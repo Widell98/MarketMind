@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -130,6 +131,7 @@ export const useAIChat = (portfolioId?: string) => {
       const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
         body: {
           message: content,
+          userId: user.id, // Add userId to the request
           portfolioId,
           sessionId: currentSessionId,
         },

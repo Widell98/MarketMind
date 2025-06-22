@@ -45,23 +45,33 @@ export const useSubscription = () => {
     if (!user) return;
 
     try {
+      // Use select() instead of single() to avoid 406 error when no data exists
       const { data, error } = await supabase
         .from('user_ai_usage')
         .select('*')
         .eq('user_id', user.id)
-        .eq('usage_date', new Date().toISOString().split('T')[0])
-        .single();
+        .eq('usage_date', new Date().toISOString().split('T')[0]);
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
       
-      setUsage(data || {
+      // Take the first result or use default values
+      const usageData = data && data.length > 0 ? data[0] : {
+        ai_messages_count: 0,
+        analysis_count: 0,
+        insights_count: 0,
+        predictive_analysis_count: 0,
+      };
+      
+      setUsage(usageData);
+    } catch (error) {
+      console.error('Error fetching usage:', error);
+      // Set default usage if error occurs
+      setUsage({
         ai_messages_count: 0,
         analysis_count: 0,
         insights_count: 0,
         predictive_analysis_count: 0,
       });
-    } catch (error) {
-      console.error('Error fetching usage:', error);
     }
   };
 
