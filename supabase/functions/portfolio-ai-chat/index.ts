@@ -66,111 +66,63 @@ serve(async (req) => {
       .order('created_at', { ascending: false })
       .limit(3);
 
-    // Build enhanced context for AI
-    let contextInfo = `Du är en avancerad AI-assistent för portföljanalys specialiserad på djupgående investeringsrådgivning. Du arbetar på svenska och ger detaljerade, personaliserade råd.
+    // Build enhanced context for AI with emphasis on concise, formatted responses
+    let contextInfo = `Du är en professionell AI-rådgivare för investeringar. Ge ALLTID korta, välstrukturerade svar på svenska.
 
-FÖRMÅGOR:
-- Djupgående riskanalys med specifika rekommendationer
-- Avancerad diversifieringsanalys
-- Prestandajämförelser mot marknadsindex
-- Portföljoptimering baserat på användarens mål
-- Kontextuell förståelse av tidigare konversationer
-- Identifiering av marknadsrisker och möjligheter`;
+VIKTIGA RIKTLINJER:
+- Håll svar under 200 ord
+- Använd markdown-formatering med ### för rubriker
+- Använd - för punktlistor 
+- Fokusera på de 2-3 viktigaste punkterna
+- Ge konkreta siffror och procenttal
+- Undvik långa tekniska förklaringar
+- Var direkt och actionable`;
 
     if (riskProfile) {
-      contextInfo += `\n\nANVÄNDAREINFORMATION:
+      contextInfo += `\n\nANVÄNDARE:
 - Ålder: ${riskProfile.age || 'Ej angivet'}
 - Risktolerans: ${riskProfile.risk_tolerance || 'Ej angivet'} 
-- Investeringshorisont: ${riskProfile.investment_horizon || 'Ej angivet'}
-- Årsinkomst: ${riskProfile.annual_income ? riskProfile.annual_income.toLocaleString() + ' SEK' : 'Ej angivet'}
-- Månatlig budget: ${riskProfile.monthly_investment_amount ? riskProfile.monthly_investment_amount.toLocaleString() + ' SEK' : 'Ej angivet'}
-- Investeringsmål: ${riskProfile.investment_goal || 'Ej angivet'}
-- Erfarenhet: ${riskProfile.investment_experience || 'Ej angivet'}`;
+- Tidshorisont: ${riskProfile.investment_horizon || 'Ej angivet'}
+- Månatlig budget: ${riskProfile.monthly_investment_amount ? riskProfile.monthly_investment_amount.toLocaleString() + ' SEK' : 'Ej angivet'}`;
     }
 
     if (portfolio) {
       const totalValue = portfolio.total_value || 0;
       const expectedReturn = portfolio.expected_return || 0;
-      const riskScore = portfolio.risk_score || 0;
       
-      contextInfo += `\n\nAKTUELL PORTFÖLJ:
-- Totalt värde: ${totalValue.toLocaleString()} SEK
-- Förväntad avkastning: ${expectedReturn}% årligen
-- Riskpoäng: ${riskScore}/10
-- Tillgångsfördelning: ${JSON.stringify(portfolio.asset_allocation)}`;
+      contextInfo += `\n\nPORTFÖLJ:
+- Värde: ${totalValue.toLocaleString()} SEK
+- Förväntad avkastning: ${expectedReturn}%
+- Aktier: ${portfolio.asset_allocation?.stocks || 0}%`;
     }
 
     if (holdings && holdings.length > 0) {
       const totalHoldingsValue = holdings.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
-      contextInfo += `\n\nNUVARANDE INNEHAV (${holdings.length} positioner, totalt ${totalHoldingsValue.toLocaleString()} SEK):`;
-      holdings.forEach(holding => {
+      contextInfo += `\n\nTOPP INNEHAV:`;
+      holdings.slice(0, 3).forEach(holding => {
         const value = holding.current_value || 0;
-        const percentage = totalHoldingsValue > 0 ? ((value / totalHoldingsValue) * 100).toFixed(1) : '0';
-        contextInfo += `\n- ${holding.name} (${holding.symbol || 'N/A'}): ${value.toLocaleString()} SEK (${percentage}%)`;
-        if (holding.sector) contextInfo += ` - Sektor: ${holding.sector}`;
+        const percentage = totalHoldingsValue > 0 ? ((value / totalHoldingsValue) * 100).toFixed(0) : '0';
+        contextInfo += `\n- ${holding.name}: ${percentage}%`;
       });
     }
 
-    if (insights && insights.length > 0) {
-      contextInfo += `\n\nAKTUELLA AI-INSIKTER:`;
-      insights.forEach(insight => {
-        contextInfo += `\n- ${insight.title}: ${insight.description} (Allvarlighetsgrad: ${insight.severity})`;
-      });
-    }
-
-    if (recommendations && recommendations.length > 0) {
-      contextInfo += `\n\nAKTUELLA REKOMMENDATIONER:`;
-      recommendations.forEach(rec => {
-        contextInfo += `\n- ${rec.title}: ${rec.description}`;
-      });
-    }
-
-    // Enhanced system prompt for advanced capabilities
+    // Enhanced system prompt for concise, well-formatted responses
     let systemPrompt = contextInfo;
     
+    systemPrompt += `\n\nSVARSFORMAT:
+- Max 150-200 ord
+- Använd ### för huvudrubriker
+- Använd - för listor
+- Ge konkreta råd med siffror
+- Fokusera på det viktigaste
+- Ingen överflödig text`;
+
     if (analysisType === 'insight_generation') {
-      systemPrompt += `\n\nAVANCERAD INSIKTSGENERERING:
-Du ska nu skapa djupgående, actionable insikter baserat på:
-- Användarens specifika portfölj och riskprofil
-- Aktuella marknadstrender
-- Prediktiva analyser och prognoser
-
-Fokusområden för ${insightType}:
-- Identifiera specifika risker och möjligheter
-- Ge konkreta handlingsrekommendationer
-- Analysera timing för eventuella förändringar
-- Inkludera sannolikheter och konfidensintervall
-
-VIKTIGT: Skapa även en strukturerad insikt i databasen efter detta svar.`;
+      systemPrompt += `\n\nGENERERA KORT INSIKT för ${insightType}:
+- Identifiera 1-2 huvudpunkter
+- Ge konkret rekommendation
+- Inkludera sannolikheter`;
     }
-
-    if (analysisType === 'predictive_analysis') {
-      systemPrompt += `\n\nPREDIKTIV ANALYS (${timeframe}):
-Skapa en omfattande framåtblickande analys som inkluderar:
-- Sannolikhetsbaserade prognoser
-- Flera scenarier (optimistiskt, troligt, pessimistiskt)  
-- Riskjusterade avkastningsförväntningar
-- Marknadsspecifika faktorer som kan påverka resultatet
-- Rekommendationer för portföljpositionering`;
-    }
-
-    if (analysisType === 'market_alert_generation') {
-      systemPrompt += `\n\nMARKNADSVARNINGAR:
-Analysera aktuella marknadsförhållanden och skapa relevanta alerts för:
-- Volatilitetsspikes som påverkar användarens innehav
-- Sektorspecifika risker
-- Makroekonomiska indikatorer
-- Tekniska analysindikatorer
-- Nyheter som kan påverka portföljen`;
-    }
-
-    systemPrompt += `\n\nSVARSGUIDELINES:
-- Använd avancerad finansiell analys med specifika metriker
-- Inkludera sannolikheter och konfidensintervall
-- Ge tidsspecifika rekommendationer
-- Referera till aktuell marknadsdata när relevant
-- Skapa actionable insights med tydliga nästa steg
-- Begränsa svar till 400-600 ord för djupanalys`;
 
     // Prepare messages for OpenAI
     const messages = [
@@ -178,7 +130,7 @@ Analysera aktuella marknadsförhållanden och skapa relevanta alerts för:
         role: 'system',
         content: systemPrompt
       },
-      ...chatHistory.slice(-6).map((msg: any) => ({
+      ...chatHistory.slice(-4).map((msg: any) => ({
         role: msg.role,
         content: msg.content
       })),
@@ -199,8 +151,8 @@ Analysera aktuella marknadsförhållanden och skapa relevanta alerts för:
       body: JSON.stringify({
         model: 'gpt-4.1-mini-2025-04-14',
         messages: messages,
-        max_tokens: 800,
-        temperature: 0.7,
+        max_tokens: 300, // Reduced token limit for shorter responses
+        temperature: 0.6,
       }),
     });
 
@@ -260,7 +212,7 @@ Analysera aktuella marknadsförhållanden och skapa relevanta alerts för:
                      insightType.includes('opportunity') ? 'opportunity' :
                      insightType.includes('rebalancing') ? 'rebalancing' : 'news_impact',
         title: `AI-Genererad ${insightType}`,
-        description: aiResponse.substring(0, 500) + (aiResponse.length > 500 ? '...' : ''),
+        description: aiResponse.substring(0, 300) + (aiResponse.length > 300 ? '...' : ''),
         severity: confidence > 0.8 ? 'high' : confidence > 0.6 ? 'medium' : 'low',
         related_holdings: holdings?.map(h => h.symbol).slice(0, 5) || [],
         action_required: insightType.includes('risk') || insightType.includes('rebalancing'),

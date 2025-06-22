@@ -109,6 +109,72 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     }
   ];
 
+  // Function to format AI response with better styling
+  const formatAIResponse = (content: string) => {
+    // Split by common patterns and add styling
+    const sections = content.split(/###|\*\*/).filter(section => section.trim());
+    
+    return (
+      <div className="space-y-3">
+        {sections.map((section, index) => {
+          const trimmedSection = section.trim();
+          
+          // Skip empty sections
+          if (!trimmedSection) return null;
+          
+          // Check if it's a heading (contains numbers like "1.", "2." etc)
+          if (/^\d+\./.test(trimmedSection)) {
+            const [title, ...contentParts] = trimmedSection.split('\n');
+            return (
+              <div key={index} className="mb-4">
+                <h4 className="font-semibold text-blue-700 mb-2 flex items-center gap-2">
+                  <span className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-xs">
+                    {title.match(/^\d+/)?.[0]}
+                  </span>
+                  {title.replace(/^\d+\.\s*/, '')}
+                </h4>
+                <div className="text-sm text-gray-700 leading-relaxed pl-8">
+                  {contentParts.join('\n').trim()}
+                </div>
+              </div>
+            );
+          }
+          
+          // Check if it's a bullet point list
+          if (trimmedSection.includes('- ')) {
+            const lines = trimmedSection.split('\n');
+            return (
+              <div key={index} className="space-y-2">
+                {lines.map((line, lineIndex) => {
+                  if (line.trim().startsWith('- ')) {
+                    return (
+                      <div key={lineIndex} className="flex items-start gap-2 text-sm">
+                        <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></span>
+                        <span className="text-gray-700">{line.trim().substring(2)}</span>
+                      </div>
+                    );
+                  }
+                  return line.trim() ? (
+                    <p key={lineIndex} className="text-sm text-gray-700 leading-relaxed">
+                      {line.trim()}
+                    </p>
+                  ) : null;
+                })}
+              </div>
+            );
+          }
+          
+          // Regular paragraph
+          return (
+            <p key={index} className="text-sm text-gray-700 leading-relaxed">
+              {trimmedSection}
+            </p>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <Card className="h-[700px] flex flex-col">
       <CardHeader className="flex-shrink-0">
@@ -231,39 +297,46 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
                   className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[85%] p-3 rounded-lg ${
+                    className={`max-w-[85%] p-4 rounded-lg ${
                       message.role === 'user'
                         ? 'bg-blue-600 text-white'
-                        : 'bg-muted text-foreground'
+                        : 'bg-gradient-to-br from-gray-50 to-blue-50 border border-gray-200 text-foreground shadow-sm'
                     }`}
                   >
-                    <div className="text-sm whitespace-pre-wrap">{message.content}</div>
-                    <div className="flex items-center justify-between mt-2">
-                      <div className={`text-xs opacity-70`}>
+                    <div className="whitespace-pre-wrap">
+                      {message.role === 'assistant' ? 
+                        formatAIResponse(message.content) : 
+                        <span className="text-sm">{message.content}</span>
+                      }
+                    </div>
+                    <div className="flex items-center justify-between mt-3 pt-2 border-t border-opacity-20">
+                      <div className={`text-xs opacity-70 ${message.role === 'user' ? 'text-blue-100' : 'text-gray-500'}`}>
                         {new Date(message.timestamp).toLocaleTimeString('sv-SE', {
                           hour: '2-digit',
                           minute: '2-digit'
                         })}
                       </div>
-                      {message.context?.analysisType && (
-                        <Badge variant="secondary" className="text-xs">
-                          {message.context.analysisType}
-                        </Badge>
-                      )}
-                      {message.context?.confidence && (
-                        <Badge variant="outline" className="text-xs">
-                          {Math.round(message.context.confidence * 100)}%
-                        </Badge>
-                      )}
+                      <div className="flex gap-1">
+                        {message.context?.analysisType && (
+                          <Badge variant="secondary" className="text-xs">
+                            {message.context.analysisType}
+                          </Badge>
+                        )}
+                        {message.context?.confidence && (
+                          <Badge variant="outline" className="text-xs">
+                            {Math.round(message.context.confidence * 100)}%
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
               ))}
               {(isLoading || isAnalyzing) && (
                 <div className="flex justify-start">
-                  <div className="bg-muted p-3 rounded-lg flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">
+                  <div className="bg-gradient-to-br from-gray-50 to-blue-50 border border-gray-200 p-4 rounded-lg flex items-center gap-3 shadow-sm">
+                    <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                    <span className="text-sm text-gray-700">
                       {isAnalyzing ? 'Analyserar portfölj...' : 'AI-assistenten tänker...'}
                     </span>
                   </div>
