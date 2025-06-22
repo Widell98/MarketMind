@@ -89,7 +89,14 @@ export const useSubscription = () => {
   };
 
   const createCheckout = async (tier: 'premium' | 'pro') => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "Fel",
+        description: "Du måste vara inloggad för att uppgradera",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
@@ -111,19 +118,35 @@ export const useSubscription = () => {
   };
 
   const openCustomerPortal = async () => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "Fel",
+        description: "Du måste vara inloggad för att hantera din prenumeration",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
+      console.log('Opening customer portal for user:', user.email);
       const { data, error } = await supabase.functions.invoke('customer-portal');
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Customer portal error:', error);
+        throw new Error(error.message || 'Kunde inte öppna kundportal');
+      }
+      
       if (data?.url) {
+        console.log('Redirecting to customer portal:', data.url);
         window.location.href = data.url;
+      } else {
+        throw new Error('Ingen portal-URL mottagen');
       }
     } catch (error) {
       console.error('Error opening customer portal:', error);
       toast({
         title: "Fel",
-        description: "Kunde inte öppna kundportal",
+        description: "Kunde inte öppna kundportalen. Kontrollera att du har en aktiv prenumeration och försök igen.",
         variant: "destructive",
       });
     }
