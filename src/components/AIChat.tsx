@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -123,7 +124,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
         <CardDescription>
           {isPremium ? 
             'Obegränsad AI-analys med djupgående portföljinsikter' :
-            'Begränsad till 10 AI-meddelanden och analyser per dag'
+            'Begränsad till 5 AI-meddelanden och analyser per dag'
           }
         </CardDescription>
         

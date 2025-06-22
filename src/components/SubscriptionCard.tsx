@@ -74,10 +74,10 @@ const SubscriptionCard: React.FC = () => {
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span>AI-meddelanden idag</span>
-                  <span>{remainingMessages === Infinity ? '∞' : `${remainingMessages}/10`}</span>
+                  <span>{remainingMessages === Infinity ? '∞' : `${remainingMessages}/5`}</span>
                 </div>
                 <Progress 
-                  value={remainingMessages === Infinity ? 100 : (remainingMessages / 10) * 100} 
+                  value={remainingMessages === Infinity ? 100 : (remainingMessages / 5) * 100} 
                   className="h-2"
                 />
               </div>
@@ -85,10 +85,10 @@ const SubscriptionCard: React.FC = () => {
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span>Analyser idag</span>
-                  <span>{remainingAnalyses === Infinity ? '∞' : `${remainingAnalyses}/10`}</span>
+                  <span>{remainingAnalyses === Infinity ? '∞' : `${remainingAnalyses}/5`}</span>
                 </div>
                 <Progress 
-                  value={remainingAnalyses === Infinity ? 100 : (remainingAnalyses / 10) * 100} 
+                  value={remainingAnalyses === Infinity ? 100 : (remainingAnalyses / 5) * 100} 
                   className="h-2"
                 />
               </div>
