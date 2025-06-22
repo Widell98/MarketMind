@@ -3,10 +3,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Brain, MessageSquare, BarChart3, Settings, Zap, TrendingUp, Lightbulb } from 'lucide-react';
+import { Brain, MessageSquare, BarChart3, Settings, Zap, TrendingUp, Lightbulb, CreditCard } from 'lucide-react';
 import Layout from '@/components/Layout';
 import EnhancedRiskAssessmentForm from '@/components/EnhancedRiskAssessmentForm';
 import EnhancedPortfolioDashboard from '@/components/EnhancedPortfolioDashboard';
+import SubscriptionCard from '@/components/SubscriptionCard';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
@@ -145,11 +146,16 @@ const PortfolioAdvisor = () => {
         </div>
 
         <Tabs defaultValue="dashboard" className="space-y-4 sm:space-y-6">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 h-auto p-1">
             <TabsTrigger value="dashboard" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-1.5">
               <BarChart3 className="w-4 h-4" />
               <span className="hidden sm:inline">Dashboard</span>
               <span className="sm:hidden">Dash</span>
+            </TabsTrigger>
+            <TabsTrigger value="subscription" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-1.5">
+              <CreditCard className="w-4 h-4" />
+              <span className="hidden sm:inline">Subscription</span>
+              <span className="sm:hidden">Sub</span>
             </TabsTrigger>
             <TabsTrigger value="chat" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-1.5">
               <MessageSquare className="w-4 h-4" />
@@ -175,6 +181,10 @@ const PortfolioAdvisor = () => {
 
           <TabsContent value="dashboard" className="space-y-4 sm:space-y-6 mt-4">
             <EnhancedPortfolioDashboard portfolio={activePortfolio} recommendations={recommendations} />
+          </TabsContent>
+
+          <TabsContent value="subscription" className="space-y-4 sm:space-y-6 mt-4">
+            <SubscriptionCard />
           </TabsContent>
 
           <TabsContent value="chat" className="space-y-4 sm:space-y-6 mt-4">

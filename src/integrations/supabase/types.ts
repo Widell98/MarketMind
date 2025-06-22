@@ -410,6 +410,78 @@ export type Database = {
           },
         ]
       }
+      subscribers: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          stripe_customer_id: string | null
+          subscribed: boolean
+          subscription_end: string | null
+          subscription_tier: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_ai_usage: {
+        Row: {
+          ai_messages_count: number
+          analysis_count: number
+          created_at: string
+          id: string
+          insights_count: number
+          predictive_analysis_count: number
+          updated_at: string
+          usage_date: string
+          user_id: string | null
+        }
+        Insert: {
+          ai_messages_count?: number
+          analysis_count?: number
+          created_at?: string
+          id?: string
+          insights_count?: number
+          predictive_analysis_count?: number
+          updated_at?: string
+          usage_date?: string
+          user_id?: string | null
+        }
+        Update: {
+          ai_messages_count?: number
+          analysis_count?: number
+          created_at?: string
+          id?: string
+          insights_count?: number
+          predictive_analysis_count?: number
+          updated_at?: string
+          usage_date?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_badges: {
         Row: {
           badge_id: string
@@ -801,6 +873,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_usage_limit: {
+        Args: { _user_id: string; _usage_type: string }
+        Returns: boolean
+      }
       get_stock_case_follow_count: {
         Args: { case_id: string }
         Returns: number
@@ -814,6 +890,10 @@ export type Database = {
           _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
         }
+        Returns: boolean
+      }
+      increment_ai_usage: {
+        Args: { _user_id: string; _usage_type: string }
         Returns: boolean
       }
       user_follows_case: {

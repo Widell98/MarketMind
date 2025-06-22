@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,8 +6,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Brain, Send, Loader2, MessageSquare, BarChart3, Shield, TrendingUp, Zap, Plus, History, AlertCircle } from 'lucide-react';
+import { Brain, Send, Loader2, MessageSquare, BarChart3, Shield, TrendingUp, Zap, AlertCircle, Crown } from 'lucide-react';
 import { useAIChat } from '@/hooks/useAIChat';
+import { useSubscription } from '@/hooks/useSubscription';
 
 interface AIChatProps {
   portfolioId?: string;
@@ -31,6 +31,8 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     clearMessages,
     getQuickAnalysis
   } = useAIChat(portfolioId);
+
+  const { subscription, usage, getRemainingUsage, createCheckout } = useSubscription();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -63,6 +65,10 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     await analyzePortfolio(type);
     setSelectedAnalysis(null);
   };
+
+  const isPremium = subscription?.subscribed;
+  const remainingMessages = getRemainingUsage('ai_message');
+  const remainingAnalyses = getRemainingUsage('analysis');
 
   const quickQuestions = [
     { text: "Hur mår min portfölj just nu?", action: () => getQuickAnalysis("Ge mig en snabb översikt över hur min portfölj mår just nu") },
@@ -108,10 +114,36 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
         <CardTitle className="flex items-center gap-2">
           <Brain className="w-5 h-5 text-blue-600" />
           AI Portfolio Assistent
+          {!isPremium && (
+            <Badge variant="outline" className="text-xs">
+              {remainingMessages === Infinity ? '∞' : remainingMessages} meddelanden kvar
+            </Badge>
+          )}
         </CardTitle>
         <CardDescription>
-          Avancerad AI-analys med djupgående portföljinsikter
+          {isPremium ? 
+            'Obegränsad AI-analys med djupgående portföljinsikter' :
+            'Begränsad till 10 AI-meddelanden och analyser per dag'
+          }
         </CardDescription>
+        
+        {!isPremium && (remainingMessages <= 2 || remainingAnalyses <= 2) && (
+          <Alert className="border-orange-200 bg-orange-50">
+            <Crown className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-orange-800">
+              <div className="flex items-center justify-between">
+                <span>Du har få AI-användningar kvar idag</span>
+                <Button 
+                  size="sm" 
+                  className="ml-2"
+                  onClick={() => createCheckout('premium')}
+                >
+                  Uppgradera nu
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
         
         {quotaExceeded && (
           <Alert className="border-orange-200 bg-orange-50">
@@ -126,7 +158,9 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
         <Tabs defaultValue="chat" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="chat">Chat</TabsTrigger>
-            <TabsTrigger value="analysis" disabled={quotaExceeded}>Analys</TabsTrigger>
+            <TabsTrigger value="analysis" disabled={quotaExceeded || (remainingAnalyses <= 0 && !isPremium)}>
+              Analys {!isPremium && `(${remainingAnalyses})`}
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="chat" className="mt-4">
@@ -176,7 +210,10 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
               <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <h3 className="text-lg font-medium mb-2">Välkommen!</h3>
               <p className="text-sm mb-4">
-                Nu med avancerad analys och djupare AI-insikter.
+                {isPremium ? 
+                  'Nu med obegränsad AI-analys och djupare insikter.' :
+                  `Du har ${remainingMessages} AI-meddelanden kvar idag.`
+                }
               </p>
               <div className="text-xs text-muted-foreground">
                 {quotaExceeded ? 
@@ -242,13 +279,17 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
               ref={inputRef}
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              placeholder={quotaExceeded ? "AI-funktioner är tillfälligt otillgängliga..." : "Ställ en avancerad fråga om din portfölj..."}
-              disabled={isLoading || isAnalyzing || quotaExceeded}
+              placeholder={
+                quotaExceeded ? "AI-funktioner är tillfälligt otillgängliga..." :
+                remainingMessages <= 0 && !isPremium ? "Daglig gräns nådd. Uppgradera för obegränsad användning." :
+                "Ställ en avancerad fråga om din portfölj..."
+              }
+              disabled={isLoading || isAnalyzing || quotaExceeded || (remainingMessages <= 0 && !isPremium)}
               className="flex-1"
             />
             <Button 
               type="submit" 
-              disabled={!inputMessage.trim() || isLoading || isAnalyzing || quotaExceeded}
+              disabled={!inputMessage.trim() || isLoading || isAnalyzing || quotaExceeded || (remainingMessages <= 0 && !isPremium)}
               size="icon"
             >
               {(isLoading || isAnalyzing) ? (
