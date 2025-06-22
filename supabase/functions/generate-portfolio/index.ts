@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -160,7 +161,8 @@ serve(async (req) => {
             portfolio_id: portfolio.id,
             title: rec.title,
             description: rec.description,
-            ai_reasoning: rec.reasoning
+            ai_reasoning: rec.reasoning,
+            recommendation_type: 'investment_advice' // Add the required field
           }))
         );
 
@@ -203,6 +205,7 @@ function generatePortfolioRecommendations(riskProfile: any) {
   const riskTolerance = riskProfile.risk_tolerance || 'moderate';
   const investmentHorizon = riskProfile.investment_horizon || 'medium';
   const monthlyAmount = riskProfile.monthly_investment_amount || 5000;
+  const preferredStockCount = riskProfile.preferred_stock_count || 8;
   
   // Calculate target portfolio value (12 months of investment)
   const targetValue = monthlyAmount * 12;
@@ -257,28 +260,69 @@ function generatePortfolioRecommendations(riskProfile: any) {
     riskScore = Math.max(riskScore - 1, 1);
   }
   
-  // Generate stock recommendations
-  const stockPools = {
+  // Generate stock recommendations based on preferred count and risk tolerance
+  const allStocks = {
     conservative: [
-      { name: 'Investor AB', symbol: 'INVE-B.ST', sector: 'Financial Services', allocation: 8, reasoning: 'Stabil investmentbolag med diversifierad portfölj' },
-      { name: 'Volvo AB', symbol: 'VOLV-B.ST', sector: 'Automotive', allocation: 7, reasoning: 'Välkänt svenskt industriföretag med stark position' },
-      { name: 'Ericsson', symbol: 'ERIC-B.ST', sector: 'Technology', allocation: 6, reasoning: 'Ledande telekomteknologi med 5G-potential' }
+      { name: 'Investor AB', symbol: 'INVE-B.ST', sector: 'Financial Services', reasoning: 'Stabil investmentbolag med diversifierad portfölj' },
+      { name: 'Volvo AB', symbol: 'VOLV-B.ST', sector: 'Automotive', reasoning: 'Välkänt svenskt industriföretag med stark position' },
+      { name: 'Ericsson', symbol: 'ERIC-B.ST', sector: 'Technology', reasoning: 'Ledande telekomteknologi med 5G-potential' },
+      { name: 'Sandvik', symbol: 'SAND.ST', sector: 'Industrial', reasoning: 'Stark industriell teknik och verktyg' },
+      { name: 'SKF', symbol: 'SKF-B.ST', sector: 'Industrial', reasoning: 'Ledande inom lager och tätningar' },
+      { name: 'Telia', symbol: 'TELIA.ST', sector: 'Telecommunications', reasoning: 'Stabil telekomoperatör med utdelning' },
+      { name: 'Essity', symbol: 'ESSITY-B.ST', sector: 'Consumer Goods', reasoning: 'Hygien- och hälsoprodukter' },
+      { name: 'Getinge', symbol: 'GETI-B.ST', sector: 'Healthcare', reasoning: 'Medicinsk teknik och utrustning' }
     ],
     moderate: [
-      { name: 'Investor AB', symbol: 'INVE-B.ST', sector: 'Financial Services', allocation: 10, reasoning: 'Stabil investmentbolag med diversifierad portfölj' },
-      { name: 'Atlas Copco', symbol: 'ATCO-A.ST', sector: 'Industrial', allocation: 8, reasoning: 'Stark industriell tillväxt och innovation' },
-      { name: 'H&M', symbol: 'HM-B.ST', sector: 'Consumer Goods', allocation: 7, reasoning: 'Global detaljhandel med omställning till hållbarhet' },
-      { name: 'Spotify', symbol: 'SPOT', sector: 'Technology', allocation: 9, reasoning: 'Växande musikstreaming-marknad' }
+      { name: 'Investor AB', symbol: 'INVE-B.ST', sector: 'Financial Services', reasoning: 'Stabil investmentbolag med diversifierad portfölj' },
+      { name: 'Atlas Copco', symbol: 'ATCO-A.ST', sector: 'Industrial', reasoning: 'Stark industriell tillväxt och innovation' },
+      { name: 'H&M', symbol: 'HM-B.ST', sector: 'Consumer Goods', reasoning: 'Global detaljhandel med omställning till hållbarhet' },
+      { name: 'Spotify', symbol: 'SPOT', sector: 'Technology', reasoning: 'Växande musikstreaming-marknad' },
+      { name: 'Electrolux', symbol: 'ELUX-B.ST', sector: 'Consumer Goods', reasoning: 'Hushållsapparater och professionella produkter' },
+      { name: 'Alfa Laval', symbol: 'ALFA.ST', sector: 'Industrial', reasoning: 'Värmeväxlare och separationsteknik' },
+      { name: 'SEB', symbol: 'SEB-A.ST', sector: 'Financial Services', reasoning: 'Stark nordisk bank med företagsfokus' },
+      { name: 'Hexagon', symbol: 'HEXA-B.ST', sector: 'Technology', reasoning: 'Mätteknologi och digitala lösningar' },
+      { name: 'Assa Abloy', symbol: 'ASSA-B.ST', sector: 'Industrial', reasoning: 'Ledande inom lås- och säkerhetslösningar' },
+      { name: 'ICA Gruppen', symbol: 'ICA.ST', sector: 'Consumer Goods', reasoning: 'Stabil dagligvaruhandel i Norden' }
     ],
     aggressive: [
-      { name: 'Spotify', symbol: 'SPOT', sector: 'Technology', allocation: 15, reasoning: 'Hög tillväxtpotential inom streaming' },
-      { name: 'Evolution Gaming', symbol: 'EVO.ST', sector: 'Technology', allocation: 12, reasoning: 'Ledande inom online-gaming med stark tillväxt' },
-      { name: 'Klarna Bank', symbol: 'Private', sector: 'Financial Technology', allocation: 10, reasoning: 'Fintech-innovation med global expansion' },
-      { name: 'Northvolt', symbol: 'Private', sector: 'Clean Energy', allocation: 8, reasoning: 'Batteriteknologi för den gröna omställningen' }
+      { name: 'Spotify', symbol: 'SPOT', sector: 'Technology', reasoning: 'Hög tillväxtpotential inom streaming' },
+      { name: 'Evolution Gaming', symbol: 'EVO.ST', sector: 'Technology', reasoning: 'Ledande inom online-gaming med stark tillväxt' },
+      { name: 'Klarna Bank', symbol: 'Private', sector: 'Financial Technology', reasoning: 'Fintech-innovation med global expansion' },
+      { name: 'Northvolt', symbol: 'Private', sector: 'Clean Energy', reasoning: 'Batteriteknologi för den gröna omställningen' },
+      { name: 'Embracer Group', symbol: 'EMBRAC-B.ST', sector: 'Technology', reasoning: 'Spelstudio med global expansion' },
+      { name: 'Sinch', symbol: 'SINCH.ST', sector: 'Technology', reasoning: 'Molnkommunikation och messaging' },
+      { name: 'Paradox Interactive', symbol: 'PDX.ST', sector: 'Technology', reasoning: 'Strategispel och digital distribution' },
+      { name: 'Tobii', symbol: 'TOBII.ST', sector: 'Technology', reasoning: 'Ögonspårningsteknologi och AI' },
+      { name: 'Nibe', symbol: 'NIBE-B.ST', sector: 'Clean Energy', reasoning: 'Värmepumpar och hållbar energi' },
+      { name: 'BioGaia', symbol: 'BIOG-B.ST', sector: 'Healthcare', reasoning: 'Probiotika och hälsoprodukter' },
+      { name: 'Addtech', symbol: 'ADDT-B.ST', sector: 'Technology', reasoning: 'Industriell teknik och komponenter' },
+      { name: 'Epiroc', symbol: 'EPI-A.ST', sector: 'Industrial', reasoning: 'Gruv- och infrastrukturutrustning' }
     ]
   };
   
-  const selectedStocks = stockPools[riskTolerance as keyof typeof stockPools] || stockPools.moderate;
+  const stockPool = allStocks[riskTolerance as keyof typeof allStocks] || allStocks.moderate;
+  
+  // Select stocks based on preferred count
+  let selectedStocks = [];
+  const baseAllocation = Math.floor(allocation.stocks / preferredStockCount);
+  
+  // Shuffle and select the desired number of stocks
+  const shuffledStocks = [...stockPool].sort(() => Math.random() - 0.5);
+  
+  for (let i = 0; i < Math.min(preferredStockCount, shuffledStocks.length); i++) {
+    const stock = shuffledStocks[i];
+    let stockAllocation = baseAllocation;
+    
+    // Distribute remaining allocation to first few stocks
+    if (i < allocation.stocks % preferredStockCount) {
+      stockAllocation += 1;
+    }
+    
+    selectedStocks.push({
+      ...stock,
+      allocation: stockAllocation
+    });
+  }
   
   return {
     allocation,
@@ -291,6 +335,22 @@ function generatePortfolioRecommendations(riskProfile: any) {
 
 function generateInitialRecommendations(riskProfile: any, portfolioData: any) {
   const recommendations = [];
+  
+  // Stock count specific recommendation
+  const stockCount = riskProfile.preferred_stock_count || 8;
+  if (stockCount <= 5) {
+    recommendations.push({
+      title: 'Koncentrerad Portföljstrategi',
+      description: `Du har valt en koncentrerad portfölj med ${stockCount} aktier. Detta ger högre potential men också högre risk.`,
+      reasoning: 'Färre aktier kräver noggrann analys men kan ge bättre avkastning vid rätt val'
+    });
+  } else if (stockCount >= 20) {
+    recommendations.push({
+      title: 'Bred Diversifiering',
+      description: `Din portfölj med ${stockCount} aktier ger bra riskspridning och stabilitet.`,
+      reasoning: 'Många aktier minskar portföljens volatilitet och ger mer stabil utveckling'
+    });
+  }
   
   // Age-based recommendation
   if (riskProfile.age && riskProfile.age < 30) {

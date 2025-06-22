@@ -29,7 +29,6 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
     loan_details: '',
     has_children: false,
     liquid_capital: '',
-    emergency_buffer_months: '',
     
     // Sparmål och tidshorisont
     investment_purpose: [] as string[],
@@ -38,6 +37,9 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
     investment_horizon: '',
     investment_goal: '',
     monthly_investment_amount: '',
+    
+    // Portföljpreferenser
+    preferred_stock_count: '',
     
     // Riskprofil och psykologi
     risk_tolerance: '',
@@ -135,6 +137,7 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
         if (formData.investment_purpose.length === 0) errors.investment_purpose = 'Välj minst ett sparmål';
         if (!formData.investment_horizon) errors.investment_horizon = 'Tidshorisont krävs';
         if (!formData.monthly_investment_amount) errors.monthly_investment_amount = 'Månadssparande krävs';
+        if (!formData.preferred_stock_count) errors.preferred_stock_count = 'Antal aktier krävs';
         break;
       case 2:
         if (!formData.risk_tolerance) errors.risk_tolerance = 'Risktolerans krävs';
@@ -169,7 +172,7 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
         loan_details: formData.loan_details || null,
         has_children: formData.has_children,
         liquid_capital: formData.liquid_capital ? parseFloat(formData.liquid_capital) : null,
-        emergency_buffer_months: formData.emergency_buffer_months ? parseInt(formData.emergency_buffer_months) : null,
+        emergency_buffer_months: null, // Removed this field
         
         // Sparmål
         investment_purpose: formData.investment_purpose,
@@ -178,6 +181,9 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
         investment_horizon: formData.investment_horizon as any,
         investment_goal: formData.investment_goal as any,
         monthly_investment_amount: formData.monthly_investment_amount ? parseFloat(formData.monthly_investment_amount) : null,
+        
+        // Portfolio preferences
+        preferred_stock_count: formData.preferred_stock_count ? parseInt(formData.preferred_stock_count) : null,
         
         // Risk
         risk_tolerance: formData.risk_tolerance as any,
@@ -307,28 +313,15 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="liquid_capital">Likvidt kapital (SEK)</Label>
-                <Input
-                  id="liquid_capital"
-                  type="number"
-                  placeholder="Kontanter och sparkonto"
-                  value={formData.liquid_capital}
-                  onChange={(e) => handleInputChange('liquid_capital', e.target.value)}
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="emergency_buffer">Buffert (månader)</Label>
-                <Input
-                  id="emergency_buffer"
-                  type="number"
-                  placeholder="Månaders utgifter som buffert"
-                  value={formData.emergency_buffer_months}
-                  onChange={(e) => handleInputChange('emergency_buffer_months', e.target.value)}
-                />
-              </div>
+            <div>
+              <Label htmlFor="liquid_capital">Likvidt kapital (SEK)</Label>
+              <Input
+                id="liquid_capital"
+                type="number"
+                placeholder="Kontanter och sparkonto"
+                value={formData.liquid_capital}
+                onChange={(e) => handleInputChange('liquid_capital', e.target.value)}
+              />
             </div>
           </div>
         );
@@ -416,21 +409,44 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
               </Select>
             </div>
 
-            <div>
-              <Label htmlFor="monthly_investment">Månadssparande (SEK) *</Label>
-              <Input
-                id="monthly_investment"
-                type="number"
-                placeholder="Hur mycket kan du spara per månad?"
-                value={formData.monthly_investment_amount}
-                onChange={(e) => handleInputChange('monthly_investment_amount', e.target.value)}
-              />
-              {validationErrors.monthly_investment_amount && (
-                <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  {validationErrors.monthly_investment_amount}
-                </div>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="monthly_investment">Månadssparande (SEK) *</Label>
+                <Input
+                  id="monthly_investment"
+                  type="number"
+                  placeholder="Hur mycket kan du spara per månad?"
+                  value={formData.monthly_investment_amount}
+                  onChange={(e) => handleInputChange('monthly_investment_amount', e.target.value)}
+                />
+                {validationErrors.monthly_investment_amount && (
+                  <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
+                    <AlertCircle className="w-4 h-4" />
+                    {validationErrors.monthly_investment_amount}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="preferred_stock_count">Antal aktier i portfölj *</Label>
+                <Select value={formData.preferred_stock_count} onValueChange={(value) => handleInputChange('preferred_stock_count', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Välj antal aktier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="3">3-5 aktier (koncentrerad)</SelectItem>
+                    <SelectItem value="8">6-10 aktier (balanserad)</SelectItem>
+                    <SelectItem value="15">11-20 aktier (diversifierad)</SelectItem>
+                    <SelectItem value="25">20+ aktier (bred spridning)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {validationErrors.preferred_stock_count && (
+                  <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
+                    <AlertCircle className="w-4 h-4" />
+                    {validationErrors.preferred_stock_count}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         );
