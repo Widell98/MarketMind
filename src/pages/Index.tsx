@@ -1,7 +1,6 @@
 
 import React from 'react';
 import Layout from '@/components/Layout';
-import FlashBriefs from '@/components/FlashBriefs';
 import MarketPulse from '@/components/MarketPulse';
 import TrendingCases from '@/components/TrendingCases';
 import LatestCases from '@/components/LatestCases';
@@ -88,7 +87,7 @@ const Index = () => {
             </span>
           </h1>
           <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto px-4">
-            Learn through real cases, follow trending investments, and build your financial knowledge with our interactive platform.
+            Learn through real cases, get AI-powered portfolio insights, and build your financial knowledge with our interactive platform.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center px-4">
             <Button 
@@ -102,10 +101,10 @@ const Index = () => {
             <Button 
               size="lg" 
               variant="outline"
-              onClick={() => navigate('/learning')}
+              onClick={() => user ? navigate('/portfolio-advisor') : navigate('/auth')}
             >
-              <Target className="w-5 h-5 mr-2" />
-              Start Learning
+              <Brain className="w-5 h-5 mr-2" />
+              {user ? 'AI Portfolio' : 'Get AI Portfolio'}
             </Button>
           </div>
         </div>
@@ -244,15 +243,10 @@ const Index = () => {
           <CommunityStats />
         </div>
 
-        {/* Main Content Grid */}
+        {/* Main Content Grid - Stock Cases Focus */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Flash Briefs */}
-          <div className="lg:col-span-2">
-            <FlashBriefs />
-          </div>
-
-          {/* Right Column - Desktop: Trending Cases, Latest Cases and Market Pulse */}
-          <div className="space-y-6">
+          {/* Left Column - Stock Cases */}
+          <div className="lg:col-span-2 space-y-6">
             {/* Desktop: Show trending cases here */}
             <div className="hidden md:block">
               <TrendingCases />
@@ -262,7 +256,10 @@ const Index = () => {
             <div className="hidden md:block">
               <LatestCases />
             </div>
-            
+          </div>
+
+          {/* Right Column - Market Pulse */}
+          <div className="space-y-6">
             <MarketPulse />
           </div>
         </div>
