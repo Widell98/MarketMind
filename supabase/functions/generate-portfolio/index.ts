@@ -14,11 +14,14 @@ serve(async (req) => {
   }
 
   try {
+    console.log('[GENERATE-PORTFOLIO] Function started');
+    
     // Get the authorization header
     const authHeader = req.headers.get('Authorization');
+    console.log('[GENERATE-PORTFOLIO] Auth header present:', !!authHeader);
     
     if (!authHeader) {
-      console.error('No authorization header provided');
+      console.error('[GENERATE-PORTFOLIO] No authorization header provided');
       throw new Error('Authorization required');
     }
 
@@ -39,21 +42,55 @@ serve(async (req) => {
       }
     );
 
-    // Get user from JWT token
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    if (userError || !user) {
-      console.error('Auth error:', userError);
-      throw new Error('Invalid authentication');
+    console.log('[GENERATE-PORTFOLIO] Attempting to get user from JWT');
+
+    // Get user from JWT token with better error handling
+    let user;
+    try {
+      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('[GENERATE-PORTFOLIO] Auth error:', userError);
+        throw new Error(`Authentication failed: ${userError.message}`);
+      }
+
+      if (!authUser) {
+        console.error('[GENERATE-PORTFOLIO] No user found in auth token');
+        throw new Error('Invalid authentication token - no user found');
+      }
+
+      user = authUser;
+      console.log('[GENERATE-PORTFOLIO] User authenticated:', user.id, user.email);
+      
+    } catch (authError) {
+      console.error('[GENERATE-PORTFOLIO] Authentication error:', authError);
+      throw new Error(`Authentication failed: ${authError.message}`);
     }
 
-    console.log('Authenticated user:', user.id);
+    // Parse request body
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log('[GENERATE-PORTFOLIO] Request body:', requestBody);
+    } catch (parseError) {
+      console.error('[GENERATE-PORTFOLIO] Failed to parse request body:', parseError);
+      throw new Error('Invalid request body');
+    }
 
-    const { riskProfileId } = await req.json();
+    const { riskProfileId, userId } = requestBody;
 
     if (!riskProfileId) {
+      console.error('[GENERATE-PORTFOLIO] Missing riskProfileId');
       throw new Error('Risk profile ID is required');
     }
+
+    // Verify user ID matches (extra security)
+    if (userId && userId !== user.id) {
+      console.error('[GENERATE-PORTFOLIO] User ID mismatch:', { tokenUserId: user.id, requestUserId: userId });
+      throw new Error('User ID mismatch');
+    }
+
+    console.log('[GENERATE-PORTFOLIO] Fetching risk profile:', riskProfileId, 'for user:', user.id);
 
     // Fetch risk profile using admin client
     const { data: riskProfile, error: profileError } = await supabaseAdmin
@@ -63,15 +100,21 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .single();
 
-    if (profileError || !riskProfile) {
-      console.error('Risk profile error:', profileError);
+    if (profileError) {
+      console.error('[GENERATE-PORTFOLIO] Risk profile error:', profileError);
+      throw new Error(`Risk profile not found: ${profileError.message}`);
+    }
+
+    if (!riskProfile) {
+      console.error('[GENERATE-PORTFOLIO] Risk profile not found for ID:', riskProfileId);
       throw new Error('Risk profile not found');
     }
 
-    console.log('Found risk profile:', riskProfile.id);
+    console.log('[GENERATE-PORTFOLIO] Found risk profile:', riskProfile.id);
 
     // Generate portfolio recommendations based on risk profile
     const portfolioData = generatePortfolioRecommendations(riskProfile);
+    console.log('[GENERATE-PORTFOLIO] Generated portfolio data:', portfolioData);
 
     // Store the generated portfolio using admin client
     const { data: portfolio, error: portfolioError } = await supabaseAdmin
@@ -91,22 +134,30 @@ serve(async (req) => {
       .single();
 
     if (portfolioError) {
-      console.error('Portfolio creation error:', portfolioError);
-      throw new Error('Failed to create portfolio');
+      console.error('[GENERATE-PORTFOLIO] Portfolio creation error:', portfolioError);
+      throw new Error(`Failed to create portfolio: ${portfolioError.message}`);
     }
 
+    console.log('[GENERATE-PORTFOLIO] Portfolio created successfully:', portfolio.id);
+
     // Deactivate other portfolios for this user
-    await supabaseAdmin
+    const { error: deactivateError } = await supabaseAdmin
       .from('user_portfolios')
       .update({ is_active: false })
       .eq('user_id', user.id)
       .neq('id', portfolio.id);
 
+    if (deactivateError) {
+      console.error('[GENERATE-PORTFOLIO] Error deactivating old portfolios:', deactivateError);
+      // Don't throw here, as the main portfolio was created successfully
+    }
+
     // Generate initial recommendations using admin client
     const recommendations = generateInitialRecommendations(riskProfile, portfolioData);
+    console.log('[GENERATE-PORTFOLIO] Generated recommendations:', recommendations.length);
     
     if (recommendations.length > 0) {
-      await supabaseAdmin
+      const { error: recError } = await supabaseAdmin
         .from('portfolio_recommendations')
         .insert(
           recommendations.map(rec => ({
@@ -117,9 +168,14 @@ serve(async (req) => {
             ai_reasoning: rec.reasoning
           }))
         );
+
+      if (recError) {
+        console.error('[GENERATE-PORTFOLIO] Error creating recommendations:', recError);
+        // Don't throw here, as the main portfolio was created successfully
+      }
     }
 
-    console.log('Portfolio generated successfully:', portfolio.id);
+    console.log('[GENERATE-PORTFOLIO] Portfolio generation completed successfully');
 
     return new Response(
       JSON.stringify({ 
@@ -133,7 +189,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error in generate-portfolio function:', error);
+    console.error('[GENERATE-PORTFOLIO] Error in generate-portfolio function:', error);
     return new Response(
       JSON.stringify({ 
         error: error.message || 'An unexpected error occurred',

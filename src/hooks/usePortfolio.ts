@@ -124,21 +124,34 @@ export const usePortfolio = () => {
     
     try {
       console.log('Generating portfolio for risk profile:', riskProfileId);
+      console.log('User ID:', user.id);
       
-      // Get the current session token
+      // Get the current session to ensure we have a valid token
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (sessionError || !session) {
+      if (sessionError) {
         console.error('Session error:', sessionError);
+        throw new Error('Failed to get authentication session');
+      }
+
+      if (!session) {
+        console.error('No session found');
         throw new Error('Authentication session not found');
       }
 
+      console.log('Session found, access token available:', !!session.access_token);
+
       const { data, error } = await supabase.functions.invoke('generate-portfolio', {
-        body: { riskProfileId },
+        body: { 
+          riskProfileId,
+          userId: user.id // Include userId in body as well
+        },
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         }
       });
+
+      console.log('Generate portfolio response:', { data, error });
 
       if (error) {
         console.error('Error generating portfolio:', error);
