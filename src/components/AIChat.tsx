@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -106,7 +107,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
       <CardHeader className="flex-shrink-0">
         <CardTitle className="flex items-center gap-2">
           <Brain className="w-5 h-5 text-blue-600" />
-          AI Portfolio Assistent
+          AI Portfolio Assistent - Fas 4
         </CardTitle>
         <CardDescription>
           Avancerad AI-analys med djupgående portföljinsikter och sessionshantering
@@ -213,7 +214,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
           {messages.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-medium mb-2">Välkommen!</h3>
+              <h3 className="text-lg font-medium mb-2">Välkommen till Fas 4!</h3>
               <p className="text-sm mb-4">
                 Nu med avancerad analys, sessionshantering och djupare AI-insikter.
               </p>

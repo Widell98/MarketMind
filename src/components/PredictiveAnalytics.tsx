@@ -115,7 +115,7 @@ const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ portfolioId }
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Brain className="w-5 h-5 text-purple-600" />
-          Prediktiv Analys
+          Prediktiv Analys - AI Fas 4
         </CardTitle>
         <CardDescription>
           AI-baserade prognoser och scenarioanalyser för din portfölj
