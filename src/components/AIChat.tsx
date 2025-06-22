@@ -107,10 +107,10 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
       <CardHeader className="flex-shrink-0">
         <CardTitle className="flex items-center gap-2">
           <Brain className="w-5 h-5 text-blue-600" />
-          AI Portfolio Assistent - Fas 4
+          AI Portfolio Assistent
         </CardTitle>
         <CardDescription>
-          Avancerad AI-analys med djupgående portföljinsikter och sessionshantering
+          Avancerad AI-analys med djupgående portföljinsikter
         </CardDescription>
         
         {quotaExceeded && (
@@ -124,10 +124,9 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
         )}
         
         <Tabs defaultValue="chat" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="chat">Chat</TabsTrigger>
             <TabsTrigger value="analysis" disabled={quotaExceeded}>Analys</TabsTrigger>
-            <TabsTrigger value="sessions">Sessioner</TabsTrigger>
           </TabsList>
           
           <TabsContent value="chat" className="mt-4">
@@ -167,45 +166,6 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
               })}
             </div>
           </TabsContent>
-          
-          <TabsContent value="sessions" className="mt-4">
-            <div className="flex gap-2 items-center">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => createNewSession(`Session ${new Date().toLocaleString('sv-SE')}`)}
-                className="flex items-center gap-1"
-              >
-                <Plus className="w-3 h-3" />
-                Ny Session
-              </Button>
-              {currentSessionId && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearMessages}
-                >
-                  Rensa Chat
-                </Button>
-              )}
-            </div>
-            {sessions.length > 0 && (
-              <div className="mt-2 space-y-1 max-h-20 overflow-y-auto">
-                {sessions.slice(0, 3).map((session) => (
-                  <Button
-                    key={session.id}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => loadSession(session.id)}
-                    className={`w-full justify-start text-xs ${currentSessionId === session.id ? 'bg-blue-50' : ''}`}
-                  >
-                    <History className="w-3 h-3 mr-1" />
-                    {session.name}
-                  </Button>
-                ))}
-              </div>
-            )}
-          </TabsContent>
         </Tabs>
       </CardHeader>
       
@@ -214,9 +174,9 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
           {messages.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-medium mb-2">Välkommen till Fas 4!</h3>
+              <h3 className="text-lg font-medium mb-2">Välkommen!</h3>
               <p className="text-sm mb-4">
-                Nu med avancerad analys, sessionshantering och djupare AI-insikter.
+                Nu med avancerad analys och djupare AI-insikter.
               </p>
               <div className="text-xs text-muted-foreground">
                 {quotaExceeded ? 
