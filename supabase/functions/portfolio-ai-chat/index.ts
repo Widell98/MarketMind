@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -66,9 +67,9 @@ serve(async (req) => {
       .limit(3);
 
     // Build enhanced context for AI
-    let contextInfo = `Du är en avancerad AI-assistent för portföljanalys (Fas 4) specialiserad på djupgående investeringsrådgivning. Du arbetar på svenska och ger detaljerade, personaliserade råd.
+    let contextInfo = `Du är en avancerad AI-assistent för portföljanalys specialiserad på djupgående investeringsrådgivning. Du arbetar på svenska och ger detaljerade, personaliserade råd.
 
-FÖRMÅGOR I FAS 4:
+FÖRMÅGOR:
 - Djupgående riskanalys med specifika rekommendationer
 - Avancerad diversifieringsanalys
 - Prestandajämförelser mot marknadsindex
@@ -124,11 +125,11 @@ FÖRMÅGOR I FAS 4:
       });
     }
 
-    // Enhanced system prompt for Phase 4 capabilities
+    // Enhanced system prompt for advanced capabilities
     let systemPrompt = contextInfo;
     
     if (analysisType === 'insight_generation') {
-      systemPrompt += `\n\nFAS 4 - AVANCERAD INSIKTSGENERERING:
+      systemPrompt += `\n\nAVANCERAD INSIKTSGENERERING:
 Du ska nu skapa djupgående, actionable insikter baserat på:
 - Användarens specifika portfölj och riskprofil
 - Aktuella marknadstrender
@@ -144,7 +145,7 @@ VIKTIGT: Skapa även en strukturerad insikt i databasen efter detta svar.`;
     }
 
     if (analysisType === 'predictive_analysis') {
-      systemPrompt += `\n\nFAS 4 - PREDIKTIV ANALYS (${timeframe}):
+      systemPrompt += `\n\nPREDIKTIV ANALYS (${timeframe}):
 Skapa en omfattande framåtblickande analys som inkluderar:
 - Sannolikhetsbaserade prognoser
 - Flera scenarier (optimistiskt, troligt, pessimistiskt)  
@@ -154,7 +155,7 @@ Skapa en omfattande framåtblickande analys som inkluderar:
     }
 
     if (analysisType === 'market_alert_generation') {
-      systemPrompt += `\n\nFAS 4 - MARKNADSVARNINGAR:
+      systemPrompt += `\n\nMARKNADSVARNINGAR:
 Analysera aktuella marknadsförhållanden och skapa relevanta alerts för:
 - Volatilitetsspikes som påverkar användarens innehav
 - Sektorspecifika risker
@@ -163,7 +164,7 @@ Analysera aktuella marknadsförhållanden och skapa relevanta alerts för:
 - Nyheter som kan påverka portföljen`;
     }
 
-    systemPrompt += `\n\nFAS 4 SVARSGUIDELINES:
+    systemPrompt += `\n\nSVARSGUIDELINES:
 - Använd avancerad finansiell analys med specifika metriker
 - Inkludera sannolikheter och konfidensintervall
 - Ge tidsspecifika rekommendationer
@@ -187,7 +188,7 @@ Analysera aktuella marknadsförhållanden och skapa relevanta alerts för:
       }
     ];
 
-    console.log('Sending enhanced request to OpenAI with analysis type:', analysisType);
+    console.log('Sending enhanced request to OpenAI with GPT-4.1-mini model');
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -196,7 +197,7 @@ Analysera aktuella marknadsförhållanden och skapa relevanta alerts för:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-mini-2025-04-14',
         messages: messages,
         max_tokens: 800,
         temperature: 0.7,
@@ -251,7 +252,7 @@ Analysera aktuella marknadsförhållanden och skapa relevanta alerts för:
     if (riskProfile) confidence += 0.1;
     confidence = Math.min(confidence, 1.0);
 
-    // Phase 4: Generate structured insights for certain analysis types
+    // Generate structured insights for certain analysis types
     if (analysisType === 'insight_generation' && insightType) {
       const insightData = {
         user_id: userId,
@@ -298,7 +299,7 @@ Analysera aktuella marknadsförhållanden och skapa relevanta alerts för:
           message: aiResponse,
           context_data: { 
             timestamp: new Date().toISOString(),
-            model: 'gpt-4o-mini',
+            model: 'gpt-4.1-mini-2025-04-14',
             analysisType: analysisType || 'general',
             confidence: confidence
           }
@@ -319,7 +320,7 @@ Analysera aktuella marknadsförhållanden och skapa relevanta alerts för:
           portfolioValue: portfolio?.total_value || 0,
           holdingsCount: holdings?.length || 0,
           insightsCount: insights?.length || 0,
-          phase: 'Phase 4 - Advanced AI'
+          model: 'GPT-4.1-mini'
         }
       }),
       { 
