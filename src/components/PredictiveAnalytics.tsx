@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -113,69 +112,71 @@ const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ portfolioId }
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Brain className="w-5 h-5 text-purple-600" />
-          Prediktiv Analys - AI Fas 4
+        <CardTitle className="flex items-center gap-2 text-base sm:text-lg md:text-xl">
+          <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
+          Prediktiv Analys
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-xs sm:text-sm">
           AI-baserade prognoser och scenarioanalyser för din portfölj
         </CardDescription>
       </CardHeader>
       
-      <CardContent>
+      <CardContent className="p-3 sm:p-6">
         {loading ? (
-          <div className="text-center py-8">
-            <Brain className="w-12 h-12 mx-auto mb-4 animate-pulse text-purple-600" />
-            <p>AI analyserar marknadsdata och genererar prognoser...</p>
+          <div className="text-center py-6 sm:py-8">
+            <Brain className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-4 animate-pulse text-purple-600" />
+            <p className="text-sm sm:text-base">AI analyserar marknadsdata och genererar prognoser...</p>
           </div>
         ) : predictions ? (
           <Tabs defaultValue="predictions" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="predictions">Prognoser</TabsTrigger>
-              <TabsTrigger value="scenarios">Scenarier</TabsTrigger>
-              <TabsTrigger value="projections">Projektioner</TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto mb-4">
+              <TabsList className="grid grid-cols-3 w-full min-w-max sm:min-w-0">
+                <TabsTrigger value="predictions" className="text-xs sm:text-sm px-2 sm:px-4">Prognoser</TabsTrigger>
+                <TabsTrigger value="scenarios" className="text-xs sm:text-sm px-2 sm:px-4">Scenarier</TabsTrigger>
+                <TabsTrigger value="projections" className="text-xs sm:text-sm px-2 sm:px-4">Projektioner</TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="predictions" className="mt-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                 {Object.entries(predictions).map(([key, pred]: [string, any]) => (
-                  <Card key={key}>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <Calendar className="w-4 h-4" />
+                  <Card key={key} className="border">
+                    <CardHeader className="pb-2 p-3 sm:p-4">
+                      <CardTitle className="text-xs sm:text-sm flex items-center gap-2">
+                        <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
                         {pred.timeframe}
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
+                    <CardContent className="p-3 sm:p-4 pt-0">
+                      <div className="space-y-2 sm:space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Riktning</span>
+                          <span className="text-xs text-muted-foreground">Riktning</span>
                           <div className="flex items-center gap-1">
                             {getDirectionIcon(pred.direction)}
-                            <span className="text-sm font-medium">
+                            <span className="text-xs font-medium">
                               {pred.direction === 'up' ? 'Uppgång' : 'Nedgång'}
                             </span>
                           </div>
                         </div>
                         
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Förväntad avkastning</span>
-                          <span className="text-sm font-medium text-green-600">
+                          <span className="text-xs text-muted-foreground">Förväntad avkastning</span>
+                          <span className="text-xs font-medium text-green-600">
                             +{pred.expectedReturn}%
                           </span>
                         </div>
                         
-                        <div className="space-y-2">
+                        <div className="space-y-1 sm:space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Sannolikhet</span>
-                            <span className="text-sm font-medium">{pred.probability}%</span>
+                            <span className="text-xs text-muted-foreground">Sannolikhet</span>
+                            <span className="text-xs font-medium">{pred.probability}%</span>
                           </div>
                           <Progress value={pred.probability} className="h-2" />
                         </div>
                         
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Tillförlitlighet</span>
-                          <Badge variant="outline" className={getConfidenceColor(pred.confidence)}>
+                          <span className="text-xs text-muted-foreground">Tillförlitlighet</span>
+                          <Badge variant="outline" className={`text-xs ${getConfidenceColor(pred.confidence)}`}>
                             {pred.confidence === 'high' ? 'Hög' : pred.confidence === 'medium' ? 'Medium' : 'Låg'}
                           </Badge>
                         </div>
@@ -187,25 +188,25 @@ const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ portfolioId }
             </TabsContent>
 
             <TabsContent value="scenarios" className="mt-4">
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {mockScenarios.map((scenario, index) => (
                   <Card key={index}>
-                    <CardContent className="pt-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-medium">{scenario.name}</h4>
+                    <CardContent className="pt-3 sm:pt-4 p-3 sm:p-4">
+                      <div className="flex items-center justify-between mb-2 sm:mb-3">
+                        <h4 className="font-medium text-sm sm:text-base">{scenario.name}</h4>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-xs text-muted-foreground">
                             {scenario.probability}% sannolikhet
                           </span>
                           <Badge variant={
                             scenario.return > 30 ? 'default' :
                             scenario.return > 15 ? 'secondary' : 'outline'
-                          }>
+                          } className="text-xs">
                             +{scenario.return}%
                           </Badge>
                         </div>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-3">
+                      <p className="text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3">
                         {scenario.description}
                       </p>
                       <Progress value={scenario.probability * 2} className="h-2" />
@@ -217,12 +218,12 @@ const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ portfolioId }
 
             <TabsContent value="projections" className="mt-4">
               <div className="space-y-4">
-                <div className="h-80">
+                <div className="h-60 sm:h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={mockProjectionData}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} />
+                      <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                      <YAxis tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
                       <Tooltip 
                         formatter={(value: any) => [`${value.toLocaleString()} SEK`, '']}
                         labelFormatter={(label) => `Månad: ${label}`}
@@ -254,7 +255,7 @@ const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ portfolioId }
                   </ResponsiveContainer>
                 </div>
                 
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 bg-blue-500 rounded"></div>
                     <span>Förväntad utveckling</span>
@@ -272,11 +273,11 @@ const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ portfolioId }
             </TabsContent>
           </Tabs>
         ) : (
-          <div className="text-center py-8">
-            <Target className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p className="text-muted-foreground mb-4">Inga prognoser genererade än</p>
-            <Button onClick={generatePredictions} disabled={loading}>
-              <Brain className="w-4 h-4 mr-2" />
+          <div className="text-center py-6 sm:py-8">
+            <Target className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-4 opacity-50" />
+            <p className="text-muted-foreground mb-4 text-sm sm:text-base">Inga prognoser genererade än</p>
+            <Button onClick={generatePredictions} disabled={loading} className="text-xs sm:text-sm">
+              <Brain className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
               Generera AI-prognoser
             </Button>
           </div>
