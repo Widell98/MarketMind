@@ -123,10 +123,9 @@ export const usePortfolio = () => {
     setLoading(true);
     
     try {
-      console.log('Generating portfolio for risk profile:', riskProfileId);
-      console.log('User ID:', user.id);
+      console.log('Starting portfolio generation for user:', user.id, 'risk profile:', riskProfileId);
       
-      // Get the current session to ensure we have a valid token
+      // Get the current session and ensure it's fresh
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
@@ -134,32 +133,31 @@ export const usePortfolio = () => {
         throw new Error('Failed to get authentication session');
       }
 
-      if (!session) {
-        console.error('No session found');
-        throw new Error('Authentication session not found');
+      if (!session || !session.access_token) {
+        console.error('No valid session found');
+        throw new Error('Authentication session not found - please try logging in again');
       }
 
-      console.log('Session found, access token available:', !!session.access_token);
+      console.log('Valid session found, calling generate-portfolio function');
 
+      // Call the edge function with proper headers
       const { data, error } = await supabase.functions.invoke('generate-portfolio', {
         body: { 
           riskProfileId,
-          userId: user.id // Include userId in body as well
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          userId: user.id
         }
       });
 
       console.log('Generate portfolio response:', { data, error });
 
       if (error) {
-        console.error('Error generating portfolio:', error);
-        throw error;
+        console.error('Edge function error:', error);
+        throw new Error(`Portfolio generation failed: ${error.message}`);
       }
 
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to generate portfolio');
+      if (!data || !data.success) {
+        console.error('Portfolio generation was not successful:', data);
+        throw new Error(data?.error || 'Failed to generate portfolio - unknown error');
       }
 
       console.log('Portfolio generated successfully:', data.portfolio);

@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -15,6 +14,8 @@ serve(async (req) => {
 
   try {
     console.log('[GENERATE-PORTFOLIO] Function started');
+    console.log('[GENERATE-PORTFOLIO] Request method:', req.method);
+    console.log('[GENERATE-PORTFOLIO] Request headers:', Object.fromEntries(req.headers.entries()));
     
     // Get the authorization header
     const authHeader = req.headers.get('Authorization');
@@ -22,7 +23,16 @@ serve(async (req) => {
     
     if (!authHeader) {
       console.error('[GENERATE-PORTFOLIO] No authorization header provided');
-      throw new Error('Authorization required');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Authorization header is required',
+          success: false 
+        }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     // Initialize Supabase client with service role key for admin operations
@@ -31,7 +41,9 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Initialize regular client for user operations
+    console.log('[GENERATE-PORTFOLIO] Supabase admin client initialized');
+
+    // Initialize regular client for user operations with auth header
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -51,12 +63,30 @@ serve(async (req) => {
       
       if (userError) {
         console.error('[GENERATE-PORTFOLIO] Auth error:', userError);
-        throw new Error(`Authentication failed: ${userError.message}`);
+        return new Response(
+          JSON.stringify({ 
+            error: `Authentication failed: ${userError.message}`,
+            success: false 
+          }),
+          { 
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
       }
 
       if (!authUser) {
         console.error('[GENERATE-PORTFOLIO] No user found in auth token');
-        throw new Error('Invalid authentication token - no user found');
+        return new Response(
+          JSON.stringify({ 
+            error: 'Invalid authentication token - no user found',
+            success: false 
+          }),
+          { 
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
       }
 
       user = authUser;
@@ -64,7 +94,16 @@ serve(async (req) => {
       
     } catch (authError) {
       console.error('[GENERATE-PORTFOLIO] Authentication error:', authError);
-      throw new Error(`Authentication failed: ${authError.message}`);
+      return new Response(
+        JSON.stringify({ 
+          error: `Authentication failed: ${authError.message}`,
+          success: false 
+        }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     // Parse request body
@@ -74,20 +113,47 @@ serve(async (req) => {
       console.log('[GENERATE-PORTFOLIO] Request body:', requestBody);
     } catch (parseError) {
       console.error('[GENERATE-PORTFOLIO] Failed to parse request body:', parseError);
-      throw new Error('Invalid request body');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid request body format',
+          success: false 
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     const { riskProfileId, userId } = requestBody;
 
     if (!riskProfileId) {
       console.error('[GENERATE-PORTFOLIO] Missing riskProfileId');
-      throw new Error('Risk profile ID is required');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Risk profile ID is required',
+          success: false 
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     // Verify user ID matches (extra security)
     if (userId && userId !== user.id) {
       console.error('[GENERATE-PORTFOLIO] User ID mismatch:', { tokenUserId: user.id, requestUserId: userId });
-      throw new Error('User ID mismatch');
+      return new Response(
+        JSON.stringify({ 
+          error: 'User ID mismatch - access denied',
+          success: false 
+        }),
+        { 
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     console.log('[GENERATE-PORTFOLIO] Fetching risk profile:', riskProfileId, 'for user:', user.id);
@@ -102,12 +168,30 @@ serve(async (req) => {
 
     if (profileError) {
       console.error('[GENERATE-PORTFOLIO] Risk profile error:', profileError);
-      throw new Error(`Risk profile not found: ${profileError.message}`);
+      return new Response(
+        JSON.stringify({ 
+          error: `Risk profile not found: ${profileError.message}`,
+          success: false 
+        }),
+        { 
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     if (!riskProfile) {
       console.error('[GENERATE-PORTFOLIO] Risk profile not found for ID:', riskProfileId);
-      throw new Error('Risk profile not found');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Risk profile not found',
+          success: false 
+        }),
+        { 
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     console.log('[GENERATE-PORTFOLIO] Found risk profile:', riskProfile.id);
@@ -115,6 +199,17 @@ serve(async (req) => {
     // Generate portfolio recommendations based on risk profile
     const portfolioData = generatePortfolioRecommendations(riskProfile);
     console.log('[GENERATE-PORTFOLIO] Generated portfolio data:', portfolioData);
+
+    // Deactivate other portfolios for this user first
+    const { error: deactivateError } = await supabaseAdmin
+      .from('user_portfolios')
+      .update({ is_active: false })
+      .eq('user_id', user.id);
+
+    if (deactivateError) {
+      console.error('[GENERATE-PORTFOLIO] Error deactivating old portfolios:', deactivateError);
+      // Continue anyway, this is not a critical error
+    }
 
     // Store the generated portfolio using admin client
     const { data: portfolio, error: portfolioError } = await supabaseAdmin
@@ -135,22 +230,19 @@ serve(async (req) => {
 
     if (portfolioError) {
       console.error('[GENERATE-PORTFOLIO] Portfolio creation error:', portfolioError);
-      throw new Error(`Failed to create portfolio: ${portfolioError.message}`);
+      return new Response(
+        JSON.stringify({ 
+          error: `Failed to create portfolio: ${portfolioError.message}`,
+          success: false 
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     console.log('[GENERATE-PORTFOLIO] Portfolio created successfully:', portfolio.id);
-
-    // Deactivate other portfolios for this user
-    const { error: deactivateError } = await supabaseAdmin
-      .from('user_portfolios')
-      .update({ is_active: false })
-      .eq('user_id', user.id)
-      .neq('id', portfolio.id);
-
-    if (deactivateError) {
-      console.error('[GENERATE-PORTFOLIO] Error deactivating old portfolios:', deactivateError);
-      // Don't throw here, as the main portfolio was created successfully
-    }
 
     // Generate initial recommendations using admin client
     const recommendations = generateInitialRecommendations(riskProfile, portfolioData);
@@ -171,7 +263,7 @@ serve(async (req) => {
 
       if (recError) {
         console.error('[GENERATE-PORTFOLIO] Error creating recommendations:', recError);
-        // Don't throw here, as the main portfolio was created successfully
+        // Don't fail the whole operation for this
       }
     }
 
@@ -189,10 +281,10 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('[GENERATE-PORTFOLIO] Error in generate-portfolio function:', error);
+    console.error('[GENERATE-PORTFOLIO] Unexpected error:', error);
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'An unexpected error occurred',
+        error: `An unexpected error occurred: ${error.message}`,
         success: false 
       }),
       { 
