@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useStockCases } from '@/hooks/useStockCases';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Bookmark, TrendingUp, AlertCircle, Plus } from 'lucide-react';
+import { Bookmark, AlertCircle, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import StockCaseCard from '@/components/StockCaseCard';
@@ -16,14 +16,6 @@ const Watchlist = () => {
 
   const handleViewStockCaseDetails = (id: string) => {
     navigate(`/stock-cases/${id}`);
-  };
-
-  // Helper function to calculate performance
-  const calculatePerformance = (stockCase: any) => {
-    if (stockCase.entry_price && stockCase.current_price) {
-      return ((stockCase.current_price - stockCase.entry_price) / stockCase.entry_price) * 100;
-    }
-    return stockCase.performance_percentage || 0;
   };
 
   if (!user) {
@@ -61,8 +53,8 @@ const Watchlist = () => {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Stats Card - Only Followed Cases */}
+        <div className="grid grid-cols-1 gap-4">
           <Card className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-900 border-blue-200 dark:border-blue-800">
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2">
@@ -75,36 +67,6 @@ const Watchlist = () => {
                 {followedCases.length}
               </div>
               <p className="text-sm text-blue-700 dark:text-blue-300">Active Follows</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-950 dark:to-emerald-900 border-green-200 dark:border-green-800">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
-                <CardTitle className="text-lg text-green-800 dark:text-green-200">Performing Well</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-900 dark:text-green-100 mb-1">
-                {followedCases.filter(c => calculatePerformance(c) > 0).length}
-              </div>
-              <p className="text-sm text-green-700 dark:text-green-300">Positive Performance</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-orange-50 to-yellow-100 dark:from-orange-950 dark:to-yellow-900 border-orange-200 dark:border-orange-800">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-                <CardTitle className="text-lg text-orange-800 dark:text-orange-200">Needs Attention</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-900 dark:text-orange-100 mb-1">
-                {followedCases.filter(c => calculatePerformance(c) < -5).length}
-              </div>
-              <p className="text-sm text-orange-700 dark:text-orange-300">Down {'>'}5%</p>
             </CardContent>
           </Card>
         </div>

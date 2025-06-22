@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -147,11 +146,11 @@ const PortfolioAdvisor = () => {
             </p>
           </div>
 
-          {/* Tabs - Improved mobile layout */}
+          {/* Tabs - Improved mobile layout without "Tips" tab */}
           <Tabs defaultValue="dashboard" className="w-full space-y-2 sm:space-y-4">
             {/* Horizontal scrolling tabs for mobile */}
             <div className="w-full overflow-x-auto pb-1">
-              <TabsList className="flex w-max min-w-full sm:grid sm:grid-cols-6 sm:w-full h-auto p-1 gap-0.5 sm:gap-1">
+              <TabsList className="flex w-max min-w-full sm:grid sm:grid-cols-5 sm:w-full h-auto p-1 gap-0.5 sm:gap-1">
                 <TabsTrigger value="dashboard" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
                   <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                   <span className="hidden xs:block">Dashboard</span>
@@ -166,11 +165,6 @@ const PortfolioAdvisor = () => {
                   <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                   <span className="hidden xs:block">AI Chat</span>
                   <span className="xs:hidden">Chat</span>
-                </TabsTrigger>
-                <TabsTrigger value="insights" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
-                  <Lightbulb className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                  <span className="hidden xs:block">Insights</span>
-                  <span className="xs:hidden">Tips</span>
                 </TabsTrigger>
                 <TabsTrigger value="analytics" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
                   <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
@@ -202,12 +196,6 @@ const PortfolioAdvisor = () => {
               <TabsContent value="chat" className="mt-2 sm:mt-4 focus-visible:outline-none">
                 <div className="w-full">
                   <AIChat portfolioId={activePortfolio?.id} />
-                </div>
-              </TabsContent>
-
-              <TabsContent value="insights" className="mt-2 sm:mt-4 focus-visible:outline-none">
-                <div className="w-full">
-                  <AIInsightsPanel portfolioId={activePortfolio?.id} />
                 </div>
               </TabsContent>
 
