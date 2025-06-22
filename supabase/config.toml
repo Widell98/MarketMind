@@ -1,57 +1,14 @@
 
 project_id = "qifolopsdeeyrevbuxfl"
 
-[api]
+[auth]
 enabled = true
-port = 54321
-schemas = ["public", "storage", "graphql_public"]
-extra_search_path = ["public", "extensions"]
-max_rows = 1000
-
-[db]
-port = 54322
-shadow_port = 54320
-major_version = 15
-
-[studio]
-enabled = true
-port = 54323
-api_url = "http://127.0.0.1:54321"
-
-[inbucket]
-enabled = true
-port = 54324
-smtp_port = 54325
-pop3_port = 54326
+external_url = "https://qifolopsdeeyrevbuxfl.supabase.co/auth/v1"
+external_redirect_url = "https://id-preview--f3bdb396-b2bb-4755-9f8f-5bc2c9217c55.lovable.app/auth/callback"
 
 [storage]
 enabled = true
-file_size_limit = "50MiB"
-s3_max_connections = 10
+external_url = "https://qifolopsdeeyrevbuxfl.supabase.co/storage/v1"
 
-[auth]
-enabled = true
-site_url = "http://127.0.0.1:3000"
-additional_redirect_urls = ["https://qifolopsdeeyrevbuxfl.supabase.co"]
-jwt_expiry = 3600
-enable_signup = true
-email_double_confirm_changes = true
-enable_manual_linking = false
-
-[functions.generate-quiz-questions]
-verify_jwt = false
-
-[functions.fetch-market-data]
-verify_jwt = false
-
-[functions.fetch-news-data]
-verify_jwt = false
-
-# Security enhancement: Enable JWT verification for portfolio generation
 [functions.generate-portfolio]
-verify_jwt = true
-
-[edge_runtime]
-ip_version = "ipv4"
-policy = "per_worker"
-inspector_port = 8083
+verify_jwt = false

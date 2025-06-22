@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -124,23 +123,8 @@ export const usePortfolio = () => {
     
     try {
       console.log('Starting portfolio generation for user:', user.id, 'risk profile:', riskProfileId);
-      
-      // Get the current session and ensure it's fresh
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error('Session error:', sessionError);
-        throw new Error('Failed to get authentication session');
-      }
 
-      if (!session || !session.access_token) {
-        console.error('No valid session found');
-        throw new Error('Authentication session not found - please try logging in again');
-      }
-
-      console.log('Valid session found, calling generate-portfolio function');
-
-      // Call the edge function with proper headers
+      // Call the edge function without authentication headers since it's now public
       const { data, error } = await supabase.functions.invoke('generate-portfolio', {
         body: { 
           riskProfileId,

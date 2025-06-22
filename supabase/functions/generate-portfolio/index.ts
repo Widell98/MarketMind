@@ -13,27 +13,8 @@ serve(async (req) => {
   }
 
   try {
-    console.log('[GENERATE-PORTFOLIO] Function started');
+    console.log('[GENERATE-PORTFOLIO] Function started - PUBLIC MODE');
     console.log('[GENERATE-PORTFOLIO] Request method:', req.method);
-    console.log('[GENERATE-PORTFOLIO] Request headers:', Object.fromEntries(req.headers.entries()));
-    
-    // Get the authorization header
-    const authHeader = req.headers.get('Authorization');
-    console.log('[GENERATE-PORTFOLIO] Auth header present:', !!authHeader);
-    
-    if (!authHeader) {
-      console.error('[GENERATE-PORTFOLIO] No authorization header provided');
-      return new Response(
-        JSON.stringify({ 
-          error: 'Authorization header is required',
-          success: false 
-        }),
-        { 
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
 
     // Initialize Supabase client with service role key for admin operations
     const supabaseAdmin = createClient(
@@ -42,69 +23,6 @@ serve(async (req) => {
     );
 
     console.log('[GENERATE-PORTFOLIO] Supabase admin client initialized');
-
-    // Initialize regular client for user operations with auth header
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
-    );
-
-    console.log('[GENERATE-PORTFOLIO] Attempting to get user from JWT');
-
-    // Get user from JWT token with better error handling
-    let user;
-    try {
-      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError) {
-        console.error('[GENERATE-PORTFOLIO] Auth error:', userError);
-        return new Response(
-          JSON.stringify({ 
-            error: `Authentication failed: ${userError.message}`,
-            success: false 
-          }),
-          { 
-            status: 401,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
-      }
-
-      if (!authUser) {
-        console.error('[GENERATE-PORTFOLIO] No user found in auth token');
-        return new Response(
-          JSON.stringify({ 
-            error: 'Invalid authentication token - no user found',
-            success: false 
-          }),
-          { 
-            status: 401,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
-      }
-
-      user = authUser;
-      console.log('[GENERATE-PORTFOLIO] User authenticated:', user.id, user.email);
-      
-    } catch (authError) {
-      console.error('[GENERATE-PORTFOLIO] Authentication error:', authError);
-      return new Response(
-        JSON.stringify({ 
-          error: `Authentication failed: ${authError.message}`,
-          success: false 
-        }),
-        { 
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
 
     // Parse request body
     let requestBody;
@@ -127,11 +45,11 @@ serve(async (req) => {
 
     const { riskProfileId, userId } = requestBody;
 
-    if (!riskProfileId) {
-      console.error('[GENERATE-PORTFOLIO] Missing riskProfileId');
+    if (!riskProfileId || !userId) {
+      console.error('[GENERATE-PORTFOLIO] Missing required parameters:', { riskProfileId, userId });
       return new Response(
         JSON.stringify({ 
-          error: 'Risk profile ID is required',
+          error: 'Risk profile ID and user ID are required',
           success: false 
         }),
         { 
@@ -141,29 +59,14 @@ serve(async (req) => {
       );
     }
 
-    // Verify user ID matches (extra security)
-    if (userId && userId !== user.id) {
-      console.error('[GENERATE-PORTFOLIO] User ID mismatch:', { tokenUserId: user.id, requestUserId: userId });
-      return new Response(
-        JSON.stringify({ 
-          error: 'User ID mismatch - access denied',
-          success: false 
-        }),
-        { 
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    console.log('[GENERATE-PORTFOLIO] Fetching risk profile:', riskProfileId, 'for user:', user.id);
+    console.log('[GENERATE-PORTFOLIO] Fetching risk profile:', riskProfileId, 'for user:', userId);
 
     // Fetch risk profile using admin client
     const { data: riskProfile, error: profileError } = await supabaseAdmin
       .from('user_risk_profiles')
       .select('*')
       .eq('id', riskProfileId)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single();
 
     if (profileError) {
@@ -204,7 +107,7 @@ serve(async (req) => {
     const { error: deactivateError } = await supabaseAdmin
       .from('user_portfolios')
       .update({ is_active: false })
-      .eq('user_id', user.id);
+      .eq('user_id', userId);
 
     if (deactivateError) {
       console.error('[GENERATE-PORTFOLIO] Error deactivating old portfolios:', deactivateError);
@@ -215,7 +118,7 @@ serve(async (req) => {
     const { data: portfolio, error: portfolioError } = await supabaseAdmin
       .from('user_portfolios')
       .insert({
-        user_id: user.id,
+        user_id: userId,
         risk_profile_id: riskProfileId,
         portfolio_name: `${riskProfile.risk_tolerance || 'Balanced'} Portfolio`,
         asset_allocation: portfolioData.allocation,
@@ -253,7 +156,7 @@ serve(async (req) => {
         .from('portfolio_recommendations')
         .insert(
           recommendations.map(rec => ({
-            user_id: user.id,
+            user_id: userId,
             portfolio_id: portfolio.id,
             title: rec.title,
             description: rec.description,
