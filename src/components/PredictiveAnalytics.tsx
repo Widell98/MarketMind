@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -105,185 +106,190 @@ const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ portfolioId }
 
   const getDirectionIcon = (direction: string) => {
     return direction === 'up' ? 
-      <TrendingUp className="w-4 h-4 text-green-600" /> : 
-      <TrendingDown className="w-4 h-4 text-red-600" />;
+      <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-green-600 flex-shrink-0" /> : 
+      <TrendingDown className="w-3 h-3 sm:w-4 sm:h-4 text-red-600 flex-shrink-0" />;
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base sm:text-lg md:text-xl">
-          <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
-          Prediktiv Analys
-        </CardTitle>
-        <CardDescription className="text-xs sm:text-sm">
-          AI-baserade prognoser och scenarioanalyser för din portfölj
-        </CardDescription>
-      </CardHeader>
-      
-      <CardContent className="p-3 sm:p-6">
-        {loading ? (
-          <div className="text-center py-6 sm:py-8">
-            <Brain className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-4 animate-pulse text-purple-600" />
-            <p className="text-sm sm:text-base">AI analyserar marknadsdata och genererar prognoser...</p>
-          </div>
-        ) : predictions ? (
-          <Tabs defaultValue="predictions" className="w-full">
-            <div className="overflow-x-auto mb-4">
-              <TabsList className="grid grid-cols-3 w-full min-w-max sm:min-w-0">
-                <TabsTrigger value="predictions" className="text-xs sm:text-sm px-2 sm:px-4">Prognoser</TabsTrigger>
-                <TabsTrigger value="scenarios" className="text-xs sm:text-sm px-2 sm:px-4">Scenarier</TabsTrigger>
-                <TabsTrigger value="projections" className="text-xs sm:text-sm px-2 sm:px-4">Projektioner</TabsTrigger>
-              </TabsList>
+    <div className="w-full">
+      <Card>
+        <CardHeader className="p-3 sm:p-4 md:p-6">
+          <CardTitle className="flex items-center gap-2 text-sm sm:text-base md:text-lg lg:text-xl">
+            <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 flex-shrink-0" />
+            <span className="truncate">Prediktiv Analys</span>
+          </CardTitle>
+          <CardDescription className="text-xs sm:text-sm">
+            AI-baserade prognoser och scenarioanalyser för din portfölj
+          </CardDescription>
+        </CardHeader>
+        
+        <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
+          {loading ? (
+            <div className="text-center py-4 sm:py-6 md:py-8">
+              <Brain className="w-6 h-6 sm:w-8 sm:h-8 md:w-12 md:h-12 mx-auto mb-3 sm:mb-4 animate-pulse text-purple-600" />
+              <p className="text-xs sm:text-sm md:text-base">AI analyserar marknadsdata och genererar prognoser...</p>
             </div>
-
-            <TabsContent value="predictions" className="mt-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-                {Object.entries(predictions).map(([key, pred]: [string, any]) => (
-                  <Card key={key} className="border">
-                    <CardHeader className="pb-2 p-3 sm:p-4">
-                      <CardTitle className="text-xs sm:text-sm flex items-center gap-2">
-                        <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
-                        {pred.timeframe}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-3 sm:p-4 pt-0">
-                      <div className="space-y-2 sm:space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">Riktning</span>
-                          <div className="flex items-center gap-1">
-                            {getDirectionIcon(pred.direction)}
-                            <span className="text-xs font-medium">
-                              {pred.direction === 'up' ? 'Uppgång' : 'Nedgång'}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">Förväntad avkastning</span>
-                          <span className="text-xs font-medium text-green-600">
-                            +{pred.expectedReturn}%
-                          </span>
-                        </div>
-                        
-                        <div className="space-y-1 sm:space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-muted-foreground">Sannolikhet</span>
-                            <span className="text-xs font-medium">{pred.probability}%</span>
-                          </div>
-                          <Progress value={pred.probability} className="h-2" />
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">Tillförlitlighet</span>
-                          <Badge variant="outline" className={`text-xs ${getConfidenceColor(pred.confidence)}`}>
-                            {pred.confidence === 'high' ? 'Hög' : pred.confidence === 'medium' ? 'Medium' : 'Låg'}
-                          </Badge>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="scenarios" className="mt-4">
-              <div className="space-y-3 sm:space-y-4">
-                {mockScenarios.map((scenario, index) => (
-                  <Card key={index}>
-                    <CardContent className="pt-3 sm:pt-4 p-3 sm:p-4">
-                      <div className="flex items-center justify-between mb-2 sm:mb-3">
-                        <h4 className="font-medium text-sm sm:text-base">{scenario.name}</h4>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">
-                            {scenario.probability}% sannolikhet
-                          </span>
-                          <Badge variant={
-                            scenario.return > 30 ? 'default' :
-                            scenario.return > 15 ? 'secondary' : 'outline'
-                          } className="text-xs">
-                            +{scenario.return}%
-                          </Badge>
-                        </div>
-                      </div>
-                      <p className="text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3">
-                        {scenario.description}
-                      </p>
-                      <Progress value={scenario.probability * 2} className="h-2" />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="projections" className="mt-4">
-              <div className="space-y-4">
-                <div className="h-60 sm:h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={mockProjectionData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                      <YAxis tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
-                      <Tooltip 
-                        formatter={(value: any) => [`${value.toLocaleString()} SEK`, '']}
-                        labelFormatter={(label) => `Månad: ${label}`}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="upper" 
-                        stackId="1" 
-                        stroke="#22c55e" 
-                        fill="#22c55e" 
-                        fillOpacity={0.1} 
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="lower" 
-                        stackId="1" 
-                        stroke="#ef4444" 
-                        fill="#ef4444" 
-                        fillOpacity={0.1} 
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="projected" 
-                        stroke="#3b82f6" 
-                        strokeWidth={3}
-                        dot={{ fill: '#3b82f6' }}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+          ) : predictions ? (
+            <div className="w-full">
+              <Tabs defaultValue="predictions" className="w-full">
+                <div className="w-full overflow-x-auto mb-3 sm:mb-4">
+                  <TabsList className="flex w-max min-w-full sm:grid sm:grid-cols-3 sm:w-full h-auto p-1">
+                    <TabsTrigger value="predictions" className="text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2 min-w-20 sm:min-w-0">Prognoser</TabsTrigger>
+                    <TabsTrigger value="scenarios" className="text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2 min-w-20 sm:min-w-0">Scenarier</TabsTrigger>
+                    <TabsTrigger value="projections" className="text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2 min-w-20 sm:min-w-0">Projektioner</TabsTrigger>
+                  </TabsList>
                 </div>
-                
-                <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                    <span>Förväntad utveckling</span>
+
+                <TabsContent value="predictions" className="mt-2 sm:mt-4 focus-visible:outline-none">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
+                    {Object.entries(predictions).map(([key, pred]: [string, any]) => (
+                      <Card key={key} className="border">
+                        <CardHeader className="p-2 sm:p-3 md:p-4 pb-1 sm:pb-2">
+                          <CardTitle className="text-xs sm:text-sm flex items-center gap-1 sm:gap-2">
+                            <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                            <span className="truncate">{pred.timeframe}</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-2 sm:p-3 md:p-4 pt-0">
+                          <div className="space-y-1.5 sm:space-y-2 md:space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Riktning</span>
+                              <div className="flex items-center gap-1">
+                                {getDirectionIcon(pred.direction)}
+                                <span className="text-xs font-medium">
+                                  {pred.direction === 'up' ? 'Uppgång' : 'Nedgång'}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Förväntad avkastning</span>
+                              <span className="text-xs font-medium text-green-600">
+                                +{pred.expectedReturn}%
+                              </span>
+                            </div>
+                            
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground">Sannolikhet</span>
+                                <span className="text-xs font-medium">{pred.probability}%</span>
+                              </div>
+                              <Progress value={pred.probability} className="h-1.5 sm:h-2" />
+                            </div>
+                            
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Tillförlitlighet</span>
+                              <Badge variant="outline" className={`text-xs ${getConfidenceColor(pred.confidence)}`}>
+                                {pred.confidence === 'high' ? 'Hög' : pred.confidence === 'medium' ? 'Medium' : 'Låg'}
+                              </Badge>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-green-500/20 border border-green-500 rounded"></div>
-                    <span>Optimistiskt scenario</span>
+                </TabsContent>
+
+                <TabsContent value="scenarios" className="mt-2 sm:mt-4 focus-visible:outline-none">
+                  <div className="space-y-2 sm:space-y-3 md:space-y-4">
+                    {mockScenarios.map((scenario, index) => (
+                      <Card key={index}>
+                        <CardContent className="p-2 sm:p-3 md:p-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 space-y-1 sm:space-y-0">
+                            <h4 className="font-medium text-sm sm:text-base">{scenario.name}</h4>
+                            <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                              <span className="text-xs text-muted-foreground">
+                                {scenario.probability}% sannolikhet
+                              </span>
+                              <Badge variant={
+                                scenario.return > 30 ? 'default' :
+                                scenario.return > 15 ? 'secondary' : 'outline'
+                              } className="text-xs">
+                                +{scenario.return}%
+                              </Badge>
+                            </div>
+                          </div>
+                          <p className="text-xs sm:text-sm text-muted-foreground mb-2 break-words">
+                            {scenario.description}
+                          </p>
+                          <Progress value={scenario.probability * 2} className="h-1.5 sm:h-2" />
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-red-500/20 border border-red-500 rounded"></div>
-                    <span>Pessimistiskt scenario</span>
+                </TabsContent>
+
+                <TabsContent value="projections" className="mt-2 sm:mt-4 focus-visible:outline-none">
+                  <div className="space-y-3 sm:space-y-4">
+                    <div className="h-48 sm:h-60 md:h-80 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={mockProjectionData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                          <YAxis tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} tick={{ fontSize: 10 }} />
+                          <Tooltip 
+                            formatter={(value: any) => [`${value.toLocaleString()} SEK`, '']}
+                            labelFormatter={(label) => `Månad: ${label}`}
+                            contentStyle={{ fontSize: '12px' }}
+                          />
+                          <Area 
+                            type="monotone" 
+                            dataKey="upper" 
+                            stackId="1" 
+                            stroke="#22c55e" 
+                            fill="#22c55e" 
+                            fillOpacity={0.1} 
+                          />
+                          <Area 
+                            type="monotone" 
+                            dataKey="lower" 
+                            stackId="1" 
+                            stroke="#ef4444" 
+                            fill="#ef4444" 
+                            fillOpacity={0.1} 
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="projected" 
+                            stroke="#3b82f6" 
+                            strokeWidth={2}
+                            dot={{ fill: '#3b82f6', r: 2 }}
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <div className="w-2 h-2 sm:w-3 sm:h-3 bg-blue-500 rounded flex-shrink-0"></div>
+                        <span>Förväntad utveckling</span>
+                      </div>
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <div className="w-2 h-2 sm:w-3 sm:h-3 bg-green-500/20 border border-green-500 rounded flex-shrink-0"></div>
+                        <span>Optimistiskt scenario</span>
+                      </div>
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <div className="w-2 h-2 sm:w-3 sm:h-3 bg-red-500/20 border border-red-500 rounded flex-shrink-0"></div>
+                        <span>Pessimistiskt scenario</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        ) : (
-          <div className="text-center py-6 sm:py-8">
-            <Target className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-4 opacity-50" />
-            <p className="text-muted-foreground mb-4 text-sm sm:text-base">Inga prognoser genererade än</p>
-            <Button onClick={generatePredictions} disabled={loading} className="text-xs sm:text-sm">
-              <Brain className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-              Generera AI-prognoser
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                </TabsContent>
+              </Tabs>
+            </div>
+          ) : (
+            <div className="text-center py-4 sm:py-6 md:py-8">
+              <Target className="w-6 h-6 sm:w-8 sm:h-8 md:w-12 md:h-12 mx-auto mb-3 sm:mb-4 opacity-50" />
+              <p className="text-muted-foreground mb-3 sm:mb-4 text-xs sm:text-sm md:text-base">Inga prognoser genererade än</p>
+              <Button onClick={generatePredictions} disabled={loading} className="text-xs sm:text-sm">
+                <Brain className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                Generera AI-prognoser
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

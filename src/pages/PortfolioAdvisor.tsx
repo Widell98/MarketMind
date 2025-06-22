@@ -83,13 +83,13 @@ const PortfolioAdvisor = () => {
   if (!riskProfile || showAssessment) {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-6 max-w-4xl">
-          <div className="mb-6 text-center">
-            <h1 className="text-2xl md:text-3xl font-bold mb-2 flex items-center justify-center gap-2">
-              <Zap className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
-              AI Portfolio Advisor
+        <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 max-w-4xl">
+          <div className="mb-4 sm:mb-6 text-center">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 flex items-center justify-center gap-2">
+              <Zap className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-blue-600 flex-shrink-0" />
+              <span className="leading-tight">AI Portfolio Advisor</span>
             </h1>
-            <p className="text-sm md:text-base text-muted-foreground px-4">
+            <p className="text-xs sm:text-sm md:text-base text-muted-foreground px-2 sm:px-4">
               Avancerad AI-driven investeringsrådgivning med prediktiv analys och realtidsmarknadsdata
             </p>
           </div>
@@ -134,107 +134,133 @@ const PortfolioAdvisor = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-7xl">
-        <div className="mb-4 sm:mb-6">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-1 sm:mb-2 flex items-center gap-2">
-            <Zap className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-blue-600" />
-            <span className="leading-tight">AI Portfolio Advisor</span>
-          </h1>
-          <p className="text-xs sm:text-sm md:text-base text-muted-foreground">
-            Din AI-drivna investeringsdashboard med prediktiv analys och realtidsmarknadsdata
-          </p>
-        </div>
-
-        <Tabs defaultValue="dashboard" className="space-y-3 sm:space-y-4">
-          <div className="overflow-x-auto">
-            <TabsList className="grid grid-cols-6 w-full min-w-max sm:min-w-0 h-auto p-1">
-              <TabsTrigger value="dashboard" className="flex flex-col items-center gap-1 text-xs py-2 px-2 min-w-0">
-                <BarChart3 className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">Dashboard</span>
-              </TabsTrigger>
-              <TabsTrigger value="subscription" className="flex flex-col items-center gap-1 text-xs py-2 px-2 min-w-0">
-                <CreditCard className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">Subscription</span>
-              </TabsTrigger>
-              <TabsTrigger value="chat" className="flex flex-col items-center gap-1 text-xs py-2 px-2 min-w-0">
-                <MessageSquare className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">AI Chat</span>
-              </TabsTrigger>
-              <TabsTrigger value="insights" className="flex flex-col items-center gap-1 text-xs py-2 px-2 min-w-0">
-                <Lightbulb className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">Insights</span>
-              </TabsTrigger>
-              <TabsTrigger value="analytics" className="flex flex-col items-center gap-1 text-xs py-2 px-2 min-w-0">
-                <TrendingUp className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">Predictive</span>
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="flex flex-col items-center gap-1 text-xs py-2 px-2 min-w-0">
-                <Settings className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">Settings</span>
-              </TabsTrigger>
-            </TabsList>
+      <div className="w-full min-h-screen">
+        <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4 max-w-7xl">
+          {/* Header - Improved mobile spacing */}
+          <div className="mb-3 sm:mb-4 md:mb-6">
+            <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-1 flex items-center gap-1 sm:gap-2">
+              <Zap className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-8 lg:h-8 text-blue-600 flex-shrink-0" />
+              <span className="leading-tight truncate">AI Portfolio Advisor</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+              Din AI-drivna investeringsdashboard med prediktiv analys och realtidsmarknadsdata
+            </p>
           </div>
 
-          <TabsContent value="dashboard" className="space-y-3 sm:space-y-4 mt-3 sm:mt-4">
-            <EnhancedPortfolioDashboard portfolio={activePortfolio} recommendations={recommendations} />
-          </TabsContent>
+          {/* Tabs - Improved mobile layout */}
+          <Tabs defaultValue="dashboard" className="w-full space-y-2 sm:space-y-4">
+            {/* Horizontal scrolling tabs for mobile */}
+            <div className="w-full overflow-x-auto pb-1">
+              <TabsList className="flex w-max min-w-full sm:grid sm:grid-cols-6 sm:w-full h-auto p-1 gap-0.5 sm:gap-1">
+                <TabsTrigger value="dashboard" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
+                  <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <span className="hidden xs:block">Dashboard</span>
+                  <span className="xs:hidden">Dash</span>
+                </TabsTrigger>
+                <TabsTrigger value="subscription" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
+                  <CreditCard className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <span className="hidden xs:block">Subscription</span>
+                  <span className="xs:hidden">Sub</span>
+                </TabsTrigger>
+                <TabsTrigger value="chat" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
+                  <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <span className="hidden xs:block">AI Chat</span>
+                  <span className="xs:hidden">Chat</span>
+                </TabsTrigger>
+                <TabsTrigger value="insights" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
+                  <Lightbulb className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <span className="hidden xs:block">Insights</span>
+                  <span className="xs:hidden">Tips</span>
+                </TabsTrigger>
+                <TabsTrigger value="analytics" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
+                  <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <span className="hidden xs:block">Predictive</span>
+                  <span className="xs:hidden">Pred</span>
+                </TabsTrigger>
+                <TabsTrigger value="settings" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
+                  <Settings className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <span className="hidden xs:block">Settings</span>
+                  <span className="xs:hidden">Set</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
-          <TabsContent value="subscription" className="space-y-3 sm:space-y-4 mt-3 sm:mt-4">
-            <SubscriptionCard />
-          </TabsContent>
-
-          <TabsContent value="chat" className="space-y-3 sm:space-y-4 mt-3 sm:mt-4">
-            <AIChat portfolioId={activePortfolio?.id} />
-          </TabsContent>
-
-          <TabsContent value="insights" className="space-y-3 sm:space-y-4 mt-3 sm:mt-4">
-            <AIInsightsPanel portfolioId={activePortfolio?.id} />
-          </TabsContent>
-
-          <TabsContent value="analytics" className="space-y-3 sm:space-y-4 mt-3 sm:mt-4">
-            <PredictiveAnalytics portfolioId={activePortfolio?.id} />
-          </TabsContent>
-
-          <TabsContent value="settings" className="space-y-3 sm:space-y-4 mt-3 sm:mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base sm:text-lg md:text-xl">Portfolio Settings</CardTitle>
-                <CardDescription className="text-xs sm:text-sm">Hantera din riskprofil och portföljpreferenser</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button 
-                  variant="outline"
-                  onClick={() => setShowAssessment(true)}
-                  className="w-full text-xs sm:text-sm"
-                >
-                  Gör om förbättrad riskbedömning
-                </Button>
-                
-                <div className="mt-4 p-3 sm:p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                  <h4 className="font-medium mb-2 text-sm sm:text-base">Din nuvarande profil</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
-                    <div className="flex justify-between sm:block">
-                      <span className="text-muted-foreground">Ålder:</span> 
-                      <span className="sm:block">{riskProfile.age || 'Ej angivet'}</span>
-                    </div>
-                    <div className="flex justify-between sm:block">
-                      <span className="text-muted-foreground">Risktolerans:</span> 
-                      <span className="sm:block">{riskProfile.risk_tolerance || 'Ej angivet'}</span>
-                    </div>
-                    <div className="flex justify-between sm:block">
-                      <span className="text-muted-foreground">Tidshorisont:</span> 
-                      <span className="sm:block">{riskProfile.investment_horizon || 'Ej angivet'}</span>
-                    </div>
-                    <div className="flex justify-between sm:block">
-                      <span className="text-muted-foreground">Erfarenhet:</span> 
-                      <span className="sm:block">{riskProfile.investment_experience || 'Ej angivet'}</span>
-                    </div>
-                  </div>
+            {/* Tab Content - Better mobile spacing */}
+            <div className="w-full">
+              <TabsContent value="dashboard" className="mt-2 sm:mt-4 focus-visible:outline-none">
+                <div className="w-full">
+                  <EnhancedPortfolioDashboard portfolio={activePortfolio} recommendations={recommendations} />
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              </TabsContent>
+
+              <TabsContent value="subscription" className="mt-2 sm:mt-4 focus-visible:outline-none">
+                <div className="w-full">
+                  <SubscriptionCard />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="chat" className="mt-2 sm:mt-4 focus-visible:outline-none">
+                <div className="w-full">
+                  <AIChat portfolioId={activePortfolio?.id} />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="insights" className="mt-2 sm:mt-4 focus-visible:outline-none">
+                <div className="w-full">
+                  <AIInsightsPanel portfolioId={activePortfolio?.id} />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="analytics" className="mt-2 sm:mt-4 focus-visible:outline-none">
+                <div className="w-full">
+                  <PredictiveAnalytics portfolioId={activePortfolio?.id} />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="settings" className="mt-2 sm:mt-4 focus-visible:outline-none">
+                <div className="w-full">
+                  <Card>
+                    <CardHeader className="p-3 sm:p-6">
+                      <CardTitle className="text-sm sm:text-base md:text-lg lg:text-xl">Portfolio Settings</CardTitle>
+                      <CardDescription className="text-xs sm:text-sm">Hantera din riskprofil och portföljpreferenser</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-3 sm:p-6 pt-0 space-y-3 sm:space-y-4">
+                      <Button 
+                        variant="outline"
+                        onClick={() => setShowAssessment(true)}
+                        className="w-full text-xs sm:text-sm"
+                      >
+                        Gör om förbättrad riskbedömning
+                      </Button>
+                      
+                      <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                        <h4 className="font-medium mb-2 text-xs sm:text-sm md:text-base">Din nuvarande profil</h4>
+                        <div className="grid grid-cols-1 gap-2 text-xs sm:text-sm">
+                          <div className="flex justify-between items-center py-1">
+                            <span className="text-muted-foreground">Ålder:</span> 
+                            <span className="font-medium">{riskProfile.age || 'Ej angivet'}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-1">
+                            <span className="text-muted-foreground">Risktolerans:</span> 
+                            <span className="font-medium">{riskProfile.risk_tolerance || 'Ej angivet'}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-1">
+                            <span className="text-muted-foreground">Tidshorisont:</span> 
+                            <span className="font-medium">{riskProfile.investment_horizon || 'Ej angivet'}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-1">
+                            <span className="text-muted-foreground">Erfarenhet:</span> 
+                            <span className="font-medium">{riskProfile.investment_experience || 'Ej angivet'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
       </div>
     </Layout>
   );
