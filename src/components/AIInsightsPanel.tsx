@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -342,6 +343,8 @@ const AIInsightsPanel: React.FC<AIInsightsPanelProps> = ({ portfolioId }) => {
                               variant="ghost"
                               size="sm"
                               onClick={() => markAsRead(insight.id)}
+                            >
+                              <Eye className="w-3 h-3" />
                             </Button>
                           )}
                         </div>
