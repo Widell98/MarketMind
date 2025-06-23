@@ -93,9 +93,9 @@ const Index = () => {
 
         {/* Main Features Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Stock Cases Section */}
-          <Card className="border-2 border-blue-100 dark:border-blue-900">
-            <CardHeader>
+          {/* Stock Cases Section - Enhanced */}
+          <Card className="border-2 border-blue-100 dark:border-blue-900 lg:col-span-1">
+            <CardHeader className="pb-4">
               <div className="flex items-center gap-2 mb-2">
                 <BookOpen className="w-6 h-6 text-blue-600" />
                 <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
@@ -181,6 +181,50 @@ const Index = () => {
           </Card>
         </div>
 
+        {/* Enhanced Stock Cases Display Section */}
+        <div className="space-y-6">
+          <div className="text-center space-y-4">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">
+              Discover Popular Stock Cases
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+              Explore trending and latest investment cases from our community of experts and learn from real market scenarios.
+            </p>
+          </div>
+
+          {/* Desktop: Enhanced side-by-side layout */}
+          <div className="hidden md:grid md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <TrendingCases />
+            </div>
+            <div className="space-y-4">
+              <LatestCases />
+            </div>
+          </div>
+
+          {/* Mobile: Tabs layout with larger cards */}
+          <div className="md:hidden">
+            <Tabs defaultValue="trending" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="trending" className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4" />
+                  Trending
+                </TabsTrigger>
+                <TabsTrigger value="latest" className="flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Latest
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="trending" className="mt-0">
+                <TrendingCases />
+              </TabsContent>
+              <TabsContent value="latest" className="mt-0">
+                <LatestCases />
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+
         {/* AI Portfolio Detailed Feature Section */}
         <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 rounded-2xl p-6 md:p-8">
           <div className="text-center mb-8">
@@ -233,50 +277,9 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Mobile: Show both Trending and Latest Cases in tabs */}
-        <div className="md:hidden">
-          <Tabs defaultValue="trending" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="trending" className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" />
-                Trending
-              </TabsTrigger>
-              <TabsTrigger value="latest" className="flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                Latest
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="trending" className="mt-4">
-              <TrendingCases />
-            </TabsContent>
-            <TabsContent value="latest" className="mt-4">
-              <LatestCases />
-            </TabsContent>
-          </Tabs>
-        </div>
-
         {/* Stats Section - Less prominent on mobile */}
         <div className="hidden md:block">
           <CommunityStats />
-        </div>
-
-        {/* Main Content Grid - Stock Cases Focus */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column - Stock Cases */}
-          <div className="space-y-6">
-            {/* Desktop: Show trending cases here */}
-            <div className="hidden md:block">
-              <TrendingCases />
-            </div>
-          </div>
-
-          {/* Right Column - Latest Cases */}
-          <div className="space-y-6">
-            {/* Desktop: Show latest cases */}
-            <div className="hidden md:block">
-              <LatestCases />
-            </div>
-          </div>
         </div>
       </div>
     </Layout>
