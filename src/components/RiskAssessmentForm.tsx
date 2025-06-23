@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,7 +47,8 @@ const RiskAssessmentForm: React.FC<RiskAssessmentFormProps> = ({ onComplete }) =
     portfolio_change_frequency: '',
     activity_preference: '',
     investment_style_preference: '',
-    overexposure_awareness: ''
+    overexposure_awareness: '',
+    preferred_stock_count: ''
   });
 
   const steps = [
@@ -126,6 +128,7 @@ const RiskAssessmentForm: React.FC<RiskAssessmentFormProps> = ({ onComplete }) =
         activity_preference: formData.activity_preference || null,
         investment_style_preference: formData.investment_style_preference || null,
         overexposure_awareness: formData.overexposure_awareness || null,
+        preferred_stock_count: formData.preferred_stock_count ? parseInt(formData.preferred_stock_count) : null,
         current_holdings: [],
         current_allocation: {}
       };
