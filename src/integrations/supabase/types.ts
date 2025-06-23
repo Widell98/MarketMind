@@ -769,6 +769,7 @@ export type Database = {
           overexposure_awareness: string | null
           panic_selling_history: boolean | null
           portfolio_change_frequency: string | null
+          preferred_stock_count: number | null
           risk_comfort_level: number | null
           risk_tolerance: string | null
           sector_interests: Json | null
@@ -803,6 +804,7 @@ export type Database = {
           overexposure_awareness?: string | null
           panic_selling_history?: boolean | null
           portfolio_change_frequency?: string | null
+          preferred_stock_count?: number | null
           risk_comfort_level?: number | null
           risk_tolerance?: string | null
           sector_interests?: Json | null
@@ -837,6 +839,7 @@ export type Database = {
           overexposure_awareness?: string | null
           panic_selling_history?: boolean | null
           portfolio_change_frequency?: string | null
+          preferred_stock_count?: number | null
           risk_comfort_level?: number | null
           risk_tolerance?: string | null
           sector_interests?: Json | null

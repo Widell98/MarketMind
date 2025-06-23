@@ -25,6 +25,9 @@ export interface RiskProfile {
   investment_goal: 'growth' | 'income' | 'preservation' | 'balanced' | null;
   monthly_investment_amount: number | null;
   
+  // Portföljpreferenser
+  preferred_stock_count: number | null;
+  
   // Riskprofil och psykologi
   risk_tolerance: 'conservative' | 'moderate' | 'aggressive' | null;
   risk_comfort_level: number | null;
