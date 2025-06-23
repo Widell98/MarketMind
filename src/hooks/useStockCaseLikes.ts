@@ -13,39 +13,37 @@ export const useStockCaseLikes = (stockCaseId: string) => {
 
   const fetchLikeData = async () => {
     try {
-      // Get like count
+      // Get total like count for this case
       const { data: countData, error: countError } = await supabase
         .rpc('get_stock_case_like_count', { case_id: stockCaseId });
 
       if (countError) {
         console.error('Error fetching like count:', countError);
-        // Don't throw error for like count - just log it
         setLikeCount(0);
       } else {
         setLikeCount(countData || 0);
       }
 
-      // Check if current user has liked (only if authenticated)
+      // Check if current user has liked this case (only if authenticated)
       if (user) {
         const { data: likedData, error: likedError } = await supabase
-          .rpc('user_has_liked_case', { 
-            case_id: stockCaseId, 
-            user_id: user.id 
-          });
+          .from('stock_case_likes')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('stock_case_id', stockCaseId)
+          .maybeSingle();
 
         if (likedError) {
           console.error('Error checking like status:', likedError);
           setIsLiked(false);
         } else {
-          setIsLiked(likedData || false);
+          setIsLiked(!!likedData);
         }
       } else {
-        // If no user, reset like state
         setIsLiked(false);
       }
     } catch (error: any) {
       console.error('Error fetching like data:', error);
-      // Security: Don't expose internal errors to user
       setLikeCount(0);
       setIsLiked(false);
     }
@@ -61,7 +59,6 @@ export const useStockCaseLikes = (stockCaseId: string) => {
       return;
     }
 
-    // Security: Validate stockCaseId
     if (!stockCaseId || stockCaseId.trim() === '') {
       toast({
         title: "Fel",
@@ -75,7 +72,7 @@ export const useStockCaseLikes = (stockCaseId: string) => {
 
     try {
       if (isLiked) {
-        // Remove like - RLS ensures user can only delete their own likes
+        // Unlike - remove the like
         const { error } = await supabase
           .from('stock_case_likes')
           .delete()
@@ -83,10 +80,6 @@ export const useStockCaseLikes = (stockCaseId: string) => {
           .eq('stock_case_id', stockCaseId);
 
         if (error) {
-          // Security: Check for specific error types
-          if (error.code === '42501') {
-            throw new Error('Du har inte behörighet att utföra denna åtgärd');
-          }
           throw error;
         }
 
@@ -98,7 +91,7 @@ export const useStockCaseLikes = (stockCaseId: string) => {
           description: "Du gillar inte längre detta aktiecase",
         });
       } else {
-        // Add like - RLS ensures user can only create likes for themselves
+        // Like - add the like
         const { error } = await supabase
           .from('stock_case_likes')
           .insert({
@@ -107,10 +100,6 @@ export const useStockCaseLikes = (stockCaseId: string) => {
           });
 
         if (error) {
-          // Security: Check for specific error types
-          if (error.code === '42501') {
-            throw new Error('Du har inte behörighet att utföra denna åtgärd');
-          }
           if (error.code === '23505') {
             // Duplicate entry - user already likes this case
             setIsLiked(true);
@@ -130,14 +119,9 @@ export const useStockCaseLikes = (stockCaseId: string) => {
     } catch (error: any) {
       console.error('Error toggling like:', error);
       
-      // Security: Don't expose internal error details
-      const userMessage = error.message?.includes('behörighet') 
-        ? error.message 
-        : "Kunde inte uppdatera gillning. Försök igen.";
-        
       toast({
         title: "Fel",
-        description: userMessage,
+        description: "Kunde inte uppdatera gillning. Försök igen.",
         variant: "destructive",
       });
     } finally {
@@ -148,16 +132,23 @@ export const useStockCaseLikes = (stockCaseId: string) => {
   useEffect(() => {
     if (stockCaseId && stockCaseId.trim() !== '') {
       fetchLikeData();
+    } else {
+      setLikeCount(0);
+      setIsLiked(false);
     }
   }, [stockCaseId, user?.id]);
 
-  // Cleanup effect when component unmounts or user changes
+  // Reset state when user changes
   useEffect(() => {
-    return () => {
-      setLikeCount(0);
+    if (!user) {
       setIsLiked(false);
       setLoading(false);
-    };
+    } else {
+      // Refetch when user changes
+      if (stockCaseId && stockCaseId.trim() !== '') {
+        fetchLikeData();
+      }
+    }
   }, [user?.id]);
 
   return {

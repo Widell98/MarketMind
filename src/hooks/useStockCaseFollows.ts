@@ -11,40 +11,30 @@ export const useStockCaseFollows = (stockCaseId: string) => {
   const { user } = useAuth();
 
   const fetchFollowStatus = async () => {
-    // If no user, definitely not following
     if (!user) {
-      console.log('No user logged in, setting isFollowing to false');
       setIsFollowing(false);
       return;
     }
 
-    // If no stockCaseId, can't determine follow status
     if (!stockCaseId || stockCaseId.trim() === '') {
-      console.log('No stockCaseId provided, setting isFollowing to false');
       setIsFollowing(false);
       return;
     }
 
     try {
-      console.log(`Checking follow status for user ${user.id} and case ${stockCaseId}`);
-      
-      // Use the secure database function which respects RLS policies
-      const { data: followingData, error: followingError } = await supabase
-        .rpc('user_follows_case', { case_id: stockCaseId, user_id: user.id });
+      // Check if current user follows this case
+      const { data: followData, error: followError } = await supabase
+        .from('stock_case_follows')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('stock_case_id', stockCaseId)
+        .maybeSingle();
 
-      if (followingError) {
-        console.error('Error checking follow status:', followingError);
-        // Handle RLS policy errors gracefully
-        if (followingError.code === '42501' || followingError.message?.includes('permission')) {
-          console.log('RLS policy restricting access - user not following');
-          setIsFollowing(false);
-        } else {
-          setIsFollowing(false);
-        }
+      if (followError) {
+        console.error('Error checking follow status:', followError);
+        setIsFollowing(false);
       } else {
-        const followStatus = followingData || false;
-        console.log(`Follow status result: ${followStatus}`);
-        setIsFollowing(followStatus);
+        setIsFollowing(!!followData);
       }
     } catch (error: any) {
       console.error('Error fetching follow status:', error);
@@ -62,7 +52,6 @@ export const useStockCaseFollows = (stockCaseId: string) => {
       return;
     }
 
-    // Security: Validate stockCaseId
     if (!stockCaseId || stockCaseId.trim() === '') {
       toast({
         title: "Fel",
@@ -76,9 +65,7 @@ export const useStockCaseFollows = (stockCaseId: string) => {
 
     try {
       if (isFollowing) {
-        // Unfollow - RLS policy ensures users can only delete their own follows
-        console.log(`Unfollowing case ${stockCaseId} for user ${user.id}`);
-        
+        // Unfollow - remove the follow
         const { error } = await supabase
           .from('stock_case_follows')
           .delete()
@@ -86,9 +73,6 @@ export const useStockCaseFollows = (stockCaseId: string) => {
           .eq('user_id', user.id);
 
         if (error) {
-          if (error.code === '42501') {
-            throw new Error('Du har inte behörighet att utföra denna åtgärd');
-          }
           throw error;
         }
 
@@ -99,9 +83,7 @@ export const useStockCaseFollows = (stockCaseId: string) => {
           description: "Du följer inte längre detta aktiecase",
         });
       } else {
-        // Follow - RLS policy ensures users can only create follows for themselves
-        console.log(`Following case ${stockCaseId} for user ${user.id}`);
-        
+        // Follow - add the follow
         const { error } = await supabase
           .from('stock_case_follows')
           .insert({
@@ -110,12 +92,8 @@ export const useStockCaseFollows = (stockCaseId: string) => {
           });
 
         if (error) {
-          if (error.code === '42501') {
-            throw new Error('Du har inte behörighet att utföra denna åtgärd');
-          }
           if (error.code === '23505') {
             // Duplicate entry - user already follows this case
-            console.log('User already follows this case, setting state to true');
             setIsFollowing(true);
             return;
           }
@@ -132,13 +110,9 @@ export const useStockCaseFollows = (stockCaseId: string) => {
     } catch (error: any) {
       console.error('Error toggling follow:', error);
       
-      const userMessage = error.message?.includes('behörighet') 
-        ? error.message 
-        : "Kunde inte uppdatera följning. Försök igen.";
-        
       toast({
         title: "Fel",
-        description: userMessage,
+        description: "Kunde inte uppdatera följning. Försök igen.",
         variant: "destructive",
       });
     } finally {
@@ -147,33 +121,25 @@ export const useStockCaseFollows = (stockCaseId: string) => {
   };
 
   useEffect(() => {
-    console.log(`useStockCaseFollows effect triggered - stockCaseId: ${stockCaseId}, user: ${user?.id}`);
-    
     if (stockCaseId && stockCaseId.trim() !== '') {
       fetchFollowStatus();
     } else {
-      // Reset state if no valid stockCaseId
       setIsFollowing(false);
     }
   }, [stockCaseId, user?.id]);
 
-  // Enhanced cleanup effect when user changes or component unmounts
-  useEffect(() => {
-    return () => {
-      console.log('Cleaning up useStockCaseFollows state');
-      setIsFollowing(false);
-      setLoading(false);
-    };
-  }, [user?.id]);
-
-  // Additional effect to handle user logout
+  // Reset state when user changes
   useEffect(() => {
     if (!user) {
-      console.log('User logged out, resetting follow state');
       setIsFollowing(false);
       setLoading(false);
+    } else {
+      // Refetch when user changes
+      if (stockCaseId && stockCaseId.trim() !== '') {
+        fetchFollowStatus();
+      }
     }
-  }, [user]);
+  }, [user?.id]);
 
   return {
     isFollowing,
