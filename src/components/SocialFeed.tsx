@@ -13,6 +13,24 @@ interface SocialFeedProps {
   limit?: number;
 }
 
+type PostData = {
+  id: string;
+  user_id: string;
+  title: string;
+  content: string;
+  post_type: string;
+  stock_case_id?: string;
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+  profiles?: {
+    id: string;
+    username: string;
+    display_name?: string;
+    bio?: string;
+  } | null;
+};
+
 const SocialFeed = ({ limit = 10 }: SocialFeedProps) => {
   const navigate = useNavigate();
 
@@ -23,7 +41,7 @@ const SocialFeed = ({ limit = 10 }: SocialFeedProps) => {
         .from('posts')
         .select(`
           *,
-          profiles (
+          profiles!posts_user_id_fkey (
             id,
             username,
             display_name,
@@ -35,7 +53,7 @@ const SocialFeed = ({ limit = 10 }: SocialFeedProps) => {
         .limit(limit);
 
       if (error) throw error;
-      return data || [];
+      return (data || []) as PostData[];
     },
   });
 
@@ -118,7 +136,7 @@ const SocialFeed = ({ limit = 10 }: SocialFeedProps) => {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <h4 className="font-semibold text-sm">
-                      {post.profiles?.display_name || post.profiles?.username}
+                      {post.profiles?.display_name || post.profiles?.username || 'Anonymous User'}
                     </h4>
                     <Badge variant="secondary" className="text-xs">
                       {post.post_type === 'reflection' && 'Reflection'}

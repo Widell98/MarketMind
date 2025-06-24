@@ -45,7 +45,14 @@ export const usePosts = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setPosts(data || []);
+      
+      // Cast and validate the data
+      const validatedPosts: Post[] = (data || []).map(post => ({
+        ...post,
+        post_type: post.post_type as 'reflection' | 'case_analysis' | 'market_insight'
+      }));
+      
+      setPosts(validatedPosts);
     } catch (error: any) {
       console.error('Error fetching posts:', error);
       toast({
