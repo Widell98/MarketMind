@@ -16,14 +16,14 @@ interface SocialFeedProps {
 const SocialFeed = ({ limit = 10 }: SocialFeedProps) => {
   const navigate = useNavigate();
 
-  const { data: posts, loading } = useQuery({
+  const { data: posts, isLoading } = useQuery({
     queryKey: ['social-feed', limit],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('posts')
         .select(`
           *,
-          profiles!posts_user_id_fkey (
+          profiles (
             id,
             username,
             display_name,
@@ -39,7 +39,7 @@ const SocialFeed = ({ limit = 10 }: SocialFeedProps) => {
     },
   });
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Card>
         <CardHeader>
