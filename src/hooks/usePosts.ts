@@ -19,7 +19,7 @@ export type Post = {
     username: string;
     display_name?: string;
     bio?: string;
-  };
+  } | null;
 };
 
 export const usePosts = () => {
@@ -34,7 +34,7 @@ export const usePosts = () => {
         .from('posts')
         .select(`
           *,
-          profiles!posts_user_id_fkey (
+          profiles (
             id,
             username,
             display_name,
@@ -46,10 +46,23 @@ export const usePosts = () => {
 
       if (error) throw error;
       
-      // Cast and validate the data
+      // Transform and validate the data
       const validatedPosts: Post[] = (data || []).map(post => ({
-        ...post,
-        post_type: post.post_type as 'reflection' | 'case_analysis' | 'market_insight'
+        id: post.id,
+        user_id: post.user_id,
+        title: post.title,
+        content: post.content,
+        post_type: post.post_type as 'reflection' | 'case_analysis' | 'market_insight',
+        stock_case_id: post.stock_case_id,
+        is_public: post.is_public,
+        created_at: post.created_at,
+        updated_at: post.updated_at,
+        profiles: post.profiles ? {
+          id: post.profiles.id,
+          username: post.profiles.username,
+          display_name: post.profiles.display_name,
+          bio: post.profiles.bio
+        } : null
       }));
       
       setPosts(validatedPosts);

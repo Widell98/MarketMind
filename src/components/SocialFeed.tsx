@@ -41,7 +41,7 @@ const SocialFeed = ({ limit = 10 }: SocialFeedProps) => {
         .from('posts')
         .select(`
           *,
-          profiles!posts_user_id_fkey (
+          profiles (
             id,
             username,
             display_name,
@@ -53,7 +53,25 @@ const SocialFeed = ({ limit = 10 }: SocialFeedProps) => {
         .limit(limit);
 
       if (error) throw error;
-      return (data || []) as PostData[];
+      
+      // Transform the data to ensure proper typing
+      return (data || []).map(post => ({
+        id: post.id,
+        user_id: post.user_id,
+        title: post.title,
+        content: post.content,
+        post_type: post.post_type,
+        stock_case_id: post.stock_case_id,
+        is_public: post.is_public,
+        created_at: post.created_at,
+        updated_at: post.updated_at,
+        profiles: post.profiles ? {
+          id: post.profiles.id,
+          username: post.profiles.username,
+          display_name: post.profiles.display_name,
+          bio: post.profiles.bio
+        } : null
+      })) as PostData[];
     },
   });
 
@@ -124,7 +142,7 @@ const SocialFeed = ({ limit = 10 }: SocialFeedProps) => {
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          {posts.map((post) => (
+          {posts?.map((post) => (
             <div key={post.id} className="border-b last:border-b-0 pb-4 last:pb-0">
               {/* Post Header */}
               <div className="flex items-center space-x-3 mb-3">
