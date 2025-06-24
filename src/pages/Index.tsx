@@ -3,13 +3,12 @@ import React from 'react';
 import Layout from '@/components/Layout';
 import TrendingCases from '@/components/TrendingCases';
 import LatestCases from '@/components/LatestCases';
-import SocialFeed from '@/components/SocialFeed';
 import CommunityStats from '@/components/CommunityStats';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, Users, Target, Clock, Brain, Shield, BarChart3, Zap, CheckCircle, ArrowRight, Star, MessageSquare, Plus } from 'lucide-react';
+import { TrendingUp, Users, BookOpen, Target, Clock, Brain, Shield, BarChart3, Zap, CheckCircle, ArrowRight, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
@@ -19,9 +18,9 @@ const Index = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Fetch real data for stats
+  // Fetch real data for mobile stats
   const { data: memberCount } = useQuery({
-    queryKey: ['community-members'],
+    queryKey: ['community-members-mobile'],
     queryFn: async () => {
       const { count, error } = await supabase
         .from('profiles')
@@ -33,22 +32,10 @@ const Index = () => {
   });
 
   const { data: totalCases } = useQuery({
-    queryKey: ['total-cases'],
+    queryKey: ['total-cases-mobile'],
     queryFn: async () => {
       const { count, error } = await supabase
         .from('stock_cases')
-        .select('*', { count: 'exact', head: true });
-      
-      if (error) throw error;
-      return count || 0;
-    },
-  });
-
-  const { data: totalPosts } = useQuery({
-    queryKey: ['total-posts'],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('posts')
         .select('*', { count: 'exact', head: true });
       
       if (error) throw error;
@@ -64,7 +51,7 @@ const Index = () => {
     },
     {
       icon: Shield,
-      title: "Risk Assessment", 
+      title: "Risk Assessment",
       description: "Identify potential risks and get personalized recommendations to protect your investments"
     },
     {
@@ -81,7 +68,7 @@ const Index = () => {
 
   const benefits = [
     "Real-time portfolio analysis powered by advanced AI",
-    "Personalized investment recommendations based on your risk profile", 
+    "Personalized investment recommendations based on your risk profile",
     "Market trend predictions and timing insights",
     "Automated rebalancing suggestions",
     "24/7 AI assistant for investment questions"
@@ -90,128 +77,54 @@ const Index = () => {
   return (
     <Layout>
       <div className="space-y-8">
-        {/* Hero Section - Social Investment Platform */}
+        {/* Unified Header Section */}
         <div className="text-center space-y-6 py-8">
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-gray-100">
-            The Social{' '}
+            Learn Through{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-              Investment
+              Real Cases
             </span>
-            {' '}Platform
+            {' '}& AI Insights
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto px-4">
-            Connect with investors, share your cases, get AI-powered portfolio advice, and learn from the community.
+            Discover real stock cases, analyze market scenarios, and get AI-powered portfolio advice all in one platform.
           </p>
-          
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-8">
-            {!user ? (
-              <>
-                <Button 
-                  size="lg" 
-                  onClick={() => navigate('/auth')}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                >
-                  <Users className="w-5 h-5 mr-2" />
-                  Join Community
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="lg"
-                  onClick={() => navigate('/stock-cases')}
-                >
-                  Explore Cases
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button 
-                  size="lg" 
-                  onClick={() => navigate('/community')}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                >
-                  <MessageSquare className="w-5 h-5 mr-2" />
-                  View Community Feed
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="lg"
-                  onClick={() => navigate('/profile')}
-                >
-                  <Plus className="w-5 h-5 mr-2" />
-                  Create Post
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Community Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-blue-600 mb-2">{memberCount || 0}</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Active Members</div>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-green-600 mb-2">{totalCases || 0}</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Investment Cases</div>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-purple-600 mb-2">{totalPosts || 0}</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Community Posts</div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Main Features Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Social Community Section */}
-          <Card className="border-2 border-blue-100 dark:border-blue-900">
+          {/* Stock Cases Section - Enhanced */}
+          <Card className="border-2 border-blue-100 dark:border-blue-900 lg:col-span-1">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-2 mb-2">
-                <Users className="w-6 h-6 text-blue-600" />
+                <BookOpen className="w-6 h-6 text-blue-600" />
                 <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                  Social Community
+                  Learn by Doing
                 </Badge>
               </div>
-              <CardTitle className="text-2xl">Investment Community</CardTitle>
+              <CardTitle className="text-2xl">Stock Market Cases</CardTitle>
               <CardDescription className="text-base">
-                Share your investment cases, insights, and learn from other investors in our vibrant community.
+                Learn through real investment scenarios and build your financial knowledge with interactive cases.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {user ? (
-                <SocialFeed limit={3} />
-              ) : (
-                <div className="text-center p-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <MessageSquare className="w-12 h-12 mx-auto text-blue-600 mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    Join our community to see posts and engage with other investors
-                  </p>
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4">
+                  <div className="text-2xl font-bold text-blue-600">{totalCases || 0}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Real Cases</div>
                 </div>
-              )}
+                <div className="bg-green-50 dark:bg-green-950 rounded-lg p-4">
+                  <div className="text-2xl font-bold text-green-600">{memberCount || 0}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Active Learners</div>
+                </div>
+              </div>
               <Button 
                 size="lg" 
-                onClick={() => user ? navigate('/community') : navigate('/auth')}
+                onClick={() => navigate('/stock-cases')}
                 className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
               >
-                {user ? (
-                  <>
-                    <MessageSquare className="w-5 h-5 mr-2" />
-                    View Full Community Feed
-                  </>
-                ) : (
-                  <>
-                    <Users className="w-5 h-5 mr-2" />
-                    Join Community
-                  </>
-                )}
+                <BookOpen className="w-5 h-5 mr-2" />
+                Explore Stock Cases
               </Button>
             </CardContent>
           </Card>
@@ -268,24 +181,28 @@ const Index = () => {
           </Card>
         </div>
 
-        {/* Stock Cases Display Section */}
+        {/* Enhanced Stock Cases Display Section */}
         <div className="space-y-6">
           <div className="text-center space-y-4">
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">
-              Discover Investment Cases
+              Discover Popular Stock Cases
             </h2>
             <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              Explore trending and latest investment cases shared by our community of investors.
+              Explore trending and latest investment cases from our community of experts and learn from real market scenarios.
             </p>
           </div>
 
-          {/* Desktop: side-by-side layout */}
+          {/* Desktop: Enhanced side-by-side layout */}
           <div className="hidden md:grid md:grid-cols-2 gap-8">
-            <TrendingCases />
-            <LatestCases />
+            <div className="space-y-4">
+              <TrendingCases />
+            </div>
+            <div className="space-y-4">
+              <LatestCases />
+            </div>
           </div>
 
-          {/* Mobile: Tabs layout */}
+          {/* Mobile: Tabs layout with larger cards */}
           <div className="md:hidden">
             <Tabs defaultValue="trending" className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-6">
@@ -342,6 +259,27 @@ const Index = () => {
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Mobile: Show compact stats */}
+        <div className="md:hidden">
+          <div className="flex justify-center gap-8 text-sm text-gray-600 dark:text-gray-400 py-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <span className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-purple-500" />
+              <span className="font-medium">{totalCases || 0}</span>
+              <span className="hidden xs:inline">Cases</span>
+            </span>
+            <span className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-blue-500" />
+              <span className="font-medium">{memberCount || 0}</span>
+              <span className="hidden xs:inline">Members</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Stats Section - Less prominent on mobile */}
+        <div className="hidden md:block">
+          <CommunityStats />
         </div>
       </div>
     </Layout>
