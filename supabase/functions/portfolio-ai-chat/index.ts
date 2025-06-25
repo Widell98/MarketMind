@@ -16,6 +16,14 @@ serve(async (req) => {
   try {
     const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe } = await req.json();
 
+    console.log('Portfolio AI Chat function called with:', { 
+      message: message?.substring(0, 50) + '...', 
+      userId, 
+      portfolioId, 
+      sessionId,
+      analysisType 
+    });
+
     if (!message || !userId) {
       throw new Error('Message and userId are required');
     }
@@ -140,7 +148,7 @@ VIKTIGA RIKTLINJER:
       }
     ];
 
-    console.log('Sending enhanced request to OpenAI with GPT-4.1-mini model');
+    console.log('Sending request to OpenAI with gpt-4o-mini model');
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -149,9 +157,9 @@ VIKTIGA RIKTLINJER:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-mini-2025-04-14',
+        model: 'gpt-4o-mini',
         messages: messages,
-        max_tokens: 300, // Reduced token limit for shorter responses
+        max_tokens: 300,
         temperature: 0.6,
       }),
     });
@@ -196,6 +204,8 @@ VIKTIGA RIKTLINJER:
 
     const data = await response.json();
     const aiResponse = data.choices[0].message.content;
+
+    console.log('Received OpenAI response, length:', aiResponse?.length);
 
     // Calculate confidence score based on available data
     let confidence = 0.5; // Base confidence
@@ -251,7 +261,7 @@ VIKTIGA RIKTLINJER:
           message: aiResponse,
           context_data: { 
             timestamp: new Date().toISOString(),
-            model: 'gpt-4.1-mini-2025-04-14',
+            model: 'gpt-4o-mini',
             analysisType: analysisType || 'general',
             confidence: confidence
           }
@@ -261,6 +271,8 @@ VIKTIGA RIKTLINJER:
     if (chatError) {
       console.error('Error storing chat history:', chatError);
     }
+
+    console.log('Portfolio AI Chat function completed successfully');
 
     return new Response(
       JSON.stringify({ 
@@ -272,7 +284,7 @@ VIKTIGA RIKTLINJER:
           portfolioValue: portfolio?.total_value || 0,
           holdingsCount: holdings?.length || 0,
           insightsCount: insights?.length || 0,
-          model: 'GPT-4.1-mini'
+          model: 'GPT-4o-mini'
         }
       }),
       { 

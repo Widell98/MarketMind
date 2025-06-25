@@ -271,17 +271,11 @@ const PortfolioAdvisor = () => {
               </TabsContent>
 
               <TabsContent value="portfolio" className="mt-2 sm:mt-4 focus-visible:outline-none">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  <div className="space-y-4">
-                    <InteractivePortfolio
-                      portfolio={activePortfolio}
-                      onQuickChat={handleQuickChat}
-                    />
-                  </div>
-                  
-                  <div className="lg:col-span-1">
-                    <AIChat portfolioId={activePortfolio?.id} />
-                  </div>
+                <div className="w-full">
+                  <InteractivePortfolio
+                    portfolio={activePortfolio}
+                    onQuickChat={handleQuickChat}
+                  />
                 </div>
               </TabsContent>
 
