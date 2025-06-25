@@ -8,11 +8,12 @@ export interface Post {
   id: string;
   title: string;
   content: string;
-  post_type: 'reflection' | 'case_analysis' | 'market_insight';
+  post_type: 'reflection' | 'case_analysis' | 'market_insight' | 'portfolio_share';
   created_at: string;
   updated_at: string;
   user_id: string;
   stock_case_id?: string;
+  portfolio_id?: string;
   is_public: boolean;
   profiles: {
     username: string;
@@ -22,27 +23,62 @@ export interface Post {
     company_name: string;
     title: string;
   } | null;
+  user_portfolios?: {
+    portfolio_name: string;
+    asset_allocation: any;
+    recommended_stocks: any[];
+    expected_return: number | null;
+    risk_score: number | null;
+  } | null;
   likeCount: number;
   commentCount: number;
   isLiked: boolean;
 }
 
-export const usePosts = (limit = 10) => {
+export const usePosts = (limit = 10, followedOnly = false) => {
   const { user } = useAuth();
   
   return useQuery({
-    queryKey: ['posts', limit],
+    queryKey: ['posts', limit, followedOnly, user?.id],
     queryFn: async () => {
-      // First get posts with stock_cases
-      const { data: postsData, error: postsError } = await supabase
+      let postsQuery = supabase
         .from('posts')
         .select(`
           *,
-          stock_cases (company_name, title)
+          stock_cases (company_name, title),
+          user_portfolios (portfolio_name, asset_allocation, recommended_stocks, expected_return, risk_score)
         `)
         .eq('is_public', true)
         .order('created_at', { ascending: false })
         .limit(limit);
+
+      // If followedOnly is true and user is authenticated, filter by followed users
+      if (followedOnly && user) {
+        // First get the list of users that the current user follows
+        const { data: followedUsers, error: followError } = await supabase
+          .from('user_follows')
+          .select('following_id')
+          .eq('follower_id', user.id);
+
+        if (followError) {
+          console.error('Error fetching followed users:', followError);
+          throw followError;
+        }
+
+        const followedUserIds = followedUsers?.map(f => f.following_id) || [];
+        
+        // If user doesn't follow anyone, include their own posts
+        if (followedUserIds.length === 0) {
+          followedUserIds.push(user.id);
+        } else {
+          // Also include user's own posts
+          followedUserIds.push(user.id);
+        }
+
+        postsQuery = postsQuery.in('user_id', followedUserIds);
+      }
+
+      const { data: postsData, error: postsError } = await postsQuery;
 
       if (postsError) {
         console.error('Error fetching posts:', postsError);
@@ -84,7 +120,7 @@ export const usePosts = (limit = 10) => {
 
           return {
             ...post,
-            post_type: post.post_type as 'reflection' | 'case_analysis' | 'market_insight',
+            post_type: post.post_type as 'reflection' | 'case_analysis' | 'market_insight' | 'portfolio_share',
             likeCount: likeCountResult.data || 0,
             commentCount: commentCountResult.data || 0,
             isLiked: userLikeResult?.data || false
@@ -106,8 +142,9 @@ export const useCreatePost = () => {
     mutationFn: async (postData: {
       title: string;
       content: string;
-      post_type: 'reflection' | 'case_analysis' | 'market_insight';
+      post_type: 'reflection' | 'case_analysis' | 'market_insight' | 'portfolio_share';
       stock_case_id?: string;
+      portfolio_id?: string;
     }) => {
       if (!user) throw new Error('User must be authenticated');
 

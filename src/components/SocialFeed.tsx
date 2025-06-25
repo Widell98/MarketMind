@@ -4,14 +4,15 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, MessageCircle, Share2, TrendingUp, BookOpen, Brain, Plus, Users } from 'lucide-react';
+import { Heart, MessageCircle, Share2, TrendingUp, BookOpen, Brain, Plus, Users, Briefcase, Target, DollarSign } from 'lucide-react';
 import { usePosts, useTogglePostLike, Post } from '@/hooks/usePosts';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import CreatePostDialog from './CreatePostDialog';
+import { Progress } from '@/components/ui/progress';
 
 const SocialFeed = () => {
-  const { data: posts, isLoading } = usePosts(20);
+  const { data: posts, isLoading } = usePosts(20, true); // Use follow-based posts
   const { user } = useAuth();
   const toggleLike = useTogglePostLike();
   const [showCreatePost, setShowCreatePost] = useState(false);
@@ -22,6 +23,8 @@ const SocialFeed = () => {
         return <TrendingUp className="w-4 h-4" />;
       case 'market_insight':
         return <Brain className="w-4 h-4" />;
+      case 'portfolio_share':
+        return <Briefcase className="w-4 h-4" />;
       default:
         return <BookOpen className="w-4 h-4" />;
     }
@@ -33,14 +36,126 @@ const SocialFeed = () => {
         return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800';
       case 'market_insight':
         return 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800';
-      default:
+      case 'portfolio_share':
         return 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800';
+      default:
+        return 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800';
+    }
+  };
+
+  const getPostTypeLabel = (type: string) => {
+    switch (type) {
+      case 'case_analysis':
+        return 'Case Analysis';
+      case 'market_insight':
+        return 'Market Insight';
+      case 'portfolio_share':
+        return 'Portfolio Share';
+      default:
+        return 'Reflection';
     }
   };
 
   const handleLike = (post: Post) => {
     if (!user) return;
     toggleLike.mutate({ postId: post.id, isLiked: post.isLiked });
+  };
+
+  const renderPortfolioContent = (portfolio: any) => {
+    if (!portfolio) return null;
+
+    const allocation = portfolio.asset_allocation || {};
+    const stocks = portfolio.recommended_stocks || [];
+    const expectedReturn = portfolio.expected_return;
+    const riskScore = portfolio.risk_score;
+
+    return (
+      <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 rounded-lg border border-green-200 dark:border-green-800">
+        <div className="flex items-center gap-2 mb-3">
+          <Briefcase className="w-5 h-5 text-green-600 dark:text-green-400" />
+          <h4 className="font-semibold text-green-800 dark:text-green-300">
+            {portfolio.portfolio_name}
+          </h4>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          {expectedReturn && (
+            <div className="text-center p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <TrendingUp className="w-4 h-4 text-green-600" />
+                <span className="text-sm text-gray-600 dark:text-gray-400">Förväntad avkastning</span>
+              </div>
+              <span className="font-bold text-green-600 dark:text-green-400">
+                {(expectedReturn * 100).toFixed(1)}%
+              </span>
+            </div>
+          )}
+          
+          {riskScore && (
+            <div className="text-center p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Target className="w-4 h-4 text-blue-600" />
+                <span className="text-sm text-gray-600 dark:text-gray-400">Riskpoäng</span>
+              </div>
+              <span className="font-bold text-blue-600 dark:text-blue-400">
+                {riskScore}/10
+              </span>
+            </div>
+          )}
+          
+          <div className="text-center p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <DollarSign className="w-4 h-4 text-purple-600" />
+              <span className="text-sm text-gray-600 dark:text-gray-400">Antal aktier</span>
+            </div>
+            <span className="font-bold text-purple-600 dark:text-purple-400">
+              {stocks.length}
+            </span>
+          </div>
+        </div>
+
+        {/* Asset Allocation */}
+        {Object.keys(allocation).length > 0 && (
+          <div className="mb-4">
+            <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tillgångsfördelning</h5>
+            <div className="space-y-2">
+              {Object.entries(allocation).map(([asset, percentage]: [string, any]) => (
+                <div key={asset} className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600 dark:text-gray-400 w-20 capitalize">
+                    {asset}
+                  </span>
+                  <Progress value={percentage * 100} className="flex-1 h-2" />
+                  <span className="text-sm font-medium w-12 text-right">
+                    {(percentage * 100).toFixed(0)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Top Recommended Stocks */}
+        {stocks.length > 0 && (
+          <div>
+            <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Rekommenderade aktier ({stocks.length > 3 ? 'Top 3' : 'Alla'})
+            </h5>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {stocks.slice(0, 3).map((stock: any, index: number) => (
+                <div key={index} className="p-2 bg-white/70 dark:bg-gray-800/70 rounded text-center">
+                  <div className="font-medium text-sm">{stock.symbol || stock.name}</div>
+                  {stock.allocation && (
+                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                      {(stock.allocation * 100).toFixed(1)}%
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -74,23 +189,6 @@ const SocialFeed = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      {/* Header Section */}
-      <div className="text-center space-y-4 py-6">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full">
-            <Users className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">
-              Community Insights
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Share and discover investment insights from our community
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Create Post Section */}
       {user && (
         <Card className="border-2 border-dashed border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200">
@@ -110,7 +208,7 @@ const SocialFeed = () => {
                   size="lg"
                 >
                   <Plus className="w-5 h-5 mr-3 text-blue-500" />
-                  Share your investment insights...
+                  Dela dina investeringsinsikter...
                 </Button>
               </div>
             </div>
@@ -143,7 +241,7 @@ const SocialFeed = () => {
                   </div>
                   <Badge className={`${getPostTypeColor(post.post_type)} flex items-center gap-2 px-3 py-1 border`}>
                     {getPostTypeIcon(post.post_type)}
-                    <span className="capitalize font-medium">{post.post_type.replace('_', ' ')}</span>
+                    <span className="capitalize font-medium">{getPostTypeLabel(post.post_type)}</span>
                   </Badge>
                 </div>
                 
@@ -151,11 +249,13 @@ const SocialFeed = () => {
                   <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 leading-snug">
                     {post.title}
                   </h3>
+                  
+                  {/* Stock Case Reference */}
                   {post.stock_cases && (
                     <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-100 dark:border-blue-800">
                       <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                       <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                        Analysis of: <span className="font-semibold">{post.stock_cases.company_name}</span>
+                        Analys av: <span className="font-semibold">{post.stock_cases.company_name}</span>
                       </span>
                     </div>
                   )}
@@ -168,6 +268,11 @@ const SocialFeed = () => {
                     {post.content}
                   </p>
                 </div>
+
+                {/* Portfolio Content */}
+                {post.post_type === 'portfolio_share' && post.user_portfolios && 
+                  renderPortfolioContent(post.user_portfolios)
+                }
                 
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
                   <div className="flex items-center space-x-1">
@@ -193,7 +298,7 @@ const SocialFeed = () => {
                     
                     <Button variant="ghost" size="sm" className="flex items-center space-x-2 px-3 py-2 rounded-full text-gray-600 hover:text-green-600 hover:bg-green-50 dark:text-gray-400 dark:hover:text-green-400 dark:hover:bg-green-950 transition-all duration-200">
                       <Share2 className="w-5 h-5" />
-                      <span className="font-medium">Share</span>
+                      <span className="font-medium">Dela</span>
                     </Button>
                   </div>
                 </div>
@@ -205,12 +310,12 @@ const SocialFeed = () => {
             <CardContent className="text-center py-16">
               <div className="space-y-6">
                 <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-full flex items-center justify-center">
-                  <MessageCircle className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+                  <Users className="w-10 h-10 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">No posts yet</h3>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Inget innehåll än</h3>
                   <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto">
-                    Be the first to share your investment insights and spark meaningful discussions in our community!
+                    Börja följa andra användare för att se deras investeringsinsikter och portfoliouppdateringar i ditt flöde!
                   </p>
                 </div>
                 {user && (
@@ -220,7 +325,7 @@ const SocialFeed = () => {
                     size="lg"
                   >
                     <Plus className="w-5 h-5 mr-2" />
-                    Create Your First Post
+                    Skapa ditt första inlägg
                   </Button>
                 )}
               </div>

@@ -279,6 +279,7 @@ export type Database = {
           created_at: string
           id: string
           is_public: boolean
+          portfolio_id: string | null
           post_type: string
           stock_case_id: string | null
           title: string
@@ -290,6 +291,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_public?: boolean
+          portfolio_id?: string | null
           post_type?: string
           stock_case_id?: string | null
           title: string
@@ -301,6 +303,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_public?: boolean
+          portfolio_id?: string | null
           post_type?: string
           stock_case_id?: string | null
           title?: string
@@ -308,6 +311,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "posts_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "user_portfolios"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "posts_stock_case_id_fkey"
             columns: ["stock_case_id"]
@@ -753,6 +763,7 @@ export type Database = {
           expected_return: number | null
           id: string
           is_active: boolean | null
+          is_public: boolean | null
           last_rebalanced_at: string | null
           portfolio_name: string
           recommended_stocks: Json | null
@@ -768,6 +779,7 @@ export type Database = {
           expected_return?: number | null
           id?: string
           is_active?: boolean | null
+          is_public?: boolean | null
           last_rebalanced_at?: string | null
           portfolio_name?: string
           recommended_stocks?: Json | null
@@ -783,6 +795,7 @@ export type Database = {
           expected_return?: number | null
           id?: string
           is_active?: boolean | null
+          is_public?: boolean | null
           last_rebalanced_at?: string | null
           portfolio_name?: string
           recommended_stocks?: Json | null
