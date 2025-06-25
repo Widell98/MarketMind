@@ -39,23 +39,26 @@ const StockCasesFeed = () => {
   if (loading) {
     return (
       <div className="space-y-4">
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-2 mb-6">
-          <Button variant="default" size="sm" className="flex items-center gap-2">
+        {/* Filter Tabs - Mobile Responsive */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-6 px-2 sm:px-0">
+          <Button variant="default" size="sm" className="flex items-center justify-center gap-2 text-xs px-3 py-2">
             <Filter className="w-3 h-3" />
-            All Cases
+            <span className="hidden xs:inline">All Cases</span>
+            <span className="xs:hidden">All</span>
           </Button>
-          <Button variant="outline" size="sm" className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="flex items-center justify-center gap-2 text-xs px-3 py-2">
             <TrendingUp className="w-3 h-3" />
-            Trending
+            <span className="hidden xs:inline">Trending</span>
+            <span className="xs:hidden">Trend</span>
           </Button>
-          <Button variant="outline" size="sm" className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="flex items-center justify-center gap-2 text-xs px-3 py-2">
             <Bookmark className="w-3 h-3" />
-            Followed
+            <span className="hidden xs:inline">Followed</span>
+            <span className="xs:hidden">Follow</span>
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-2 sm:px-0">
           {[...Array(6)].map((_, index) => (
             <Card key={index} className="border-0 shadow-sm animate-pulse">
               <div className="p-4">
@@ -82,38 +85,41 @@ const StockCasesFeed = () => {
   if (displayCases.length === 0) {
     return (
       <div className="space-y-4">
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-2 mb-6">
+        {/* Filter Tabs - Mobile Responsive */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-6 px-2 sm:px-0">
           <Button
             variant={viewMode === 'all' ? 'default' : 'outline'}
             onClick={() => setViewMode('all')}
             size="sm"
-            className="flex items-center gap-2"
+            className="flex items-center justify-center gap-2 text-xs px-3 py-2"
           >
             <Filter className="w-3 h-3" />
-            All Cases
+            <span className="hidden xs:inline">All Cases</span>
+            <span className="xs:hidden">All</span>
           </Button>
           <Button
             variant={viewMode === 'trending' ? 'default' : 'outline'}
             onClick={() => setViewMode('trending')}
             size="sm"
-            className="flex items-center gap-2"
+            className="flex items-center justify-center gap-2 text-xs px-3 py-2"
           >
             <TrendingUp className="w-3 h-3" />
-            Trending
+            <span className="hidden xs:inline">Trending</span>
+            <span className="xs:hidden">Trend</span>
           </Button>
           <Button
             variant={viewMode === 'followed' ? 'default' : 'outline'}
             onClick={() => setViewMode('followed')}
             size="sm"
-            className="flex items-center gap-2"
+            className="flex items-center justify-center gap-2 text-xs px-3 py-2"
           >
             <Bookmark className="w-3 h-3" />
-            Followed
+            <span className="hidden xs:inline">Followed</span>
+            <span className="xs:hidden">Follow</span>
           </Button>
         </div>
 
-        <Card className="text-center py-8 bg-gray-50 dark:bg-gray-800">
+        <Card className="text-center py-8 bg-gray-50 dark:bg-gray-800 mx-2 sm:mx-0">
           <CardContent className="pt-4">
             <TrendingUp className="w-12 h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
             <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">
@@ -143,38 +149,41 @@ const StockCasesFeed = () => {
 
   return (
     <div className="space-y-4">
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-2 mb-6">
+      {/* Filter Tabs - Mobile Responsive */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-6 px-2 sm:px-0">
         <Button
           variant={viewMode === 'all' ? 'default' : 'outline'}
           onClick={() => setViewMode('all')}
           size="sm"
-          className="flex items-center gap-2"
+          className="flex items-center justify-center gap-2 text-xs px-3 py-2"
         >
           <Filter className="w-3 h-3" />
-          All Cases
+          <span className="hidden xs:inline">All Cases</span>
+          <span className="xs:hidden">All</span>
         </Button>
         <Button
           variant={viewMode === 'trending' ? 'default' : 'outline'}
           onClick={() => setViewMode('trending')}
           size="sm"
-          className="flex items-center gap-2"
+          className="flex items-center justify-center gap-2 text-xs px-3 py-2"
         >
           <TrendingUp className="w-3 h-3" />
-          Trending
+          <span className="hidden xs:inline">Trending</span>
+          <span className="xs:hidden">Trend</span>
         </Button>
         <Button
           variant={viewMode === 'followed' ? 'default' : 'outline'}
           onClick={() => setViewMode('followed')}
           size="sm"
-          className="flex items-center gap-2"
+          className="flex items-center justify-center gap-2 text-xs px-3 py-2"
         >
           <Bookmark className="w-3 h-3" />
-          Followed
+          <span className="hidden xs:inline">Followed</span>
+          <span className="xs:hidden">Follow</span>
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-2 sm:px-0">
         {displayCases.map((stockCase) => (
           <StockCaseCompactCard
             key={stockCase.id}
@@ -227,6 +236,7 @@ const StockCaseCompactCard = ({ stockCase, onViewDetails }: { stockCase: any; on
   };
 
   const performance = calculatePerformance();
+  const shouldShowPerformance = stockCase.status !== 'active'; // Only show performance for non-active cases
 
   return (
     <Card 
@@ -234,7 +244,7 @@ const StockCaseCompactCard = ({ stockCase, onViewDetails }: { stockCase: any; on
       onClick={onViewDetails}
     >
       {/* Header with badges */}
-      <div className="p-4 pb-3">
+      <div className="p-3 sm:p-4 pb-3">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Badge className="bg-green-500 text-white text-xs px-2 py-1">
@@ -253,13 +263,13 @@ const StockCaseCompactCard = ({ stockCase, onViewDetails }: { stockCase: any; on
           </button>
         </div>
 
-        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
+        <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 leading-tight">
           {stockCase.company_name || stockCase.title}
         </h3>
       </div>
 
       {/* Chart/Image */}
-      <div className="relative h-48 mx-4 mb-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+      <div className="relative h-36 sm:h-48 mx-3 sm:mx-4 mb-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
         <img 
           src={getImageUrl(stockCase)} 
           alt={`${stockCase.company_name} chart`}
@@ -267,38 +277,42 @@ const StockCaseCompactCard = ({ stockCase, onViewDetails }: { stockCase: any; on
         />
       </div>
 
-      {/* Performance and Target */}
-      <div className="px-4 pb-3">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            {performance >= 0 ? (
-              <TrendingUp className="w-4 h-4 text-green-500" />
-            ) : (
-              <TrendingDown className="w-4 h-4 text-red-500" />
-            )}
-            <span className={`font-semibold ${performance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {performance >= 0 ? '+' : ''}{performance.toFixed(1)}%
+      {/* Performance and Target - Only show for non-active cases */}
+      {shouldShowPerformance && (
+        <div className="px-3 sm:px-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {performance >= 0 ? (
+                <TrendingUp className="w-4 h-4 text-green-500" />
+              ) : (
+                <TrendingDown className="w-4 h-4 text-red-500" />
+              )}
+              <span className={`font-semibold text-sm ${performance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {performance >= 0 ? '+' : ''}{performance.toFixed(1)}%
+              </span>
+            </div>
+            <span className="text-xs sm:text-sm text-gray-500">
+              Target: {stockCase.target_price ? `${stockCase.target_price} kr` : 'N/A'}
             </span>
           </div>
-          <span className="text-sm text-gray-500">
-            Target: {stockCase.target_price ? `${stockCase.target_price} kr` : 'N/A'}
-          </span>
         </div>
+      )}
 
-        {/* Date and Author */}
+      {/* Date and Author */}
+      <div className="px-3 sm:px-4 pb-3">
         <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
           <div className="flex items-center gap-1">
             <Calendar className="w-3 h-3" />
-            <span>{formatDistanceToNow(new Date(stockCase.created_at), { addSuffix: true, locale: sv })}</span>
+            <span className="truncate">{formatDistanceToNow(new Date(stockCase.created_at), { addSuffix: true, locale: sv })}</span>
           </div>
           <div className="flex items-center gap-1">
             <User className="w-3 h-3" />
-            <span>{stockCase.profiles?.display_name || stockCase.profiles?.username || 'Widell98'}</span>
+            <span className="truncate max-w-20 sm:max-w-none">{stockCase.profiles?.display_name || stockCase.profiles?.username || 'Widell98'}</span>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <Button
             variant={isFollowing ? "default" : "outline"}
             size="sm"
@@ -306,10 +320,10 @@ const StockCaseCompactCard = ({ stockCase, onViewDetails }: { stockCase: any; on
               e.stopPropagation();
               toggleFollow();
             }}
-            className="flex-1 flex items-center justify-center gap-1 text-xs"
+            className="flex-1 flex items-center justify-center gap-1 text-xs px-2 py-1.5"
           >
             <Bookmark className={`w-3 h-3 ${isFollowing ? 'fill-current' : ''}`} />
-            {isFollowing ? 'Följer' : 'Följ'}
+            <span className="hidden xs:inline">{isFollowing ? 'Följer' : 'Följ'}</span>
           </Button>
           
           <Button
@@ -319,10 +333,11 @@ const StockCaseCompactCard = ({ stockCase, onViewDetails }: { stockCase: any; on
               e.stopPropagation();
               toggleLike();
             }}
-            className="flex items-center gap-1 px-3 text-xs"
+            className="flex items-center gap-1 px-2 sm:px-3 text-xs py-1.5"
           >
             <Heart className={`w-3 h-3 ${isLiked ? 'fill-current' : ''}`} />
-            {likeCount}
+            <span className="hidden xs:inline">{likeCount}</span>
+            <span className="xs:hidden">{likeCount}</span>
           </Button>
 
           <Button
@@ -332,10 +347,10 @@ const StockCaseCompactCard = ({ stockCase, onViewDetails }: { stockCase: any; on
               e.stopPropagation();
               // Share functionality can be added here
             }}
-            className="flex items-center gap-1 px-3 text-xs"
+            className="flex items-center gap-1 px-2 sm:px-3 text-xs py-1.5"
           >
             <Share className="w-3 h-3" />
-            Share
+            <span className="hidden sm:inline">Share</span>
           </Button>
         </div>
       </div>
