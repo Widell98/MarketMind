@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,6 +38,7 @@ export const useAIChat = (portfolioId?: string) => {
     if (!user || !portfolioId) return;
     setIsLoading(true);
     try {
+      console.log('Loading messages for session:', sessionId);
       const { data, error } = await supabase
         .from('portfolio_chat_history')
         .select('*')
@@ -45,8 +47,11 @@ export const useAIChat = (portfolioId?: string) => {
         .order('created_at', { ascending: true });
 
       if (error) {
+        console.error('Error loading messages:', error);
         throw error;
       }
+
+      console.log('Loaded messages from database:', data);
 
       const formattedMessages: Message[] = data.map(message => ({
         id: message.id,
@@ -56,6 +61,7 @@ export const useAIChat = (portfolioId?: string) => {
         context: message.context_data as any,
       }));
 
+      console.log('Formatted messages:', formattedMessages);
       setMessages(formattedMessages);
     } catch (error) {
       console.error('Error loading messages:', error);
@@ -73,6 +79,7 @@ export const useAIChat = (portfolioId?: string) => {
     if (!user || !portfolioId) return;
     setIsLoading(true);
     try {
+      console.log('Loading sessions for user:', user.id);
       const { data, error } = await supabase
         .from('ai_chat_sessions')
         .select('*')
@@ -80,15 +87,28 @@ export const useAIChat = (portfolioId?: string) => {
         .order('created_at', { ascending: false });
 
       if (error) {
+        console.error('Error loading sessions:', error);
         throw error;
       }
 
-      setSessions(data.map(session => ({
+      console.log('Loaded sessions from database:', data);
+
+      const formattedSessions = data.map(session => ({
         id: session.id,
         session_name: session.session_name || 'Ny Session',
         created_at: session.created_at,
         is_active: session.is_active || false,
-      })));
+      }));
+
+      setSessions(formattedSessions);
+
+      // Auto-load the most recent session if we don't have one selected
+      if (!currentSessionId && formattedSessions.length > 0) {
+        const mostRecentSession = formattedSessions[0];
+        console.log('Auto-loading most recent session:', mostRecentSession.id);
+        setCurrentSessionId(mostRecentSession.id);
+        await loadMessages(mostRecentSession.id);
+      }
     } catch (error) {
       console.error('Error loading sessions:', error);
       toast({
@@ -99,7 +119,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, portfolioId, toast]);
+  }, [user, portfolioId, toast, currentSessionId, loadMessages]);
 
   const sendMessage = useCallback(async (content: string) => {
     console.log('=== SENDING MESSAGE DEBUG ===');
@@ -123,7 +143,7 @@ export const useAIChat = (portfolioId?: string) => {
       return;
     }
 
-    // If no session exists, create one and wait for it, then send message
+    // If no session exists, create one and send message
     if (!currentSessionId) {
       console.log('No session exists, creating session and sending message...');
       await createNewSessionAndSendMessage(content);
@@ -287,6 +307,13 @@ export const useAIChat = (portfolioId?: string) => {
 
       setMessages(prev => [...prev, assistantMessage]);
       console.log('Added assistant message to UI');
+      
+      // Reload messages from database to ensure we have the latest saved data
+      console.log('Reloading messages from database to ensure persistence...');
+      setTimeout(() => {
+        loadMessages(targetSessionId);
+      }, 1000);
+      
       await fetchUsage();
     } catch (error) {
       console.error('Error sending message:', error);
@@ -298,7 +325,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, portfolioId, currentSessionId, fetchUsage, toast]);
+  }, [user, portfolioId, currentSessionId, fetchUsage, toast, loadMessages]);
 
   const analyzePortfolio = useCallback(async (analysisType: 'risk' | 'diversification' | 'performance' | 'optimization') => {
     if (!user || !portfolioId) return;
@@ -474,8 +501,10 @@ export const useAIChat = (portfolioId?: string) => {
     setMessages([]);
   }, []);
 
+  // Load sessions and auto-select the most recent one when component mounts
   useEffect(() => {
     if (user && portfolioId) {
+      console.log('Component mounted, loading sessions...');
       loadSessions();
     }
   }, [user, portfolioId, loadSessions]);
