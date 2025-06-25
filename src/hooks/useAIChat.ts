@@ -1,5 +1,4 @@
 
-
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -62,7 +61,7 @@ export const useAIChat = (portfolioId?: string) => {
         context: message.context_data as any,
       }));
 
-      console.log('Formatted messages:', formattedMessages);
+      console.log('Setting formatted messages to state:', formattedMessages);
       setMessages(formattedMessages);
     } catch (error) {
       console.error('Error loading messages:', error);
@@ -309,12 +308,6 @@ export const useAIChat = (portfolioId?: string) => {
       setMessages(prev => [...prev, assistantMessage]);
       console.log('Added assistant message to UI');
       
-      // Reload messages from database to ensure we have the latest saved data
-      console.log('Reloading messages from database to ensure persistence...');
-      setTimeout(() => {
-        loadMessages(targetSessionId);
-      }, 1000);
-      
       await fetchUsage();
     } catch (error) {
       console.error('Error sending message:', error);
@@ -326,7 +319,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, portfolioId, currentSessionId, fetchUsage, toast, loadMessages]);
+  }, [user, portfolioId, currentSessionId, fetchUsage, toast]);
 
   const analyzePortfolio = useCallback(async (analysisType: 'risk' | 'diversification' | 'performance' | 'optimization') => {
     if (!user || !portfolioId) return;
@@ -447,8 +440,14 @@ export const useAIChat = (portfolioId?: string) => {
   }, [user, portfolioId, toast]);
 
   const loadSession = useCallback(async (sessionId: string) => {
+    console.log('=== LOADING SESSION ===');
     console.log('Loading chat session:', sessionId);
+    
+    // Clear current messages first
+    setMessages([]);
     setCurrentSessionId(sessionId);
+    
+    // Load messages for this session
     await loadMessages(sessionId);
     
     toast({
@@ -460,6 +459,9 @@ export const useAIChat = (portfolioId?: string) => {
   const deleteSession = useCallback(async (sessionId: string) => {
     if (!user) return;
     
+    console.log('=== DELETING SESSION ===');
+    console.log('Deleting session:', sessionId);
+    
     try {
       // First delete all messages in the session
       const { error: messagesError } = await supabase
@@ -468,7 +470,10 @@ export const useAIChat = (portfolioId?: string) => {
         .eq('chat_session_id', sessionId)
         .eq('user_id', user.id);
 
-      if (messagesError) throw messagesError;
+      if (messagesError) {
+        console.error('Error deleting messages:', messagesError);
+        throw messagesError;
+      }
 
       // Then delete the session itself
       const { error: sessionError } = await supabase
@@ -477,15 +482,33 @@ export const useAIChat = (portfolioId?: string) => {
         .eq('id', sessionId)
         .eq('user_id', user.id);
 
-      if (sessionError) throw sessionError;
+      if (sessionError) {
+        console.error('Error deleting session:', sessionError);
+        throw sessionError;
+      }
 
-      // Update local state
-      setSessions(prev => prev.filter(session => session.id !== sessionId));
+      console.log('Session deleted successfully');
+
+      // Update local state immediately
+      setSessions(prev => {
+        const updated = prev.filter(session => session.id !== sessionId);
+        console.log('Updated sessions after deletion:', updated);
+        return updated;
+      });
       
-      // If we deleted the current session, clear it
+      // If we deleted the current session, clear it and load the most recent one
       if (currentSessionId === sessionId) {
         setCurrentSessionId(null);
         setMessages([]);
+        
+        // Load the most recent remaining session if any
+        const remainingSessions = sessions.filter(s => s.id !== sessionId);
+        if (remainingSessions.length > 0) {
+          const mostRecent = remainingSessions[0];
+          console.log('Loading most recent remaining session:', mostRecent.id);
+          setCurrentSessionId(mostRecent.id);
+          await loadMessages(mostRecent.id);
+        }
       }
 
       toast({
@@ -500,7 +523,7 @@ export const useAIChat = (portfolioId?: string) => {
         variant: "destructive",
       });
     }
-  }, [user, currentSessionId, toast]);
+  }, [user, currentSessionId, sessions, loadMessages, toast]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
@@ -530,4 +553,3 @@ export const useAIChat = (portfolioId?: string) => {
     getQuickAnalysis,
   };
 };
-
