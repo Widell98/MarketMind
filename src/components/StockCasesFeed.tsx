@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, Eye, Heart, MessageCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
-import { useLatestStockCases } from '@/hooks/useLatestStockCases';
+import { useStockCases } from '@/hooks/useStockCases';
 import { useNavigate } from 'react-router-dom';
 
 const StockCasesFeed = () => {
-  const { latestCases, loading } = useLatestStockCases(6);
+  const { stockCases, loading } = useStockCases();
   const navigate = useNavigate();
 
   const handleViewDetails = (id: string) => {
@@ -87,7 +87,7 @@ const StockCasesFeed = () => {
     );
   }
 
-  if (latestCases.length === 0) {
+  if (stockCases.length === 0) {
     return (
       <Card className="text-center py-8 bg-gray-50 dark:bg-gray-800">
         <CardContent className="pt-4">
@@ -108,7 +108,7 @@ const StockCasesFeed = () => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {latestCases.map((stockCase) => (
+      {stockCases.map((stockCase) => (
         <Card key={stockCase.id} className="border-0 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group overflow-hidden">
           {/* Image */}
           <div className="relative h-48 bg-gray-100 dark:bg-gray-800 overflow-hidden">
@@ -119,11 +119,11 @@ const StockCasesFeed = () => {
             />
             <div className="absolute top-3 left-3">
               <Badge variant="outline" className="text-xs font-medium text-white bg-black/50 border-white/20 backdrop-blur-sm">
-                {stockCase.case_type?.toUpperCase() || 'STOCK CASE'}
+                STOCK CASE
               </Badge>
             </div>
             <div className="absolute top-3 right-3">
-              {getStatusBadge(stockCase.status, stockCase.performance)}
+              {getStatusBadge(stockCase.status, stockCase.performance_percentage)}
             </div>
             <div className="absolute bottom-3 left-3 flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${getCategoryColor(stockCase.case_categories?.name || 'Tech')}`}></div>
@@ -139,7 +139,7 @@ const StockCasesFeed = () => {
                 {stockCase.title}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-                {stockCase.company}
+                {stockCase.company_name}
               </p>
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {formatDistanceToNow(new Date(stockCase.created_at), { addSuffix: true, locale: sv })}
@@ -177,11 +177,11 @@ const StockCasesFeed = () => {
               <div className="flex items-center space-x-3 text-sm text-gray-500 dark:text-gray-400">
                 <div className="flex items-center gap-1">
                   <Eye className="w-4 h-4" />
-                  <span>{stockCase.views || 0}</span>
+                  <span>0</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Heart className="w-4 h-4" />
-                  <span>{stockCase.likes_count || 0}</span>
+                  <span>0</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <MessageCircle className="w-4 h-4" />
