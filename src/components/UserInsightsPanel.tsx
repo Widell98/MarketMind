@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, TrendingUp, Alert, CheckCircle, Clock, Zap } from 'lucide-react';
+import { Brain, TrendingUp, AlertTriangle, CheckCircle, Clock, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const UserInsightsPanel = () => {
@@ -20,7 +20,7 @@ const UserInsightsPanel = () => {
         <CardContent className="space-y-3">
           <div className="p-3 bg-white/70 dark:bg-gray-800/70 rounded-lg border border-blue-200 dark:border-blue-800">
             <div className="flex items-center gap-2 mb-2">
-              <Alert className="w-4 h-4 text-orange-500" />
+              <AlertTriangle className="w-4 h-4 text-orange-500" />
               <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                 Rebalansering Rekommenderad
               </span>
