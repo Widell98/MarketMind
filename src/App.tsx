@@ -12,6 +12,7 @@ import Profile from "./pages/Profile";
 import AdminStockCases from "./pages/AdminStockCases";
 import StockCases from "./pages/StockCases";
 import StockCaseDetail from "./pages/StockCaseDetail";
+import AnalysisDetail from "./pages/AnalysisDetail";
 import Learning from "./pages/Learning";
 import Watchlist from "./pages/Watchlist";
 import PortfolioAdvisor from "./pages/PortfolioAdvisor";
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/admin/stock-cases" element={<AdminStockCases />} />
             <Route path="/stock-cases" element={<StockCases />} />
             <Route path="/stock-cases/:id" element={<StockCaseDetail />} />
+            <Route path="/analysis/:id" element={<AnalysisDetail />} />
             <Route path="/learning" element={<Learning />} />
             <Route path="/watchlist" element={<Watchlist />} />
             <Route path="/portfolio-advisor" element={<PortfolioAdvisor />} />

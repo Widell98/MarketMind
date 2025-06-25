@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Eye, Heart, MessageCircle, TrendingUp, BookOpen, Sparkles, PieChart } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 import { useAnalyses, useToggleAnalysisLike } from '@/hooks/useAnalyses';
 import { useAuth } from '@/contexts/AuthContext';
 import CreateAnalysisDialog from './CreateAnalysisDialog';
@@ -13,11 +14,16 @@ import PortfolioAnalysisDialog from './PortfolioAnalysisDialog';
 const AnalysisFeed = () => {
   const { data: analyses, isLoading, error } = useAnalyses(20);
   const { user } = useAuth();
+  const navigate = useNavigate();
   const toggleLike = useToggleAnalysisLike();
 
   const handleLike = (analysisId: string, isLiked: boolean) => {
     if (!user) return;
     toggleLike.mutate({ analysisId, isLiked });
+  };
+
+  const handleReadMore = (analysisId: string) => {
+    navigate(`/analysis/${analysisId}`);
   };
 
   const getAnalysisTypeLabel = (type: string) => {
@@ -230,7 +236,12 @@ const AnalysisFeed = () => {
                     <span>{analysis.comments_count}</span>
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300"
+                  onClick={() => handleReadMore(analysis.id)}
+                >
                   Läs hela analysen
                 </Button>
               </div>
