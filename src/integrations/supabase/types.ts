@@ -209,33 +209,162 @@ export type Database = {
           },
         ]
       }
-      profiles: {
+      post_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          post_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          post_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_likes: {
         Row: {
           created_at: string
-          display_name: string | null
           id: string
-          interests: Json | null
-          level: string | null
-          updated_at: string
-          username: string
+          post_id: string
+          user_id: string
         }
         Insert: {
           created_at?: string
-          display_name?: string | null
-          id: string
-          interests?: Json | null
-          level?: string | null
-          updated_at?: string
-          username: string
+          id?: string
+          post_id: string
+          user_id: string
         }
         Update: {
           created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      posts: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_public: boolean
+          post_type: string
+          stock_case_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          post_type?: string
+          stock_case_id?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          post_type?: string
+          stock_case_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_stock_case_id_fkey"
+            columns: ["stock_case_id"]
+            isOneToOne: false
+            referencedRelation: "stock_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          bio: string | null
+          created_at: string
+          display_name: string | null
+          follower_count: number | null
+          following_count: number | null
+          id: string
+          interests: Json | null
+          investment_philosophy: string | null
+          level: string | null
+          location: string | null
+          post_count: number | null
+          updated_at: string
+          username: string
+          website_url: string | null
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
           display_name?: string | null
+          follower_count?: number | null
+          following_count?: number | null
+          id: string
+          interests?: Json | null
+          investment_philosophy?: string | null
+          level?: string | null
+          location?: string | null
+          post_count?: number | null
+          updated_at?: string
+          username: string
+          website_url?: string | null
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          follower_count?: number | null
+          following_count?: number | null
           id?: string
           interests?: Json | null
+          investment_philosophy?: string | null
           level?: string | null
+          location?: string | null
+          post_count?: number | null
           updated_at?: string
           username?: string
+          website_url?: string | null
         }
         Relationships: []
       }
@@ -880,6 +1009,14 @@ export type Database = {
         Args: { _user_id: string; _usage_type: string }
         Returns: boolean
       }
+      get_post_comment_count: {
+        Args: { post_id: string }
+        Returns: number
+      }
+      get_post_like_count: {
+        Args: { post_id: string }
+        Returns: number
+      }
       get_stock_case_follow_count: {
         Args: { case_id: string }
         Returns: number
@@ -905,6 +1042,10 @@ export type Database = {
       }
       user_has_liked_case: {
         Args: { case_id: string; user_id: string }
+        Returns: boolean
+      }
+      user_has_liked_post: {
+        Args: { post_id: string; user_id: string }
         Returns: boolean
       }
     }

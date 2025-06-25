@@ -4,6 +4,7 @@ import Layout from '@/components/Layout';
 import TrendingCases from '@/components/TrendingCases';
 import LatestCases from '@/components/LatestCases';
 import CommunityStats from '@/components/CommunityStats';
+import SocialFeed from '@/components/SocialFeed';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
