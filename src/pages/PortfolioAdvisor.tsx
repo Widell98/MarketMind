@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +7,7 @@ import { Brain, MessageSquare, BarChart3, Settings, Zap, TrendingUp, Lightbulb, 
 import Layout from '@/components/Layout';
 import EnhancedRiskAssessmentForm from '@/components/EnhancedRiskAssessmentForm';
 import PortfolioOverview from '@/components/PortfolioOverview';
+import InteractivePortfolio from '@/components/InteractivePortfolio';
 import PortfolioHealthScore from '@/components/PortfolioHealthScore';
 import PerformanceAttribution from '@/components/PerformanceAttribution';
 import ScenarioAnalysis from '@/components/ScenarioAnalysis';
