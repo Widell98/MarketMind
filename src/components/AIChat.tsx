@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,6 +44,13 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (currentSessionId && sessions.length > 0) {
+      const currentSession = sessions.find(s => s.id === currentSessionId);
+      console.log('Current active session:', currentSession?.session_name);
+    }
+  }, [currentSessionId, sessions]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -184,6 +190,11 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
           {!isPremium && (
             <Badge variant="outline" className="text-xs">
               {remainingMessages === Infinity ? '∞' : remainingMessages} meddelanden kvar
+            </Badge>
+          )}
+          {currentSessionId && (
+            <Badge variant="secondary" className="text-xs">
+              Aktiv chat
             </Badge>
           )}
         </CardTitle>

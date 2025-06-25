@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,7 +14,9 @@ import {
   MessageSquare,
   TrendingDown,
   TrendingUp,
-  Shield
+  Shield,
+  Trash2,
+  MoreHorizontal
 } from 'lucide-react';
 
 interface ChatSession {
@@ -34,13 +35,15 @@ interface ChatHistoryProps {
   onLoadSession: (sessionId: string) => void;
   onToggleFavorite: (sessionId: string) => void;
   onRenameSession: (sessionId: string, newName: string) => void;
+  onDeleteSession?: (sessionId: string) => void;
 }
 
 const ChatHistory: React.FC<ChatHistoryProps> = ({
   sessions,
   onLoadSession,
   onToggleFavorite,
-  onRenameSession
+  onRenameSession,
+  onDeleteSession
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
@@ -86,6 +89,12 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
     }
     setIsRenaming(null);
     setNewName('');
+  };
+
+  const handleDelete = (sessionId: string, sessionName: string) => {
+    if (window.confirm(`Är du säker på att du vill ta bort chatten "${sessionName}"? Detta kan inte ångras.`)) {
+      onDeleteSession?.(sessionId);
+    }
   };
 
   const SessionItem = ({ session }: { session: ChatSession }) => (
@@ -136,7 +145,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
           )}
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center gap-1 flex-shrink-0">
         <Button
           size="sm"
           variant="ghost"
@@ -147,6 +156,14 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
             <Star className="w-4 h-4 text-yellow-500 fill-current" /> : 
             <StarOff className="w-4 h-4" />
           }
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => handleDelete(session.id, session.session_name)}
+          className="p-1 hover:bg-red-50 hover:text-red-600"
+        >
+          <Trash2 className="w-4 h-4" />
         </Button>
         <Button
           size="sm"

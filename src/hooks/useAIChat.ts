@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -296,9 +295,61 @@ export const useAIChat = (portfolioId?: string) => {
   }, [user, portfolioId, toast]);
 
   const loadSession = useCallback(async (sessionId: string) => {
+    console.log('Loading chat session:', sessionId);
     setCurrentSessionId(sessionId);
     await loadMessages(sessionId);
-  }, [loadMessages]);
+    
+    // Make sure the chat UI updates properly
+    toast({
+      title: "Chat laddad",
+      description: "Din sparade chat har laddats.",
+    });
+  }, [loadMessages, toast]);
+
+  const deleteSession = useCallback(async (sessionId: string) => {
+    if (!user) return;
+    
+    try {
+      // First delete all messages in the session
+      const { error: messagesError } = await supabase
+        .from('portfolio_chat_history')
+        .delete()
+        .eq('chat_session_id', sessionId)
+        .eq('user_id', user.id);
+
+      if (messagesError) throw messagesError;
+
+      // Then delete the session itself
+      const { error: sessionError } = await supabase
+        .from('ai_chat_sessions')
+        .delete()
+        .eq('id', sessionId)
+        .eq('user_id', user.id);
+
+      if (sessionError) throw sessionError;
+
+      // Update local state
+      setSessions(prev => prev.filter(session => session.id !== sessionId));
+      
+      // If we're currently viewing the deleted session, clear it
+      if (currentSessionId === sessionId) {
+        setCurrentSessionId(null);
+        setMessages([]);
+      }
+
+      toast({
+        title: "Chat borttagen",
+        description: "Chatten har tagits bort permanent.",
+      });
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte ta bort chatten. Försök igen.",
+        variant: "destructive",
+      });
+    }
+  }, [user, currentSessionId, toast]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
@@ -321,6 +372,7 @@ export const useAIChat = (portfolioId?: string) => {
     analyzePortfolio,
     createNewSession,
     loadSession,
+    deleteSession,
     clearMessages,
     getQuickAnalysis,
   };

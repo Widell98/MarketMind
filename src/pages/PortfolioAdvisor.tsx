@@ -33,7 +33,8 @@ const PortfolioAdvisor = () => {
     sessions, 
     sendMessage, 
     loadSession,
-    createNewSession 
+    createNewSession,
+    deleteSession
   } = useAIChat(activePortfolio?.id);
 
   useEffect(() => {
@@ -92,6 +93,10 @@ const PortfolioAdvisor = () => {
   const handleRenameSession = (sessionId: string, newName: string) => {
     // Implementation would go here to rename session
     console.log('Rename session:', sessionId, 'to:', newName);
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    await deleteSession(sessionId);
   };
 
   if (!user) {
@@ -192,6 +197,7 @@ const PortfolioAdvisor = () => {
                 onLoadSession={loadSession}
                 onToggleFavorite={handleToggleFavorite}
                 onRenameSession={handleRenameSession}
+                onDeleteSession={handleDeleteSession}
               />
               <Button
                 variant="outline"
