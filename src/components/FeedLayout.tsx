@@ -19,17 +19,17 @@ const FeedLayout = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/20 dark:from-gray-900 dark:via-blue-950/20 dark:to-purple-950/10">
       {/* Enhanced Header Banner */}
       <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-blue-700 to-purple-700 text-white">
-        {/* Animated background elements */}
+        {/* Smaller animated background elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-0 left-0 w-72 h-72 bg-white/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
-          <div className="absolute top-0 right-0 w-96 h-96 bg-purple-400/10 rounded-full blur-3xl translate-x-1/3 -translate-y-1/3"></div>
-          <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-blue-400/8 rounded-full blur-3xl translate-y-1/2"></div>
+          <div className="absolute top-0 left-0 w-48 h-48 bg-white/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-purple-400/10 rounded-full blur-3xl translate-x-1/3 -translate-y-1/3"></div>
+          <div className="absolute bottom-0 left-1/3 w-52 h-52 bg-blue-400/8 rounded-full blur-3xl translate-y-1/2"></div>
         </div>
         
         {/* Subtle grid pattern overlay */}
         <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.03%22%3E%3Cpath%20d%3D%22M36%2034v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6%2034v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6%204V0H4v4H0v2h4v4h2V6h4V4H6z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20"></div>
         
-        <div className="relative py-16 md:py-20 lg:py-24">
+        <div className="relative py-12 md:py-16 lg:py-18">
           <div className="container mx-auto px-4 relative">
             <div className="max-w-5xl text-center mx-auto">
               {/* Main heading with enhanced typography */}
@@ -81,7 +81,7 @@ const FeedLayout = () => {
           <svg 
             viewBox="0 0 1200 120" 
             preserveAspectRatio="none" 
-            className="relative block w-full h-12 md:h-16 lg:h-20"
+            className="relative block w-full h-8 md:h-12 lg:h-16"
           >
             <path 
               d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z" 
@@ -101,7 +101,7 @@ const FeedLayout = () => {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 -mt-8 relative z-10">
+      <div className="container mx-auto px-4 -mt-4 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Main Content Area */}
           <div className="lg:col-span-3">
