@@ -18,15 +18,22 @@ const FeedLayout = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-700 text-white py-8 mb-6">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl">
-            <h1 className="text-2xl md:text-3xl font-bold mb-2">
+      <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-purple-700 text-white py-12 mb-8 relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="container mx-auto px-4 relative">
+          <div className="max-w-4xl text-center mx-auto">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent leading-tight">
               Research Powered Investment Community
             </h1>
-            <p className="text-blue-100 text-lg">
+            <p className="text-blue-100 text-lg md:text-xl font-medium max-w-2xl mx-auto leading-relaxed">
               De senaste insikterna om svenska tech & life science bolag
             </p>
+            <div className="mt-6 flex justify-center">
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 border border-white/20">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium text-blue-100">Live Updates</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -37,12 +44,12 @@ const FeedLayout = () => {
           <div className="lg:col-span-3">
             {/* Navigation Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="cases" className="flex items-center gap-2">
+              <TabsList className="grid w-full grid-cols-2 mb-6 bg-white dark:bg-gray-800 shadow-sm">
+                <TabsTrigger value="cases" className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
                   <TrendingUp className="w-4 h-4" />
                   Investment Cases
                 </TabsTrigger>
-                <TabsTrigger value="analysis" className="flex items-center gap-2">
+                <TabsTrigger value="analysis" className="flex items-center gap-2 data-[state=active]:bg-purple-600 data-[state=active]:text-white">
                   <BookOpen className="w-4 h-4" />
                   Analyser & Insights
                 </TabsTrigger>
@@ -78,30 +85,6 @@ const FeedLayout = () => {
           <div className="lg:col-span-1 space-y-6">
             {/* AI Panel - Different content based on auth status */}
             {user ? <UserInsightsPanel /> : <AIMarketingPanel />}
-
-            {/* Performance Stats */}
-            <Card className="border-0 shadow-sm bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
-                  <Eye className="w-4 h-4 text-purple-500" />
-                  Community Stats
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Aktiva Cases</span>
-                  <span className="text-lg font-bold text-blue-600 dark:text-blue-400">24</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Denna vecka</span>
-                  <span className="text-lg font-bold text-green-600 dark:text-green-400">+12%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">AI Analyser</span>
-                  <span className="text-lg font-bold text-purple-600 dark:text-purple-400">156</span>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
