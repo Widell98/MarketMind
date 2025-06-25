@@ -37,8 +37,8 @@ export const usePosts = (limit = 10) => {
         .from('posts')
         .select(`
           *,
-          profiles:user_id (username, display_name),
-          stock_cases:stock_case_id (company_name, title)
+          profiles!posts_user_id_fkey (username, display_name),
+          stock_cases (company_name, title)
         `)
         .eq('is_public', true)
         .order('created_at', { ascending: false })
@@ -57,6 +57,7 @@ export const usePosts = (limit = 10) => {
 
           return {
             ...post,
+            post_type: post.post_type as 'reflection' | 'case_analysis' | 'market_insight',
             likeCount: likeCountResult.data || 0,
             commentCount: commentCountResult.data || 0,
             isLiked: userLikeResult?.data || false
