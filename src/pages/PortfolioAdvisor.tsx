@@ -71,6 +71,8 @@ const PortfolioAdvisor = () => {
   };
 
   const handleQuickChat = async (message: string) => {
+    // Switch to AI Chat tab and send message
+    setActiveTab('chat');
     await sendMessage(message);
   };
 
@@ -86,12 +88,10 @@ const PortfolioAdvisor = () => {
   };
 
   const handleToggleFavorite = (sessionId: string) => {
-    // Implementation would go here to mark session as favorite
     console.log('Toggle favorite for session:', sessionId);
   };
 
   const handleRenameSession = (sessionId: string, newName: string) => {
-    // Implementation would go here to rename session
     console.log('Rename session:', sessionId, 'to:', newName);
   };
 
@@ -194,7 +194,10 @@ const PortfolioAdvisor = () => {
             <div className="flex items-center gap-2">
               <ChatHistory
                 sessions={sessions}
-                onLoadSession={loadSession}
+                onLoadSession={(sessionId) => {
+                  loadSession(sessionId);
+                  setActiveTab('chat');
+                }}
                 onToggleFavorite={handleToggleFavorite}
                 onRenameSession={handleRenameSession}
                 onDeleteSession={handleDeleteSession}
@@ -202,7 +205,10 @@ const PortfolioAdvisor = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={createNewSession}
+                onClick={() => {
+                  createNewSession();
+                  setActiveTab('chat');
+                }}
               >
                 Ny Chat
               </Button>
@@ -212,11 +218,16 @@ const PortfolioAdvisor = () => {
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-2 sm:space-y-4">
             <div className="w-full overflow-x-auto pb-1">
-              <TabsList className="flex w-max min-w-full sm:grid sm:grid-cols-5 sm:w-full h-auto p-1 gap-0.5 sm:gap-1">
+              <TabsList className="flex w-max min-w-full sm:grid sm:grid-cols-6 sm:w-full h-auto p-1 gap-0.5 sm:gap-1">
                 <TabsTrigger value="overview" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
                   <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                   <span className="hidden xs:block">Översikt</span>
                   <span className="xs:hidden">Över</span>
+                </TabsTrigger>
+                <TabsTrigger value="chat" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
+                  <Brain className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <span className="hidden xs:block">AI Chat</span>
+                  <span className="xs:hidden">Chat</span>
                 </TabsTrigger>
                 <TabsTrigger value="portfolio" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
                   <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
@@ -244,26 +255,23 @@ const PortfolioAdvisor = () => {
             {/* Tab Content */}
             <div className="w-full">
               <TabsContent value="overview" className="mt-2 sm:mt-4 focus-visible:outline-none">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  {/* Portfolio Overview - Left Side */}
-                  <div className="space-y-4">
-                    <PortfolioOverview
-                      portfolio={activePortfolio}
-                      onQuickChat={handleQuickChat}
-                      onActionClick={handleActionClick}
-                    />
-                  </div>
-                  
-                  {/* AI Chat - Right Side */}
-                  <div className="lg:col-span-1">
-                    <AIChat portfolioId={activePortfolio?.id} />
-                  </div>
+                <div className="w-full">
+                  <PortfolioOverview
+                    portfolio={activePortfolio}
+                    onQuickChat={handleQuickChat}
+                    onActionClick={handleActionClick}
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="chat" className="mt-2 sm:mt-4 focus-visible:outline-none">
+                <div className="w-full">
+                  <AIChat portfolioId={activePortfolio?.id} />
                 </div>
               </TabsContent>
 
               <TabsContent value="portfolio" className="mt-2 sm:mt-4 focus-visible:outline-none">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  {/* Interactive Portfolio - Left Side */}
                   <div className="space-y-4">
                     <InteractivePortfolio
                       portfolio={activePortfolio}
@@ -271,7 +279,6 @@ const PortfolioAdvisor = () => {
                     />
                   </div>
                   
-                  {/* AI Chat - Right Side */}
                   <div className="lg:col-span-1">
                     <AIChat portfolioId={activePortfolio?.id} />
                   </div>

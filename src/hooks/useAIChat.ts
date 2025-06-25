@@ -32,6 +32,7 @@ export const useAIChat = (portfolioId?: string) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [quotaExceeded, setQuotaExceeded] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
 
   const loadMessages = useCallback(async (sessionId: string) => {
     if (!user || !portfolioId) return;
@@ -114,10 +115,11 @@ export const useAIChat = (portfolioId?: string) => {
       return;
     }
 
-    // Create new session if none exists
+    // If no session exists, create one and queue the message
     if (!currentSessionId) {
+      setPendingMessage(content);
       await createNewSession();
-      return; // Wait for session creation, then retry
+      return;
     }
 
     setIsLoading(true);
@@ -143,7 +145,7 @@ export const useAIChat = (portfolioId?: string) => {
           userId: user.id,
           portfolioId,
           sessionId: currentSessionId,
-          contextType: 'advisory', // Indicate this is advisory context
+          contextType: 'advisory',
         },
       });
 
@@ -175,7 +177,7 @@ export const useAIChat = (portfolioId?: string) => {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-      await fetchUsage(); // Refresh usage data
+      await fetchUsage();
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -191,7 +193,6 @@ export const useAIChat = (portfolioId?: string) => {
   const analyzePortfolio = useCallback(async (analysisType: 'risk' | 'diversification' | 'performance' | 'optimization') => {
     if (!user || !portfolioId) return;
 
-    // Check usage limit
     if (!checkUsageLimit('analysis')) {
       toast({
         title: "Daglig gräns nådd",
@@ -214,13 +215,12 @@ export const useAIChat = (portfolioId?: string) => {
 
       await sendMessage(analysisPrompts[analysisType]);
 
-      // Increment analysis usage
       await supabase.rpc('increment_ai_usage', {
         _user_id: user.id,
         _usage_type: 'analysis'
       });
 
-      await fetchUsage(); // Refresh usage data
+      await fetchUsage();
     } catch (error) {
       console.error('Error analyzing portfolio:', error);
     } finally {
@@ -245,7 +245,6 @@ export const useAIChat = (portfolioId?: string) => {
     if (!user || !portfolioId) return;
     setIsLoading(true);
     try {
-      // Generate contextual session name based on current market/time
       const now = new Date();
       const sessionName = `Rådgivning ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
       
@@ -256,7 +255,7 @@ export const useAIChat = (portfolioId?: string) => {
           session_name: sessionName,
           context_data: {
             created_for: 'advisory',
-            market_context: 'normal', // Could be enhanced with real market data
+            market_context: 'normal',
             portfolio_id: portfolioId
           }
         }])
@@ -278,10 +277,20 @@ export const useAIChat = (portfolioId?: string) => {
       setCurrentSessionId(newSession.id);
       setMessages([]);
       
-      toast({
-        title: "Ny chat skapad",
-        description: "Du kan nu börja chatta med din AI-rådgivare.",
-      });
+      // Send pending message if exists
+      if (pendingMessage) {
+        const messageToSend = pendingMessage;
+        setPendingMessage(null);
+        // Small delay to ensure session is properly set
+        setTimeout(() => {
+          sendMessage(messageToSend);
+        }, 100);
+      } else {
+        toast({
+          title: "Ny chat skapad",
+          description: "Du kan nu börja chatta med din AI-rådgivare.",
+        });
+      }
     } catch (error) {
       console.error('Error creating new session:', error);
       toast({
@@ -292,14 +301,13 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, portfolioId, toast]);
+  }, [user, portfolioId, pendingMessage, sendMessage, toast]);
 
   const loadSession = useCallback(async (sessionId: string) => {
     console.log('Loading chat session:', sessionId);
     setCurrentSessionId(sessionId);
     await loadMessages(sessionId);
     
-    // Make sure the chat UI updates properly
     toast({
       title: "Chat laddad",
       description: "Din sparade chat har laddats.",
@@ -310,7 +318,6 @@ export const useAIChat = (portfolioId?: string) => {
     if (!user) return;
     
     try {
-      // First delete all messages in the session
       const { error: messagesError } = await supabase
         .from('portfolio_chat_history')
         .delete()
@@ -319,7 +326,6 @@ export const useAIChat = (portfolioId?: string) => {
 
       if (messagesError) throw messagesError;
 
-      // Then delete the session itself
       const { error: sessionError } = await supabase
         .from('ai_chat_sessions')
         .delete()
@@ -328,10 +334,8 @@ export const useAIChat = (portfolioId?: string) => {
 
       if (sessionError) throw sessionError;
 
-      // Update local state
       setSessions(prev => prev.filter(session => session.id !== sessionId));
       
-      // If we're currently viewing the deleted session, clear it
       if (currentSessionId === sessionId) {
         setCurrentSessionId(null);
         setMessages([]);
