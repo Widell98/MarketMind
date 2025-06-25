@@ -37,14 +37,17 @@ export const usePosts = (limit = 10) => {
         .from('posts')
         .select(`
           *,
-          profiles!posts_user_id_fkey (username, display_name),
+          profiles:user_id (username, display_name),
           stock_cases (company_name, title)
         `)
         .eq('is_public', true)
         .order('created_at', { ascending: false })
         .limit(limit);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching posts:', error);
+        throw error;
+      }
 
       // Get like counts, comment counts, and user's like status for each post
       const postsWithStats = await Promise.all(
