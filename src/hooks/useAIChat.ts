@@ -115,6 +115,12 @@ export const useAIChat = (portfolioId?: string) => {
       return;
     }
 
+    // Create new session if none exists
+    if (!currentSessionId) {
+      await createNewSession();
+      return; // Wait for session creation, then retry
+    }
+
     setIsLoading(true);
     setQuotaExceeded(false);
 
@@ -128,12 +134,17 @@ export const useAIChat = (portfolioId?: string) => {
     setMessages(prev => [...prev, userMessage]);
 
     try {
+      // Enhanced context for better AI responses
+      const enhancedMessage = content.includes('tough') || content.includes('worried') || content.includes('scared') ? 
+        `[EMOTIONAL_SUPPORT_NEEDED] ${content}` : content;
+
       const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
         body: {
-          message: content,
-          userId: user.id, // Add userId to the request
+          message: enhancedMessage,
+          userId: user.id,
           portfolioId,
           sessionId: currentSessionId,
+          contextType: 'advisory', // Indicate this is advisory context
         },
       });
 
@@ -235,9 +246,21 @@ export const useAIChat = (portfolioId?: string) => {
     if (!user || !portfolioId) return;
     setIsLoading(true);
     try {
+      // Generate contextual session name based on current market/time
+      const now = new Date();
+      const sessionName = `Rådgivning ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
+      
       const { data, error } = await supabase
         .from('ai_chat_sessions')
-        .insert([{ user_id: user.id, session_name: 'Ny Session' }])
+        .insert([{ 
+          user_id: user.id, 
+          session_name: sessionName,
+          context_data: {
+            created_for: 'advisory',
+            market_context: 'normal', // Could be enhanced with real market data
+            portfolio_id: portfolioId
+          }
+        }])
         .select()
         .single();
 
@@ -247,7 +270,7 @@ export const useAIChat = (portfolioId?: string) => {
 
       const newSession = {
         id: data.id,
-        session_name: data.session_name || 'Ny Session',
+        session_name: data.session_name || sessionName,
         created_at: data.created_at,
         is_active: data.is_active || false,
       };
@@ -255,6 +278,11 @@ export const useAIChat = (portfolioId?: string) => {
       setSessions(prev => [newSession, ...prev]);
       setCurrentSessionId(newSession.id);
       setMessages([]);
+      
+      toast({
+        title: "Ny chat skapad",
+        description: "Du kan nu börja chatta med din AI-rådgivare.",
+      });
     } catch (error) {
       console.error('Error creating new session:', error);
       toast({
