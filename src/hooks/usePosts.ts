@@ -33,25 +33,49 @@ export const usePosts = (limit = 10) => {
   return useQuery({
     queryKey: ['posts', limit],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First get posts with stock_cases
+      const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select(`
           *,
-          profiles:user_id (username, display_name),
           stock_cases (company_name, title)
         `)
         .eq('is_public', true)
         .order('created_at', { ascending: false })
         .limit(limit);
 
-      if (error) {
-        console.error('Error fetching posts:', error);
-        throw error;
+      if (postsError) {
+        console.error('Error fetching posts:', postsError);
+        throw postsError;
       }
+
+      // Then get profiles for all users
+      const userIds = postsData?.map(post => post.user_id) || [];
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, display_name')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        throw profilesError;
+      }
+
+      // Create a map of profiles by user_id
+      const profilesMap = new Map();
+      profilesData?.forEach(profile => {
+        profilesMap.set(profile.id, profile);
+      });
+
+      // Merge posts with profiles
+      const postsWithProfiles = postsData?.map(post => ({
+        ...post,
+        profiles: profilesMap.get(post.user_id) || null
+      })) || [];
 
       // Get like counts, comment counts, and user's like status for each post
       const postsWithStats = await Promise.all(
-        (data || []).map(async (post) => {
+        postsWithProfiles.map(async (post) => {
           const [likeCountResult, commentCountResult, userLikeResult] = await Promise.all([
             supabase.rpc('get_post_like_count', { post_id: post.id }),
             supabase.rpc('get_post_comment_count', { post_id: post.id }),
