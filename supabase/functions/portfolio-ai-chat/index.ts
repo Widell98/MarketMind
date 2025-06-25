@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -9,12 +8,20 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  console.log('=== PORTFOLIO AI CHAT FUNCTION STARTED ===');
+  console.log('Request method:', req.method);
+  console.log('Request URL:', req.url);
+
   try {
-    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe } = await req.json();
+    const requestBody = await req.json();
+    console.log('Request body received:', JSON.stringify(requestBody, null, 2));
+    
+    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe } = requestBody;
 
     console.log('Portfolio AI Chat function called with:', { 
       message: message?.substring(0, 50) + '...', 
@@ -25,19 +32,25 @@ serve(async (req) => {
     });
 
     if (!message || !userId) {
+      console.error('Missing required fields:', { message: !!message, userId: !!userId });
       throw new Error('Message and userId are required');
     }
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
+      console.error('OpenAI API key not found in environment');
       throw new Error('OpenAI API key not configured');
     }
+
+    console.log('OpenAI API key found, length:', openAIApiKey.length);
 
     // Initialize Supabase client
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
+
+    console.log('Supabase client initialized');
 
     // Fetch enhanced context data
     const { data: riskProfile } = await supabase
@@ -148,7 +161,10 @@ VIKTIGA RIKTLINJER:
       }
     ];
 
-    console.log('Sending request to OpenAI with gpt-4o-mini model');
+    console.log('=== CALLING OPENAI API ===');
+    console.log('Model: gpt-4o-mini');
+    console.log('Messages count:', messages.length);
+    console.log('User message:', message);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -164,9 +180,12 @@ VIKTIGA RIKTLINJER:
       }),
     });
 
+    console.log('OpenAI response status:', response.status);
+    console.log('OpenAI response ok:', response.ok);
+
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('OpenAI API error:', errorData);
+      console.error('OpenAI API error details:', errorData);
       
       // Handle specific quota exceeded error
       if (response.status === 429) {
@@ -203,9 +222,12 @@ VIKTIGA RIKTLINJER:
     }
 
     const data = await response.json();
+    console.log('OpenAI response data keys:', Object.keys(data));
+    console.log('OpenAI choices count:', data.choices?.length);
+    
     const aiResponse = data.choices[0].message.content;
-
-    console.log('Received OpenAI response, length:', aiResponse?.length);
+    console.log('AI response length:', aiResponse?.length);
+    console.log('AI response preview:', aiResponse?.substring(0, 100));
 
     // Calculate confidence score based on available data
     let confidence = 0.5; // Base confidence
@@ -272,7 +294,7 @@ VIKTIGA RIKTLINJER:
       console.error('Error storing chat history:', chatError);
     }
 
-    console.log('Portfolio AI Chat function completed successfully');
+    console.log('=== FUNCTION COMPLETED SUCCESSFULLY ===');
 
     return new Response(
       JSON.stringify({ 
@@ -293,7 +315,10 @@ VIKTIGA RIKTLINJER:
     );
 
   } catch (error) {
-    console.error('Error in portfolio-ai-chat function:', error);
+    console.error('=== FUNCTION ERROR ===');
+    console.error('Error details:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     
     // Check if it's a quota-related error
     if (error.message.includes('quota') || error.message.includes('insufficient_quota')) {

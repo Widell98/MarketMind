@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -103,8 +104,11 @@ export const useAIChat = (portfolioId?: string) => {
   }, [user, portfolioId, toast]);
 
   const sendMessage = useCallback(async (content: string) => {
-    console.log('sendMessage called with:', content);
+    console.log('=== SENDING MESSAGE DEBUG ===');
+    console.log('Content:', content);
+    console.log('User:', user?.id);
     console.log('Current session ID:', currentSessionId);
+    console.log('Portfolio ID:', portfolioId);
     
     if (!user || !content.trim()) {
       console.log('Missing user or empty content');
@@ -134,6 +138,12 @@ export const useAIChat = (portfolioId?: string) => {
   }, [user, currentSessionId, checkUsageLimit, toast]);
 
   const sendMessageToSession = useCallback(async (content: string) => {
+    console.log('=== SEND MESSAGE TO SESSION DEBUG ===');
+    console.log('Content:', content);
+    console.log('User ID:', user?.id);
+    console.log('Portfolio ID:', portfolioId);
+    console.log('Session ID:', currentSessionId);
+    
     if (!user || !currentSessionId) {
       console.log('Cannot send message: missing user or session');
       return;
@@ -153,21 +163,29 @@ export const useAIChat = (portfolioId?: string) => {
     console.log('Added user message to UI');
 
     try {
-      // Enhanced context for better AI responses
-      const enhancedMessage = content.includes('tough') || content.includes('worried') || content.includes('scared') ? 
-        `[EMOTIONAL_SUPPORT_NEEDED] ${content}` : content;
-
-      console.log('Calling AI function with message:', enhancedMessage);
+      console.log('=== CALLING EDGE FUNCTION ===');
+      console.log('Function name: portfolio-ai-chat');
+      console.log('Request payload:', {
+        message: content,
+        userId: user.id,
+        portfolioId,
+        sessionId: currentSessionId,
+        contextType: 'advisory',
+      });
 
       const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
         body: {
-          message: enhancedMessage,
+          message: content,
           userId: user.id,
           portfolioId,
           sessionId: currentSessionId,
           contextType: 'advisory',
         },
       });
+
+      console.log('=== EDGE FUNCTION RESPONSE ===');
+      console.log('Error:', error);
+      console.log('Data:', data);
 
       if (error) {
         console.error('AI function error:', error);
@@ -206,7 +224,7 @@ export const useAIChat = (portfolioId?: string) => {
       console.error('Error sending message:', error);
       toast({
         title: "Fel",
-        description: "Kunde inte skicka meddelandet. Försök igen.",
+        description: `Kunde inte skicka meddelandet: ${error.message}`,
         variant: "destructive",
       });
     } finally {
@@ -266,6 +284,10 @@ export const useAIChat = (portfolioId?: string) => {
   }, [sendMessage, checkUsageLimit, toast]);
 
   const createNewSession = useCallback(async () => {
+    console.log('=== CREATE NEW SESSION DEBUG ===');
+    console.log('User:', user?.id);
+    console.log('Portfolio ID:', portfolioId);
+    
     if (!user || !portfolioId) {
       console.log('Cannot create session: missing user or portfolio');
       return;
@@ -277,6 +299,8 @@ export const useAIChat = (portfolioId?: string) => {
     try {
       const now = new Date();
       const sessionName = `Rådgivning ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
+      
+      console.log('Session name:', sessionName);
       
       const { data, error } = await supabase
         .from('ai_chat_sessions')
@@ -293,6 +317,7 @@ export const useAIChat = (portfolioId?: string) => {
         .single();
 
       if (error) {
+        console.error('Error creating session:', error);
         throw error;
       }
 
@@ -309,15 +334,17 @@ export const useAIChat = (portfolioId?: string) => {
       setCurrentSessionId(newSession.id);
       setMessages([]);
       
-      console.log('Session state updated, checking for pending message...');
+      console.log('Session state updated, current session ID:', newSession.id);
+      console.log('Checking for pending message:', pendingMessage);
       
       // Send pending message if exists
       if (pendingMessage) {
-        console.log('Found pending message, sending:', pendingMessage);
+        console.log('Found pending message, will send:', pendingMessage);
         const messageToSend = pendingMessage;
         setPendingMessage(null);
         // Small delay to ensure session is properly set
         setTimeout(async () => {
+          console.log('Sending pending message after timeout');
           await sendMessageToSession(messageToSend);
         }, 100);
       } else {
