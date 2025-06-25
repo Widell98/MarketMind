@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
@@ -11,6 +12,7 @@ import { ArrowLeft, TrendingUp, Building, ZoomIn, User, Target, DollarSign, BarC
 import ImageModal from '@/components/ImageModal';
 import ImageHistoryNavigation from '@/components/ImageHistoryNavigation';
 import ImageUploadDialog from '@/components/ImageUploadDialog';
+import UserProfileSidebar from '@/components/UserProfileSidebar';
 
 const StockCaseDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -111,7 +113,7 @@ const StockCaseDetail = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <Button
           variant="ghost"
           onClick={() => navigate('/stock-cases')}
@@ -121,157 +123,168 @@ const StockCaseDetail = () => {
           Back to stock cases
         </Button>
 
-        <div className="space-y-8">
-          {/* Header */}
-          <div className="text-center space-y-4">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold font-heading bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent leading-tight">
-              {stockCase.title}
-            </h1>
-            <Badge variant="outline" className="text-lg px-4 py-2">
-              {stockCase.status === 'active' ? 'Active Analysis' : 'Completed Analysis'}
-            </Badge>
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Main Content - Left Side */}
+          <div className="lg:col-span-3 space-y-8">
+            {/* Header */}
+            <div className="text-center space-y-4">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold font-heading bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent leading-tight">
+                {stockCase.title}
+              </h1>
+              <Badge variant="outline" className="text-lg px-4 py-2">
+                {stockCase.status === 'active' ? 'Active Analysis' : 'Completed Analysis'}
+              </Badge>
+            </div>
 
-          {/* Image with better hover effects and proper sizing */}
-          {imageUrl && (
-            <div className="space-y-6">
-              <Card className="overflow-hidden group cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300" onClick={handleImageClick}>
-                <div className="relative">
-                  <img
-                    src={imageUrl}
-                    alt={`${stockCase.title} stock price chart`}
-                    className="w-full h-auto object-contain transition-all duration-300 group-hover:scale-105 max-h-[600px] mx-auto"
-                    style={{
-                      imageRendering: 'crisp-edges'
-                    }}
-                    loading="eager"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                    <div className="bg-white/95 dark:bg-gray-800/95 rounded-full p-3 shadow-lg backdrop-blur-sm border border-white/20">
-                      <ZoomIn className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+            {/* Image with better hover effects and proper sizing */}
+            {imageUrl && (
+              <div className="space-y-6">
+                <Card className="overflow-hidden group cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300" onClick={handleImageClick}>
+                  <div className="relative">
+                    <img
+                      src={imageUrl}
+                      alt={`${stockCase.title} stock price chart`}
+                      className="w-full h-auto object-contain transition-all duration-300 group-hover:scale-105 max-h-[600px] mx-auto"
+                      style={{
+                        imageRendering: 'crisp-edges'
+                      }}
+                      loading="eager"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+                      <div className="bg-white/95 dark:bg-gray-800/95 rounded-full p-3 shadow-lg backdrop-blur-sm border border-white/20">
+                        <ZoomIn className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+                      </div>
+                    </div>
+                    {/* Click hint overlay */}
+                    <div className="absolute bottom-3 right-3 bg-black/70 text-white px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-sm">
+                      Click to enlarge
                     </div>
                   </div>
-                  {/* Click hint overlay */}
-                  <div className="absolute bottom-3 right-3 bg-black/70 text-white px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-sm">
-                    Click to enlarge
-                  </div>
+                </Card>
+
+                {/* Upload new image button */}
+                <div className="flex justify-end">
+                  <ImageUploadDialog
+                    stockCaseId={id!}
+                    onImageAdded={handleImageAdded}
+                    canEdit={canEdit}
+                  />
                 </div>
-              </Card>
 
-              {/* Upload new image button */}
-              <div className="flex justify-end">
-                <ImageUploadDialog
-                  stockCaseId={id!}
-                  onImageAdded={handleImageAdded}
-                  canEdit={canEdit}
-                />
+                {/* Image History Navigation */}
+                {!historyLoading && images.length > 1 && (
+                  <ImageHistoryNavigation
+                    images={images}
+                    currentIndex={currentImageIndex}
+                    onIndexChange={setCurrentImageIndex}
+                    onSetCurrent={setCurrentImage}
+                    canEdit={canEdit}
+                  />
+                )}
               </div>
+            )}
 
-              {/* Image History Navigation */}
-              {!historyLoading && images.length > 1 && (
-                <ImageHistoryNavigation
-                  images={images}
-                  currentIndex={currentImageIndex}
-                  onIndexChange={setCurrentImageIndex}
-                  onSetCurrent={setCurrentImage}
-                  canEdit={canEdit}
-                />
-              )}
-            </div>
-          )}
+            {/* User Analysis */}
+            {stockCase.admin_comment && (
+              <Card className="border-l-4 border-l-purple-500 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="text-purple-900 dark:text-purple-300 flex items-center">
+                    <User className="w-5 h-5 mr-2" />
+                    My Analysis & Reflection
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-purple-50 dark:bg-purple-900/20 p-6 rounded-xl border border-purple-200 dark:border-purple-800">
+                    <p className="text-purple-800 dark:text-purple-200 leading-relaxed whitespace-pre-wrap">
+                      {stockCase.admin_comment}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-          {/* User Analysis */}
-          {stockCase.admin_comment && (
-            <Card className="border-l-4 border-l-purple-500 shadow-lg">
+            {/* Company Facts */}
+            <Card className="shadow-lg">
               <CardHeader>
-                <CardTitle className="text-purple-900 dark:text-purple-300 flex items-center">
-                  <User className="w-5 h-5 mr-2" />
-                  My Analysis & Reflection
+                <CardTitle className="flex items-center text-gray-900 dark:text-gray-100">
+                  <Building className="w-5 h-5 mr-2 text-blue-600" />
+                  Company Facts & Investment Data
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-purple-50 dark:bg-purple-900/20 p-6 rounded-xl border border-purple-200 dark:border-purple-800">
-                  <p className="text-purple-800 dark:text-purple-200 leading-relaxed whitespace-pre-wrap">
-                    {stockCase.admin_comment}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {stockCase.entry_price && (
+                    <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl border border-green-200 dark:border-green-800">
+                      <DollarSign className="w-8 h-8 text-green-600 mx-auto mb-3" />
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Entry Price</h3>
+                      <p className="text-gray-700 dark:text-gray-300 font-mono">{formatPrice(stockCase.entry_price)}</p>
+                    </div>
+                  )}
+
+                  {stockCase.target_price && (
+                    <div className="text-center p-6 bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-xl border border-yellow-200 dark:border-yellow-800">
+                      <Target className="w-8 h-8 text-yellow-600 mx-auto mb-3" />
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Target Price</h3>
+                      <p className="text-gray-700 dark:text-gray-300 font-mono">{formatPrice(stockCase.target_price)}</p>
+                    </div>
+                  )}
+
+                  {stockCase.current_price && (
+                    <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl border border-purple-200 dark:border-purple-800">
+                      <BarChart3 className="w-8 h-8 text-purple-600 mx-auto mb-3" />
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Current Price</h3>
+                      <p className="text-gray-700 dark:text-gray-300 font-mono">{formatPrice(stockCase.current_price)}</p>
+                    </div>
+                  )}
+
+                  {stockCase.stop_loss && (
+                    <div className="text-center p-6 bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 rounded-xl border border-red-200 dark:border-red-800">
+                      <TrendingUp className="w-8 h-8 text-red-600 mx-auto mb-3 rotate-180" />
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Stop Loss</h3>
+                      <p className="text-gray-700 dark:text-gray-300 font-mono">{formatPrice(stockCase.stop_loss)}</p>
+                    </div>
+                  )}
+
+                  <div className="text-center p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/20 dark:to-gray-700/20 rounded-xl border border-gray-200 dark:border-gray-700">
+                    <Calendar className="w-8 h-8 text-gray-600 mx-auto mb-3" />
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Created</h3>
+                    <p className="text-gray-700 dark:text-gray-300">{formatDate(stockCase.created_at)}</p>
+                  </div>
+
+                  {stockCase.sector && (
+                    <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                      <TrendingUp className="w-8 h-8 text-blue-600 mx-auto mb-3" />
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Sector</h3>
+                      <p className="text-gray-700 dark:text-gray-300">{stockCase.sector}</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Description */}
+            {stockCase.description && (
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="text-gray-900 dark:text-gray-100">About the company</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                    {stockCase.description}
                   </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
 
-          {/* Company Facts */}
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center text-gray-900 dark:text-gray-100">
-                <Building className="w-5 h-5 mr-2 text-blue-600" />
-                Company Facts & Investment Data
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {stockCase.entry_price && (
-                  <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl border border-green-200 dark:border-green-800">
-                    <DollarSign className="w-8 h-8 text-green-600 mx-auto mb-3" />
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Entry Price</h3>
-                    <p className="text-gray-700 dark:text-gray-300 font-mono">{formatPrice(stockCase.entry_price)}</p>
-                  </div>
-                )}
-
-                {stockCase.target_price && (
-                  <div className="text-center p-6 bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-xl border border-yellow-200 dark:border-yellow-800">
-                    <Target className="w-8 h-8 text-yellow-600 mx-auto mb-3" />
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Target Price</h3>
-                    <p className="text-gray-700 dark:text-gray-300 font-mono">{formatPrice(stockCase.target_price)}</p>
-                  </div>
-                )}
-
-                {stockCase.current_price && (
-                  <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl border border-purple-200 dark:border-purple-800">
-                    <BarChart3 className="w-8 h-8 text-purple-600 mx-auto mb-3" />
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Current Price</h3>
-                    <p className="text-gray-700 dark:text-gray-300 font-mono">{formatPrice(stockCase.current_price)}</p>
-                  </div>
-                )}
-
-                {stockCase.stop_loss && (
-                  <div className="text-center p-6 bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 rounded-xl border border-red-200 dark:border-red-800">
-                    <TrendingUp className="w-8 h-8 text-red-600 mx-auto mb-3 rotate-180" />
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Stop Loss</h3>
-                    <p className="text-gray-700 dark:text-gray-300 font-mono">{formatPrice(stockCase.stop_loss)}</p>
-                  </div>
-                )}
-
-                <div className="text-center p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/20 dark:to-gray-700/20 rounded-xl border border-gray-200 dark:border-gray-700">
-                  <Calendar className="w-8 h-8 text-gray-600 mx-auto mb-3" />
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Created</h3>
-                  <p className="text-gray-700 dark:text-gray-300">{formatDate(stockCase.created_at)}</p>
-                </div>
-
-                {stockCase.sector && (
-                  <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl border border-blue-200 dark:border-blue-800">
-                    <TrendingUp className="w-8 h-8 text-blue-600 mx-auto mb-3" />
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Sector</h3>
-                    <p className="text-gray-700 dark:text-gray-300">{stockCase.sector}</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Description */}
-          {stockCase.description && (
-            <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-gray-100">About the company</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                  {stockCase.description}
-                </p>
-              </CardContent>
-            </Card>
-          )}
+          {/* Right Sidebar - User Profile */}
+          <div className="lg:col-span-1">
+            <UserProfileSidebar 
+              userId={stockCase.user_id} 
+              userProfile={stockCase.profiles}
+            />
+          </div>
         </div>
       </div>
 
