@@ -1,9 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Clock, ArrowRight, TrendingUp, Heart, UserCheck, UserPlus, Eye, MessageCircle } from 'lucide-react';
+import { Clock, ArrowRight, TrendingUp, Heart, UserCheck, UserPlus, Eye, MessageCircle, Filter, Bookmark } from 'lucide-react';
 import { useLatestStockCases } from '@/hooks/useLatestStockCases';
+import { useStockCases } from '@/hooks/useStockCases';
+import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
@@ -12,8 +14,28 @@ import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 
 const LatestCases = () => {
-  const { latestCases, loading } = useLatestStockCases(6);
+  const [viewMode, setViewMode] = useState<'all' | 'trending' | 'followed'>('all');
   const navigate = useNavigate();
+
+  // Fetch data based on view mode
+  const { stockCases: allStockCases, loading: allLoading } = useStockCases(false);
+  const { stockCases: followedStockCases, loading: followedLoading } = useStockCases(true);
+  const { trendingCases, loading: trendingLoading } = useTrendingStockCases(6);
+
+  const getDisplayData = () => {
+    switch (viewMode) {
+      case 'all':
+        return { cases: allStockCases.slice(0, 6), loading: allLoading };
+      case 'trending':
+        return { cases: trendingCases, loading: trendingLoading };
+      case 'followed':
+        return { cases: followedStockCases.slice(0, 6), loading: followedLoading };
+      default:
+        return { cases: allStockCases.slice(0, 6), loading: allLoading };
+    }
+  };
+
+  const { cases: displayCases, loading } = getDisplayData();
 
   if (loading) {
     return (
@@ -39,74 +61,70 @@ const LatestCases = () => {
     );
   }
 
-  if (latestCases.length === 0) {
+  if (displayCases.length === 0) {
     return (
       <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-blue-500" />
-            Latest Cases
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-blue-500" />
+              Latest Cases
+            </CardTitle>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => navigate('/stock-cases')}
+              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            >
+              View All
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+          
+          {/* Filter Tabs */}
+          <div className="flex items-center gap-1 mt-4">
+            <Button
+              variant={viewMode === 'all' ? 'default' : 'outline'}
+              onClick={() => setViewMode('all')}
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Filter className="w-3 h-3" />
+              Alla
+            </Button>
+            <Button
+              variant={viewMode === 'trending' ? 'default' : 'outline'}
+              onClick={() => setViewMode('trending')}
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <TrendingUp className="w-3 h-3" />
+              Trending
+            </Button>
+            <Button
+              variant={viewMode === 'followed' ? 'default' : 'outline'}
+              onClick={() => setViewMode('followed')}
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Bookmark className="w-3 h-3" />
+              Följda
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <p className="text-gray-600 dark:text-gray-400 text-center py-4">
-            No cases available yet.
+            {viewMode === 'trending' 
+              ? 'Inga trending cases ännu.'
+              : viewMode === 'followed'
+              ? 'Du följer inga cases ännu.'
+              : 'Inga cases tillgängliga ännu.'
+            }
           </p>
         </CardContent>
       </Card>
     );
   }
-
-  const getCategoryColor = (category: string) => {
-    const colors = {
-      'Tech': 'bg-purple-500',
-      'Biotech': 'bg-green-500',
-      'Theme': 'bg-orange-500',
-      'Gaming': 'bg-red-500',
-      'Industrial': 'bg-blue-500'
-    };
-    return colors[category as keyof typeof colors] || 'bg-gray-500';
-  };
-
-  const getImageUrl = (stockCase: any) => {
-    if (stockCase.image_url) {
-      return stockCase.image_url;
-    }
-    // Fallback images based on category or company name
-    const fallbackImages = [
-      'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&h=200&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=400&h=200&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=200&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=200&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=400&h=200&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=200&fit=crop&crop=center'
-    ];
-    return fallbackImages[Math.floor(Math.random() * fallbackImages.length)];
-  };
-
-  const getStatusBadge = (status: string, performance: number | null) => {
-    if (status === 'winner') {
-      return (
-        <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800">
-          <TrendingUp className="w-3 h-3 mr-1" />
-          Winner {performance ? `+${performance}%` : ''}
-        </Badge>
-      );
-    }
-    if (status === 'loser') {
-      return (
-        <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800">
-          <TrendingUp className="w-3 h-3 mr-1" />
-          Loser {performance ? `${performance}%` : ''}
-        </Badge>
-      );
-    }
-    return (
-      <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-        Active
-      </Badge>
-    );
-  };
 
   return (
     <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 hover:shadow-xl transition-shadow duration-300">
@@ -126,10 +144,41 @@ const LatestCases = () => {
             <ArrowRight className="w-4 h-4 ml-1" />
           </Button>
         </div>
+        
+        {/* Filter Tabs */}
+        <div className="flex items-center gap-1 mt-4">
+          <Button
+            variant={viewMode === 'all' ? 'default' : 'outline'}
+            onClick={() => setViewMode('all')}
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <Filter className="w-3 h-3" />
+            Alla
+          </Button>
+          <Button
+            variant={viewMode === 'trending' ? 'default' : 'outline'}
+            onClick={() => setViewMode('trending')}
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <TrendingUp className="w-3 h-3" />
+            Trending
+          </Button>
+          <Button
+            variant={viewMode === 'followed' ? 'default' : 'outline'}
+            onClick={() => setViewMode('followed')}
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <Bookmark className="w-3 h-3" />
+            Följda
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {latestCases.map((stockCase) => (
+          {displayCases.map((stockCase) => (
             <StockCaseCard key={stockCase.id} stockCase={stockCase} />
           ))}
         </div>
