@@ -198,8 +198,6 @@ const PortfolioAdvisor = () => {
                   loadSession(sessionId);
                   setActiveTab('chat');
                 }}
-                onToggleFavorite={handleToggleFavorite}
-                onRenameSession={handleRenameSession}
                 onDeleteSession={handleDeleteSession}
               />
               <Button
