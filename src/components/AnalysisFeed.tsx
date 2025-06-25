@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import CreateAnalysisDialog from './CreateAnalysisDialog';
 
 const AnalysisFeed = () => {
-  const { analyses, loading } = useAnalyses();
+  const { data: analyses, isLoading, error } = useAnalyses();
   const { user } = useAuth();
   const toggleLike = useToggleAnalysisLike();
 
@@ -40,7 +40,7 @@ const AnalysisFeed = () => {
     return colors[type as keyof typeof colors] || 'bg-gray-500';
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-4">
         {[...Array(3)].map((_, index) => (
@@ -61,6 +61,23 @@ const AnalysisFeed = () => {
             </CardContent>
           </Card>
         ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-end">
+          <CreateAnalysisDialog />
+        </div>
+        <Card className="text-center py-8 bg-red-50 dark:bg-red-900/20">
+          <CardContent className="pt-4">
+            <p className="text-red-600 dark:text-red-400">
+              Kunde inte ladda analyser. Försök igen senare.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
