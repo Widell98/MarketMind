@@ -12,7 +12,6 @@ import PerformanceAttribution from '@/components/PerformanceAttribution';
 import ScenarioAnalysis from '@/components/ScenarioAnalysis';
 import SubscriptionCard from '@/components/SubscriptionCard';
 import ChatHistory from '@/components/ChatHistory';
-import ToughTimesSupport from '@/components/ToughTimesSupport';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,10 +35,6 @@ const PortfolioAdvisor = () => {
     loadSession,
     createNewSession 
   } = useAIChat(activePortfolio?.id);
-
-  // Mock market data - in a real app, this would come from an API
-  const [marketVolatility] = useState<'low' | 'medium' | 'high'>('medium');
-  const [portfolioChange] = useState(-2.3); // Mock portfolio change
 
   useEffect(() => {
     if (
@@ -76,7 +71,6 @@ const PortfolioAdvisor = () => {
 
   const handleQuickChat = async (message: string) => {
     await sendMessage(message);
-    setActiveTab('chat'); // Switch to chat tab after sending message
   };
 
   const handleActionClick = (action: string) => {
@@ -209,28 +203,14 @@ const PortfolioAdvisor = () => {
             </div>
           </div>
 
-          {/* Tough Times Support */}
-          <div className="mb-4">
-            <ToughTimesSupport
-              marketVolatility={marketVolatility}
-              portfolioChange={portfolioChange}
-              onSupportChat={handleQuickChat}
-            />
-          </div>
-
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-2 sm:space-y-4">
             <div className="w-full overflow-x-auto pb-1">
-              <TabsList className="flex w-max min-w-full sm:grid sm:grid-cols-6 sm:w-full h-auto p-1 gap-0.5 sm:gap-1">
+              <TabsList className="flex w-max min-w-full sm:grid sm:grid-cols-5 sm:w-full h-auto p-1 gap-0.5 sm:gap-1">
                 <TabsTrigger value="overview" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
                   <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                   <span className="hidden xs:block">Översikt</span>
                   <span className="xs:hidden">Över</span>
-                </TabsTrigger>
-                <TabsTrigger value="chat" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
-                  <Brain className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                  <span className="hidden xs:block">AI Chat</span>
-                  <span className="xs:hidden">Chat</span>
                 </TabsTrigger>
                 <TabsTrigger value="health" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
                   <Activity className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
@@ -258,16 +238,20 @@ const PortfolioAdvisor = () => {
             {/* Tab Content */}
             <div className="w-full">
               <TabsContent value="overview" className="mt-2 sm:mt-4 focus-visible:outline-none">
-                <PortfolioOverview
-                  portfolio={activePortfolio}
-                  onQuickChat={handleQuickChat}
-                  onActionClick={handleActionClick}
-                />
-              </TabsContent>
-
-              <TabsContent value="chat" className="mt-2 sm:mt-4 focus-visible:outline-none">
-                <div className="w-full">
-                  <AIChat portfolioId={activePortfolio?.id} />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                  {/* Portfolio Overview - Left Side */}
+                  <div className="space-y-4">
+                    <PortfolioOverview
+                      portfolio={activePortfolio}
+                      onQuickChat={handleQuickChat}
+                      onActionClick={handleActionClick}
+                    />
+                  </div>
+                  
+                  {/* AI Chat - Right Side */}
+                  <div className="lg:col-span-1">
+                    <AIChat portfolioId={activePortfolio?.id} />
+                  </div>
                 </div>
               </TabsContent>
 
