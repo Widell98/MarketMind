@@ -18,7 +18,7 @@ const FeedLayout = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/20 dark:from-gray-900 dark:via-blue-950/20 dark:to-purple-950/10">
       {/* Enhanced Header Banner */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-blue-700 to-purple-700 text-white z-0">
+      <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-blue-700 to-purple-700 text-white">
         {/* Smaller background elements */}
         <div className="absolute inset-0">
           <div className="absolute top-0 left-0 w-16 h-16 bg-white/2 rounded-full blur-xl -translate-x-1/2 -translate-y-1/2"></div>

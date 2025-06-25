@@ -14,7 +14,7 @@ const MainNavigation = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <NavigationMenu className="hidden md:flex">
+    <NavigationMenu className="hidden md:flex z-50">
       <NavigationMenuList>
         {/* Community Section */}
         {user && (
@@ -23,7 +23,7 @@ const MainNavigation = () => {
               <Users className="w-4 h-4 mr-2" />
               Community
             </NavigationMenuTrigger>
-            <NavigationMenuContent>
+            <NavigationMenuContent className="z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
               <div className="grid gap-3 p-6 w-[400px]">
                 <NavigationMenuLink asChild>
                   <Link
@@ -52,7 +52,7 @@ const MainNavigation = () => {
             <TrendingUp className="w-4 h-4 mr-2" />
             Investing
           </NavigationMenuTrigger>
-          <NavigationMenuContent>
+          <NavigationMenuContent className="z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
             <div className="grid gap-3 p-6 w-[400px]">
               <NavigationMenuLink asChild>
                 <Link
@@ -115,7 +115,7 @@ const MainNavigation = () => {
             <BookOpen className="w-4 h-4 mr-2" />
             Learning
           </NavigationMenuTrigger>
-          <NavigationMenuContent>
+          <NavigationMenuContent className="z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
             <div className="grid gap-3 p-6 w-[400px]">
               <NavigationMenuLink asChild>
                 <Link
