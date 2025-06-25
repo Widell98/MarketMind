@@ -103,7 +103,13 @@ export const useAIChat = (portfolioId?: string) => {
   }, [user, portfolioId, toast]);
 
   const sendMessage = useCallback(async (content: string) => {
-    if (!user || !content.trim()) return;
+    console.log('sendMessage called with:', content);
+    console.log('Current session ID:', currentSessionId);
+    
+    if (!user || !content.trim()) {
+      console.log('Missing user or empty content');
+      return;
+    }
 
     // Check usage limit
     if (!checkUsageLimit('ai_message')) {
@@ -117,8 +123,19 @@ export const useAIChat = (portfolioId?: string) => {
 
     // If no session exists, create one and queue the message
     if (!currentSessionId) {
+      console.log('No session exists, setting pending message and creating session');
       setPendingMessage(content);
       await createNewSession();
+      return;
+    }
+
+    console.log('Sending message to existing session');
+    await sendMessageToSession(content);
+  }, [user, currentSessionId, checkUsageLimit, toast]);
+
+  const sendMessageToSession = useCallback(async (content: string) => {
+    if (!user || !currentSessionId) {
+      console.log('Cannot send message: missing user or session');
       return;
     }
 
@@ -133,11 +150,14 @@ export const useAIChat = (portfolioId?: string) => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    console.log('Added user message to UI');
 
     try {
       // Enhanced context for better AI responses
       const enhancedMessage = content.includes('tough') || content.includes('worried') || content.includes('scared') ? 
         `[EMOTIONAL_SUPPORT_NEEDED] ${content}` : content;
+
+      console.log('Calling AI function with message:', enhancedMessage);
 
       const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
         body: {
@@ -150,6 +170,7 @@ export const useAIChat = (portfolioId?: string) => {
       });
 
       if (error) {
+        console.error('AI function error:', error);
         if (error.message?.includes('quota') || error.message?.includes('429')) {
           setQuotaExceeded(true);
           toast({
@@ -161,6 +182,8 @@ export const useAIChat = (portfolioId?: string) => {
         }
         throw error;
       }
+
+      console.log('AI response received:', data);
 
       // Increment usage after successful API call
       await supabase.rpc('increment_ai_usage', {
@@ -177,6 +200,7 @@ export const useAIChat = (portfolioId?: string) => {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+      console.log('Added assistant message to UI');
       await fetchUsage();
     } catch (error) {
       console.error('Error sending message:', error);
@@ -188,7 +212,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, portfolioId, currentSessionId, checkUsageLimit, fetchUsage, toast]);
+  }, [user, portfolioId, currentSessionId, fetchUsage, toast]);
 
   const analyzePortfolio = useCallback(async (analysisType: 'risk' | 'diversification' | 'performance' | 'optimization') => {
     if (!user || !portfolioId) return;
@@ -242,8 +266,14 @@ export const useAIChat = (portfolioId?: string) => {
   }, [sendMessage, checkUsageLimit, toast]);
 
   const createNewSession = useCallback(async () => {
-    if (!user || !portfolioId) return;
+    if (!user || !portfolioId) {
+      console.log('Cannot create session: missing user or portfolio');
+      return;
+    }
+    
+    console.log('Creating new session...');
     setIsLoading(true);
+    
     try {
       const now = new Date();
       const sessionName = `Rådgivning ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
@@ -266,6 +296,8 @@ export const useAIChat = (portfolioId?: string) => {
         throw error;
       }
 
+      console.log('New session created:', data);
+
       const newSession = {
         id: data.id,
         session_name: data.session_name || sessionName,
@@ -277,15 +309,19 @@ export const useAIChat = (portfolioId?: string) => {
       setCurrentSessionId(newSession.id);
       setMessages([]);
       
+      console.log('Session state updated, checking for pending message...');
+      
       // Send pending message if exists
       if (pendingMessage) {
+        console.log('Found pending message, sending:', pendingMessage);
         const messageToSend = pendingMessage;
         setPendingMessage(null);
         // Small delay to ensure session is properly set
-        setTimeout(() => {
-          sendMessage(messageToSend);
+        setTimeout(async () => {
+          await sendMessageToSession(messageToSend);
         }, 100);
       } else {
+        console.log('No pending message, showing toast');
         toast({
           title: "Ny chat skapad",
           description: "Du kan nu börja chatta med din AI-rådgivare.",
@@ -301,7 +337,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, portfolioId, pendingMessage, sendMessage, toast]);
+  }, [user, portfolioId, pendingMessage, sendMessageToSession, toast]);
 
   const loadSession = useCallback(async (sessionId: string) => {
     console.log('Loading chat session:', sessionId);
