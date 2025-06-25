@@ -118,13 +118,22 @@ export const usePosts = (limit = 10, followedOnly = false) => {
             user ? supabase.rpc('user_has_liked_post', { post_id: post.id, user_id: user.id }) : null
           ]);
 
-          return {
+          // Transform the post data to match our Post interface
+          const transformedPost: Post = {
             ...post,
             post_type: post.post_type as 'reflection' | 'case_analysis' | 'market_insight' | 'portfolio_share',
             likeCount: likeCountResult.data || 0,
             commentCount: commentCountResult.data || 0,
-            isLiked: userLikeResult?.data || false
+            isLiked: userLikeResult?.data || false,
+            user_portfolios: post.user_portfolios ? {
+              ...post.user_portfolios,
+              recommended_stocks: Array.isArray(post.user_portfolios.recommended_stocks) 
+                ? post.user_portfolios.recommended_stocks 
+                : []
+            } : null
           };
+
+          return transformedPost;
         })
       );
 
