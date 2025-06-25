@@ -11,7 +11,7 @@ interface ShareInsightButtonProps {
     insight_type: string;
     related_holdings?: any[];
   };
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'lg' | 'default';
   variant?: 'default' | 'outline' | 'ghost';
 }
 
@@ -24,13 +24,7 @@ const ShareInsightButton = ({ insight, size = 'sm', variant = 'outline' }: Share
   };
 
   return (
-    <PortfolioAnalysisDialog insightData={insightData}>
-      <Button variant={variant} size={size} className="flex items-center gap-1">
-        <Share2 className="w-3 h-3" />
-        <Sparkles className="w-3 h-3" />
-        Dela
-      </Button>
-    </PortfolioAnalysisDialog>
+    <PortfolioAnalysisDialog insightData={insightData} />
   );
 };
 

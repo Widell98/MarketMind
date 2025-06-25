@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { TrendingUp, X, Sparkles } from 'lucide-react';
+import { TrendingUp, X, Sparkles, Share2 } from 'lucide-react';
 import { useCreateAnalysis } from '@/hooks/useAnalyses';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,9 +20,10 @@ interface PortfolioAnalysisDialogProps {
     type: string;
     relatedHoldings?: any[];
   };
+  children?: React.ReactNode;
 }
 
-const PortfolioAnalysisDialog = ({ insightData }: PortfolioAnalysisDialogProps) => {
+const PortfolioAnalysisDialog = ({ insightData, children }: PortfolioAnalysisDialogProps) => {
   const { user } = useAuth();
   const { activePortfolio } = usePortfolio();
   const [open, setOpen] = useState(false);
@@ -105,22 +106,23 @@ const PortfolioAnalysisDialog = ({ insightData }: PortfolioAnalysisDialogProps) 
     );
   }
 
+  const defaultTrigger = insightData ? (
+    <Button variant="outline" size="sm" className="flex items-center gap-1">
+      <Share2 className="w-3 h-3" />
+      <Sparkles className="w-3 h-3" />
+      Dela
+    </Button>
+  ) : (
+    <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white">
+      <TrendingUp className="w-4 h-4 mr-2" />
+      Portföljanalys
+    </Button>
+  );
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white">
-          {insightData ? (
-            <>
-              <Sparkles className="w-4 h-4 mr-2" />
-              Dela som analys
-            </>
-          ) : (
-            <>
-              <TrendingUp className="w-4 h-4 mr-2" />
-              Portföljanalys
-            </>
-          )}
-        </Button>
+        {children || defaultTrigger}
       </DialogTrigger>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
