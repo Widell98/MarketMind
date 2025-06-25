@@ -17,7 +17,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 w-full">
       <MobileNavigation />
       
-      <header className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+      <header className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="container-responsive py-3 lg:py-4 flex justify-between items-center">
           <div className="flex items-center space-x-4 md:space-x-8">
             <Link to="/" className="text-lg sm:text-xl lg:text-2xl font-bold text-finance-navy dark:text-gray-200 flex items-center">
