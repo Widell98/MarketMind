@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -127,7 +126,7 @@ export const useAIChat = (portfolioId?: string) => {
 
     // If no session exists, create one and queue the message
     if (!currentSessionId) {
-      console.log('No session exists, setting pending message and creating session');
+      console.log('No session exists, setting pending message:', content);
       setPendingMessage(content);
       await createNewSession();
       return;
@@ -135,7 +134,7 @@ export const useAIChat = (portfolioId?: string) => {
 
     console.log('Sending message to existing session');
     await sendMessageToSession(content);
-  }, [user, currentSessionId, checkUsageLimit, toast]);
+  }, [user, currentSessionId, checkUsageLimit, toast, portfolioId]);
 
   const sendMessageToSession = useCallback(async (content: string) => {
     console.log('=== SEND MESSAGE TO SESSION DEBUG ===');
@@ -287,6 +286,7 @@ export const useAIChat = (portfolioId?: string) => {
     console.log('=== CREATE NEW SESSION DEBUG ===');
     console.log('User:', user?.id);
     console.log('Portfolio ID:', portfolioId);
+    console.log('Pending message before session creation:', pendingMessage);
     
     if (!user || !portfolioId) {
       console.log('Cannot create session: missing user or portfolio');
@@ -335,7 +335,7 @@ export const useAIChat = (portfolioId?: string) => {
       setMessages([]);
       
       console.log('Session state updated, current session ID:', newSession.id);
-      console.log('Checking for pending message:', pendingMessage);
+      console.log('Checking for pending message after session creation:', pendingMessage);
       
       // Send pending message if exists
       if (pendingMessage) {
@@ -348,11 +348,7 @@ export const useAIChat = (portfolioId?: string) => {
           await sendMessageToSession(messageToSend);
         }, 100);
       } else {
-        console.log('No pending message, showing toast');
-        toast({
-          title: "Ny chat skapad",
-          description: "Du kan nu börja chatta med din AI-rådgivare.",
-        });
+        console.log('No pending message found');
       }
     } catch (error) {
       console.error('Error creating new session:', error);

@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -162,7 +163,7 @@ VIKTIGA RIKTLINJER:
     ];
 
     console.log('=== CALLING OPENAI API ===');
-    console.log('Model: gpt-4o-mini');
+    console.log('Model: gpt-4.1-mini-2025-04-14');
     console.log('Messages count:', messages.length);
     console.log('User message:', message);
 
@@ -173,7 +174,7 @@ VIKTIGA RIKTLINJER:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-mini-2025-04-14',
         messages: messages,
         max_tokens: 300,
         temperature: 0.6,
@@ -283,7 +284,7 @@ VIKTIGA RIKTLINJER:
           message: aiResponse,
           context_data: { 
             timestamp: new Date().toISOString(),
-            model: 'gpt-4o-mini',
+            model: 'gpt-4.1-mini-2025-04-14',
             analysisType: analysisType || 'general',
             confidence: confidence
           }
@@ -306,7 +307,7 @@ VIKTIGA RIKTLINJER:
           portfolioValue: portfolio?.total_value || 0,
           holdingsCount: holdings?.length || 0,
           insightsCount: insights?.length || 0,
-          model: 'GPT-4o-mini'
+          model: 'GPT-4.1-mini-2025-04-14'
         }
       }),
       { 
