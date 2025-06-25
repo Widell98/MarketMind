@@ -39,6 +39,126 @@ export type Database = {
         }
         Relationships: []
       }
+      analyses: {
+        Row: {
+          analysis_type: string
+          comments_count: number
+          content: string
+          created_at: string
+          id: string
+          is_public: boolean
+          likes_count: number
+          stock_case_id: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+          views_count: number
+        }
+        Insert: {
+          analysis_type?: string
+          comments_count?: number
+          content: string
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          likes_count?: number
+          stock_case_id?: string | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          user_id: string
+          views_count?: number
+        }
+        Update: {
+          analysis_type?: string
+          comments_count?: number
+          content?: string
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          likes_count?: number
+          stock_case_id?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          views_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_analyses_stock_case"
+            columns: ["stock_case_id"]
+            isOneToOne: false
+            referencedRelation: "stock_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analysis_comments: {
+        Row: {
+          analysis_id: string
+          content: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          analysis_id: string
+          content: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          analysis_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_analysis_comments_analysis"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analysis_likes: {
+        Row: {
+          analysis_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          analysis_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          analysis_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_analysis_likes_analysis"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_categories: {
         Row: {
           color: string
@@ -1022,6 +1142,14 @@ export type Database = {
         Args: { _user_id: string; _usage_type: string }
         Returns: boolean
       }
+      get_analysis_comment_count: {
+        Args: { analysis_id: string }
+        Returns: number
+      }
+      get_analysis_like_count: {
+        Args: { analysis_id: string }
+        Returns: number
+      }
       get_post_comment_count: {
         Args: { post_id: string }
         Returns: number
@@ -1051,6 +1179,10 @@ export type Database = {
       }
       user_follows_case: {
         Args: { case_id: string; user_id: string }
+        Returns: boolean
+      }
+      user_has_liked_analysis: {
+        Args: { analysis_id: string; user_id: string }
         Returns: boolean
       }
       user_has_liked_case: {
