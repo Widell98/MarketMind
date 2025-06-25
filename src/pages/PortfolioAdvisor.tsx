@@ -1,12 +1,16 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Brain, MessageSquare, BarChart3, Settings, Zap, TrendingUp, Lightbulb, CreditCard } from 'lucide-react';
+import { Brain, MessageSquare, BarChart3, Settings, Zap, TrendingUp, Lightbulb, CreditCard, Activity, Target } from 'lucide-react';
 import Layout from '@/components/Layout';
 import EnhancedRiskAssessmentForm from '@/components/EnhancedRiskAssessmentForm';
 import EnhancedPortfolioDashboard from '@/components/EnhancedPortfolioDashboard';
 import SubscriptionCard from '@/components/SubscriptionCard';
+import PortfolioHealthScore from '@/components/PortfolioHealthScore';
+import PerformanceAttribution from '@/components/PerformanceAttribution';
+import ScenarioAnalysis from '@/components/ScenarioAnalysis';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
@@ -135,61 +139,84 @@ const PortfolioAdvisor = () => {
     <Layout>
       <div className="w-full min-h-screen">
         <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4 max-w-7xl">
-          {/* Header - Improved mobile spacing */}
+          {/* Header */}
           <div className="mb-3 sm:mb-4 md:mb-6">
             <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-1 flex items-center gap-1 sm:gap-2">
               <Zap className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-8 lg:h-8 text-blue-600 flex-shrink-0" />
               <span className="leading-tight truncate">AI Portfolio Advisor</span>
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-              Din AI-drivna investeringsdashboard med prediktiv analys och realtidsmarknadsdata
+              Din AI-drivna investeringsdashboard med avancerad portföljanalys
             </p>
           </div>
 
-          {/* Tabs - Improved mobile layout without "Tips" tab */}
-          <Tabs defaultValue="dashboard" className="w-full space-y-2 sm:space-y-4">
-            {/* Horizontal scrolling tabs for mobile */}
+          {/* Tabs */}
+          <Tabs defaultValue="overview" className="w-full space-y-2 sm:space-y-4">
             <div className="w-full overflow-x-auto pb-1">
-              <TabsList className="flex w-max min-w-full sm:grid sm:grid-cols-5 sm:w-full h-auto p-1 gap-0.5 sm:gap-1">
-                <TabsTrigger value="dashboard" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
+              <TabsList className="flex w-max min-w-full sm:grid sm:grid-cols-7 sm:w-full h-auto p-1 gap-0.5 sm:gap-1">
+                <TabsTrigger value="overview" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
                   <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                  <span className="hidden xs:block">Dashboard</span>
-                  <span className="xs:hidden">Dash</span>
+                  <span className="hidden xs:block">Översikt</span>
+                  <span className="xs:hidden">Över</span>
                 </TabsTrigger>
-                <TabsTrigger value="subscription" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
-                  <CreditCard className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                  <span className="hidden xs:block">Subscription</span>
-                  <span className="xs:hidden">Sub</span>
+                <TabsTrigger value="health" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
+                  <Activity className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <span className="hidden xs:block">Hälsa</span>
+                  <span className="xs:hidden">Häl</span>
+                </TabsTrigger>
+                <TabsTrigger value="performance" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
+                  <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <span className="hidden xs:block">Prestanda</span>
+                  <span className="xs:hidden">Prest</span>
+                </TabsTrigger>
+                <TabsTrigger value="scenarios" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
+                  <Target className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <span className="hidden xs:block">Scenarier</span>
+                  <span className="xs:hidden">Scen</span>
                 </TabsTrigger>
                 <TabsTrigger value="chat" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
                   <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                   <span className="hidden xs:block">AI Chat</span>
                   <span className="xs:hidden">Chat</span>
                 </TabsTrigger>
-                <TabsTrigger value="analytics" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
-                  <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                  <span className="hidden xs:block">Predictive</span>
-                  <span className="xs:hidden">Pred</span>
+                <TabsTrigger value="subscription" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
+                  <CreditCard className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <span className="hidden xs:block">Prenumeration</span>
+                  <span className="xs:hidden">Pren</span>
                 </TabsTrigger>
                 <TabsTrigger value="settings" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
                   <Settings className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                  <span className="hidden xs:block">Settings</span>
-                  <span className="xs:hidden">Set</span>
+                  <span className="hidden xs:block">Inställningar</span>
+                  <span className="xs:hidden">Inst</span>
                 </TabsTrigger>
               </TabsList>
             </div>
 
-            {/* Tab Content - Better mobile spacing */}
+            {/* Tab Content */}
             <div className="w-full">
-              <TabsContent value="dashboard" className="mt-2 sm:mt-4 focus-visible:outline-none">
+              <TabsContent value="overview" className="mt-2 sm:mt-4 focus-visible:outline-none">
                 <div className="w-full">
                   <EnhancedPortfolioDashboard portfolio={activePortfolio} recommendations={recommendations} />
                 </div>
               </TabsContent>
 
-              <TabsContent value="subscription" className="mt-2 sm:mt-4 focus-visible:outline-none">
+              <TabsContent value="health" className="mt-2 sm:mt-4 focus-visible:outline-none">
+                <div className="w-full space-y-4 sm:space-y-6">
+                  <PortfolioHealthScore portfolio={activePortfolio} />
+                  <AIInsightsPanel portfolioId={activePortfolio?.id} />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="performance" className="mt-2 sm:mt-4 focus-visible:outline-none">
+                <div className="w-full space-y-4 sm:space-y-6">
+                  <PerformanceAttribution portfolio={activePortfolio} />
+                  <PredictiveAnalytics portfolioId={activePortfolio?.id} />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="scenarios" className="mt-2 sm:mt-4 focus-visible:outline-none">
                 <div className="w-full">
-                  <SubscriptionCard />
+                  <ScenarioAnalysis portfolio={activePortfolio} />
                 </div>
               </TabsContent>
 
@@ -199,9 +226,9 @@ const PortfolioAdvisor = () => {
                 </div>
               </TabsContent>
 
-              <TabsContent value="analytics" className="mt-2 sm:mt-4 focus-visible:outline-none">
+              <TabsContent value="subscription" className="mt-2 sm:mt-4 focus-visible:outline-none">
                 <div className="w-full">
-                  <PredictiveAnalytics portfolioId={activePortfolio?.id} />
+                  <SubscriptionCard />
                 </div>
               </TabsContent>
 
