@@ -32,7 +32,6 @@ export const useAIChat = (portfolioId?: string) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [quotaExceeded, setQuotaExceeded] = useState(false);
-  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
 
   const loadMessages = useCallback(async (sessionId: string) => {
     if (!user || !portfolioId) return;
@@ -124,11 +123,10 @@ export const useAIChat = (portfolioId?: string) => {
       return;
     }
 
-    // If no session exists, create one and queue the message
+    // If no session exists, create one and wait for it, then send message
     if (!currentSessionId) {
-      console.log('No session exists, setting pending message:', content);
-      setPendingMessage(content);
-      await createNewSession();
+      console.log('No session exists, creating session and sending message...');
+      await createNewSessionAndSendMessage(content);
       return;
     }
 
@@ -136,15 +134,86 @@ export const useAIChat = (portfolioId?: string) => {
     await sendMessageToSession(content);
   }, [user, currentSessionId, checkUsageLimit, toast, portfolioId]);
 
-  const sendMessageToSession = useCallback(async (content: string) => {
+  const createNewSessionAndSendMessage = useCallback(async (messageContent: string) => {
+    console.log('=== CREATE SESSION AND SEND MESSAGE ===');
+    console.log('User:', user?.id);
+    console.log('Portfolio ID:', portfolioId);
+    console.log('Message to send:', messageContent);
+    
+    if (!user || !portfolioId) {
+      console.log('Cannot create session: missing user or portfolio');
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      const now = new Date();
+      const sessionName = `Rådgivning ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
+      
+      console.log('Creating session with name:', sessionName);
+      
+      const { data, error } = await supabase
+        .from('ai_chat_sessions')
+        .insert([{ 
+          user_id: user.id, 
+          session_name: sessionName,
+          context_data: {
+            created_for: 'advisory',
+            market_context: 'normal',
+            portfolio_id: portfolioId
+          }
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating session:', error);
+        throw error;
+      }
+
+      console.log('New session created:', data);
+
+      const newSession = {
+        id: data.id,
+        session_name: data.session_name || sessionName,
+        created_at: data.created_at,
+        is_active: data.is_active || false,
+      };
+
+      setSessions(prev => [newSession, ...prev]);
+      setCurrentSessionId(newSession.id);
+      setMessages([]);
+      
+      console.log('Session state updated, now sending message...');
+      
+      // Now send the message to the newly created session
+      await sendMessageToSession(messageContent, newSession.id);
+      
+    } catch (error) {
+      console.error('Error creating new session:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte skapa ny session. Försök igen.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, portfolioId, toast]);
+
+  const sendMessageToSession = useCallback(async (content: string, sessionId?: string) => {
     console.log('=== SEND MESSAGE TO SESSION DEBUG ===');
     console.log('Content:', content);
     console.log('User ID:', user?.id);
     console.log('Portfolio ID:', portfolioId);
-    console.log('Session ID:', currentSessionId);
+    console.log('Session ID (param):', sessionId);
+    console.log('Current Session ID:', currentSessionId);
     
-    if (!user || !currentSessionId) {
-      console.log('Cannot send message: missing user or session');
+    const targetSessionId = sessionId || currentSessionId;
+    
+    if (!user || !targetSessionId) {
+      console.log('Cannot send message: missing user or session ID');
       return;
     }
 
@@ -168,7 +237,7 @@ export const useAIChat = (portfolioId?: string) => {
         message: content,
         userId: user.id,
         portfolioId,
-        sessionId: currentSessionId,
+        sessionId: targetSessionId,
         contextType: 'advisory',
       });
 
@@ -177,7 +246,7 @@ export const useAIChat = (portfolioId?: string) => {
           message: content,
           userId: user.id,
           portfolioId,
-          sessionId: currentSessionId,
+          sessionId: targetSessionId,
           contextType: 'advisory',
         },
       });
@@ -283,17 +352,15 @@ export const useAIChat = (portfolioId?: string) => {
   }, [sendMessage, checkUsageLimit, toast]);
 
   const createNewSession = useCallback(async () => {
-    console.log('=== CREATE NEW SESSION DEBUG ===');
+    console.log('=== CREATE NEW SESSION (EMPTY) ===');
     console.log('User:', user?.id);
     console.log('Portfolio ID:', portfolioId);
-    console.log('Pending message before session creation:', pendingMessage);
     
     if (!user || !portfolioId) {
       console.log('Cannot create session: missing user or portfolio');
       return;
     }
     
-    console.log('Creating new session...');
     setIsLoading(true);
     
     try {
@@ -321,7 +388,7 @@ export const useAIChat = (portfolioId?: string) => {
         throw error;
       }
 
-      console.log('New session created:', data);
+      console.log('New empty session created:', data);
 
       const newSession = {
         id: data.id,
@@ -334,22 +401,11 @@ export const useAIChat = (portfolioId?: string) => {
       setCurrentSessionId(newSession.id);
       setMessages([]);
       
-      console.log('Session state updated, current session ID:', newSession.id);
-      console.log('Checking for pending message after session creation:', pendingMessage);
+      toast({
+        title: "Ny chat skapad",
+        description: "Du kan nu börja chatta med din AI-rådgivare.",
+      });
       
-      // Send pending message if exists
-      if (pendingMessage) {
-        console.log('Found pending message, will send:', pendingMessage);
-        const messageToSend = pendingMessage;
-        setPendingMessage(null);
-        // Small delay to ensure session is properly set
-        setTimeout(async () => {
-          console.log('Sending pending message after timeout');
-          await sendMessageToSession(messageToSend);
-        }, 100);
-      } else {
-        console.log('No pending message found');
-      }
     } catch (error) {
       console.error('Error creating new session:', error);
       toast({
@@ -360,7 +416,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, portfolioId, pendingMessage, sendMessageToSession, toast]);
+  }, [user, portfolioId, toast]);
 
   const loadSession = useCallback(async (sessionId: string) => {
     console.log('Loading chat session:', sessionId);
