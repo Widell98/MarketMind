@@ -1,17 +1,17 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, Heart, MessageCircle, TrendingUp, BookOpen } from 'lucide-react';
+import { Eye, Heart, MessageCircle, TrendingUp, BookOpen, Sparkles, PieChart } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { useAnalyses, useToggleAnalysisLike } from '@/hooks/useAnalyses';
 import { useAuth } from '@/contexts/AuthContext';
 import CreateAnalysisDialog from './CreateAnalysisDialog';
+import PortfolioAnalysisDialog from './PortfolioAnalysisDialog';
 
 const AnalysisFeed = () => {
-  const { data: analyses, isLoading, error } = useAnalyses();
+  const { data: analyses, isLoading, error } = useAnalyses(20);
   const { user } = useAuth();
   const toggleLike = useToggleAnalysisLike();
 
@@ -25,7 +25,10 @@ const AnalysisFeed = () => {
       'market_insight': 'Marknadsinsikt',
       'technical_analysis': 'Teknisk analys',
       'fundamental_analysis': 'Fundamental analys',
-      'sector_analysis': 'Sektoranalys'
+      'sector_analysis': 'Sektoranalys',
+      'portfolio_analysis': 'Portföljanalys',
+      'position_analysis': 'Positionsanalys',
+      'sector_deep_dive': 'Djup sektoranalys'
     };
     return types[type as keyof typeof types] || type;
   };
@@ -35,9 +38,18 @@ const AnalysisFeed = () => {
       'market_insight': 'bg-blue-500',
       'technical_analysis': 'bg-green-500',
       'fundamental_analysis': 'bg-purple-500',
-      'sector_analysis': 'bg-orange-500'
+      'sector_analysis': 'bg-orange-500',
+      'portfolio_analysis': 'bg-gradient-to-r from-purple-500 to-blue-500',
+      'position_analysis': 'bg-gradient-to-r from-green-500 to-blue-500',
+      'sector_deep_dive': 'bg-gradient-to-r from-orange-500 to-red-500'
     };
     return colors[type as keyof typeof colors] || 'bg-gray-500';
+  };
+
+  const getAnalysisIcon = (type: string, aiGenerated?: boolean) => {
+    if (aiGenerated) return <Sparkles className="w-3 h-3" />;
+    if (type.includes('portfolio') || type.includes('position')) return <PieChart className="w-3 h-3" />;
+    return <TrendingUp className="w-3 h-3" />;
   };
 
   if (isLoading) {
@@ -68,7 +80,8 @@ const AnalysisFeed = () => {
   if (error) {
     return (
       <div className="space-y-6">
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <PortfolioAnalysisDialog />
           <CreateAnalysisDialog />
         </div>
         <Card className="text-center py-8 bg-red-50 dark:bg-red-900/20">
@@ -85,7 +98,8 @@ const AnalysisFeed = () => {
   if (!analyses || analyses.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <PortfolioAnalysisDialog />
           <CreateAnalysisDialog />
         </div>
         <Card className="text-center py-8 bg-gray-50 dark:bg-gray-800">
@@ -97,7 +111,10 @@ const AnalysisFeed = () => {
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               Bli den första att dela en analys med communityn!
             </p>
-            <CreateAnalysisDialog />
+            <div className="flex justify-center gap-2">
+              <PortfolioAnalysisDialog />
+              <CreateAnalysisDialog />
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -106,7 +123,8 @@ const AnalysisFeed = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <PortfolioAnalysisDialog />
         <CreateAnalysisDialog />
       </div>
       
@@ -118,11 +136,24 @@ const AnalysisFeed = () => {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <div className={`w-2 h-2 rounded-full ${getAnalysisTypeColor(analysis.analysis_type)}`}></div>
-                    <Badge variant="outline" className="text-xs font-medium">
+                    <Badge variant="outline" className="text-xs font-medium flex items-center gap-1">
+                      {getAnalysisIcon(analysis.analysis_type, analysis.ai_generated)}
                       {getAnalysisTypeLabel(analysis.analysis_type)}
                     </Badge>
-                    {analysis.stock_cases && (
+                    {analysis.ai_generated && (
+                      <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        AI-genererad
+                      </Badge>
+                    )}
+                    {analysis.user_portfolios && (
                       <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                        <PieChart className="w-3 h-3 mr-1" />
+                        {analysis.user_portfolios.portfolio_name}
+                      </Badge>
+                    )}
+                    {analysis.stock_cases && (
+                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300">
                         {analysis.stock_cases.company_name}
                       </Badge>
                     )}
@@ -147,6 +178,24 @@ const AnalysisFeed = () => {
               <div className="prose prose-sm max-w-none mb-4 text-gray-700 dark:text-gray-300">
                 <p className="line-clamp-3">{analysis.content}</p>
               </div>
+
+              {analysis.related_holdings && analysis.related_holdings.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs text-gray-500 mb-2">Relaterade innehav:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {analysis.related_holdings.slice(0, 5).map((holding, index) => (
+                      <Badge key={index} variant="secondary" className="text-xs">
+                        {holding.name || holding.symbol}
+                      </Badge>
+                    ))}
+                    {analysis.related_holdings.length > 5 && (
+                      <Badge variant="secondary" className="text-xs">
+                        +{analysis.related_holdings.length - 5} till
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {analysis.tags && analysis.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mb-4">

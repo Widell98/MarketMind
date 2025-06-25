@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,16 +7,20 @@ export interface Analysis {
   id: string;
   title: string;
   content: string;
-  analysis_type: 'market_insight' | 'technical_analysis' | 'fundamental_analysis' | 'sector_analysis';
+  analysis_type: 'market_insight' | 'technical_analysis' | 'fundamental_analysis' | 'sector_analysis' | 'portfolio_analysis' | 'position_analysis' | 'sector_deep_dive';
   created_at: string;
   updated_at: string;
   user_id: string;
   stock_case_id?: string;
+  portfolio_id?: string;
   tags: string[];
   is_public: boolean;
   views_count: number;
   likes_count: number;
   comments_count: number;
+  ai_generated?: boolean;
+  related_holdings?: any[];
+  shared_from_insight_id?: string;
   profiles: {
     username: string;
     display_name: string | null;
@@ -25,6 +28,9 @@ export interface Analysis {
   stock_cases?: {
     company_name: string;
     title: string;
+  } | null;
+  user_portfolios?: {
+    portfolio_name: string;
   } | null;
   isLiked: boolean;
 }
@@ -39,7 +45,8 @@ export const useAnalyses = (limit = 10) => {
         .from('analyses')
         .select(`
           *,
-          stock_cases (company_name, title)
+          stock_cases (company_name, title),
+          user_portfolios (portfolio_name)
         `)
         .eq('is_public', true)
         .order('created_at', { ascending: false })
@@ -86,9 +93,10 @@ export const useAnalyses = (limit = 10) => {
 
           const transformedAnalysis: Analysis = {
             ...analysis,
-            analysis_type: analysis.analysis_type as 'market_insight' | 'technical_analysis' | 'fundamental_analysis' | 'sector_analysis',
+            analysis_type: analysis.analysis_type as 'market_insight' | 'technical_analysis' | 'fundamental_analysis' | 'sector_analysis' | 'portfolio_analysis' | 'position_analysis' | 'sector_deep_dive',
             likes_count: likeCountResult.data || 0,
-            isLiked: userLikeResult?.data || false
+            isLiked: userLikeResult?.data || false,
+            related_holdings: analysis.related_holdings || []
           };
 
           return transformedAnalysis;
@@ -109,10 +117,14 @@ export const useCreateAnalysis = () => {
     mutationFn: async (analysisData: {
       title: string;
       content: string;
-      analysis_type: 'market_insight' | 'technical_analysis' | 'fundamental_analysis' | 'sector_analysis';
+      analysis_type: 'market_insight' | 'technical_analysis' | 'fundamental_analysis' | 'sector_analysis' | 'portfolio_analysis' | 'position_analysis' | 'sector_deep_dive';
       stock_case_id?: string;
+      portfolio_id?: string;
       tags?: string[];
       is_public?: boolean;
+      related_holdings?: any[];
+      ai_generated?: boolean;
+      shared_from_insight_id?: string;
     }) => {
       if (!user) throw new Error('User must be authenticated');
 
@@ -138,6 +150,49 @@ export const useCreateAnalysis = () => {
     onError: (error) => {
       toast({
         title: "Fel vid skapande av analys",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+export const useCreateSharedPortfolioAnalysis = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (shareData: {
+      portfolio_id: string;
+      analysis_id: string;
+      share_type: 'insight' | 'recommendation' | 'performance';
+      original_data?: any;
+    }) => {
+      if (!user) throw new Error('User must be authenticated');
+
+      const { data, error } = await supabase
+        .from('shared_portfolio_analyses')
+        .insert({
+          ...shareData,
+          user_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['analyses'] });
+      toast({
+        title: "Analys delad!",
+        description: "Din portföljanalys har delats med communityn.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Fel vid delning av analys",
         description: error.message,
         variant: "destructive",
       });

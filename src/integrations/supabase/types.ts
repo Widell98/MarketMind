@@ -41,6 +41,7 @@ export type Database = {
       }
       analyses: {
         Row: {
+          ai_generated: boolean | null
           analysis_type: string
           comments_count: number
           content: string
@@ -48,6 +49,9 @@ export type Database = {
           id: string
           is_public: boolean
           likes_count: number
+          portfolio_id: string | null
+          related_holdings: Json | null
+          shared_from_insight_id: string | null
           stock_case_id: string | null
           tags: string[] | null
           title: string
@@ -56,6 +60,7 @@ export type Database = {
           views_count: number
         }
         Insert: {
+          ai_generated?: boolean | null
           analysis_type?: string
           comments_count?: number
           content: string
@@ -63,6 +68,9 @@ export type Database = {
           id?: string
           is_public?: boolean
           likes_count?: number
+          portfolio_id?: string | null
+          related_holdings?: Json | null
+          shared_from_insight_id?: string | null
           stock_case_id?: string | null
           tags?: string[] | null
           title: string
@@ -71,6 +79,7 @@ export type Database = {
           views_count?: number
         }
         Update: {
+          ai_generated?: boolean | null
           analysis_type?: string
           comments_count?: number
           content?: string
@@ -78,6 +87,9 @@ export type Database = {
           id?: string
           is_public?: boolean
           likes_count?: number
+          portfolio_id?: string | null
+          related_holdings?: Json | null
+          shared_from_insight_id?: string | null
           stock_case_id?: string | null
           tags?: string[] | null
           title?: string
@@ -86,6 +98,20 @@ export type Database = {
           views_count?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "analyses_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "user_portfolios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analyses_shared_from_insight_id_fkey"
+            columns: ["shared_from_insight_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_insights"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_analyses_stock_case"
             columns: ["stock_case_id"]
@@ -497,6 +523,51 @@ export type Database = {
           website_url?: string | null
         }
         Relationships: []
+      }
+      shared_portfolio_analyses: {
+        Row: {
+          analysis_id: string
+          created_at: string
+          id: string
+          original_data: Json | null
+          portfolio_id: string
+          share_type: string
+          user_id: string
+        }
+        Insert: {
+          analysis_id: string
+          created_at?: string
+          id?: string
+          original_data?: Json | null
+          portfolio_id: string
+          share_type?: string
+          user_id: string
+        }
+        Update: {
+          analysis_id?: string
+          created_at?: string
+          id?: string
+          original_data?: Json | null
+          portfolio_id?: string
+          share_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_portfolio_analyses_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_portfolio_analyses_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "user_portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stock_case_follows: {
         Row: {

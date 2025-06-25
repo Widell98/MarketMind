@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,19 +8,27 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { PlusCircle, X, TrendingUp } from 'lucide-react';
+import { TrendingUp, X, Sparkles } from 'lucide-react';
 import { useCreateAnalysis } from '@/hooks/useAnalyses';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
 
-const CreateAnalysisDialog = () => {
+interface PortfolioAnalysisDialogProps {
+  insightData?: {
+    title: string;
+    description: string;
+    type: string;
+    relatedHoldings?: any[];
+  };
+}
+
+const PortfolioAnalysisDialog = ({ insightData }: PortfolioAnalysisDialogProps) => {
   const { user } = useAuth();
   const { activePortfolio } = usePortfolio();
   const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [analysisType, setAnalysisType] = useState<'market_insight' | 'technical_analysis' | 'fundamental_analysis' | 'sector_analysis' | 'portfolio_analysis' | 'position_analysis' | 'sector_deep_dive'>('market_insight');
-  const [includePortfolio, setIncludePortfolio] = useState(false);
+  const [title, setTitle] = useState(insightData?.title || '');
+  const [content, setContent] = useState(insightData?.description || '');
+  const [analysisType, setAnalysisType] = useState<'portfolio_analysis' | 'position_analysis' | 'sector_deep_dive'>('portfolio_analysis');
   const [selectedHoldings, setSelectedHoldings] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
@@ -31,34 +40,33 @@ const CreateAnalysisDialog = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user) return;
+    if (!user || !activePortfolio) return;
 
-    const relatedHoldings = includePortfolio ? 
-      portfolioHoldings.filter(stock => selectedHoldings.includes(stock.symbol || stock.name)) : 
-      [];
+    const relatedHoldings = portfolioHoldings.filter(stock => 
+      selectedHoldings.includes(stock.symbol || stock.name)
+    );
 
     try {
       await createAnalysis.mutateAsync({
         title,
         content,
         analysis_type: analysisType,
-        portfolio_id: includePortfolio ? activePortfolio?.id : undefined,
+        portfolio_id: activePortfolio.id,
         tags,
         related_holdings: relatedHoldings,
+        ai_generated: !!insightData,
         is_public: true
       });
       
-      // Reset form
       setTitle('');
       setContent('');
-      setAnalysisType('market_insight');
-      setIncludePortfolio(false);
+      setAnalysisType('portfolio_analysis');
       setSelectedHoldings([]);
       setTags([]);
       setTagInput('');
       setOpen(false);
     } catch (error) {
-      console.error('Error creating analysis:', error);
+      console.error('Error creating portfolio analysis:', error);
     }
   };
 
@@ -88,11 +96,11 @@ const CreateAnalysisDialog = () => {
     }
   };
 
-  if (!user) {
+  if (!user || !activePortfolio) {
     return (
       <Button variant="outline" disabled>
-        <PlusCircle className="w-4 h-4 mr-2" />
-        Logga in för att skapa analys
+        <TrendingUp className="w-4 h-4 mr-2" />
+        Ingen aktiv portfölj
       </Button>
     );
   }
@@ -100,23 +108,35 @@ const CreateAnalysisDialog = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-purple-600 hover:bg-purple-700 text-white">
-          <PlusCircle className="w-4 h-4 mr-2" />
-          Skapa ny analys
+        <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white">
+          {insightData ? (
+            <>
+              <Sparkles className="w-4 h-4 mr-2" />
+              Dela som analys
+            </>
+          ) : (
+            <>
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Portföljanalys
+            </>
+          )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Skapa ny analys</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-purple-600" />
+            {insightData ? 'Dela AI-insikt som analys' : 'Skapa portföljanalys'}
+          </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <Label htmlFor="title">Titel</Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ange titel för din analys..."
+              placeholder="Ange titel för din portföljanalys..."
               required
             />
           </div>
@@ -128,46 +148,28 @@ const CreateAnalysisDialog = () => {
                 <SelectValue placeholder="Välj typ av analys" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="market_insight">Marknadsinsikt</SelectItem>
-                <SelectItem value="technical_analysis">Teknisk analys</SelectItem>
-                <SelectItem value="fundamental_analysis">Fundamental analys</SelectItem>
-                <SelectItem value="sector_analysis">Sektoranalys</SelectItem>
                 <SelectItem value="portfolio_analysis">Portföljanalys</SelectItem>
                 <SelectItem value="position_analysis">Positionsanalys</SelectItem>
-                <SelectItem value="sector_deep_dive">Djup sektoranalys</SelectItem>
+                <SelectItem value="sector_deep_dive">Sektoranalys</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {activePortfolio && (
-            <div className="flex items-center space-x-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <Checkbox
-                id="includePortfolio"
-                checked={includePortfolio}
-                onCheckedChange={(checked) => setIncludePortfolio(!!checked)}
-              />
-              <label htmlFor="includePortfolio" className="text-sm cursor-pointer flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" />
-                Koppla till min portfölj ({activePortfolio.portfolio_name})
-              </label>
-            </div>
-          )}
-
           <div>
-            <Label htmlFor="content">Innehåll</Label>
+            <Label htmlFor="content">Analysinnehåll</Label>
             <Textarea
               id="content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Skriv din analys här..."
+              placeholder="Beskriv din analys av portföljen..."
               rows={8}
               required
             />
           </div>
 
-          {includePortfolio && portfolioHoldings.length > 0 && (
+          {portfolioHoldings.length > 0 && (
             <div>
-              <Label>Relaterade innehav från portfölj</Label>
+              <Label>Relaterade innehav</Label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 max-h-40 overflow-y-auto p-2 border rounded">
                 {portfolioHoldings.map((stock, index) => (
                   <div key={index} className="flex items-center space-x-2">
@@ -182,6 +184,9 @@ const CreateAnalysisDialog = () => {
                   </div>
                 ))}
               </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Välj vilka innehav som är relevanta för denna analys
+              </p>
             </div>
           )}
 
@@ -223,4 +228,4 @@ const CreateAnalysisDialog = () => {
   );
 };
 
-export default CreateAnalysisDialog;
+export default PortfolioAnalysisDialog;
