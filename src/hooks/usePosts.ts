@@ -37,7 +37,7 @@ export const usePosts = (limit = 10) => {
         .from('posts')
         .select(`
           *,
-          profiles!posts_user_id_fkey (username, display_name),
+          profiles (username, display_name),
           stock_cases (company_name, title)
         `)
         .eq('is_public', true)
