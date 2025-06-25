@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,20 +34,15 @@ interface ChatSession {
 interface ChatHistoryProps {
   sessions: ChatSession[];
   onLoadSession: (sessionId: string) => void;
-  onToggleFavorite: (sessionId: string) => void;
-  onRenameSession: (sessionId: string, newName: string) => void;
   onDeleteSession?: (sessionId: string) => void;
 }
 
 const ChatHistory: React.FC<ChatHistoryProps> = ({
   sessions,
   onLoadSession,
-  onToggleFavorite,
-  onRenameSession,
   onDeleteSession
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
   const [isRenaming, setIsRenaming] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
 
@@ -78,19 +74,6 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
     return date.toLocaleDateString('sv-SE');
   };
 
-  const handleRename = (sessionId: string, currentName: string) => {
-    setIsRenaming(sessionId);
-    setNewName(currentName);
-  };
-
-  const submitRename = (sessionId: string) => {
-    if (newName.trim()) {
-      onRenameSession(sessionId, newName.trim());
-    }
-    setIsRenaming(null);
-    setNewName('');
-  };
-
   const handleDelete = (sessionId: string, sessionName: string) => {
     if (window.confirm(`Är du säker på att du vill ta bort chatten "${sessionName}"? Detta kan inte ångras.`)) {
       onDeleteSession?.(sessionId);
@@ -102,61 +85,27 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
       <div className="flex items-center gap-3 flex-1 min-w-0">
         {getMarketIcon(session.market_context)}
         <div className="flex-1 min-w-0">
-          {isRenaming === session.id ? (
-            <div className="flex gap-2">
-              <Input
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="h-8 text-sm"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') submitRename(session.id);
-                  if (e.key === 'Escape') setIsRenaming(null);
-                }}
-                autoFocus
-              />
-              <Button size="sm" onClick={() => submitRename(session.id)}>
-                Spara
-              </Button>
-            </div>
-          ) : (
-            <>
-              <h4 
-                className="font-medium text-sm truncate cursor-pointer hover:text-blue-600"
-                onClick={() => handleRename(session.id, session.session_name)}
-              >
-                {session.session_name}
-              </h4>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-muted-foreground">
-                  {getTimeAgo(session.created_at)}
-                </span>
-                {session.message_count && (
-                  <Badge variant="outline" className="text-xs">
-                    {session.message_count} meddelanden
-                  </Badge>
-                )}
-              </div>
-              {session.summary && (
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                  {session.summary}
-                </p>
-              )}
-            </>
+          <h4 className="font-medium text-sm truncate">
+            {session.session_name}
+          </h4>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs text-muted-foreground">
+              {getTimeAgo(session.created_at)}
+            </span>
+            {session.message_count && (
+              <Badge variant="outline" className="text-xs">
+                {session.message_count} meddelanden
+              </Badge>
+            )}
+          </div>
+          {session.summary && (
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+              {session.summary}
+            </p>
           )}
         </div>
       </div>
       <div className="flex items-center gap-1 flex-shrink-0">
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => onToggleFavorite(session.id)}
-          className="p-1"
-        >
-          {session.is_favorite ? 
-            <Star className="w-4 h-4 text-yellow-500 fill-current" /> : 
-            <StarOff className="w-4 h-4" />
-          }
-        </Button>
         <Button
           size="sm"
           variant="ghost"

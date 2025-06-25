@@ -1,4 +1,5 @@
 
+
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -460,6 +461,7 @@ export const useAIChat = (portfolioId?: string) => {
     if (!user) return;
     
     try {
+      // First delete all messages in the session
       const { error: messagesError } = await supabase
         .from('portfolio_chat_history')
         .delete()
@@ -468,6 +470,7 @@ export const useAIChat = (portfolioId?: string) => {
 
       if (messagesError) throw messagesError;
 
+      // Then delete the session itself
       const { error: sessionError } = await supabase
         .from('ai_chat_sessions')
         .delete()
@@ -476,8 +479,10 @@ export const useAIChat = (portfolioId?: string) => {
 
       if (sessionError) throw sessionError;
 
+      // Update local state
       setSessions(prev => prev.filter(session => session.id !== sessionId));
       
+      // If we deleted the current session, clear it
       if (currentSessionId === sessionId) {
         setCurrentSessionId(null);
         setMessages([]);
@@ -525,3 +530,4 @@ export const useAIChat = (portfolioId?: string) => {
     getQuickAnalysis,
   };
 };
+
