@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BookOpen, TrendingUp, Heart, Brain, Briefcase, Target, Menu, X } from 'lucide-react';
+import { BookOpen, TrendingUp, Heart, Brain, Briefcase, Target, Menu, X, Users, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -13,16 +13,11 @@ const MobileNavigation = () => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const investingItems = [
-    { title: "Browse Cases", url: "/stock-cases", icon: BookOpen },
-    ...(user ? [
-      { title: "Watchlist", url: "/watchlist", icon: Heart },
-      { title: "Portfolio", url: "/portfolio-advisor", icon: Briefcase },
-    ] : [])
-  ];
-
-  const learningItems = [
-    { title: "Learning Center", url: "/learning", icon: Target },
+  const communityItems = [
+    ...(user ? [{ title: "Community Feed", url: "/", icon: MessageCircle }] : []),
+    { title: "Browse Cases", url: "/stock-cases", icon: TrendingUp },
+    ...(user ? [{ title: "Watchlist", url: "/watchlist", icon: Heart }] : []),
+    { title: "Learning Center", url: "/learning", icon: BookOpen },
   ];
 
   const handleLinkClick = () => {
@@ -74,11 +69,11 @@ const MobileNavigation = () => {
         <div className="p-4 space-y-6">
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              <TrendingUp className="w-4 h-4" />
-              Investing
+              <Users className="w-4 h-4" />
+              Community
             </div>
             <div className="space-y-1">
-              {investingItems.map((item) => (
+              {communityItems.map((item) => (
                 <Link
                   key={item.title}
                   to={item.url}
@@ -97,30 +92,29 @@ const MobileNavigation = () => {
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              <BookOpen className="w-4 h-4" />
-              Learning
-            </div>
-            <div className="space-y-1">
-              {learningItems.map((item) => (
+          {user && (
+            <div>
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                <Brain className="w-4 h-4" />
+                AI Portfolio
+              </div>
+              <div className="space-y-1">
                 <Link
-                  key={item.title}
-                  to={item.url}
+                  to="/portfolio-advisor"
                   onClick={handleLinkClick}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                    isActive(item.url) 
+                    isActive('/portfolio-advisor') 
                       ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium" 
                       : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                   )}
                 >
-                  <item.icon className="w-4 h-4" />
-                  {item.title}
+                  <Brain className="w-4 h-4" />
+                  Portfolio Advisor
                 </Link>
-              ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </>
