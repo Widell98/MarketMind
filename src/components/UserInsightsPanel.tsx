@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Brain, TrendingUp, AlertTriangle, CheckCircle, Clock, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import FinancialCalendar from './FinancialCalendar';
-import MarketMomentum from './MarketMomentum';
+import MarketOverview from './MarketOverview';
 
 const UserInsightsPanel = () => {
   return (
@@ -49,7 +49,7 @@ const UserInsightsPanel = () => {
         </CardContent>
       </Card>
 
-      {/* Financial Calendar - Replaces Personal Performance */}
+      {/* Financial Calendar */}
       <FinancialCalendar />
 
       {/* Quick Actions */}
@@ -82,8 +82,8 @@ const UserInsightsPanel = () => {
         </CardContent>
       </Card>
 
-      {/* Market Momentum - Replaces Recent Activity */}
-      <MarketMomentum />
+      {/* Market Overview - Replaces MarketMomentum */}
+      <MarketOverview />
     </div>
   );
 };
