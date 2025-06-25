@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -212,15 +211,15 @@ const PortfolioAdvisor = () => {
                   <span className="hidden xs:block">Översikt</span>
                   <span className="xs:hidden">Över</span>
                 </TabsTrigger>
+                <TabsTrigger value="portfolio" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
+                  <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <span className="hidden xs:block">Portfölj</span>
+                  <span className="xs:hidden">Port</span>
+                </TabsTrigger>
                 <TabsTrigger value="health" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
                   <Activity className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                   <span className="hidden xs:block">Hälsa</span>
                   <span className="xs:hidden">Häl</span>
-                </TabsTrigger>
-                <TabsTrigger value="performance" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
-                  <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                  <span className="hidden xs:block">Prestanda</span>
-                  <span className="xs:hidden">Prest</span>
                 </TabsTrigger>
                 <TabsTrigger value="scenarios" className="flex flex-col items-center gap-0.5 sm:gap-1 text-xs py-1.5 sm:py-2 px-2 sm:px-3 min-w-16 sm:min-w-0 whitespace-nowrap">
                   <Target className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
@@ -255,17 +254,27 @@ const PortfolioAdvisor = () => {
                 </div>
               </TabsContent>
 
+              <TabsContent value="portfolio" className="mt-2 sm:mt-4 focus-visible:outline-none">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                  {/* Interactive Portfolio - Left Side */}
+                  <div className="space-y-4">
+                    <InteractivePortfolio
+                      portfolio={activePortfolio}
+                      onQuickChat={handleQuickChat}
+                    />
+                  </div>
+                  
+                  {/* AI Chat - Right Side */}
+                  <div className="lg:col-span-1">
+                    <AIChat portfolioId={activePortfolio?.id} />
+                  </div>
+                </div>
+              </TabsContent>
+
               <TabsContent value="health" className="mt-2 sm:mt-4 focus-visible:outline-none">
                 <div className="w-full space-y-4 sm:space-y-6">
                   <PortfolioHealthScore portfolio={activePortfolio} />
                   <AIInsightsPanel portfolioId={activePortfolio?.id} />
-                </div>
-              </TabsContent>
-
-              <TabsContent value="performance" className="mt-2 sm:mt-4 focus-visible:outline-none">
-                <div className="w-full space-y-4 sm:space-y-6">
-                  <PerformanceAttribution portfolio={activePortfolio} />
-                  <PredictiveAnalytics portfolioId={activePortfolio?.id} />
                 </div>
               </TabsContent>
 
