@@ -52,21 +52,22 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
         return null;
       }
 
-      // Get additional stats if user is logged in
-      const statsPromises = [
+      // Get count stats first
+      const [likeCountResult, followCountResult] = await Promise.all([
         supabase.rpc('get_stock_case_like_count', { case_id: stockCaseId }),
         supabase.rpc('get_stock_case_follow_count', { case_id: stockCaseId })
-      ];
+      ]);
 
+      // Get user-specific stats if user is logged in
+      let userLikeResult = null;
+      let userFollowResult = null;
+      
       if (user) {
-        statsPromises.push(
+        [userLikeResult, userFollowResult] = await Promise.all([
           supabase.rpc('user_has_liked_case', { case_id: stockCaseId, user_id: user.id }),
           supabase.rpc('user_follows_case', { case_id: stockCaseId, user_id: user.id })
-        );
+        ]);
       }
-
-      const statsResults = await Promise.all(statsPromises);
-      const [likeCountResult, followCountResult, userLikeResult, userFollowResult] = statsResults;
 
       console.log('Stats results:', { likeCountResult, followCountResult, userLikeResult, userFollowResult });
 
