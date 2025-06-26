@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -6,7 +7,8 @@ import { Eye, Heart, MessageCircle, TrendingUp, BookOpen, Sparkles, PieChart, Al
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
-import { useAnalyses, useToggleAnalysisLike } from '@/hooks/useAnalyses';
+import { useAnalyses } from '@/hooks/useAnalyses';
+import { useToggleAnalysisLike } from '@/hooks/useAnalysisMutations';
 import { useAuth } from '@/contexts/AuthContext';
 import CreateAnalysisDialog from './CreateAnalysisDialog';
 import PortfolioAnalysisDialog from './PortfolioAnalysisDialog';

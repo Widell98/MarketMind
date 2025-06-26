@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PlusCircle, X, TrendingUp } from 'lucide-react';
-import { useCreateAnalysis } from '@/hooks/useAnalyses';
+import { useCreateAnalysis } from '@/hooks/useAnalysisMutations';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
 import AnalysisStockCaseSelect from './AnalysisStockCaseSelect';
@@ -105,7 +105,13 @@ const CreateAnalysisDialog = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-purple-600 hover:bg-purple-700 text-white">
+        <Button 
+          className="bg-purple-600 hover:bg-purple-700 text-white"
+          onClick={() => {
+            console.log('CreateAnalysisDialog trigger clicked');
+            setOpen(true);
+          }}
+        >
           <PlusCircle className="w-4 h-4 mr-2" />
           Skapa ny analys
         </Button>
