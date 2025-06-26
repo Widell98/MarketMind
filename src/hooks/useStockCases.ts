@@ -45,7 +45,7 @@ export const useStockCases = (followedOnly: boolean = false) => {
     queryKey: ['stock-cases', followedOnly, user?.id],
     queryFn: async () => {
       if (followedOnly && user) {
-        // Get followed cases - simplified approach
+        // Get followed cases
         const { data: follows, error: followsError } = await supabase
           .from('stock_case_follows')
           .select('stock_case_id')
@@ -87,6 +87,7 @@ export const useStockCases = (followedOnly: boolean = false) => {
         })) as StockCase[];
       }
 
+      // Get all public cases
       const { data, error } = await supabase
         .from('stock_cases')
         .select(`
@@ -105,7 +106,12 @@ export const useStockCases = (followedOnly: boolean = false) => {
         .eq('is_public', true)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching stock cases:', error);
+        throw error;
+      }
+      
+      console.log('Fetched stock cases:', data);
       
       return (data || []).map(stockCase => ({
         ...stockCase,

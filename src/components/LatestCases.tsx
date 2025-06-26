@@ -21,21 +21,32 @@ const LatestCases = () => {
   const { stockCases: allStockCases, loading: allLoading } = useStockCases(false);
   const { stockCases: followedStockCases, loading: followedLoading } = useStockCases(true);
   const { trendingCases, loading: trendingLoading } = useTrendingStockCases(6);
+  const { latestCases: latestStockCases, loading: latestLoading } = useLatestStockCases(6);
+
+  console.log('LatestCases - All stock cases:', allStockCases);
+  console.log('LatestCases - Latest cases:', latestStockCases);
+  console.log('LatestCases - View mode:', viewMode);
 
   const getDisplayData = () => {
     switch (viewMode) {
       case 'all':
-        return { cases: allStockCases.slice(0, 6), loading: allLoading };
+        // Use latestStockCases if available, otherwise fall back to allStockCases
+        const cases = latestStockCases.length > 0 ? latestStockCases : allStockCases.slice(0, 6);
+        const loading = latestLoading || allLoading;
+        return { cases, loading };
       case 'trending':
         return { cases: trendingCases, loading: trendingLoading };
       case 'followed':
         return { cases: followedStockCases.slice(0, 6), loading: followedLoading };
       default:
-        return { cases: allStockCases.slice(0, 6), loading: allLoading };
+        return { cases: latestStockCases, loading: latestLoading };
     }
   };
 
   const { cases: displayCases, loading } = getDisplayData();
+
+  console.log('Display cases:', displayCases);
+  console.log('Loading:', loading);
 
   if (loading) {
     return (
@@ -121,6 +132,15 @@ const LatestCases = () => {
               : 'Inga cases tillgängliga ännu.'
             }
           </p>
+          <div className="text-center">
+            <Button 
+              onClick={() => navigate('/stock-cases')}
+              variant="outline"
+              size="sm"
+            >
+              Skapa ditt första case
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );

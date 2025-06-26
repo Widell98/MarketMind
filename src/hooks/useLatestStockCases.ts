@@ -23,54 +23,45 @@ export const useLatestStockCases = (limit: number = 6) => {
       try {
         setLoading(true);
         
+        console.log('Fetching latest cases...');
+        
         // Get the latest stock cases
         const { data, error } = await supabase
           .from('stock_cases')
-          .select('*')
+          .select(`
+            *,
+            case_categories (
+              id,
+              name,
+              color
+            ),
+            profiles (
+              id,
+              display_name,
+              username
+            )
+          `)
           .eq('is_public', true)
           .order('created_at', { ascending: false })
           .limit(limit);
 
-        if (error) throw error;
-
-        // Get unique user IDs
-        const userIds = [...new Set(data?.map(c => c.user_id).filter(Boolean) || [])];
-        
-        // Fetch profiles for these users
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, username, display_name')
-          .in('id', userIds);
-
-        if (profilesError) {
-          console.error('Profiles fetch error:', profilesError);
+        if (error) {
+          console.error('Error fetching latest cases:', error);
+          throw error;
         }
 
-        // Get unique category IDs
-        const categoryIds = [...new Set(data?.map(c => c.category_id).filter(Boolean) || [])];
-        
-        // Fetch categories
-        const { data: categoriesData, error: categoriesError } = await supabase
-          .from('case_categories')
-          .select('id, name, color')
-          .in('id', categoryIds);
+        console.log('Raw data from database:', data);
 
-        if (categoriesError) {
-          console.error('Categories fetch error:', categoriesError);
-        }
-
-        // Combine the data manually
+        // Transform the data to ensure proper typing
         const transformedData = (data || []).map(stockCase => {
-          const profile = profilesData?.find(p => p.id === stockCase.user_id);
-          const category = categoriesData?.find(c => c.id === stockCase.category_id);
-          
           return transformStockCase({
             ...stockCase,
-            profiles: profile ? { username: profile.username, display_name: profile.display_name } : null,
-            case_categories: category ? { name: category.name, color: category.color } : null
+            profiles: Array.isArray(stockCase.profiles) ? stockCase.profiles[0] : stockCase.profiles,
+            case_categories: Array.isArray(stockCase.case_categories) ? stockCase.case_categories[0] : stockCase.case_categories
           });
         });
 
+        console.log('Transformed data:', transformedData);
         setLatestCases(transformedData);
       } catch (error: any) {
         console.error('Error fetching latest cases:', error);
