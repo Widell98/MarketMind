@@ -148,6 +148,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "analysis_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_analysis_comments_analysis"
             columns: ["analysis_id"]
             isOneToOne: false

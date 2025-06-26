@@ -46,7 +46,11 @@ export const useAnalyses = (limit = 10) => {
         .select(`
           *,
           stock_cases (company_name, title),
-          user_portfolios (portfolio_name)
+          user_portfolios (portfolio_name),
+          profiles!analyses_user_id_fkey (
+            username, 
+            display_name
+          )
         `)
         .eq('is_public', true)
         .order('created_at', { ascending: false })
@@ -59,33 +63,9 @@ export const useAnalyses = (limit = 10) => {
         throw analysesError;
       }
 
-      // Get profiles for all users
-      const userIds = analysesData?.map(analysis => analysis.user_id) || [];
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, username, display_name')
-        .in('id', userIds);
-
-      if (profilesError) {
-        console.error('Error fetching profiles:', profilesError);
-        throw profilesError;
-      }
-
-      // Create a map of profiles by user_id
-      const profilesMap = new Map();
-      profilesData?.forEach(profile => {
-        profilesMap.set(profile.id, profile);
-      });
-
-      // Merge analyses with profiles
-      const analysesWithProfiles = analysesData?.map(analysis => ({
-        ...analysis,
-        profiles: profilesMap.get(analysis.user_id) || null
-      })) || [];
-
       // Get like counts and user's like status for each analysis
       const analysesWithStats = await Promise.all(
-        analysesWithProfiles.map(async (analysis) => {
+        (analysesData || []).map(async (analysis) => {
           const [likeCountResult, userLikeResult] = await Promise.all([
             supabase.rpc('get_analysis_like_count', { analysis_id: analysis.id }),
             user ? supabase.rpc('user_has_liked_analysis', { analysis_id: analysis.id, user_id: user.id }) : null
@@ -130,7 +110,11 @@ export const useAnalysis = (id: string) => {
         .select(`
           *,
           stock_cases (company_name, title),
-          user_portfolios (portfolio_name)
+          user_portfolios (portfolio_name),
+          profiles!analyses_user_id_fkey (
+            username, 
+            display_name
+          )
         `)
         .eq('id', id)
         .single();
@@ -138,18 +122,6 @@ export const useAnalysis = (id: string) => {
       if (analysisError) {
         console.error('Error fetching analysis:', analysisError);
         throw analysisError;
-      }
-
-      // Get profile for the author
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, username, display_name')
-        .eq('id', analysisData.user_id)
-        .single();
-
-      if (profileError) {
-        console.error('Error fetching profile:', profileError);
-        throw profileError;
       }
 
       // Get like count and user's like status
@@ -175,8 +147,7 @@ export const useAnalysis = (id: string) => {
         likes_count: likeCountResult.data || 0,
         comments_count: commentCountResult.data || 0,
         isLiked: userLikeResult?.data || false,
-        related_holdings: relatedHoldings,
-        profiles: profileData
+        related_holdings: relatedHoldings
       };
 
       return transformedAnalysis;

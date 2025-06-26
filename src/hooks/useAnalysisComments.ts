@@ -25,7 +25,10 @@ export const useAnalysisComments = (analysisId: string) => {
         .from('analysis_comments')
         .select(`
           *,
-          profiles (username, display_name)
+          profiles!analysis_comments_user_id_fkey (
+            username, 
+            display_name
+          )
         `)
         .eq('analysis_id', analysisId)
         .order('created_at', { ascending: true });
