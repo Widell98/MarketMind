@@ -172,14 +172,14 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
       return casesWithStats;
     },
     enabled: !!analysisId,
-    staleTime: Infinity, // Data never becomes stale
-    gcTime: Infinity, // Data never gets garbage collected
+    staleTime: Infinity,
+    gcTime: Infinity,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     refetchOnReconnect: false,
-    retry: false, // Don't retry on failure to avoid refetching
-    refetchInterval: false, // Disable automatic refetching
-    refetchIntervalInBackground: false
+    refetchInterval: false,
+    refetchIntervalInBackground: false,
+    retry: false
   });
 
   const getStatusColor = (status: string) => {
