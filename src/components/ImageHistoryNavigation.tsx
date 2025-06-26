@@ -2,7 +2,8 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Clock, CheckCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ChevronLeft, ChevronRight, Clock, CheckCircle, Eye } from 'lucide-react';
 import { StockCaseImageHistory } from '@/hooks/useStockCaseImageHistory';
 
 interface ImageHistoryNavigationProps {
@@ -44,6 +45,37 @@ const ImageHistoryNavigation: React.FC<ImageHistoryNavigationProps> = ({
     if (currentIndex < images.length - 1) {
       onIndexChange(currentIndex + 1);
     }
+  };
+
+  // Component for expandable text
+  const ExpandableText = ({ text, maxLength = 80 }: { text: string; maxLength?: number }) => {
+    if (text.length <= maxLength) {
+      return <span>{text}</span>;
+    }
+
+    return (
+      <Dialog>
+        <DialogTrigger asChild>
+          <span className="cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+            {text.substring(0, maxLength)}...{' '}
+            <span className="text-blue-600 dark:text-blue-400 underline inline-flex items-center">
+              <Eye className="w-3 h-3 ml-1" />
+              Läs mer
+            </span>
+          </span>
+        </DialogTrigger>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Fullständig beskrivning</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+              {text}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
   };
 
   return (
@@ -90,9 +122,9 @@ const ImageHistoryNavigation: React.FC<ImageHistoryNavigationProps> = ({
         <div className="flex-1 text-center px-2 sm:px-4 min-w-0">
           <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-2 sm:p-3 border border-gray-200 dark:border-gray-600">
             {currentImage?.description ? (
-              <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium line-clamp-2">
-                {currentImage.description}
-              </p>
+              <div className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">
+                <ExpandableText text={currentImage.description} />
+              </div>
             ) : (
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 italic">
                 No description
