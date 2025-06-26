@@ -1,4 +1,3 @@
-
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,31 +21,47 @@ export const useCreateAnalysis = () => {
       ai_generated?: boolean;
       shared_from_insight_id?: string;
     }) => {
-      if (!user) throw new Error('User must be authenticated');
+      if (!user) {
+        console.error('No user found for analysis creation');
+        throw new Error('Du måste vara inloggad för att skapa en analys');
+      }
+
+      console.log('Creating analysis with data:', analysisData);
 
       const { data, error } = await supabase
         .from('analyses')
         .insert({
           ...analysisData,
           user_id: user.id,
+          is_public: analysisData.is_public ?? true,
+          views_count: 0,
+          likes_count: 0,
+          comments_count: 0,
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating analysis:', error);
+        throw error;
+      }
+
+      console.log('Analysis created successfully:', data);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['analyses'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-case-analyses'] });
       toast({
         title: "Analys skapad!",
         description: "Din analys har publicerats framgångsrikt.",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error('Analysis creation failed:', error);
       toast({
         title: "Fel vid skapande av analys",
-        description: error.message,
+        description: error.message || "Något gick fel när analysen skulle skapas.",
         variant: "destructive",
       });
     },
@@ -128,8 +143,10 @@ export const useToggleAnalysisLike = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['analyses'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-case-analyses'] });
     },
     onError: (error) => {
+      console.error('Like toggle error:', error);
       toast({
         title: "Fel vid uppdatering av gilla",
         description: error.message,

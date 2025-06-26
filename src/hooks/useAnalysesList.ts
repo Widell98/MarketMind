@@ -10,7 +10,7 @@ export const useAnalysesList = (limit = 10) => {
   return useQuery({
     queryKey: ['analyses', limit, user?.id],
     queryFn: async () => {
-      console.log('Fetching analyses...');
+      console.log('Fetching analyses...', { user: user?.id, limit });
       
       const { data: analysesData, error: analysesError } = await supabase
         .from('analyses')
@@ -34,39 +34,61 @@ export const useAnalysesList = (limit = 10) => {
 
       console.log('Fetched analyses data:', analysesData);
 
+      if (!analysesData || analysesData.length === 0) {
+        console.log('No analyses found, returning empty array');
+        return [];
+      }
+
       // Get like counts and user's like status for each analysis
       const analysesWithStats = await Promise.all(
-        (analysesData || []).map(async (analysis) => {
-          const [likeCountResult, userLikeResult] = await Promise.all([
-            supabase.rpc('get_analysis_like_count', { analysis_id: analysis.id }),
-            user ? supabase.rpc('user_has_liked_analysis', { analysis_id: analysis.id, user_id: user.id }) : null
-          ]);
+        analysesData.map(async (analysis) => {
+          try {
+            const [likeCountResult, userLikeResult] = await Promise.all([
+              supabase.rpc('get_analysis_like_count', { analysis_id: analysis.id }),
+              user ? supabase.rpc('user_has_liked_analysis', { analysis_id: analysis.id, user_id: user.id }) : Promise.resolve({ data: false })
+            ]);
 
-          // Safely handle related_holdings
-          let relatedHoldings: any[] = [];
-          if (analysis.related_holdings) {
-            if (Array.isArray(analysis.related_holdings)) {
-              relatedHoldings = analysis.related_holdings;
-            } else if (typeof analysis.related_holdings === 'object') {
-              relatedHoldings = Object.values(analysis.related_holdings);
+            console.log(`Analysis ${analysis.id} - likes: ${likeCountResult.data}, user liked: ${userLikeResult?.data}`);
+
+            // Safely handle related_holdings
+            let relatedHoldings: any[] = [];
+            if (analysis.related_holdings) {
+              if (Array.isArray(analysis.related_holdings)) {
+                relatedHoldings = analysis.related_holdings;
+              } else if (typeof analysis.related_holdings === 'object') {
+                relatedHoldings = Object.values(analysis.related_holdings);
+              }
             }
+
+            const transformedAnalysis: Analysis = {
+              ...analysis,
+              analysis_type: analysis.analysis_type as 'market_insight' | 'technical_analysis' | 'fundamental_analysis' | 'sector_analysis' | 'portfolio_analysis' | 'position_analysis' | 'sector_deep_dive',
+              likes_count: likeCountResult.data || 0,
+              isLiked: userLikeResult?.data || false,
+              related_holdings: relatedHoldings,
+              profiles: Array.isArray(analysis.profiles) ? analysis.profiles[0] || null : analysis.profiles
+            };
+
+            return transformedAnalysis;
+          } catch (error) {
+            console.error(`Error processing analysis ${analysis.id}:`, error);
+            // Return basic analysis if processing fails
+            return {
+              ...analysis,
+              analysis_type: analysis.analysis_type as 'market_insight' | 'technical_analysis' | 'fundamental_analysis' | 'sector_analysis' | 'portfolio_analysis' | 'position_analysis' | 'sector_deep_dive',
+              likes_count: 0,
+              isLiked: false,
+              related_holdings: [],
+              profiles: Array.isArray(analysis.profiles) ? analysis.profiles[0] || null : analysis.profiles
+            };
           }
-
-          const transformedAnalysis: Analysis = {
-            ...analysis,
-            analysis_type: analysis.analysis_type as 'market_insight' | 'technical_analysis' | 'fundamental_analysis' | 'sector_analysis' | 'portfolio_analysis' | 'position_analysis' | 'sector_deep_dive',
-            likes_count: likeCountResult.data || 0,
-            isLiked: userLikeResult?.data || false,
-            related_holdings: relatedHoldings,
-            profiles: Array.isArray(analysis.profiles) ? analysis.profiles[0] || null : analysis.profiles
-          };
-
-          return transformedAnalysis;
         })
       );
 
       console.log('Processed analyses with stats:', analysesWithStats);
       return analysesWithStats;
     },
+    retry: 1,
+    retryDelay: 1000,
   });
 };

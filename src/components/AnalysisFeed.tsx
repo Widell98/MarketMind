@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, Heart, MessageCircle, TrendingUp, BookOpen, Sparkles, PieChart } from 'lucide-react';
+import { Eye, Heart, MessageCircle, TrendingUp, BookOpen, Sparkles, PieChart, AlertCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -17,8 +17,14 @@ const AnalysisFeed = () => {
   const navigate = useNavigate();
   const toggleLike = useToggleAnalysisLike();
 
+  console.log('AnalysisFeed render:', { analyses, isLoading, error, user: user?.id });
+
   const handleLike = (analysisId: string, isLiked: boolean) => {
-    if (!user) return;
+    if (!user) {
+      console.log('User not logged in for like action');
+      return;
+    }
+    console.log('Toggling like:', { analysisId, isLiked });
     toggleLike.mutate({ analysisId, isLiked });
   };
 
@@ -84,6 +90,7 @@ const AnalysisFeed = () => {
   }
 
   if (error) {
+    console.error('AnalysisFeed error:', error);
     return (
       <div className="space-y-6">
         <div className="flex justify-end gap-2">
@@ -92,9 +99,20 @@ const AnalysisFeed = () => {
         </div>
         <Card className="text-center py-8 bg-red-50 dark:bg-red-900/20">
           <CardContent className="pt-4">
-            <p className="text-red-600 dark:text-red-400">
-              Kunde inte ladda analyser. Försök igen senare.
+            <AlertCircle className="w-12 h-12 text-red-400 dark:text-red-600 mx-auto mb-3" />
+            <h3 className="text-lg font-semibold mb-2 text-red-600 dark:text-red-400">
+              Kunde inte ladda analyser
+            </h3>
+            <p className="text-red-600 dark:text-red-400 mb-4">
+              {error?.message || "Ett fel uppstod när analyserna skulle laddas. Försök igen senare."}
             </p>
+            <Button 
+              onClick={() => window.location.reload()} 
+              variant="outline"
+              className="border-red-300 text-red-600 hover:bg-red-50"
+            >
+              Försök igen
+            </Button>
           </CardContent>
         </Card>
       </div>
