@@ -144,6 +144,7 @@ const StockCaseDetail = () => {
                 stockCaseId={stockCase.id}
                 stockCaseTitle={stockCase.title}
                 companyName={stockCase.company_name}
+                stockCaseUserId={stockCase.user_id}
               />
             </div>
 
