@@ -357,16 +357,6 @@ const MyStockCases = () => {
     }
   };
 
-  const updateStockCase = async (caseId: string, caseData: any) => {
-    const { error } = await supabase
-      .from('stock_cases')
-      .update(caseData)
-      .eq('id', caseId)
-      .eq('user_id', user?.id);
-
-    if (error) throw error;
-  };
-
   const handleEdit = (stockCase: StockCaseWithActions) => {
     setFormData({
       title: stockCase.title,
