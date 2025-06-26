@@ -87,7 +87,8 @@ export const useAnalyses = (limit = 10) => {
             analysis_type: analysis.analysis_type as 'market_insight' | 'technical_analysis' | 'fundamental_analysis' | 'sector_analysis' | 'portfolio_analysis' | 'position_analysis' | 'sector_deep_dive',
             likes_count: likeCountResult.data || 0,
             isLiked: userLikeResult?.data || false,
-            related_holdings: relatedHoldings
+            related_holdings: relatedHoldings,
+            profiles: Array.isArray(analysis.profiles) ? analysis.profiles[0] || null : analysis.profiles
           };
 
           return transformedAnalysis;
@@ -147,7 +148,8 @@ export const useAnalysis = (id: string) => {
         likes_count: likeCountResult.data || 0,
         comments_count: commentCountResult.data || 0,
         isLiked: userLikeResult?.data || false,
-        related_holdings: relatedHoldings
+        related_holdings: relatedHoldings,
+        profiles: Array.isArray(analysisData.profiles) ? analysisData.profiles[0] || null : analysisData.profiles
       };
 
       return transformedAnalysis;
