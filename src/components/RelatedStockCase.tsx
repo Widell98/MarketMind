@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -51,7 +50,8 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
         likes_count: likeCountResult.data || 0,
         follows_count: followCountResult.data || 0,
         isLiked: userLikeResult?.data || false,
-        isFollowed: userFollowResult?.data || false
+        isFollowed: userFollowResult?.data || false,
+        profiles: Array.isArray(caseData.profiles) ? caseData.profiles[0] : caseData.profiles
       };
     },
   });
