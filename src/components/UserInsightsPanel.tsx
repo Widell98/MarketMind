@@ -16,7 +16,7 @@ const UserInsightsPanel = () => {
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
             <Brain className="w-4 h-4 text-blue-500" />
-            AI Portfolio Insights
+            AI Portfolio Insikter
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">

@@ -168,7 +168,7 @@ export const useAIChat = (portfolioId?: string) => {
     
     try {
       const now = new Date();
-      const sessionName = `Rådgivning ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
+      const sessionName = `Chat ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
       
       console.log('Creating session with name:', sessionName);
       
@@ -385,7 +385,7 @@ export const useAIChat = (portfolioId?: string) => {
     
     try {
       const now = new Date();
-      const sessionName = `Rådgivning ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
+      const sessionName = `Chat ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
       
       console.log('Session name:', sessionName);
       
@@ -423,7 +423,7 @@ export const useAIChat = (portfolioId?: string) => {
       
       toast({
         title: "Ny chat skapad",
-        description: "Du kan nu börja chatta med din AI-rådgivare.",
+        description: "Du kan nu börja chatta med din AI-assistent.",
       });
       
     } catch (error) {
