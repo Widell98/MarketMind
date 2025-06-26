@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -46,12 +45,22 @@ const RelatedAnalyses = ({ stockCaseId }: RelatedAnalysesProps) => {
             user ? supabase.rpc('user_has_liked_analysis', { analysis_id: analysis.id, user_id: user.id }) : null
           ]);
 
+          // Safely handle related_holdings
+          let relatedHoldings: any[] = [];
+          if (analysis.related_holdings) {
+            if (Array.isArray(analysis.related_holdings)) {
+              relatedHoldings = analysis.related_holdings;
+            } else if (typeof analysis.related_holdings === 'object') {
+              relatedHoldings = Object.values(analysis.related_holdings);
+            }
+          }
+
           const transformedAnalysis: Analysis = {
             ...analysis,
             analysis_type: analysis.analysis_type as 'market_insight' | 'technical_analysis' | 'fundamental_analysis' | 'sector_analysis' | 'portfolio_analysis' | 'position_analysis' | 'sector_deep_dive',
             likes_count: likeCountResult.data || 0,
             isLiked: userLikeResult?.data || false,
-            related_holdings: analysis.related_holdings || [],
+            related_holdings: relatedHoldings,
             profiles: Array.isArray(analysis.profiles) ? analysis.profiles[0] || null : analysis.profiles
           };
 
