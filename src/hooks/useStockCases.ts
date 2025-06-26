@@ -45,36 +45,46 @@ export const useStockCases = (followedOnly: boolean = false) => {
     queryKey: ['stock-cases', followedOnly, user?.id],
     queryFn: async () => {
       if (followedOnly && user) {
-        // Get followed cases by joining with stock_case_follows
-        const { data: followedCases, error: followedError } = await supabase
+        // Get followed cases - simplified approach
+        const { data: follows, error: followsError } = await supabase
           .from('stock_case_follows')
-          .select(`
-            stock_cases!inner (
-              *,
-              case_categories (
-                id,
-                name,
-                color
-              ),
-              profiles (
-                id,
-                display_name,
-                username
-              )
-            )
-          `)
+          .select('stock_case_id')
           .eq('user_id', user.id);
 
-        if (followedError) throw followedError;
+        if (followsError) throw followsError;
         
-        return (followedCases || [])
-          .map(f => f.stock_cases)
-          .filter(Boolean)
-          .map(stockCase => ({
-            ...stockCase,
-            profiles: Array.isArray(stockCase.profiles) ? stockCase.profiles[0] : stockCase.profiles,
-            case_categories: Array.isArray(stockCase.case_categories) ? stockCase.case_categories[0] : stockCase.case_categories
-          })) as StockCase[];
+        if (!follows || follows.length === 0) {
+          return [];
+        }
+
+        const stockCaseIds = follows.map(f => f.stock_case_id);
+
+        const { data: stockCases, error: casesError } = await supabase
+          .from('stock_cases')
+          .select(`
+            *,
+            case_categories (
+              id,
+              name,
+              color
+            ),
+            profiles (
+              id,
+              display_name,
+              username
+            )
+          `)
+          .in('id', stockCaseIds)
+          .eq('is_public', true)
+          .order('created_at', { ascending: false });
+
+        if (casesError) throw casesError;
+
+        return (stockCases || []).map(stockCase => ({
+          ...stockCase,
+          profiles: Array.isArray(stockCase.profiles) ? stockCase.profiles[0] : stockCase.profiles,
+          case_categories: Array.isArray(stockCase.case_categories) ? stockCase.case_categories[0] : stockCase.case_categories
+        })) as StockCase[];
       }
 
       const { data, error } = await supabase

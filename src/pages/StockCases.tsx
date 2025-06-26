@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStockCases } from '@/hooks/useStockCases';
+import { useStockCaseOperations } from '@/hooks/useStockCaseOperations';
 import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
 import { useStockCasesFilters } from '@/hooks/useStockCasesFilters';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,9 +19,10 @@ import CommunityStats from '@/components/CommunityStats';
 const StockCases = () => {
   const [viewMode, setViewMode] = useState<'all' | 'trending' | 'followed'>('all');
   
-  const { stockCases: allStockCases, loading: allLoading, deleteStockCase } = useStockCases(false);
+  const { stockCases: allStockCases, loading: allLoading } = useStockCases(false);
   const { stockCases: followedStockCases, loading: followedLoading } = useStockCases(true);
   const { trendingCases, loading: trendingLoading } = useTrendingStockCases(20);
+  const { deleteStockCase } = useStockCaseOperations();
   
   const navigate = useNavigate();
 

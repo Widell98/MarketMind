@@ -22,7 +22,7 @@ const CreatePostDialog: React.FC<CreatePostDialogProps> = ({ open, onOpenChange 
   const [stockCaseId, setStockCaseId] = useState<string>('');
   
   const createPost = useCreatePost();
-  const { data: stockCases = [] } = useStockCases();
+  const { stockCases } = useStockCases();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
