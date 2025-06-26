@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -23,7 +22,7 @@ const CreatePostDialog: React.FC<CreatePostDialogProps> = ({ open, onOpenChange 
   const [stockCaseId, setStockCaseId] = useState<string>('');
   
   const createPost = useCreatePost();
-  const { stockCases } = useStockCases();
+  const { data: stockCases = [] } = useStockCases();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

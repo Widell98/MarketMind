@@ -1,9 +1,7 @@
 
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/hooks/use-toast';
 
 export type StockCase = {
   id: string;
@@ -40,105 +38,73 @@ export type StockCase = {
   };
 };
 
-export const useStockCases = () => {
+export const useStockCases = (followedOnly: boolean = false) => {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const [loading, setLoading] = useState(false);
 
-  const createStockCase = async (stockCaseData: any) => {
-    if (!user) {
-      throw new Error('Du måste vara inloggad för att skapa aktiecases');
-    }
+  return useQuery({
+    queryKey: ['stock-cases', followedOnly, user?.id],
+    queryFn: async () => {
+      if (followedOnly && user) {
+        // Get followed cases by joining with stock_case_follows
+        const { data: followedCases, error: followedError } = await supabase
+          .from('stock_case_follows')
+          .select(`
+            stock_cases (
+              *,
+              case_categories (
+                id,
+                name,
+                color
+              ),
+              profiles (
+                id,
+                display_name,
+                username
+              )
+            )
+          `)
+          .eq('user_id', user.id);
 
-    setLoading(true);
-    try {
+        if (followedError) throw followedError;
+        
+        return (followedCases || [])
+          .map(f => f.stock_cases)
+          .filter(Boolean)
+          .map(stockCase => ({
+            ...stockCase,
+            profiles: Array.isArray(stockCase.profiles) ? stockCase.profiles[0] : stockCase.profiles,
+            case_categories: Array.isArray(stockCase.case_categories) ? stockCase.case_categories[0] : stockCase.case_categories
+          })) as StockCase[];
+      }
+
       const { data, error } = await supabase
         .from('stock_cases')
-        .insert([stockCaseData])
-        .select()
-        .single();
-
+        .select(`
+          *,
+          case_categories (
+            id,
+            name,
+            color
+          ),
+          profiles (
+            id,
+            display_name,
+            username
+          )
+        `)
+        .eq('is_public', true)
+        .order('created_at', { ascending: false });
+      
       if (error) throw error;
-
-      toast({
-        title: "Framgång",
-        description: "Aktiecase skapat framgångsrikt!",
-      });
-
-      return data;
-    } catch (error: any) {
-      console.error('Error creating stock case:', error);
-      toast({
-        title: "Fel",
-        description: error.message || "Kunde inte skapa aktiecase",
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const uploadImage = async (file: File): Promise<string> => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `stock-cases/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('stock-case-images')
-      .upload(filePath, file);
-
-    if (uploadError) {
-      console.error('Upload error:', uploadError);
-      throw new Error('Kunde inte ladda upp bild');
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('stock-case-images')
-      .getPublicUrl(filePath);
-
-    return publicUrl;
-  };
-
-  const deleteStockCase = async (stockCaseId: string) => {
-    if (!user) {
-      throw new Error('Du måste vara inloggad för att ta bort aktiecases');
-    }
-
-    try {
-      const { error } = await supabase
-        .from('stock_cases')
-        .delete()
-        .eq('id', stockCaseId)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Framgång",
-        description: "Aktiecase borttaget framgångsrikt!",
-      });
-
-      // Invalidate queries to refresh the data
-      queryClient.invalidateQueries({ queryKey: ['user-stock-cases'] });
-      queryClient.invalidateQueries({ queryKey: ['stock-cases'] });
-    } catch (error: any) {
-      console.error('Error deleting stock case:', error);
-      toast({
-        title: "Fel",
-        description: error.message || "Kunde inte ta bort aktiecase",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  return {
-    createStockCase,
-    uploadImage,
-    deleteStockCase,
-    loading,
-  };
+      
+      return (data || []).map(stockCase => ({
+        ...stockCase,
+        profiles: Array.isArray(stockCase.profiles) ? stockCase.profiles[0] : stockCase.profiles,
+        case_categories: Array.isArray(stockCase.case_categories) ? stockCase.case_categories[0] : stockCase.case_categories
+      })) as StockCase[];
+    },
+    enabled: !followedOnly || !!user,
+  });
 };
 
 // Hook for fetching stock cases with filters
@@ -193,7 +159,12 @@ export const useStockCasesList = (filters?: {
       const { data, error } = await query;
       
       if (error) throw error;
-      return data as StockCase[];
+      
+      return (data || []).map(stockCase => ({
+        ...stockCase,
+        profiles: Array.isArray(stockCase.profiles) ? stockCase.profiles[0] : stockCase.profiles,
+        case_categories: Array.isArray(stockCase.case_categories) ? stockCase.case_categories[0] : stockCase.case_categories
+      })) as StockCase[];
     },
   });
 };
@@ -222,7 +193,14 @@ export const useStockCase = (id: string) => {
         .single();
 
       if (error) throw error;
-      return data as StockCase;
+      
+      const stockCase = {
+        ...data,
+        profiles: Array.isArray(data.profiles) ? data.profiles[0] : data.profiles,
+        case_categories: Array.isArray(data.case_categories) ? data.case_categories[0] : data.case_categories
+      };
+      
+      return stockCase as StockCase;
     },
     enabled: !!id,
   });
