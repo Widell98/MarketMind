@@ -46,24 +46,57 @@ export const useStockCaseOperations = () => {
   };
 
   const uploadImage = async (file: File): Promise<string> => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `stock-cases/${fileName}`;
+    try {
+      console.log('Starting image upload for file:', file.name, 'Size:', file.size);
+      
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = fileName; // Simplified path structure
+      
+      console.log('Uploading to path:', filePath);
 
-    const { error: uploadError } = await supabase.storage
-      .from('stock-case-images')
-      .upload(filePath, file);
+      // First, try to create the bucket if it doesn't exist
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const bucketExists = buckets?.some(bucket => bucket.name === 'stock-case-images');
+      
+      if (!bucketExists) {
+        console.log('Creating stock-case-images bucket...');
+        const { error: bucketError } = await supabase.storage.createBucket('stock-case-images', {
+          public: true,
+          allowedMimeTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
+          fileSizeLimit: 5242880 // 5MB
+        });
+        
+        if (bucketError) {
+          console.error('Error creating bucket:', bucketError);
+          throw new Error('Kunde inte skapa bildarkiv');
+        }
+      }
 
-    if (uploadError) {
-      console.error('Upload error:', uploadError);
-      throw new Error('Kunde inte ladda upp bild');
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('stock-case-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('Upload error details:', uploadError);
+        throw new Error(`Uppladdningsfel: ${uploadError.message}`);
+      }
+
+      console.log('Upload successful:', uploadData);
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('stock-case-images')
+        .getPublicUrl(filePath);
+
+      console.log('Public URL generated:', publicUrl);
+      return publicUrl;
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      throw error;
     }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('stock-case-images')
-      .getPublicUrl(filePath);
-
-    return publicUrl;
   };
 
   const deleteStockCase = async (stockCaseId: string) => {
