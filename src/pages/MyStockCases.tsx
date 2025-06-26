@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -55,7 +54,7 @@ type Category = {
 
 const MyStockCases = () => {
   const { user, loading: authLoading } = useAuth();
-  const { createStockCase, uploadImage, deleteStockCase } = useStockCaseOperations();
+  const { createStockCase, updateStockCase, uploadImage, deleteStockCase } = useStockCaseOperations();
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -277,6 +276,7 @@ const MyStockCases = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!formData.title || !formData.company_name) {
       toast({
         title: "Fel",
@@ -286,19 +286,34 @@ const MyStockCases = () => {
       return;
     }
 
+    console.log('Form submitted with data:', formData);
+    console.log('Image file:', imageFile);
+    console.log('Editing case:', editingCase);
+
     setLoading(true);
+    
     try {
       let imageUrl = null;
       
+      // Handle image upload
       if (editingCase && !imageFile && imagePreview) {
+        // Editing case and no new image, keep existing
         const existingCase = myCases.find(c => c.id === editingCase);
         imageUrl = existingCase?.image_url || null;
       } else if (imageFile) {
+        // New image to upload
+        console.log('Uploading image...');
         imageUrl = await uploadImage(imageFile);
+        console.log('Image uploaded:', imageUrl);
       }
 
       const caseData = {
-        ...formData,
+        title: formData.title,
+        company_name: formData.company_name,
+        sector: formData.sector || null,
+        market_cap: formData.market_cap || null,
+        description: formData.description || null,
+        admin_comment: formData.admin_comment || null,
         image_url: imageUrl,
         pe_ratio: null,
         dividend_yield: null,
@@ -311,24 +326,32 @@ const MyStockCases = () => {
         closed_at: null,
         is_public: true,
         category_id: formData.category_id || null,
-        user_id: user?.id,
       };
 
+      console.log('Final case data to submit:', caseData);
+
+      let result;
       if (editingCase) {
-        await updateStockCase(editingCase, caseData);
+        console.log('Updating existing case:', editingCase);
+        result = await updateStockCase(editingCase, caseData);
       } else {
-        await createStockCase(caseData);
+        console.log('Creating new case');
+        result = await createStockCase(caseData);
       }
 
-      resetForm();
-      fetchMyCases();
+      console.log('Operation result:', result);
 
-      toast({
-        title: "Framgång",
-        description: editingCase ? "Akticase uppdaterat framgångsrikt!" : "Akticase skapat framgångsrikt!",
-      });
-    } catch (error) {
+      // Reset form and refresh data
+      resetForm();
+      await fetchMyCases();
+
+    } catch (error: any) {
       console.error('Error in handleSubmit:', error);
+      toast({
+        title: "Fel",
+        description: error.message || "Kunde inte spara aktiecase",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

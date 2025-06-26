@@ -15,33 +15,34 @@ export const useStockCaseOperations = () => {
       throw new Error('Du måste vara inloggad för att skapa aktiecases');
     }
 
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('stock_cases')
-        .insert([stockCaseData])
-        .select()
-        .single();
+    console.log('Creating stock case with data:', stockCaseData);
 
-      if (error) throw error;
+    const { data, error } = await supabase
+      .from('stock_cases')
+      .insert([{
+        ...stockCaseData,
+        user_id: user.id
+      }])
+      .select()
+      .single();
 
-      toast({
-        title: "Framgång",
-        description: "Aktiecase skapat framgångsrikt!",
-      });
-
-      return data;
-    } catch (error: any) {
+    if (error) {
       console.error('Error creating stock case:', error);
-      toast({
-        title: "Fel",
-        description: error.message || "Kunde inte skapa aktiecase",
-        variant: "destructive",
-      });
       throw error;
-    } finally {
-      setLoading(false);
     }
+
+    console.log('Stock case created successfully:', data);
+
+    // Invalidate relevant queries
+    queryClient.invalidateQueries({ queryKey: ['stock-cases'] });
+    queryClient.invalidateQueries({ queryKey: ['user-stock-cases'] });
+
+    toast({
+      title: "Framgång",
+      description: "Aktiecase skapat framgångsrikt!",
+    });
+
+    return data;
   };
 
   const uploadImage = async (file: File): Promise<string> => {
@@ -98,8 +99,43 @@ export const useStockCaseOperations = () => {
     }
   };
 
+  const updateStockCase = async (caseId: string, caseData: any) => {
+    if (!user) {
+      throw new Error('Du måste vara inloggad för att uppdatera aktiecases');
+    }
+
+    console.log('Updating stock case:', caseId, 'with data:', caseData);
+
+    const { data, error } = await supabase
+      .from('stock_cases')
+      .update(caseData)
+      .eq('id', caseId)
+      .eq('user_id', user.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating stock case:', error);
+      throw error;
+    }
+
+    console.log('Stock case updated successfully:', data);
+
+    // Invalidate relevant queries
+    queryClient.invalidateQueries({ queryKey: ['stock-cases'] });
+    queryClient.invalidateQueries({ queryKey: ['user-stock-cases'] });
+
+    toast({
+      title: "Framgång",
+      description: "Aktiecase uppdaterat framgångsrikt!",
+    });
+
+    return data;
+  };
+
   return {
     createStockCase,
+    updateStockCase,
     uploadImage,
     deleteStockCase,
     loading,
