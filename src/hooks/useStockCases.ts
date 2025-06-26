@@ -41,7 +41,7 @@ export type StockCase = {
 export const useStockCases = (followedOnly: boolean = false) => {
   const { user } = useAuth();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['stock-cases', followedOnly, user?.id],
     queryFn: async () => {
       if (followedOnly && user) {
@@ -49,7 +49,7 @@ export const useStockCases = (followedOnly: boolean = false) => {
         const { data: followedCases, error: followedError } = await supabase
           .from('stock_case_follows')
           .select(`
-            stock_cases (
+            stock_cases!inner (
               *,
               case_categories (
                 id,
@@ -105,6 +105,13 @@ export const useStockCases = (followedOnly: boolean = false) => {
     },
     enabled: !followedOnly || !!user,
   });
+
+  return {
+    stockCases: query.data || [],
+    loading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch
+  };
 };
 
 // Hook for fetching stock cases with filters
@@ -115,7 +122,7 @@ export const useStockCasesList = (filters?: {
   status?: string;
   search?: string;
 }) => {
-  return useQuery({
+  const query = useQuery({
     queryKey: ['stock-cases', filters],
     queryFn: async () => {
       let query = supabase
@@ -167,11 +174,18 @@ export const useStockCasesList = (filters?: {
       })) as StockCase[];
     },
   });
+
+  return {
+    stockCases: query.data || [],
+    loading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch
+  };
 };
 
 // Hook for fetching a single stock case
 export const useStockCase = (id: string) => {
-  return useQuery({
+  const query = useQuery({
     queryKey: ['stock-case', id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -204,4 +218,11 @@ export const useStockCase = (id: string) => {
     },
     enabled: !!id,
   });
+
+  return {
+    stockCase: query.data,
+    loading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch
+  };
 };

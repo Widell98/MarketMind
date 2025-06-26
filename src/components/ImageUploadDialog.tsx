@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Upload, Plus } from 'lucide-react';
-import { useStockCases } from '@/hooks/useStockCases';
+import { useStockCaseOperations } from '@/hooks/useStockCaseOperations';
 import { useToast } from '@/hooks/use-toast';
 
 interface ImageUploadDialogProps {
@@ -24,7 +24,7 @@ const ImageUploadDialog: React.FC<ImageUploadDialogProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [description, setDescription] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const { uploadImage } = useStockCases();
+  const { uploadImage } = useStockCaseOperations();
   const { toast } = useToast();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {

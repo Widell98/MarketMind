@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
-import { useStockCases } from '@/hooks/useStockCases';
+import { useStockCaseOperations } from '@/hooks/useStockCaseOperations';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,7 +55,7 @@ type Category = {
 
 const MyStockCases = () => {
   const { user, loading: authLoading } = useAuth();
-  const { createStockCase, uploadImage, deleteStockCase } = useStockCases();
+  const { createStockCase, uploadImage, deleteStockCase } = useStockCaseOperations();
   const { toast } = useToast();
   const navigate = useNavigate();
   
