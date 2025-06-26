@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -294,12 +295,20 @@ export const useAIChat = (portfolioId?: string) => {
       console.log('AI response received:', data);
 
       // Increment usage after successful API call
-      await supabase.rpc('increment_ai_usage', {
+      console.log('Incrementing AI usage...');
+      const { error: usageError } = await supabase.rpc('increment_ai_usage', {
         _user_id: user.id,
         _usage_type: 'ai_message'
       });
 
-      // Uppdatera användning omedelbart
+      if (usageError) {
+        console.error('Error incrementing usage:', usageError);
+      } else {
+        console.log('Usage incremented successfully');
+      }
+
+      // Fetch updated usage immediately
+      console.log('Fetching updated usage...');
       await fetchUsage();
 
       const assistantMessage: Message = {
@@ -353,10 +362,17 @@ export const useAIChat = (portfolioId?: string) => {
 
       await sendMessage(analysisPrompts[analysisType]);
 
-      await supabase.rpc('increment_ai_usage', {
+      console.log('Incrementing analysis usage...');
+      const { error: usageError } = await supabase.rpc('increment_ai_usage', {
         _user_id: user.id,
         _usage_type: 'analysis'
       });
+
+      if (usageError) {
+        console.error('Error incrementing analysis usage:', usageError);
+      } else {
+        console.log('Analysis usage incremented successfully');
+      }
 
       await fetchUsage();
     } catch (error) {
