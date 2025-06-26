@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useStockCases } from '@/hooks/useStockCases';
+import { useStockCaseOperations } from '@/hooks/useStockCaseOperations';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,7 +73,8 @@ type Category = {
 const AdminStockCases = () => {
   const { user } = useAuth();
   const { isAdmin, loading: roleLoading } = useUserRole();
-  const { createStockCase, uploadImage, deleteStockCase } = useStockCases();
+  const { stockCases: allStockCases, loading: stockCasesLoading } = useStockCases();
+  const { createStockCase, uploadImage, deleteStockCase } = useStockCaseOperations();
   const { toast } = useToast();
   const navigate = useNavigate();
   
