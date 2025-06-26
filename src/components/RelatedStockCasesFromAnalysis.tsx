@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -170,6 +171,12 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
       console.log('Cases with stats:', casesWithStats);
       return casesWithStats;
     },
+    enabled: !!analysisId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false
   });
 
   const getStatusColor = (status: string) => {
@@ -190,9 +197,49 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
 
   console.log('Component render state:', { isLoading, error, stockCasesCount: stockCases?.length });
 
-  // Don't render if loading, error, or no stock cases
-  if (isLoading || error || !stockCases || stockCases.length === 0) {
-    console.log('Not rendering RelatedStockCasesFromAnalysis:', { isLoading, error, stockCasesLength: stockCases?.length });
+  // Don't render anything while loading
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="w-5 h-5" />
+            Relaterade aktiecases
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="animate-pulse space-y-4">
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show error state but don't hide the component
+  if (error) {
+    console.error('Error in RelatedStockCasesFromAnalysis:', error);
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="w-5 h-5" />
+            Relaterade aktiecases
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">
+            Kunde inte ladda relaterade aktiecases
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Don't render if no stock cases found
+  if (!stockCases || stockCases.length === 0) {
+    console.log('Not rendering RelatedStockCasesFromAnalysis: no stock cases found');
     return null;
   }
 
