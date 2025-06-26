@@ -1,9 +1,11 @@
 
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, Calendar, Star, TrendingUp, Trophy, MapPin } from 'lucide-react';
+import { User, Calendar, Star, TrendingUp, Trophy, MapPin, BarChart3, FileText } from 'lucide-react';
 
 interface UserProfile {
   id: string;
@@ -28,6 +30,31 @@ const UserProfileSidebar: React.FC<UserProfileSidebarProps> = ({
 }) => {
   // Handle the case where userProfile might be an array
   const profile = Array.isArray(userProfile) ? userProfile[0] : userProfile;
+
+  // Fetch user statistics
+  const { data: userStats } = useQuery({
+    queryKey: ['user-stats', userId],
+    queryFn: async () => {
+      const [stockCasesResult, analysesResult] = await Promise.all([
+        supabase
+          .from('stock_cases')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('is_public', true),
+        supabase
+          .from('analyses')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('is_public', true)
+      ]);
+
+      return {
+        stockCasesCount: stockCasesResult.data?.length || 0,
+        analysesCount: analysesResult.data?.length || 0
+      };
+    },
+    enabled: !!userId,
+  });
 
   if (!profile) {
     return (
@@ -89,6 +116,39 @@ const UserProfileSidebar: React.FC<UserProfileSidebarProps> = ({
           <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
             <MapPin className="w-4 h-4 mr-2" />
             <span>{profile.location}</span>
+          </div>
+        )}
+
+        {/* User Statistics */}
+        {userStats && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                    Stock Cases
+                  </p>
+                  <p className="text-lg font-semibold text-blue-800 dark:text-blue-300">
+                    {userStats.stockCasesCount}
+                  </p>
+                </div>
+                <BarChart3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-green-600 dark:text-green-400 font-medium">
+                    Analyses
+                  </p>
+                  <p className="text-lg font-semibold text-green-800 dark:text-green-300">
+                    {userStats.analysesCount}
+                  </p>
+                </div>
+                <FileText className="w-4 h-4 text-green-600 dark:text-green-400" />
+              </div>
+            </div>
           </div>
         )}
 

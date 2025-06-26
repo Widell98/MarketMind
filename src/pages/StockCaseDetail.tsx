@@ -8,7 +8,8 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, TrendingUp, Building, ZoomIn, User, Target, DollarSign, BarChart3, Calendar } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ArrowLeft, TrendingUp, Building, ZoomIn, User, Target, DollarSign, BarChart3, Calendar, Eye } from 'lucide-react';
 import ImageModal from '@/components/ImageModal';
 import ImageHistoryNavigation from '@/components/ImageHistoryNavigation';
 import ImageUploadDialog from '@/components/ImageUploadDialog';
@@ -113,6 +114,50 @@ const StockCaseDetail = () => {
     setIsImageModalOpen(true);
   };
 
+  // Create a proper UserProfile object with all required fields
+  const userProfile = stockCase.profiles ? {
+    id: stockCase.profiles.id,
+    username: stockCase.profiles.username,
+    display_name: stockCase.profiles.display_name,
+    bio: null,
+    avatar_url: null,
+    location: null,
+    website: null,
+    created_at: new Date().toISOString(), // Fallback date
+    updated_at: new Date().toISOString()  // Fallback date
+  } : null;
+
+  // Component for expandable text
+  const ExpandableText = ({ text, maxLength = 200 }: { text: string; maxLength?: number }) => {
+    if (text.length <= maxLength) {
+      return <span>{text}</span>;
+    }
+
+    return (
+      <Dialog>
+        <DialogTrigger asChild>
+          <span className="cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+            {text.substring(0, maxLength)}...{' '}
+            <span className="text-blue-600 dark:text-blue-400 underline inline-flex items-center">
+              <Eye className="w-3 h-3 ml-1" />
+              Läs mer
+            </span>
+          </span>
+        </DialogTrigger>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Fullständig text</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+              {text}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-4 sm:py-8">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
@@ -156,7 +201,7 @@ const StockCaseDetail = () => {
                     <img
                       src={imageUrl}
                       alt={`${stockCase.title} stock price chart`}
-                      className="w-full h-auto object-contain transition-all duration-300 group-hover:scale-105 min-h-[250px] sm:min-h-[300px] md:min-h-[400px] lg:min-h-[500px] max-h-[400px] sm:max-h-[500px] md:max-h-[600px] lg:max-h-[700px] mx-auto"
+                      className="w-full h-auto object-contain transition-all duration-300 group-hover:scale-105 min-h-[350px] sm:min-h-[400px] md:min-h-[500px] lg:min-h-[600px] max-h-[500px] sm:max-h-[600px] md:max-h-[700px] lg:max-h-[800px] mx-auto"
                       style={{
                         imageRendering: 'crisp-edges'
                       }}
@@ -216,9 +261,9 @@ const StockCaseDetail = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="bg-purple-50 dark:bg-purple-900/20 p-4 sm:p-6 rounded-xl border border-purple-200 dark:border-purple-800">
-                      <p className="text-purple-800 dark:text-purple-200 leading-relaxed whitespace-pre-wrap text-sm sm:text-base">
-                        {stockCase.admin_comment}
-                      </p>
+                      <div className="text-purple-800 dark:text-purple-200 leading-relaxed text-sm sm:text-base">
+                        <ExpandableText text={stockCase.admin_comment} />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -294,9 +339,9 @@ const StockCaseDetail = () => {
                     <CardTitle className="text-gray-900 dark:text-gray-100 text-base sm:text-lg">About the company</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap text-sm sm:text-base">
-                      {stockCase.description}
-                    </p>
+                    <div className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm sm:text-base">
+                      <ExpandableText text={stockCase.description} />
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -307,7 +352,7 @@ const StockCaseDetail = () => {
           <div className="lg:col-span-1 px-2 lg:px-0">
             <UserProfileSidebar 
               userId={stockCase.user_id} 
-              userProfile={stockCase.profiles}
+              userProfile={userProfile}
             />
           </div>
         </div>
