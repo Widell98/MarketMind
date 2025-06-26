@@ -1,9 +1,44 @@
 
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+
+export type StockCase = {
+  id: string;
+  title: string;
+  company_name: string;
+  image_url: string | null;
+  sector: string | null;
+  market_cap: string | null;
+  pe_ratio: string | null;
+  dividend_yield: string | null;
+  description: string | null;
+  admin_comment: string | null;
+  user_id: string | null;
+  status: 'active' | 'winner' | 'loser';
+  entry_price: number | null;
+  current_price: number | null;
+  target_price: number | null;
+  stop_loss: number | null;
+  performance_percentage: number | null;
+  closed_at: string | null;
+  is_public: boolean;
+  category_id: string | null;
+  created_at: string;
+  updated_at: string;
+  case_categories?: {
+    id: string;
+    name: string;
+    color: string;
+  };
+  profiles?: {
+    id: string;
+    display_name: string | null;
+    username: string;
+  };
+};
 
 export const useStockCases = () => {
   const { user } = useAuth();
@@ -104,4 +139,91 @@ export const useStockCases = () => {
     deleteStockCase,
     loading,
   };
+};
+
+// Hook for fetching stock cases with filters
+export const useStockCasesList = (filters?: {
+  limit?: number;
+  offset?: number;
+  category?: string;
+  status?: string;
+  search?: string;
+}) => {
+  return useQuery({
+    queryKey: ['stock-cases', filters],
+    queryFn: async () => {
+      let query = supabase
+        .from('stock_cases')
+        .select(`
+          *,
+          case_categories (
+            id,
+            name,
+            color
+          ),
+          profiles (
+            id,
+            display_name,
+            username
+          )
+        `)
+        .eq('is_public', true)
+        .order('created_at', { ascending: false });
+
+      if (filters?.category) {
+        query = query.eq('category_id', filters.category);
+      }
+
+      if (filters?.status) {
+        query = query.eq('status', filters.status);
+      }
+
+      if (filters?.search) {
+        query = query.or(`title.ilike.%${filters.search}%,company_name.ilike.%${filters.search}%`);
+      }
+
+      if (filters?.limit) {
+        query = query.limit(filters.limit);
+      }
+
+      if (filters?.offset) {
+        query = query.range(filters.offset, filters.offset + (filters.limit || 10) - 1);
+      }
+
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      return data as StockCase[];
+    },
+  });
+};
+
+// Hook for fetching a single stock case
+export const useStockCase = (id: string) => {
+  return useQuery({
+    queryKey: ['stock-case', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('stock_cases')
+        .select(`
+          *,
+          case_categories (
+            id,
+            name,
+            color
+          ),
+          profiles (
+            id,
+            display_name,
+            username
+          )
+        `)
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      return data as StockCase;
+    },
+    enabled: !!id,
+  });
 };
