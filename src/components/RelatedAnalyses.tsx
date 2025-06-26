@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -91,37 +92,9 @@ const RelatedAnalyses = ({ stockCaseId }: RelatedAnalysesProps) => {
     return <TrendingUp className="w-3 h-3" />;
   };
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Relaterade analyser</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {[...Array(2)].map((_, i) => (
-              <div key={i} className="animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!analyses || analyses.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Relaterade analyser</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-500 text-sm">Inga analyser kopplade till detta aktiecase än.</p>
-        </CardContent>
-      </Card>
-    );
+  // Don't render if loading or no analyses
+  if (isLoading || !analyses || analyses.length === 0) {
+    return null;
   }
 
   return (

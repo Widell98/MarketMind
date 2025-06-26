@@ -102,62 +102,10 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
     }
   };
 
-  if (isLoading) {
-    console.log('RelatedStockCase: Loading...');
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="w-5 h-5" />
-            Relaterat aktiecase
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    console.error('RelatedStockCase: Error loading stock case:', error);
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="w-5 h-5" />
-            Relaterat aktiecase
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-red-600 dark:text-red-400 text-sm">
-            Kunde inte ladda relaterat aktiecase
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!stockCase) {
-    console.log('RelatedStockCase: No stock case data');
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="w-5 h-5" />
-            Relaterat aktiecase
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-gray-600 dark:text-gray-400 text-sm">
-            Aktiecase kunde inte hittas
-          </div>
-        </CardContent>
-      </Card>
-    );
+  // Don't render anything if loading, error, or no stock case
+  if (isLoading || error || !stockCase) {
+    console.log('RelatedStockCase: Not rendering due to:', { isLoading, error, stockCase });
+    return null;
   }
 
   console.log('RelatedStockCase: Rendering with data:', stockCase);
