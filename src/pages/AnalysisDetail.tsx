@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import AnalysisComments from '@/components/AnalysisComments';
 import RelatedStockCase from '@/components/RelatedStockCase';
+import RelatedStockCasesFromAnalysis from '@/components/RelatedStockCasesFromAnalysis';
 
 const AnalysisDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -220,10 +221,16 @@ const AnalysisDetail = () => {
           </CardContent>
         </Card>
 
-        {/* Show RelatedStockCase component when analysis is linked to a stock case */}
+        {/* Show RelatedStockCase component when analysis is linked to a specific stock case */}
         {analysis.stock_case_id && (
           <RelatedStockCase stockCaseId={analysis.stock_case_id} />
         )}
+
+        {/* Show RelatedStockCasesFromAnalysis component to find related cases by company name */}
+        <RelatedStockCasesFromAnalysis 
+          analysisId={analysis.id} 
+          companyName={analysis.stock_cases?.company_name}
+        />
 
         <AnalysisComments analysisId={analysis.id} />
       </div>
