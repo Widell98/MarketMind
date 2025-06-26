@@ -30,7 +30,7 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
         .from('analyses')
         .select(`
           *,
-          stock_cases!analyses_stock_case_id_fkey (
+          stock_cases (
             company_name
           )
         `)
