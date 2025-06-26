@@ -44,6 +44,8 @@ export const useStockCases = (followedOnly: boolean = false) => {
   const query = useQuery({
     queryKey: ['stock-cases', followedOnly, user?.id],
     queryFn: async () => {
+      console.log('useStockCases: Fetching stock cases, followedOnly:', followedOnly);
+
       if (followedOnly && user) {
         // Get followed cases
         const { data: follows, error: followsError } = await supabase
@@ -51,9 +53,13 @@ export const useStockCases = (followedOnly: boolean = false) => {
           .select('stock_case_id')
           .eq('user_id', user.id);
 
-        if (followsError) throw followsError;
+        if (followsError) {
+          console.error('Error fetching follows:', followsError);
+          throw followsError;
+        }
         
         if (!follows || follows.length === 0) {
+          console.log('No followed cases found');
           return [];
         }
 
@@ -61,48 +67,26 @@ export const useStockCases = (followedOnly: boolean = false) => {
 
         const { data: stockCases, error: casesError } = await supabase
           .from('stock_cases')
-          .select(`
-            *,
-            case_categories (
-              id,
-              name,
-              color
-            ),
-            profiles (
-              id,
-              display_name,
-              username
-            )
-          `)
+          .select('*')
           .in('id', stockCaseIds)
           .eq('is_public', true)
           .order('created_at', { ascending: false });
 
-        if (casesError) throw casesError;
+        if (casesError) {
+          console.error('Error fetching followed stock cases:', casesError);
+          throw casesError;
+        }
 
-        return (stockCases || []).map(stockCase => ({
-          ...stockCase,
-          profiles: Array.isArray(stockCase.profiles) ? stockCase.profiles[0] : stockCase.profiles,
-          case_categories: Array.isArray(stockCase.case_categories) ? stockCase.case_categories[0] : stockCase.case_categories
-        })) as StockCase[];
+        console.log('Followed stock cases fetched:', stockCases?.length || 0);
+
+        // Manually fetch profiles and categories
+        return await enrichStockCases(stockCases || []);
       }
 
       // Get all public cases
       const { data, error } = await supabase
         .from('stock_cases')
-        .select(`
-          *,
-          case_categories (
-            id,
-            name,
-            color
-          ),
-          profiles (
-            id,
-            display_name,
-            username
-          )
-        `)
+        .select('*')
         .eq('is_public', true)
         .order('created_at', { ascending: false });
       
@@ -111,13 +95,10 @@ export const useStockCases = (followedOnly: boolean = false) => {
         throw error;
       }
       
-      console.log('Fetched stock cases:', data);
+      console.log('All stock cases fetched:', data?.length || 0);
       
-      return (data || []).map(stockCase => ({
-        ...stockCase,
-        profiles: Array.isArray(stockCase.profiles) ? stockCase.profiles[0] : stockCase.profiles,
-        case_categories: Array.isArray(stockCase.case_categories) ? stockCase.case_categories[0] : stockCase.case_categories
-      })) as StockCase[];
+      // Manually fetch profiles and categories
+      return await enrichStockCases(data || []);
     },
     enabled: !followedOnly || !!user,
   });
@@ -128,6 +109,59 @@ export const useStockCases = (followedOnly: boolean = false) => {
     error: query.error,
     refetch: query.refetch
   };
+};
+
+// Helper function to enrich stock cases with profiles and categories
+const enrichStockCases = async (stockCases: any[]): Promise<StockCase[]> => {
+  if (!stockCases || stockCases.length === 0) return [];
+
+  // Get unique user IDs and category IDs
+  const userIds = [...new Set(stockCases.map(c => c.user_id).filter(Boolean))];
+  const categoryIds = [...new Set(stockCases.map(c => c.category_id).filter(Boolean))];
+
+  // Fetch profiles
+  let profilesData = [];
+  if (userIds.length > 0) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, username, display_name')
+      .in('id', userIds);
+    
+    if (error) {
+      console.error('Error fetching profiles:', error);
+    } else {
+      profilesData = data || [];
+    }
+  }
+
+  // Fetch categories
+  let categoriesData = [];
+  if (categoryIds.length > 0) {
+    const { data, error } = await supabase
+      .from('case_categories')
+      .select('id, name, color')
+      .in('id', categoryIds);
+    
+    if (error) {
+      console.error('Error fetching categories:', error);
+    } else {
+      categoriesData = data || [];
+    }
+  }
+
+  // Enrich stock cases with profile and category data
+  return stockCases.map(stockCase => {
+    const profile = profilesData.find(p => p.id === stockCase.user_id);
+    const category = categoriesData.find(c => c.id === stockCase.category_id);
+    
+    return {
+      ...stockCase,
+      status: (stockCase.status || 'active') as 'active' | 'winner' | 'loser',
+      is_public: stockCase.is_public ?? true,
+      profiles: profile || null,
+      case_categories: category || null
+    };
+  });
 };
 
 // Hook for fetching stock cases with filters
@@ -143,19 +177,7 @@ export const useStockCasesList = (filters?: {
     queryFn: async () => {
       let query = supabase
         .from('stock_cases')
-        .select(`
-          *,
-          case_categories (
-            id,
-            name,
-            color
-          ),
-          profiles (
-            id,
-            display_name,
-            username
-          )
-        `)
+        .select('*')
         .eq('is_public', true)
         .order('created_at', { ascending: false });
 
@@ -183,11 +205,7 @@ export const useStockCasesList = (filters?: {
       
       if (error) throw error;
       
-      return (data || []).map(stockCase => ({
-        ...stockCase,
-        profiles: Array.isArray(stockCase.profiles) ? stockCase.profiles[0] : stockCase.profiles,
-        case_categories: Array.isArray(stockCase.case_categories) ? stockCase.case_categories[0] : stockCase.case_categories
-      })) as StockCase[];
+      return await enrichStockCases(data || []);
     },
   });
 
@@ -206,31 +224,14 @@ export const useStockCase = (id: string) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('stock_cases')
-        .select(`
-          *,
-          case_categories (
-            id,
-            name,
-            color
-          ),
-          profiles (
-            id,
-            display_name,
-            username
-          )
-        `)
+        .select('*')
         .eq('id', id)
         .single();
 
       if (error) throw error;
       
-      const stockCase = {
-        ...data,
-        profiles: Array.isArray(data.profiles) ? data.profiles[0] : data.profiles,
-        case_categories: Array.isArray(data.case_categories) ? data.case_categories[0] : data.case_categories
-      };
-      
-      return stockCase as StockCase;
+      const enrichedCases = await enrichStockCases([data]);
+      return enrichedCases[0];
     },
     enabled: !!id,
   });

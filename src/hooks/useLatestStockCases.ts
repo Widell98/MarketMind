@@ -13,6 +13,57 @@ const transformStockCase = (rawCase: any): StockCase => {
   };
 };
 
+// Helper function to enrich stock cases with profiles and categories
+const enrichStockCases = async (stockCases: any[]): Promise<StockCase[]> => {
+  if (!stockCases || stockCases.length === 0) return [];
+
+  // Get unique user IDs and category IDs
+  const userIds = [...new Set(stockCases.map(c => c.user_id).filter(Boolean))];
+  const categoryIds = [...new Set(stockCases.map(c => c.category_id).filter(Boolean))];
+
+  // Fetch profiles
+  let profilesData = [];
+  if (userIds.length > 0) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, username, display_name')
+      .in('id', userIds);
+    
+    if (error) {
+      console.error('Error fetching profiles in useLatestStockCases:', error);
+    } else {
+      profilesData = data || [];
+    }
+  }
+
+  // Fetch categories
+  let categoriesData = [];
+  if (categoryIds.length > 0) {
+    const { data, error } = await supabase
+      .from('case_categories')
+      .select('id, name, color')
+      .in('id', categoryIds);
+    
+    if (error) {
+      console.error('Error fetching categories in useLatestStockCases:', error);
+    } else {
+      categoriesData = data || [];
+    }
+  }
+
+  // Enrich stock cases with profile and category data
+  return stockCases.map(stockCase => {
+    const profile = profilesData.find(p => p.id === stockCase.user_id);
+    const category = categoriesData.find(c => c.id === stockCase.category_id);
+    
+    return transformStockCase({
+      ...stockCase,
+      profiles: profile || null,
+      case_categories: category || null
+    });
+  });
+};
+
 export const useLatestStockCases = (limit: number = 6) => {
   const [latestCases, setLatestCases] = useState<StockCase[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,24 +74,12 @@ export const useLatestStockCases = (limit: number = 6) => {
       try {
         setLoading(true);
         
-        console.log('Fetching latest cases...');
+        console.log('useLatestStockCases: Fetching latest cases with limit:', limit);
         
         // Get the latest stock cases
         const { data, error } = await supabase
           .from('stock_cases')
-          .select(`
-            *,
-            case_categories (
-              id,
-              name,
-              color
-            ),
-            profiles (
-              id,
-              display_name,
-              username
-            )
-          `)
+          .select('*')
           .eq('is_public', true)
           .order('created_at', { ascending: false })
           .limit(limit);
@@ -50,19 +89,13 @@ export const useLatestStockCases = (limit: number = 6) => {
           throw error;
         }
 
-        console.log('Raw data from database:', data);
+        console.log('useLatestStockCases: Raw data from database:', data?.length || 0, 'cases');
 
-        // Transform the data to ensure proper typing
-        const transformedData = (data || []).map(stockCase => {
-          return transformStockCase({
-            ...stockCase,
-            profiles: Array.isArray(stockCase.profiles) ? stockCase.profiles[0] : stockCase.profiles,
-            case_categories: Array.isArray(stockCase.case_categories) ? stockCase.case_categories[0] : stockCase.case_categories
-          });
-        });
+        // Enrich the data with profiles and categories
+        const enrichedData = await enrichStockCases(data || []);
 
-        console.log('Transformed data:', transformedData);
-        setLatestCases(transformedData);
+        console.log('useLatestStockCases: Enriched data:', enrichedData.length, 'cases');
+        setLatestCases(enrichedData);
       } catch (error: any) {
         console.error('Error fetching latest cases:', error);
         toast({

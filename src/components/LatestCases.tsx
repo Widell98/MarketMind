@@ -23,17 +23,17 @@ const LatestCases = () => {
   const { trendingCases, loading: trendingLoading } = useTrendingStockCases(6);
   const { latestCases: latestStockCases, loading: latestLoading } = useLatestStockCases(6);
 
-  console.log('LatestCases - All stock cases:', allStockCases);
-  console.log('LatestCases - Latest cases:', latestStockCases);
   console.log('LatestCases - View mode:', viewMode);
+  console.log('LatestCases - All stock cases:', allStockCases.length);
+  console.log('LatestCases - Latest cases:', latestStockCases.length);
+  console.log('LatestCases - Trending cases:', trendingCases.length);
+  console.log('LatestCases - Followed cases:', followedStockCases.length);
 
   const getDisplayData = () => {
     switch (viewMode) {
       case 'all':
-        // Use latestStockCases if available, otherwise fall back to allStockCases
-        const cases = latestStockCases.length > 0 ? latestStockCases : allStockCases.slice(0, 6);
-        const loading = latestLoading || allLoading;
-        return { cases, loading };
+        // Use latest cases from useLatestStockCases for consistent data
+        return { cases: latestStockCases, loading: latestLoading };
       case 'trending':
         return { cases: trendingCases, loading: trendingLoading };
       case 'followed':
@@ -45,8 +45,8 @@ const LatestCases = () => {
 
   const { cases: displayCases, loading } = getDisplayData();
 
-  console.log('Display cases:', displayCases);
-  console.log('Loading:', loading);
+  console.log('LatestCases - Display cases:', displayCases.length);
+  console.log('LatestCases - Loading:', loading);
 
   if (loading) {
     return (
@@ -212,6 +212,11 @@ const StockCaseCard = ({ stockCase }: { stockCase: any }) => {
   const { isFollowing, toggleFollow } = useStockCaseFollows(stockCase.id);
   const navigate = useNavigate();
 
+  const handleCardClick = () => {
+    console.log('StockCaseCard: Navigating to stock case', stockCase.id);
+    navigate(`/stock-cases/${stockCase.id}`);
+  };
+
   const getCategoryColor = (category: string) => {
     const colors = {
       'Tech': 'bg-purple-500',
@@ -264,7 +269,10 @@ const StockCaseCard = ({ stockCase }: { stockCase: any }) => {
   };
 
   return (
-    <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group overflow-hidden">
+    <Card 
+      className="border-0 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group overflow-hidden"
+      onClick={handleCardClick}
+    >
       {/* Image - Same style as StockCasesFeed */}
       <div className="relative h-48 bg-gray-100 dark:bg-gray-800 overflow-hidden">
         <img 
@@ -291,10 +299,7 @@ const StockCaseCard = ({ stockCase }: { stockCase: any }) => {
       {/* Content */}
       <div className="p-4">
         <div className="space-y-2 mb-4">
-          <h3 
-            className="text-lg font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2 cursor-pointer"
-            onClick={() => navigate(`/stock-cases/${stockCase.id}`)}
-          >
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
             {stockCase.title}
           </h3>
           <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
@@ -390,7 +395,10 @@ const StockCaseCard = ({ stockCase }: { stockCase: any }) => {
               variant="ghost" 
               size="sm" 
               className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-xs px-2 py-1 h-7"
-              onClick={() => navigate(`/stock-cases/${stockCase.id}`)}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/stock-cases/${stockCase.id}`);
+              }}
             >
               Läs mer
             </Button>
