@@ -25,7 +25,7 @@ interface ChatSession {
 export const useAIChat = (portfolioId?: string) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { checkUsageLimit, fetchUsage } = useSubscription();
+  const { checkUsageLimit, fetchUsage, subscription } = useSubscription();
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -132,11 +132,14 @@ export const useAIChat = (portfolioId?: string) => {
       return;
     }
 
-    // Check usage limit
-    if (!checkUsageLimit('ai_message')) {
+    // Check usage limit with better error handling
+    const canSendMessage = checkUsageLimit('ai_message');
+    const isPremium = subscription?.subscribed;
+
+    if (!canSendMessage && !isPremium) {
       toast({
         title: "Daglig gräns nådd",
-        description: "Du har använt alla dina gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.",
+        description: "Du har använt alla dina 5 gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.",
         variant: "destructive",
       });
       return;
@@ -151,7 +154,7 @@ export const useAIChat = (portfolioId?: string) => {
 
     console.log('Sending message to existing session');
     await sendMessageToSession(content);
-  }, [user, currentSessionId, checkUsageLimit, toast, portfolioId]);
+  }, [user, currentSessionId, checkUsageLimit, subscription, toast, portfolioId]);
 
   const createNewSessionAndSendMessage = useCallback(async (messageContent: string) => {
     console.log('=== CREATE SESSION AND SEND MESSAGE ===');
@@ -296,6 +299,9 @@ export const useAIChat = (portfolioId?: string) => {
         _usage_type: 'ai_message'
       });
 
+      // Uppdatera användning omedelbart
+      await fetchUsage();
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -307,7 +313,6 @@ export const useAIChat = (portfolioId?: string) => {
       setMessages(prev => [...prev, assistantMessage]);
       console.log('Added assistant message to UI');
       
-      await fetchUsage();
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -323,7 +328,10 @@ export const useAIChat = (portfolioId?: string) => {
   const analyzePortfolio = useCallback(async (analysisType: 'risk' | 'diversification' | 'performance' | 'optimization') => {
     if (!user || !portfolioId) return;
 
-    if (!checkUsageLimit('analysis')) {
+    const canAnalyze = checkUsageLimit('analysis');
+    const isPremium = subscription?.subscribed;
+
+    if (!canAnalyze && !isPremium) {
       toast({
         title: "Daglig gräns nådd",
         description: "Du har använt alla dina gratis analyser för idag. Uppgradera för obegränsad användning.",
@@ -356,20 +364,23 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [user, portfolioId, sendMessage, checkUsageLimit, fetchUsage]);
+  }, [user, portfolioId, sendMessage, checkUsageLimit, subscription, fetchUsage, toast]);
 
   const getQuickAnalysis = useCallback(async (prompt: string) => {
-    if (!checkUsageLimit('ai_message')) {
+    const canSendMessage = checkUsageLimit('ai_message');
+    const isPremium = subscription?.subscribed;
+
+    if (!canSendMessage && !isPremium) {
       toast({
         title: "Daglig gräns nådd",
-        description: "Du har använt alla dina gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.",
+        description: "Du har använt alla dina 5 gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.",
         variant: "destructive",
       });
       return;
     }
     
     await sendMessage(prompt);
-  }, [sendMessage, checkUsageLimit, toast]);
+  }, [sendMessage, checkUsageLimit, subscription, toast]);
 
   const createNewSession = useCallback(async () => {
     console.log('=== CREATE NEW SESSION (EMPTY) ===');

@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Brain, Send, Loader2, MessageSquare, BarChart3, Shield, TrendingUp, Zap, AlertCircle, Crown } from 'lucide-react';
+import { Brain, Send, Loader2, MessageSquare, BarChart3, Shield, TrendingUp, Zap, AlertCircle, Crown, Lock } from 'lucide-react';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useSubscription } from '@/hooks/useSubscription';
 
@@ -33,7 +33,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     getQuickAnalysis
   } = useAIChat(portfolioId);
 
-  const { subscription, usage, getRemainingUsage, createCheckout } = useSubscription();
+  const { subscription, usage, getRemainingUsage, createCheckout, fetchUsage } = useSubscription();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -53,9 +53,22 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     }
   }, [currentSessionId, sessions]);
 
+  // Uppdatera användning efter varje meddelande
+  useEffect(() => {
+    fetchUsage();
+  }, [messages.length, fetchUsage]);
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputMessage.trim() || isLoading || quotaExceeded) return;
+
+    const remainingMessages = getRemainingUsage('ai_message');
+    const isPremium = subscription?.subscribed;
+
+    // Kontrollera begränsning innan skickning
+    if (!isPremium && remainingMessages <= 0) {
+      return;
+    }
 
     const message = inputMessage.trim();
     setInputMessage('');
@@ -69,9 +82,28 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
 
   const handleQuickAnalysis = async (type: 'risk' | 'diversification' | 'performance' | 'optimization') => {
     if (quotaExceeded) return;
+    
+    const remainingAnalyses = getRemainingUsage('analysis');
+    const isPremium = subscription?.subscribed;
+
+    if (!isPremium && remainingAnalyses <= 0) {
+      return;
+    }
+
     setSelectedAnalysis(type);
     await analyzePortfolio(type);
     setSelectedAnalysis(null);
+  };
+
+  const handleQuickQuestion = async (prompt: string) => {
+    const remainingMessages = getRemainingUsage('ai_message');
+    const isPremium = subscription?.subscribed;
+
+    if (!isPremium && remainingMessages <= 0) {
+      return;
+    }
+
+    await getQuickAnalysis(prompt);
   };
 
   const isPremium = subscription?.subscribed;
@@ -79,10 +111,10 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
   const remainingAnalyses = getRemainingUsage('analysis');
 
   const quickQuestions = [
-    { text: "Hur mår min portfölj just nu?", action: () => getQuickAnalysis("Ge mig en snabb översikt över hur min portfölj mår just nu") },
-    { text: "Vilka risker finns i mina innehav?", action: () => getQuickAnalysis("Identifiera de största riskerna i min nuvarande portfölj") },
-    { text: "Borde jag rebalansera?", action: () => getQuickAnalysis("Analysera om jag borde rebalansera min portfölj och varför") },
-    { text: "Vad händer på marknaden?", action: () => getQuickAnalysis("Ge mig en uppdatering om vad som händer på finansmarknaderna som kan påverka mig") }
+    { text: "Hur mår min portfölj just nu?", action: () => handleQuickQuestion("Ge mig en snabb översikt över hur min portfölj mår just nu") },
+    { text: "Vilka risker finns i mina innehav?", action: () => handleQuickQuestion("Identifiera de största riskerna i min nuvarande portfölj") },
+    { text: "Borde jag rebalansera?", action: () => handleQuickQuestion("Analysera om jag borde rebalansera min portfölj och varför") },
+    { text: "Vad händer på marknaden?", action: () => handleQuickQuestion("Ge mig en uppdatering om vad som händer på finansmarknaderna som kan påverka mig") }
   ];
 
   const analysisTypes = [
@@ -182,6 +214,9 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     );
   };
 
+  const isAtMessageLimit = !isPremium && remainingMessages <= 0;
+  const isAtAnalysisLimit = !isPremium && remainingAnalyses <= 0;
+
   return (
     <div className="w-full h-full max-w-full">
       <Card className="h-[600px] sm:h-[700px] flex flex-col w-full">
@@ -190,32 +225,35 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
             <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
             <span className="truncate">AI Portfolio Assistent</span>
             {!isPremium && (
-              <Badge variant="outline" className="text-xs ml-auto">
-                {remainingMessages === Infinity ? '∞' : remainingMessages} kvar
+              <Badge variant={remainingMessages <= 2 ? "destructive" : "outline"} className="text-xs ml-auto">
+                {remainingMessages} kvar
               </Badge>
             )}
-            {currentSessionId && (
-              <Badge variant="secondary" className="text-xs hidden sm:inline-flex">
-                Aktiv chat
+            {isPremium && (
+              <Badge variant="default" className="text-xs ml-auto">
+                <Crown className="w-3 h-3 mr-1" />
+                Premium
               </Badge>
             )}
           </CardTitle>
           <CardDescription className="text-xs sm:text-sm">
             {isPremium ? 
               'Obegränsad AI-analys med djupgående portföljinsikter' :
-              'Begränsad till 5 AI-meddelanden och analyser per dag'
+              `${remainingMessages} AI-meddelanden och ${remainingAnalyses} analyser kvar idag`
             }
           </CardDescription>
           
-          {!isPremium && (remainingMessages <= 2 || remainingAnalyses <= 2) && (
-            <Alert className="border-orange-200 bg-orange-50">
-              <Crown className="h-4 w-4 text-orange-600" />
-              <AlertDescription className="text-orange-800">
+          {!isPremium && isAtMessageLimit && (
+            <Alert className="border-red-200 bg-red-50">
+              <Lock className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <span className="text-xs sm:text-sm">Du har få AI-användningar kvar idag</span>
+                  <span className="text-xs sm:text-sm">
+                    <strong>Daglig gräns nådd:</strong> Du har använt alla dina 5 gratis AI-meddelanden för idag.
+                  </span>
                   <Button 
                     size="sm" 
-                    className="text-xs"
+                    className="text-xs bg-red-600 hover:bg-red-700"
                     onClick={() => createCheckout('premium')}
                   >
                     Uppgradera nu
@@ -224,11 +262,32 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
               </AlertDescription>
             </Alert>
           )}
-          
-          {quotaExceeded && (
+
+          {!isPremium && !isAtMessageLimit && remainingMessages <= 2 && (
             <Alert className="border-orange-200 bg-orange-50">
               <AlertCircle className="h-4 w-4 text-orange-600" />
-              <AlertDescription className="text-orange-800 text-xs sm:text-sm">
+              <AlertDescription className="text-orange-800">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <span className="text-xs sm:text-sm">
+                    <strong>Få meddelanden kvar:</strong> Du har {remainingMessages} AI-meddelanden kvar idag.
+                  </span>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="text-xs border-orange-300 text-orange-700 hover:bg-orange-100"
+                    onClick={() => createCheckout('premium')}
+                  >
+                    Uppgradera
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {quotaExceeded && (
+            <Alert className="border-red-200 bg-red-50">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800 text-xs sm:text-sm">
                 <strong>OpenAI API-kvot överskriden:</strong> Du har nått din dagliga gräns för AI-användning. 
                 Kontrollera din OpenAI-fakturering eller försök igen senare.
               </AlertDescription>
@@ -238,10 +297,12 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
           <div className="w-full">
             <Tabs defaultValue="chat" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="chat" className="text-xs sm:text-sm">Chat</TabsTrigger>
+                <TabsTrigger value="chat" className="text-xs sm:text-sm">
+                  Chat {!isPremium && `(${remainingMessages})`}
+                </TabsTrigger>
                 <TabsTrigger 
                   value="analysis" 
-                  disabled={quotaExceeded || (remainingAnalyses <= 0 && !isPremium)}
+                  disabled={quotaExceeded || isAtAnalysisLimit}
                   className="text-xs sm:text-sm"
                 >
                   Analys {!isPremium && `(${remainingAnalyses})`}
@@ -256,9 +317,10 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
                       variant="outline"
                       size="sm"
                       onClick={q.action}
-                      disabled={isLoading || quotaExceeded}
-                      className="text-xs px-2 py-1 sm:px-3 sm:py-2 flex-1 min-w-0"
+                      disabled={isLoading || quotaExceeded || isAtMessageLimit}
+                      className="text-xs px-2 py-1 sm:px-3 sm:py-2 flex-1 min-w-0 relative"
                     >
+                      {isAtMessageLimit && <Lock className="w-3 h-3 mr-1 text-gray-400" />}
                       <span className="truncate">{q.text}</span>
                     </Button>
                   ))}
@@ -275,9 +337,10 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleQuickAnalysis(analysis.type)}
-                        disabled={isAnalyzing || quotaExceeded}
-                        className={`flex flex-col h-12 sm:h-16 p-2 ${selectedAnalysis === analysis.type ? 'ring-2 ring-blue-500' : ''}`}
+                        disabled={isAnalyzing || quotaExceeded || isAtAnalysisLimit}
+                        className={`flex flex-col h-12 sm:h-16 p-2 relative ${selectedAnalysis === analysis.type ? 'ring-2 ring-blue-500' : ''}`}
                       >
+                        {isAtAnalysisLimit && <Lock className="absolute top-1 right-1 w-3 h-3 text-gray-400" />}
                         <Icon className={`w-3 h-3 sm:w-4 sm:h-4 ${analysis.color}`} />
                         <span className="text-xs font-medium truncate">{analysis.title}</span>
                       </Button>
@@ -304,6 +367,8 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
                 <div className="text-xs text-muted-foreground px-2">
                   {quotaExceeded ? 
                     'AI-funktioner är tillfälligt otillgängliga på grund av API-kvotgräns.' :
+                    isAtMessageLimit ?
+                    'Du har använt alla dina gratis meddelanden för idag. Uppgradera för obegränsad användning.' :
                     'Använd snabbknapparna ovan eller ställ dina egna frågor nedan.'
                   }
                 </div>
@@ -374,25 +439,46 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
                 onChange={(e) => setInputMessage(e.target.value)}
                 placeholder={
                   quotaExceeded ? "AI-funktioner är tillfälligt otillgängliga..." :
-                  remainingMessages <= 0 && !isPremium ? "Daglig gräns nådd. Uppgradera för obegränsad användning." :
+                  isAtMessageLimit ? "Daglig gräns nådd. Uppgradera för obegränsad användning." :
+                  remainingMessages <= 2 && !isPremium ? `${remainingMessages} meddelanden kvar idag. Ställ din fråga...` :
                   "Ställ en avancerad fråga om din portfölj..."
                 }
-                disabled={isLoading || isAnalyzing || quotaExceeded || (remainingMessages <= 0 && !isPremium)}
+                disabled={isLoading || isAnalyzing || quotaExceeded || isAtMessageLimit}
                 className="flex-1 text-xs sm:text-sm"
               />
               <Button 
                 type="submit" 
-                disabled={!inputMessage.trim() || isLoading || isAnalyzing || quotaExceeded || (remainingMessages <= 0 && !isPremium)}
+                disabled={!inputMessage.trim() || isLoading || isAnalyzing || quotaExceeded || isAtMessageLimit}
                 size="icon"
                 className="flex-shrink-0"
               >
                 {(isLoading || isAnalyzing) ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
+                ) : isAtMessageLimit ? (
+                  <Lock className="w-4 h-4" />
                 ) : (
                   <Send className="w-4 h-4" />
                 )}
               </Button>
             </form>
+            
+            {!isPremium && (
+              <div className="mt-2 text-center">
+                <span className="text-xs text-muted-foreground">
+                  {remainingMessages} av 5 gratis meddelanden kvar idag
+                </span>
+                {remainingMessages <= 2 && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="text-xs ml-2 p-0 h-auto"
+                    onClick={() => createCheckout('premium')}
+                  >
+                    Uppgradera för obegränsad användning
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
