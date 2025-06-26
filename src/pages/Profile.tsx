@@ -136,9 +136,16 @@ const ProfilePage = () => {
                   size="sm"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Create Stock Case
+                  Admin: Hantera Cases
                 </Button>
               )}
+              <Button 
+                onClick={() => navigate('/my-stock-cases')}
+                className="w-full bg-green-600 hover:bg-green-700"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Skapa Aktiecase
+              </Button>
               <Button 
                 variant="outline" 
                 className="w-full"

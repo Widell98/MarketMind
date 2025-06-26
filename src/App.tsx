@@ -1,51 +1,56 @@
 
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { ThemeProvider } from "next-themes";
-import { AuthProvider } from "./contexts/AuthContext";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Profile from "./pages/Profile";
-import AdminStockCases from "./pages/AdminStockCases";
 import StockCases from "./pages/StockCases";
 import StockCaseDetail from "./pages/StockCaseDetail";
 import AnalysisDetail from "./pages/AnalysisDetail";
 import Learning from "./pages/Learning";
-import Watchlist from "./pages/Watchlist";
 import PortfolioAdvisor from "./pages/PortfolioAdvisor";
+import Watchlist from "./pages/Watchlist";
+import SocialIndex from "./pages/SocialIndex";
+import AdminStockCases from "./pages/AdminStockCases";
+import MyStockCases from "./pages/MyStockCases";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-      <AuthProvider>
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/auth/reset-password" element={<ResetPassword />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/admin/stock-cases" element={<AdminStockCases />} />
-            <Route path="/stock-cases" element={<StockCases />} />
-            <Route path="/stock-cases/:id" element={<StockCaseDetail />} />
-            <Route path="/analysis/:id" element={<AnalysisDetail />} />
-            <Route path="/learning" element={<Learning />} />
-            <Route path="/watchlist" element={<Watchlist />} />
-            <Route path="/portfolio-advisor" element={<PortfolioAdvisor />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/stock-cases" element={<StockCases />} />
+              <Route path="/stock-cases/:id" element={<StockCaseDetail />} />
+              <Route path="/analyses/:id" element={<AnalysisDetail />} />
+              <Route path="/learning" element={<Learning />} />
+              <Route path="/portfolio-advisor" element={<PortfolioAdvisor />} />
+              <Route path="/watchlist" element={<Watchlist />} />
+              <Route path="/social" element={<SocialIndex />} />
+              <Route path="/admin/stock-cases" element={<AdminStockCases />} />
+              <Route path="/my-stock-cases" element={<MyStockCases />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
         </BrowserRouter>
-      </AuthProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
-);
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;

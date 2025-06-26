@@ -123,7 +123,7 @@ const UserStockCasesSection = () => {
             <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500">Du har inte skapat några aktiecases än.</p>
             <Button 
-              onClick={() => navigate('/admin/stock-cases')} 
+              onClick={() => navigate('/my-stock-cases')} 
               className="mt-4"
             >
               Skapa ditt första aktiecase
