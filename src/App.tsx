@@ -38,6 +38,7 @@ function App() {
               <Route path="/stock-cases" element={<StockCases />} />
               <Route path="/stock-cases/:id" element={<StockCaseDetail />} />
               <Route path="/analyses/:id" element={<AnalysisDetail />} />
+              <Route path="/analysis/:id" element={<AnalysisDetail />} />
               <Route path="/learning" element={<Learning />} />
               <Route path="/portfolio-advisor" element={<PortfolioAdvisor />} />
               <Route path="/watchlist" element={<Watchlist />} />
