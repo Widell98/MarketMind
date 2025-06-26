@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -7,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Eye, Heart, MessageCircle, TrendingUp, Sparkles, PieChart } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
-import { useAnalysis, useToggleAnalysisLike } from '@/hooks/useAnalyses';
+import { useAnalysisDetail } from '@/hooks/useAnalysisDetail';
+import { useToggleAnalysisLike } from '@/hooks/useAnalysisMutations';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import AnalysisComments from '@/components/AnalysisComments';
@@ -17,7 +17,7 @@ const AnalysisDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: analysis, isLoading, error } = useAnalysis(id!);
+  const { data: analysis, isLoading, error } = useAnalysisDetail(id!);
   const toggleLike = useToggleAnalysisLike();
 
   const handleLike = () => {
@@ -56,6 +56,9 @@ const AnalysisDetail = () => {
     if (type.includes('portfolio') || type.includes('position')) return <PieChart className="w-4 h-4" />;
     return <TrendingUp className="w-4 h-4" />;
   };
+
+  console.log('Analysis data:', analysis);
+  console.log('Stock case ID:', analysis?.stock_case_id);
 
   if (isLoading) {
     return (
@@ -217,7 +220,7 @@ const AnalysisDetail = () => {
           </CardContent>
         </Card>
 
-        {/* Add RelatedStockCase component when analysis is linked to a stock case */}
+        {/* Show RelatedStockCase component when analysis is linked to a stock case */}
         {analysis.stock_case_id && (
           <RelatedStockCase stockCaseId={analysis.stock_case_id} />
         )}
