@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,10 +17,14 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const { data: stockCase, isLoading } = useQuery({
+  console.log('RelatedStockCase: Fetching stock case with ID:', stockCaseId);
+
+  const { data: stockCase, isLoading, error } = useQuery({
     queryKey: ['stock-case', stockCaseId],
     queryFn: async () => {
-      const { data: caseData, error } = await supabase
+      console.log('Fetching stock case from database...');
+      
+      const { data: caseData, error: fetchError } = await supabase
         .from('stock_cases')
         .select(`
           *,
@@ -35,26 +40,50 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
         .eq('id', stockCaseId)
         .single();
 
-      if (error) throw error;
+      console.log('Stock case fetch result:', { caseData, fetchError });
 
-      // Get additional stats
-      const [likeCountResult, followCountResult, userLikeResult, userFollowResult] = await Promise.all([
+      if (fetchError) {
+        console.error('Error fetching stock case:', fetchError);
+        throw fetchError;
+      }
+
+      if (!caseData) {
+        console.error('No stock case data returned');
+        return null;
+      }
+
+      // Get additional stats if user is logged in
+      const statsPromises = [
         supabase.rpc('get_stock_case_like_count', { case_id: stockCaseId }),
-        supabase.rpc('get_stock_case_follow_count', { case_id: stockCaseId }),
-        user ? supabase.rpc('user_has_liked_case', { case_id: stockCaseId, user_id: user.id }) : null,
-        user ? supabase.rpc('user_follows_case', { case_id: stockCaseId, user_id: user.id }) : null
-      ]);
+        supabase.rpc('get_stock_case_follow_count', { case_id: stockCaseId })
+      ];
+
+      if (user) {
+        statsPromises.push(
+          supabase.rpc('user_has_liked_case', { case_id: stockCaseId, user_id: user.id }),
+          supabase.rpc('user_follows_case', { case_id: stockCaseId, user_id: user.id })
+        );
+      }
+
+      const statsResults = await Promise.all(statsPromises);
+      const [likeCountResult, followCountResult, userLikeResult, userFollowResult] = statsResults;
+
+      console.log('Stats results:', { likeCountResult, followCountResult, userLikeResult, userFollowResult });
 
       return {
         ...caseData,
-        likes_count: likeCountResult.data || 0,
-        follows_count: followCountResult.data || 0,
+        likes_count: likeCountResult?.data || 0,
+        follows_count: followCountResult?.data || 0,
         isLiked: userLikeResult?.data || false,
         isFollowed: userFollowResult?.data || false,
         profiles: Array.isArray(caseData.profiles) ? caseData.profiles[0] : caseData.profiles
       };
     },
+    retry: 3,
+    retryDelay: 1000,
   });
+
+  console.log('RelatedStockCase render state:', { stockCase, isLoading, error });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -73,10 +102,14 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
   };
 
   if (isLoading) {
+    console.log('RelatedStockCase: Loading...');
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Relaterat aktiecase</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="w-5 h-5" />
+            Relaterat aktiecase
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="animate-pulse">
@@ -88,9 +121,45 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
     );
   }
 
-  if (!stockCase) {
-    return null;
+  if (error) {
+    console.error('RelatedStockCase: Error loading stock case:', error);
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="w-5 h-5" />
+            Relaterat aktiecase
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-red-600 dark:text-red-400 text-sm">
+            Kunde inte ladda relaterat aktiecase
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
+
+  if (!stockCase) {
+    console.log('RelatedStockCase: No stock case data');
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="w-5 h-5" />
+            Relaterat aktiecase
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-gray-600 dark:text-gray-400 text-sm">
+            Aktiecase kunde inte hittas
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  console.log('RelatedStockCase: Rendering with data:', stockCase);
 
   return (
     <Card>
