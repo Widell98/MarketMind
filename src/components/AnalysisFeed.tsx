@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +10,6 @@ import { useAnalyses } from '@/hooks/useAnalyses';
 import { useToggleAnalysisLike } from '@/hooks/useAnalysisMutations';
 import { useAuth } from '@/contexts/AuthContext';
 import CreateAnalysisDialog from './CreateAnalysisDialog';
-import PortfolioAnalysisDialog from './PortfolioAnalysisDialog';
 
 const AnalysisFeed = () => {
   const { data: analyses, isLoading, error } = useAnalyses(20);
@@ -96,7 +94,6 @@ const AnalysisFeed = () => {
     return (
       <div className="space-y-6">
         <div className="flex justify-end gap-2">
-          <PortfolioAnalysisDialog />
           <CreateAnalysisDialog />
         </div>
         <Card className="text-center py-8 bg-red-50 dark:bg-red-900/20">
@@ -125,7 +122,6 @@ const AnalysisFeed = () => {
     return (
       <div className="space-y-6">
         <div className="flex justify-end gap-2">
-          <PortfolioAnalysisDialog />
           <CreateAnalysisDialog />
         </div>
         <Card className="text-center py-8 bg-gray-50 dark:bg-gray-800">
@@ -138,7 +134,6 @@ const AnalysisFeed = () => {
               Bli den första att dela en analys med communityn!
             </p>
             <div className="flex justify-center gap-2">
-              <PortfolioAnalysisDialog />
               <CreateAnalysisDialog />
             </div>
           </CardContent>
@@ -150,7 +145,6 @@ const AnalysisFeed = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-end gap-2">
-        <PortfolioAnalysisDialog />
         <CreateAnalysisDialog />
       </div>
       
