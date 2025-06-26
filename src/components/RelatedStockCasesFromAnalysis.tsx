@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +16,8 @@ interface RelatedStockCasesFromAnalysisProps {
 const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStockCasesFromAnalysisProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [persistedStockCases, setPersistedStockCases] = useState<any[]>([]);
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
 
   console.log('RelatedStockCasesFromAnalysis: analysisId =', analysisId, 'companyName =', companyName);
 
@@ -182,6 +183,18 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
     retry: false
   });
 
+  // Persist the data once it's successfully loaded
+  useEffect(() => {
+    if (stockCases && stockCases.length > 0 && !hasInitiallyLoaded) {
+      console.log('Persisting stock cases data:', stockCases);
+      setPersistedStockCases(stockCases);
+      setHasInitiallyLoaded(true);
+    }
+  }, [stockCases, hasInitiallyLoaded]);
+
+  // Use persisted data if available, otherwise fall back to current data
+  const displayCases = persistedStockCases.length > 0 ? persistedStockCases : stockCases;
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'winner': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
@@ -198,10 +211,16 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
     }
   };
 
-  console.log('Component render state:', { isLoading, error, stockCasesCount: stockCases?.length });
+  console.log('Component render state:', { 
+    isLoading, 
+    error, 
+    stockCasesCount: stockCases?.length,
+    persistedCasesCount: persistedStockCases.length,
+    hasInitiallyLoaded 
+  });
 
-  // Don't render anything while loading
-  if (isLoading) {
+  // Show loading only if we haven't loaded any data yet
+  if (isLoading && !hasInitiallyLoaded) {
     return (
       <Card>
         <CardHeader>
@@ -220,8 +239,8 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
     );
   }
 
-  // Show error state but don't hide the component
-  if (error) {
+  // Show error state only if we haven't loaded any data yet
+  if (error && !hasInitiallyLoaded) {
     console.error('Error in RelatedStockCasesFromAnalysis:', error);
     return (
       <Card>
@@ -240,9 +259,14 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
     );
   }
 
-  // Don't render if no stock cases found
-  if (!stockCases || stockCases.length === 0) {
+  // Don't render if no stock cases found AND we haven't persisted any data
+  if ((!displayCases || displayCases.length === 0) && !hasInitiallyLoaded) {
     console.log('Not rendering RelatedStockCasesFromAnalysis: no stock cases found');
+    return null;
+  }
+
+  // Always render if we have persisted data, even if current query fails
+  if (!displayCases || displayCases.length === 0) {
     return null;
   }
 
@@ -251,11 +275,11 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Building2 className="w-5 h-5" />
-          Relaterade aktiecases ({stockCases.length})
+          Relaterade aktiecases ({displayCases.length})
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {stockCases.map((stockCase) => (
+        {displayCases.map((stockCase) => (
           <div key={stockCase.id} className="border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1">
