@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -51,27 +50,9 @@ export const useStockCaseOperations = () => {
       
       const fileExt = file.name.split('.').pop()?.toLowerCase();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = fileName; // Simplified path structure
+      const filePath = fileName;
       
       console.log('Uploading to path:', filePath);
-
-      // First, try to create the bucket if it doesn't exist
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const bucketExists = buckets?.some(bucket => bucket.name === 'stock-case-images');
-      
-      if (!bucketExists) {
-        console.log('Creating stock-case-images bucket...');
-        const { error: bucketError } = await supabase.storage.createBucket('stock-case-images', {
-          public: true,
-          allowedMimeTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
-          fileSizeLimit: 5242880 // 5MB
-        });
-        
-        if (bucketError) {
-          console.error('Error creating bucket:', bucketError);
-          throw new Error('Kunde inte skapa bildarkiv');
-        }
-      }
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('stock-case-images')
@@ -105,11 +86,26 @@ export const useStockCaseOperations = () => {
     }
 
     try {
-      const { error } = await supabase
+      // Check if user is admin
+      const { data: userRoles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+
+      const isAdmin = userRoles?.some(role => role.role === 'admin');
+
+      // Build the delete query - admins can delete any case, users only their own
+      let deleteQuery = supabase
         .from('stock_cases')
         .delete()
-        .eq('id', stockCaseId)
-        .eq('user_id', user.id);
+        .eq('id', stockCaseId);
+
+      // If not admin, add user_id filter
+      if (!isAdmin) {
+        deleteQuery = deleteQuery.eq('user_id', user.id);
+      }
+
+      const { error } = await deleteQuery;
 
       if (error) throw error;
 
