@@ -21,7 +21,7 @@ const AnalysisStockCaseSelect = ({ value, onValueChange, disabled }: AnalysisSto
           <SelectValue placeholder={loading ? "Laddar aktiecases..." : "Välj ett aktiecase att koppla till"} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">Ingen koppling</SelectItem>
+          <SelectItem value="no-case">Ingen koppling</SelectItem>
           {stockCases.map((stockCase) => (
             <SelectItem key={stockCase.id} value={stockCase.id}>
               {stockCase.title} - {stockCase.company_name}

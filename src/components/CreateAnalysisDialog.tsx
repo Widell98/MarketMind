@@ -21,7 +21,7 @@ const CreateAnalysisDialog = () => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [analysisType, setAnalysisType] = useState<'market_insight' | 'technical_analysis' | 'fundamental_analysis' | 'sector_analysis' | 'portfolio_analysis' | 'position_analysis' | 'sector_deep_dive'>('market_insight');
-  const [stockCaseId, setStockCaseId] = useState<string>('');
+  const [stockCaseId, setStockCaseId] = useState<string>('no-case');
   const [includePortfolio, setIncludePortfolio] = useState(false);
   const [selectedHoldings, setSelectedHoldings] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
@@ -34,18 +34,32 @@ const CreateAnalysisDialog = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user) return;
+    if (!user) {
+      console.error('No user found');
+      return;
+    }
 
     const relatedHoldings = includePortfolio ? 
       portfolioHoldings.filter(stock => selectedHoldings.includes(stock.symbol || stock.name)) : 
       [];
 
     try {
+      console.log('Creating analysis with data:', {
+        title,
+        content,
+        analysis_type: analysisType,
+        stock_case_id: stockCaseId !== 'no-case' ? stockCaseId : undefined,
+        portfolio_id: includePortfolio ? activePortfolio?.id : undefined,
+        tags,
+        related_holdings: relatedHoldings,
+        is_public: true
+      });
+
       await createAnalysis.mutateAsync({
         title,
         content,
         analysis_type: analysisType,
-        stock_case_id: stockCaseId || undefined,
+        stock_case_id: stockCaseId !== 'no-case' ? stockCaseId : undefined,
         portfolio_id: includePortfolio ? activePortfolio?.id : undefined,
         tags,
         related_holdings: relatedHoldings,
@@ -56,7 +70,7 @@ const CreateAnalysisDialog = () => {
       setTitle('');
       setContent('');
       setAnalysisType('market_insight');
-      setStockCaseId('');
+      setStockCaseId('no-case');
       setIncludePortfolio(false);
       setSelectedHoldings([]);
       setTags([]);
