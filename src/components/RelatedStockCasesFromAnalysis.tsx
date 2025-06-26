@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +30,8 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
         .select(`
           *,
           stock_cases (
-            company_name
+            company_name,
+            title
           )
         `)
         .eq('id', analysisId)
@@ -44,7 +44,36 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
 
       console.log('Analysis data:', analysisData);
 
-      // Extract company name from various sources
+      let allRelatedCases = [];
+
+      // First, get the directly linked stock case if it exists
+      if (analysisData.stock_case_id) {
+        console.log('Found directly linked stock case ID:', analysisData.stock_case_id);
+        
+        const { data: linkedCase, error: linkedCaseError } = await supabase
+          .from('stock_cases')
+          .select(`
+            *,
+            profiles!stock_cases_user_id_fkey (
+              username, 
+              display_name
+            ),
+            case_categories (
+              name,
+              color
+            )
+          `)
+          .eq('id', analysisData.stock_case_id)
+          .eq('is_public', true)
+          .single();
+
+        if (!linkedCaseError && linkedCase) {
+          console.log('Found directly linked case:', linkedCase);
+          allRelatedCases.push(linkedCase);
+        }
+      }
+
+      // Extract company name from various sources for additional search
       let searchCompanyName = companyName;
       
       // If no company name provided, try to extract from analysis
@@ -65,48 +94,52 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
 
       console.log('Search company name:', searchCompanyName);
 
-      if (!searchCompanyName) {
-        console.log('No company name to search for');
-        return [];
+      // Search for additional related cases if we have a company name to search for
+      if (searchCompanyName) {
+        const { data: additionalCases, error: casesError } = await supabase
+          .from('stock_cases')
+          .select(`
+            *,
+            profiles!stock_cases_user_id_fkey (
+              username, 
+              display_name
+            ),
+            case_categories (
+              name,
+              color
+            )
+          `)
+          .eq('is_public', true)
+          .or(`company_name.ilike.%${searchCompanyName}%,title.ilike.%${searchCompanyName}%`)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        console.log('Additional cases query result:', { additionalCases, casesError });
+
+        if (!casesError && additionalCases) {
+          // Filter out the directly linked case to avoid duplicates
+          const filteredAdditionalCases = additionalCases.filter(
+            (case_) => case_.id !== analysisData.stock_case_id
+          );
+          allRelatedCases.push(...filteredAdditionalCases);
+        }
       }
 
-      // Search for stock cases with similar company names or symbols
-      let query = supabase
-        .from('stock_cases')
-        .select(`
-          *,
-          profiles!stock_cases_user_id_fkey (
-            username, 
-            display_name
-          ),
-          case_categories (
-            name,
-            color
-          )
-        `)
-        .eq('is_public', true);
+      // Remove duplicates based on ID
+      const uniqueCases = allRelatedCases.filter((case_, index, self) => 
+        index === self.findIndex(c => c.id === case_.id)
+      );
 
-      // Search in both company_name and title fields
-      const { data: casesData, error: casesError } = await query
-        .or(`company_name.ilike.%${searchCompanyName}%,title.ilike.%${searchCompanyName}%`)
-        .order('created_at', { ascending: false })
-        .limit(5);
+      console.log('All unique related cases:', uniqueCases);
 
-      console.log('Stock cases query result:', { casesData, casesError });
-
-      if (casesError) {
-        console.error('Error fetching stock cases:', casesError);
-        throw casesError;
-      }
-
-      if (!casesData || casesData.length === 0) {
+      if (uniqueCases.length === 0) {
         console.log('No related stock cases found');
         return [];
       }
 
       // Get stats for each stock case
       const casesWithStats = await Promise.all(
-        casesData.map(async (stockCase) => {
+        uniqueCases.map(async (stockCase) => {
           const [likeCountResult, followCountResult] = await Promise.all([
             supabase.rpc('get_stock_case_like_count', { case_id: stockCase.id }),
             supabase.rpc('get_stock_case_follow_count', { case_id: stockCase.id })
@@ -128,7 +161,8 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
             follows_count: followCountResult?.data || 0,
             isLiked: userLikeResult?.data || false,
             isFollowed: userFollowResult?.data || false,
-            profiles: Array.isArray(stockCase.profiles) ? stockCase.profiles[0] : stockCase.profiles
+            profiles: Array.isArray(stockCase.profiles) ? stockCase.profiles[0] : stockCase.profiles,
+            isDirectlyLinked: stockCase.id === analysisData.stock_case_id
           };
         })
       );
@@ -179,6 +213,12 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
                   <Badge className={getStatusColor(stockCase.status)}>
                     {getStatusLabel(stockCase.status)}
                   </Badge>
+                  {stockCase.isDirectlyLinked && (
+                    <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                      <TrendingUp className="w-3 h-3 mr-1" />
+                      Kopplad analys
+                    </Badge>
+                  )}
                   {stockCase.case_categories && (
                     <Badge 
                       variant="outline" 
