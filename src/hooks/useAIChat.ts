@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -169,6 +170,10 @@ export const useAIChat = (portfolioId?: string) => {
     
     setIsLoading(true);
     
+    // Clear messages immediately when creating new session
+    console.log('Clearing messages for new session');
+    setMessages([]);
+    
     try {
       const now = new Date();
       const sessionName = `Chat ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
@@ -205,10 +210,6 @@ export const useAIChat = (portfolioId?: string) => {
 
       setSessions(prev => [newSession, ...prev]);
       setCurrentSessionId(newSession.id);
-      
-      // Clear messages immediately when creating new session
-      console.log('Clearing messages for new session');
-      setMessages([]);
       
       console.log('Session state updated, now sending message...');
       
@@ -412,6 +413,10 @@ export const useAIChat = (portfolioId?: string) => {
     
     setIsLoading(true);
     
+    // Clear messages immediately for new empty session
+    console.log('Clearing messages for new empty session');
+    setMessages([]);
+    
     try {
       const now = new Date();
       const sessionName = `Chat ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
@@ -448,10 +453,6 @@ export const useAIChat = (portfolioId?: string) => {
 
       setSessions(prev => [newSession, ...prev]);
       setCurrentSessionId(newSession.id);
-      
-      // Clear messages immediately for new session
-      console.log('Clearing messages for new empty session');
-      setMessages([]);
       
       toast({
         title: "Ny chat skapad",
