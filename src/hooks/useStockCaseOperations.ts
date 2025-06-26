@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -48,8 +49,19 @@ export const useStockCaseOperations = () => {
     try {
       console.log('Starting image upload for file:', file.name, 'Size:', file.size);
       
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error('Ogiltigt filformat. Endast JPG, PNG och WebP är tillåtna.');
+      }
+
+      // Validate file size (5MB limit)
+      if (file.size > 5242880) {
+        throw new Error('Filen är för stor. Maximal storlek är 5MB.');
+      }
+      
       const fileExt = file.name.split('.').pop()?.toLowerCase();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const fileName = `${user?.id}-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = fileName;
       
       console.log('Uploading to path:', filePath);
