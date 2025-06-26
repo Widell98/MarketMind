@@ -11,6 +11,7 @@ import { useAnalysis, useToggleAnalysisLike } from '@/hooks/useAnalyses';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import AnalysisComments from '@/components/AnalysisComments';
+import RelatedStockCase from '@/components/RelatedStockCase';
 
 const AnalysisDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -215,6 +216,11 @@ const AnalysisDetail = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Add RelatedStockCase component when analysis is linked to a stock case */}
+        {analysis.stock_case_id && (
+          <RelatedStockCase stockCaseId={analysis.stock_case_id} />
+        )}
 
         <AnalysisComments analysisId={analysis.id} />
       </div>
