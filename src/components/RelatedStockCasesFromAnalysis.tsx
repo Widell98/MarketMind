@@ -18,10 +18,59 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const { data: stockCases, isLoading } = useQuery({
+  console.log('RelatedStockCasesFromAnalysis: analysisId =', analysisId, 'companyName =', companyName);
+
+  const { data: stockCases, isLoading, error } = useQuery({
     queryKey: ['related-stock-cases-from-analysis', analysisId, companyName],
     queryFn: async () => {
-      // First, try to find stock cases that match the company name if provided
+      console.log('Fetching related stock cases for analysis:', analysisId);
+      
+      // First, get the analysis to extract related information
+      const { data: analysisData, error: analysisError } = await supabase
+        .from('analyses')
+        .select(`
+          *,
+          stock_cases!analyses_stock_case_id_fkey (
+            company_name
+          )
+        `)
+        .eq('id', analysisId)
+        .single();
+
+      if (analysisError) {
+        console.error('Error fetching analysis:', analysisError);
+        throw analysisError;
+      }
+
+      console.log('Analysis data:', analysisData);
+
+      // Extract company name from various sources
+      let searchCompanyName = companyName;
+      
+      // If no company name provided, try to extract from analysis
+      if (!searchCompanyName) {
+        // Check if analysis is linked to a stock case
+        if (analysisData.stock_cases?.company_name) {
+          searchCompanyName = analysisData.stock_cases.company_name;
+        }
+        // Check if company name is mentioned in the title or content
+        else if (analysisData.title) {
+          // Simple extraction - look for common patterns like $SYMBOL or company names
+          const symbolMatch = analysisData.title.match(/\$([A-Z]{2,5})/);
+          if (symbolMatch) {
+            searchCompanyName = symbolMatch[1];
+          }
+        }
+      }
+
+      console.log('Search company name:', searchCompanyName);
+
+      if (!searchCompanyName) {
+        console.log('No company name to search for');
+        return [];
+      }
+
+      // Search for stock cases with similar company names or symbols
       let query = supabase
         .from('stock_cases')
         .select(`
@@ -37,18 +86,21 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
         `)
         .eq('is_public', true);
 
-      // If we have a company name, search for cases with similar company names
-      if (companyName) {
-        query = query.ilike('company_name', `%${companyName}%`);
+      // Search in both company_name and title fields
+      const { data: casesData, error: casesError } = await query
+        .or(`company_name.ilike.%${searchCompanyName}%,title.ilike.%${searchCompanyName}%`)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      console.log('Stock cases query result:', { casesData, casesError });
+
+      if (casesError) {
+        console.error('Error fetching stock cases:', casesError);
+        throw casesError;
       }
 
-      const { data: casesData, error } = await query
-        .order('created_at', { ascending: false })
-        .limit(3);
-
-      if (error) throw error;
-
       if (!casesData || casesData.length === 0) {
+        console.log('No related stock cases found');
         return [];
       }
 
@@ -81,6 +133,7 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
         })
       );
 
+      console.log('Cases with stats:', casesWithStats);
       return casesWithStats;
     },
   });
@@ -101,8 +154,11 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
     }
   };
 
-  // Don't render if loading or no stock cases
-  if (isLoading || !stockCases || stockCases.length === 0) {
+  console.log('Component render state:', { isLoading, error, stockCasesCount: stockCases?.length });
+
+  // Don't render if loading, error, or no stock cases
+  if (isLoading || error || !stockCases || stockCases.length === 0) {
+    console.log('Not rendering RelatedStockCasesFromAnalysis:', { isLoading, error, stockCasesLength: stockCases?.length });
     return null;
   }
 
