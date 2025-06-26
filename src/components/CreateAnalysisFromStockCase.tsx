@@ -15,10 +15,17 @@ interface CreateAnalysisFromStockCaseProps {
   stockCaseId: string;
   stockCaseTitle: string;
   companyName: string;
+  stockCaseUserId: string;
   children?: React.ReactNode;
 }
 
-const CreateAnalysisFromStockCase = ({ stockCaseId, stockCaseTitle, companyName, children }: CreateAnalysisFromStockCaseProps) => {
+const CreateAnalysisFromStockCase = ({ 
+  stockCaseId, 
+  stockCaseTitle, 
+  companyName, 
+  stockCaseUserId,
+  children 
+}: CreateAnalysisFromStockCaseProps) => {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
@@ -29,10 +36,13 @@ const CreateAnalysisFromStockCase = ({ stockCaseId, stockCaseTitle, companyName,
   
   const createAnalysis = useCreateAnalysis();
 
+  // Only allow users to create analyses for their own stock cases
+  const canCreateAnalysis = user && user.id === stockCaseUserId;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user) return;
+    if (!user || !canCreateAnalysis) return;
 
     try {
       await createAnalysis.mutateAsync({
@@ -83,6 +93,15 @@ const CreateAnalysisFromStockCase = ({ stockCaseId, stockCaseTitle, companyName,
     );
   }
 
+  if (!canCreateAnalysis) {
+    return (
+      <Button variant="outline" disabled>
+        <PlusCircle className="w-4 h-4 mr-2" />
+        Endast casets ägare kan skapa analyser
+      </Button>
+    );
+  }
+
   const defaultTrigger = (
     <Button className="bg-green-600 hover:bg-green-700 text-white">
       <TrendingUp className="w-4 h-4 mr-2" />
@@ -99,7 +118,7 @@ const CreateAnalysisFromStockCase = ({ stockCaseId, stockCaseTitle, companyName,
         <DialogHeader>
           <DialogTitle>Skapa analys för {stockCaseTitle}</DialogTitle>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Denna analys kommer att kopplas till aktiecaset för {companyName}
+            Denna analys kommer att kopplas till ditt aktiecase för {companyName}
           </p>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
