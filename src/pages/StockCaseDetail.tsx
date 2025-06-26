@@ -13,6 +13,8 @@ import ImageModal from '@/components/ImageModal';
 import ImageHistoryNavigation from '@/components/ImageHistoryNavigation';
 import ImageUploadDialog from '@/components/ImageUploadDialog';
 import UserProfileSidebar from '@/components/UserProfileSidebar';
+import RelatedAnalyses from '@/components/RelatedAnalyses';
+import CreateAnalysisFromStockCase from '@/components/CreateAnalysisFromStockCase';
 
 const StockCaseDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -136,6 +138,15 @@ const StockCaseDetail = () => {
               </Badge>
             </div>
 
+            {/* Action buttons */}
+            <div className="flex gap-4 justify-center">
+              <CreateAnalysisFromStockCase
+                stockCaseId={stockCase.id}
+                stockCaseTitle={stockCase.title}
+                companyName={stockCase.company_name}
+              />
+            </div>
+
             {/* Image with better hover effects and proper sizing */}
             {imageUrl && (
               <div className="space-y-6">
@@ -184,6 +195,9 @@ const StockCaseDetail = () => {
                 )}
               </div>
             )}
+
+            {/* Related Analyses */}
+            <RelatedAnalyses stockCaseId={stockCase.id} />
 
             {/* User Analysis */}
             {stockCase.admin_comment && (

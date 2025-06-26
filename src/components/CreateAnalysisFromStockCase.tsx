@@ -7,58 +7,47 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { PlusCircle, X, TrendingUp } from 'lucide-react';
 import { useCreateAnalysis } from '@/hooks/useAnalyses';
-import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
-import AnalysisStockCaseSelect from './AnalysisStockCaseSelect';
 
-const CreateAnalysisDialog = () => {
+interface CreateAnalysisFromStockCaseProps {
+  stockCaseId: string;
+  stockCaseTitle: string;
+  companyName: string;
+  children?: React.ReactNode;
+}
+
+const CreateAnalysisFromStockCase = ({ stockCaseId, stockCaseTitle, companyName, children }: CreateAnalysisFromStockCaseProps) => {
   const { user } = useAuth();
-  const { activePortfolio } = usePortfolio();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [analysisType, setAnalysisType] = useState<'market_insight' | 'technical_analysis' | 'fundamental_analysis' | 'sector_analysis' | 'portfolio_analysis' | 'position_analysis' | 'sector_deep_dive'>('market_insight');
-  const [stockCaseId, setStockCaseId] = useState<string>('');
-  const [includePortfolio, setIncludePortfolio] = useState(false);
-  const [selectedHoldings, setSelectedHoldings] = useState<string[]>([]);
+  const [analysisType, setAnalysisType] = useState<'market_insight' | 'technical_analysis' | 'fundamental_analysis' | 'sector_analysis'>('fundamental_analysis');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   
   const createAnalysis = useCreateAnalysis();
-
-  const portfolioHoldings = activePortfolio?.recommended_stocks || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!user) return;
 
-    const relatedHoldings = includePortfolio ? 
-      portfolioHoldings.filter(stock => selectedHoldings.includes(stock.symbol || stock.name)) : 
-      [];
-
     try {
       await createAnalysis.mutateAsync({
         title,
         content,
         analysis_type: analysisType,
-        stock_case_id: stockCaseId || undefined,
-        portfolio_id: includePortfolio ? activePortfolio?.id : undefined,
+        stock_case_id: stockCaseId,
         tags,
-        related_holdings: relatedHoldings,
         is_public: true
       });
       
       // Reset form
       setTitle('');
       setContent('');
-      setAnalysisType('market_insight');
-      setStockCaseId('');
-      setIncludePortfolio(false);
-      setSelectedHoldings([]);
+      setAnalysisType('fundamental_analysis');
       setTags([]);
       setTagInput('');
       setOpen(false);
@@ -85,14 +74,6 @@ const CreateAnalysisDialog = () => {
     }
   };
 
-  const toggleHolding = (holding: string) => {
-    if (selectedHoldings.includes(holding)) {
-      setSelectedHoldings(selectedHoldings.filter(h => h !== holding));
-    } else {
-      setSelectedHoldings([...selectedHoldings, holding]);
-    }
-  };
-
   if (!user) {
     return (
       <Button variant="outline" disabled>
@@ -102,17 +83,24 @@ const CreateAnalysisDialog = () => {
     );
   }
 
+  const defaultTrigger = (
+    <Button className="bg-green-600 hover:bg-green-700 text-white">
+      <TrendingUp className="w-4 h-4 mr-2" />
+      Skapa analys för detta case
+    </Button>
+  );
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-purple-600 hover:bg-purple-700 text-white">
-          <PlusCircle className="w-4 h-4 mr-2" />
-          Skapa ny analys
-        </Button>
+        {children || defaultTrigger}
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Skapa ny analys</DialogTitle>
+          <DialogTitle>Skapa analys för {stockCaseTitle}</DialogTitle>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Denna analys kommer att kopplas till aktiecaset för {companyName}
+          </p>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -121,7 +109,7 @@ const CreateAnalysisDialog = () => {
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ange titel för din analys..."
+              placeholder={`Analys av ${companyName}...`}
               required
             />
           </div>
@@ -133,68 +121,25 @@ const CreateAnalysisDialog = () => {
                 <SelectValue placeholder="Välj typ av analys" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="market_insight">Marknadsinsikt</SelectItem>
-                <SelectItem value="technical_analysis">Teknisk analys</SelectItem>
                 <SelectItem value="fundamental_analysis">Fundamental analys</SelectItem>
+                <SelectItem value="technical_analysis">Teknisk analys</SelectItem>
+                <SelectItem value="market_insight">Marknadsinsikt</SelectItem>
                 <SelectItem value="sector_analysis">Sektoranalys</SelectItem>
-                <SelectItem value="portfolio_analysis">Portföljanalys</SelectItem>
-                <SelectItem value="position_analysis">Positionsanalys</SelectItem>
-                <SelectItem value="sector_deep_dive">Djup sektoranalys</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <AnalysisStockCaseSelect
-            value={stockCaseId}
-            onValueChange={setStockCaseId}
-            disabled={createAnalysis.isPending}
-          />
-
-          {activePortfolio && (
-            <div className="flex items-center space-x-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <Checkbox
-                id="includePortfolio"
-                checked={includePortfolio}
-                onCheckedChange={(checked) => setIncludePortfolio(!!checked)}
-              />
-              <label htmlFor="includePortfolio" className="text-sm cursor-pointer flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" />
-                Koppla till min portfölj ({activePortfolio.portfolio_name})
-              </label>
-            </div>
-          )}
-
           <div>
-            <Label htmlFor="content">Innehåll</Label>
+            <Label htmlFor="content">Analysinnehåll</Label>
             <Textarea
               id="content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Skriv din analys här..."
+              placeholder={`Skriv din analys av ${companyName} här...`}
               rows={8}
               required
             />
           </div>
-
-          {includePortfolio && portfolioHoldings.length > 0 && (
-            <div>
-              <Label>Relaterade innehav från portfölj</Label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 max-h-40 overflow-y-auto p-2 border rounded">
-                {portfolioHoldings.map((stock, index) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`stock-${index}`}
-                      checked={selectedHoldings.includes(stock.symbol || stock.name)}
-                      onCheckedChange={() => toggleHolding(stock.symbol || stock.name)}
-                    />
-                    <label htmlFor={`stock-${index}`} className="text-sm cursor-pointer">
-                      {stock.name}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div>
             <Label htmlFor="tags">Taggar</Label>
@@ -234,4 +179,4 @@ const CreateAnalysisDialog = () => {
   );
 };
 
-export default CreateAnalysisDialog;
+export default CreateAnalysisFromStockCase;

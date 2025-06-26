@@ -10,7 +10,9 @@ export const useAnalysesList = (limit = 10) => {
   return useQuery({
     queryKey: ['analyses', limit, user?.id],
     queryFn: async () => {
-      let analysesQuery = supabase
+      console.log('Fetching analyses...');
+      
+      const { data: analysesData, error: analysesError } = await supabase
         .from('analyses')
         .select(`
           *,
@@ -25,12 +27,12 @@ export const useAnalysesList = (limit = 10) => {
         .order('created_at', { ascending: false })
         .limit(limit);
 
-      const { data: analysesData, error: analysesError } = await analysesQuery;
-
       if (analysesError) {
         console.error('Error fetching analyses:', analysesError);
         throw analysesError;
       }
+
+      console.log('Fetched analyses data:', analysesData);
 
       // Get like counts and user's like status for each analysis
       const analysesWithStats = await Promise.all(
@@ -40,13 +42,12 @@ export const useAnalysesList = (limit = 10) => {
             user ? supabase.rpc('user_has_liked_analysis', { analysis_id: analysis.id, user_id: user.id }) : null
           ]);
 
-          // Safely handle related_holdings - ensure it's always an array
+          // Safely handle related_holdings
           let relatedHoldings: any[] = [];
           if (analysis.related_holdings) {
             if (Array.isArray(analysis.related_holdings)) {
               relatedHoldings = analysis.related_holdings;
             } else if (typeof analysis.related_holdings === 'object') {
-              // If it's an object, try to convert it to an array
               relatedHoldings = Object.values(analysis.related_holdings);
             }
           }
@@ -64,6 +65,7 @@ export const useAnalysesList = (limit = 10) => {
         })
       );
 
+      console.log('Processed analyses with stats:', analysesWithStats);
       return analysesWithStats;
     },
   });
