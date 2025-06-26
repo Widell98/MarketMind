@@ -27,7 +27,7 @@ const ImageHistoryNavigation: React.FC<ImageHistoryNavigationProps> = ({
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
-      month: 'short',
+      month: 'short', 
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
@@ -47,28 +47,28 @@ const ImageHistoryNavigation: React.FC<ImageHistoryNavigationProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg">
-            <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 shadow-sm">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="bg-blue-100 dark:bg-blue-900/30 p-1.5 sm:p-2 rounded-lg">
+            <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400" />
           </div>
-          <div>
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base">
               Image History
             </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
               {formatDate(currentImage?.created_at || '')}
             </p>
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="bg-white dark:bg-gray-800">
-            {currentIndex + 1} of {images.length}
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+          <Badge variant="outline" className="bg-white dark:bg-gray-800 text-xs px-2 py-1">
+            {currentIndex + 1}/{images.length}
           </Badge>
           {currentImage?.is_current && (
-            <Badge className="bg-green-500 hover:bg-green-600">
+            <Badge className="bg-green-500 hover:bg-green-600 text-xs px-2 py-1 hidden sm:flex">
               <CheckCircle className="w-3 h-3 mr-1" />
               Current
             </Badge>
@@ -76,25 +76,25 @@ const ImageHistoryNavigation: React.FC<ImageHistoryNavigationProps> = ({
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex items-center justify-center gap-2 sm:gap-4">
         <Button
           variant="outline"
           size="sm"
           onClick={goToPrevious}
           disabled={currentIndex === 0}
-          className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+          className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 px-2 sm:px-3"
         >
           <ChevronLeft className="w-4 h-4" />
         </Button>
 
-        <div className="flex-1 text-center px-4">
-          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+        <div className="flex-1 text-center px-2 sm:px-4 min-w-0">
+          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-2 sm:p-3 border border-gray-200 dark:border-gray-600">
             {currentImage?.description ? (
-              <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+              <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium line-clamp-2">
                 {currentImage.description}
               </p>
             ) : (
-              <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 italic">
                 No description
               </p>
             )}
@@ -106,19 +106,19 @@ const ImageHistoryNavigation: React.FC<ImageHistoryNavigationProps> = ({
           size="sm"
           onClick={goToNext}
           disabled={currentIndex === images.length - 1}
-          className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+          className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 px-2 sm:px-3"
         >
           <ChevronRight className="w-4 h-4" />
         </Button>
       </div>
 
       {canEdit && onSetCurrent && !currentImage?.is_current && (
-        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-600">
           <Button
             variant="outline"
             size="sm"
             onClick={() => onSetCurrent(currentImage.id)}
-            className="w-full bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200"
+            className="w-full bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 text-xs sm:text-sm"
           >
             Mark as current image
           </Button>

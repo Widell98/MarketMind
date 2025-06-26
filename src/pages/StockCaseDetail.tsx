@@ -114,32 +114,32 @@ const StockCaseDetail = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-4 sm:py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
         <Button
           variant="ghost"
           onClick={() => navigate('/stock-cases')}
-          className="mb-6 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+          className="mb-4 sm:mb-6 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to stock cases
         </Button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
           {/* Main Content - Left Side */}
-          <div className="lg:col-span-3 space-y-8">
+          <div className="lg:col-span-3 space-y-4 sm:space-y-6 lg:space-y-8">
             {/* Header */}
-            <div className="text-center space-y-4">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold font-heading bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent leading-tight">
+            <div className="text-center space-y-3 sm:space-y-4">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold font-heading bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent leading-tight px-2">
                 {stockCase.title}
               </h1>
-              <Badge variant="outline" className="text-lg px-4 py-2">
+              <Badge variant="outline" className="text-sm sm:text-base lg:text-lg px-3 py-1 sm:px-4 sm:py-2">
                 {stockCase.status === 'active' ? 'Active Analysis' : 'Completed Analysis'}
               </Badge>
             </div>
 
             {/* Action buttons */}
-            <div className="flex gap-4 justify-center">
+            <div className="flex gap-3 sm:gap-4 justify-center px-2">
               <CreateAnalysisFromStockCase
                 stockCaseId={stockCase.id}
                 stockCaseTitle={stockCase.title}
@@ -148,15 +148,15 @@ const StockCaseDetail = () => {
               />
             </div>
 
-            {/* Image with better hover effects and proper sizing */}
+            {/* Image with better mobile sizing */}
             {imageUrl && (
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 <Card className="overflow-hidden group cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300" onClick={handleImageClick}>
                   <div className="relative">
                     <img
                       src={imageUrl}
                       alt={`${stockCase.title} stock price chart`}
-                      className="w-full h-auto object-contain transition-all duration-300 group-hover:scale-105 max-h-[600px] mx-auto"
+                      className="w-full h-auto object-contain transition-all duration-300 group-hover:scale-105 min-h-[250px] sm:min-h-[300px] md:min-h-[400px] lg:min-h-[500px] max-h-[400px] sm:max-h-[500px] md:max-h-[600px] lg:max-h-[700px] mx-auto"
                       style={{
                         imageRendering: 'crisp-edges'
                       }}
@@ -176,7 +176,7 @@ const StockCaseDetail = () => {
                 </Card>
 
                 {/* Upload new image button */}
-                <div className="flex justify-end">
+                <div className="flex justify-end px-2">
                   <ImageUploadDialog
                     stockCaseId={id!}
                     onImageAdded={handleImageAdded}
@@ -184,117 +184,127 @@ const StockCaseDetail = () => {
                   />
                 </div>
 
-                {/* Image History Navigation */}
+                {/* Image History Navigation - More compact for mobile */}
                 {!historyLoading && images.length > 1 && (
-                  <ImageHistoryNavigation
-                    images={images}
-                    currentIndex={currentImageIndex}
-                    onIndexChange={setCurrentImageIndex}
-                    onSetCurrent={setCurrentImage}
-                    canEdit={canEdit}
-                  />
+                  <div className="px-2">
+                    <ImageHistoryNavigation
+                      images={images}
+                      currentIndex={currentImageIndex}
+                      onIndexChange={setCurrentImageIndex}
+                      onSetCurrent={setCurrentImage}
+                      canEdit={canEdit}
+                    />
+                  </div>
                 )}
               </div>
             )}
 
             {/* Related Analyses */}
-            <RelatedAnalyses stockCaseId={stockCase.id} />
+            <div className="px-2">
+              <RelatedAnalyses stockCaseId={stockCase.id} />
+            </div>
 
             {/* User Analysis */}
             {stockCase.admin_comment && (
-              <Card className="border-l-4 border-l-purple-500 shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-purple-900 dark:text-purple-300 flex items-center">
-                    <User className="w-5 h-5 mr-2" />
-                    My Analysis & Reflection
+              <div className="px-2">
+                <Card className="border-l-4 border-l-purple-500 shadow-lg">
+                  <CardHeader className="pb-3 sm:pb-6">
+                    <CardTitle className="text-purple-900 dark:text-purple-300 flex items-center text-base sm:text-lg">
+                      <User className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                      My Analysis & Reflection
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-purple-50 dark:bg-purple-900/20 p-4 sm:p-6 rounded-xl border border-purple-200 dark:border-purple-800">
+                      <p className="text-purple-800 dark:text-purple-200 leading-relaxed whitespace-pre-wrap text-sm sm:text-base">
+                        {stockCase.admin_comment}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Company Facts - Improved mobile grid */}
+            <div className="px-2">
+              <Card className="shadow-lg">
+                <CardHeader className="pb-3 sm:pb-6">
+                  <CardTitle className="flex items-center text-gray-900 dark:text-gray-100 text-base sm:text-lg">
+                    <Building className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-600" />
+                    Company Facts & Investment Data
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="bg-purple-50 dark:bg-purple-900/20 p-6 rounded-xl border border-purple-200 dark:border-purple-800">
-                    <p className="text-purple-800 dark:text-purple-200 leading-relaxed whitespace-pre-wrap">
-                      {stockCase.admin_comment}
-                    </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+                    {stockCase.entry_price && (
+                      <div className="text-center p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl border border-green-200 dark:border-green-800">
+                        <DollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 mx-auto mb-2 sm:mb-3" />
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1 text-xs sm:text-sm">Entry Price</h3>
+                        <p className="text-gray-700 dark:text-gray-300 font-mono text-xs sm:text-sm">{formatPrice(stockCase.entry_price)}</p>
+                      </div>
+                    )}
+
+                    {stockCase.target_price && (
+                      <div className="text-center p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-xl border border-yellow-200 dark:border-yellow-800">
+                        <Target className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600 mx-auto mb-2 sm:mb-3" />
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1 text-xs sm:text-sm">Target Price</h3>
+                        <p className="text-gray-700 dark:text-gray-300 font-mono text-xs sm:text-sm">{formatPrice(stockCase.target_price)}</p>
+                      </div>
+                    )}
+
+                    {stockCase.current_price && (
+                      <div className="text-center p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl border border-purple-200 dark:border-purple-800 col-span-2 sm:col-span-1">
+                        <BarChart3 className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600 mx-auto mb-2 sm:mb-3" />
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1 text-xs sm:text-sm">Current Price</h3>
+                        <p className="text-gray-700 dark:text-gray-300 font-mono text-xs sm:text-sm">{formatPrice(stockCase.current_price)}</p>
+                      </div>
+                    )}
+
+                    {stockCase.stop_loss && (
+                      <div className="text-center p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 rounded-xl border border-red-200 dark:border-red-800">
+                        <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-red-600 mx-auto mb-2 sm:mb-3 rotate-180" />
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1 text-xs sm:text-sm">Stop Loss</h3>
+                        <p className="text-gray-700 dark:text-gray-300 font-mono text-xs sm:text-sm">{formatPrice(stockCase.stop_loss)}</p>
+                      </div>
+                    )}
+
+                    <div className="text-center p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/20 dark:to-gray-700/20 rounded-xl border border-gray-200 dark:border-gray-700">
+                      <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-gray-600 mx-auto mb-2 sm:mb-3" />
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1 text-xs sm:text-sm">Created</h3>
+                      <p className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm">{formatDate(stockCase.created_at)}</p>
+                    </div>
+
+                    {stockCase.sector && (
+                      <div className="text-center p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl border border-blue-200 dark:border-blue-800 col-span-2 sm:col-span-1">
+                        <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 mx-auto mb-2 sm:mb-3" />
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1 text-xs sm:text-sm">Sector</h3>
+                        <p className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm">{stockCase.sector}</p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
-            )}
-
-            {/* Company Facts */}
-            <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center text-gray-900 dark:text-gray-100">
-                  <Building className="w-5 h-5 mr-2 text-blue-600" />
-                  Company Facts & Investment Data
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {stockCase.entry_price && (
-                    <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl border border-green-200 dark:border-green-800">
-                      <DollarSign className="w-8 h-8 text-green-600 mx-auto mb-3" />
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Entry Price</h3>
-                      <p className="text-gray-700 dark:text-gray-300 font-mono">{formatPrice(stockCase.entry_price)}</p>
-                    </div>
-                  )}
-
-                  {stockCase.target_price && (
-                    <div className="text-center p-6 bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-xl border border-yellow-200 dark:border-yellow-800">
-                      <Target className="w-8 h-8 text-yellow-600 mx-auto mb-3" />
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Target Price</h3>
-                      <p className="text-gray-700 dark:text-gray-300 font-mono">{formatPrice(stockCase.target_price)}</p>
-                    </div>
-                  )}
-
-                  {stockCase.current_price && (
-                    <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl border border-purple-200 dark:border-purple-800">
-                      <BarChart3 className="w-8 h-8 text-purple-600 mx-auto mb-3" />
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Current Price</h3>
-                      <p className="text-gray-700 dark:text-gray-300 font-mono">{formatPrice(stockCase.current_price)}</p>
-                    </div>
-                  )}
-
-                  {stockCase.stop_loss && (
-                    <div className="text-center p-6 bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 rounded-xl border border-red-200 dark:border-red-800">
-                      <TrendingUp className="w-8 h-8 text-red-600 mx-auto mb-3 rotate-180" />
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Stop Loss</h3>
-                      <p className="text-gray-700 dark:text-gray-300 font-mono">{formatPrice(stockCase.stop_loss)}</p>
-                    </div>
-                  )}
-
-                  <div className="text-center p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/20 dark:to-gray-700/20 rounded-xl border border-gray-200 dark:border-gray-700">
-                    <Calendar className="w-8 h-8 text-gray-600 mx-auto mb-3" />
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Created</h3>
-                    <p className="text-gray-700 dark:text-gray-300">{formatDate(stockCase.created_at)}</p>
-                  </div>
-
-                  {stockCase.sector && (
-                    <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl border border-blue-200 dark:border-blue-800">
-                      <TrendingUp className="w-8 h-8 text-blue-600 mx-auto mb-3" />
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Sector</h3>
-                      <p className="text-gray-700 dark:text-gray-300">{stockCase.sector}</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            </div>
 
             {/* Description */}
             {stockCase.description && (
-              <Card className="shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-gray-900 dark:text-gray-100">About the company</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                    {stockCase.description}
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="px-2">
+                <Card className="shadow-lg">
+                  <CardHeader className="pb-3 sm:pb-6">
+                    <CardTitle className="text-gray-900 dark:text-gray-100 text-base sm:text-lg">About the company</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap text-sm sm:text-base">
+                      {stockCase.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
             )}
           </div>
 
-          {/* Right Sidebar - User Profile */}
-          <div className="lg:col-span-1">
+          {/* Right Sidebar - User Profile - Better mobile handling */}
+          <div className="lg:col-span-1 px-2 lg:px-0">
             <UserProfileSidebar 
               userId={stockCase.user_id} 
               userProfile={stockCase.profiles}

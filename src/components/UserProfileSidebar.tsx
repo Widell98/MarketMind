@@ -1,241 +1,150 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, TrendingUp, FileText, Calendar, Eye, Heart } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useStockCases } from '@/hooks/useStockCases';
-import { useAnalyses } from '@/hooks/useAnalyses';
-import { formatDistanceToNow } from 'date-fns';
-import { sv } from 'date-fns/locale';
+import { User, Calendar, Star, TrendingUp, Trophy, MapPin } from 'lucide-react';
 
-interface UserProfileSidebarProps {
-  userId?: string;
-  userProfile?: {
-    username: string;
-    display_name: string | null;
-  } | null;
+interface UserProfile {
+  id: string;
+  username?: string;
+  display_name?: string;
+  bio?: string;
+  avatar_url?: string;
+  location?: string;
+  website?: string;
+  created_at: string;
+  updated_at: string;
 }
 
-const UserProfileSidebar = ({ userId, userProfile }: UserProfileSidebarProps) => {
-  const navigate = useNavigate();
-  const { stockCases } = useStockCases(false);
-  const { data: analyses } = useAnalyses(20);
+interface UserProfileSidebarProps {
+  userId: string;
+  userProfile?: UserProfile | UserProfile[] | null;
+}
 
-  // Filter user's stock cases and analyses
-  const userStockCases = stockCases.filter(sc => sc.user_id === userId).slice(0, 3);
-  const userAnalyses = analyses?.filter(analysis => analysis.user_id === userId).slice(0, 3) || [];
+const UserProfileSidebar: React.FC<UserProfileSidebarProps> = ({ 
+  userId, 
+  userProfile 
+}) => {
+  // Handle the case where userProfile might be an array
+  const profile = Array.isArray(userProfile) ? userProfile[0] : userProfile;
 
-  if (!userId || !userProfile) {
-    return null;
-  }
-
-  const userInitials = userProfile.display_name?.slice(0, 2).toUpperCase() || 
-                      userProfile.username?.slice(0, 2).toUpperCase() || 'U';
-
-  const getStatusBadge = (status: string, performance: number | null) => {
-    if (status === 'winner') {
-      return (
-        <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 text-xs">
-          Winner {performance ? `+${performance}%` : ''}
-        </Badge>
-      );
-    }
-    if (status === 'loser') {
-      return (
-        <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 text-xs">
-          Loser {performance ? `${performance}%` : ''}
-        </Badge>
-      );
-    }
+  if (!profile) {
     return (
-      <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 text-xs">
-        Active
-      </Badge>
-    );
-  };
-
-  const getAnalysisTypeBadge = (type: string) => {
-    const colors = {
-      'market_insight': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-      'technical_analysis': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-      'fundamental_analysis': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-      'sector_analysis': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'
-    };
-    
-    const colorClass = colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300';
-    
-    return (
-      <Badge className={`${colorClass} text-xs`}>
-        {type.replace('_', ' ').toUpperCase()}
-      </Badge>
-    );
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* User Profile Card */}
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
-        <CardHeader className="pb-4">
-          <div className="flex items-center space-x-4">
-            <Avatar className="h-16 w-16">
-              <AvatarImage src="" alt="Profile" />
-              <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
-                {userInitials}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {userProfile.display_name || userProfile.username}
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                @{userProfile.username}
-              </p>
-              <div className="flex items-center gap-2 mt-2">
-                <Badge variant="outline" className="text-xs">
-                  <User className="w-3 h-3 mr-1" />
-                  Analyst
-                </Badge>
-              </div>
-            </div>
+      <Card className="shadow-lg">
+        <CardContent className="p-4 sm:p-6 text-center">
+          <div className="flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 dark:bg-gray-800 rounded-full mx-auto mb-3 sm:mb-4">
+            <User className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
           </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                {userStockCases.length}
-              </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">Cases</div>
-            </div>
-            <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-              <div className="text-lg font-bold text-purple-600 dark:text-purple-400">
-                {userAnalyses.length}
-              </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">Analyser</div>
-            </div>
-          </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="w-full"
-            onClick={() => navigate(`/profile/${userId}`)}
-          >
-            View Full Profile
-          </Button>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Loading user profile...</p>
         </CardContent>
       </Card>
+    );
+  }
 
-      {/* Recent Stock Cases */}
-      {userStockCases.length > 0 && (
-        <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center">
-              <TrendingUp className="w-4 h-4 mr-2 text-blue-600" />
-              Tidigare Cases
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {userStockCases.map((stockCase) => (
-                <div 
-                  key={stockCase.id}
-                  className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
-                  onClick={() => navigate(`/stock-cases/${stockCase.id}`)}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-1">
-                      {stockCase.title}
-                    </h4>
-                    {getStatusBadge(stockCase.status, stockCase.performance_percentage)}
-                  </div>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                    {stockCase.company_name}
-                  </p>
-                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                    <span>
-                      {formatDistanceToNow(new Date(stockCase.created_at), { addSuffix: true, locale: sv })}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1">
-                        <Eye className="w-3 h-3" />
-                        <span>0</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Heart className="w-3 h-3" />
-                        <span>0</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {userStockCases.length >= 3 && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="w-full mt-3 text-blue-600 hover:text-blue-700"
-                onClick={() => navigate('/stock-cases')}
-              >
-                Se fler cases
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
+  const displayName = profile.display_name || profile.username || 'Anonymous';
+  const joinDate = new Date(profile.created_at).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long'
+  });
 
-      {/* Recent Analyses */}
-      {userAnalyses.length > 0 && (
-        <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center">
-              <FileText className="w-4 h-4 mr-2 text-purple-600" />
-              Senaste Analyser
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {userAnalyses.map((analysis) => (
-                <div 
-                  key={analysis.id}
-                  className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-1">
-                      {analysis.title}
-                    </h4>
-                    {getAnalysisTypeBadge(analysis.analysis_type)}
-                  </div>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
-                    {analysis.content.substring(0, 80)}...
-                  </p>
-                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      <span>
-                        {formatDistanceToNow(new Date(analysis.created_at), { addSuffix: true, locale: sv })}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1">
-                        <Eye className="w-3 h-3" />
-                        <span>{analysis.views_count}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Heart className="w-3 h-3" />
-                        <span>{analysis.likes_count}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+  return (
+    <Card className="shadow-lg sticky top-4">
+      <CardHeader className="pb-3 sm:pb-4">
+        <CardTitle className="flex items-center text-sm sm:text-base">
+          <User className="w-4 h-4 mr-2 text-blue-600" />
+          Analysis Author
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4 sm:space-y-6">
+        {/* User Avatar and Name */}
+        <div className="text-center">
+          <Avatar className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4">
+            <AvatarImage src={profile.avatar_url || ''} alt={displayName} />
+            <AvatarFallback className="text-lg sm:text-xl font-semibold bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+              {displayName.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
+            {displayName}
+          </h3>
+          {profile.username && profile.display_name && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+              @{profile.username}
+            </p>
+          )}
+        </div>
+
+        {/* Bio */}
+        {profile.bio && (
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 sm:p-4">
+            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+              {profile.bio}
+            </p>
+          </div>
+        )}
+
+        {/* Location */}
+        {profile.location && (
+          <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+            <MapPin className="w-4 h-4 mr-2" />
+            <span>{profile.location}</span>
+          </div>
+        )}
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 gap-3">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg p-3 sm:p-4 border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs sm:text-sm text-blue-600 dark:text-blue-400 font-medium">
+                  Member Since
+                </p>
+                <p className="text-sm sm:text-base font-semibold text-blue-800 dark:text-blue-300">
+                  {joinDate}
+                </p>
+              </div>
+              <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
             </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-lg p-3 sm:p-4 border border-green-200 dark:border-green-800">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs sm:text-sm text-green-600 dark:text-green-400 font-medium">
+                  Active Trader
+                </p>
+                <p className="text-sm sm:text-base font-semibold text-green-800 dark:text-green-300">
+                  Verified
+                </p>
+              </div>
+              <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400" />
+            </div>
+          </div>
+        </div>
+
+        {/* Achievement Badge */}
+        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-lg p-3 sm:p-4 border border-yellow-200 dark:border-yellow-800">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="bg-yellow-500/20 p-2 rounded-full">
+              <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 dark:text-yellow-400" />
+            </div>
+            <div>
+              <p className="text-xs sm:text-sm font-medium text-yellow-800 dark:text-yellow-300">
+                Community Contributor
+              </p>
+              <div className="flex items-center gap-1 mt-1">
+                <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                <Star className="w-3 h-3 text-gray-300 dark:text-gray-600" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
