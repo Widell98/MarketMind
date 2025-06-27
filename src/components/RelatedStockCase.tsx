@@ -24,14 +24,11 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
     queryFn: async () => {
       console.log('Fetching stock case from database...');
       
+      // First, get the stock case data
       const { data: caseData, error: fetchError } = await supabase
         .from('stock_cases')
         .select(`
           *,
-          profiles!stock_cases_user_id_fkey (
-            username, 
-            display_name
-          ),
           case_categories (
             name,
             color
@@ -52,7 +49,23 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
         return null;
       }
 
-      // Get count stats first
+      // Separately fetch the profile data if user_id exists
+      let profileData = null;
+      if (caseData.user_id) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, username, display_name')
+          .eq('id', caseData.user_id)
+          .maybeSingle();
+
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+        } else {
+          profileData = profile;
+        }
+      }
+
+      // Get count stats
       const [likeCountResult, followCountResult] = await Promise.all([
         supabase.rpc('get_stock_case_like_count', { case_id: stockCaseId }),
         supabase.rpc('get_stock_case_follow_count', { case_id: stockCaseId })
@@ -77,7 +90,7 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
         follows_count: followCountResult?.data || 0,
         isLiked: userLikeResult?.data || false,
         isFollowed: userFollowResult?.data || false,
-        profiles: Array.isArray(caseData.profiles) ? caseData.profiles[0] : caseData.profiles
+        profiles: profileData
       };
     },
     retry: 3,
