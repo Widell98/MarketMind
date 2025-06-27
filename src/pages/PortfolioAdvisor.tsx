@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Brain, MessageSquare, BarChart3, Settings, Zap, TrendingUp, Lightbulb, CreditCard, Activity, Target, History } from 'lucide-react';
+import { Brain, MessageSquare, BarChart3, Settings, Zap, TrendingUp, Lightbulb, CreditCard, Activity, Target, History, Sparkles, Bot, Users, Shield } from 'lucide-react';
 import Layout from '@/components/Layout';
 import EnhancedRiskAssessmentForm from '@/components/EnhancedRiskAssessmentForm';
 import PortfolioOverview from '@/components/PortfolioOverview';
@@ -181,38 +181,153 @@ const PortfolioAdvisor = () => {
     <Layout>
       <div className="w-full min-h-screen">
         <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4 max-w-7xl">
-          {/* Header with Chat History */}
-          <div className="mb-3 sm:mb-4 md:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-1 flex items-center gap-1 sm:gap-2">
-                <Brain className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-8 lg:h-8 text-blue-600 flex-shrink-0" />
-                <span className="leading-tight truncate">Din AI Assistent</span>
-              </h1>
-              <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-                Alltid här för att hjälpa dig med dina investeringsbeslut
-              </p>
+          {/* Enhanced Header with AI Capabilities Description */}
+          <div className="mb-4 sm:mb-6 space-y-4 sm:space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-1 flex items-center gap-1 sm:gap-2">
+                  <Brain className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-8 lg:h-8 text-blue-600 flex-shrink-0" />
+                  <span className="leading-tight truncate">Din AI Portfolio Advisor</span>
+                </h1>
+                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+                  Avancerad AI som hjälper dig fatta smarta investeringsbeslut
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <ChatHistory
+                  sessions={sessions}
+                  onLoadSession={(sessionId) => {
+                    loadSession(sessionId);
+                    setActiveTab('chat');
+                  }}
+                  onDeleteSession={handleDeleteSession}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    createNewSession();
+                    setActiveTab('chat');
+                  }}
+                  className="text-xs sm:text-sm"
+                >
+                  Ny Chat
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <ChatHistory
-                sessions={sessions}
-                onLoadSession={(sessionId) => {
-                  loadSession(sessionId);
-                  setActiveTab('chat');
-                }}
-                onDeleteSession={handleDeleteSession}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  createNewSession();
-                  setActiveTab('chat');
-                }}
-                className="text-xs sm:text-sm"
-              >
-                Ny Chat
-              </Button>
+
+            {/* AI Capabilities Overview */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+              <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50/50 to-transparent dark:from-blue-950/20">
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Bot className="w-4 h-4 text-blue-600" />
+                    <h3 className="font-semibold text-sm sm:text-base">Intelligent Chatt</h3>
+                  </div>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Ställ frågor om din portfölj, få förklaringar om aktier, eller be om investeringsråd. AI:n förstår din riskprofil och ger personliga svar.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-l-4 border-l-green-500 bg-gradient-to-r from-green-50/50 to-transparent dark:from-green-950/20">
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Target className="w-4 h-4 text-green-600" />
+                    <h3 className="font-semibold text-sm sm:text-base">Smart Analys</h3>
+                  </div>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Få djup analys av dina innehav, riskbedömning och förslag på optimeringar baserat på marknadsdata och din profil.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-l-4 border-l-purple-500 bg-gradient-to-r from-purple-50/50 to-transparent dark:from-purple-950/20">
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-4 h-4 text-purple-600" />
+                    <h3 className="font-semibold text-sm sm:text-base">Proaktiva Förslag</h3>
+                  </div>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    AI:n identifierar möjligheter, varnar för risker och föreslår när det är dags att rebalansera din portfölj.
+                  </p>
+                </CardContent>
+              </Card>
             </div>
+
+            {/* Quick Start Guide */}
+            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                  <Lightbulb className="w-5 h-5 text-yellow-500" />
+                  Så här använder du AI Portfolio Advisor
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold flex-shrink-0 mt-0.5">1</div>
+                    <div>
+                      <h4 className="font-medium text-sm mb-1">Utforska din portfölj</h4>
+                      <p className="text-xs text-muted-foreground">Se din nuvarande fördelning, prestanda och AI:ns bedömning av din portföljs hälsa.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-green-600 text-white text-xs flex items-center justify-center font-bold flex-shrink-0 mt-0.5">2</div>
+                    <div>
+                      <h4 className="font-medium text-sm mb-1">Chatta med AI:n</h4>
+                      <p className="text-xs text-muted-foreground">Fråga "Hur mår min portfölj?" eller "Vilka aktier bör jag köpa?" för personliga råd.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center font-bold flex-shrink-0 mt-0.5">3</div>
+                    <div>
+                      <h4 className="font-medium text-sm mb-1">Hantera innehav</h4>
+                      <p className="text-xs text-muted-foreground">Klicka på aktier för att ersätta dem eller få djupare analys av varför de är i din portfölj.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-orange-600 text-white text-xs flex items-center justify-center font-bold flex-shrink-0 mt-0.5">4</div>
+                    <div>
+                      <h4 className="font-medium text-sm mb-1">Analysera scenarier</h4>
+                      <p className="text-xs text-muted-foreground">Testa hur din portfölj presterar under olika marknadsförhållanden.</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleQuickChat("Hej! Kan du ge mig en snabb överblick av min portfölj och eventuella förbättringsförslag?")}
+                      className="text-xs bg-white/60 hover:bg-white/80 dark:bg-gray-800/60 dark:hover:bg-gray-800/80"
+                    >
+                      💬 Snabb portföljöverblick
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleQuickChat("Vilka investeringsmöjligheter ser du just nu som passar min riskprofil?")}
+                      className="text-xs bg-white/60 hover:bg-white/80 dark:bg-gray-800/60 dark:hover:bg-gray-800/80"
+                    >
+                      🔍 Hitta nya möjligheter
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleQuickChat("Behöver jag rebalansera min portfölj? Vad föreslår du?")}
+                      className="text-xs bg-white/60 hover:bg-white/80 dark:bg-gray-800/60 dark:hover:bg-gray-800/80"
+                    >
+                      ⚖️ Rebalanseringsförslag
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Tabs */}
