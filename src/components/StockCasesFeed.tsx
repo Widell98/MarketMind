@@ -3,11 +3,13 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Heart, MessageCircle, Calendar, User, Bookmark, Share, Filter } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { TrendingUp, TrendingDown, Heart, MessageCircle, Calendar, User, Bookmark, Share, Filter, Search } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { useStockCases } from '@/hooks/useStockCases';
 import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
+import { useStockCasesFilters } from '@/hooks/useStockCasesFilters';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useStockCaseFollows } from '@/hooks/useStockCaseFollows';
 import { useNavigate } from 'react-router-dom';
@@ -36,9 +38,26 @@ const StockCasesFeed = () => {
 
   const { cases: displayCases, loading } = getDisplayData();
 
+  // Add search functionality
+  const {
+    searchTerm,
+    setSearchTerm,
+    filteredAndSortedCases,
+  } = useStockCasesFilters({ stockCases: displayCases });
+
   if (loading) {
     return (
       <div className="space-y-4">
+        {/* Search Bar */}
+        <div className="relative px-2 sm:px-0">
+          <Search className="absolute left-4 sm:left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Sök bland cases..."
+            className="pl-10 pr-3 py-2 text-sm rounded-md"
+            disabled
+          />
+        </div>
+
         {/* Filter Tabs - Mobile Responsive */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-6 px-2 sm:px-0">
           <Button variant="default" size="sm" className="flex items-center justify-center gap-2 text-xs px-3 py-2">
@@ -82,9 +101,90 @@ const StockCasesFeed = () => {
     );
   }
 
-  if (displayCases.length === 0) {
+  if (filteredAndSortedCases.length === 0 && searchTerm) {
     return (
       <div className="space-y-4">
+        {/* Search Bar */}
+        <div className="relative px-2 sm:px-0">
+          <Search className="absolute left-4 sm:left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Sök bland cases..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 pr-3 py-2 text-sm rounded-md"
+          />
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-6 px-2 sm:px-0">
+          <Button
+            variant={viewMode === 'all' ? 'default' : 'outline'}
+            onClick={() => setViewMode('all')}
+            size="sm"
+            className="flex items-center justify-center gap-2 text-xs px-3 py-2"
+          >
+            <Filter className="w-3 h-3" />
+            <span className="hidden xs:inline">All Cases</span>
+            <span className="xs:hidden">All</span>
+          </Button>
+          <Button
+            variant={viewMode === 'trending' ? 'default' : 'outline'}
+            onClick={() => setViewMode('trending')}
+            size="sm"
+            className="flex items-center justify-center gap-2 text-xs px-3 py-2"
+          >
+            <TrendingUp className="w-3 h-3" />
+            <span className="hidden xs:inline">Trending</span>
+            <span className="xs:hidden">Trend</span>
+          </Button>
+          <Button
+            variant={viewMode === 'followed' ? 'default' : 'outline'}
+            onClick={() => setViewMode('followed')}
+            size="sm"
+            className="flex items-center justify-center gap-2 text-xs px-3 py-2"
+          >
+            <Bookmark className="w-3 h-3" />
+            <span className="hidden xs:inline">Followed</span>
+            <span className="xs:hidden">Follow</span>
+          </Button>
+        </div>
+
+        <Card className="text-center py-8 bg-gray-50 dark:bg-gray-800 mx-2 sm:mx-0">
+          <CardContent className="pt-4">
+            <Search className="w-12 h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
+            <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">
+              Inga cases hittades för "{searchTerm}"
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Försök med andra sökord eller rensa sökningen.
+            </p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setSearchTerm('')}
+            >
+              Rensa sökning
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (filteredAndSortedCases.length === 0) {
+    return (
+      <div className="space-y-4">
+        {/* Search Bar */}
+        <div className="relative px-2 sm:px-0">
+          <Search className="absolute left-4 sm:left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Sök bland cases..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 pr-3 py-2 text-sm rounded-md"
+          />
+        </div>
+
         {/* Filter Tabs - Mobile Responsive */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-6 px-2 sm:px-0">
           <Button
@@ -149,6 +249,26 @@ const StockCasesFeed = () => {
 
   return (
     <div className="space-y-4">
+      {/* Search Bar */}
+      <div className="relative px-2 sm:px-0">
+        <Search className="absolute left-4 sm:left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+        <Input
+          placeholder="Sök bland cases..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10 pr-3 py-2 text-sm rounded-md"
+        />
+      </div>
+
+      {/* Results count when searching */}
+      {searchTerm && (
+        <div className="px-2 sm:px-0">
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+            {filteredAndSortedCases.length} cases hittades för "{searchTerm}"
+          </p>
+        </div>
+      )}
+
       {/* Filter Tabs - Mobile Responsive */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-6 px-2 sm:px-0">
         <Button
@@ -184,7 +304,7 @@ const StockCasesFeed = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-2 sm:px-0">
-        {displayCases.map((stockCase) => (
+        {filteredAndSortedCases.map((stockCase) => (
           <StockCaseCompactCard
             key={stockCase.id}
             stockCase={stockCase}
