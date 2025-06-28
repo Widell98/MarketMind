@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Shield, AlertTriangle, TrendingUp, Zap, RefreshCw, Brain } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuthContext } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface RiskInsight {
   id: string;
@@ -20,7 +19,7 @@ const AIRiskAssessment = () => {
   const [riskInsights, setRiskInsights] = useState<RiskInsight[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuthContext();
+  const { user } = useAuth();
 
   const fetchRiskAssessment = async () => {
     if (!user) return;

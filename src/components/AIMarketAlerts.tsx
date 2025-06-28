@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Bell, TrendingUp, TrendingDown, Zap, RefreshCw, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuthContext } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface MarketAlert {
   id: string;
@@ -21,7 +20,7 @@ const AIMarketAlerts = () => {
   const [alerts, setAlerts] = useState<MarketAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuthContext();
+  const { user } = useAuth();
 
   const fetchMarketAlerts = async () => {
     if (!user) return;
