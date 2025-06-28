@@ -39,6 +39,48 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_market_insights: {
+        Row: {
+          confidence_score: number | null
+          content: string
+          created_at: string
+          data_sources: Json | null
+          expires_at: string | null
+          id: string
+          insight_type: string
+          is_personalized: boolean | null
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          content: string
+          created_at?: string
+          data_sources?: Json | null
+          expires_at?: string | null
+          id?: string
+          insight_type: string
+          is_personalized?: boolean | null
+          title: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          confidence_score?: number | null
+          content?: string
+          created_at?: string
+          data_sources?: Json | null
+          expires_at?: string | null
+          id?: string
+          insight_type?: string
+          is_personalized?: boolean | null
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       analyses: {
         Row: {
           ai_generated: boolean | null
@@ -217,6 +259,60 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+        }
+        Relationships: []
+      }
+      financial_calendar_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          data: Json
+          expires_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          data: Json
+          expires_at: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          data?: Json
+          expires_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      market_momentum_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          data: Json
+          expires_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          data: Json
+          expires_at: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          data?: Json
+          expires_at?: string
+          id?: string
+          updated_at?: string
         }
         Relationships: []
       }

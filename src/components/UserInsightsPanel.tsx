@@ -7,6 +7,8 @@ import { Brain, TrendingUp, AlertTriangle, CheckCircle, Clock, Zap } from 'lucid
 import { Link } from 'react-router-dom';
 import FinancialCalendar from './FinancialCalendar';
 import MarketMomentum from './MarketMomentum';
+import AIRiskAssessment from './AIRiskAssessment';
+import AIMarketAlerts from './AIMarketAlerts';
 
 const UserInsightsPanel = () => {
   return (
@@ -49,7 +51,13 @@ const UserInsightsPanel = () => {
         </CardContent>
       </Card>
 
-      {/* Financial Calendar - Replaces Personal Performance */}
+      {/* AI Market Alerts */}
+      <AIMarketAlerts />
+
+      {/* AI Risk Assessment */}
+      <AIRiskAssessment />
+
+      {/* Financial Calendar */}
       <FinancialCalendar />
 
       {/* Quick Actions */}
@@ -82,7 +90,7 @@ const UserInsightsPanel = () => {
         </CardContent>
       </Card>
 
-      {/* Market Momentum - Replaces Recent Activity */}
+      {/* Market Momentum */}
       <MarketMomentum />
     </div>
   );
