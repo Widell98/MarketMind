@@ -50,8 +50,8 @@ const ConversationalPortfolioAdvisor = () => {
   };
 
   const handleImplementStrategy = () => {
-    // Navigate to the portfolio dashboard where users can see their generated portfolio
-    navigate('/');
+    // Navigate to the portfolio implementation page
+    navigate('/portfolio-implementation');
   };
 
   const formatAIResponse = (content: string) => {

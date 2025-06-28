@@ -14,6 +14,7 @@ import StockCaseDetail from "./pages/StockCaseDetail";
 import AnalysisDetail from "./pages/AnalysisDetail";
 import Learning from "./pages/Learning";
 import PortfolioAdvisor from "./pages/PortfolioAdvisor";
+import PortfolioImplementation from "./pages/PortfolioImplementation";
 import Watchlist from "./pages/Watchlist";
 import SocialIndex from "./pages/SocialIndex";
 import AdminStockCases from "./pages/AdminStockCases";
@@ -41,6 +42,7 @@ function App() {
               <Route path="/analysis/:id" element={<AnalysisDetail />} />
               <Route path="/learning" element={<Learning />} />
               <Route path="/portfolio-advisor" element={<PortfolioAdvisor />} />
+              <Route path="/portfolio-implementation" element={<PortfolioImplementation />} />
               <Route path="/watchlist" element={<Watchlist />} />
               <Route path="/social" element={<SocialIndex />} />
               <Route path="/admin/stock-cases" element={<AdminStockCases />} />
