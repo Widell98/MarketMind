@@ -37,7 +37,8 @@ const MarketMomentum = () => {
       }
 
       if (data && Array.isArray(data)) {
-        setMomentumData(data);
+        // Limit to maximum 4 items
+        setMomentumData(data.slice(0, 4));
       }
     } catch (err) {
       console.error('Error:', err);
