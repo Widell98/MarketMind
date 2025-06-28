@@ -8,7 +8,7 @@ import { usePortfolio } from '@/hooks/usePortfolio';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Brain, MessageSquare, TrendingUp, Target, ArrowLeft } from 'lucide-react';
+import { Brain, MessageSquare, TrendingUp, Target, ArrowLeft, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const PortfolioImplementation = () => {
@@ -115,6 +115,17 @@ const PortfolioImplementation = () => {
                 <CardTitle className="flex items-center gap-2">
                   <MessageSquare className="w-5 h-5 text-purple-600" />
                   AI Portfolio Assistent
+                  {showChat && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowChat(false)}
+                      className="ml-auto"
+                    >
+                      <X className="w-4 h-4" />
+                      Stäng
+                    </Button>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -157,11 +168,7 @@ const PortfolioImplementation = () => {
                   ) : (
                     <div className="border rounded-lg">
                       <AIChat 
-                        onClose={() => setShowChat(false)}
-                        initialContext={activePortfolio ? {
-                          portfolioId: activePortfolio.id,
-                          portfolioData: activePortfolio
-                        } : undefined}
+                        portfolioId={activePortfolio?.id}
                       />
                     </div>
                   )}
