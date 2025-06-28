@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +11,6 @@ import InteractivePortfolio from '@/components/InteractivePortfolio';
 import PortfolioHealthScore from '@/components/PortfolioHealthScore';
 import PerformanceAttribution from '@/components/PerformanceAttribution';
 import SubscriptionCard from '@/components/SubscriptionCard';
-import ChatHistory from '@/components/ChatHistory';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
@@ -85,24 +85,6 @@ const PortfolioAdvisor = () => {
     if (actionMessages[action as keyof typeof actionMessages]) {
       handleQuickChat(actionMessages[action as keyof typeof actionMessages]);
     }
-  };
-
-  // Unified handlers for chat functionality that work consistently across the app
-  const handleLoadChatSession = async (sessionId: string) => {
-    console.log('Loading chat session from PortfolioAdvisor:', sessionId);
-    await loadSession(sessionId);
-    setActiveTab('chat'); // Always switch to chat tab when loading a session
-  };
-
-  const handleCreateNewChat = async () => {
-    console.log('Creating new chat from PortfolioAdvisor');
-    await createNewSession();
-    setActiveTab('chat'); // Always switch to chat tab when creating new session
-  };
-
-  const handleDeleteChatSession = async (sessionId: string) => {
-    console.log('Deleting chat session from PortfolioAdvisor:', sessionId);
-    await deleteSession(sessionId);
   };
 
   if (!user) {
@@ -197,22 +179,6 @@ const PortfolioAdvisor = () => {
                 <p className="text-sm sm:text-base lg:text-lg text-muted-foreground">
                   Avancerad AI som hjälper dig fatta smarta investeringsbeslut
                 </p>
-              </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <ChatHistory
-                  sessions={sessions}
-                  currentSessionId={currentSessionId}
-                  onLoadSession={handleLoadChatSession}
-                  onDeleteSession={handleDeleteChatSession}
-                />
-                <Button
-                  variant="outline"
-                  size="default"
-                  onClick={handleCreateNewChat}
-                  className="text-sm lg:text-base"
-                >
-                  Ny Chat
-                </Button>
               </div>
             </div>
 

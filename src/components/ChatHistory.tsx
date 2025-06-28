@@ -73,12 +73,17 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
     
     return (
       <div 
-        className={`flex items-center justify-between p-4 rounded-lg cursor-pointer transition-all hover:bg-gray-100 dark:hover:bg-gray-700 ${
-          isActive ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700' : 'hover:shadow-sm'
+        className={`relative group rounded-lg transition-all border ${
+          isActive 
+            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700' 
+            : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-gray-50 dark:hover:bg-gray-800/50'
         }`}
-        onClick={() => handleLoadSession(session.id)}
       >
-        <div className="flex items-center gap-3 flex-1 min-w-0">
+        {/* Main clickable area */}
+        <div 
+          className="flex items-center gap-3 p-4 cursor-pointer w-full"
+          onClick={() => handleLoadSession(session.id)}
+        >
           <div className="flex-shrink-0">
             {isActive ? (
               <MessageSquare className="w-5 h-5 text-blue-600" />
@@ -103,20 +108,22 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
               )}
             </div>
           </div>
+          
+          {/* Spacer to push delete button to the right */}
+          <div className="flex-shrink-0 w-10"></div>
         </div>
         
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {onDeleteSession && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={(e) => handleDelete(session.id, session.session_name, e)}
-              className="p-2 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 z-10"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          )}
-        </div>
+        {/* Delete button - positioned absolutely to avoid layout issues */}
+        {onDeleteSession && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={(e) => handleDelete(session.id, session.session_name, e)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 z-20"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        )}
       </div>
     );
   };
