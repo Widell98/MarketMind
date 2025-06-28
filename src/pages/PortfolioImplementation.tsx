@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -50,6 +51,21 @@ const PortfolioImplementation = () => {
     checkUserProfile();
   }, [user]);
 
+  // Listen for portfolio generation completion
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'portfolio_generation_complete') {
+        // Portfolio was just generated, refresh the state
+        setShowOnboarding(false);
+        setHasRiskProfile(true);
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   const handleQuickChat = (message: string) => {
     setShowChat(true);
     // Chat component will handle the initial message
@@ -60,11 +76,8 @@ const PortfolioImplementation = () => {
     // Handle different portfolio actions here
   };
 
-  const handleOnboardingComplete = () => {
-    setShowOnboarding(false);
-    setHasRiskProfile(true);
-    // Refresh the page to load the new portfolio data
-    window.location.reload();
+  const handleUpdateProfile = () => {
+    setShowOnboarding(true);
   };
 
   if (loading || hasRiskProfile === null) {
@@ -120,7 +133,7 @@ const PortfolioImplementation = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowOnboarding(true)}
+              onClick={handleUpdateProfile}
             >
               <Settings className="w-4 h-4 mr-2" />
               Uppdatera profil

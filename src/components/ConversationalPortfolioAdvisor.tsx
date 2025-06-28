@@ -50,8 +50,22 @@ const ConversationalPortfolioAdvisor = () => {
   };
 
   const handleImplementStrategy = () => {
+    // Set a flag in localStorage to trigger page refresh in PortfolioImplementation
+    localStorage.setItem('portfolio_generation_complete', 'true');
+    
     // Navigate to the portfolio implementation page
     navigate('/portfolio-implementation');
+    
+    // Trigger a storage event for the current page
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'portfolio_generation_complete',
+      newValue: 'true'
+    }));
+    
+    // Clean up the flag
+    setTimeout(() => {
+      localStorage.removeItem('portfolio_generation_complete');
+    }, 1000);
   };
 
   const formatAIResponse = (content: string) => {
