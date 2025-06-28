@@ -30,6 +30,7 @@ const PortfolioAdvisor = () => {
   // Enhanced AI Chat integration
   const { 
     sessions, 
+    currentSessionId,
     sendMessage, 
     loadSession,
     createNewSession,
@@ -194,6 +195,7 @@ const PortfolioAdvisor = () => {
               <div className="flex items-center gap-3 flex-shrink-0">
                 <ChatHistory
                   sessions={sessions}
+                  currentSessionId={currentSessionId}
                   onLoadSession={(sessionId) => {
                     loadSession(sessionId);
                     setActiveTab('chat');
