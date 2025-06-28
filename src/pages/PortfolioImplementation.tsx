@@ -8,24 +8,21 @@ import UserInsightsPanel from '@/components/UserInsightsPanel';
 import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolioAdvisor';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Brain, MessageSquare, TrendingUp, Target, X, Settings } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Brain, MessageSquare, TrendingUp, Target, Settings, BarChart3 } from 'lucide-react';
 
 const PortfolioImplementation = () => {
-  const { activePortfolio, recommendations, loading } = usePortfolio();
+  const { activePortfolio, loading } = usePortfolio();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [showChat, setShowChat] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     if (!user || loading) return;
 
-    // If we have an active portfolio, show the main page
-    // If no portfolio exists, show onboarding
     if (activePortfolio) {
       console.log('Active portfolio found, showing main page');
       setShowOnboarding(false);
@@ -35,22 +32,12 @@ const PortfolioImplementation = () => {
     }
   }, [user, activePortfolio, loading]);
 
-  // Listen for portfolio generation completion
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'portfolio_generation_complete') {
-        console.log('Portfolio generation completed, refreshing...');
-        setShowOnboarding(false);
-        window.location.reload();
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
   const handleQuickChat = (message: string) => {
-    setShowChat(true);
+    // Switch to chat tab when a quick chat is triggered from overview
+    const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
+    if (chatTab) {
+      chatTab.click();
+    }
   };
 
   const handleActionClick = (action: string) => {
@@ -99,7 +86,7 @@ const PortfolioImplementation = () => {
     );
   }
 
-  // Show portfolio implementation page
+  // Show portfolio implementation page with tabs
   return (
     <Layout>
       <div className="container mx-auto px-4 py-6 max-w-7xl">
@@ -140,81 +127,52 @@ const PortfolioImplementation = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-3 space-y-6">
-            {/* Portfolio Overview */}
-            <PortfolioOverview 
-              portfolio={activePortfolio}
-              onQuickChat={handleQuickChat}
-              onActionClick={handleActionClick}
-            />
-
-            {/* AI Chat Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5 text-purple-600" />
-                  AI Portfolio Assistent
-                  {showChat && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowChat(false)}
-                      className="ml-auto"
-                    >
-                      <X className="w-4 h-4" />
-                      Stäng
-                    </Button>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <p className="text-sm text-gray-600">
-                    Ställ frågor om din portfölj, få förklaringar om rekommendationer eller diskutera investeringsstrategier.
-                  </p>
-                  
-                  {!showChat ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Button 
-                        variant="outline" 
-                        onClick={() => handleQuickChat("Förklara min portföljstrategi i detalj")}
-                        className="text-left justify-start"
-                      >
-                        Förklara min strategi
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => handleQuickChat("Vilka risker finns med min portfölj?")}
-                        className="text-left justify-start"
-                      >
-                        Analysera risker
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => handleQuickChat("Hur ska jag rebalansera min portfölj?")}
-                        className="text-left justify-start"
-                      >
-                        Rebalanseringstips
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setShowChat(true)}
-                        className="text-left justify-start"
-                      >
-                        Öppna AI-chat
-                      </Button>
+          {/* Main Content with Tabs */}
+          <div className="lg:col-span-3">
+            <Tabs defaultValue="chat" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="chat" data-value="chat" className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4" />
+                  AI-Chat
+                </TabsTrigger>
+                <TabsTrigger value="overview" className="flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4" />
+                  Översikt
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="chat" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <MessageSquare className="w-5 h-5 text-purple-600" />
+                      AI Portfolio Assistent
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <p className="text-sm text-gray-600">
+                        Ställ frågor om din portfölj, få förklaringar om rekommendationer eller diskutera investeringsstrategier.
+                      </p>
+                      
+                      <div className="border rounded-lg">
+                        <AIChat 
+                          portfolioId={activePortfolio?.id}
+                        />
+                      </div>
                     </div>
-                  ) : (
-                    <div className="border rounded-lg">
-                      <AIChat 
-                        portfolioId={activePortfolio?.id}
-                      />
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="overview" className="mt-6">
+                <PortfolioOverview 
+                  portfolio={activePortfolio}
+                  onQuickChat={handleQuickChat}
+                  onActionClick={handleActionClick}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
 
           {/* Sidebar */}
