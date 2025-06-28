@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,7 +26,7 @@ interface ChatSession {
 export const useAIChat = (portfolioId?: string) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { checkUsageLimit, fetchUsage, subscription } = useSubscription();
+  const { checkUsageLimit, subscription } = useSubscription();
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -529,10 +530,6 @@ export const useAIChat = (portfolioId?: string) => {
         console.log('Usage incremented successfully');
       }
 
-      // Fetch updated usage immediately
-      console.log('Fetching updated usage...');
-      await fetchUsage();
-
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -554,7 +551,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, portfolioId, currentSessionId, fetchUsage, toast]);
+  }, [user, portfolioId, currentSessionId, toast]);
 
   const analyzePortfolio = useCallback(async (analysisType: 'risk' | 'diversification' | 'performance' | 'optimization') => {
     if (!user || !portfolioId) return;
@@ -596,13 +593,12 @@ export const useAIChat = (portfolioId?: string) => {
         console.log('Analysis usage incremented successfully');
       }
 
-      await fetchUsage();
     } catch (error) {
       console.error('Error analyzing portfolio:', error);
     } finally {
       setIsAnalyzing(false);
     }
-  }, [user, portfolioId, sendMessage, checkUsageLimit, subscription, fetchUsage, toast]);
+  }, [user, portfolioId, sendMessage, checkUsageLimit, subscription, toast]);
 
   const getQuickAnalysis = useCallback(async (prompt: string) => {
     const canSendMessage = checkUsageLimit('ai_message');
@@ -624,13 +620,13 @@ export const useAIChat = (portfolioId?: string) => {
     setMessages([]);
   }, []);
 
-  // Load sessions when component mounts
+  // Load sessions when component mounts - but only once!
   useEffect(() => {
-    if (user && portfolioId) {
+    if (user && portfolioId && sessions.length === 0) {
       console.log('Component mounted, loading sessions...');
       loadSessions();
     }
-  }, [user, portfolioId, loadSessions]);
+  }, [user, portfolioId]); // Removed loadSessions from dependencies to prevent infinite loop
 
   return {
     messages,

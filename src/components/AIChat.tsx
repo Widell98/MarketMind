@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,7 +31,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     getQuickAnalysis
   } = useAIChat(portfolioId);
 
-  const { subscription, usage, getRemainingUsage, createCheckout, fetchUsage } = useSubscription();
+  const { subscription, usage, getRemainingUsage, createCheckout } = useSubscription();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -50,12 +51,6 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
       console.log('Messages in current session:', messages.length);
     }
   }, [currentSessionId, sessions, messages]);
-
-  // Fetch usage when component mounts and after messages change
-  useEffect(() => {
-    console.log('Fetching usage due to messages change or mount...');
-    fetchUsage();
-  }, [messages.length, fetchUsage]);
 
   // Listen for custom events to create stock-specific chats
   useEffect(() => {
@@ -89,12 +84,6 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     console.log('About to send message, current remaining:', remainingMessages);
     await sendMessage(message);
     
-    // Force refresh usage after sending
-    setTimeout(() => {
-      console.log('Force refreshing usage after message send...');
-      fetchUsage();
-    }, 1000);
-    
     setTimeout(() => {
       inputRef.current?.focus();
     }, 100);
@@ -110,12 +99,6 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
 
     console.log('About to send quick question, current remaining:', remainingMessages);
     await getQuickAnalysis(prompt);
-    
-    // Force refresh usage after sending
-    setTimeout(() => {
-      console.log('Force refreshing usage after quick question...');
-      fetchUsage();
-    }, 1000);
   };
 
   const handleLoadSession = async (sessionId: string) => {
