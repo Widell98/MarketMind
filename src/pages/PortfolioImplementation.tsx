@@ -19,70 +19,51 @@ const PortfolioImplementation = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [showChat, setShowChat] = useState(false);
-  const [hasRiskProfile, setHasRiskProfile] = useState<boolean | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [isCheckingProfile, setIsCheckingProfile] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
-    const checkUserProfile = async () => {
-      if (!user) return;
+    const initializePage = async () => {
+      if (!user) {
+        setIsInitializing(false);
+        return;
+      }
 
       try {
-        setIsCheckingProfile(true);
+        setIsInitializing(true);
         
-        // Check if user has a risk profile
-        const { data: riskProfile, error: riskError } = await supabase
-          .from('user_risk_profiles')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (riskError) {
-          console.error('Error checking risk profile:', riskError);
-          setHasRiskProfile(false);
-          setShowOnboarding(true);
-          return;
-        }
-
-        // Check if user has any portfolios
-        const { data: portfolios, error: portfolioError } = await supabase
-          .from('user_portfolios')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('is_active', true)
-          .limit(1);
-
-        if (portfolioError) {
-          console.error('Error checking portfolios:', portfolioError);
-          setHasRiskProfile(false);
-          setShowOnboarding(true);
-          return;
-        }
-
-        const hasProfile = !!riskProfile;
-        const hasPortfolio = portfolios && portfolios.length > 0;
+        // Wait a moment for usePortfolio to load
+        setTimeout(() => {
+          console.log('Portfolio initialization check:', { 
+            activePortfolio: !!activePortfolio, 
+            loading,
+            portfolioId: activePortfolio?.id 
+          });
+          
+          // If we have an active portfolio, show the main page
+          // If loading is done and no portfolio exists, show onboarding
+          if (!loading) {
+            if (activePortfolio) {
+              console.log('Active portfolio found, showing main page');
+              setShowOnboarding(false);
+            } else {
+              console.log('No active portfolio, showing onboarding');
+              setShowOnboarding(true);
+            }
+          }
+          
+          setIsInitializing(false);
+        }, 1000);
         
-        console.log('Profile check results:', { hasProfile, hasPortfolio, riskProfile, portfolios });
-        
-        setHasRiskProfile(hasProfile && hasPortfolio);
-        
-        // Only show onboarding if user has neither risk profile nor portfolio
-        if (!hasProfile || !hasPortfolio) {
-          setShowOnboarding(true);
-        } else {
-          setShowOnboarding(false);
-        }
       } catch (error) {
-        console.error('Error in profile check:', error);
-        setHasRiskProfile(false);
+        console.error('Error initializing page:', error);
         setShowOnboarding(true);
-      } finally {
-        setIsCheckingProfile(false);
+        setIsInitializing(false);
       }
     };
 
-    checkUserProfile();
-  }, [user]);
+    initializePage();
+  }, [user, activePortfolio, loading]);
 
   // Listen for portfolio generation completion
   useEffect(() => {
@@ -90,7 +71,6 @@ const PortfolioImplementation = () => {
       if (e.key === 'portfolio_generation_complete') {
         console.log('Portfolio generation completed, refreshing...');
         setShowOnboarding(false);
-        setHasRiskProfile(true);
         window.location.reload();
       }
     };
@@ -109,11 +89,10 @@ const PortfolioImplementation = () => {
 
   const handleUpdateProfile = () => {
     setShowOnboarding(true);
-    setHasRiskProfile(false);
   };
 
-  // Show loading while checking profile
-  if (isCheckingProfile || loading || hasRiskProfile === null) {
+  // Show loading while initializing or portfolio is loading
+  if (isInitializing || loading) {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
@@ -128,8 +107,8 @@ const PortfolioImplementation = () => {
     );
   }
 
-  // Show onboarding if user doesn't have a risk profile or portfolio
-  if (showOnboarding || !hasRiskProfile) {
+  // Show onboarding if user doesn't have an active portfolio
+  if (showOnboarding || !activePortfolio) {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
@@ -194,29 +173,11 @@ const PortfolioImplementation = () => {
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-6">
             {/* Portfolio Overview */}
-            {activePortfolio ? (
-              <PortfolioOverview 
-                portfolio={activePortfolio}
-                onQuickChat={handleQuickChat}
-                onActionClick={handleActionClick}
-              />
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Brain className="w-5 h-5 text-blue-600" />
-                    Portfölj genereras
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 mb-4">
-                    Din portfölj håller på att genereras baserat på din riskprofil. Detta kan ta några minuter.
-                  </p>
-                  <div className="animate-pulse bg-gray-200 h-4 rounded mb-2"></div>
-                  <div className="animate-pulse bg-gray-200 h-4 rounded w-3/4"></div>
-                </CardContent>
-              </Card>
-            )}
+            <PortfolioOverview 
+              portfolio={activePortfolio}
+              onQuickChat={handleQuickChat}
+              onActionClick={handleActionClick}
+            />
 
             {/* AI Chat Section */}
             <Card>
