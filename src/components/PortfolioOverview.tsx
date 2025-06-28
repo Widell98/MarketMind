@@ -100,6 +100,14 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     return labels[type as keyof typeof labels] || 'Övrigt';
   };
 
+  // Get AI-recommended stocks from portfolio data
+  const recommendedStocks = portfolio?.recommended_stocks || [];
+
+  const handleStockChat = (stockName: string, stockSymbol?: string) => {
+    const message = `Berätta om ${stockName}${stockSymbol ? ` (${stockSymbol})` : ''}. Varför rekommenderas denna aktie för min portfölj? Vad är fördelarna och riskerna?`;
+    onQuickChat && onQuickChat(message);
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Key Metrics */}
@@ -144,32 +152,35 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </Card>
       </div>
 
-      {/* Holdings */}
+      {/* AI-Recommended Holdings */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base sm:text-lg">Dina innehav</CardTitle>
-              <CardDescription>Aktuella investeringar och positioner</CardDescription>
+              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                <Brain className="w-5 h-5 text-purple-600" />
+                AI-Rekommenderade Innehav
+              </CardTitle>
+              <CardDescription>Aktier som AI-advisorn rekommenderar för din portfölj</CardDescription>
             </div>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => onQuickChat && onQuickChat("Analysera mina nuvarande innehav och ge mig förslag på förbättringar")}
+                onClick={() => onQuickChat && onQuickChat("Varför rekommenderas just dessa aktier för min portfölj? Förklara logiken bakom valen.")}
                 className="flex items-center gap-2"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span className="hidden sm:inline">Analysera innehav</span>
+                <span className="hidden sm:inline">Förklara val</span>
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => onQuickChat && onQuickChat("Hjälp mig att lägga till nya innehav i min portfölj")}
+                onClick={() => onQuickChat && onQuickChat("Föreslå alternativa aktier som skulle passa min portfölj och riskprofil")}
                 className="flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Lägg till</span>
+                <span className="hidden sm:inline">Alternativ</span>
               </Button>
             </div>
           </div>
@@ -178,21 +189,21 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
           {loading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-sm text-muted-foreground">Laddar innehav...</p>
+              <p className="text-sm text-muted-foreground">Laddar rekommendationer...</p>
             </div>
-          ) : holdings.length === 0 ? (
+          ) : recommendedStocks.length === 0 ? (
             <div className="text-center py-8">
-              <PieChart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">Inga innehav registrerade</h3>
+              <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">Inga AI-rekommendationer ännu</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Lägg till dina investeringar för att få personliga AI-analyser
+                Skapa din riskprofil för att få personliga aktieförslag från AI-advisorn
               </p>
               <Button
-                onClick={() => onQuickChat && onQuickChat("Hjälp mig att registrera mina första innehav")}
+                onClick={() => onQuickChat && onQuickChat("Hjälp mig att få aktieförslag genom att analysera min riskprofil")}
                 className="flex items-center gap-2"
               >
-                <Plus className="w-4 h-4" />
-                Lägg till första innehav
+                <Brain className="w-4 h-4" />
+                Få AI-rekommendationer
               </Button>
             </div>
           ) : (
@@ -200,15 +211,92 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Innehav</TableHead>
-                    <TableHead>Typ</TableHead>
+                    <TableHead>Företag</TableHead>
                     <TableHead>Sektor</TableHead>
-                    <TableHead className="text-right">Värde</TableHead>
-                    <TableHead className="text-right">Åtgärder</TableHead>
+                    <TableHead>Rekommenderad vikt</TableHead>
+                    <TableHead>Motivering</TableHead>
+                    <TableHead className="text-right">Diskutera</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {holdings.map((holding) => (
+                  {recommendedStocks.map((stock: any, index: number) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{stock.name || stock.symbol}</div>
+                          {stock.symbol && stock.name && (
+                            <div className="text-sm text-muted-foreground">{stock.symbol}</div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={getHoldingTypeColor('stock')}>
+                          {stock.sector || 'Teknologi'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">
+                          {stock.weight ? `${stock.weight}%` : '5-10%'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {stock.reasoning || 'Passar din riskprofil och diversifiering'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleStockChat(stock.name || stock.symbol, stock.symbol)}
+                          className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          <span className="hidden sm:inline">Diskutera</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* User's Current Holdings */}
+      {holdings.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base sm:text-lg">Dina Nuvarande Innehav</CardTitle>
+                <CardDescription>Aktier och fonder du redan äger</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onQuickChat && onQuickChat("Jämför mina nuvarande innehav med AI-rekommendationerna. Vad borde jag köpa, sälja eller behålla?")}
+                className="flex items-center gap-2"
+              >
+                <BarChart3 className="w-4 h-4" />
+                <span className="hidden sm:inline">Jämför</span>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Innehav</TableHead>
+                    <TableHead>Typ</TableHead>
+                    <TableHead>Värde</TableHead>
+                    <TableHead className="text-right">Diskutera</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {holdings.slice(0, 5).map((holding) => (
                     <TableRow key={holding.id}>
                       <TableCell>
                         <div>
@@ -224,27 +312,19 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm">{holding.sector || 'Ej specificerad'}</span>
-                      </TableCell>
-                      <TableCell className="text-right">
                         <div className="font-medium">
                           {formatCurrency(holding.current_value, holding.currency)}
                         </div>
-                        {holding.quantity && (
-                          <div className="text-sm text-muted-foreground">
-                            {holding.quantity} st
-                          </div>
-                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => onQuickChat && onQuickChat(`Analysera ${holding.name} och ge mig förslag på vad jag ska göra med denna position`)}
-                          className="flex items-center gap-1"
+                          onClick={() => handleStockChat(holding.name, holding.symbol)}
+                          className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
                         >
-                          <Edit3 className="w-3 h-3" />
-                          Analysera
+                          <MessageCircle className="w-4 h-4" />
+                          <span className="hidden sm:inline">Diskutera</span>
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -252,9 +332,9 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                 </TableBody>
               </Table>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* AI Insights */}
       <Card>
@@ -298,10 +378,10 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Zap className="w-5 h-5 text-blue-600" />
-            Snabbåtgärder för innehav
+            Snabbåtgärder för portfölj
           </CardTitle>
           <CardDescription>
-            AI-assisterade funktioner för att hantera din portfölj
+            AI-assisterade funktioner för att optimera din portfölj
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -309,43 +389,43 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             <Button
               variant="outline"
               className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
-              onClick={() => onQuickChat && onQuickChat("Hjälp mig att registrera ett nytt innehav i min portfölj")}
+              onClick={() => onQuickChat && onQuickChat("Analysera alla AI-rekommendationer och förklara varför de passar min portfölj")}
             >
-              <Plus className="w-4 h-4 text-green-600" />
+              <Brain className="w-4 h-4 text-purple-600" />
               <div>
-                <div className="font-medium text-sm">Lägg till innehav</div>
-                <div className="text-xs text-muted-foreground">Registrera nya investeringar</div>
+                <div className="font-medium text-sm">Förklara AI-val</div>
+                <div className="text-xs text-muted-foreground">Motivering bakom rekommendationer</div>
               </div>
             </Button>
             
             <Button
               variant="outline"
               className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
-              onClick={() => onQuickChat && onQuickChat("Analysera alla mina innehav och föreslå vilka jag borde sälja, köpa mer av eller behålla")}
+              onClick={() => onQuickChat && onQuickChat("Vilka aktier borde jag köpa först baserat på AI-rekommendationerna och min budget?")}
+            >
+              <TrendingUp className="w-4 h-4 text-green-600" />
+              <div>
+                <div className="font-medium text-sm">Köpordning</div>
+                <div className="text-xs text-muted-foreground">Prioritera investeringar</div>
+              </div>
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
+              onClick={() => onQuickChat && onQuickChat("Jämför AI-rekommendationerna med mina nuvarande innehav. Vad borde jag sälja?")}
             >
               <BarChart3 className="w-4 h-4 text-blue-600" />
               <div>
-                <div className="font-medium text-sm">Analysera portfölj</div>
-                <div className="text-xs text-muted-foreground">Få AI-analys av innehav</div>
+                <div className="font-medium text-sm">Portföljjämförelse</div>
+                <div className="text-xs text-muted-foreground">Nuvarande vs. rekommenderat</div>
               </div>
             </Button>
             
             <Button
               variant="outline"
               className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
-              onClick={() => onQuickChat && onQuickChat("Föreslå nya investeringsmöjligheter baserat på min nuvarande portfölj och riskprofil")}
-            >
-              <TrendingUp className="w-4 h-4 text-purple-600" />
-              <div>
-                <div className="font-medium text-sm">Nya möjligheter</div>
-                <div className="text-xs text-muted-foreground">Hitta investeringar</div>
-              </div>
-            </Button>
-            
-            <Button
-              variant="outline"
-              className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
-              onClick={() => onQuickChat && onQuickChat("Berätta vilka risker som finns i min portfölj och hur jag kan minska dem")}
+              onClick={() => onQuickChat && onQuickChat("Berätta vilka risker som finns i de AI-rekommenderade aktierna")}
             >
               <Shield className="w-4 h-4 text-red-600" />
               <div>
@@ -357,12 +437,12 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             <Button
               variant="outline"
               className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
-              onClick={() => onQuickChat && onQuickChat("Hjälp mig att uppdatera värdena på mina befintliga innehav")}
+              onClick={() => onQuickChat && onQuickChat("Föreslå alternativa aktier som inte finns i AI-rekommendationerna men som skulle passa min profil")}
             >
-              <Edit3 className="w-4 h-4 text-orange-600" />
+              <Plus className="w-4 h-4 text-orange-600" />
               <div>
-                <div className="font-medium text-sm">Uppdatera värden</div>
-                <div className="text-xs text-muted-foreground">Justera portföljvärden</div>
+                <div className="font-medium text-sm">Alternativa val</div>
+                <div className="text-xs text-muted-foreground">Utforska andra möjligheter</div>
               </div>
             </Button>
             
