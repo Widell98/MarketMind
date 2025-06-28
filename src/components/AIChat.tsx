@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,7 +57,6 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     }
   }, [currentSessionId, sessions, messages]);
 
-  // Update usage after each message
   useEffect(() => {
     fetchUsage();
   }, [messages.length, fetchUsage]);
@@ -68,7 +68,6 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     const remainingMessages = getRemainingUsage('ai_message');
     const isPremium = subscription?.subscribed;
 
-    // Check limitation before sending
     if (!isPremium && remainingMessages <= 0) {
       return;
     }
@@ -77,7 +76,6 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     setInputMessage('');
     await sendMessage(message);
     
-    // Focus back to input
     setTimeout(() => {
       inputRef.current?.focus();
     }, 100);
@@ -166,9 +164,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     }
   ];
 
-  // Function to format AI response with better styling
   const formatAIResponse = (content: string) => {
-    // Split by common patterns and add styling
     const sections = content.split(/###|\*\*/).filter(section => section.trim());
     
     return (
@@ -176,10 +172,8 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
         {sections.map((section, index) => {
           const trimmedSection = section.trim();
           
-          // Skip empty sections
           if (!trimmedSection) return null;
           
-          // Check if it's a heading (contains numbers like "1.", "2." etc)
           if (/^\d+\./.test(trimmedSection)) {
             const [title, ...contentParts] = trimmedSection.split('\n');
             return (
@@ -197,7 +191,6 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
             );
           }
           
-          // Check if it's a bullet point list
           if (trimmedSection.includes('- ')) {
             const lines = trimmedSection.split('\n');
             return (
@@ -221,7 +214,6 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
             );
           }
           
-          // Regular paragraph
           return (
             <p key={index} className="text-sm text-gray-700 leading-relaxed">
               {trimmedSection}
@@ -235,7 +227,6 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
   const isAtMessageLimit = !isPremium && remainingMessages <= 0;
   const isAtAnalysisLimit = !isPremium && remainingAnalyses <= 0;
 
-  // Get current session name for display
   const currentSessionName = currentSessionId && sessions.length > 0 
     ? sessions.find(s => s.id === currentSessionId)?.session_name 
     : null;
@@ -248,17 +239,6 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
             <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
               <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
               <span className="truncate">AI Portfolio Assistent</span>
-              {!isPremium && (
-                <Badge variant={remainingMessages <= 2 ? "destructive" : "outline"} className="text-xs ml-auto">
-                  {remainingMessages} kvar
-                </Badge>
-              )}
-              {isPremium && (
-                <Badge variant="default" className="text-xs ml-auto">
-                  <Crown className="w-3 h-3 mr-1" />
-                  Premium
-                </Badge>
-              )}
             </CardTitle>
             <div className="flex items-center gap-2">
               <ChatHistory 
@@ -280,11 +260,30 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
               </Button>
             </div>
           </div>
+
+          {/* Daily Usage Display */}
+          <div className="mb-4">
+            {isPremium ? (
+              <Badge variant="default" className="text-xs">
+                <Crown className="w-3 h-3 mr-1" />
+                Premium - Obegränsad användning
+              </Badge>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Badge variant={remainingMessages <= 2 ? "destructive" : "outline"} className="text-xs">
+                  {remainingMessages}/5 meddelanden kvar idag
+                </Badge>
+                <Badge variant={remainingAnalyses <= 1 ? "destructive" : "outline"} className="text-xs">
+                  {remainingAnalyses}/3 analyser kvar idag
+                </Badge>
+              </div>
+            )}
+          </div>
           
           <CardDescription className="text-xs sm:text-sm">
             {isPremium ? 
               'Obegränsad AI-analys med djupgående portföljinsikter' :
-              `${remainingMessages} AI-meddelanden och ${remainingAnalyses} analyser kvar idag`
+              'Gratis användare har 5 meddelanden och 3 analyser per dag'
             }
             {currentSessionName && (
               <div className="flex items-center gap-2 mt-2">
@@ -302,8 +301,9 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
             )}
           </CardDescription>
           
+          {/* Usage Limit Alerts */}
           {!isPremium && isAtMessageLimit && (
-            <Alert className="border-red-200 bg-red-50">
+            <Alert className="border-red-200 bg-red-50 mt-3">
               <Lock className="h-4 w-4 text-red-600" />
               <AlertDescription className="text-red-800">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -323,7 +323,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
           )}
 
           {!isPremium && !isAtMessageLimit && remainingMessages <= 2 && (
-            <Alert className="border-orange-200 bg-orange-50">
+            <Alert className="border-orange-200 bg-orange-50 mt-3">
               <AlertCircle className="h-4 w-4 text-orange-600" />
               <AlertDescription className="text-orange-800">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -344,7 +344,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
           )}
           
           {quotaExceeded && (
-            <Alert className="border-red-200 bg-red-50">
+            <Alert className="border-red-200 bg-red-50 mt-3">
               <AlertCircle className="h-4 w-4 text-red-600" />
               <AlertDescription className="text-red-800 text-xs sm:text-sm">
                 <strong>OpenAI API-kvot överskriden:</strong> Du har nått din dagliga gräns för AI-användning. 
@@ -353,11 +353,12 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
             </Alert>
           )}
           
-          <div className="w-full">
+          <div className="w-full mt-4">
             <Tabs defaultValue="chat" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="chat" className="text-xs sm:text-sm">
+                <TabsTrigger value="chat" className="text-xs sm:text-sm" disabled={isAtMessageLimit}>
                   Chat {!isPremium && `(${remainingMessages})`}
+                  {isAtMessageLimit && <Lock className="w-3 h-3 ml-1" />}
                 </TabsTrigger>
                 <TabsTrigger 
                   value="analysis" 
@@ -365,6 +366,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
                   className="text-xs sm:text-sm"
                 >
                   Analys {!isPremium && `(${remainingAnalyses})`}
+                  {isAtAnalysisLimit && <Lock className="w-3 h-3 ml-1" />}
                 </TabsTrigger>
               </TabsList>
               

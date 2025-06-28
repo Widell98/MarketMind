@@ -58,11 +58,12 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
   const handleLoadSession = (sessionId: string) => {
     console.log('ChatHistory: Loading session', sessionId);
     onLoadSession(sessionId);
-    setIsOpen(false); // Close dialog after loading
+    setIsOpen(false);
   };
 
   const handleDelete = (sessionId: string, sessionName: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering the load session
+    e.preventDefault();
+    e.stopPropagation();
     if (window.confirm(`Är du säker på att du vill ta bort chatten "${sessionName}"? Detta kan inte ångras.`)) {
       onDeleteSession?.(sessionId);
     }
@@ -73,17 +74,14 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
     
     return (
       <div 
-        className={`relative group rounded-lg transition-all border ${
+        className={`relative group border rounded-lg transition-all cursor-pointer ${
           isActive 
             ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700' 
             : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-gray-50 dark:hover:bg-gray-800/50'
         }`}
+        onClick={() => handleLoadSession(session.id)}
       >
-        {/* Main clickable area */}
-        <div 
-          className="flex items-center gap-3 p-4 cursor-pointer w-full"
-          onClick={() => handleLoadSession(session.id)}
-        >
+        <div className="flex items-center gap-3 p-4 pr-12">
           <div className="flex-shrink-0">
             {isActive ? (
               <MessageSquare className="w-5 h-5 text-blue-600" />
@@ -108,18 +106,15 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
               )}
             </div>
           </div>
-          
-          {/* Spacer to push delete button to the right */}
-          <div className="flex-shrink-0 w-10"></div>
         </div>
         
-        {/* Delete button - positioned absolutely to avoid layout issues */}
         {onDeleteSession && (
           <Button
             size="sm"
             variant="ghost"
             onClick={(e) => handleDelete(session.id, session.session_name, e)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 z-20"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 pointer-events-auto"
+            style={{ zIndex: 10 }}
           >
             <Trash2 className="w-4 h-4" />
           </Button>
@@ -141,7 +136,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
           )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <History className="w-5 h-5" />
@@ -158,9 +153,8 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
         </DialogHeader>
         
         <div className="space-y-4 flex-1 min-h-0">
-          {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             <Input
               placeholder="Sök i chathistorik..."
               value={searchTerm}
@@ -169,7 +163,6 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
             />
           </div>
 
-          {/* Loading state */}
           {isLoadingSession && (
             <div className="text-center py-4">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
@@ -177,9 +170,8 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
             </div>
           )}
 
-          {/* Sessions list */}
           <ScrollArea className="flex-1 min-h-0 max-h-96">
-            <div className="space-y-3">
+            <div className="space-y-3 pr-4">
               {filteredSessions.length > 0 ? (
                 filteredSessions.map(session => (
                   <SessionItem key={session.id} session={session} />
@@ -200,7 +192,6 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
             </div>
           </ScrollArea>
 
-          {/* Footer info */}
           {sessions.length > 0 && (
             <div className="border-t pt-3 text-xs text-gray-500 dark:text-gray-400 text-center">
               <div className="flex items-center justify-center gap-4">
