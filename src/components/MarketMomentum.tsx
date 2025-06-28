@@ -1,44 +1,55 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown, Activity, Target } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { TrendingUp, TrendingDown, Activity, Target, RefreshCw } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+
+interface MomentumItem {
+  id: string;
+  title: string;
+  description: string;
+  trend: 'up' | 'down' | 'neutral';
+  change: string;
+  timeframe: string;
+  sentiment?: string;
+}
 
 const MarketMomentum = () => {
-  const momentumData = [
-    {
-      id: '1',
-      title: 'Tech-sektorn stiger',
-      description: 'Stark utveckling för svenska tech-bolag',
-      trend: 'up' as const,
-      change: '+2.4%',
-      timeframe: '24h'
-    },
-    {
-      id: '2',
-      title: 'Högt institutionellt intresse',
-      description: 'Ökade köp från storbanker',
-      trend: 'up' as const,
-      change: '+15%',
-      timeframe: 'Vecka'
-    },
-    {
-      id: '3',
-      title: 'Volatilitet minskar',
-      description: 'Stabilare marknadsrörelser',
-      trend: 'neutral' as const,
-      change: '-8%',
-      timeframe: 'Månad'
-    },
-    {
-      id: '4',
-      title: 'AI-aktier i fokus',
-      description: 'Stark efterfrågan på AI-relaterade bolag',
-      trend: 'up' as const,
-      change: '+5.2%',
-      timeframe: '3 dagar'
+  const [momentumData, setMomentumData] = useState<MomentumItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchMomentumData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { data, error } = await supabase.functions.invoke('fetch-news-data', {
+        body: { type: 'momentum' }
+      });
+
+      if (error) {
+        console.error('Error fetching momentum data:', error);
+        setError('Kunde inte ladda marknadsmomentum');
+        return;
+      }
+
+      if (data && Array.isArray(data)) {
+        setMomentumData(data);
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      setError('Fel vid hämtning av momentumdata');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  useEffect(() => {
+    fetchMomentumData();
+  }, []);
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
@@ -56,21 +67,82 @@ const MarketMomentum = () => {
     }
   };
 
+  const getSentimentColor = (sentiment?: string) => {
+    switch (sentiment) {
+      case 'bullish': return 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300';
+      case 'bearish': return 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300';
+      case 'positive': return 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300';
+      case 'stable': return 'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300';
+      default: return 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300';
+    }
+  };
+
+  if (loading) {
+    return (
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
+            <Activity className="w-4 h-4 text-purple-500" />
+            Marknadsmomentum
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8">
+            <RefreshCw className="w-6 h-6 animate-spin text-purple-500" />
+            <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Laddar...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
+            <Activity className="w-4 h-4 text-purple-500" />
+            Marknadsmomentum
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-4">
+            <p className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>
+            <Button size="sm" onClick={fetchMomentumData} variant="outline">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Försök igen
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="border-0 shadow-sm">
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
-          <Activity className="w-4 h-4 text-purple-500" />
-          Marknadsmomentu
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
+            <Activity className="w-4 h-4 text-purple-500" />
+            Marknadsmomentum
+          </CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchMomentumData}
+            className="text-xs px-2 py-1"
+          >
+            <RefreshCw className="w-3 h-3" />
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {momentumData.map((item) => (
-          <div key={item.id} className="flex items-start gap-3 p-2">
+          <div key={item.id} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
             <div className="flex items-center gap-1 mt-0.5">
               {getTrendIcon(item.trend)}
             </div>
-            <div className="flex-1 space-y-1">
+            <div className="flex-1 space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-medium text-gray-900 dark:text-gray-100">
                   {item.title}
@@ -87,6 +159,11 @@ const MarketMomentum = () => {
               <p className="text-xs text-gray-600 dark:text-gray-400">
                 {item.description}
               </p>
+              {item.sentiment && (
+                <Badge className={`text-xs px-1.5 py-0.5 ${getSentimentColor(item.sentiment)}`}>
+                  {item.sentiment}
+                </Badge>
+              )}
             </div>
           </div>
         ))}
@@ -95,11 +172,11 @@ const MarketMomentum = () => {
           <div className="flex items-center gap-2 mb-1">
             <Activity className="w-3 h-3 text-blue-500" />
             <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-              Marknadsstämning
+              Marknadssammanfattning
             </span>
           </div>
           <p className="text-xs text-blue-600 dark:text-blue-400">
-            Allmänt optimistisk stämning med fokus på tillväxtaktier och tech-sektorn.
+            Baserat på aktuell data och marknadsanalys. Uppdateras regelbundet för att ge dig den senaste informationen.
           </p>
         </div>
       </CardContent>
