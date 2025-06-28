@@ -20,49 +20,19 @@ const PortfolioImplementation = () => {
   const navigate = useNavigate();
   const [showChat, setShowChat] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
-    const initializePage = async () => {
-      if (!user) {
-        setIsInitializing(false);
-        return;
-      }
+    if (!user || loading) return;
 
-      try {
-        setIsInitializing(true);
-        
-        // Wait a moment for usePortfolio to load
-        setTimeout(() => {
-          console.log('Portfolio initialization check:', { 
-            activePortfolio: !!activePortfolio, 
-            loading,
-            portfolioId: activePortfolio?.id 
-          });
-          
-          // If we have an active portfolio, show the main page
-          // If loading is done and no portfolio exists, show onboarding
-          if (!loading) {
-            if (activePortfolio) {
-              console.log('Active portfolio found, showing main page');
-              setShowOnboarding(false);
-            } else {
-              console.log('No active portfolio, showing onboarding');
-              setShowOnboarding(true);
-            }
-          }
-          
-          setIsInitializing(false);
-        }, 1000);
-        
-      } catch (error) {
-        console.error('Error initializing page:', error);
-        setShowOnboarding(true);
-        setIsInitializing(false);
-      }
-    };
-
-    initializePage();
+    // If we have an active portfolio, show the main page
+    // If no portfolio exists, show onboarding
+    if (activePortfolio) {
+      console.log('Active portfolio found, showing main page');
+      setShowOnboarding(false);
+    } else {
+      console.log('No active portfolio, showing onboarding');
+      setShowOnboarding(true);
+    }
   }, [user, activePortfolio, loading]);
 
   // Listen for portfolio generation completion
@@ -91,8 +61,8 @@ const PortfolioImplementation = () => {
     setShowOnboarding(true);
   };
 
-  // Show loading while initializing or portfolio is loading
-  if (isInitializing || loading) {
+  // Show loading while portfolio is loading
+  if (loading) {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">

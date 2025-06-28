@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,19 +7,16 @@ import { Progress } from '@/components/ui/progress';
 import { 
   TrendingUp, 
   TrendingDown, 
-  DollarSign, 
   BarChart3, 
   PieChart, 
   Activity,
   Target,
   Zap,
-  MessageSquare,
   Brain,
   AlertTriangle,
-  CheckCircle,
-  Info
+  Shield
 } from 'lucide-react';
-import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
 interface PortfolioOverviewProps {
   portfolio: any;
@@ -31,16 +29,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   onQuickChat, 
   onActionClick 
 }) => {
-  // Mock data for demonstration
-  const performanceData = [
-    { month: 'Jan', value: 95000 },
-    { month: 'Feb', value: 98000 },
-    { month: 'Mar', value: 102000 },
-    { month: 'Apr', value: 108000 },
-    { month: 'Maj', value: 105000 },
-    { month: 'Jun', value: 112000 },
-  ];
-
   const allocationData = [
     { name: 'Aktier', value: 60, color: '#3b82f6' },
     { name: 'Obligationer', value: 25, color: '#10b981' },
@@ -75,34 +63,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Totalt värde</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">1,125,430 SEK</div>
-            <p className="text-xs text-muted-foreground">
-              <TrendingUp className="inline w-3 h-3 mr-1 text-green-600" />
-              +8.2% sedan årets början
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Månadsavkastning</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">+2.4%</div>
-            <p className="text-xs text-muted-foreground">
-              +24,350 SEK denna månad
-            </p>
-          </CardContent>
-        </Card>
-        
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Riskjusterad avkastning</CardTitle>
@@ -128,64 +89,48 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             </p>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Performance Chart and Allocation */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base sm:text-lg">Portföljutveckling</CardTitle>
-            <CardDescription>Värdutveckling senaste 6 månaderna</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-48 sm:h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={performanceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
-                  <Tooltip formatter={(value: any) => [`${value.toLocaleString()} SEK`, 'Värde']} />
-                  <Area 
-                    type="monotone" 
-                    dataKey="value" 
-                    stroke="#3b82f6" 
-                    fill="#3b82f6" 
-                    fillOpacity={0.1} 
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base sm:text-lg">Tillgångsfördelning</CardTitle>
-            <CardDescription>Aktuell allokering per tillgångsklass</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Riskpoäng</CardTitle>
+            <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="h-48 sm:h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartsPieChart>
-                  <Pie
-                    data={allocationData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}%`}
-                  >
-                    {allocationData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </RechartsPieChart>
-              </ResponsiveContainer>
-            </div>
+            <div className="text-2xl font-bold">{portfolio?.risk_score || 6}/10</div>
+            <p className="text-xs text-muted-foreground">
+              Måttlig risk
+            </p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Allocation */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base sm:text-lg">Tillgångsfördelning</CardTitle>
+          <CardDescription>Aktuell allokering per tillgångsklass</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-48 sm:h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <RechartsPieChart>
+                <Pie
+                  data={allocationData}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  dataKey="value"
+                  label={({ name, value }) => `${name}: ${value}%`}
+                >
+                  {allocationData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+              </ResponsiveContainer>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* AI Insights */}
       <Card>

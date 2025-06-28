@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Brain, TrendingUp, AlertTriangle, CheckCircle, Clock, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import FinancialCalendar from './FinancialCalendar';
 import MarketMomentum from './MarketMomentum';
 
 const UserInsightsPanel = () => {
@@ -48,9 +47,6 @@ const UserInsightsPanel = () => {
           </div>
         </CardContent>
       </Card>
-
-      {/* Financial Calendar */}
-      <FinancialCalendar />
 
       {/* Quick Actions */}
       <Card className="border-0 shadow-sm">
