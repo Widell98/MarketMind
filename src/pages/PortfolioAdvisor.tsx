@@ -87,15 +87,21 @@ const PortfolioAdvisor = () => {
     }
   };
 
-  const handleToggleFavorite = (sessionId: string) => {
-    console.log('Toggle favorite for session:', sessionId);
+  // Unified handlers for chat functionality that work consistently across the app
+  const handleLoadChatSession = async (sessionId: string) => {
+    console.log('Loading chat session from PortfolioAdvisor:', sessionId);
+    await loadSession(sessionId);
+    setActiveTab('chat'); // Always switch to chat tab when loading a session
   };
 
-  const handleRenameSession = (sessionId: string, newName: string) => {
-    console.log('Rename session:', sessionId, 'to:', newName);
+  const handleCreateNewChat = async () => {
+    console.log('Creating new chat from PortfolioAdvisor');
+    await createNewSession();
+    setActiveTab('chat'); // Always switch to chat tab when creating new session
   };
 
-  const handleDeleteSession = async (sessionId: string) => {
+  const handleDeleteChatSession = async (sessionId: string) => {
+    console.log('Deleting chat session from PortfolioAdvisor:', sessionId);
     await deleteSession(sessionId);
   };
 
@@ -196,19 +202,13 @@ const PortfolioAdvisor = () => {
                 <ChatHistory
                   sessions={sessions}
                   currentSessionId={currentSessionId}
-                  onLoadSession={(sessionId) => {
-                    loadSession(sessionId);
-                    setActiveTab('chat');
-                  }}
-                  onDeleteSession={handleDeleteSession}
+                  onLoadSession={handleLoadChatSession}
+                  onDeleteSession={handleDeleteChatSession}
                 />
                 <Button
                   variant="outline"
                   size="default"
-                  onClick={() => {
-                    createNewSession();
-                    setActiveTab('chat');
-                  }}
+                  onClick={handleCreateNewChat}
                   className="text-sm lg:text-base"
                 >
                   Ny Chat
