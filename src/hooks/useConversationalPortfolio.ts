@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -188,6 +187,7 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
     if (!user) return;
 
     // Convert enhanced conversation data to risk profile format
+    // Only include fields that exist in the user_risk_profiles table
     const riskProfile = {
       age: data.age ? parseInt(data.age) : null,
       monthly_investment_amount: data.monthlyAmount ? parseFloat(data.monthlyAmount.replace(/[^\d]/g, '')) : null,
@@ -198,18 +198,6 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
       sector_interests: data.sectors || [],
       current_holdings: data.currentHoldings || [],
       current_allocation: {},
-      
-      // Enhanced fields for interests and preferences
-      personal_interests: data.interests || [],
-      interested_companies: data.companies || [],
-      portfolio_size_range: data.portfolioSize,
-      rebalancing_frequency: data.rebalancingFrequency,
-      market_timing_approach: data.marketTiming,
-      complex_strategies_experience: data.complexStrategies || [],
-      risk_management_style: data.riskManagement,
-      geographic_preference: data.globalExposure,
-      alternative_investments_interest: data.alternativeInvestments || [],
-      portfolio_creation_help: data.portfolioHelp,
       
       // Required fields with defaults
       housing_situation: null,
