@@ -15,21 +15,74 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Fetching live news data...');
+    const url = new URL(req.url);
+    const dataType = url.searchParams.get('type') || 'news';
     
-    const newsData = await fetchLiveNewsData();
+    console.log(`Fetching ${dataType} data...`);
     
-    return new Response(JSON.stringify(newsData), {
+    let data;
+    if (dataType === 'calendar') {
+      data = await fetchFinancialCalendarData();
+    } else {
+      data = await fetchLiveNewsData();
+    }
+    
+    return new Response(JSON.stringify(data), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error fetching news data:', error);
+    console.error(`Error fetching data:`, error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
+
+async function fetchFinancialCalendarData() {
+  if (!openAIApiKey) {
+    console.log('No OpenAI key, using mock calendar data');
+    return getMockCalendarData();
+  }
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4.1-2025-04-14',
+        messages: [
+          {
+            role: 'system',
+            content: 'Du är en finansiell kalenderexpert. Generera realistiska finansiella händelser för den kommande veckan i Sverige och globalt. Inkludera företagsrapporter, ekonomisk data, centralbanksbeslut, och andra viktiga finansiella händelser. Formatera som JSON array med id, time, title, description, importance (high/medium/low), category (earnings/economic/dividend/other), company (optional), date (YYYY-MM-DD format), och dayOfWeek.'
+          },
+          {
+            role: 'user',
+            content: `Generera finansiella kalenderhändelser för veckan som börjar ${new Date().toLocaleDateString('sv-SE')}. Inkludera svenska företag som H&M, Ericsson, Volvo, SEB, Nordea, Atlas Copco, samt internationella händelser som påverkar svenska marknader.`
+          }
+        ],
+        temperature: 0.7,
+      }),
+    });
+
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+    
+    try {
+      const calendarItems = JSON.parse(content);
+      return Array.isArray(calendarItems) ? calendarItems : getMockCalendarData();
+    } catch (parseError) {
+      console.error('Error parsing AI calendar response:', parseError);
+      return getMockCalendarData();
+    }
+  } catch (error) {
+    console.error('Error calling OpenAI for calendar:', error);
+    return getMockCalendarData();
+  }
+}
 
 async function fetchLiveNewsData() {
   if (!openAIApiKey) {
@@ -38,7 +91,6 @@ async function fetchLiveNewsData() {
   }
 
   try {
-    // Use OpenAI to generate current financial news summaries
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -46,7 +98,7 @@ async function fetchLiveNewsData() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-2025-04-14',
         messages: [
           {
             role: 'system',
@@ -75,6 +127,55 @@ async function fetchLiveNewsData() {
     console.error('Error calling OpenAI for news:', error);
     return getMockNewsData();
   }
+}
+
+function getMockCalendarData() {
+  const today = new Date();
+  const thisWeek = [];
+  
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    const dayName = date.toLocaleDateString('sv-SE', { weekday: 'long' });
+    
+    if (i === 0) {
+      thisWeek.push({
+        id: `cal_${i}_1`,
+        time: '08:30',
+        title: 'Inflationsdata (KPI)',
+        description: 'Månatlig konsumentprisindex från SCB',
+        importance: 'high',
+        category: 'economic',
+        date: date.toISOString().split('T')[0],
+        dayOfWeek: dayName
+      });
+    } else if (i === 1) {
+      thisWeek.push({
+        id: `cal_${i}_1`,
+        time: '09:00',
+        title: 'H&M Q4 Rapport',
+        description: 'Kvartalsrapport från H&M',
+        importance: 'medium',
+        category: 'earnings',
+        company: 'H&M',
+        date: date.toISOString().split('T')[0],
+        dayOfWeek: dayName
+      });
+    } else if (i === 2) {
+      thisWeek.push({
+        id: `cal_${i}_1`,
+        time: '14:30',
+        title: 'Riksbankens Beslut',
+        description: 'Räntebeslut från Sveriges Riksbank',
+        importance: 'high',
+        category: 'economic',
+        date: date.toISOString().split('T')[0],
+        dayOfWeek: dayName
+      });
+    }
+  }
+  
+  return thisWeek;
 }
 
 function getMockNewsData() {

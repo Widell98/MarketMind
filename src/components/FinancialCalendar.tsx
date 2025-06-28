@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, TrendingUp, Building, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, TrendingUp, Building, Globe, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { format, addDays, startOfWeek, addWeeks, subWeeks } from 'date-fns';
 import { sv } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FinancialEvent {
   id: string;
@@ -15,70 +16,46 @@ interface FinancialEvent {
   importance: 'high' | 'medium' | 'low';
   category: 'earnings' | 'economic' | 'dividend' | 'other';
   company?: string;
+  date?: string;
+  dayOfWeek?: string;
 }
 
 const FinancialCalendar = () => {
-  const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
+  const [viewMode, setViewMode] = useState<'day' | 'week'>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [events, setEvents] = useState<FinancialEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock financial events data
-  const todayEvents: FinancialEvent[] = [
-    {
-      id: '1',
-      time: '08:30',
-      title: 'Inflation Data (CPI)',
-      description: 'Monthly consumer price index release',
-      importance: 'high',
-      category: 'economic'
-    },
-    {
-      id: '2',
-      time: '09:00',
-      title: 'H&M Q4 Earnings',
-      description: 'Quarterly earnings report',
-      importance: 'medium',
-      category: 'earnings',
-      company: 'H&M'
-    },
-    {
-      id: '3',
-      time: '14:30',
-      title: 'Fed Meeting Minutes',
-      description: 'Federal Reserve meeting minutes',
-      importance: 'high',
-      category: 'economic'
-    },
-    {
-      id: '4',
-      time: '16:00',
-      title: 'Volvo Cars Dividend',
-      description: 'Ex-dividend date',
-      importance: 'low',
-      category: 'dividend',
-      company: 'Volvo Cars'
+  const fetchCalendarData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { data, error } = await supabase.functions.invoke('fetch-news-data', {
+        body: { type: 'calendar' }
+      });
+
+      if (error) {
+        console.error('Error fetching calendar data:', error);
+        setError('Kunne inte ladda kalendern');
+        return;
+      }
+
+      if (data && Array.isArray(data)) {
+        setEvents(data);
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      setError('Fel vid hämtning av kalenderdata');
+    } finally {
+      setLoading(false);
     }
-  ];
-
-  const weekEvents = {
-    'Monday': [
-      { id: '1', time: '08:30', title: 'GDP Data', importance: 'high' as const, category: 'economic' as const },
-      { id: '2', time: '09:00', title: 'Ericsson Earnings', importance: 'medium' as const, category: 'earnings' as const }
-    ],
-    'Tuesday': [
-      { id: '3', time: '08:30', title: 'CPI Release', importance: 'high' as const, category: 'economic' as const },
-      { id: '4', time: '14:00', title: 'FOMC Meeting', importance: 'high' as const, category: 'economic' as const }
-    ],
-    'Wednesday': [
-      { id: '5', time: '07:00', title: 'Atlas Copco Q4', importance: 'medium' as const, category: 'earnings' as const },
-      { id: '6', time: '16:00', title: 'SEB Dividend', importance: 'low' as const, category: 'dividend' as const }
-    ],
-    'Thursday': [
-      { id: '7', time: '08:00', title: 'Unemployment Data', importance: 'medium' as const, category: 'economic' as const }
-    ],
-    'Friday': [
-      { id: '8', time: '09:30', title: 'Market Close Early', importance: 'low' as const, category: 'other' as const }
-    ]
   };
+
+  useEffect(() => {
+    fetchCalendarData();
+  }, []);
 
   const getImportanceColor = (importance: string) => {
     switch (importance) {
@@ -106,6 +83,69 @@ const FinancialCalendar = () => {
     }
   };
 
+  const getTodayEvents = () => {
+    const today = new Date().toISOString().split('T')[0];
+    return events.filter(event => 
+      event.date === today || 
+      (!event.date && event.dayOfWeek === format(new Date(), 'EEEE', { locale: sv }))
+    );
+  };
+
+  const getEventsByDay = () => {
+    const days = ['Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag', 'Söndag'];
+    const eventsByDay: Record<string, FinancialEvent[]> = {};
+    
+    days.forEach(day => {
+      eventsByDay[day] = events.filter(event => 
+        event.dayOfWeek === day || 
+        (event.date && format(new Date(event.date), 'EEEE', { locale: sv }) === day)
+      );
+    });
+    
+    return eventsByDay;
+  };
+
+  if (loading) {
+    return (
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-blue-500" />
+            Finansiell Kalender
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8">
+            <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
+            <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Laddar...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-blue-500" />
+            Finansiell Kalender
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-4">
+            <p className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>
+            <Button size="sm" onClick={fetchCalendarData} variant="outline">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Försök igen
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="border-0 shadow-sm">
       <CardHeader className="pb-3">
@@ -131,6 +171,14 @@ const FinancialCalendar = () => {
             >
               Vecka
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchCalendarData}
+              className="text-xs px-2 py-1"
+            >
+              <RefreshCw className="w-3 h-3" />
+            </Button>
           </div>
         </div>
       </CardHeader>
@@ -140,33 +188,39 @@ const FinancialCalendar = () => {
             <div className="text-xs text-gray-500 dark:text-gray-400 mb-3">
               {format(new Date(), 'EEEE, d MMMM', { locale: sv })}
             </div>
-            {todayEvents.map((event) => (
-              <div key={event.id} className="flex items-start gap-3 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 min-w-12">
-                  <Clock className="w-3 h-3" />
-                  {event.time}
-                </div>
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    {getCategoryIcon(event.category)}
-                    <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
-                      {event.title}
-                    </span>
-                    <Badge className={`text-xs px-1.5 py-0.5 ${getImportanceColor(event.importance)}`}>
-                      {event.importance}
-                    </Badge>
+            {getTodayEvents().length > 0 ? (
+              getTodayEvents().map((event) => (
+                <div key={event.id} className="flex items-start gap-3 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 min-w-12">
+                    <Clock className="w-3 h-3" />
+                    {event.time}
                   </div>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    {event.description}
-                  </p>
-                  {event.company && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400">
-                      {event.company}
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      {getCategoryIcon(event.category)}
+                      <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
+                        {event.title}
+                      </span>
+                      <Badge className={`text-xs px-1.5 py-0.5 ${getImportanceColor(event.importance)}`}>
+                        {event.importance}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {event.description}
                     </p>
-                  )}
+                    {event.company && (
+                      <p className="text-xs text-blue-600 dark:text-blue-400">
+                        {event.company}
+                      </p>
+                    )}
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                <p className="text-xs">Inga händelser idag</p>
               </div>
-            ))}
+            )}
           </div>
         ) : (
           <div className="space-y-3">
@@ -194,28 +248,34 @@ const FinancialCalendar = () => {
               </div>
             </div>
             
-            {Object.entries(weekEvents).map(([day, events]) => (
+            {Object.entries(getEventsByDay()).map(([day, dayEvents]) => (
               <div key={day} className="space-y-2">
                 <div className="text-xs font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 pb-1">
                   {day}
                 </div>
-                {events.map((event) => (
-                  <div key={event.id} className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg ml-2">
-                    <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 min-w-12">
-                      <Clock className="w-3 h-3" />
-                      {event.time}
+                {dayEvents.length > 0 ? (
+                  dayEvents.map((event) => (
+                    <div key={event.id} className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg ml-2">
+                      <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 min-w-12">
+                        <Clock className="w-3 h-3" />
+                        {event.time}
+                      </div>
+                      <div className="flex items-center gap-2 flex-1">
+                        {getCategoryIcon(event.category)}
+                        <span className="text-xs text-gray-900 dark:text-gray-100 flex-1">
+                          {event.title}
+                        </span>
+                        <Badge className={`text-xs px-1.5 py-0.5 ${getImportanceColor(event.importance)}`}>
+                          {event.importance}
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-1">
-                      {getCategoryIcon(event.category)}
-                      <span className="text-xs text-gray-900 dark:text-gray-100">
-                        {event.title}
-                      </span>
-                      <Badge className={`text-xs px-1.5 py-0.5 ${getImportanceColor(event.importance)}`}>
-                        {event.importance}
-                      </Badge>
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 ml-2 py-2">
+                    Inga händelser
                   </div>
-                ))}
+                )}
               </div>
             ))}
           </div>
