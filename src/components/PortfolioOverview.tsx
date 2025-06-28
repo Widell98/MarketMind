@@ -126,7 +126,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-              </ResponsiveContainer>
+              </RechartsPieChart>
             </ResponsiveContainer>
           </div>
         </CardContent>
