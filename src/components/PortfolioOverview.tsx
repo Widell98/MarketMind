@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -104,8 +103,11 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   const recommendedStocks = portfolio?.recommended_stocks || [];
 
   const handleStockChat = (stockName: string, stockSymbol?: string) => {
+    const sessionName = stockName;
     const message = `Berätta om ${stockName}${stockSymbol ? ` (${stockSymbol})` : ''}. Varför rekommenderas denna aktie för min portfölj? Vad är fördelarna och riskerna?`;
-    onQuickChat && onQuickChat(message);
+    
+    // Call onQuickChat with special format to indicate new session creation
+    onQuickChat && onQuickChat(`NEW_SESSION:${sessionName}:${message}`);
   };
 
   return (

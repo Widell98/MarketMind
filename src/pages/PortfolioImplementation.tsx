@@ -33,10 +33,28 @@ const PortfolioImplementation = () => {
   }, [user, activePortfolio, loading]);
 
   const handleQuickChat = (message: string) => {
-    // Switch to chat tab when a quick chat is triggered from overview
-    const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
-    if (chatTab) {
-      chatTab.click();
+    // Check if this is a request to create a new session
+    if (message.startsWith('NEW_SESSION:')) {
+      const [, sessionName, actualMessage] = message.split(':');
+      
+      // Switch to chat tab
+      const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
+      if (chatTab) {
+        chatTab.click();
+      }
+      
+      // Trigger creation of new session with custom name and message
+      // We'll need to pass this to the AIChat component
+      const event = new CustomEvent('createStockChat', {
+        detail: { sessionName, message: actualMessage }
+      });
+      window.dispatchEvent(event);
+    } else {
+      // Switch to chat tab when a quick chat is triggered from overview
+      const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
+      if (chatTab) {
+        chatTab.click();
+      }
     }
   };
 

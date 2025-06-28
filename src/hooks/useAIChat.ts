@@ -154,10 +154,12 @@ export const useAIChat = (portfolioId?: string) => {
     });
   }, [currentSessionId, loadMessages, toast]);
 
-  const createNewSession = useCallback(async () => {
-    console.log('=== CREATE NEW SESSION (EMPTY) ===');
+  const createNewSession = useCallback(async (customName?: string, initialMessage?: string) => {
+    console.log('=== CREATE NEW SESSION ===');
     console.log('User:', user?.id);
     console.log('Portfolio ID:', portfolioId);
+    console.log('Custom name:', customName);
+    console.log('Initial message:', initialMessage);
     
     if (!user || !portfolioId) {
       console.log('Cannot create session: missing user or portfolio');
@@ -166,13 +168,13 @@ export const useAIChat = (portfolioId?: string) => {
     
     setIsLoading(true);
     
-    // Clear messages immediately for new empty session
-    console.log('Clearing messages for new empty session');
+    // Clear messages immediately for new session
+    console.log('Clearing messages for new session');
     setMessages([]);
     
     try {
       const now = new Date();
-      const sessionName = `Chat ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
+      const sessionName = customName || `Chat ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
       
       console.log('Session name:', sessionName);
       
@@ -195,7 +197,7 @@ export const useAIChat = (portfolioId?: string) => {
         throw error;
       }
 
-      console.log('New empty session created:', data);
+      console.log('New session created:', data);
 
       const newSession = {
         id: data.id,
@@ -207,9 +209,18 @@ export const useAIChat = (portfolioId?: string) => {
       setSessions(prev => [newSession, ...prev]);
       setCurrentSessionId(newSession.id);
       
+      // If there's an initial message, send it automatically
+      if (initialMessage) {
+        console.log('Sending initial message:', initialMessage);
+        // Small delay to ensure session is properly set
+        setTimeout(() => {
+          sendMessageToSession(initialMessage, newSession.id);
+        }, 100);
+      }
+      
       toast({
-        title: "Ny chat skapad",
-        description: "Du kan nu börja chatta med din AI-assistent.",
+        title: customName ? `Chat "${customName}" skapad` : "Ny chat skapad",
+        description: initialMessage ? "Skickar din fråga..." : "Du kan nu börja chatta med din AI-assistent.",
       });
       
     } catch (error) {

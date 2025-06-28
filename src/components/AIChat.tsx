@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -57,6 +56,21 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     console.log('Fetching usage due to messages change or mount...');
     fetchUsage();
   }, [messages.length, fetchUsage]);
+
+  // Listen for custom events to create stock-specific chats
+  useEffect(() => {
+    const handleCreateStockChat = (event: CustomEvent) => {
+      const { sessionName, message } = event.detail;
+      console.log('Creating stock chat:', sessionName, message);
+      createNewSession(sessionName, message);
+    };
+
+    window.addEventListener('createStockChat', handleCreateStockChat as EventListener);
+    
+    return () => {
+      window.removeEventListener('createStockChat', handleCreateStockChat as EventListener);
+    };
+  }, [createNewSession]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
