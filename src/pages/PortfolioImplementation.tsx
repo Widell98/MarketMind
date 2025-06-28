@@ -1,19 +1,55 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import PortfolioOverview from '@/components/PortfolioOverview';
 import AIChat from '@/components/AIChat';
 import UserInsightsPanel from '@/components/UserInsightsPanel';
+import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolioAdvisor';
 import { usePortfolio } from '@/hooks/usePortfolio';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Brain, MessageSquare, TrendingUp, Target, ArrowLeft, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Brain, MessageSquare, TrendingUp, Target, X, Settings } from 'lucide-react';
 
 const PortfolioImplementation = () => {
   const { activePortfolio, recommendations, loading } = usePortfolio();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [showChat, setShowChat] = useState(false);
+  const [hasRiskProfile, setHasRiskProfile] = useState<boolean | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    const checkUserProfile = async () => {
+      if (!user) return;
+
+      try {
+        // Check if user has a risk profile
+        const { data: riskProfile } = await supabase
+          .from('user_risk_profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        const hasProfile = !!riskProfile;
+        setHasRiskProfile(hasProfile);
+
+        // If no risk profile exists, show onboarding instead of redirecting
+        if (!hasProfile) {
+          setShowOnboarding(true);
+        }
+      } catch (error) {
+        console.error('Error checking risk profile:', error);
+        setHasRiskProfile(false);
+        setShowOnboarding(true);
+      }
+    };
+
+    checkUserProfile();
+  }, [user]);
 
   const handleQuickChat = (message: string) => {
     setShowChat(true);
@@ -25,7 +61,13 @@ const PortfolioImplementation = () => {
     // Handle different portfolio actions here
   };
 
-  if (loading) {
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+    setHasRiskProfile(true);
+    // The page will automatically refresh with the new portfolio data
+  };
+
+  if (loading || hasRiskProfile === null) {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
@@ -40,18 +82,34 @@ const PortfolioImplementation = () => {
     );
   }
 
+  // Show onboarding if user doesn't have a risk profile
+  if (showOnboarding) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="mb-6 text-center">
+              <h1 className="text-3xl font-bold flex items-center justify-center gap-2 mb-2">
+                <Brain className="w-8 h-8 text-blue-600" />
+                Välkommen till AI Portfolio
+              </h1>
+              <p className="text-gray-600">
+                Låt oss skapa din personliga investeringsstrategi genom en kort konversation
+              </p>
+            </div>
+            <ConversationalPortfolioAdvisor onComplete={handleOnboardingComplete} />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-6 max-w-7xl">
         {/* Header */}
         <div className="mb-6">
-          <div className="flex items-center gap-4 mb-4">
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/portfolio-advisor">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Tillbaka till rådgivare
-              </Link>
-            </Button>
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
                 <Target className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
@@ -59,6 +117,14 @@ const PortfolioImplementation = () => {
               </h1>
               <p className="text-gray-600 mt-1">AI-genererade rekommendationer och insikter</p>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowOnboarding(true)}
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Uppdatera profil
+            </Button>
           </div>
           
           <div className="flex flex-wrap gap-2">
@@ -92,24 +158,20 @@ const PortfolioImplementation = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Brain className="w-5 h-5 text-blue-600" />
-                    Ingen aktiv portfölj
+                    Portfölj genereras
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-600 mb-4">
-                    Du har inte skapat en portfölj än. Börja med att genomföra riskbedömningen.
+                    Din portfölj håller på att genereras baserat på din riskprofil. Detta kan ta några minuter.
                   </p>
-                  <Button asChild>
-                    <Link to="/portfolio-advisor">
-                      <TrendingUp className="w-4 h-4 mr-2" />
-                      Skapa portfölj
-                    </Link>
-                  </Button>
+                  <div className="animate-pulse bg-gray-200 h-4 rounded mb-2"></div>
+                  <div className="animate-pulse bg-gray-200 h-4 rounded w-3/4"></div>
                 </CardContent>
               </Card>
             )}
 
-            {/* AI Chat Toggle */}
+            {/* AI Chat Section */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">

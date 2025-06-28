@@ -100,15 +100,15 @@ const MainNavigation = () => {
           </NavigationMenuContent>
         </NavigationMenuItem>
 
-        {/* AI Portfolio - Standalone without dropdown */}
+        {/* AI Portfolio - Now points to implementation page */}
         {user && (
           <NavigationMenuItem>
             <NavigationMenuLink asChild>
               <Link
-                to="/portfolio-advisor"
+                to="/portfolio-implementation"
                 className={cn(
                   "h-10 px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 inline-flex items-center rounded-md",
-                  isActive('/portfolio-advisor') && "bg-accent text-accent-foreground"
+                  (isActive('/portfolio-implementation') || isActive('/portfolio-advisor')) && "bg-accent text-accent-foreground"
                 )}
               >
                 <Brain className="w-4 h-4 mr-2" />
