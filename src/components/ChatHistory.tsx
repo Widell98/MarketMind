@@ -73,17 +73,17 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
     
     return (
       <div 
-        className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all hover:bg-gray-100 dark:hover:bg-gray-700 ${
-          isActive ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700' : ''
+        className={`flex items-center justify-between p-4 rounded-lg cursor-pointer transition-all hover:bg-gray-100 dark:hover:bg-gray-700 ${
+          isActive ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700' : 'hover:shadow-sm'
         }`}
         onClick={() => handleLoadSession(session.id)}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className="flex-shrink-0">
             {isActive ? (
-              <MessageSquare className="w-4 h-4 text-blue-600" />
+              <MessageSquare className="w-5 h-5 text-blue-600" />
             ) : (
-              <Clock className="w-4 h-4 text-gray-400" />
+              <Clock className="w-5 h-5 text-gray-400" />
             )}
           </div>
           <div className="flex-1 min-w-0">
@@ -105,13 +105,13 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
           </div>
         </div>
         
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {onDeleteSession && (
             <Button
               size="sm"
               variant="ghost"
               onClick={(e) => handleDelete(session.id, session.session_name, e)}
-              className="p-1 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+              className="p-2 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 z-10"
             >
               <Trash2 className="w-4 h-4" />
             </Button>
@@ -172,7 +172,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
 
           {/* Sessions list */}
           <ScrollArea className="flex-1 min-h-0 max-h-96">
-            <div className="space-y-2">
+            <div className="space-y-3">
               {filteredSessions.length > 0 ? (
                 filteredSessions.map(session => (
                   <SessionItem key={session.id} session={session} />
