@@ -21,30 +21,63 @@ const PortfolioImplementation = () => {
   const [showChat, setShowChat] = useState(false);
   const [hasRiskProfile, setHasRiskProfile] = useState<boolean | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isCheckingProfile, setIsCheckingProfile] = useState(true);
 
   useEffect(() => {
     const checkUserProfile = async () => {
       if (!user) return;
 
       try {
+        setIsCheckingProfile(true);
+        
         // Check if user has a risk profile
-        const { data: riskProfile } = await supabase
+        const { data: riskProfile, error: riskError } = await supabase
           .from('user_risk_profiles')
           .select('id')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
+
+        if (riskError) {
+          console.error('Error checking risk profile:', riskError);
+          setHasRiskProfile(false);
+          setShowOnboarding(true);
+          return;
+        }
+
+        // Check if user has any portfolios
+        const { data: portfolios, error: portfolioError } = await supabase
+          .from('user_portfolios')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .limit(1);
+
+        if (portfolioError) {
+          console.error('Error checking portfolios:', portfolioError);
+          setHasRiskProfile(false);
+          setShowOnboarding(true);
+          return;
+        }
 
         const hasProfile = !!riskProfile;
-        setHasRiskProfile(hasProfile);
-
-        // If no risk profile exists, show onboarding instead of redirecting
-        if (!hasProfile) {
+        const hasPortfolio = portfolios && portfolios.length > 0;
+        
+        console.log('Profile check results:', { hasProfile, hasPortfolio, riskProfile, portfolios });
+        
+        setHasRiskProfile(hasProfile && hasPortfolio);
+        
+        // Only show onboarding if user has neither risk profile nor portfolio
+        if (!hasProfile || !hasPortfolio) {
           setShowOnboarding(true);
+        } else {
+          setShowOnboarding(false);
         }
       } catch (error) {
-        console.error('Error checking risk profile:', error);
+        console.error('Error in profile check:', error);
         setHasRiskProfile(false);
         setShowOnboarding(true);
+      } finally {
+        setIsCheckingProfile(false);
       }
     };
 
@@ -55,7 +88,7 @@ const PortfolioImplementation = () => {
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'portfolio_generation_complete') {
-        // Portfolio was just generated, refresh the state
+        console.log('Portfolio generation completed, refreshing...');
         setShowOnboarding(false);
         setHasRiskProfile(true);
         window.location.reload();
@@ -68,19 +101,19 @@ const PortfolioImplementation = () => {
 
   const handleQuickChat = (message: string) => {
     setShowChat(true);
-    // Chat component will handle the initial message
   };
 
   const handleActionClick = (action: string) => {
     console.log('Action clicked:', action);
-    // Handle different portfolio actions here
   };
 
   const handleUpdateProfile = () => {
     setShowOnboarding(true);
+    setHasRiskProfile(false);
   };
 
-  if (loading || hasRiskProfile === null) {
+  // Show loading while checking profile
+  if (isCheckingProfile || loading || hasRiskProfile === null) {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
@@ -95,8 +128,8 @@ const PortfolioImplementation = () => {
     );
   }
 
-  // Show onboarding if user doesn't have a risk profile
-  if (showOnboarding) {
+  // Show onboarding if user doesn't have a risk profile or portfolio
+  if (showOnboarding || !hasRiskProfile) {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
@@ -117,6 +150,7 @@ const PortfolioImplementation = () => {
     );
   }
 
+  // Show portfolio implementation page
   return (
     <Layout>
       <div className="container mx-auto px-4 py-6 max-w-7xl">
