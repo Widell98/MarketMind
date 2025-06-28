@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -23,7 +24,7 @@ import {
 } from "@/components/ui/sheet"
 
 const MainNavigation = () => {
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const toggleMobileMenu = () => {
@@ -87,7 +88,7 @@ const MainNavigation = () => {
                   >
                     Din profil
                   </Link>
-                  <Button variant="outline" size="sm" onClick={logout}>
+                  <Button variant="outline" size="sm" onClick={signOut}>
                     Logga ut
                   </Button>
                 </>
@@ -180,7 +181,7 @@ const MainNavigation = () => {
                           </Link>
                         </SheetClose>
                         <SheetClose asChild>
-                          <Button variant="outline" size="sm" onClick={logout} className="w-full justify-start">
+                          <Button variant="outline" size="sm" onClick={signOut} className="w-full justify-start">
                             Logga ut
                           </Button>
                         </SheetClose>
