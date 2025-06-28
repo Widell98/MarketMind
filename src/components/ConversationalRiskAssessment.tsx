@@ -5,16 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Brain, MessageSquare, ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Brain, MessageSquare, ArrowRight, CheckCircle, Loader2, TrendingUp, Lightbulb } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface Message {
   id: string;
   type: 'bot' | 'user';
   content: string;
   options?: string[];
+  inputType?: 'text' | 'textarea' | 'number';
   timestamp: Date;
 }
 
@@ -29,6 +29,15 @@ interface ConversationData {
   age?: string;
   experience?: string;
   sectors?: string[];
+  interests?: string[];
+  companies?: string[];
+  portfolioSize?: string;
+  rebalancingFrequency?: string;
+  marketTiming?: string;
+  complexStrategies?: string[];
+  riskManagement?: string;
+  globalExposure?: string;
+  alternativeInvestments?: string[];
 }
 
 interface ConversationalRiskAssessmentProps {
@@ -43,7 +52,6 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -56,17 +64,18 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
   useEffect(() => {
     // Start conversation
     addBotMessage(
-      "Hej! Jag hjälper dig att skapa en personlig portföljstrategi. Låt oss börja med några enkla frågor. Är du ny inom investeringar eller har du tidigare erfarenhet?",
-      ["Nybörjare - jag är ny", "Erfaren - jag har investerat tidigare"]
+      "Hej! Jag hjälper dig att skapa en personlig portföljstrategi. Låt oss börja med att förstå din erfarenhetsnivå inom investeringar.",
+      ["Nybörjare - jag är ny inom investeringar", "Erfaren - jag har investerat i flera år"]
     );
   }, []);
 
-  const addBotMessage = (content: string, options?: string[]) => {
+  const addBotMessage = (content: string, options?: string[], inputType?: 'text' | 'textarea' | 'number') => {
     const message: Message = {
       id: Date.now().toString(),
       type: 'bot',
       content,
       options,
+      inputType,
       timestamp: new Date()
     };
     setMessages(prev => [...prev, message]);
@@ -104,6 +113,12 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         case 'welcome':
           handleExperienceLevel(answer);
           break;
+        case 'beginner_interests':
+          handleBeginnerInterests(answer);
+          break;
+        case 'beginner_companies':
+          handleBeginnerCompanies(answer);
+          break;
         case 'beginner_goal':
           handleBeginnerGoal(answer);
           break;
@@ -116,17 +131,38 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         case 'monthly_amount':
           handleMonthlyAmount(answer);
           break;
-        case 'age_question':
-          handleAge(answer);
-          break;
-        case 'experienced_portfolio':
-          handleExperiencedPortfolio(answer);
+        case 'portfolio_question':
+          handlePortfolioQuestion(answer);
           break;
         case 'current_holdings':
           handleCurrentHoldings(answer);
           break;
-        case 'sectors':
-          handleSectors(answer);
+        case 'portfolio_help':
+          handlePortfolioHelp(answer);
+          break;
+        case 'experienced_portfolio_size':
+          handleExperiencedPortfolioSize(answer);
+          break;
+        case 'rebalancing_frequency':
+          handleRebalancingFrequency(answer);
+          break;
+        case 'market_timing':
+          handleMarketTiming(answer);
+          break;
+        case 'complex_strategies':
+          handleComplexStrategies(answer);
+          break;
+        case 'risk_management':
+          handleRiskManagement(answer);
+          break;
+        case 'global_exposure':
+          handleGlobalExposure(answer);
+          break;
+        case 'alternative_investments':
+          handleAlternativeInvestments(answer);
+          break;
+        case 'age_question':
+          handleAge(answer);
           break;
         default:
           break;
@@ -140,25 +176,49 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
     setConversationData(prev => ({ ...prev, isBeginnerInvestor }));
 
     if (isBeginnerInvestor) {
-      setCurrentStep('beginner_goal');
+      setCurrentStep('beginner_interests');
       addBotMessage(
-        "Perfekt! Som nybörjare börjar vi med grunderna. Vad är ditt huvudsakliga mål med investeringarna?",
-        ["Långsiktig tillväxt", "Månatlig inkomst", "Spara till pension", "Bevara kapital"]
+        "Perfekt! Som nybörjare vill jag förstå vad som intresserar dig. Vilka områden eller branscher tycker du är spännande? (t.ex. teknologi, hållbarhet, gaming, hälsa, etc.)",
+        undefined,
+        'textarea'
       );
     } else {
-      setCurrentStep('experienced_portfolio');
+      setCurrentStep('experienced_portfolio_size');
       addBotMessage(
-        "Bra! Har du en befintlig portfölj som du vill optimera eller vill du börja om från början?",
-        ["Ja, jag har befintliga innehav", "Nej, jag vill börja om"]
+        "Utmärkt! Som erfaren investerare - ungefär hur stor är din nuvarande portfölj?",
+        ["Under 100 000 SEK", "100 000 - 500 000 SEK", "500 000 - 1 miljon SEK", "Över 1 miljon SEK"]
       );
     }
+  };
+
+  const handleBeginnerInterests = (answer: string) => {
+    const interests = answer.split(',').map(s => s.trim()).filter(s => s.length > 0);
+    setConversationData(prev => ({ ...prev, interests }));
+    setCurrentStep('beginner_companies');
+    
+    addBotMessage(
+      "Fantastiskt! Baserat på dina intressen - finns det några specifika företag du känner till och tycker verkar intressanta? (t.ex. Tesla, Spotify, H&M, etc.)",
+      undefined,
+      'textarea'
+    );
+  };
+
+  const handleBeginnerCompanies = (answer: string) => {
+    const companies = answer.split(',').map(s => s.trim()).filter(s => s.length > 0);
+    setConversationData(prev => ({ ...prev, companies }));
+    setCurrentStep('beginner_goal');
+    
+    addBotMessage(
+      "Bra! Nu förstår jag bättre vad som intresserar dig. Vad är ditt huvudsakliga mål med investeringarna?",
+      ["Långsiktig tillväxt - jag vill att pengarna ska växa över tid", "Månatlig inkomst - jag vill ha utdelningar", "Pension - jag sparar till framtiden", "Bevara kapital - jag vill inte förlora pengar"]
+    );
   };
 
   const handleBeginnerGoal = (answer: string) => {
     setConversationData(prev => ({ ...prev, investmentGoal: answer }));
     setCurrentStep('time_horizon');
     addBotMessage(
-      "Utmärkt! Vilken tidshorisont har du för dina investeringar?",
+      "Perfekt! Vilken tidshorisont har du för dina investeringar?",
       ["1-3 år (kort sikt)", "3-7 år (medellång sikt)", "7+ år (lång sikt)"]
     );
   };
@@ -176,47 +236,49 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
     setConversationData(prev => ({ ...prev, riskTolerance: answer }));
     setCurrentStep('monthly_amount');
     addBotMessage(
-      "Hur mycket planerar du att investera månadsvis? (skriv ett ungefärligt belopp i SEK)"
+      "Hur mycket planerar du att investera månadsvis? (skriv ett ungefärligt belopp i SEK)",
+      undefined,
+      'number'
     );
   };
 
   const handleMonthlyAmount = (answer: string) => {
     setConversationData(prev => ({ ...prev, monthlyAmount: answer }));
-    setCurrentStep('age_question');
-    addBotMessage("Slutligen, hur gammal är du? (detta hjälper oss att anpassa strategin)");
+    setCurrentStep('portfolio_question');
+    addBotMessage(
+      "Nu kommer en avgörande fråga: Har du redan en befintlig portfölj med investeringar?",
+      ["Ja, jag har redan investeringar", "Nej, jag ska börja från början"]
+    );
   };
 
-  const handleAge = (answer: string) => {
-    setConversationData(prev => ({ ...prev, age: answer }));
-    
-    addBotMessage("Tack! Nu har jag all information jag behöver för att skapa din personliga portföljstrategi. Jag kommer att analysera dina svar och generera en skräddarsydd portfölj åt dig.");
-    
-    setTimeout(() => {
-      finishConversation();
-    }, 2000);
-  };
-
-  const handleExperiencedPortfolio = (answer: string) => {
+  const handlePortfolioQuestion = (answer: string) => {
     const hasCurrentPortfolio = answer.includes('Ja');
     setConversationData(prev => ({ ...prev, hasCurrentPortfolio }));
 
     if (hasCurrentPortfolio) {
       setCurrentStep('current_holdings');
       addBotMessage(
-        "Kan du lista dina nuvarande innehav och deras ungefärliga procentuella fördelning? Exempel: 'AAPL 30%, TSLA 20%, SPY 50%' eller bara sektorer som 'Tech 60%, Finans 40%'"
+        "Perfekt! Kan du lista dina nuvarande innehav och deras ungefärliga procentuella fördelning? \n\nExempel: 'Avanza Global 40%, Handelsbanken Sverige 30%, Tesla 20%, Spotify 10%' eller bara sektorer som 'Teknik 60%, Bank 40%'",
+        undefined,
+        'textarea'
       );
     } else {
-      setCurrentStep('sectors');
+      setCurrentStep('portfolio_help');
       addBotMessage(
-        "Vilka sektorer eller områden är du mest intresserad av?",
-        ["Teknologi", "Hälsovård", "Finans", "Konsumentvaror", "Energi", "Fastigheter"]
+        "Inga problem! Jag hjälper dig att skapa din första portfölj. Vad känns viktigast för dig när vi bygger din portfölj?",
+        [
+          "Enkelhet - jag vill ha få, breda innehav",
+          "Diversifiering - jag vill sprida riskerna",
+          "Fokus på mina intressen - investera i det jag förstår",
+          "Låga avgifter - minimera kostnaderna"
+        ]
       );
     }
   };
 
   const handleCurrentHoldings = (answer: string) => {
-    // Parse holdings from text like "AAPL 30%, TSLA 20%, SPY 50%"
-    const holdingsRegex = /([A-Za-zÅÄÖåäö\s]+)\s+(\d+)%/g;
+    // Parse holdings from text
+    const holdingsRegex = /([A-Za-zÅÄÖåäö\s&.,-]+?)\s+(\d+)%/g;
     const holdings: Array<{ name: string; percentage: number }> = [];
     let match;
     
@@ -228,19 +290,121 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
     }
     
     setConversationData(prev => ({ ...prev, currentHoldings: holdings }));
-    setCurrentStep('sectors');
+    setCurrentStep('age_question');
     
+    addBotMessage("Tack! Slutligen, hur gammal är du? (detta hjälper oss att anpassa strategin)");
+  };
+
+  const handlePortfolioHelp = (answer: string) => {
+    setConversationData(prev => ({ ...prev, portfolioHelp: answer }));
+    setCurrentStep('age_question');
+    addBotMessage("Utmärkt! Slutligen, hur gammal är du? (detta hjälper oss att anpassa strategin)");
+  };
+
+  // Experienced investor questions
+  const handleExperiencedPortfolioSize = (answer: string) => {
+    setConversationData(prev => ({ ...prev, portfolioSize: answer }));
+    setCurrentStep('rebalancing_frequency');
     addBotMessage(
-      "Tack! Vilka sektorer vill du fokusera på framöver?",
-      ["Teknologi", "Hälsovård", "Finans", "Konsumentvaror", "Energi", "Fastigheter"]
+      "Hur ofta rebalanserar du din portfölj?",
+      ["Månadsvis", "Kvartalsvis", "Årligen", "Aldrig - jag låter den växa organiskt"]
     );
   };
 
-  const handleSectors = (answer: string) => {
-    const sectors = answer.split(',').map(s => s.trim());
-    setConversationData(prev => ({ ...prev, sectors }));
+  const handleRebalancingFrequency = (answer: string) => {
+    setConversationData(prev => ({ ...prev, rebalancingFrequency: answer }));
+    setCurrentStep('market_timing');
+    addBotMessage(
+      "Vad är din syn på market timing?",
+      [
+        "Jag försöker tajma marknaden aktivt",
+        "Jag gör mindre justeringar baserat på marknadsläge",
+        "Jag investerar regelbundet oavsett marknadsläge (DCA)",
+        "Jag investerar bara när jag ser tydliga möjligheter"
+      ]
+    );
+  };
+
+  const handleMarketTiming = (answer: string) => {
+    setConversationData(prev => ({ ...prev, marketTiming: answer }));
+    setCurrentStep('complex_strategies');
+    addBotMessage(
+      "Vilka av dessa mer avancerade strategier har du erfarenhet av? (välj flera om det stämmer)",
+      [
+        "Optioner och derivat",
+        "Blankning (short selling)",
+        "Valutahandel (Forex)",
+        "Kryptovalutor",
+        "Inga av ovanstående"
+      ]
+    );
+  };
+
+  const handleComplexStrategies = (answer: string) => {
+    const strategies = answer === "Inga av ovanstående" ? [] : [answer];
+    setConversationData(prev => ({ ...prev, complexStrategies: strategies }));
+    setCurrentStep('risk_management');
+    addBotMessage(
+      "Hur hanterar du riskhantering i din portfölj?",
+      [
+        "Jag använder stop-loss order systematiskt",
+        "Jag diversifierar över olika tillgångsklasser",
+        "Jag hedgar med derivat",
+        "Jag förlitar mig på fundamental analys",
+        "Jag accepterar volatilitet för långsiktig tillväxt"
+      ]
+    );
+  };
+
+  const handleRiskManagement = (answer: string) => {
+    setConversationData(prev => ({ ...prev, riskManagement: answer }));
+    setCurrentStep('global_exposure');
+    addBotMessage(
+      "Hur ser din geografiska exponering ut?",
+      [
+        "Huvudsakligen svenska bolag",
+        "Nordiska marknader",
+        "Global exponering med USA-fokus",
+        "Verkligt global diversifiering",
+        "Inkluderar tillväxtmarknader aktivt"
+      ]
+    );
+  };
+
+  const handleGlobalExposure = (answer: string) => {
+    setConversationData(prev => ({ ...prev, globalExposure: answer }));
+    setCurrentStep('alternative_investments');
+    addBotMessage(
+      "Vilka alternativa investeringar är du intresserad av?",
+      [
+        "REITs (fastighetsfonder)",
+        "Råvaror och metaller",
+        "Private equity",
+        "Inga alternativa investeringar",
+        "Andra alternativ"
+      ]
+    );
+  };
+
+  const handleAlternativeInvestments = (answer: string) => {
+    const alternatives = answer === "Inga alternativa investeringar" ? [] : [answer];
+    setConversationData(prev => ({ ...prev, alternativeInvestments: alternatives }));
+    setCurrentStep('portfolio_question');
+    addBotMessage(
+      "Sista frågan: Har du en befintlig portfölj du vill optimera?",
+      ["Ja, jag vill optimera min nuvarande portfölj", "Nej, jag vill bygga en ny strategi"]
+    );
+  };
+
+  const handleAge = (answer: string) => {
+    setConversationData(prev => ({ ...prev, age: answer }));
     
-    addBotMessage("Perfekt! Nu har jag all information jag behöver för att optimera din portföljstrategi. Låt mig analysera och skapa en personlig rekommendation åt dig.");
+    const isExperienced = !conversationData.isBeginnerInvestor;
+    const message = isExperienced 
+      ? "Perfekt! Nu har jag en djup förståelse för din investeringsprofil och erfarenhet. Jag kommer att skapa en avancerad portföljstrategi som passar din sofistikerade approach."
+      : "Tack! Nu har jag all information jag behöver för att skapa din personliga portföljstrategi baserat på dina intressen och mål.";
+    
+    addBotMessage(message);
     
     setTimeout(() => {
       finishConversation();
@@ -248,26 +412,49 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
   };
 
   const finishConversation = () => {
-    addBotMessage("✅ Analys klar! Jag skapar nu din personliga portföljstrategi baserat på vårt samtal.");
+    const isExperienced = !conversationData.isBeginnerInvestor;
+    const completionMessage = isExperienced
+      ? "✅ Analys klar! Jag skapar nu en avancerad portföljstrategi som tar hänsyn till din erfarenhet och sofistikerade krav."
+      : "✅ Analys klar! Jag skapar nu din personliga portföljstrategi med fokus på dina intressen och en bra start för din investeringsresa.";
+      
+    addBotMessage(completionMessage);
     
     setTimeout(() => {
       onComplete(conversationData);
     }, 1500);
   };
 
+  const getCurrentInputType = () => {
+    const lastMessage = messages[messages.length - 1];
+    return lastMessage?.inputType || 'text';
+  };
+
   return (
-    <Card className="w-full max-w-4xl mx-auto h-[600px] flex flex-col">
+    <Card className="w-full max-w-4xl mx-auto h-[700px] flex flex-col">
       <CardHeader className="flex-shrink-0">
         <CardTitle className="flex items-center gap-2">
           <Brain className="w-5 h-5 text-blue-600" />
-          AI Portfolio Advisor - Personlig Konsultation
+          {conversationData.isBeginnerInvestor === false ? (
+            <>
+              <TrendingUp className="w-5 h-5 text-purple-600" />
+              Avancerad Portfolio Konsultation
+            </>
+          ) : (
+            <>
+              <Lightbulb className="w-5 h-5 text-green-600" />
+              Personlig Portfolio Guide
+            </>
+          )}
         </CardTitle>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-xs">
             Steg {messages.filter(m => m.type === 'user').length + 1}
           </Badge>
           <span className="text-sm text-gray-600">
-            Personlig rådgivning genom naturlig konversation
+            {conversationData.isBeginnerInvestor === false 
+              ? "Avancerad rådgivning för erfarna investerare"
+              : "Personlig rådgivning anpassad för dig"
+            }
           </span>
         </div>
       </CardHeader>
@@ -281,35 +468,35 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
                 className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] p-3 rounded-lg ${
+                  className={`max-w-[85%] p-4 rounded-lg ${
                     message.type === 'user'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gradient-to-br from-gray-50 to-blue-50 border border-gray-200 text-foreground'
                   }`}
                 >
-                  <div className="text-sm whitespace-pre-wrap">
+                  <div className="text-sm whitespace-pre-wrap leading-relaxed">
                     {message.content}
                   </div>
                   
                   {message.options && (
-                    <div className="mt-3 space-y-2">
+                    <div className="mt-4 space-y-2">
                       {message.options.map((option, index) => (
                         <Button
                           key={index}
                           variant="outline"
                           size="sm"
                           onClick={() => handleOptionClick(option)}
-                          className="w-full justify-start text-left text-xs bg-white hover:bg-blue-50"
+                          className="w-full justify-start text-left text-xs bg-white hover:bg-blue-50 p-3 h-auto"
                           disabled={isLoading}
                         >
-                          <ArrowRight className="w-3 h-3 mr-2" />
-                          {option}
+                          <ArrowRight className="w-3 h-3 mr-2 flex-shrink-0" />
+                          <span className="text-left">{option}</span>
                         </Button>
                       ))}
                     </div>
                   )}
                   
-                  <div className="text-xs opacity-70 mt-2">
+                  <div className="text-xs opacity-70 mt-3">
                     {message.timestamp.toLocaleTimeString('sv-SE', {
                       hour: '2-digit',
                       minute: '2-digit'
@@ -321,9 +508,9 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
             
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-gradient-to-br from-gray-50 to-blue-50 border border-gray-200 p-3 rounded-lg flex items-center gap-3">
+                <div className="bg-gradient-to-br from-gray-50 to-blue-50 border border-gray-200 p-4 rounded-lg flex items-center gap-3">
                   <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                  <span className="text-sm text-gray-700">AI-assistenten tänker...</span>
+                  <span className="text-sm text-gray-700">AI-assistenten analyserar ditt svar...</span>
                 </div>
               </div>
             )}
@@ -331,18 +518,29 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
           <div ref={messagesEndRef} />
         </ScrollArea>
 
-        {/* Text input for free-form answers */}
+        {/* Input section */}
         {!messages[messages.length - 1]?.options && messages.length > 0 && !isLoading && (
           <div className="border-t p-4 flex-shrink-0">
             <form onSubmit={handleTextSubmit} className="flex gap-2">
-              <Input
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Skriv ditt svar här..."
-                className="flex-1"
-                disabled={isLoading}
-              />
-              <Button type="submit" disabled={!inputValue.trim() || isLoading}>
+              {getCurrentInputType() === 'textarea' ? (
+                <Textarea
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="Skriv ditt svar här... (du kan lista flera saker separerade med komma)"
+                  className="flex-1 min-h-[80px] resize-none"
+                  disabled={isLoading}
+                />
+              ) : (
+                <Input
+                  type={getCurrentInputType()}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder={getCurrentInputType() === 'number' ? "t.ex. 5000" : "Skriv ditt svar här..."}
+                  className="flex-1"
+                  disabled={isLoading}
+                />
+              )}
+              <Button type="submit" disabled={!inputValue.trim() || isLoading} className="px-6">
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (

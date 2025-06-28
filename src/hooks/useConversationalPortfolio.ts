@@ -15,6 +15,16 @@ interface ConversationData {
   age?: string;
   experience?: string;
   sectors?: string[];
+  interests?: string[];
+  companies?: string[];
+  portfolioSize?: string;
+  rebalancingFrequency?: string;
+  marketTiming?: string;
+  complexStrategies?: string[];
+  riskManagement?: string;
+  globalExposure?: string;
+  alternativeInvestments?: string[];
+  portfolioHelp?: string;
 }
 
 export const useConversationalPortfolio = () => {
@@ -36,9 +46,9 @@ export const useConversationalPortfolio = () => {
 
     try {
       // Build AI prompt from conversation data
-      const prompt = buildAIPrompt(conversationData);
+      const prompt = buildEnhancedAIPrompt(conversationData);
       
-      console.log('Generated AI prompt:', prompt);
+      console.log('Generated enhanced AI prompt:', prompt);
 
       // Call AI portfolio generation
       const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
@@ -55,12 +65,14 @@ export const useConversationalPortfolio = () => {
         throw new Error(error.message || 'Kunde inte generera portfölj');
       }
 
-      // Save risk profile to database
-      await saveRiskProfile(conversationData);
+      // Save enhanced risk profile to database
+      await saveEnhancedRiskProfile(conversationData);
 
       toast({
         title: "Portfölj skapad!",
-        description: "Din personliga portföljstrategi har genererats baserat på vårt samtal.",
+        description: conversationData.isBeginnerInvestor 
+          ? "Din personliga portföljstrategi har skapats baserat på dina intressen och mål!"
+          : "Din avancerade portföljstrategi har optimerats baserat på din erfarenhet!",
       });
 
       return {
@@ -81,67 +93,123 @@ export const useConversationalPortfolio = () => {
     }
   };
 
-  const buildAIPrompt = (data: ConversationData): string => {
-    let prompt = `Skapa en detaljerad portföljstrategi baserat på följande information från en personlig konsultation:
+  const buildEnhancedAIPrompt = (data: ConversationData): string => {
+    let prompt = `Skapa en detaljerad och personlig portföljstrategi baserat på följande omfattande konsultation:
 
-ANVÄNDARINFO:
-- Erfarenhetsnivå: ${data.isBeginnerInvestor ? 'Nybörjare' : 'Erfaren investerare'}
+GRUNDLÄGGANDE PROFIL:
+- Erfarenhetsnivå: ${data.isBeginnerInvestor ? 'Nybörjare (första gången investera)' : 'Erfaren investerare (flera års erfarenhet)'}
 - Ålder: ${data.age || 'Ej specificerad'}
 - Månatligt investeringsbelopp: ${data.monthlyAmount || 'Ej specificerat'} SEK
 
 `;
 
     if (data.isBeginnerInvestor) {
-      prompt += `NYBÖRJARE PROFIL:
+      prompt += `NYBÖRJARE - PERSONLIGA INTRESSEN OCH MÅL:
+- Personliga intressen: ${data.interests?.join(', ') || 'Ej specificerade'}
+- Intressanta företag: ${data.companies?.join(', ') || 'Ej specificerade'}
 - Investeringsmål: ${data.investmentGoal}
 - Tidshorisont: ${data.timeHorizon}
 - Risktolerans: ${data.riskTolerance}
-
-`;
-    } else {
-      prompt += `ERFAREN INVESTERARE PROFIL:
 - Befintlig portfölj: ${data.hasCurrentPortfolio ? 'Ja' : 'Nej'}
+
 `;
 
-      if (data.currentHoldings && data.currentHoldings.length > 0) {
+      if (data.hasCurrentPortfolio && data.currentHoldings) {
         prompt += `- Nuvarande innehav: ${data.currentHoldings.map(h => `${h.name} (${h.percentage}%)`).join(', ')}
 `;
       }
 
-      if (data.sectors && data.sectors.length > 0) {
-        prompt += `- Önskade sektorer: ${data.sectors.join(', ')}
+      if (!data.hasCurrentPortfolio && data.portfolioHelp) {
+        prompt += `- Önskad approach för ny portfölj: ${data.portfolioHelp}
 `;
       }
+
+      prompt += `
+UPPDRAG FÖR NYBÖRJARE:
+1. Skapa en nybörjarvänlig portfölj som kopplar till användarens intressen
+2. Föreslå konkreta och kända företag/fonder som matchar deras intressen
+3. Förklara VARFÖR varje innehav passar deras profil
+4. Inkludera utbildande element om varför diversifiering är viktigt
+5. Ge enkla, actionable steg för att komma igång
+6. Rekommendera specifika svenska/nordiska fonder och ETF:er som är lätta att köpa
+7. Förklara risker på ett förståeligt sätt
+8. Föreslå en enkel månadsplan för investering
+
+`;
+    } else {
+      prompt += `ERFAREN INVESTERARE - AVANCERAD PROFIL:
+- Portföljstorlek: ${data.portfolioSize || 'Ej specificerad'}
+- Rebalanseringsfrekvens: ${data.rebalancingFrequency || 'Ej specificerad'}
+- Market timing approach: ${data.marketTiming || 'Ej specificerad'}
+- Erfarenhet av komplexa strategier: ${data.complexStrategies?.join(', ') || 'Inga'}
+- Riskhantering: ${data.riskManagement || 'Ej specificerad'}
+- Geografisk exponering: ${data.globalExposure || 'Ej specificerad'}
+- Alternativa investeringar: ${data.alternativeInvestments?.join(', ') || 'Inga'}
+- Befintlig portfölj: ${data.hasCurrentPortfolio ? 'Ja' : 'Nej'}
+
+`;
+
+      if (data.hasCurrentPortfolio && data.currentHoldings) {
+        prompt += `- Nuvarande innehav: ${data.currentHoldings.map(h => `${h.name} (${h.percentage}%)`).join(', ')}
+`;
+      }
+
+      prompt += `
+UPPDRAG FÖR ERFAREN INVESTERARE:
+1. Analysera den nuvarande strategin och identifiera optimeringsmöjligheter
+2. Föreslå avancerade portföljtekniker baserat på deras erfarenhet
+3. Inkludera sofistikerade allokeringsstrategier
+4. Föreslå specifika instrument som passar deras riskprofil
+5. Diskutera tax-loss harvesting och andra skatteoptimerings strategier
+6. Analysera korrelationer och riskjusterad avkastning
+7. Föreslå hedge-strategier om relevant
+8. Inkludera alternativa tillgångsklasser om intresse finns
+9. Ge konkreta exit-strategier och rebalanseringsregler
+
+`;
     }
 
     prompt += `
-UPPDRAG:
-1. Analysera användarens profil och behov
-2. Rekommendera en konkret portföljfördelning med specifika procentsatser
-3. Förklara varför denna fördelning passar användarens situation
-4. Ge konkreta tips för implementation
-5. Inkludera riskanalys och förväntad avkastning
-6. Föreslå specifika ETF:er eller fonder som passar strategin
+KRAV FÖR BÅDA PROFILER:
+- Alla rekommendationer ska vara tillgängliga på svenska marknaden (Avanza, Nordnet etc.)
+- Inkludera specifika ISIN-koder eller fondnamn när möjligt
+- Ange konkreta procentsatser för allokering
+- Förklara avgiftsstrukturer och kostnader
+- Inkludera både kortsiktiga och långsiktiga strategier
+- Ge månadsvis action plan
+- Diskutera när portföljen bör ses över nästa gång
 
-Ge en välstrukturerad och actionable portföljstrategi på svenska som är lätt att förstå och implementera.`;
+Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska som är perfekt anpassad för användarens specifika situation och erfarenhetsnivå.`;
 
     return prompt;
   };
 
-  const saveRiskProfile = async (data: ConversationData) => {
+  const saveEnhancedRiskProfile = async (data: ConversationData) => {
     if (!user) return;
 
-    // Convert conversation data to risk profile format
+    // Convert enhanced conversation data to risk profile format
     const riskProfile = {
       age: data.age ? parseInt(data.age) : null,
       monthly_investment_amount: data.monthlyAmount ? parseFloat(data.monthlyAmount.replace(/[^\d]/g, '')) : null,
       investment_horizon: mapTimeHorizon(data.timeHorizon),
       investment_goal: mapInvestmentGoal(data.investmentGoal),
       risk_tolerance: mapRiskTolerance(data.riskTolerance),
-      investment_experience: data.isBeginnerInvestor ? 'beginner' : 'intermediate',
+      investment_experience: data.isBeginnerInvestor ? 'beginner' : 'advanced',
       sector_interests: data.sectors || [],
       current_holdings: data.currentHoldings || [],
       current_allocation: {},
+      
+      // Enhanced fields for interests and preferences
+      personal_interests: data.interests || [],
+      interested_companies: data.companies || [],
+      portfolio_size_range: data.portfolioSize,
+      rebalancing_frequency: data.rebalancingFrequency,
+      market_timing_approach: data.marketTiming,
+      complex_strategies_experience: data.complexStrategies || [],
+      risk_management_style: data.riskManagement,
+      geographic_preference: data.globalExposure,
+      alternative_investments_interest: data.alternativeInvestments || [],
+      portfolio_creation_help: data.portfolioHelp,
       
       // Required fields with defaults
       housing_situation: null,
@@ -157,13 +225,13 @@ Ge en välstrukturerad och actionable portföljstrategi på svenska som är lät
       panic_selling_history: false,
       control_importance: 3,
       market_crash_reaction: null,
-      portfolio_change_frequency: null,
-      activity_preference: null,
-      investment_style_preference: null,
-      overexposure_awareness: null,
-      preferred_stock_count: null,
+      portfolio_change_frequency: data.rebalancingFrequency || null,
+      activity_preference: data.isBeginnerInvestor ? 'passive' : 'active',
+      investment_style_preference: data.isBeginnerInvestor ? 'long_term' : 'balanced',
+      overexposure_awareness: data.isBeginnerInvestor ? 'low' : 'high',
+      preferred_stock_count: data.isBeginnerInvestor ? 5 : 12,
       annual_income: null,
-      current_portfolio_value: null
+      current_portfolio_value: data.portfolioSize ? extractPortfolioValue(data.portfolioSize) : null
     };
 
     const { error } = await supabase
@@ -171,11 +239,11 @@ Ge en välstrukturerad och actionable portföljstrategi på svenska som är lät
       .insert([{ ...riskProfile, user_id: user.id }]);
 
     if (error) {
-      console.error('Error saving risk profile:', error);
+      console.error('Error saving enhanced risk profile:', error);
     }
   };
 
-  // Helper functions to map conversation answers to database values
+  // Helper functions
   const mapTimeHorizon = (horizon?: string) => {
     if (!horizon) return null;
     if (horizon.includes('1-3')) return 'short';
@@ -198,6 +266,15 @@ Ge en välstrukturerad och actionable portföljstrategi på svenska som är lät
     if (tolerance.includes('Låg')) return 'conservative';
     if (tolerance.includes('Måttlig')) return 'moderate';
     if (tolerance.includes('Hög')) return 'aggressive';
+    return null;
+  };
+
+  const extractPortfolioValue = (size?: string) => {
+    if (!size) return null;
+    if (size.includes('Under 100')) return 50000;
+    if (size.includes('100 000 - 500')) return 300000;
+    if (size.includes('500 000 - 1 miljon')) return 750000;
+    if (size.includes('Över 1 miljon')) return 1500000;
     return null;
   };
 
