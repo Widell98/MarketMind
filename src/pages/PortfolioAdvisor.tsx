@@ -33,7 +33,7 @@ const PortfolioAdvisor = () => {
 
         // Also check if user has any portfolios
         const { data: portfolios } = await supabase
-          .from('portfolios')
+          .from('user_portfolios')
           .select('id')
           .eq('user_id', user.id)
           .limit(1);

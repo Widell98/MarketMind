@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -64,7 +63,8 @@ const PortfolioImplementation = () => {
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
     setHasRiskProfile(true);
-    // The page will automatically refresh with the new portfolio data
+    // Refresh the page to load the new portfolio data
+    window.location.reload();
   };
 
   if (loading || hasRiskProfile === null) {
@@ -97,7 +97,7 @@ const PortfolioImplementation = () => {
                 Låt oss skapa din personliga investeringsstrategi genom en kort konversation
               </p>
             </div>
-            <ConversationalPortfolioAdvisor onComplete={handleOnboardingComplete} />
+            <ConversationalPortfolioAdvisor />
           </div>
         </div>
       </Layout>
