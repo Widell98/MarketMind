@@ -1,9 +1,9 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, ArrowLeft, CheckCircle, Sparkles } from 'lucide-react';
+import { Brain, ArrowLeft, CheckCircle, Sparkles, TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import ConversationalRiskAssessment from './ConversationalRiskAssessment';
 import { useConversationalPortfolio } from '@/hooks/useConversationalPortfolio';
 
@@ -24,6 +24,7 @@ const ConversationalPortfolioAdvisor = () => {
   const [currentStep, setCurrentStep] = useState<'intro' | 'conversation' | 'generating' | 'results'>('intro');
   const [portfolioResult, setPortfolioResult] = useState<any>(null);
   const { generatePortfolioFromConversation, loading } = useConversationalPortfolio();
+  const navigate = useNavigate();
 
   const handleStartConversation = () => {
     setCurrentStep('conversation');
@@ -46,6 +47,11 @@ const ConversationalPortfolioAdvisor = () => {
   const handleStartOver = () => {
     setCurrentStep('intro');
     setPortfolioResult(null);
+  };
+
+  const handleImplementStrategy = () => {
+    // Navigate to the portfolio dashboard where users can see their generated portfolio
+    navigate('/');
   };
 
   const formatAIResponse = (content: string) => {
@@ -232,7 +238,11 @@ const ConversationalPortfolioAdvisor = () => {
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Gör ny bedömning
               </Button>
-              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white">
+              <Button 
+                onClick={handleImplementStrategy}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              >
+                <TrendingUp className="w-4 h-4 mr-2" />
                 Implementera Strategin
               </Button>
             </div>
