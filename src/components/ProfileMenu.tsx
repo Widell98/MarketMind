@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,7 +33,7 @@ const ProfileMenu = () => {
     <div className="flex items-center gap-2 md:gap-3">
       <NotificationCenter />
       
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button 
             variant="ghost" 
@@ -48,7 +47,14 @@ const ProfileMenu = () => {
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56 z-[9999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl" align="end" forceMount sideOffset={8}>
+        <DropdownMenuContent 
+          className="w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl" 
+          align="end" 
+          forceMount 
+          sideOffset={8}
+          style={{ zIndex: 9999 }}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
           <DropdownMenuLabel className="font-normal p-3">
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none">
