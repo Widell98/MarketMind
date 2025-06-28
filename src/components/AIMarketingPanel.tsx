@@ -61,7 +61,7 @@ const AIMarketingPanel = () => {
           <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <div className="flex items-center gap-2 mb-1">
               <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-xs px-2 py-1">
-                Prediktiv Analys
+                Fördelar med AI-assistenten
               </Badge>
             </div>
             <p className="text-xs text-blue-800 dark:text-blue-300">
@@ -83,45 +83,11 @@ const AIMarketingPanel = () => {
           <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
             <div className="flex items-center gap-2 mb-1">
               <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs px-2 py-1">
-                Risk Insights
+                Fördelar med AI-assistenten
               </Badge>
             </div>
             <p className="text-xs text-green-800 dark:text-green-300">
               Djup riskanalys med personliga rekommendationer
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Success Stories */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-            Community Framgångar
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Anna P.</span>
-              <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">
-                +23%
-              </Badge>
-            </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              "AI-rådgivningen hjälpte mig diversifiera och minska risken"
-            </p>
-          </div>
-          
-          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Marcus L.</span>
-              <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">
-                +18%
-              </Badge>
-            </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              "Prediktiva analysen gav mig självförtroende att investera"
             </p>
           </div>
         </CardContent>
