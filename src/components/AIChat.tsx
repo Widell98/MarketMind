@@ -7,9 +7,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Brain, Send, Loader2, MessageSquare, BarChart3, Shield, TrendingUp, Zap, AlertCircle, Crown, Lock } from 'lucide-react';
+import { Brain, Send, Loader2, MessageSquare, BarChart3, Shield, TrendingUp, Zap, AlertCircle, Crown, Lock, Plus } from 'lucide-react';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useSubscription } from '@/hooks/useSubscription';
+import ChatHistory from './ChatHistory';
 
 interface AIChatProps {
   portfolioId?: string;
@@ -29,6 +30,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     analyzePortfolio,
     createNewSession,
     loadSession,
+    deleteSession,
     clearMessages,
     getQuickAnalysis
   } = useAIChat(portfolioId);
@@ -50,8 +52,9 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     if (currentSessionId && sessions.length > 0) {
       const currentSession = sessions.find(s => s.id === currentSessionId);
       console.log('Current active session:', currentSession?.session_name);
+      console.log('Messages in current session:', messages.length);
     }
-  }, [currentSessionId, sessions]);
+  }, [currentSessionId, sessions, messages]);
 
   // Uppdatera användning efter varje meddelande
   useEffect(() => {
@@ -104,6 +107,21 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     }
 
     await getQuickAnalysis(prompt);
+  };
+
+  const handleLoadSession = async (sessionId: string) => {
+    console.log('Loading session from ChatHistory:', sessionId);
+    await loadSession(sessionId);
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    console.log('Deleting session from ChatHistory:', sessionId);
+    await deleteSession(sessionId);
+  };
+
+  const handleCreateNewSession = async () => {
+    console.log('Creating new session...');
+    await createNewSession();
   };
 
   const isPremium = subscription?.subscribed;
@@ -221,26 +239,50 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     <div className="w-full h-full max-w-full">
       <Card className="h-[600px] sm:h-[700px] flex flex-col w-full">
         <CardHeader className="flex-shrink-0 p-3 sm:p-6">
-          <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
-            <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
-            <span className="truncate">AI Portfolio Assistent</span>
-            {!isPremium && (
-              <Badge variant={remainingMessages <= 2 ? "destructive" : "outline"} className="text-xs ml-auto">
-                {remainingMessages} kvar
-              </Badge>
-            )}
-            {isPremium && (
-              <Badge variant="default" className="text-xs ml-auto">
-                <Crown className="w-3 h-3 mr-1" />
-                Premium
-              </Badge>
-            )}
-          </CardTitle>
+          <div className="flex items-center justify-between mb-4">
+            <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+              <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+              <span className="truncate">AI Portfolio Assistent</span>
+              {!isPremium && (
+                <Badge variant={remainingMessages <= 2 ? "destructive" : "outline"} className="text-xs ml-auto">
+                  {remainingMessages} kvar
+                </Badge>
+              )}
+              {isPremium && (
+                <Badge variant="default" className="text-xs ml-auto">
+                  <Crown className="w-3 h-3 mr-1" />
+                  Premium
+                </Badge>
+              )}
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <ChatHistory 
+                sessions={sessions}
+                onLoadSession={handleLoadSession}
+                onDeleteSession={handleDeleteSession}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCreateNewSession}
+                className="flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Ny Chat</span>
+              </Button>
+            </div>
+          </div>
+          
           <CardDescription className="text-xs sm:text-sm">
             {isPremium ? 
               'Obegränsad AI-analys med djupgående portföljinsikter' :
               `${remainingMessages} AI-meddelanden och ${remainingAnalyses} analyser kvar idag`
             }
+            {currentSessionId && sessions.length > 0 && (
+              <span className="block mt-1 text-blue-600">
+                Aktiv chat: {sessions.find(s => s.id === currentSessionId)?.session_name || 'Okänd'}
+              </span>
+            )}
           </CardDescription>
           
           {!isPremium && isAtMessageLimit && (
@@ -357,7 +399,9 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
             {messages.length === 0 ? (
               <div className="text-center text-muted-foreground py-4 sm:py-8">
                 <MessageSquare className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 opacity-50" />
-                <h3 className="text-base sm:text-lg font-medium mb-2">Välkommen!</h3>
+                <h3 className="text-base sm:text-lg font-medium mb-2">
+                  {currentSessionId ? 'Chat laddad' : 'Välkommen!'}
+                </h3>
                 <p className="text-xs sm:text-sm mb-3 sm:mb-4 px-2">
                   {isPremium ? 
                     'Nu med obegränsad AI-analys och djupare insikter.' :
