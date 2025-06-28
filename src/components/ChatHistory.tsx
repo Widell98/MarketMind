@@ -61,66 +61,10 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
     setIsOpen(false);
   };
 
-  const handleDelete = (sessionId: string, sessionName: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleDelete = (sessionId: string, sessionName: string) => {
     if (window.confirm(`Är du säker på att du vill ta bort chatten "${sessionName}"? Detta kan inte ångras.`)) {
       onDeleteSession?.(sessionId);
     }
-  };
-
-  const SessionItem = ({ session }: { session: ChatSession }) => {
-    const isActive = session.id === currentSessionId;
-    
-    return (
-      <div 
-        className={`relative group border rounded-lg transition-all cursor-pointer ${
-          isActive 
-            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700' 
-            : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-gray-50 dark:hover:bg-gray-800/50'
-        }`}
-        onClick={() => handleLoadSession(session.id)}
-      >
-        <div className="flex items-center gap-3 p-4 pr-12">
-          <div className="flex-shrink-0">
-            {isActive ? (
-              <MessageSquare className="w-5 h-5 text-blue-600" />
-            ) : (
-              <Clock className="w-5 h-5 text-gray-400" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h4 className={`font-medium text-sm truncate ${
-              isActive ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'
-            }`}>
-              {session.session_name}
-            </h4>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                {getTimeAgo(session.created_at)}
-              </span>
-              {isActive && (
-                <Badge variant="secondary" className="text-xs px-2 py-0">
-                  Aktiv
-                </Badge>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        {onDeleteSession && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={(e) => handleDelete(session.id, session.session_name, e)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 pointer-events-auto"
-            style={{ zIndex: 10 }}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        )}
-      </div>
-    );
   };
 
   return (
@@ -136,7 +80,8 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
           )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col" onPointerDownOutside={(e) => e.preventDefault()}>
+      
+      <DialogContent className="max-w-2xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <History className="w-5 h-5" />
@@ -152,9 +97,9 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4 flex-1 min-h-0">
+        <div className="space-y-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               placeholder="Sök i chathistorik..."
               value={searchTerm}
@@ -170,12 +115,69 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
             </div>
           )}
 
-          <ScrollArea className="flex-1 min-h-0 max-h-96">
-            <div className="space-y-3 pr-4">
+          <ScrollArea className="h-96">
+            <div className="space-y-2 pr-4">
               {filteredSessions.length > 0 ? (
-                filteredSessions.map(session => (
-                  <SessionItem key={session.id} session={session} />
-                ))
+                filteredSessions.map(session => {
+                  const isActive = session.id === currentSessionId;
+                  
+                  return (
+                    <div 
+                      key={session.id}
+                      className={`
+                        w-full p-3 rounded-lg border transition-all cursor-pointer
+                        ${isActive 
+                          ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700' 
+                          : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                        }
+                      `}
+                      onClick={() => handleLoadSession(session.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className="flex-shrink-0">
+                            {isActive ? (
+                              <MessageSquare className="w-4 h-4 text-blue-600" />
+                            ) : (
+                              <Clock className="w-4 h-4 text-gray-400" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className={`font-medium text-sm truncate ${
+                              isActive ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'
+                            }`}>
+                              {session.session_name}
+                            </h4>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {getTimeAgo(session.created_at)}
+                              </span>
+                              {isActive && (
+                                <Badge variant="secondary" className="text-xs px-2 py-0">
+                                  Aktiv
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {onDeleteSession && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(session.id, session.session_name);
+                            }}
+                            className="ml-2 p-2 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
               ) : sessions.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                   <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
