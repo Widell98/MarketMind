@@ -169,9 +169,22 @@ const FeedLayout = () => {
                 </TabsContent>
               </div>
             </Tabs>
+
+            {/* Mobile AI Components Section - Show on small screens */}
+            <div className="lg:hidden mt-8 space-y-6">
+              <div className="text-center mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                  AI Insights & Verktyg
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
+                  Personliga AI-drivna insikter för din portfölj
+                </p>
+              </div>
+              {user ? <UserInsightsPanel /> : <AIMarketingPanel />}
+            </div>
           </div>
 
-          {/* Right Sidebar - Better proportions and spacing for larger screens */}
+          {/* Desktop Right Sidebar - Better proportions and spacing for larger screens */}
           <div className="hidden lg:block lg:col-span-1 space-y-6 lg:space-y-8 xl:space-y-10 relative z-20">
             {user ? <UserInsightsPanel /> : <AIMarketingPanel />}
           </div>
