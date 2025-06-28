@@ -54,9 +54,9 @@ const MarketMomentum = () => {
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
-      case 'up': return <TrendingUp className="w-3 h-3 text-green-500" />;
-      case 'down': return <TrendingDown className="w-3 h-3 text-red-500" />;
-      default: return <Target className="w-3 h-3 text-yellow-500" />;
+      case 'up': return <TrendingUp className="w-3 h-3 text-green-500 flex-shrink-0" />;
+      case 'down': return <TrendingDown className="w-3 h-3 text-red-500 flex-shrink-0" />;
+      default: return <Target className="w-3 h-3 text-yellow-500 flex-shrink-0" />;
     }
   };
 
@@ -80,7 +80,7 @@ const MarketMomentum = () => {
 
   if (loading) {
     return (
-      <Card className="border-0 shadow-sm">
+      <Card className="border-0 shadow-sm overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
             <Activity className="w-4 h-4 text-purple-500" />
@@ -99,7 +99,7 @@ const MarketMomentum = () => {
 
   if (error) {
     return (
-      <Card className="border-0 shadow-sm">
+      <Card className="border-0 shadow-sm overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
             <Activity className="w-4 h-4 text-purple-500" />
@@ -108,7 +108,7 @@ const MarketMomentum = () => {
         </CardHeader>
         <CardContent>
           <div className="text-center py-4">
-            <p className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>
+            <p className="text-sm text-red-600 dark:text-red-400 mb-2 break-words">{error}</p>
             <Button size="sm" onClick={fetchMomentumData} variant="outline">
               <RefreshCw className="w-4 h-4 mr-2" />
               Försök igen
@@ -120,18 +120,18 @@ const MarketMomentum = () => {
   }
 
   return (
-    <Card className="border-0 shadow-sm">
+    <Card className="border-0 shadow-sm overflow-hidden">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
-            <Activity className="w-4 h-4 text-purple-500" />
-            Marknadsmomentum
+            <Activity className="w-4 h-4 text-purple-500 flex-shrink-0" />
+            <span className="truncate">Marknadsmomentum</span>
           </CardTitle>
           <Button
             variant="outline"
             size="sm"
             onClick={fetchMomentumData}
-            className="text-xs px-2 py-1"
+            className="text-xs px-2 py-1 flex-shrink-0"
           >
             <RefreshCw className="w-3 h-3" />
           </Button>
@@ -139,29 +139,29 @@ const MarketMomentum = () => {
       </CardHeader>
       <CardContent className="space-y-3">
         {momentumData.map((item) => (
-          <div key={item.id} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="flex items-center gap-1 mt-0.5">
+          <div key={item.id} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg overflow-hidden">
+            <div className="flex items-center gap-1 mt-0.5 flex-shrink-0">
               {getTrendIcon(item.trend)}
             </div>
-            <div className="flex-1 space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-gray-900 dark:text-gray-100">
+            <div className="flex-1 space-y-2 min-w-0">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-xs font-medium text-gray-900 dark:text-gray-100 break-words line-clamp-2 flex-1">
                   {item.title}
                 </p>
-                <div className="flex items-center gap-1">
-                  <span className={`text-xs font-medium ${getTrendColor(item.trend)}`}>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <span className={`text-xs font-medium whitespace-nowrap ${getTrendColor(item.trend)}`}>
                     {item.change}
                   </span>
-                  <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
+                  <Badge variant="secondary" className="text-xs px-1.5 py-0.5 whitespace-nowrap">
                     {item.timeframe}
                   </Badge>
                 </div>
               </div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
+              <p className="text-xs text-gray-600 dark:text-gray-400 break-words line-clamp-2">
                 {item.description}
               </p>
               {item.sentiment && (
-                <Badge className={`text-xs px-1.5 py-0.5 ${getSentimentColor(item.sentiment)}`}>
+                <Badge className={`text-xs px-1.5 py-0.5 w-fit ${getSentimentColor(item.sentiment)}`}>
                   {item.sentiment}
                 </Badge>
               )}
@@ -169,14 +169,14 @@ const MarketMomentum = () => {
           </div>
         ))}
         
-        <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+        <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800 overflow-hidden">
           <div className="flex items-center gap-2 mb-1">
-            <Activity className="w-3 h-3 text-blue-500" />
+            <Activity className="w-3 h-3 text-blue-500 flex-shrink-0" />
             <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
               Marknadssammanfattning
             </span>
           </div>
-          <p className="text-xs text-blue-600 dark:text-blue-400">
+          <p className="text-xs text-blue-600 dark:text-blue-400 break-words">
             Baserat på aktuell data och marknadsanalys. Uppdateras regelbundet för att ge dig den senaste informationen.
           </p>
         </div>

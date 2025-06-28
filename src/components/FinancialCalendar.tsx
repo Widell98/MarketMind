@@ -4,8 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, TrendingUp, Building, Globe, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
-import { format, addDays, startOfWeek, addWeeks, subWeeks } from 'date-fns';
-import { sv } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 
 interface FinancialEvent {
@@ -68,18 +66,10 @@ const FinancialCalendar = () => {
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'earnings': return <Building className="w-3 h-3" />;
-      case 'economic': return <Globe className="w-3 h-3" />;
-      case 'dividend': return <TrendingUp className="w-3 h-3" />;
-      default: return <Calendar className="w-3 h-3" />;
-    }
-  };
-
-  const navigateWeek = (direction: 'prev' | 'next') => {
-    if (direction === 'prev') {
-      setCurrentDate(subWeeks(currentDate, 1));
-    } else {
-      setCurrentDate(addWeeks(currentDate, 1));
+      case 'earnings': return <Building className="w-3 h-3 flex-shrink-0" />;
+      case 'economic': return <Globe className="w-3 h-3 flex-shrink-0" />;
+      case 'dividend': return <TrendingUp className="w-3 h-3 flex-shrink-0" />;
+      default: return <Calendar className="w-3 h-3 flex-shrink-0" />;
     }
   };
 
@@ -87,7 +77,7 @@ const FinancialCalendar = () => {
     const today = new Date().toISOString().split('T')[0];
     return events.filter(event => 
       event.date === today || 
-      (!event.date && event.dayOfWeek === format(new Date(), 'EEEE', { locale: sv }))
+      (!event.date && event.dayOfWeek === new Date().toLocaleDateString('sv', { weekday: 'long' }))
     );
   };
 
@@ -98,7 +88,7 @@ const FinancialCalendar = () => {
     days.forEach(day => {
       eventsByDay[day] = events.filter(event => 
         event.dayOfWeek === day || 
-        (event.date && format(new Date(event.date), 'EEEE', { locale: sv }) === day)
+        (event.date && new Date(event.date).toLocaleDateString('sv', { weekday: 'long' }) === day)
       );
     });
     
@@ -107,7 +97,7 @@ const FinancialCalendar = () => {
 
   if (loading) {
     return (
-      <Card className="border-0 shadow-sm">
+      <Card className="border-0 shadow-sm overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
             <Calendar className="w-4 h-4 text-blue-500" />
@@ -126,7 +116,7 @@ const FinancialCalendar = () => {
 
   if (error) {
     return (
-      <Card className="border-0 shadow-sm">
+      <Card className="border-0 shadow-sm overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
             <Calendar className="w-4 h-4 text-blue-500" />
@@ -135,7 +125,7 @@ const FinancialCalendar = () => {
         </CardHeader>
         <CardContent>
           <div className="text-center py-4">
-            <p className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>
+            <p className="text-sm text-red-600 dark:text-red-400 mb-2 break-words">{error}</p>
             <Button size="sm" onClick={fetchCalendarData} variant="outline">
               <RefreshCw className="w-4 h-4 mr-2" />
               Försök igen
@@ -147,14 +137,14 @@ const FinancialCalendar = () => {
   }
 
   return (
-    <Card className="border-0 shadow-sm">
+    <Card className="border-0 shadow-sm overflow-hidden">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-blue-500" />
-            Finansiell Kalender
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2 min-w-0">
+            <Calendar className="w-4 h-4 text-blue-500 flex-shrink-0" />
+            <span className="truncate">Finansiell Kalender</span>
           </CardTitle>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-shrink-0">
             <Button
               variant={viewMode === 'day' ? 'default' : 'outline'}
               size="sm"
@@ -185,31 +175,28 @@ const FinancialCalendar = () => {
       <CardContent className="space-y-3">
         {viewMode === 'day' ? (
           <div className="space-y-3">
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-              {format(new Date(), 'EEEE, d MMMM', { locale: sv })}
-            </div>
             {getTodayEvents().length > 0 ? (
               getTodayEvents().map((event) => (
-                <div key={event.id} className="flex items-start gap-3 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 min-w-12">
+                <div key={event.id} className="flex items-start gap-3 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg overflow-hidden">
+                  <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 min-w-fit flex-shrink-0">
                     <Clock className="w-3 h-3" />
-                    {event.time}
+                    <span className="whitespace-nowrap">{event.time}</span>
                   </div>
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
+                  <div className="flex-1 space-y-1 min-w-0">
+                    <div className="flex items-start gap-2">
                       {getCategoryIcon(event.category)}
-                      <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
+                      <span className="text-xs font-medium text-gray-900 dark:text-gray-100 break-words line-clamp-2 flex-1">
                         {event.title}
                       </span>
-                      <Badge className={`text-xs px-1.5 py-0.5 ${getImportanceColor(event.importance)}`}>
+                      <Badge className={`text-xs px-1.5 py-0.5 whitespace-nowrap flex-shrink-0 ${getImportanceColor(event.importance)}`}>
                         {event.importance}
                       </Badge>
                     </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                    <p className="text-xs text-gray-600 dark:text-gray-400 break-words line-clamp-2">
                       {event.description}
                     </p>
                     {event.company && (
-                      <p className="text-xs text-blue-600 dark:text-blue-400">
+                      <p className="text-xs text-blue-600 dark:text-blue-400 break-words line-clamp-1">
                         {event.company}
                       </p>
                     )}
@@ -224,48 +211,24 @@ const FinancialCalendar = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                Vecka {format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'w, yyyy', { locale: sv })}
-              </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigateWeek('prev')}
-                  className="h-6 w-6 p-0"
-                >
-                  <ChevronLeft className="w-3 h-3" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigateWeek('next')}
-                  className="h-6 w-6 p-0"
-                >
-                  <ChevronRight className="w-3 h-3" />
-                </Button>
-              </div>
-            </div>
-            
             {Object.entries(getEventsByDay()).map(([day, dayEvents]) => (
               <div key={day} className="space-y-2">
-                <div className="text-xs font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 pb-1">
+                <div className="text-xs font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 pb-1 truncate">
                   {day}
                 </div>
                 {dayEvents.length > 0 ? (
                   dayEvents.map((event) => (
-                    <div key={event.id} className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg ml-2">
-                      <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 min-w-12">
+                    <div key={event.id} className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg ml-2 overflow-hidden">
+                      <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 min-w-fit flex-shrink-0">
                         <Clock className="w-3 h-3" />
-                        {event.time}
+                        <span className="whitespace-nowrap">{event.time}</span>
                       </div>
-                      <div className="flex items-center gap-2 flex-1">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
                         {getCategoryIcon(event.category)}
-                        <span className="text-xs text-gray-900 dark:text-gray-100 flex-1">
+                        <span className="text-xs text-gray-900 dark:text-gray-100 flex-1 truncate">
                           {event.title}
                         </span>
-                        <Badge className={`text-xs px-1.5 py-0.5 ${getImportanceColor(event.importance)}`}>
+                        <Badge className={`text-xs px-1.5 py-0.5 whitespace-nowrap flex-shrink-0 ${getImportanceColor(event.importance)}`}>
                           {event.importance}
                         </Badge>
                       </div>
