@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -31,6 +30,28 @@ export const useConversationalPortfolio = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+
+  const checkIfUserHasCompletedAdvisor = async () => {
+    if (!user) return false;
+
+    try {
+      const { data, error } = await supabase
+        .from('user_risk_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error checking advisor completion:', error);
+        return false;
+      }
+
+      return !!data;
+    } catch (error) {
+      console.error('Error checking advisor completion:', error);
+      return false;
+    }
+  };
 
   const generatePortfolioFromConversation = async (conversationData: ConversationData) => {
     if (!user) {
@@ -280,6 +301,7 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
 
   return {
     generatePortfolioFromConversation,
+    checkIfUserHasCompletedAdvisor,
     loading
   };
 };
