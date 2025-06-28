@@ -5,9 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Brain, Send, Loader2, MessageSquare, BarChart3, Shield, TrendingUp, Zap, AlertCircle, Crown, Lock, Plus, Clock } from 'lucide-react';
+import { Brain, Send, Loader2, MessageSquare, Shield, TrendingUp, Zap, AlertCircle, Crown, Lock, Plus, Clock } from 'lucide-react';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useSubscription } from '@/hooks/useSubscription';
 import ChatHistory from './ChatHistory';
@@ -18,21 +17,17 @@ interface AIChatProps {
 
 const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
   const [inputMessage, setInputMessage] = useState('');
-  const [selectedAnalysis, setSelectedAnalysis] = useState<string | null>(null);
   const { 
     messages, 
     sessions, 
     currentSessionId,
     isLoading, 
-    isAnalyzing,
     isLoadingSession,
     quotaExceeded,
     sendMessage, 
-    analyzePortfolio,
     createNewSession,
     loadSession,
     deleteSession,
-    clearMessages,
     getQuickAnalysis
   } = useAIChat(portfolioId);
 
@@ -57,7 +52,9 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     }
   }, [currentSessionId, sessions, messages]);
 
+  // Fetch usage when component mounts and after messages change
   useEffect(() => {
+    console.log('Fetching usage due to messages change or mount...');
     fetchUsage();
   }, [messages.length, fetchUsage]);
 
@@ -74,26 +71,19 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
 
     const message = inputMessage.trim();
     setInputMessage('');
+    
+    console.log('About to send message, current remaining:', remainingMessages);
     await sendMessage(message);
+    
+    // Force refresh usage after sending
+    setTimeout(() => {
+      console.log('Force refreshing usage after message send...');
+      fetchUsage();
+    }, 1000);
     
     setTimeout(() => {
       inputRef.current?.focus();
     }, 100);
-  };
-
-  const handleQuickAnalysis = async (type: 'risk' | 'diversification' | 'performance' | 'optimization') => {
-    if (quotaExceeded) return;
-    
-    const remainingAnalyses = getRemainingUsage('analysis');
-    const isPremium = subscription?.subscribed;
-
-    if (!isPremium && remainingAnalyses <= 0) {
-      return;
-    }
-
-    setSelectedAnalysis(type);
-    await analyzePortfolio(type);
-    setSelectedAnalysis(null);
   };
 
   const handleQuickQuestion = async (prompt: string) => {
@@ -104,7 +94,14 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
       return;
     }
 
+    console.log('About to send quick question, current remaining:', remainingMessages);
     await getQuickAnalysis(prompt);
+    
+    // Force refresh usage after sending
+    setTimeout(() => {
+      console.log('Force refreshing usage after quick question...');
+      fetchUsage();
+    }, 1000);
   };
 
   const handleLoadSession = async (sessionId: string) => {
@@ -124,44 +121,12 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
 
   const isPremium = subscription?.subscribed;
   const remainingMessages = getRemainingUsage('ai_message');
-  const remainingAnalyses = getRemainingUsage('analysis');
 
   const quickQuestions = [
     { text: "Hur mår min portfölj just nu?", action: () => handleQuickQuestion("Ge mig en snabb översikt över hur min portfölj mår just nu") },
     { text: "Vilka risker finns i mina innehav?", action: () => handleQuickQuestion("Identifiera de största riskerna i min nuvarande portfölj") },
     { text: "Borde jag rebalansera?", action: () => handleQuickQuestion("Analysera om jag borde rebalansera min portfölj och varför") },
     { text: "Vad händer på marknaden?", action: () => handleQuickQuestion("Ge mig en uppdatering om vad som händer på finansmarknaderna som kan påverka mig") }
-  ];
-
-  const analysisTypes = [
-    { 
-      type: 'risk' as const, 
-      icon: Shield, 
-      title: 'Riskanalys', 
-      description: 'Djup analys av portföljrisker',
-      color: 'text-red-600' 
-    },
-    { 
-      type: 'diversification' as const, 
-      icon: BarChart3, 
-      title: 'Diversifiering', 
-      description: 'Utvärdera spridning',
-      color: 'text-blue-600' 
-    },
-    { 
-      type: 'performance' as const, 
-      icon: TrendingUp, 
-      title: 'Prestanda', 
-      description: 'Analysera avkastning',
-      color: 'text-green-600' 
-    },
-    { 
-      type: 'optimization' as const, 
-      icon: Zap, 
-      title: 'Optimering', 
-      description: 'Förbättringsförslag',
-      color: 'text-purple-600' 
-    }
   ];
 
   const formatAIResponse = (content: string) => {
@@ -225,11 +190,14 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
   };
 
   const isAtMessageLimit = !isPremium && remainingMessages <= 0;
-  const isAtAnalysisLimit = !isPremium && remainingAnalyses <= 0;
 
   const currentSessionName = currentSessionId && sessions.length > 0 
     ? sessions.find(s => s.id === currentSessionId)?.session_name 
     : null;
+
+  console.log('Current remaining messages in render:', remainingMessages);
+  console.log('Is premium:', isPremium);
+  console.log('Usage object:', usage);
 
   return (
     <div className="w-full h-full max-w-full">
@@ -269,21 +237,16 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
                 Premium - Obegränsad användning
               </Badge>
             ) : (
-              <div className="flex items-center gap-2">
-                <Badge variant={remainingMessages <= 2 ? "destructive" : "outline"} className="text-xs">
-                  {remainingMessages}/5 meddelanden kvar idag
-                </Badge>
-                <Badge variant={remainingAnalyses <= 1 ? "destructive" : "outline"} className="text-xs">
-                  {remainingAnalyses}/3 analyser kvar idag
-                </Badge>
-              </div>
+              <Badge variant={remainingMessages <= 2 ? "destructive" : "outline"} className="text-xs">
+                {remainingMessages}/5 meddelanden kvar idag
+              </Badge>
             )}
           </div>
           
           <CardDescription className="text-xs sm:text-sm">
             {isPremium ? 
               'Obegränsad AI-analys med djupgående portföljinsikter' :
-              'Gratis användare har 5 meddelanden och 3 analyser per dag'
+              'Gratis användare har 5 meddelanden per dag'
             }
             {currentSessionName && (
               <div className="flex items-center gap-2 mt-2">
@@ -353,63 +316,23 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
             </Alert>
           )}
           
+          {/* Quick Questions */}
           <div className="w-full mt-4">
-            <Tabs defaultValue="chat" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="chat" className="text-xs sm:text-sm" disabled={isAtMessageLimit}>
-                  Chat {!isPremium && `(${remainingMessages})`}
-                  {isAtMessageLimit && <Lock className="w-3 h-3 ml-1" />}
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="analysis" 
-                  disabled={quotaExceeded || isAtAnalysisLimit}
-                  className="text-xs sm:text-sm"
+            <div className="flex gap-1 sm:gap-2 flex-wrap">
+              {quickQuestions.map((q, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  size="sm"
+                  onClick={q.action}
+                  disabled={isLoading || quotaExceeded || isAtMessageLimit}
+                  className="text-xs px-2 py-1 sm:px-3 sm:py-2 flex-1 min-w-0 relative"
                 >
-                  Analys {!isPremium && `(${remainingAnalyses})`}
-                  {isAtAnalysisLimit && <Lock className="w-3 h-3 ml-1" />}
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="chat" className="mt-3 sm:mt-4">
-                <div className="flex gap-1 sm:gap-2 flex-wrap">
-                  {quickQuestions.map((q, index) => (
-                    <Button
-                      key={index}
-                      variant="outline"
-                      size="sm"
-                      onClick={q.action}
-                      disabled={isLoading || quotaExceeded || isAtMessageLimit}
-                      className="text-xs px-2 py-1 sm:px-3 sm:py-2 flex-1 min-w-0 relative"
-                    >
-                      {isAtMessageLimit && <Lock className="w-3 h-3 mr-1 text-gray-400" />}
-                      <span className="truncate">{q.text}</span>
-                    </Button>
-                  ))}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="analysis" className="mt-3 sm:mt-4">
-                <div className="grid grid-cols-2 gap-2">
-                  {analysisTypes.map((analysis) => {
-                    const Icon = analysis.icon;
-                    return (
-                      <Button
-                        key={analysis.type}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleQuickAnalysis(analysis.type)}
-                        disabled={isAnalyzing || quotaExceeded || isAtAnalysisLimit}
-                        className={`flex flex-col h-12 sm:h-16 p-2 relative ${selectedAnalysis === analysis.type ? 'ring-2 ring-blue-500' : ''}`}
-                      >
-                        {isAtAnalysisLimit && <Lock className="absolute top-1 right-1 w-3 h-3 text-gray-400" />}
-                        <Icon className={`w-3 h-3 sm:w-4 sm:h-4 ${analysis.color}`} />
-                        <span className="text-xs font-medium truncate">{analysis.title}</span>
-                      </Button>
-                    );
-                  })}
-                </div>
-              </TabsContent>
-            </Tabs>
+                  {isAtMessageLimit && <Lock className="w-3 h-3 mr-1 text-gray-400" />}
+                  <span className="truncate">{q.text}</span>
+                </Button>
+              ))}
+            </div>
           </div>
         </CardHeader>
         
@@ -481,12 +404,12 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
                     </div>
                   </div>
                 ))}
-                {(isLoading || isAnalyzing) && (
+                {isLoading && (
                   <div className="flex justify-start">
                     <div className="bg-gradient-to-br from-gray-50 to-blue-50 border border-gray-200 p-3 sm:p-4 rounded-lg flex items-center gap-3 shadow-sm">
                       <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
                       <span className="text-xs sm:text-sm text-gray-700">
-                        {isAnalyzing ? 'Analyserar portfölj...' : 'AI-assistenten tänker...'}
+                        AI-assistenten tänker...
                       </span>
                     </div>
                   </div>
@@ -508,16 +431,16 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
                   remainingMessages <= 2 && !isPremium ? `${remainingMessages} meddelanden kvar idag. Ställ din fråga...` :
                   "Ställ en avancerad fråga om din portfölj..."
                 }
-                disabled={isLoading || isAnalyzing || quotaExceeded || isAtMessageLimit}
+                disabled={isLoading || quotaExceeded || isAtMessageLimit}
                 className="flex-1 text-xs sm:text-sm"
               />
               <Button 
                 type="submit" 
-                disabled={!inputMessage.trim() || isLoading || isAnalyzing || quotaExceeded || isAtMessageLimit}
+                disabled={!inputMessage.trim() || isLoading || quotaExceeded || isAtMessageLimit}
                 size="icon"
                 className="flex-shrink-0"
               >
-                {(isLoading || isAnalyzing) ? (
+                {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : isAtMessageLimit ? (
                   <Lock className="w-4 h-4" />
