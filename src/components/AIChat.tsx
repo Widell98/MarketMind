@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Brain, Send, Loader2, MessageSquare, BarChart3, Shield, TrendingUp, Zap, AlertCircle, Crown, Lock, Plus } from 'lucide-react';
+import { Brain, Send, Loader2, MessageSquare, BarChart3, Shield, TrendingUp, Zap, AlertCircle, Crown, Lock, Plus, Clock } from 'lucide-react';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useSubscription } from '@/hooks/useSubscription';
 import ChatHistory from './ChatHistory';
@@ -25,6 +24,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     currentSessionId,
     isLoading, 
     isAnalyzing,
+    isLoadingSession,
     quotaExceeded,
     sendMessage, 
     analyzePortfolio,
@@ -56,7 +56,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     }
   }, [currentSessionId, sessions, messages]);
 
-  // Uppdatera användning efter varje meddelande
+  // Update usage after each message
   useEffect(() => {
     fetchUsage();
   }, [messages.length, fetchUsage]);
@@ -68,7 +68,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     const remainingMessages = getRemainingUsage('ai_message');
     const isPremium = subscription?.subscribed;
 
-    // Kontrollera begränsning innan skickning
+    // Check limitation before sending
     if (!isPremium && remainingMessages <= 0) {
       return;
     }
@@ -235,6 +235,11 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
   const isAtMessageLimit = !isPremium && remainingMessages <= 0;
   const isAtAnalysisLimit = !isPremium && remainingAnalyses <= 0;
 
+  // Get current session name for display
+  const currentSessionName = currentSessionId && sessions.length > 0 
+    ? sessions.find(s => s.id === currentSessionId)?.session_name 
+    : null;
+
   return (
     <div className="w-full h-full max-w-full">
       <Card className="h-[600px] sm:h-[700px] flex flex-col w-full">
@@ -258,14 +263,17 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
             <div className="flex items-center gap-2">
               <ChatHistory 
                 sessions={sessions}
+                currentSessionId={currentSessionId}
                 onLoadSession={handleLoadSession}
                 onDeleteSession={handleDeleteSession}
+                isLoadingSession={isLoadingSession}
               />
               <Button
                 size="sm"
                 variant="outline"
                 onClick={handleCreateNewSession}
                 className="flex items-center gap-1"
+                disabled={isLoading}
               >
                 <Plus className="w-4 h-4" />
                 <span className="hidden sm:inline">Ny Chat</span>
@@ -278,10 +286,19 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
               'Obegränsad AI-analys med djupgående portföljinsikter' :
               `${remainingMessages} AI-meddelanden och ${remainingAnalyses} analyser kvar idag`
             }
-            {currentSessionId && sessions.length > 0 && (
-              <span className="block mt-1 text-blue-600">
-                Aktiv chat: {sessions.find(s => s.id === currentSessionId)?.session_name || 'Okänd'}
-              </span>
+            {currentSessionName && (
+              <div className="flex items-center gap-2 mt-2">
+                <Clock className="w-3 h-3 text-blue-600" />
+                <span className="text-blue-600 font-medium text-xs sm:text-sm">
+                  {currentSessionName}
+                </span>
+                {isLoadingSession && (
+                  <div className="flex items-center gap-1 text-blue-600">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span className="text-xs">Laddar...</span>
+                  </div>
+                )}
+              </div>
             )}
           </CardDescription>
           
@@ -400,7 +417,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
               <div className="text-center text-muted-foreground py-4 sm:py-8">
                 <MessageSquare className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 opacity-50" />
                 <h3 className="text-base sm:text-lg font-medium mb-2">
-                  {currentSessionId ? 'Chat laddad' : 'Välkommen!'}
+                  {currentSessionName ? `${currentSessionName}` : 'Välkommen!'}
                 </h3>
                 <p className="text-xs sm:text-sm mb-3 sm:mb-4 px-2">
                   {isPremium ? 
@@ -413,6 +430,8 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
                     'AI-funktioner är tillfälligt otillgängliga på grund av API-kvotgräns.' :
                     isAtMessageLimit ?
                     'Du har använt alla dina gratis meddelanden för idag. Uppgradera för obegränsad användning.' :
+                    currentSessionName ? 
+                    'Fortsätt din konversation eller starta en ny chat.' :
                     'Använd snabbknapparna ovan eller ställ dina egna frågor nedan.'
                   }
                 </div>

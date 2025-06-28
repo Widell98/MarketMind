@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,12 +32,18 @@ export const useAIChat = (portfolioId?: string) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [quotaExceeded, setQuotaExceeded] = useState(false);
+  const [isLoadingSession, setIsLoadingSession] = useState(false);
 
   const loadMessages = useCallback(async (sessionId: string) => {
     if (!user || !portfolioId) return;
-    setIsLoading(true);
+    
+    console.log('=== LOADING MESSAGES ===');
+    console.log('Session ID:', sessionId);
+    console.log('User ID:', user.id);
+    
+    setIsLoadingSession(true);
+    
     try {
-      console.log('Loading messages for session:', sessionId);
       const { data, error } = await supabase
         .from('portfolio_chat_history')
         .select('*')
@@ -51,7 +56,7 @@ export const useAIChat = (portfolioId?: string) => {
         throw error;
       }
 
-      console.log('Loaded messages from database:', data);
+      console.log('Raw messages from database:', data);
 
       const formattedMessages: Message[] = data.map(message => ({
         id: message.id,
@@ -61,8 +66,16 @@ export const useAIChat = (portfolioId?: string) => {
         context: message.context_data as any,
       }));
 
-      console.log('Setting formatted messages to state:', formattedMessages);
-      setMessages(formattedMessages);
+      console.log('Formatted messages:', formattedMessages);
+      console.log('Setting messages to state...');
+      
+      // Clear messages first, then set new ones
+      setMessages([]);
+      setTimeout(() => {
+        setMessages(formattedMessages);
+        console.log('Messages set to state:', formattedMessages.length);
+      }, 50);
+      
     } catch (error) {
       console.error('Error loading messages:', error);
       toast({
@@ -71,15 +84,17 @@ export const useAIChat = (portfolioId?: string) => {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsLoadingSession(false);
     }
   }, [user, portfolioId, toast]);
 
   const loadSessions = useCallback(async () => {
     if (!user || !portfolioId) return;
-    setIsLoading(true);
+    
+    console.log('=== LOADING SESSIONS ===');
+    console.log('User ID:', user.id);
+    
     try {
-      console.log('Loading sessions for user:', user.id);
       const { data, error } = await supabase
         .from('ai_chat_sessions')
         .select('*')
@@ -91,7 +106,7 @@ export const useAIChat = (portfolioId?: string) => {
         throw error;
       }
 
-      console.log('Loaded sessions from database:', data);
+      console.log('Raw sessions from database:', data);
 
       const formattedSessions = data.map(session => ({
         id: session.id,
@@ -100,9 +115,10 @@ export const useAIChat = (portfolioId?: string) => {
         is_active: session.is_active || false,
       }));
 
+      console.log('Formatted sessions:', formattedSessions);
       setSessions(formattedSessions);
 
-      // Auto-load the most recent session if we don't have one selected
+      // Only auto-load if no session is currently selected
       if (!currentSessionId && formattedSessions.length > 0) {
         const mostRecentSession = formattedSessions[0];
         console.log('Auto-loading most recent session:', mostRecentSession.id);
@@ -116,10 +132,202 @@ export const useAIChat = (portfolioId?: string) => {
         description: "Kunde inte ladda sessioner. Försök igen.",
         variant: "destructive",
       });
+    }
+  }, [user, portfolioId, toast, currentSessionId, loadMessages]);
+
+  const loadSession = useCallback(async (sessionId: string) => {
+    console.log('=== MANUALLY LOADING SESSION ===');
+    console.log('Loading chat session:', sessionId);
+    console.log('Current session before change:', currentSessionId);
+    
+    // Immediately clear messages and set new session
+    setMessages([]);
+    setCurrentSessionId(sessionId);
+    
+    // Load messages for the selected session
+    await loadMessages(sessionId);
+    
+    console.log('Session loaded successfully');
+    toast({
+      title: "Chat laddad",
+      description: "Din sparade chat har laddats.",
+    });
+  }, [currentSessionId, loadMessages, toast]);
+
+  const createNewSession = useCallback(async () => {
+    console.log('=== CREATE NEW SESSION (EMPTY) ===');
+    console.log('User:', user?.id);
+    console.log('Portfolio ID:', portfolioId);
+    
+    if (!user || !portfolioId) {
+      console.log('Cannot create session: missing user or portfolio');
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    // Clear messages immediately for new empty session
+    console.log('Clearing messages for new empty session');
+    setMessages([]);
+    
+    try {
+      const now = new Date();
+      const sessionName = `Chat ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
+      
+      console.log('Session name:', sessionName);
+      
+      const { data, error } = await supabase
+        .from('ai_chat_sessions')
+        .insert([{ 
+          user_id: user.id, 
+          session_name: sessionName,
+          context_data: {
+            created_for: 'advisory',
+            market_context: 'normal',
+            portfolio_id: portfolioId
+          }
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating session:', error);
+        throw error;
+      }
+
+      console.log('New empty session created:', data);
+
+      const newSession = {
+        id: data.id,
+        session_name: data.session_name || sessionName,
+        created_at: data.created_at,
+        is_active: data.is_active || false,
+      };
+
+      setSessions(prev => [newSession, ...prev]);
+      setCurrentSessionId(newSession.id);
+      
+      toast({
+        title: "Ny chat skapad",
+        description: "Du kan nu börja chatta med din AI-assistent.",
+      });
+      
+    } catch (error) {
+      console.error('Error creating new session:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte skapa ny session. Försök igen.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [user, portfolioId, toast, currentSessionId, loadMessages]);
+  }, [user, portfolioId, toast]);
+
+  const deleteSession = useCallback(async (sessionId: string) => {
+    if (!user) {
+      console.error('Cannot delete session: no authenticated user');
+      return;
+    }
+    
+    console.log('=== DELETING SESSION ===');
+    console.log('Session to delete:', sessionId);
+    console.log('Current user ID:', user.id);
+    console.log('Current session ID:', currentSessionId);
+    
+    try {
+      // First, let's check if the session exists and belongs to the user
+      console.log('Checking if session exists and belongs to user...');
+      const { data: sessionCheck, error: sessionCheckError } = await supabase
+        .from('ai_chat_sessions')
+        .select('id, user_id, session_name')
+        .eq('id', sessionId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (sessionCheckError) {
+        console.error('Error checking session ownership:', sessionCheckError);
+        throw new Error(`Kunde inte kontrollera session: ${sessionCheckError.message}`);
+      }
+
+      if (!sessionCheck) {
+        console.error('Session not found or does not belong to user');
+        toast({
+          title: "Fel",
+          description: "Sessionen hittades inte eller tillhör inte dig.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Session found and belongs to user:', sessionCheck);
+
+      // Delete all messages in the session first
+      console.log('Deleting messages...');
+      const { error: messagesError } = await supabase
+        .from('portfolio_chat_history')
+        .delete()
+        .eq('chat_session_id', sessionId)
+        .eq('user_id', user.id);
+
+      if (messagesError) {
+        console.error('Error deleting messages:', messagesError);
+        throw new Error(`Kunde inte radera meddelanden: ${messagesError.message}`);
+      }
+
+      // Now delete the session itself
+      console.log('Deleting session...');
+      const { error: sessionError } = await supabase
+        .from('ai_chat_sessions')
+        .delete()
+        .eq('id', sessionId)
+        .eq('user_id', user.id);
+
+      if (sessionError) {
+        console.error('Error deleting session:', sessionError);
+        throw new Error(`Kunde inte radera session: ${sessionError.message}`);
+      }
+
+      console.log('Session deletion completed successfully');
+
+      // Update local state immediately
+      setSessions(prev => {
+        const updated = prev.filter(session => session.id !== sessionId);
+        console.log('Updated sessions after deletion:', updated.map(s => ({ id: s.id, name: s.session_name })));
+        return updated;
+      });
+      
+      // If we deleted the current session, clear it and load the most recent one
+      if (currentSessionId === sessionId) {
+        console.log('Deleted session was the current session, clearing and loading next...');
+        setCurrentSessionId(null);
+        setMessages([]);
+        
+        // Load the most recent remaining session if any
+        const remainingSessions = sessions.filter(s => s.id !== sessionId);
+        if (remainingSessions.length > 0) {
+          const mostRecent = remainingSessions[0];
+          console.log('Loading most recent remaining session:', mostRecent.id);
+          await loadSession(mostRecent.id);
+        } else {
+          console.log('No remaining sessions to load');
+        }
+      }
+
+      toast({
+        title: "Chat borttagen",
+        description: `Chatten "${sessionCheck.session_name}" har tagits bort permanent.`,
+      });
+
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      toast({
+        title: "Fel",
+        description: error instanceof Error ? error.message : "Kunde inte ta bort chatten. Försök igen.",
+        variant: "destructive",
+      });
+    }
+  }, [user, currentSessionId, sessions, loadSession, toast]);
 
   const sendMessage = useCallback(async (content: string) => {
     console.log('=== SENDING MESSAGE DEBUG ===');
@@ -401,238 +609,11 @@ export const useAIChat = (portfolioId?: string) => {
     await sendMessage(prompt);
   }, [sendMessage, checkUsageLimit, subscription, toast]);
 
-  const createNewSession = useCallback(async () => {
-    console.log('=== CREATE NEW SESSION (EMPTY) ===');
-    console.log('User:', user?.id);
-    console.log('Portfolio ID:', portfolioId);
-    
-    if (!user || !portfolioId) {
-      console.log('Cannot create session: missing user or portfolio');
-      return;
-    }
-    
-    setIsLoading(true);
-    
-    // Clear messages immediately for new empty session
-    console.log('Clearing messages for new empty session');
-    setMessages([]);
-    
-    try {
-      const now = new Date();
-      const sessionName = `Chat ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
-      
-      console.log('Session name:', sessionName);
-      
-      const { data, error } = await supabase
-        .from('ai_chat_sessions')
-        .insert([{ 
-          user_id: user.id, 
-          session_name: sessionName,
-          context_data: {
-            created_for: 'advisory',
-            market_context: 'normal',
-            portfolio_id: portfolioId
-          }
-        }])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating session:', error);
-        throw error;
-      }
-
-      console.log('New empty session created:', data);
-
-      const newSession = {
-        id: data.id,
-        session_name: data.session_name || sessionName,
-        created_at: data.created_at,
-        is_active: data.is_active || false,
-      };
-
-      setSessions(prev => [newSession, ...prev]);
-      setCurrentSessionId(newSession.id);
-      
-      toast({
-        title: "Ny chat skapad",
-        description: "Du kan nu börja chatta med din AI-assistent.",
-      });
-      
-    } catch (error) {
-      console.error('Error creating new session:', error);
-      toast({
-        title: "Fel",
-        description: "Kunde inte skapa ny session. Försök igen.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user, portfolioId, toast]);
-
-  const loadSession = useCallback(async (sessionId: string) => {
-    console.log('=== LOADING SESSION ===');
-    console.log('Loading chat session:', sessionId);
-    
-    // Clear current messages first
-    setMessages([]);
-    setCurrentSessionId(sessionId);
-    
-    // Load messages for this specific session only
-    await loadMessages(sessionId);
-    
-    toast({
-      title: "Chat laddad",
-      description: "Din sparade chat har laddats.",
-    });
-  }, [loadMessages, toast]);
-
-  const deleteSession = useCallback(async (sessionId: string) => {
-    if (!user) {
-      console.error('Cannot delete session: no authenticated user');
-      return;
-    }
-    
-    console.log('=== DELETING SESSION ===');
-    console.log('Session to delete:', sessionId);
-    console.log('Current user ID:', user.id);
-    console.log('Current session ID:', currentSessionId);
-    
-    try {
-      // First, let's check if the session exists and belongs to the user
-      console.log('Checking if session exists and belongs to user...');
-      const { data: sessionCheck, error: sessionCheckError } = await supabase
-        .from('ai_chat_sessions')
-        .select('id, user_id, session_name')
-        .eq('id', sessionId)
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (sessionCheckError) {
-        console.error('Error checking session ownership:', sessionCheckError);
-        throw new Error(`Kunde inte kontrollera session: ${sessionCheckError.message}`);
-      }
-
-      if (!sessionCheck) {
-        console.error('Session not found or does not belong to user');
-        toast({
-          title: "Fel",
-          description: "Sessionen hittades inte eller tillhör inte dig.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('Session found and belongs to user:', sessionCheck);
-
-      // Check how many messages exist for this session
-      console.log('Checking messages count for session...');
-      const { count: messagesCount, error: countError } = await supabase
-        .from('portfolio_chat_history')
-        .select('*', { count: 'exact', head: true })
-        .eq('chat_session_id', sessionId)
-        .eq('user_id', user.id);
-
-      if (countError) {
-        console.error('Error counting messages:', countError);
-      } else {
-        console.log(`Found ${messagesCount} messages to delete`);
-      }
-
-      // Delete all messages in the session first
-      console.log('Deleting messages...');
-      const { error: messagesError, count: deletedMessagesCount } = await supabase
-        .from('portfolio_chat_history')
-        .delete({ count: 'exact' })
-        .eq('chat_session_id', sessionId)
-        .eq('user_id', user.id);
-
-      if (messagesError) {
-        console.error('Error deleting messages:', messagesError);
-        throw new Error(`Kunde inte radera meddelanden: ${messagesError.message}`);
-      }
-
-      console.log(`Successfully deleted ${deletedMessagesCount} messages`);
-
-      // Now delete the session itself
-      console.log('Deleting session...');
-      const { error: sessionError, count: deletedSessionCount } = await supabase
-        .from('ai_chat_sessions')
-        .delete({ count: 'exact' })
-        .eq('id', sessionId)
-        .eq('user_id', user.id);
-
-      if (sessionError) {
-        console.error('Error deleting session:', sessionError);
-        throw new Error(`Kunde inte radera session: ${sessionError.message}`);
-      }
-
-      console.log(`Successfully deleted ${deletedSessionCount} session(s)`);
-
-      if (deletedSessionCount === 0) {
-        console.warn('No session was deleted - this might indicate a permission issue');
-        toast({
-          title: "Varning",
-          description: "Ingen session raderades. Kontrollera behörigheter.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('Session deletion completed successfully');
-
-      // Update local state immediately
-      setSessions(prev => {
-        const updated = prev.filter(session => session.id !== sessionId);
-        console.log('Updated sessions after deletion:', updated.map(s => ({ id: s.id, name: s.session_name })));
-        return updated;
-      });
-      
-      // If we deleted the current session, clear it and load the most recent one
-      if (currentSessionId === sessionId) {
-        console.log('Deleted session was the current session, clearing and loading next...');
-        setCurrentSessionId(null);
-        setMessages([]);
-        
-        // Load the most recent remaining session if any
-        const remainingSessions = sessions.filter(s => s.id !== sessionId);
-        if (remainingSessions.length > 0) {
-          const mostRecent = remainingSessions[0];
-          console.log('Loading most recent remaining session:', mostRecent.id);
-          setCurrentSessionId(mostRecent.id);
-          await loadMessages(mostRecent.id);
-        } else {
-          console.log('No remaining sessions to load');
-        }
-      }
-
-      toast({
-        title: "Chat borttagen",
-        description: `Chatten "${sessionCheck.session_name}" har tagits bort permanent.`,
-      });
-
-      // Reload sessions from database to ensure consistency
-      console.log('Reloading sessions from database to ensure consistency...');
-      setTimeout(() => {
-        loadSessions();
-      }, 500);
-
-    } catch (error) {
-      console.error('Error deleting session:', error);
-      toast({
-        title: "Fel",
-        description: error instanceof Error ? error.message : "Kunde inte ta bort chatten. Försök igen.",
-        variant: "destructive",
-      });
-    }
-  }, [user, currentSessionId, sessions, loadMessages, loadSessions, toast]);
-
   const clearMessages = useCallback(() => {
     setMessages([]);
   }, []);
 
-  // Load sessions and auto-select the most recent one when component mounts
+  // Load sessions when component mounts
   useEffect(() => {
     if (user && portfolioId) {
       console.log('Component mounted, loading sessions...');
@@ -647,6 +628,7 @@ export const useAIChat = (portfolioId?: string) => {
     isLoading,
     isAnalyzing,
     quotaExceeded,
+    isLoadingSession,
     sendMessage,
     analyzePortfolio,
     createNewSession,

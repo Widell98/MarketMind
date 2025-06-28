@@ -1,6 +1,5 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -8,16 +7,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { 
   History, 
-  Star, 
-  StarOff, 
   Search, 
-  Calendar, 
   MessageSquare,
-  TrendingDown,
-  TrendingUp,
-  Shield,
   Trash2,
-  MoreHorizontal
+  Clock,
+  User,
+  Bot
 } from 'lucide-react';
 
 interface ChatSession {
@@ -25,43 +20,29 @@ interface ChatSession {
   session_name: string;
   created_at: string;
   is_active: boolean;
-  is_favorite?: boolean;
-  market_context?: 'volatile' | 'bull' | 'bear' | 'normal';
-  summary?: string;
-  message_count?: number;
 }
 
 interface ChatHistoryProps {
   sessions: ChatSession[];
+  currentSessionId: string | null;
   onLoadSession: (sessionId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
+  isLoadingSession?: boolean;
 }
 
 const ChatHistory: React.FC<ChatHistoryProps> = ({
   sessions,
+  currentSessionId,
   onLoadSession,
-  onDeleteSession
+  onDeleteSession,
+  isLoadingSession = false
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [isRenaming, setIsRenaming] = useState<string | null>(null);
-  const [newName, setNewName] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
 
   const filteredSessions = sessions.filter(session =>
-    session.session_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    session.summary?.toLowerCase().includes(searchTerm.toLowerCase())
+    session.session_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const favoritesSessions = filteredSessions.filter(s => s.is_favorite);
-  const recentSessions = filteredSessions.filter(s => !s.is_favorite).slice(0, 10);
-
-  const getMarketIcon = (context?: string) => {
-    switch (context) {
-      case 'volatile': return <TrendingDown className="w-4 h-4 text-orange-500" />;
-      case 'bull': return <TrendingUp className="w-4 h-4 text-green-500" />;
-      case 'bear': return <TrendingDown className="w-4 h-4 text-red-500" />;
-      default: return <Shield className="w-4 h-4 text-blue-500" />;
-    }
-  };
 
   const getTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -74,80 +55,105 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
     return date.toLocaleDateString('sv-SE');
   };
 
-  const handleDelete = (sessionId: string, sessionName: string) => {
+  const handleLoadSession = (sessionId: string) => {
+    console.log('ChatHistory: Loading session', sessionId);
+    onLoadSession(sessionId);
+    setIsOpen(false); // Close dialog after loading
+  };
+
+  const handleDelete = (sessionId: string, sessionName: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the load session
     if (window.confirm(`Är du säker på att du vill ta bort chatten "${sessionName}"? Detta kan inte ångras.`)) {
       onDeleteSession?.(sessionId);
     }
   };
 
-  const SessionItem = ({ session }: { session: ChatSession }) => (
-    <div className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors">
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        {getMarketIcon(session.market_context)}
-        <div className="flex-1 min-w-0">
-          <h4 className="font-medium text-sm truncate">
-            {session.session_name}
-          </h4>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs text-muted-foreground">
-              {getTimeAgo(session.created_at)}
-            </span>
-            {session.message_count && (
-              <Badge variant="outline" className="text-xs">
-                {session.message_count} meddelanden
-              </Badge>
+  const SessionItem = ({ session }: { session: ChatSession }) => {
+    const isActive = session.id === currentSessionId;
+    
+    return (
+      <div 
+        className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all hover:bg-gray-100 dark:hover:bg-gray-700 ${
+          isActive ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700' : ''
+        }`}
+        onClick={() => handleLoadSession(session.id)}
+      >
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="flex-shrink-0">
+            {isActive ? (
+              <MessageSquare className="w-4 h-4 text-blue-600" />
+            ) : (
+              <Clock className="w-4 h-4 text-gray-400" />
             )}
           </div>
-          {session.summary && (
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-              {session.summary}
-            </p>
+          <div className="flex-1 min-w-0">
+            <h4 className={`font-medium text-sm truncate ${
+              isActive ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'
+            }`}>
+              {session.session_name}
+            </h4>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {getTimeAgo(session.created_at)}
+              </span>
+              {isActive && (
+                <Badge variant="secondary" className="text-xs px-2 py-0">
+                  Aktiv
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {onDeleteSession && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={(e) => handleDelete(session.id, session.session_name, e)}
+              className="p-1 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
           )}
         </div>
       </div>
-      <div className="flex items-center gap-1 flex-shrink-0">
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => handleDelete(session.id, session.session_name)}
-          className="p-1 hover:bg-red-50 hover:text-red-600"
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => onLoadSession(session.id)}
-        >
-          Öppna
-        </Button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
-    <Dialog>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <History className="w-4 h-4 mr-2" />
-          Chathistorik
+        <Button variant="outline" size="sm" className="flex items-center gap-2">
+          <History className="w-4 h-4" />
+          <span className="hidden sm:inline">Historik</span>
+          {sessions.length > 0 && (
+            <Badge variant="secondary" className="text-xs">
+              {sessions.length}
+            </Badge>
+          )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh]">
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <History className="w-5 h-5" />
-            Dina sparade chattar
+            Chat-historik
+            {currentSessionId && (
+              <Badge variant="outline" className="text-xs">
+                {sessions.find(s => s.id === currentSessionId)?.session_name || 'Aktiv chat'}
+              </Badge>
+            )}
           </DialogTitle>
           <DialogDescription>
-            Återgå till tidigare rådgivningssamtal och viktiga diskussioner
+            Alla dina tidigare AI-chattar. Klicka på en chat för att ladda den.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4">
+        <div className="space-y-4 flex-1 min-h-0">
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               placeholder="Sök i chathistorik..."
               value={searchTerm}
@@ -156,44 +162,55 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
             />
           </div>
 
-          <ScrollArea className="h-96">
-            <div className="space-y-6">
-              {/* Favorites */}
-              {favoritesSessions.length > 0 && (
-                <div>
-                  <h3 className="font-medium text-sm mb-3 flex items-center gap-2">
-                    <Star className="w-4 h-4 text-yellow-500" />
-                    Favoriter
-                  </h3>
-                  <div className="space-y-2">
-                    {favoritesSessions.map(session => (
-                      <SessionItem key={session.id} session={session} />
-                    ))}
-                  </div>
+          {/* Loading state */}
+          {isLoadingSession && (
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Laddar chat...</p>
+            </div>
+          )}
+
+          {/* Sessions list */}
+          <ScrollArea className="flex-1 min-h-0 max-h-96">
+            <div className="space-y-2">
+              {filteredSessions.length > 0 ? (
+                filteredSessions.map(session => (
+                  <SessionItem key={session.id} session={session} />
+                ))
+              ) : sessions.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Inga chattar ännu</p>
+                  <p className="text-xs mt-1">Dina AI-chattar kommer att visas här</p>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Inga chattar matchade din sökning</p>
+                  <p className="text-xs mt-1">Försök med andra sökord</p>
                 </div>
               )}
-
-              {/* Recent */}
-              <div>
-                <h3 className="font-medium text-sm mb-3 flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  Senaste chattar
-                </h3>
-                <div className="space-y-2">
-                  {recentSessions.length > 0 ? (
-                    recentSessions.map(session => (
-                      <SessionItem key={session.id} session={session} />
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Inga chattar hittades</p>
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
           </ScrollArea>
+
+          {/* Footer info */}
+          {sessions.length > 0 && (
+            <div className="border-t pt-3 text-xs text-gray-500 dark:text-gray-400 text-center">
+              <div className="flex items-center justify-center gap-4">
+                <div className="flex items-center gap-1">
+                  <User className="w-3 h-3" />
+                  <span>Du</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Bot className="w-3 h-3" />
+                  <span>AI-assistent</span>
+                </div>
+              </div>
+              <p className="mt-2">
+                {sessions.length} {sessions.length === 1 ? 'chat' : 'chattar'} sparade
+              </p>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
