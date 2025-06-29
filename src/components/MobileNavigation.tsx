@@ -48,7 +48,7 @@ const MobileNavigation = () => {
 
   return (
     <>
-      {/* Mobile menu trigger button */}
+      {/* Mobile menu trigger button - only show on mobile screens */}
       <div className="md:hidden fixed top-3 left-3 z-50">
         <Button
           variant="ghost"
@@ -69,16 +69,16 @@ const MobileNavigation = () => {
         </Button>
       </div>
 
-      {/* Mobile dropdown menu */}
+      {/* Mobile dropdown menu - only show on mobile screens */}
       {isOpen && (
         <>
-          {/* Overlay */}
+          {/* Overlay - only on mobile */}
           <div 
             className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300"
             onClick={() => setIsOpen(false)}
           />
 
-          {/* Dropdown menu */}
+          {/* Dropdown menu - only on mobile */}
           <div className="md:hidden fixed top-16 left-3 right-3 bg-white dark:bg-gray-800 z-50 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             {/* Header */}
             <div className="border-b border-gray-200 dark:border-gray-700 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
@@ -96,7 +96,7 @@ const MobileNavigation = () => {
             </div>
 
             {/* Navigation Content */}
-            <div className="p-4 space-y-4 max-h-96 overflow-y-auto">
+            <div className="p-4 space-y-6 overflow-y-auto h-full pb-20">
               {/* Community Section */}
               <div>
                 <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 px-2">
@@ -136,19 +136,19 @@ const MobileNavigation = () => {
                   </div>
                   <div className="space-y-1">
                     <Link
-                      to="/portfolio-advisor"
+                      to="/portfolio-implementation"
                       onClick={handleLinkClick}
                       className={cn(
                         "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200",
                         "hover:bg-gray-100 dark:hover:bg-gray-700/50",
-                        isActive('/portfolio-advisor') 
+                        (isActive('/portfolio-implementation') || isActive('/portfolio-advisor'))
                           ? "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 font-semibold" 
                           : "text-gray-700 dark:text-gray-300"
                       )}
                     >
                       <Brain className="w-5 h-5 flex-shrink-0" />
-                      <span className="flex-1">Portfolio Advisor</span>
-                      {isActive('/portfolio-advisor') && (
+                      <span className="flex-1">AI Portfolio</span>
+                      {(isActive('/portfolio-implementation') || isActive('/portfolio-advisor')) && (
                         <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                       )}
                     </Link>
