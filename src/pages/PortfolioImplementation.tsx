@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -12,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Brain, MessageSquare, TrendingUp, Target, Settings, BarChart3, Lightbulb } from 'lucide-react';
+import { Brain, MessageSquare, TrendingUp, Target, Settings, BarChart3, Lightbulb, Zap, Activity, PieChart } from 'lucide-react';
 
 const PortfolioImplementation = () => {
   const { activePortfolio, loading } = usePortfolio();
@@ -33,24 +32,19 @@ const PortfolioImplementation = () => {
   }, [user, activePortfolio, loading]);
 
   const handleQuickChat = (message: string) => {
-    // Check if this is a request to create a new session
     if (message.startsWith('NEW_SESSION:')) {
       const [, sessionName, actualMessage] = message.split(':');
       
-      // Switch to chat tab
       const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
       if (chatTab) {
         chatTab.click();
       }
       
-      // Trigger creation of new session with custom name and message
-      // We'll need to pass this to the AIChat component
       const event = new CustomEvent('createStockChat', {
         detail: { sessionName, message: actualMessage }
       });
       window.dispatchEvent(event);
     } else {
-      // Switch to chat tab when a quick chat is triggered from overview
       const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
       if (chatTab) {
         chatTab.click();
@@ -67,13 +61,11 @@ const PortfolioImplementation = () => {
   };
 
   const handleExamplePrompt = (prompt: string) => {
-    // Switch to chat tab and trigger the prompt
     const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
     if (chatTab) {
       chatTab.click();
     }
     
-    // Trigger the example prompt
     setTimeout(() => {
       const event = new CustomEvent('sendExamplePrompt', {
         detail: { message: prompt }
@@ -125,148 +117,163 @@ const PortfolioImplementation = () => {
 
   const examplePrompts = [
     {
-      title: "Portföljanalys",
-      prompt: "Ge mig en detaljerad analys av min nuvarande portfölj och föreslå förbättringar",
-      icon: <BarChart3 className="w-5 h-5" />,
-      color: "from-blue-500 to-blue-600"
+      title: "Djupgående Portföljanalys",
+      prompt: "Ge mig en komplett analys av min portfölj med detaljerade rekommendationer för optimering",
+      icon: <PieChart className="w-6 h-6" />,
+      color: "from-blue-600 to-indigo-600",
+      description: "Få en omfattande genomgång av din portföljs prestanda och struktur"
     },
     {
-      title: "Riskbedömning", 
-      prompt: "Analysera riskerna i min portfölj och föreslå sätt att minska dem",
-      icon: <Target className="w-5 h-5" />,
-      color: "from-red-500 to-red-600"
+      title: "Riskhantering & Diversifiering", 
+      prompt: "Analysera riskerna i min portfölj och föreslå strategier för bättre diversifiering",
+      icon: <Activity className="w-6 h-6" />,
+      color: "from-red-500 to-pink-600",
+      description: "Identifiera och minimera risker för en mer balanserad portfölj"
     },
     {
-      title: "Investeringsförslag",
-      prompt: "Vilka aktier borde jag köpa nästa gång baserat på min riskprofil?",
-      icon: <TrendingUp className="w-5 h-5" />,
-      color: "from-green-500 to-green-600"
+      title: "Smarta Investeringsförslag",
+      prompt: "Vilka aktier och tillgångar borde jag överväga nästa baserat på min profil och marknadsläget?",
+      icon: <Zap className="w-6 h-6" />,
+      color: "from-green-500 to-emerald-600",
+      description: "Få personliga rekommendationer baserade på din riskprofil"
     },
     {
-      title: "Marknadsläget",
-      prompt: "Vad händer på marknaden just nu som kan påverka min portfölj?",
-      icon: <Lightbulb className="w-5 h-5" />,
-      color: "from-purple-500 to-purple-600"
+      title: "Marknadsinsikter & Timing",
+      prompt: "Vad händer på marknaden just nu och hur påverkar det min investeringsstrategi?",
+      icon: <TrendingUp className="w-6 h-6" />,
+      color: "from-purple-500 to-violet-600",
+      description: "Håll dig uppdaterad med aktuella marknadstrender och möjligheter"
     }
   ];
 
   // Show portfolio implementation page with tabs
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 py-6 px-4">
-        <div className="max-w-7xl mx-auto">
-          {/* Header with enhanced styling */}
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
+        <div className="container mx-auto px-4 py-8 max-w-[1600px]">
+          {/* Enhanced Header */}
           <div className="mb-8">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
-              <div>
-                <h1 className="text-2xl lg:text-3xl xl:text-4xl font-bold flex items-center gap-3 text-gray-900 mb-2">
-                  <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                    <Target className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 via-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-xl">
+                    <Brain className="w-8 h-8 text-white" />
                   </div>
-                  Din Portföljstrategi
-                </h1>
-                <p className="text-gray-600 text-lg">AI-genererade rekommendationer och insikter</p>
+                  <div>
+                    <h1 className="text-4xl xl:text-5xl font-bold text-gray-900 mb-2">
+                      AI Portfolio Hub
+                    </h1>
+                    <p className="text-xl text-gray-600">
+                      Intelligenta investeringsinsikter för din framgång
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex flex-wrap gap-3">
+                  <Badge className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 text-sm font-medium shadow-lg">
+                    <Brain className="w-4 h-4 mr-2" />
+                    AI-Optimerad
+                  </Badge>
+                  <Badge className="bg-gradient-to-r from-blue-500 to-cyan-600 text-white px-4 py-2 text-sm font-medium shadow-lg">
+                    <Activity className="w-4 h-4 mr-2" />
+                    Realtidsanalys
+                  </Badge>
+                  {activePortfolio && (
+                    <Badge className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-4 py-2 text-sm font-medium shadow-lg">
+                      <Target className="w-4 h-4 mr-2" />
+                      Aktiv sedan {new Date(activePortfolio.created_at).toLocaleDateString('sv-SE')}
+                    </Badge>
+                  )}
+                </div>
               </div>
+              
               <Button
                 variant="outline"
                 onClick={handleUpdateProfile}
-                className="bg-white/50 backdrop-blur-sm border-gray-200 hover:bg-white/80 shadow-sm"
+                className="bg-white/80 backdrop-blur-sm border-gray-200 hover:bg-white hover:shadow-lg transition-all duration-200 px-6 py-3"
               >
-                <Settings className="w-4 h-4 mr-2" />
-                Uppdatera profil
+                <Settings className="w-5 h-5 mr-2" />
+                Uppdatera Profil
               </Button>
-            </div>
-            
-            <div className="flex flex-wrap gap-3">
-              <Badge className="bg-gradient-to-r from-green-500 to-green-600 text-white shadow-sm">
-                <Brain className="w-3 h-3 mr-1" />
-                AI-optimerad
-              </Badge>
-              <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm">
-                Aktiv strategi
-              </Badge>
-              {activePortfolio && (
-                <Badge className="bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-sm">
-                  Skapad {new Date(activePortfolio.created_at).toLocaleDateString('sv-SE')}
-                </Badge>
-              )}
             </div>
           </div>
 
           <Tabs defaultValue="chat" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-white/50 backdrop-blur-sm border border-gray-200/50 shadow-sm">
+            <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-8 bg-white/80 backdrop-blur-sm border border-gray-200/50 shadow-lg rounded-xl p-1">
               <TabsTrigger 
                 value="chat" 
                 data-value="chat" 
-                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white"
+                className="flex items-center gap-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg py-3 px-4 font-medium transition-all duration-200"
               >
-                <MessageSquare className="w-4 h-4" />
-                AI-Chat
+                <MessageSquare className="w-5 h-5" />
+                AI-Assistent
               </TabsTrigger>
               <TabsTrigger 
                 value="overview" 
-                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white"
+                className="flex items-center gap-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg py-3 px-4 font-medium transition-all duration-200"
               >
-                <BarChart3 className="w-4 h-4" />
-                Översikt
+                <BarChart3 className="w-5 h-5" />
+                Portföljöversikt
               </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="chat" className="mt-8">
-              <div className="space-y-8">
-                {/* Example Prompts with enhanced design */}
-                <Card className="bg-white/80 backdrop-blur-sm border-gray-200/50 shadow-lg">
-                  <CardHeader className="pb-4">
-                    <CardTitle className="flex items-center gap-3 text-xl">
-                      <div className="w-8 h-8 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center">
-                        <Lightbulb className="w-4 h-4 text-white" />
-                      </div>
-                      Exempel på vad du kan fråga
-                    </CardTitle>
-                    <CardDescription className="text-base">
-                      Välj ett förslag nedan för att komma igång snabbt
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      {examplePrompts.map((example, index) => (
-                        <Button
-                          key={index}
-                          variant="outline"
-                          className="h-auto p-6 text-left justify-start hover:shadow-lg transition-all duration-200 bg-white/50 border-gray-200/50 hover:bg-white/80"
-                          onClick={() => handleExamplePrompt(example.prompt)}
-                        >
-                          <div className="flex items-start gap-4 w-full">
-                            <div className={`w-10 h-10 bg-gradient-to-br ${example.color} rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg`}>
-                              {example.icon}
+            <TabsContent value="chat" className="space-y-8">
+              {/* Example Prompts - Redesigned for large screens */}
+              <Card className="bg-white/90 backdrop-blur-sm border-gray-200/50 shadow-xl rounded-2xl overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-gray-100 pb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                      <Lightbulb className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-2xl font-bold text-gray-900">
+                        Kom igång med AI-assistenten
+                      </CardTitle>
+                      <CardDescription className="text-lg text-gray-600 mt-1">
+                        Välj ett förslag nedan eller skriv din egen fråga
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-8">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    {examplePrompts.map((example, index) => (
+                      <Button
+                        key={index}
+                        variant="outline"
+                        className="h-auto p-8 text-left justify-start hover:shadow-xl transition-all duration-300 bg-white/80 border-gray-200/50 hover:bg-white hover:scale-[1.02] group rounded-xl"
+                        onClick={() => handleExamplePrompt(example.prompt)}
+                      >
+                        <div className="flex items-start gap-6 w-full">
+                          <div className={`w-14 h-14 bg-gradient-to-br ${example.color} rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                            {example.icon}
+                          </div>
+                          <div className="flex-1 min-w-0 space-y-2">
+                            <div className="font-bold text-gray-900 text-lg">
+                              {example.title}
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-semibold text-gray-900 mb-2 text-base">
-                                {example.title}
-                              </div>
-                              <div className="text-sm text-gray-600 leading-relaxed">
-                                {example.prompt}
-                              </div>
+                            <div className="text-sm text-gray-600 leading-relaxed">
+                              {example.description}
+                            </div>
+                            <div className="text-xs text-gray-500 italic">
+                              "{example.prompt}"
                             </div>
                           </div>
-                        </Button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                        </div>
+                      </Button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
 
-                {/* AI Chat - Full Width with enhanced styling */}
-                <Card className="bg-white/20 backdrop-blur-sm border-gray-200/30 shadow-2xl overflow-hidden">
-                  <CardContent className="p-0">
-                    <AIChat portfolioId={activePortfolio?.id} />
-                  </CardContent>
-                </Card>
+              {/* AI Chat - Full width for large screens */}
+              <div className="bg-white/60 backdrop-blur-sm rounded-3xl shadow-2xl border border-gray-200/30 overflow-hidden">
+                <AIChat portfolioId={activePortfolio?.id} />
               </div>
             </TabsContent>
             
-            <TabsContent value="overview" className="mt-8">
+            <TabsContent value="overview">
               <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
-                {/* Main Content */}
                 <div className="xl:col-span-3">
                   <PortfolioOverview 
                     portfolio={activePortfolio}
@@ -274,8 +281,6 @@ const PortfolioImplementation = () => {
                     onActionClick={handleActionClick}
                   />
                 </div>
-
-                {/* Sidebar - Only in Overview */}
                 <div className="xl:col-span-1">
                   <UserInsightsPanel />
                 </div>

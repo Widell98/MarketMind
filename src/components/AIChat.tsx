@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,9 @@ import {
   Sparkles,
   TrendingUp,
   AlertCircle,
-  Loader2
+  Loader2,
+  History,
+  Zap
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import RelatedStockCase from './RelatedStockCase';
@@ -131,47 +134,47 @@ const AIChat = ({ portfolioId }: AIChatProps) => {
     const stockCaseId = !isUser ? extractStockCaseId(message.content) : null;
     
     return (
-      <div key={message.id} className={`flex gap-4 ${isUser ? 'justify-end' : 'justify-start'} group`}>
-        <div className={`flex gap-3 max-w-[85%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg ${
+      <div key={message.id} className={`flex gap-6 ${isUser ? 'justify-end' : 'justify-start'} group mb-8`}>
+        <div className={`flex gap-4 max-w-4xl ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg ${
             isUser 
-              ? 'bg-gradient-to-br from-blue-500 to-purple-600' 
-              : 'bg-gradient-to-br from-green-500 to-teal-600'
+              ? 'bg-gradient-to-tr from-blue-600 via-purple-600 to-indigo-600' 
+              : 'bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-600'
           }`}>
             {isUser ? (
-              <User className="w-4 h-4 text-white" />
+              <User className="w-6 h-6 text-white" />
             ) : (
-              <Bot className="w-4 h-4 text-white" />
+              <Bot className="w-6 h-6 text-white" />
             )}
           </div>
           
-          <div className={`flex flex-col gap-2 ${isUser ? 'items-end' : 'items-start'}`}>
-            <div className={`px-4 py-3 rounded-2xl shadow-sm backdrop-blur-sm border ${
+          <div className={`flex flex-col gap-3 ${isUser ? 'items-end' : 'items-start'}`}>
+            <div className={`px-6 py-4 rounded-2xl shadow-lg backdrop-blur-sm border max-w-3xl ${
               isUser
-                ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white border-blue-200/50'
-                : 'bg-white/80 text-gray-900 border-gray-200/50'
+                ? 'bg-gradient-to-tr from-blue-600 via-purple-600 to-indigo-600 text-white border-blue-200/50'
+                : 'bg-white/95 text-gray-900 border-gray-200/50'
             }`}>
-              <div className="whitespace-pre-wrap break-words leading-relaxed">
+              <div className="whitespace-pre-wrap break-words leading-relaxed text-base">
                 {message.content}
               </div>
               
               {message.context?.isExchangeRequest && !isUser && (
-                <div className="mt-3 p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border border-amber-200/50">
-                  <div className="flex items-center gap-2 text-amber-800 text-sm font-medium mb-1">
-                    <TrendingUp className="w-4 h-4" />
+                <div className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200/50">
+                  <div className="flex items-center gap-3 text-amber-800 font-medium mb-2">
+                    <TrendingUp className="w-5 h-5" />
                     Portföljförändring föreslås
                   </div>
-                  <p className="text-amber-700 text-sm">
+                  <p className="text-amber-700">
                     Detta förslag kan påverka din portföljs sammansättning. Överväg riskerna innan du genomför ändringar.
                   </p>
                 </div>
               )}
 
               {message.context?.confidence && (
-                <div className="mt-2 flex items-center gap-1">
+                <div className="mt-3 flex items-center gap-2">
                   <Badge 
                     variant="outline" 
-                    className={`text-xs ${
+                    className={`${
                       message.context.confidence > 0.8 
                         ? 'bg-green-50 text-green-700 border-green-200' 
                         : message.context.confidence > 0.6
@@ -186,8 +189,8 @@ const AIChat = ({ portfolioId }: AIChatProps) => {
               )}
             </div>
             
-            <div className={`text-xs text-gray-500 flex items-center gap-1 ${isUser ? 'justify-end' : 'justify-start'}`}>
-              <Clock className="w-3 h-3" />
+            <div className={`text-sm text-gray-500 flex items-center gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
+              <Clock className="w-4 h-4" />
               {formatTimestamp(message.timestamp)}
             </div>
           </div>
@@ -197,68 +200,68 @@ const AIChat = ({ portfolioId }: AIChatProps) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-white/80 to-blue-50/40 backdrop-blur-sm rounded-2xl border border-white/20 shadow-2xl overflow-hidden">
-      {/* Header */}
-      <div className="bg-white/60 backdrop-blur-sm border-b border-white/20 p-4 lg:p-6">
+    <div className="flex flex-col h-[80vh] xl:h-[85vh] bg-gradient-to-br from-white/80 to-blue-50/40 backdrop-blur-sm overflow-hidden">
+      {/* Enhanced Header */}
+      <div className="bg-white/90 backdrop-blur-sm border-b border-white/20 p-6 xl:p-8">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-              <MessageSquare className="w-5 h-5 text-white" />
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-gradient-to-tr from-blue-600 via-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-xl">
+              <Zap className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">AI Portfolio Chat</h2>
-              <p className="text-sm text-gray-600">Din personliga investeringsassistent</p>
+              <h2 className="text-2xl xl:text-3xl font-bold text-gray-900">AI Portfolio Assistent</h2>
+              <p className="text-base text-gray-600">Din intelligenta investeringsrådgivare</p>
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Button
               variant="outline"
-              size="sm"
+              size="lg"
               onClick={() => setShowSessions(!showSessions)}
-              className="bg-white/50 backdrop-blur-sm border-gray-200/50 hover:bg-white/80 shadow-sm"
+              className="bg-white/80 backdrop-blur-sm border-gray-200/50 hover:bg-white hover:shadow-lg transition-all duration-200 px-4 py-3"
             >
-              <Clock className="w-4 h-4 mr-2" />
+              <History className="w-5 h-5 mr-2" />
               Historik
-              {showSessions ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+              {showSessions ? <ChevronUp className="w-4 h-4 ml-2" /> : <ChevronDown className="w-4 h-4 ml-2" />}
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              size="lg"
               onClick={handleNewSession}
               disabled={isLoading}
-              className="bg-white/50 backdrop-blur-sm border-gray-200/50 hover:bg-white/80 shadow-sm"
+              className="bg-white/80 backdrop-blur-sm border-gray-200/50 hover:bg-white hover:shadow-lg transition-all duration-200 px-4 py-3"
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-5 h-5 mr-2" />
               Ny Chat
             </Button>
           </div>
         </div>
 
         <Collapsible open={showSessions}>
-          <CollapsibleContent className="mt-4">
-            <div className="bg-white/40 backdrop-blur-sm rounded-xl border border-white/30 p-4 shadow-inner">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <Clock className="w-4 h-4" />
+          <CollapsibleContent className="mt-6">
+            <div className="bg-white/60 backdrop-blur-sm rounded-2xl border border-white/30 p-6 shadow-inner">
+              <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-3">
+                <History className="w-5 h-5" />
                 Tidigare chattar
               </h3>
-              <ScrollArea className="h-32">
-                <div className="space-y-2">
+              <ScrollArea className="h-40">
+                <div className="space-y-3">
                   {sessions.map((session) => (
                     <div
                       key={session.id}
-                      className={`flex items-center justify-between p-3 rounded-lg transition-all duration-200 cursor-pointer group ${
+                      className={`flex items-center justify-between p-4 rounded-xl transition-all duration-200 cursor-pointer group ${
                         currentSessionId === session.id
-                          ? 'bg-gradient-to-r from-blue-100 to-purple-100 border border-blue-200/50 shadow-sm'
-                          : 'bg-white/60 hover:bg-white/80 border border-gray-100/50'
+                          ? 'bg-gradient-to-r from-blue-100 to-purple-100 border border-blue-200/50 shadow-md'
+                          : 'bg-white/80 hover:bg-white hover:shadow-md border border-gray-100/50'
                       }`}
                       onClick={() => loadSession(session.id)}
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="font-medium text-gray-900 truncate text-base">
                           {session.session_name}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-sm text-gray-500 mt-1">
                           {new Date(session.created_at).toLocaleDateString('sv-SE')}
                         </p>
                       </div>
@@ -269,14 +272,14 @@ const AIChat = ({ portfolioId }: AIChatProps) => {
                           e.stopPropagation();
                           deleteSession(session.id);
                         }}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 hover:bg-red-100 hover:text-red-600"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity h-10 w-10 p-0 hover:bg-red-100 hover:text-red-600 rounded-lg"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   ))}
                   {sessions.length === 0 && (
-                    <p className="text-sm text-gray-500 text-center py-4">
+                    <p className="text-gray-500 text-center py-6 text-base">
                       Inga tidigare chattar
                     </p>
                   )}
@@ -287,42 +290,43 @@ const AIChat = ({ portfolioId }: AIChatProps) => {
         </Collapsible>
       </div>
 
-      {/* Messages */}
+      {/* Messages - Optimized for large screens */}
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full">
-          <div className="p-4 lg:p-6 space-y-6">
+          <div className="p-6 xl:p-8 space-y-8 max-w-6xl mx-auto">
             {isLoadingSession ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="flex items-center gap-3 text-gray-600">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Laddar chat...</span>
+              <div className="flex items-center justify-center py-12">
+                <div className="flex items-center gap-4 text-gray-600">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                  <span className="text-lg">Laddar chat...</span>
                 </div>
               </div>
             ) : messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-xl">
-                  <Bot className="w-8 h-8 text-white" />
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-24 h-24 bg-gradient-to-tr from-blue-600 via-purple-600 to-indigo-600 rounded-3xl flex items-center justify-center mb-6 shadow-2xl">
+                  <Bot className="w-12 h-12 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                <h3 className="text-3xl font-bold text-gray-900 mb-4">
                   Hej! Vad kan jag hjälpa dig med idag?
                 </h3>
-                <p className="text-gray-600 max-w-md">
-                  Ställ frågor om din portfölj, be om analyser eller få investeringsråd. Jag är här för att hjälpa!
+                <p className="text-lg text-gray-600 max-w-2xl">
+                  Ställ frågor om din portfölj, be om analyser eller få personliga investeringsråd. 
+                  Jag är här för att hjälpa dig att fatta smarta investeringsbeslut!
                 </p>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {messages.map(renderMessage)}
                 {isLoading && (
-                  <div className="flex gap-4 justify-start">
-                    <div className="flex gap-3 max-w-[85%]">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-teal-600 flex items-center justify-center shadow-lg">
-                        <Bot className="w-4 h-4 text-white" />
+                  <div className="flex gap-6 justify-start">
+                    <div className="flex gap-4 max-w-4xl">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-600 flex items-center justify-center shadow-lg">
+                        <Bot className="w-6 h-6 text-white" />
                       </div>
-                      <div className="bg-white/80 border border-gray-200/50 px-4 py-3 rounded-2xl shadow-sm backdrop-blur-sm">
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>AI tänker...</span>
+                      <div className="bg-white/95 border border-gray-200/50 px-6 py-4 rounded-2xl shadow-lg backdrop-blur-sm">
+                        <div className="flex items-center gap-3 text-gray-600">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span className="text-base">AI analyserar din förfrågan...</span>
                         </div>
                       </div>
                     </div>
@@ -335,43 +339,44 @@ const AIChat = ({ portfolioId }: AIChatProps) => {
         </ScrollArea>
       </div>
 
-      {/* Input */}
-      <div className="bg-white/60 backdrop-blur-sm border-t border-white/20 p-4 lg:p-6">
+      {/* Enhanced Input */}
+      <div className="bg-white/90 backdrop-blur-sm border-t border-white/20 p-6 xl:p-8">
         {quotaExceeded && (
-          <div className="mb-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/50 rounded-xl">
-            <div className="flex items-center gap-2 text-amber-800 text-sm font-medium mb-1">
-              <AlertCircle className="w-4 h-4" />
+          <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/50 rounded-xl">
+            <div className="flex items-center gap-3 text-amber-800 font-medium mb-2">
+              <AlertCircle className="w-5 h-5" />
               API-kvot överskriden
             </div>
-            <p className="text-amber-700 text-sm">
+            <p className="text-amber-700">
               Du har nått din dagliga gräns för AI-användning. Försök igen senare eller uppgradera ditt konto.
             </p>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex gap-3">
+        <form onSubmit={handleSubmit} className="flex gap-4 max-w-4xl mx-auto">
           <div className="flex-1 relative">
             <Input
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Skriv ditt meddelande..."
+              placeholder="Skriv din fråga här... (t.ex. 'Analysera min portfölj' eller 'Vilka aktier bör jag köpa?')"
               disabled={isLoading || quotaExceeded}
-              className="pr-12 h-12 bg-white/80 backdrop-blur-sm border-gray-200/50 focus:border-blue-300 focus:ring-blue-200/50 shadow-sm rounded-xl text-base"
+              className="h-14 bg-white/90 backdrop-blur-sm border-gray-200/50 focus:border-blue-400 focus:ring-blue-200/50 shadow-lg rounded-xl text-base px-6 pr-14"
             />
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-              <MessageSquare className="w-4 h-4" />
+            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400">
+              <MessageSquare className="w-5 h-5" />
             </div>
           </div>
           <Button
             type="submit"
             disabled={!input.trim() || isLoading || quotaExceeded}
-            className="h-12 px-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-lg rounded-xl"
+            size="lg"
+            className="h-14 px-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg rounded-xl text-base font-medium"
           >
             {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              <Send className="w-4 h-4" />
+              <Send className="w-5 h-5" />
             )}
           </Button>
         </form>
