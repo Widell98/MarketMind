@@ -17,8 +17,8 @@ interface AIChatProps {
 
 interface Message {
   id: string;
-  role: 'user' | 'assistant';
-  content: string;
+  text: string;
+  isUser: boolean;
   timestamp: Date;
   context?: {
     analysisType?: string;
