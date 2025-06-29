@@ -88,11 +88,14 @@ serve(async (req) => {
       .order('created_at', { ascending: false })
       .limit(3);
 
-    // Build enhanced context for AI with emphasis on concise, formatted responses
+    // Check if this is a stock exchange request
+    const isExchangeRequest = /(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|amerikanska|svenska|europeiska|asiatiska|aktier|innehav)/i.test(message);
+
+    // Build enhanced context for AI with emphasis on actionable portfolio changes
     let contextInfo = `Du är en professionell AI-assistent för investeringar. Ge ALLTID korta, välstrukturerade svar på svenska.
 
 VIKTIGA RIKTLINJER:
-- Håll svar under 200 ord
+- Håll svar under 250 ord
 - Använd markdown-formatering med ### för rubriker
 - Använd - för punktlistor 
 - Fokusera på de 2-3 viktigaste punkterna
@@ -100,7 +103,17 @@ VIKTIGA RIKTLINJER:
 - Undvik långa tekniska förklaringar
 - Var direkt och actionable
 - Ge ALDRIG investeringsråd - du ger endast utbildning och information
-- Påminn användare att själva ta beslut och konsultera licentierade`;
+- Påminn användare att själva ta beslut och konsultera licentierade rådgivare`;
+
+    if (isExchangeRequest) {
+      contextInfo += `\n\nPORTFÖLJÄNDRINGAR:
+- Om användaren vill ändra innehav, ge 2-3 konkreta förslag
+- Förklara varför varje förslag passar deras profil
+- Inkludera tickers/symboler för aktier
+- Förklara kort risker och möjligheter
+- Ge procentuell vikt i portföljen
+- Påminn om att detta är utbildning, inte råd`;
+    }
 
     if (riskProfile) {
       contextInfo += `\n\nANVÄNDARE:
@@ -113,34 +126,49 @@ VIKTIGA RIKTLINJER:
     if (portfolio) {
       const totalValue = portfolio.total_value || 0;
       const expectedReturn = portfolio.expected_return || 0;
+      const allocation = portfolio.asset_allocation || {};
       
       contextInfo += `\n\nPORTFÖLJ:
 - Värde: ${totalValue.toLocaleString()} SEK
 - Förväntad avkastning: ${expectedReturn}%
-- Aktier: ${portfolio.asset_allocation?.stocks || 0}%`;
+- Aktier: ${allocation.stocks || 0}%
+- Obligationer: ${allocation.bonds || 0}%
+- Alternativ: ${allocation.alternatives || 0}%`;
     }
 
     if (holdings && holdings.length > 0) {
       const totalHoldingsValue = holdings.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
-      contextInfo += `\n\nTOPP INNEHAV:`;
-      holdings.slice(0, 3).forEach(holding => {
+      contextInfo += `\n\nNUVARANDE INNEHAV:`;
+      holdings.forEach(holding => {
         const value = holding.current_value || 0;
-        const percentage = totalHoldingsValue > 0 ? ((value / totalHoldingsValue) * 100).toFixed(0) : '0';
-        contextInfo += `\n- ${holding.name}: ${percentage}%`;
+        const percentage = totalHoldingsValue > 0 ? ((value / totalHoldingsValue) * 100).toFixed(1) : '0';
+        const market = holding.market || 'Okänd marknad';
+        contextInfo += `\n- ${holding.name} (${holding.symbol || 'N/A'}): ${percentage}%, ${market}, ${holding.sector || 'Okänd sektor'}`;
       });
     }
 
-    // Enhanced system prompt for concise, well-formatted responses
+    // Enhanced system prompt for portfolio change discussions
     let systemPrompt = contextInfo;
     
+    if (isExchangeRequest) {
+      systemPrompt += `\n\nVID PORTFÖLJÄNDRINGSFÖRFRÅGNINGAR:
+- Analysera nuvarande innehav först
+- Föreslå 2-3 konkreta alternativ med tickers
+- Förklara kort varför varje förslag passar
+- Inkludera fördelning i procent
+- Nämn market cap och sektor
+- Påminn om risker och att detta är utbildning
+- Format: "Förslag: [Aktie] ([Ticker]) - [Kort beskrivning]"`;
+    }
+    
     systemPrompt += `\n\nSVARSFORMAT:
-- Max 150-200 ord
+- Max 200-250 ord
 - Använd ### för huvudrubriker
 - Använd - för listor
 - Ge konkreta information med siffror
 - Fokusera på det viktigaste
-- Påminn att detta är utbildning, inte investeringsråd
-- Ingen överflödig text`;
+- Vid aktieförslag: inkludera ticker och kortfattad analys
+- Påminn att detta är utbildning, inte investeringsråd`;
 
     if (analysisType === 'insight_generation') {
       systemPrompt += `\n\nGENERERA KORT INSIKT för ${insightType}:
@@ -166,9 +194,10 @@ VIKTIGA RIKTLINJER:
     ];
 
     console.log('=== CALLING OPENAI API ===');
-    console.log('Model: gpt-4.1-mini-2025-04-14');
+    console.log('Model: gpt-4.1-2025-04-14');
     console.log('Messages count:', messages.length);
     console.log('User message:', message);
+    console.log('Is exchange request:', isExchangeRequest);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -177,9 +206,9 @@ VIKTIGA RIKTLINJER:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-mini-2025-04-14',
+        model: 'gpt-4.1-2025-04-14',
         messages: messages,
-        max_tokens: 300,
+        max_tokens: isExchangeRequest ? 400 : 300,
         temperature: 0.6,
       }),
     });
@@ -276,7 +305,8 @@ VIKTIGA RIKTLINJER:
           message: message,
           context_data: { 
             timestamp: new Date().toISOString(),
-            analysisType: analysisType || 'general'
+            analysisType: analysisType || 'general',
+            isExchangeRequest: isExchangeRequest
           }
         },
         {
@@ -287,9 +317,11 @@ VIKTIGA RIKTLINJER:
           message: aiResponse,
           context_data: { 
             timestamp: new Date().toISOString(),
-            model: 'gpt-4.1-mini-2025-04-14',
+            model: 'gpt-4.1-2025-04-14',
             analysisType: analysisType || 'general',
-            confidence: confidence
+            confidence: confidence,
+            isExchangeRequest: isExchangeRequest,
+            suggestedChanges: isExchangeRequest
           }
         }
       ]);
@@ -306,11 +338,13 @@ VIKTIGA RIKTLINJER:
         success: true,
         analysisType: analysisType || 'general',
         confidence: confidence,
+        isExchangeRequest: isExchangeRequest,
         relatedData: {
           portfolioValue: portfolio?.total_value || 0,
           holdingsCount: holdings?.length || 0,
           insightsCount: insights?.length || 0,
-          model: 'GPT-4.1-mini-2025-04-14'
+          model: 'GPT-4.1-2025-04-14',
+          canSuggestChanges: isExchangeRequest
         }
       }),
       { 

@@ -479,12 +479,17 @@ export const useAIChat = (portfolioId?: string) => {
     try {
       console.log('=== CALLING EDGE FUNCTION ===');
       console.log('Function name: portfolio-ai-chat');
+      
+      // Detect if this is an exchange request
+      const isExchangeRequest = /(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|amerikanska|svenska|europeiska|asiatiska|aktier|innehav)/i.test(content);
+      
       console.log('Request payload:', {
         message: content,
         userId: user.id,
         portfolioId,
         sessionId: targetSessionId,
         contextType: 'advisory',
+        isExchangeRequest: isExchangeRequest,
       });
 
       const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
@@ -535,7 +540,11 @@ export const useAIChat = (portfolioId?: string) => {
         role: 'assistant',
         content: data.response,
         timestamp: new Date(),
-        context: data.context,
+        context: {
+          ...data.context,
+          isExchangeRequest: data.isExchangeRequest || isExchangeRequest,
+          confidence: data.confidence
+        },
       };
 
       setMessages(prev => [...prev, assistantMessage]);

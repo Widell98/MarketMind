@@ -9,9 +9,22 @@ import { Brain, Send, Loader2, MessageSquare, Shield, TrendingUp, Zap, AlertCirc
 import { useAIChat } from '@/hooks/useAIChat';
 import { useSubscription } from '@/hooks/useSubscription';
 import ChatHistory from './ChatHistory';
+import StockExchangeSuggestions from './StockExchangeSuggestions';
 
 interface AIChatProps {
   portfolioId?: string;
+}
+
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+  context?: {
+    analysisType?: string;
+    confidence?: number;
+    isExchangeRequest?: boolean;
+  };
 }
 
 const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
@@ -124,6 +137,38 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
     { text: "Borde jag rebalansera?", action: () => handleQuickQuestion("Analysera om jag borde rebalansera min portfölj och varför") },
     { text: "Vad händer på marknaden?", action: () => handleQuickQuestion("Ge mig en uppdatering om vad som händer på finansmarknaderna som kan påverka mig") }
   ];
+
+  const parseStockSuggestions = (content: string) => {
+    // Try to extract stock suggestions from AI response
+    const suggestionPatterns = [
+      /Förslag:?\s*([^(]+)\s*\(([^)]+)\)\s*-\s*([^.]+)/gi,
+      /(\w+[\s\w]*)\s*\(([A-Z]{1,5})\)[\s-]*([^.]{20,100})/gi,
+      /•\s*([^(]+)\s*\(([^)]+)\)[\s-]*([^•\n]{20,150})/gi
+    ];
+
+    const suggestions = [];
+    
+    for (const pattern of suggestionPatterns) {
+      let match;
+      while ((match = pattern.exec(content)) !== null && suggestions.length < 3) {
+        const [, name, ticker, reason] = match;
+        if (name && ticker && reason) {
+          suggestions.push({
+            name: name.trim(),
+            ticker: ticker.trim().toUpperCase(),
+            reason: reason.trim(),
+            weight: '5-10%', // Default weight
+            sector: 'Teknologi', // Default sector
+            marketCap: 'Large Cap', // Default market cap
+            risk: 'medium' as const
+          });
+        }
+      }
+      if (suggestions.length > 0) break;
+    }
+
+    return suggestions;
+  };
 
   const formatAIResponse = (content: string) => {
     const sections = content.split(/###|\*\*/).filter(section => section.trim());
@@ -362,44 +407,104 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
             ) : (
               <div className="space-y-3 sm:space-y-4">
                 {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
+                  <div key={message.id}>
                     <div
-                      className={`max-w-[85%] p-3 sm:p-4 rounded-lg ${
-                        message.role === 'user'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gradient-to-br from-gray-50 to-blue-50 border border-gray-200 text-foreground shadow-sm'
-                      }`}
+                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className="whitespace-pre-wrap">
-                        {message.role === 'assistant' ? 
-                          formatAIResponse(message.content) : 
-                          <span className="text-xs sm:text-sm">{message.content}</span>
-                        }
-                      </div>
-                      <div className="flex items-center justify-between mt-2 sm:mt-3 pt-2 border-t border-opacity-20">
-                        <div className={`text-xs opacity-70 ${message.role === 'user' ? 'text-blue-100' : 'text-gray-500'}`}>
-                          {new Date(message.timestamp).toLocaleTimeString('sv-SE', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                      <div
+                        className={`max-w-[85%] p-3 sm:p-4 rounded-lg ${
+                          message.role === 'user'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gradient-to-br from-gray-50 to-blue-50 border border-gray-200 text-foreground shadow-sm'
+                        }`}
+                      >
+                        <div className="whitespace-pre-wrap">
+                          {message.role === 'assistant' ? 
+                            formatAIResponse(message.content) : 
+                            <span className="text-xs sm:text-sm">{message.content}</span>
+                          }
                         </div>
-                        <div className="flex gap-1">
-                          {message.context?.analysisType && (
-                            <Badge variant="secondary" className="text-xs">
-                              {message.context.analysisType}
-                            </Badge>
-                          )}
-                          {message.context?.confidence && (
-                            <Badge variant="outline" className="text-xs">
-                              {Math.round(message.context.confidence * 100)}%
-                            </Badge>
-                          )}
+                        <div className="flex items-center justify-between mt-2 sm:mt-3 pt-2 border-t border-opacity-20">
+                          <div className={`text-xs opacity-70 ${message.role === 'user' ? 'text-blue-100' : 'text-gray-500'}`}>
+                            {new Date(message.timestamp).toLocaleTimeString('sv-SE', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </div>
+                          <div className="flex gap-1">
+                            {message.context?.analysisType && (
+                              <Badge variant="secondary" className="text-xs">
+                                {message.context.analysisType}
+                              </Badge>
+                            )}
+                            {message.context?.confidence && (
+                              <Badge variant="outline" className="text-xs">
+                                {Math.round(message.context.confidence * 100)}%
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
+                    
+                    {/* Show stock suggestions if this is an AI message with exchange suggestions */}
+                    {message.role === 'assistant' && message.context?.isExchangeRequest && (
+                      <div className="mt-3 ml-0 mr-auto max-w-[85%]">
+                        {(() => {
+                          const suggestions = parseStockSuggestions(message.content);
+                          if (suggestions.length > 0) {
+                            return (
+                              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                                <h4 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                                  <TrendingUp className="w-4 h-4" />
+                                  Identifierade aktieförslag
+                                </h4>
+                                <div className="space-y-3">
+                                  {suggestions.map((suggestion, idx) => (
+                                    <div key={idx} className="bg-white rounded p-3 border border-blue-100">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <span className="font-medium text-gray-900">
+                                          {suggestion.name} ({suggestion.ticker})
+                                        </span>
+                                        <Badge variant="outline" className="text-xs">
+                                          {suggestion.weight}
+                                        </Badge>
+                                      </div>
+                                      <p className="text-xs text-gray-600 mb-2">
+                                        {suggestion.reason}
+                                      </p>
+                                      <div className="flex gap-2">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="text-xs h-7"
+                                          onClick={() => {
+                                            // Create new chat session for this specific stock
+                                            const event = new CustomEvent('createStockChat', {
+                                              detail: { 
+                                                sessionName: `Diskussion: ${suggestion.name}`,
+                                                message: `Berätta mer om ${suggestion.name} (${suggestion.ticker}) och varför det skulle passa min portfölj. Vad är riskerna och möjligheterna?`
+                                              }
+                                            });
+                                            window.dispatchEvent(event);
+                                          }}
+                                        >
+                                          Diskutera mer
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                                  <strong>Påminnelse:</strong> Detta är utbildningssyfte endast. Gör egen research innan investeringsbeslut.
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    )}
                   </div>
                 ))}
                 {isLoading && (
