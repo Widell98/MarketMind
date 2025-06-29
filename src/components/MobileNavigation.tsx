@@ -172,27 +172,6 @@ const MobileNavigation = () => {
           )}
         </div>
       </div>
-
-      {/* Bottom Navigation Bar for mobile - additional quick access */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-30">
-        <div className="flex items-center justify-around py-2 px-4">
-          {communityItems.slice(0, 4).map((item) => (
-            <Link
-              key={item.title}
-              to={item.url}
-              className={cn(
-                "flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-colors",
-                isActive(item.url)
-                  ? "text-blue-600 dark:text-blue-400"
-                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-              )}
-            >
-              <item.icon className="w-5 h-5" />
-              <span className="text-xs font-medium">{item.title === "Browse Cases" ? "Cases" : item.title}</span>
-            </Link>
-          ))}
-        </div>
-      </div>
     </>
   );
 };
