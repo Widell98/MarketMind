@@ -31,46 +31,74 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     }).format(timestamp);
   };
 
+  // Function to format AI response content
+  const formatAIContent = (content: string) => {
+    // Remove excessive markdown formatting and clean up the text
+    let formatted = content
+      // Remove ### headers and make them bold instead
+      .replace(/### (.+)/g, '<strong class="block text-base font-semibold mb-3 text-foreground">$1</strong>')
+      // Convert ** bold ** to proper formatting
+      .replace(/\*\*(.+?)\*\*/g, '<strong class="font-medium text-foreground">$1</strong>')
+      // Handle bullet points more elegantly
+      .replace(/^- (.+)/gm, '<div class="flex items-start gap-2 mb-2"><span class="w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"></span><span class="text-sm leading-relaxed">$1</span></div>')
+      // Handle sub-bullets with company examples
+      .replace(/  - (.+?) – (.+)/gm, '<div class="ml-4 flex items-start gap-2 mb-1.5"><span class="w-1 h-1 rounded-full bg-muted-foreground mt-2.5 flex-shrink-0"></span><span class="text-sm"><strong class="font-medium text-foreground">$1</strong> <span class="text-muted-foreground">– $2</span></span></div>')
+      // Clean up extra whitespace and line breaks
+      .replace(/\n\s*\n/g, '\n')
+      .trim();
+
+    return formatted;
+  };
+
   return (
-    <div className={`flex gap-4 sm:gap-6 ${isUser ? 'justify-end' : 'justify-start'} group mb-6 sm:mb-8`}>
-      <div className={`flex gap-3 sm:gap-4 max-w-xs sm:max-w-2xl lg:max-w-4xl ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl sm:rounded-3xl flex items-center justify-center flex-shrink-0 shadow-lg transform transition-transform duration-300 ${
+    <div className={`flex gap-3 sm:gap-4 ${isUser ? 'justify-end' : 'justify-start'} group mb-4 sm:mb-6`}>
+      <div className={`flex gap-3 max-w-xs sm:max-w-xl lg:max-w-3xl ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${
           isUser 
-            ? 'rotate-3 hover:rotate-0 bg-primary' 
-            : '-rotate-3 hover:rotate-0 bg-secondary'
+            ? 'bg-primary' 
+            : 'bg-muted'
         }`}>
           {isUser ? (
-            <User className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
+            <User className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
           ) : (
-            <Bot className="w-5 h-5 sm:w-6 sm:h-6 text-secondary-foreground" />
+            <Bot className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
           )}
         </div>
         
-        <div className={`flex flex-col gap-2 sm:gap-3 ${isUser ? 'items-end' : 'items-start'}`}>
-          <div className={`px-4 sm:px-6 py-3 sm:py-4 rounded-2xl shadow-lg border backdrop-blur-sm ${
+        <div className={`flex flex-col gap-2 ${isUser ? 'items-end' : 'items-start'}`}>
+          <div className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl border shadow-sm ${
             isUser
               ? 'bg-primary text-primary-foreground'
               : 'bg-card text-card-foreground'
           }`}>
-            <div className="whitespace-pre-wrap break-words leading-relaxed text-sm sm:text-base">
-              {message.content}
-            </div>
+            {isUser ? (
+              <div className="text-sm sm:text-base leading-relaxed whitespace-pre-wrap break-words">
+                {message.content}
+              </div>
+            ) : (
+              <div 
+                className="text-sm sm:text-base leading-relaxed ai-response"
+                dangerouslySetInnerHTML={{ 
+                  __html: formatAIContent(message.content) 
+                }}
+              />
+            )}
             
             {message.context?.isExchangeRequest && !isUser && (
-              <div className="mt-4 p-3 sm:p-4 rounded-xl border bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 backdrop-blur-sm">
-                <div className="flex items-center gap-3 font-medium mb-2 text-amber-700 dark:text-amber-300">
-                  <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
+              <div className="mt-3 p-3 rounded-xl border bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+                <div className="flex items-center gap-2 font-medium mb-1.5 text-amber-700 dark:text-amber-300 text-sm">
+                  <TrendingUp className="w-4 h-4" />
                   Portföljförändring föreslås
                 </div>
-                <p className="text-amber-600 dark:text-amber-400 text-sm">
+                <p className="text-amber-600 dark:text-amber-400 text-xs leading-relaxed">
                   Detta förslag kan påverka din portföljs sammansättning. Överväg riskerna innan du genomför ändringar.
                 </p>
               </div>
             )}
           </div>
           
-          <div className={`text-xs sm:text-sm flex items-center gap-2 ${isUser ? 'justify-end' : 'justify-start'} text-muted-foreground`}>
-            <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+          <div className={`text-xs flex items-center gap-1.5 ${isUser ? 'justify-end' : 'justify-start'} text-muted-foreground`}>
+            <Clock className="w-3 h-3" />
             {formatTimestamp(message.timestamp)}
           </div>
         </div>
