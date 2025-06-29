@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -204,10 +205,9 @@ const PortfolioImplementation = () => {
               <TabsTrigger 
                 value="chat" 
                 data-value="chat" 
-                className="flex items-center gap-3 rounded-xl py-3 px-4 font-medium transition-all duration-200 data-[state=active]:shadow-lg text-[#98A1BC]"
+                className="flex items-center gap-3 rounded-xl py-3 px-4 font-medium transition-all duration-200 data-[state=active]:shadow-lg text-[#98A1BC] data-[state=active]:text-[#F4EBD3]"
                 style={{
-                  'data-[state=active]:background': 'linear-gradient(135deg, #555879, #98A1BC)',
-                  'data-[state=active]:color': '#F4EBD3'
+                  background: 'transparent'
                 }}
               >
                 <MessageSquare className="w-5 h-5" />
@@ -215,10 +215,9 @@ const PortfolioImplementation = () => {
               </TabsTrigger>
               <TabsTrigger 
                 value="overview" 
-                className="flex items-center gap-3 rounded-xl py-3 px-4 font-medium transition-all duration-200 data-[state=active]:shadow-lg text-[#98A1BC]"
+                className="flex items-center gap-3 rounded-xl py-3 px-4 font-medium transition-all duration-200 data-[state=active]:shadow-lg text-[#98A1BC] data-[state=active]:text-[#F4EBD3]"
                 style={{
-                  'data-[state=active]:background': 'linear-gradient(135deg, #555879, #98A1BC)',
-                  'data-[state=active]:color': '#F4EBD3'
+                  background: 'transparent'
                 }}
               >
                 <BarChart3 className="w-5 h-5" />
@@ -303,6 +302,13 @@ const PortfolioImplementation = () => {
           </Tabs>
         </div>
       </div>
+
+      <style jsx>{`
+        [data-state=active] {
+          background: linear-gradient(135deg, #555879, #98A1BC) !important;
+          color: #F4EBD3 !important;
+        }
+      `}</style>
     </Layout>
   );
 };
