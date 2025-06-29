@@ -44,7 +44,7 @@ const ChatHeader = ({
     <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700 p-4 sm:p-6 lg:p-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center bg-gradient-to-br from-cyan-500 to-teal-600 shadow-xl transform -rotate-12 hover:rotate-0 transition-transform duration-300">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center bg-gradient-to-br from-violet-600 to-purple-600 shadow-xl transform -rotate-12 hover:rotate-0 transition-transform duration-300">
             <Zap className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
           </div>
           <div>

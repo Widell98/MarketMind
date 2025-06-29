@@ -106,9 +106,9 @@ const PortfolioImplementation = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-slate-950 dark:via-slate-800 dark:to-slate-950">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-900 dark:via-slate-800 dark:to-slate-950">
           <div className="text-center p-8 bg-white/10 dark:bg-slate-800/30 backdrop-blur-lg border border-white/20 dark:border-slate-700/50 rounded-3xl shadow-2xl">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 bg-gradient-to-br from-cyan-500 to-teal-600 shadow-2xl">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 bg-gradient-to-br from-violet-600 to-purple-600 shadow-2xl">
               <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
             </div>
             <h2 className="text-xl font-semibold mb-2 text-slate-800 dark:text-slate-100">Laddar din portfölj</h2>
@@ -123,16 +123,16 @@ const PortfolioImplementation = () => {
   if (showOnboarding || !activePortfolio) {
     return (
       <Layout>
-        <div className="min-h-screen py-8 px-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-slate-950 dark:via-slate-700 dark:to-slate-950">
+        <div className="min-h-screen py-8 px-4 bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-900 dark:via-slate-800 dark:to-slate-950">
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-8">
-              <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 bg-gradient-to-br from-cyan-500 to-teal-600 shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
+              <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 bg-gradient-to-br from-violet-600 to-purple-600 shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
                 <Brain className="w-10 h-10 text-white" />
               </div>
-              <h1 className="text-3xl lg:text-4xl font-bold mb-4 text-white">
+              <h1 className="text-3xl lg:text-4xl font-bold mb-4 text-slate-800 dark:text-white">
                 Välkommen till AI Portfolio
               </h1>
-              <p className="text-lg max-w-2xl mx-auto text-slate-300">
+              <p className="text-lg max-w-2xl mx-auto text-slate-600 dark:text-slate-300">
                 Låt oss skapa din personliga investeringsstrategi genom en kort konversation
               </p>
             </div>
@@ -153,7 +153,7 @@ const PortfolioImplementation = () => {
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-gradient-to-br from-cyan-500 to-teal-600 shadow-xl transform -rotate-6 hover:rotate-0 transition-transform duration-300">
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-gradient-to-br from-violet-600 to-purple-600 shadow-xl transform -rotate-6 hover:rotate-0 transition-transform duration-300">
                     <Brain className="w-8 h-8 text-white" />
                   </div>
                   <div>
@@ -167,7 +167,7 @@ const PortfolioImplementation = () => {
                 </div>
                 
                 <div className="flex flex-wrap gap-3">
-                  <Badge className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-cyan-500 to-teal-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200">
+                  <Badge className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-violet-600 to-purple-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200">
                     <Brain className="w-4 h-4 mr-2" />
                     AI-Optimerad
                   </Badge>
@@ -200,7 +200,7 @@ const PortfolioImplementation = () => {
               <TabsTrigger 
                 value="chat" 
                 data-value="chat" 
-                className="flex items-center gap-3 rounded-xl py-3 px-4 font-medium transition-all duration-200 text-slate-600 dark:text-slate-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg"
+                className="flex items-center gap-3 rounded-xl py-3 px-4 font-medium transition-all duration-200 text-slate-600 dark:text-slate-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg"
               >
                 <MessageSquare className="w-5 h-5" />
                 <span className="hidden sm:inline">AI-Assistent</span>
@@ -208,7 +208,7 @@ const PortfolioImplementation = () => {
               </TabsTrigger>
               <TabsTrigger 
                 value="overview" 
-                className="flex items-center gap-3 rounded-xl py-3 px-4 font-medium transition-all duration-200 text-slate-600 dark:text-slate-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg"
+                className="flex items-center gap-3 rounded-xl py-3 px-4 font-medium transition-all duration-200 text-slate-600 dark:text-slate-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg"
               >
                 <BarChart3 className="w-5 h-5" />
                 <span className="hidden sm:inline">Portföljöversikt</span>
@@ -221,7 +221,7 @@ const PortfolioImplementation = () => {
               <Card className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg border border-slate-200 dark:border-slate-700 shadow-2xl rounded-3xl overflow-hidden transform hover:scale-[1.01] transition-transform duration-300">
                 <CardHeader className="border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 pb-6">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gradient-to-br from-cyan-500 to-teal-600 shadow-lg transform rotate-12 hover:rotate-0 transition-transform duration-300">
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gradient-to-br from-violet-600 to-purple-600 shadow-lg transform rotate-12 hover:rotate-0 transition-transform duration-300">
                       <Lightbulb className="w-6 h-6 text-white" />
                     </div>
                     <div>
@@ -244,7 +244,7 @@ const PortfolioImplementation = () => {
                         onClick={() => handleExamplePrompt(example.prompt)}
                       >
                         <div className="flex items-start gap-4 lg:gap-6 w-full">
-                          <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl lg:rounded-3xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-cyan-500 to-teal-600 shadow-lg group-hover:shadow-xl transition-all duration-300 text-white transform group-hover:rotate-12">
+                          <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl lg:rounded-3xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-violet-600 to-purple-600 shadow-lg group-hover:shadow-xl transition-all duration-300 text-white transform group-hover:rotate-12">
                             {example.icon}
                           </div>
                           <div className="flex-1 min-w-0 space-y-2">

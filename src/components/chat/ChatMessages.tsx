@@ -39,7 +39,7 @@ const ChatMessages = ({ messages, isLoading, isLoadingSession, messagesEndRef }:
             </div>
           ) : messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-center">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl flex items-center justify-center mb-6 bg-gradient-to-br from-cyan-500 to-teal-600 shadow-2xl transform rotate-12 hover:rotate-0 transition-transform duration-500">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl flex items-center justify-center mb-6 bg-gradient-to-br from-violet-600 to-purple-600 shadow-2xl transform rotate-12 hover:rotate-0 transition-transform duration-500">
                 <Bot className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
               </div>
               <h3 className="text-2xl sm:text-3xl font-bold mb-4 text-slate-800 dark:text-slate-100">

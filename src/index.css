@@ -16,7 +16,7 @@
     --popover: 255 255 255;
     --popover-foreground: 15 23 42;
 
-    --primary: 59 130 246;
+    --primary: 79 70 229;
     --primary-foreground: 255 255 255;
 
     --secondary: 241 245 249;
@@ -25,7 +25,7 @@
     --muted: 241 245 249;
     --muted-foreground: 100 116 139;
 
-    --accent: 14 165 233;
+    --accent: 139 92 246;
     --accent-foreground: 255 255 255;
 
     --destructive: 239 68 68;
@@ -33,57 +33,57 @@
 
     --border: 226 232 240;
     --input: 226 232 240;
-    --ring: 59 130 246;
+    --ring: 79 70 229;
 
     --radius: 0.75rem;
 
     --sidebar-background: 248 250 252;
     --sidebar-foreground: 15 23 42;
-    --sidebar-primary: 59 130 246;
+    --sidebar-primary: 79 70 229;
     --sidebar-primary-foreground: 255 255 255;
-    --sidebar-accent: 14 165 233;
+    --sidebar-accent: 139 92 246;
     --sidebar-accent-foreground: 255 255 255;
     --sidebar-border: 226 232 240;
-    --sidebar-ring: 59 130 246;
+    --sidebar-ring: 79 70 229;
   }
 
   .dark {
-    --background: 3 7 18;
+    --background: 15 23 42;
     --foreground: 248 250 252;
 
-    --card: 6 14 31;
+    --card: 30 41 59;
     --card-foreground: 248 250 252;
 
-    --popover: 6 14 31;
+    --popover: 30 41 59;
     --popover-foreground: 248 250 252;
 
-    --primary: 59 130 246;
-    --primary-foreground: 3 7 18;
+    --primary: 139 92 246;
+    --primary-foreground: 15 23 42;
 
-    --secondary: 15 23 42;
+    --secondary: 51 65 85;
     --secondary-foreground: 203 213 225;
 
-    --muted: 15 23 42;
+    --muted: 51 65 85;
     --muted-foreground: 148 163 184;
 
-    --accent: 14 165 233;
-    --accent-foreground: 3 7 18;
+    --accent: 79 70 229;
+    --accent-foreground: 248 250 252;
 
     --destructive: 239 68 68;
     --destructive-foreground: 248 250 252;
 
-    --border: 30 41 59;
-    --input: 30 41 59;
-    --ring: 59 130 246;
+    --border: 51 65 85;
+    --input: 51 65 85;
+    --ring: 139 92 246;
     
-    --sidebar-background: 3 7 18;
+    --sidebar-background: 15 23 42;
     --sidebar-foreground: 248 250 252;
-    --sidebar-primary: 59 130 246;
-    --sidebar-primary-foreground: 3 7 18;
-    --sidebar-accent: 14 165 233;
-    --sidebar-accent-foreground: 3 7 18;
-    --sidebar-border: 30 41 59;
-    --sidebar-ring: 59 130 246;
+    --sidebar-primary: 139 92 246;
+    --sidebar-primary-foreground: 15 23 42;
+    --sidebar-accent: 79 70 229;
+    --sidebar-accent-foreground: 248 250 252;
+    --sidebar-border: 51 65 85;
+    --sidebar-ring: 139 92 246;
   }
 }
 
@@ -102,22 +102,22 @@
 @layer components {
   /* Modern glassmorphism card */
   .glass-card {
-    @apply bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl rounded-2xl;
+    @apply bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl rounded-2xl;
   }
 
-  /* Blue gradient for primary elements */
+  /* Purple gradient for primary elements */
   .accent-gradient {
-    @apply bg-gradient-to-r from-blue-500 to-sky-500;
+    @apply bg-gradient-to-r from-violet-600 to-purple-600;
   }
 
-  /* Text gradient - blue theme */
+  /* Text gradient - purple theme */
   .text-gradient {
-    @apply bg-gradient-to-r from-slate-900 to-blue-600 dark:from-slate-100 dark:to-blue-400 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-slate-900 to-purple-600 dark:from-slate-100 dark:to-purple-400 bg-clip-text text-transparent;
   }
 
   /* Hover effects */
   .hover-glow {
-    @apply transition-all duration-300 hover:shadow-[0_0_30px_rgba(59,130,246,0.3)] hover:scale-105;
+    @apply transition-all duration-300 hover:shadow-[0_0_30px_rgba(139,92,246,0.3)] hover:scale-105;
   }
 
   /* Mobile-first responsive utilities */
@@ -135,34 +135,34 @@
   
   /* Enhanced card styling with space theme */
   .card-finance {
-    @apply bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200/50 dark:border-slate-700/50;
-    @apply p-3 sm:p-4 md:p-6 transition-all duration-300 hover:shadow-[0_0_30px_rgba(59,130,246,0.2)];
+    @apply bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200/50 dark:border-slate-700/50;
+    @apply p-3 sm:p-4 md:p-6 transition-all duration-300 hover:shadow-[0_0_30px_rgba(139,92,246,0.2)];
   }
   
   /* Space-themed button styles */
   .btn-space {
     @apply px-6 py-3 text-sm font-medium rounded-xl transition-all duration-300;
-    @apply bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700;
+    @apply bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700;
     @apply text-white shadow-lg hover:shadow-xl hover:scale-105;
-    @apply border border-blue-500/30 backdrop-blur-sm;
+    @apply border border-violet-500/30 backdrop-blur-sm;
   }
   
-  /* Stock indicators with blue theme */
+  /* Stock indicators with purple theme */
   .stock-up {
-    @apply text-sky-500 font-medium;
+    @apply text-violet-500 font-medium;
   }
   .stock-down {
     @apply text-red-500 font-medium;
   }
   .badge-finance {
     @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium;
-    @apply bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30;
+    @apply bg-violet-500/10 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400 border border-violet-500/30;
   }
   .progress-bar {
     @apply h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden;
   }
   .progress-value {
-    @apply h-full rounded-full bg-gradient-to-r from-blue-500 to-sky-500;
+    @apply h-full rounded-full bg-gradient-to-r from-violet-600 to-purple-600;
   }
 }
 
@@ -179,12 +179,12 @@
   }
   
   ::-webkit-scrollbar-thumb {
-    @apply bg-blue-500/60;
+    @apply bg-violet-500/60;
     border-radius: 4px;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-blue-500;
+    @apply bg-violet-500;
   }
 }
 
@@ -196,7 +196,7 @@ html, body {
 /* Mobile-friendly focus states */
 @media (max-width: 768px) {
   *:focus {
-    outline: 2px solid rgb(59, 130, 246);
+    outline: 2px solid rgb(139, 92, 246);
     outline-offset: 2px;
   }
 }
