@@ -28,42 +28,43 @@ const ChatInput = ({
   inputRef
 }: ChatInputProps) => {
   return (
-    <div className="bg-white border-t border-slate-200 p-4">
+    <div className="bg-background/50 backdrop-blur-sm border-t p-4 sm:p-6 lg:p-8">
       {quotaExceeded && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
-          <div className="flex items-center gap-2 font-medium mb-1 text-red-700">
-            <AlertCircle className="w-4 h-4" />
+        <div className="mb-4 sm:mb-6 p-4 bg-destructive/10 backdrop-blur-sm border border-destructive/20 rounded-xl">
+          <div className="flex items-center gap-3 font-medium mb-2 text-destructive">
+            <AlertCircle className="w-5 h-5" />
             API-kvot överskriden
           </div>
-          <p className="text-red-600 text-sm">
-            Du har nått din dagliga gräns för AI-användning. Försök igen senare.
+          <p className="text-destructive/80">
+            Du har nått din dagliga gräns för AI-användning. Försök igen senare eller uppgradera ditt konto.
           </p>
         </div>
       )}
 
-      <form onSubmit={onSubmit} className="flex gap-3 max-w-4xl mx-auto">
+      <form onSubmit={onSubmit} className="flex gap-3 sm:gap-4 max-w-4xl mx-auto">
         <div className="flex-1 relative">
           <Input
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Skriv din fråga här..."
+            placeholder="Skriv din fråga här... (t.ex. 'Analysera min portfölj' eller 'Vilka aktier bör jag köpa?')"
             disabled={isLoading || quotaExceeded}
-            className="h-12 bg-white border-slate-300 rounded-xl text-sm px-4 pr-12 focus:border-blue-500 focus:ring-blue-500"
+            className="h-12 sm:h-14 bg-background/80 backdrop-blur-sm border shadow-lg rounded-2xl text-sm sm:text-base px-4 sm:px-6 pr-12 sm:pr-14 transition-all duration-200 focus:shadow-xl"
           />
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400">
-            <MessageSquare className="w-4 h-4" />
+          <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
         <Button
           type="submit"
           disabled={!input.trim() || isLoading || quotaExceeded}
-          className="h-12 px-6 bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-medium"
+          size="lg"
+          className="h-12 sm:h-14 px-6 sm:px-8 bg-primary hover:bg-primary/90 shadow-lg rounded-2xl text-sm sm:text-base font-medium transition-all duration-200 hover:shadow-xl text-primary-foreground transform hover:scale-105 disabled:transform-none"
         >
           {isLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
           ) : (
-            <Send className="w-4 h-4" />
+            <Send className="w-4 h-4 sm:w-5 sm:h-5" />
           )}
         </Button>
       </form>
