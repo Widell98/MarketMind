@@ -27,6 +27,13 @@ interface Message {
   };
 }
 
+interface ChatSession {
+  id: string;
+  session_name: string;
+  created_at: string;
+  is_active: boolean;
+}
+
 const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
   const [inputMessage, setInputMessage] = useState('');
   const [showSidebar, setShowSidebar] = useState(false);
