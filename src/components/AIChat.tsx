@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -199,6 +198,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
   return (
     <div className="w-full h-full max-w-full">
       <Card className="h-[600px] sm:h-[700px] flex flex-col w-full">
+        
         <CardHeader className="flex-shrink-0 p-3 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
@@ -334,6 +334,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
         </CardHeader>
         
         <CardContent className="flex-1 flex flex-col p-0 min-h-0">
+          
           <ScrollArea className="flex-1 p-3 sm:p-4">
             {messages.length === 0 ? (
               <div className="text-center text-muted-foreground py-4 sm:py-8">
