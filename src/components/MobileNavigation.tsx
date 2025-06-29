@@ -48,7 +48,7 @@ const MobileNavigation = () => {
 
   return (
     <>
-      {/* Mobile menu trigger button - enhanced styling */}
+      {/* Mobile menu trigger button */}
       <div className="md:hidden fixed top-3 left-3 z-50">
         <Button
           variant="ghost"
@@ -69,109 +69,107 @@ const MobileNavigation = () => {
         </Button>
       </div>
 
-      {/* Mobile menu overlay - improved */}
+      {/* Mobile dropdown menu */}
       {isOpen && (
-        <div 
-          className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
+        <>
+          {/* Overlay */}
+          <div 
+            className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300"
+            onClick={() => setIsOpen(false)}
+          />
 
-      {/* Mobile menu - enhanced design with restored navigation */}
-      <div className={cn(
-        "md:hidden fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-white dark:bg-gray-800 z-50",
-        "transform transition-transform duration-300 ease-out shadow-2xl",
-        "border-r border-gray-200 dark:border-gray-700",
-        isOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
-        {/* Header */}
-        <div className="border-b border-gray-200 dark:border-gray-700 p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
-          <Link 
-            to="/" 
-            className="text-xl font-bold text-finance-navy dark:text-gray-200 flex items-center"
-            onClick={handleLinkClick}
-          >
-            <span className="mr-3 text-2xl">🧠</span>
-            <div>
-              <div>Market Mind</div>
-              <div className="text-xs text-gray-600 dark:text-gray-400 font-normal">AI-Powered Insights</div>
+          {/* Dropdown menu */}
+          <div className="md:hidden fixed top-16 left-3 right-3 bg-white dark:bg-gray-800 z-50 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            {/* Header */}
+            <div className="border-b border-gray-200 dark:border-gray-700 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
+              <Link 
+                to="/" 
+                className="text-lg font-bold text-finance-navy dark:text-gray-200 flex items-center"
+                onClick={handleLinkClick}
+              >
+                <span className="mr-2 text-xl">🧠</span>
+                <div>
+                  <div>Market Mind</div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400 font-normal">AI-Powered Insights</div>
+                </div>
+              </Link>
             </div>
-          </Link>
-        </div>
 
-        {/* Navigation Content - restored with correct styling */}
-        <div className="p-4 space-y-6 overflow-y-auto h-full pb-20">
-          {/* Community Section */}
-          <div>
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 px-2">
-              <Users className="w-4 h-4" />
-              Community
-            </div>
-            <div className="space-y-1">
-              {communityItems.map((item) => (
-                <Link
-                  key={item.title}
-                  to={item.url}
-                  onClick={handleLinkClick}
-                  className={cn(
-                    "flex items-center gap-4 px-4 py-3 rounded-xl text-sm transition-all duration-200",
-                    "hover:bg-gray-100 dark:hover:bg-gray-700/50",
-                    isActive(item.url) 
-                      ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold shadow-sm" 
-                      : "text-gray-700 dark:text-gray-300"
-                  )}
-                >
-                  <item.icon className="w-5 h-5 flex-shrink-0" />
-                  <span className="flex-1">{item.title}</span>
-                  {isActive(item.url) && (
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  )}
-                </Link>
-              ))}
+            {/* Navigation Content */}
+            <div className="p-4 space-y-4 max-h-96 overflow-y-auto">
+              {/* Community Section */}
+              <div>
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 px-2">
+                  <Users className="w-4 h-4" />
+                  Community
+                </div>
+                <div className="space-y-1">
+                  {communityItems.map((item) => (
+                    <Link
+                      key={item.title}
+                      to={item.url}
+                      onClick={handleLinkClick}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200",
+                        "hover:bg-gray-100 dark:hover:bg-gray-700/50",
+                        isActive(item.url) 
+                          ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold" 
+                          : "text-gray-700 dark:text-gray-300"
+                      )}
+                    >
+                      <item.icon className="w-5 h-5 flex-shrink-0" />
+                      <span className="flex-1">{item.title}</span>
+                      {isActive(item.url) && (
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {/* AI Portfolio Section - Only for authenticated users */}
+              {user && (
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 px-2">
+                    <Brain className="w-4 h-4" />
+                    AI Portfolio
+                  </div>
+                  <div className="space-y-1">
+                    <Link
+                      to="/portfolio-advisor"
+                      onClick={handleLinkClick}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200",
+                        "hover:bg-gray-100 dark:hover:bg-gray-700/50",
+                        isActive('/portfolio-advisor') 
+                          ? "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 font-semibold" 
+                          : "text-gray-700 dark:text-gray-300"
+                      )}
+                    >
+                      <Brain className="w-5 h-5 flex-shrink-0" />
+                      <span className="flex-1">Portfolio Advisor</span>
+                      {isActive('/portfolio-advisor') && (
+                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      )}
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              {/* Auth Section for non-authenticated users */}
+              {!user && (
+                <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <Button asChild className="w-full py-2.5 rounded-xl font-semibold">
+                    <Link to="/auth" onClick={handleLinkClick}>
+                      Logga in / Registrera
+                    </Link>
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
-
-          {/* AI Portfolio Section - Only for authenticated users */}
-          {user && (
-            <div>
-              <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 px-2">
-                <Brain className="w-4 h-4" />
-                AI Portfolio
-              </div>
-              <div className="space-y-1">
-                <Link
-                  to="/portfolio-advisor"
-                  onClick={handleLinkClick}
-                  className={cn(
-                    "flex items-center gap-4 px-4 py-3 rounded-xl text-sm transition-all duration-200",
-                    "hover:bg-gray-100 dark:hover:bg-gray-700/50",
-                    isActive('/portfolio-advisor') 
-                      ? "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 font-semibold shadow-sm" 
-                      : "text-gray-700 dark:text-gray-300"
-                  )}
-                >
-                  <Brain className="w-5 h-5 flex-shrink-0" />
-                  <span className="flex-1">Portfolio Advisor</span>
-                  {isActive('/portfolio-advisor') && (
-                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                  )}
-                </Link>
-              </div>
-            </div>
-          )}
-
-          {/* Auth Section for non-authenticated users */}
-          {!user && (
-            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-              <Button asChild className="w-full py-3 rounded-xl font-semibold">
-                <Link to="/auth" onClick={handleLinkClick}>
-                  Logga in / Registrera
-                </Link>
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
+        </>
+      )}
     </>
   );
 };
