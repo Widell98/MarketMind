@@ -7,83 +7,82 @@
 
 @layer base {
   :root {
-    --background: 248 250 252;
-    --foreground: 15 23 42;
+    --background: 210 40% 98%;
+    --foreground: 222.2 84% 4.9%;
 
-    --card: 255 255 255;
-    --card-foreground: 15 23 42;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
 
-    --popover: 255 255 255;
-    --popover-foreground: 15 23 42;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 139 92 246;
-    --primary-foreground: 255 255 255;
+    --primary: 216 98% 16%;
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 241 245 249;
-    --secondary-foreground: 51 65 85;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
 
-    --muted: 248 250 252;
-    --muted-foreground: 100 116 139;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 139 92 246;
-    --accent-foreground: 255 255 255;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
 
-    --destructive: 239 68 68;
-    --destructive-foreground: 255 255 255;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 226 232 240;
-    --input: 255 255 255;
-    --ring: 139 92 246;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    --sidebar-background: 248 250 252;
-    --sidebar-foreground: 15 23 42;
-    --sidebar-primary: 139 92 246;
-    --sidebar-primary-foreground: 255 255 255;
-    --sidebar-accent: 139 92 246;
-    --sidebar-accent-foreground: 255 255 255;
-    --sidebar-border: 226 232 240;
-    --sidebar-ring: 139 92 246;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   .dark {
-    --background: 15 23 42;
-    --foreground: 248 250 252;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
 
-    --card: 30 41 59;
-    --card-foreground: 248 250 252;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 30 41 59;
-    --popover-foreground: 248 250 252;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 139 92 246;
-    --primary-foreground: 15 23 42;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
 
-    --secondary: 51 65 85;
-    --secondary-foreground: 203 213 225;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 51 65 85;
-    --muted-foreground: 148 163 184;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 139 92 246;
-    --accent-foreground: 248 250 252;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
 
-    --destructive: 239 68 68;
-    --destructive-foreground: 248 250 252;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 51 65 85;
-    --input: 30 41 59;
-    --ring: 139 92 246;
-    
-    --sidebar-background: 15 23 42;
-    --sidebar-foreground: 248 250 252;
-    --sidebar-primary: 139 92 246;
-    --sidebar-primary-foreground: 15 23 42;
-    --sidebar-accent: 139 92 246;
-    --sidebar-accent-foreground: 248 250 252;
-    --sidebar-border: 51 65 85;
-    --sidebar-ring: 139 92 246;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
 
@@ -100,26 +99,6 @@
 }
 
 @layer components {
-  /* Modern glassmorphism card */
-  .glass-card {
-    @apply bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl rounded-2xl;
-  }
-
-  /* Purple gradient for primary elements */
-  .accent-gradient {
-    @apply bg-gradient-to-r from-violet-600 to-purple-600;
-  }
-
-  /* Text gradient - purple theme */
-  .text-gradient {
-    @apply bg-gradient-to-r from-slate-900 to-purple-600 dark:from-slate-100 dark:to-purple-400 bg-clip-text text-transparent;
-  }
-
-  /* Hover effects */
-  .hover-glow {
-    @apply transition-all duration-300 hover:shadow-[0_0_30px_rgba(139,92,246,0.3)] hover:scale-105;
-  }
-
   /* Mobile-first responsive utilities */
   .mobile-safe-area {
     padding-bottom: env(safe-area-inset-bottom, 0);
@@ -130,43 +109,213 @@
   
   .mobile-viewport {
     min-height: 100vh;
-    min-height: 100dvh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile browsers */
   }
   
-  /* Enhanced card styling with blue/purple theme */
+  /* Enhanced mobile navigation */
+  .mobile-nav-overlay {
+    @apply fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300;
+  }
+  
+  .mobile-nav-panel {
+    @apply fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-white dark:bg-gray-800 z-50;
+    @apply transform transition-transform duration-300 ease-out shadow-2xl;
+    @apply border-r border-gray-200 dark:border-gray-700;
+  }
+  
+  /* Mobile bottom navigation */
+  .mobile-bottom-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800;
+    @apply border-t border-gray-200 dark:border-gray-700 z-30;
+    @apply pb-safe-area;
+  }
+  
+  /* Enhanced card styling with mobile considerations */
   .card-finance {
-    @apply bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200/50 dark:border-slate-700/50;
-    @apply p-3 sm:p-4 md:p-6 transition-all duration-300 hover:shadow-[0_0_30px_rgba(139,92,246,0.2)];
+    @apply bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-100 dark:border-gray-700;
+    @apply p-3 sm:p-4 md:p-6;
   }
   
-  /* Blue/purple-themed button styles */
-  .btn-space {
-    @apply px-6 py-3 text-sm font-medium rounded-xl transition-all duration-300;
-    @apply bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700;
-    @apply text-white shadow-lg hover:shadow-xl hover:scale-105;
-    @apply border border-violet-500/30 backdrop-blur-sm;
+  /* Mobile-optimized text sizes */
+  .text-mobile-base {
+    @apply text-sm sm:text-base;
   }
   
-  /* Stock indicators with purple theme */
+  .text-mobile-lg {
+    @apply text-base sm:text-lg md:text-xl;
+  }
+  
+  .text-mobile-xl {
+    @apply text-lg sm:text-xl md:text-2xl lg:text-3xl;
+  }
+  
+  /* Mobile touch targets */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+  }
+  
+  .touch-target-sm {
+    @apply min-h-[40px] min-w-[40px] flex items-center justify-center;
+  }
+  
+  /* Mobile-friendly button styles */
+  .btn-mobile {
+    @apply px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200;
+    @apply active:scale-95 touch-manipulation;
+  }
+  
+  .btn-mobile-sm {
+    @apply px-3 py-2 text-xs font-medium rounded-md transition-all duration-200;
+    @apply active:scale-95 touch-manipulation;
+  }
+  
+  /* Mobile spacing utilities */
+  .space-mobile-y {
+    @apply space-y-3 sm:space-y-4 md:space-y-6;
+  }
+  
+  .space-mobile-x {
+    @apply space-x-2 sm:space-x-3 md:space-x-4;
+  }
+  
+  /* Mobile padding utilities */
+  .p-mobile {
+    @apply p-3 sm:p-4 md:p-6;
+  }
+  
+  .px-mobile {
+    @apply px-3 sm:px-4 md:px-6;
+  }
+  
+  .py-mobile {
+    @apply py-3 sm:py-4 md:py-6;
+  }
+  
+  /* Grid systems with mobile-first approach */
+  .grid-mobile-1 {
+    @apply grid grid-cols-1 gap-3 sm:gap-4 md:gap-6;
+  }
+  
+  .grid-mobile-2 {
+    @apply grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6;
+  }
+  
+  .grid-mobile-auto {
+    @apply grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4;
+    @apply gap-3 sm:gap-4 md:gap-6;
+  }
+  
+  /* Enhanced stock case grid for mobile */
+  .stock-case-grid {
+    @apply grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4;
+    @apply gap-3 sm:gap-4 md:gap-6;
+  }
+  
+  /* Mobile-optimized container */
+  .container-mobile {
+    @apply w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8;
+    max-width: 1400px;
+  }
+  
+  /* Legacy components - improved mobile handling */
   .stock-up {
-    @apply text-violet-500 font-medium;
+    @apply text-finance-green font-medium text-mobile-base;
   }
   .stock-down {
-    @apply text-red-500 font-medium;
+    @apply text-finance-red font-medium text-mobile-base;
   }
   .badge-finance {
-    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium;
-    @apply bg-violet-500/10 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400 border border-violet-500/30;
+    @apply inline-flex items-center rounded-full px-2 py-1 text-xs font-medium;
+    @apply sm:px-2.5 sm:text-sm;
   }
   .progress-bar {
-    @apply h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden;
+    @apply h-2 rounded-full bg-finance-lightGray dark:bg-gray-700 overflow-hidden;
   }
   .progress-value {
-    @apply h-full rounded-full bg-gradient-to-r from-violet-600 to-purple-600;
+    @apply h-full rounded-full;
+  }
+  
+  /* Enhanced image quality and rendering */
+  .high-quality-image {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    image-rendering: high-quality;
+    -webkit-backface-visibility: hidden;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+  
+  /* Responsive container with mobile-first approach */
+  .container-responsive {
+    @apply container-mobile;
+  }
+  
+  /* Mobile-optimized form layouts */
+  .form-mobile {
+    @apply w-full max-w-sm sm:max-w-md md:max-w-lg mx-auto;
+  }
+  
+  /* Mobile navigation improvements */
+  .nav-mobile {
+    @apply flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4;
+  }
+  
+  /* Mobile-friendly modal sizing */
+  .modal-mobile {
+    @apply w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl;
+    @apply mx-3 sm:mx-auto;
+  }
+  
+  /* Mobile dashboard layouts */
+  .dashboard-mobile {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+    @apply gap-3 sm:gap-4 md:gap-6;
+  }
+  
+  /* Market data mobile grid */
+  .market-data-mobile {
+    @apply grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6;
+    @apply gap-2 sm:gap-3 md:gap-4;
+  }
+  
+  /* Mobile typography scaling */
+  .heading-mobile {
+    @apply text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold;
+  }
+  
+  .subheading-mobile {
+    @apply text-lg sm:text-xl md:text-2xl font-semibold;
+  }
+  
+  /* Mobile card hover effects (disabled on touch devices) */
+  @media (hover: hover) and (pointer: fine) {
+    .card-hover-mobile {
+      @apply transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-lg;
+    }
+  }
+  
+  /* Mobile-safe scrollable areas */
+  .scroll-mobile {
+    @apply overflow-auto overscroll-contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Mobile input improvements */
+  .input-mobile {
+    @apply text-base sm:text-sm; /* Prevents zoom on iOS */
+    @apply px-3 py-3 sm:px-4 sm:py-2;
   }
 }
 
-/* Purple-themed scrollbar */
+/* Mobile-specific breakpoint overrides */
+@media (max-width: 640px) {
+  .container-responsive {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Enhanced scrollbar styling for desktop only */
 @media (min-width: 1024px) and (hover: hover) {
   ::-webkit-scrollbar {
     width: 8px;
@@ -174,17 +323,24 @@
   }
   
   ::-webkit-scrollbar-track {
-    @apply bg-slate-100 dark:bg-slate-800;
+    @apply bg-gray-100 dark:bg-gray-800;
     border-radius: 4px;
   }
   
   ::-webkit-scrollbar-thumb {
-    @apply bg-violet-500/60;
+    @apply bg-gray-300 dark:bg-gray-600;
     border-radius: 4px;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-violet-500;
+    @apply bg-gray-400 dark:bg-gray-500;
+  }
+}
+
+/* Mobile viewport fixes */
+@supports (-webkit-touch-callout: none) {
+  .mobile-viewport {
+    min-height: -webkit-fill-available;
   }
 }
 
@@ -196,7 +352,7 @@ html, body {
 /* Mobile-friendly focus states */
 @media (max-width: 768px) {
   *:focus {
-    outline: 2px solid rgb(139, 92, 246);
+    outline: 2px solid theme('colors.blue.500');
     outline-offset: 2px;
   }
 }
