@@ -75,18 +75,6 @@ const ChatMessages = ({ messages, isLoading, isLoadingSession, messagesEndRef }:
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
-      
-      <style jsx>{`
-        .ai-response strong {
-          font-weight: 600;
-        }
-        .ai-response div {
-          margin-bottom: 0.5rem;
-        }
-        .ai-response div:last-child {
-          margin-bottom: 0;
-        }
-      `}</style>
     </div>
   );
 };

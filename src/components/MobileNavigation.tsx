@@ -77,7 +77,7 @@ const MobileNavigation = () => {
         />
       )}
 
-      {/* Mobile menu - enhanced design */}
+      {/* Mobile menu - enhanced design with restored navigation */}
       <div className={cn(
         "md:hidden fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-white dark:bg-gray-800 z-50",
         "transform transition-transform duration-300 ease-out shadow-2xl",
@@ -99,7 +99,7 @@ const MobileNavigation = () => {
           </Link>
         </div>
 
-        {/* Navigation Content */}
+        {/* Navigation Content - restored with correct styling */}
         <div className="p-4 space-y-6 overflow-y-auto h-full pb-20">
           {/* Community Section */}
           <div>
