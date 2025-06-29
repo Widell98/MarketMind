@@ -28,9 +28,9 @@ const ChatInput = ({
   inputRef
 }: ChatInputProps) => {
   return (
-    <div className="border-t bg-background p-4 sm:p-6">
+    <div className="border-t bg-background p-3 sm:p-4 lg:p-6">
       {quotaExceeded && (
-        <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
+        <div className="mb-3 sm:mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
           <div className="flex items-center gap-2 font-medium mb-1 text-destructive text-sm">
             <AlertCircle className="w-4 h-4" />
             API-kvot överskriden
@@ -41,17 +41,18 @@ const ChatInput = ({
         </div>
       )}
 
-      <form onSubmit={onSubmit} className="flex gap-3 max-w-4xl mx-auto">
-        <div className="flex-1 relative">
+      <form onSubmit={onSubmit} className="flex gap-2 sm:gap-3 max-w-4xl mx-auto">
+        <div className="flex-1 relative min-w-0">
           <Input
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Skriv din fråga här... (t.ex. 'Analysera min portfölj' eller 'Vilka aktier bör jag köpa?')"
+            placeholder="Skriv din fråga här..."
             disabled={isLoading || quotaExceeded}
-            className="h-10 sm:h-12 bg-background border shadow-sm rounded-xl text-sm sm:text-base px-3 sm:px-4 pr-10 transition-all duration-200 focus:shadow-md"
+            className="h-10 sm:h-11 lg:h-12 bg-background border shadow-sm rounded-xl text-sm sm:text-base px-3 sm:px-4 pr-10 transition-all duration-200 focus:shadow-md resize-none"
+            style={{ fontSize: '16px' }} // Prevents zoom on iOS
           />
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground pointer-events-none">
             <MessageSquare className="w-4 h-4" />
           </div>
         </div>
@@ -59,7 +60,7 @@ const ChatInput = ({
           type="submit"
           disabled={!input.trim() || isLoading || quotaExceeded}
           size="default"
-          className="h-10 sm:h-12 px-4 sm:px-6 bg-primary hover:bg-primary/90 shadow-sm rounded-xl text-sm sm:text-base font-medium transition-all duration-200 hover:shadow-md text-primary-foreground"
+          className="h-10 sm:h-11 lg:h-12 px-3 sm:px-4 lg:px-6 bg-primary hover:bg-primary/90 shadow-sm rounded-xl text-sm font-medium transition-all duration-200 hover:shadow-md text-primary-foreground flex-shrink-0"
         >
           {isLoading ? (
             <Loader2 className="w-4 h-4 animate-spin" />

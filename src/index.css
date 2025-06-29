@@ -99,6 +99,22 @@
 }
 
 @layer components {
+  /* Enhanced AI response styling for mobile */
+  .ai-response {
+    @apply overflow-hidden;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.6;
+  }
+  
+  .ai-response strong {
+    @apply font-medium text-foreground;
+  }
+  
+  .ai-response div {
+    @apply mb-2 last:mb-0;
+  }
+  
   /* Mobile-first responsive utilities */
   .mobile-safe-area {
     padding-bottom: env(safe-area-inset-bottom, 0);
