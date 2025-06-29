@@ -28,7 +28,7 @@ const ChatInput = ({
   inputRef
 }: ChatInputProps) => {
   return (
-    <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-t border-slate-200 dark:border-slate-700 p-4 sm:p-6 lg:p-8">
+    <div className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-t border-slate-200 dark:border-slate-700 p-4 sm:p-6 lg:p-8">
       {quotaExceeded && (
         <div className="mb-4 sm:mb-6 p-4 bg-red-50 dark:bg-red-900/20 backdrop-blur-sm border border-red-200 dark:border-red-800 rounded-xl">
           <div className="flex items-center gap-3 font-medium mb-2 text-red-700 dark:text-red-300">
@@ -59,7 +59,7 @@ const ChatInput = ({
           type="submit"
           disabled={!input.trim() || isLoading || quotaExceeded}
           size="lg"
-          className="h-12 sm:h-14 px-6 sm:px-8 bg-gradient-to-r from-cyan-500 to-teal-600 hover:from-cyan-600 hover:to-teal-700 shadow-lg rounded-2xl text-sm sm:text-base font-medium transition-all duration-200 hover:shadow-xl text-white transform hover:scale-105 disabled:transform-none"
+          className="h-12 sm:h-14 px-6 sm:px-8 bg-gradient-to-r from-blue-500 to-sky-600 hover:from-blue-600 hover:to-sky-700 shadow-lg rounded-2xl text-sm sm:text-base font-medium transition-all duration-200 hover:shadow-xl text-white transform hover:scale-105 disabled:transform-none"
         >
           {isLoading ? (
             <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />

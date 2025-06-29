@@ -18,11 +18,11 @@ const MainNavigation = () => {
       <NavigationMenuList>
         {/* Community Section */}
         <NavigationMenuItem>
-          <NavigationMenuTrigger className="h-10 px-4 py-2 text-sm font-medium transition-all duration-300 hover:bg-blue-500/10 dark:hover:bg-blue-500/20 focus:bg-blue-500/10 dark:focus:bg-blue-500/20 focus:outline-none disabled:pointer-events-none disabled:opacity-50 text-[#222831] dark:text-[#EEEEEE] rounded-xl backdrop-blur-sm">
+          <NavigationMenuTrigger className="h-10 px-4 py-2 text-sm font-medium transition-all duration-300 hover:bg-blue-500/10 dark:hover:bg-blue-500/20 focus:bg-blue-500/10 dark:focus:bg-blue-500/20 focus:outline-none disabled:pointer-events-none disabled:opacity-50 text-slate-900 dark:text-slate-100 rounded-xl backdrop-blur-sm">
             <Users className="w-4 h-4 mr-2" />
             Community
           </NavigationMenuTrigger>
-          <NavigationMenuContent className="z-50 bg-white/95 dark:bg-[#222831]/95 backdrop-blur-xl border border-slate-200/50 dark:border-[#393E46]/50 shadow-2xl rounded-2xl">
+          <NavigationMenuContent className="z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl rounded-2xl">
             <div className="grid gap-3 p-6 w-[400px]">
               {user && (
                 <NavigationMenuLink asChild>
@@ -33,11 +33,11 @@ const MainNavigation = () => {
                       isActive('/') && "bg-blue-500/20 dark:bg-blue-500/30 text-blue-600 shadow-lg"
                     )}
                   >
-                    <div className="text-sm font-medium leading-none flex items-center text-[#222831] dark:text-[#EEEEEE]">
+                    <div className="text-sm font-medium leading-none flex items-center text-slate-900 dark:text-slate-100">
                       <MessageCircle className="w-4 h-4 mr-2" />
                       Community Feed
                     </div>
-                    <p className="line-clamp-2 text-sm leading-snug text-[#393E46] dark:text-[#EEEEEE]/70">
+                    <p className="line-clamp-2 text-sm leading-snug text-slate-600 dark:text-slate-400">
                       Se de senaste insikterna från personer du följer
                     </p>
                   </Link>
@@ -51,11 +51,11 @@ const MainNavigation = () => {
                     isActive('/stock-cases') && "bg-blue-500/20 dark:bg-blue-500/30 text-blue-600 shadow-lg"
                   )}
                 >
-                  <div className="text-sm font-medium leading-none flex items-center text-[#222831] dark:text-[#EEEEEE]">
+                  <div className="text-sm font-medium leading-none flex items-center text-slate-900 dark:text-slate-100">
                     <TrendingUp className="w-4 h-4 mr-2" />
                     Browse Cases
                   </div>
-                  <p className="line-clamp-2 text-sm leading-snug text-[#393E46] dark:text-[#EEEEEE]/70">
+                  <p className="line-clamp-2 text-sm leading-snug text-slate-600 dark:text-slate-400">
                     Explore curated investment opportunities
                   </p>
                 </Link>
@@ -69,11 +69,11 @@ const MainNavigation = () => {
                       isActive('/watchlist') && "bg-blue-500/20 dark:bg-blue-500/30 text-blue-600 shadow-lg"
                     )}
                   >
-                    <div className="text-sm font-medium leading-none flex items-center text-[#222831] dark:text-[#EEEEEE]">
+                    <div className="text-sm font-medium leading-none flex items-center text-slate-900 dark:text-slate-100">
                       <Heart className="w-4 h-4 mr-2" />
                       Watchlist
                     </div>
-                    <p className="line-clamp-2 text-sm leading-snug text-[#393E46] dark:text-[#EEEEEE]/70">
+                    <p className="line-clamp-2 text-sm leading-snug text-slate-600 dark:text-slate-400">
                       Track your followed stock cases
                     </p>
                   </Link>
@@ -87,11 +87,11 @@ const MainNavigation = () => {
                     isActive('/learning') && "bg-blue-500/20 dark:bg-blue-500/30 text-blue-600 shadow-lg"
                   )}
                 >
-                  <div className="text-sm font-medium leading-none flex items-center text-[#222831] dark:text-[#EEEEEE]">
+                  <div className="text-sm font-medium leading-none flex items-center text-slate-900 dark:text-slate-100">
                     <BookOpen className="w-4 h-4 mr-2" />
                     Learning Center
                   </div>
-                  <p className="line-clamp-2 text-sm leading-snug text-[#393E46] dark:text-[#EEEEEE]/70">
+                  <p className="line-clamp-2 text-sm leading-snug text-slate-600 dark:text-slate-400">
                     Interactive quizzes and educational content
                   </p>
                 </Link>
@@ -107,7 +107,7 @@ const MainNavigation = () => {
               <Link
                 to="/portfolio-implementation"
                 className={cn(
-                  "h-10 px-4 py-2 text-sm font-medium transition-all duration-300 hover:bg-blue-500/10 dark:hover:bg-blue-500/20 focus:bg-blue-500/10 dark:focus:bg-blue-500/20 focus:outline-none disabled:pointer-events-none disabled:opacity-50 inline-flex items-center rounded-xl text-[#222831] dark:text-[#EEEEEE] backdrop-blur-sm",
+                  "h-10 px-4 py-2 text-sm font-medium transition-all duration-300 hover:bg-blue-500/10 dark:hover:bg-blue-500/20 focus:bg-blue-500/10 dark:focus:bg-blue-500/20 focus:outline-none disabled:pointer-events-none disabled:opacity-50 inline-flex items-center rounded-xl text-slate-900 dark:text-slate-100 backdrop-blur-sm",
                   (isActive('/portfolio-implementation') || isActive('/portfolio-advisor')) && "bg-blue-500/20 dark:bg-blue-500/30 text-blue-600 shadow-lg"
                 )}
               >

@@ -47,14 +47,12 @@ const AIChat = ({ portfolioId }: AIChatProps) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Auto-scroll when messages change
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   useEffect(() => {
-    // Load the most recent session on component mount
     if (portfolioId) {
-      // loadSessions(); // Ensure sessions are loaded when component mounts
+      // loadSessions();
     }
   }, [portfolioId]);
 
@@ -97,7 +95,7 @@ const AIChat = ({ portfolioId }: AIChatProps) => {
   };
 
   return (
-    <div className="flex flex-col h-[75vh] lg:h-[80vh] xl:h-[85vh] bg-transparent overflow-hidden">
+    <div className="flex flex-col h-[75vh] lg:h-[80vh] xl:h-[85vh] bg-gradient-to-br from-slate-50/50 to-blue-50/50 dark:from-slate-900/50 dark:to-blue-950/50 backdrop-blur-sm rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl overflow-hidden">
       <ChatHeader
         showSessions={showSessions}
         setShowSessions={setShowSessions}

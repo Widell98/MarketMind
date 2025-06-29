@@ -30,7 +30,7 @@ const ChatSessionList = ({
           key={session.id}
           className={`flex items-center justify-between p-3 sm:p-4 rounded-xl transition-all duration-200 cursor-pointer group ${
             currentSessionId === session.id
-              ? 'bg-gradient-to-r from-cyan-500/20 to-teal-600/20 border border-cyan-500/30 shadow-md'
+              ? 'bg-gradient-to-r from-blue-500/20 to-sky-600/20 border border-blue-500/30 shadow-md'
               : 'bg-white/50 dark:bg-slate-800/50 hover:bg-white/70 dark:hover:bg-slate-800/70 hover:shadow-md border border-slate-200 dark:border-slate-700'
           }`}
           onClick={() => onLoadSession(session.id)}
