@@ -23,10 +23,10 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             {/* Mobile spacing for menu button */}
             <div className="md:hidden w-12"></div>
             
-            <Link to="/" className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-[#222831] dark:text-[#EEEEEE] flex items-center hover:text-[#00ADB5] transition-colors duration-300">
+            <Link to="/" className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-[#222831] dark:text-[#EEEEEE] flex items-center hover:text-blue-500 transition-colors duration-300">
               <span className="mr-2 lg:mr-3 text-2xl lg:text-3xl xl:text-4xl">🧠</span>
-              <span className="hidden sm:inline bg-gradient-to-r from-[#222831] to-[#00ADB5] dark:from-[#EEEEEE] dark:to-[#00ADB5] bg-clip-text text-transparent">Market Mind</span>
-              <span className="sm:hidden bg-gradient-to-r from-[#222831] to-[#00ADB5] dark:from-[#EEEEEE] dark:to-[#00ADB5] bg-clip-text text-transparent">MM</span>
+              <span className="hidden sm:inline bg-gradient-to-r from-[#222831] to-blue-600 dark:from-[#EEEEEE] dark:to-blue-500 bg-clip-text text-transparent">Market Mind</span>
+              <span className="sm:hidden bg-gradient-to-r from-[#222831] to-blue-600 dark:from-[#EEEEEE] dark:to-blue-500 bg-clip-text text-transparent">MM</span>
             </Link>
             
             {/* Desktop navigation - hidden on mobile */}
@@ -46,7 +46,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               <Button 
                 variant="outline" 
                 size="sm"
-                className="lg:px-8 lg:py-3 xl:px-10 xl:py-4 text-xs sm:text-sm lg:text-base xl:text-lg font-medium bg-white/80 dark:bg-[#393E46]/80 backdrop-blur-sm border border-[#00ADB5]/30 shadow-lg transition-all duration-300 hover:shadow-xl hover:bg-[#00ADB5]/10 dark:hover:bg-[#00ADB5]/20 text-[#222831] dark:text-[#EEEEEE] hover:border-[#00ADB5]"
+                className="lg:px-8 lg:py-3 xl:px-10 xl:py-4 text-xs sm:text-sm lg:text-base xl:text-lg font-medium bg-white/80 dark:bg-[#393E46]/80 backdrop-blur-sm border border-blue-500/30 shadow-lg transition-all duration-300 hover:shadow-xl hover:bg-blue-500/10 dark:hover:bg-blue-500/20 text-[#222831] dark:text-[#EEEEEE] hover:border-blue-500"
                 asChild
               >
                 <Link to="/auth">

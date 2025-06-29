@@ -18,7 +18,7 @@ const MainNavigation = () => {
       <NavigationMenuList>
         {/* Community Section */}
         <NavigationMenuItem>
-          <NavigationMenuTrigger className="h-10 px-4 py-2 text-sm font-medium transition-all duration-300 hover:bg-[#00ADB5]/10 dark:hover:bg-[#00ADB5]/20 focus:bg-[#00ADB5]/10 dark:focus:bg-[#00ADB5]/20 focus:outline-none disabled:pointer-events-none disabled:opacity-50 text-[#222831] dark:text-[#EEEEEE] rounded-xl backdrop-blur-sm">
+          <NavigationMenuTrigger className="h-10 px-4 py-2 text-sm font-medium transition-all duration-300 hover:bg-blue-500/10 dark:hover:bg-blue-500/20 focus:bg-blue-500/10 dark:focus:bg-blue-500/20 focus:outline-none disabled:pointer-events-none disabled:opacity-50 text-[#222831] dark:text-[#EEEEEE] rounded-xl backdrop-blur-sm">
             <Users className="w-4 h-4 mr-2" />
             Community
           </NavigationMenuTrigger>
@@ -29,8 +29,8 @@ const MainNavigation = () => {
                   <Link
                     to="/"
                     className={cn(
-                      "block select-none space-y-1 rounded-xl p-3 leading-none no-underline outline-none transition-all duration-300 hover:bg-[#00ADB5]/10 dark:hover:bg-[#00ADB5]/20 focus:bg-[#00ADB5]/10 dark:focus:bg-[#00ADB5]/20 hover:shadow-lg",
-                      isActive('/') && "bg-[#00ADB5]/20 dark:bg-[#00ADB5]/30 text-[#00ADB5] shadow-lg"
+                      "block select-none space-y-1 rounded-xl p-3 leading-none no-underline outline-none transition-all duration-300 hover:bg-blue-500/10 dark:hover:bg-blue-500/20 focus:bg-blue-500/10 dark:focus:bg-blue-500/20 hover:shadow-lg",
+                      isActive('/') && "bg-blue-500/20 dark:bg-blue-500/30 text-blue-600 shadow-lg"
                     )}
                   >
                     <div className="text-sm font-medium leading-none flex items-center text-[#222831] dark:text-[#EEEEEE]">
@@ -47,8 +47,8 @@ const MainNavigation = () => {
                 <Link
                   to="/stock-cases"
                   className={cn(
-                    "block select-none space-y-1 rounded-xl p-3 leading-none no-underline outline-none transition-all duration-300 hover:bg-[#00ADB5]/10 dark:hover:bg-[#00ADB5]/20 focus:bg-[#00ADB5]/10 dark:focus:bg-[#00ADB5]/20 hover:shadow-lg",
-                    isActive('/stock-cases') && "bg-[#00ADB5]/20 dark:bg-[#00ADB5]/30 text-[#00ADB5] shadow-lg"
+                    "block select-none space-y-1 rounded-xl p-3 leading-none no-underline outline-none transition-all duration-300 hover:bg-blue-500/10 dark:hover:bg-blue-500/20 focus:bg-blue-500/10 dark:focus:bg-blue-500/20 hover:shadow-lg",
+                    isActive('/stock-cases') && "bg-blue-500/20 dark:bg-blue-500/30 text-blue-600 shadow-lg"
                   )}
                 >
                   <div className="text-sm font-medium leading-none flex items-center text-[#222831] dark:text-[#EEEEEE]">
@@ -65,8 +65,8 @@ const MainNavigation = () => {
                   <Link
                     to="/watchlist"
                     className={cn(
-                      "block select-none space-y-1 rounded-xl p-3 leading-none no-underline outline-none transition-all duration-300 hover:bg-[#00ADB5]/10 dark:hover:bg-[#00ADB5]/20 focus:bg-[#00ADB5]/10 dark:focus:bg-[#00ADB5]/20 hover:shadow-lg",
-                      isActive('/watchlist') && "bg-[#00ADB5]/20 dark:bg-[#00ADB5]/30 text-[#00ADB5] shadow-lg"
+                      "block select-none space-y-1 rounded-xl p-3 leading-none no-underline outline-none transition-all duration-300 hover:bg-blue-500/10 dark:hover:bg-blue-500/20 focus:bg-blue-500/10 dark:focus:bg-blue-500/20 hover:shadow-lg",
+                      isActive('/watchlist') && "bg-blue-500/20 dark:bg-blue-500/30 text-blue-600 shadow-lg"
                     )}
                   >
                     <div className="text-sm font-medium leading-none flex items-center text-[#222831] dark:text-[#EEEEEE]">
@@ -83,8 +83,8 @@ const MainNavigation = () => {
                 <Link
                   to="/learning"
                   className={cn(
-                    "block select-none space-y-1 rounded-xl p-3 leading-none no-underline outline-none transition-all duration-300 hover:bg-[#00ADB5]/10 dark:hover:bg-[#00ADB5]/20 focus:bg-[#00ADB5]/10 dark:focus:bg-[#00ADB5]/20 hover:shadow-lg",
-                    isActive('/learning') && "bg-[#00ADB5]/20 dark:bg-[#00ADB5]/30 text-[#00ADB5] shadow-lg"
+                    "block select-none space-y-1 rounded-xl p-3 leading-none no-underline outline-none transition-all duration-300 hover:bg-blue-500/10 dark:hover:bg-blue-500/20 focus:bg-blue-500/10 dark:focus:bg-blue-500/20 hover:shadow-lg",
+                    isActive('/learning') && "bg-blue-500/20 dark:bg-blue-500/30 text-blue-600 shadow-lg"
                   )}
                 >
                   <div className="text-sm font-medium leading-none flex items-center text-[#222831] dark:text-[#EEEEEE]">
@@ -107,8 +107,8 @@ const MainNavigation = () => {
               <Link
                 to="/portfolio-implementation"
                 className={cn(
-                  "h-10 px-4 py-2 text-sm font-medium transition-all duration-300 hover:bg-[#00ADB5]/10 dark:hover:bg-[#00ADB5]/20 focus:bg-[#00ADB5]/10 dark:focus:bg-[#00ADB5]/20 focus:outline-none disabled:pointer-events-none disabled:opacity-50 inline-flex items-center rounded-xl text-[#222831] dark:text-[#EEEEEE] backdrop-blur-sm",
-                  (isActive('/portfolio-implementation') || isActive('/portfolio-advisor')) && "bg-[#00ADB5]/20 dark:bg-[#00ADB5]/30 text-[#00ADB5] shadow-lg"
+                  "h-10 px-4 py-2 text-sm font-medium transition-all duration-300 hover:bg-blue-500/10 dark:hover:bg-blue-500/20 focus:bg-blue-500/10 dark:focus:bg-blue-500/20 focus:outline-none disabled:pointer-events-none disabled:opacity-50 inline-flex items-center rounded-xl text-[#222831] dark:text-[#EEEEEE] backdrop-blur-sm",
+                  (isActive('/portfolio-implementation') || isActive('/portfolio-advisor')) && "bg-blue-500/20 dark:bg-blue-500/30 text-blue-600 shadow-lg"
                 )}
               >
                 <Brain className="w-4 h-4 mr-2" />

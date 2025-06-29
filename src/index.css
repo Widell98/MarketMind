@@ -16,7 +16,7 @@
     --popover: 255 255 255;
     --popover-foreground: 34 40 49;
 
-    --primary: 0 173 181;
+    --primary: 59 130 246;
     --primary-foreground: 238 238 238;
 
     --secondary: 238 238 238;
@@ -25,7 +25,7 @@
     --muted: 238 238 238;
     --muted-foreground: 57 62 70;
 
-    --accent: 0 173 181;
+    --accent: 147 51 234;
     --accent-foreground: 238 238 238;
 
     --destructive: 239 68 68;
@@ -33,23 +33,24 @@
 
     --border: 57 62 70;
     --input: 57 62 70;
-    --ring: 0 173 181;
+    --ring: 59 130 246;
 
     --radius: 0.75rem;
 
     --sidebar-background: 238 238 238;
     --sidebar-foreground: 34 40 49;
-    --sidebar-primary: 0 173 181;
+    --sidebar-primary: 59 130 246;
     --sidebar-primary-foreground: 238 238 238;
-    --sidebar-accent: 0 173 181;
+    --sidebar-accent: 147 51 234;
     --sidebar-accent-foreground: 238 238 238;
     --sidebar-border: 57 62 70;
-    --sidebar-ring: 0 173 181;
+    --sidebar-ring: 59 130 246;
 
-    /* Custom color palette */
+    /* Custom color palette - Blue/Purple theme */
     --color-dark-primary: 34 40 49;
     --color-dark-secondary: 57 62 70;
-    --color-accent: 0 173 181;
+    --color-blue: 59 130 246;
+    --color-purple: 147 51 234;
     --color-light-primary: 238 238 238;
   }
 
@@ -63,7 +64,7 @@
     --popover: 34 40 49;
     --popover-foreground: 238 238 238;
 
-    --primary: 0 173 181;
+    --primary: 59 130 246;
     --primary-foreground: 34 40 49;
 
     --secondary: 57 62 70;
@@ -72,7 +73,7 @@
     --muted: 57 62 70;
     --muted-foreground: 238 238 238;
 
-    --accent: 0 173 181;
+    --accent: 147 51 234;
     --accent-foreground: 34 40 49;
 
     --destructive: 239 68 68;
@@ -80,16 +81,16 @@
 
     --border: 57 62 70;
     --input: 57 62 70;
-    --ring: 0 173 181;
+    --ring: 59 130 246;
     
     --sidebar-background: 34 40 49;
     --sidebar-foreground: 238 238 238;
-    --sidebar-primary: 0 173 181;
+    --sidebar-primary: 59 130 246;
     --sidebar-primary-foreground: 34 40 49;
-    --sidebar-accent: 0 173 181;
+    --sidebar-accent: 147 51 234;
     --sidebar-accent-foreground: 34 40 49;
     --sidebar-border: 57 62 70;
-    --sidebar-ring: 0 173 181;
+    --sidebar-ring: 59 130 246;
   }
 }
 
@@ -111,19 +112,19 @@
     @apply bg-white/80 dark:bg-[#222831]/80 backdrop-blur-xl border border-slate-200/50 dark:border-[#393E46]/50 shadow-2xl rounded-2xl;
   }
 
-  /* Accent gradient */
+  /* Blue-purple gradient */
   .accent-gradient {
-    @apply bg-gradient-to-r from-[#00ADB5] to-[#393E46];
+    @apply bg-gradient-to-r from-blue-600 to-purple-600;
   }
 
-  /* Text gradient */
+  /* Text gradient - blue to purple */
   .text-gradient {
-    @apply bg-gradient-to-r from-[#222831] to-[#00ADB5] dark:from-[#EEEEEE] dark:to-[#00ADB5] bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-[#222831] to-blue-600 dark:from-[#EEEEEE] dark:to-blue-500 bg-clip-text text-transparent;
   }
 
   /* Hover effects */
   .hover-glow {
-    @apply transition-all duration-300 hover:shadow-[0_0_30px_rgba(0,173,181,0.3)] hover:scale-105;
+    @apply transition-all duration-300 hover:shadow-[0_0_30px_rgba(59,130,246,0.3)] hover:scale-105;
   }
 
   /* Mobile-first responsive utilities */
@@ -160,7 +161,7 @@
   /* Enhanced card styling with mobile considerations */
   .card-finance {
     @apply bg-white/80 dark:bg-[#222831]/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200/50 dark:border-[#393E46]/50;
-    @apply p-3 sm:p-4 md:p-6 transition-all duration-300 hover:shadow-[0_0_30px_rgba(0,173,181,0.2)];
+    @apply p-3 sm:p-4 md:p-6 transition-all duration-300 hover:shadow-[0_0_30px_rgba(59,130,246,0.2)];
   }
   
   /* Mobile-optimized text sizes */
@@ -189,15 +190,15 @@
   .btn-mobile {
     @apply px-4 py-3 text-sm font-medium rounded-xl transition-all duration-300;
     @apply active:scale-95 touch-manipulation backdrop-blur-sm;
-    @apply bg-white/80 dark:bg-[#393E46]/80 border border-[#00ADB5]/30 shadow-lg;
-    @apply hover:shadow-xl hover:bg-[#00ADB5]/10 dark:hover:bg-[#00ADB5]/20;
+    @apply bg-white/80 dark:bg-[#393E46]/80 border border-blue-500/30 shadow-lg;
+    @apply hover:shadow-xl hover:bg-blue-500/10 dark:hover:bg-blue-500/20;
   }
   
   .btn-mobile-sm {
     @apply px-3 py-2 text-xs font-medium rounded-lg transition-all duration-300;
     @apply active:scale-95 touch-manipulation backdrop-blur-sm;
-    @apply bg-white/80 dark:bg-[#393E46]/80 border border-[#00ADB5]/30 shadow-lg;
-    @apply hover:shadow-xl hover:bg-[#00ADB5]/10 dark:hover:bg-[#00ADB5]/20;
+    @apply bg-white/80 dark:bg-[#393E46]/80 border border-blue-500/30 shadow-lg;
+    @apply hover:shadow-xl hover:bg-blue-500/10 dark:hover:bg-blue-500/20;
   }
   
   /* Mobile spacing utilities */
@@ -248,22 +249,22 @@
     max-width: 1400px;
   }
   
-  /* Legacy components - improved mobile handling */
+  /* Legacy components - improved mobile handling with blue/purple theme */
   .stock-up {
-    @apply text-[#00ADB5] font-medium text-mobile-base;
+    @apply text-blue-500 font-medium text-mobile-base;
   }
   .stock-down {
     @apply text-red-500 font-medium text-mobile-base;
   }
   .badge-finance {
     @apply inline-flex items-center rounded-full px-2 py-1 text-xs font-medium;
-    @apply sm:px-2.5 sm:text-sm bg-[#00ADB5]/10 dark:bg-[#00ADB5]/20 text-[#00ADB5] border border-[#00ADB5]/30;
+    @apply sm:px-2.5 sm:text-sm bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 border border-blue-500/30;
   }
   .progress-bar {
     @apply h-2 rounded-full bg-[#393E46]/20 dark:bg-[#393E46]/40 overflow-hidden;
   }
   .progress-value {
-    @apply h-full rounded-full bg-gradient-to-r from-[#00ADB5] to-[#393E46];
+    @apply h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-600;
   }
   
   /* Enhanced image quality and rendering */
@@ -321,7 +322,7 @@
   /* Mobile card hover effects (disabled on touch devices) */
   @media (hover: hover) and (pointer: fine) {
     .card-hover-mobile {
-      @apply transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-[0_0_30px_rgba(0,173,181,0.3)];
+      @apply transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-[0_0_30px_rgba(59,130,246,0.3)];
     }
   }
   
@@ -336,8 +337,8 @@
     @apply text-base sm:text-sm; /* Prevents zoom on iOS */
     @apply px-3 py-3 sm:px-4 sm:py-2;
     @apply bg-white/80 dark:bg-[#393E46]/80 backdrop-blur-sm;
-    @apply border border-[#00ADB5]/30 rounded-xl;
-    @apply focus:border-[#00ADB5] focus:ring-2 focus:ring-[#00ADB5]/20;
+    @apply border border-blue-500/30 rounded-xl;
+    @apply focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20;
   }
 }
 
@@ -362,12 +363,12 @@
   }
   
   ::-webkit-scrollbar-thumb {
-    @apply bg-[#00ADB5]/60;
+    @apply bg-blue-500/60;
     border-radius: 4px;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-[#00ADB5];
+    @apply bg-blue-500;
   }
 }
 
@@ -386,7 +387,7 @@ html, body {
 /* Mobile-friendly focus states */
 @media (max-width: 768px) {
   *:focus {
-    outline: 2px solid rgb(0, 173, 181);
+    outline: 2px solid rgb(59, 130, 246);
     outline-offset: 2px;
   }
 }
