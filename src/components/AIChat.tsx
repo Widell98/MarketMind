@@ -80,10 +80,21 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
       createNewSession(sessionName, message);
     };
 
+    // Listen for example prompts
+    const handleExamplePrompt = (event: CustomEvent) => {
+      const { message } = event.detail;
+      setInputMessage(message);
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    };
+
     window.addEventListener('createStockChat', handleCreateStockChat as EventListener);
+    window.addEventListener('sendExamplePrompt', handleExamplePrompt as EventListener);
     
     return () => {
       window.removeEventListener('createStockChat', handleCreateStockChat as EventListener);
+      window.removeEventListener('sendExamplePrompt', handleExamplePrompt as EventListener);
     };
   }, [createNewSession]);
 
