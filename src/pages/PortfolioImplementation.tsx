@@ -8,11 +8,11 @@ import UserInsightsPanel from '@/components/UserInsightsPanel';
 import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolioAdvisor';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Brain, MessageSquare, TrendingUp, Target, Settings, BarChart3, Lightbulb } from 'lucide-react';
+import { Brain, MessageSquare, TrendingUp, Target, Settings, BarChart3, Lightbulb, Zap, Activity, PieChart } from 'lucide-react';
 
 const PortfolioImplementation = () => {
   const { activePortfolio, loading } = usePortfolio();
@@ -33,24 +33,19 @@ const PortfolioImplementation = () => {
   }, [user, activePortfolio, loading]);
 
   const handleQuickChat = (message: string) => {
-    // Check if this is a request to create a new session
     if (message.startsWith('NEW_SESSION:')) {
       const [, sessionName, actualMessage] = message.split(':');
       
-      // Switch to chat tab
       const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
       if (chatTab) {
         chatTab.click();
       }
       
-      // Trigger creation of new session with custom name and message
-      // We'll need to pass this to the AIChat component
       const event = new CustomEvent('createStockChat', {
         detail: { sessionName, message: actualMessage }
       });
       window.dispatchEvent(event);
     } else {
-      // Switch to chat tab when a quick chat is triggered from overview
       const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
       if (chatTab) {
         chatTab.click();
@@ -67,13 +62,11 @@ const PortfolioImplementation = () => {
   };
 
   const handleExamplePrompt = (prompt: string) => {
-    // Switch to chat tab and trigger the prompt
     const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
     if (chatTab) {
       chatTab.click();
     }
     
-    // Trigger the example prompt
     setTimeout(() => {
       const event = new CustomEvent('sendExamplePrompt', {
         detail: { message: prompt }
@@ -82,16 +75,44 @@ const PortfolioImplementation = () => {
     }, 100);
   };
 
+  const examplePrompts = [
+    {
+      title: "Djupgående Portföljanalys",
+      prompt: "Ge mig en komplett analys av min portfölj med detaljerade rekommendationer för optimering",
+      icon: <PieChart className="w-6 h-6" />,
+      description: "Få en omfattande genomgång av din portföljs prestanda och struktur"
+    },
+    {
+      title: "Riskhantering & Diversifiering", 
+      prompt: "Analysera riskerna i min portfölj och föreslå strategier för bättre diversifiering",
+      icon: <Activity className="w-6 h-6" />,
+      description: "Identifiera och minimera risker för en mer balanserad portfölj"
+    },
+    {
+      title: "Smarta Investeringsförslag",
+      prompt: "Vilka aktier och tillgångar borde jag överväga nästa baserat på min profil och marknadsläget?",
+      icon: <Zap className="w-6 h-6" />,
+      description: "Få personliga rekommendationer baserade på din riskprofil"
+    },
+    {
+      title: "Marknadsinsikter & Timing",
+      prompt: "Vad händer på marknaden just nu och hur påverkar det min investeringsstrategi?",
+      icon: <TrendingUp className="w-6 h-6" />,
+      description: "Håll dig uppdaterad med aktuella marknadstrender och möjligheter"
+    }
+  ];
+
   // Show loading while portfolio is loading
   if (loading) {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p>Laddar din portfölj...</p>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-slate-950 dark:via-slate-800 dark:to-slate-950">
+          <div className="text-center p-8 bg-white/10 dark:bg-slate-800/30 backdrop-blur-lg border border-white/20 dark:border-slate-700/50 rounded-3xl shadow-2xl">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 bg-gradient-to-br from-cyan-500 to-teal-600 shadow-2xl">
+              <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
             </div>
+            <h2 className="text-xl font-semibold mb-2 text-slate-800 dark:text-slate-100">Laddar din portfölj</h2>
+            <p className="text-slate-600 dark:text-slate-300">Hämtar dina investeringsdata...</p>
           </div>
         </div>
       </Layout>
@@ -102,14 +123,16 @@ const PortfolioImplementation = () => {
   if (showOnboarding || !activePortfolio) {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="mb-6 text-center">
-              <h1 className="text-3xl font-bold flex items-center justify-center gap-2 mb-2">
-                <Brain className="w-8 h-8 text-blue-600" />
+        <div className="min-h-screen py-8 px-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-slate-950 dark:via-slate-700 dark:to-slate-950">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-8">
+              <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 bg-gradient-to-br from-cyan-500 to-teal-600 shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                <Brain className="w-10 h-10 text-white" />
+              </div>
+              <h1 className="text-3xl lg:text-4xl font-bold mb-4 text-white">
                 Välkommen till AI Portfolio
               </h1>
-              <p className="text-gray-600">
+              <p className="text-lg max-w-2xl mx-auto text-slate-300">
                 Låt oss skapa din personliga investeringsstrategi genom en kort konversation
               </p>
             </div>
@@ -120,110 +143,119 @@ const PortfolioImplementation = () => {
     );
   }
 
-  const examplePrompts = [
-    {
-      title: "Portföljanalys",
-      prompt: "Ge mig en detaljerad analys av min nuvarande portfölj och föreslå förbättringar",
-      icon: <BarChart3 className="w-4 h-4" />
-    },
-    {
-      title: "Riskbedömning", 
-      prompt: "Analysera riskerna i min portfölj och föreslå sätt att minska dem",
-      icon: <Target className="w-4 h-4" />
-    },
-    {
-      title: "Investeringsförslag",
-      prompt: "Vilka aktier borde jag köpa nästa gång baserat på min riskprofil?",
-      icon: <TrendingUp className="w-4 h-4" />
-    },
-    {
-      title: "Marknadsläget",
-      prompt: "Vad händer på marknaden just nu som kan påverka min portfölj?",
-      icon: <Lightbulb className="w-4 h-4" />
-    }
-  ];
-
   // Show portfolio implementation page with tabs
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-                <Target className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
-                Din Portföljstrategi
-              </h1>
-              <p className="text-gray-600 mt-1">AI-genererade rekommendationer och insikter</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-900 dark:via-slate-800 dark:to-slate-950">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-[1600px]">
+          {/* Modern Header */}
+          <div className="mb-8">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-gradient-to-br from-cyan-500 to-teal-600 shadow-xl transform -rotate-6 hover:rotate-0 transition-transform duration-300">
+                    <Brain className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl sm:text-4xl xl:text-5xl font-bold mb-2 bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
+                      AI Portfolio Hub
+                    </h1>
+                    <p className="text-lg sm:text-xl text-slate-600 dark:text-slate-300">
+                      Intelligenta investeringsinsikter för din framgång
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex flex-wrap gap-3">
+                  <Badge className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-cyan-500 to-teal-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200">
+                    <Brain className="w-4 h-4 mr-2" />
+                    AI-Optimerad
+                  </Badge>
+                  <Badge className="px-4 py-2 text-sm font-medium bg-slate-800 dark:bg-slate-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200">
+                    <Activity className="w-4 h-4 mr-2" />
+                    Realtidsanalys
+                  </Badge>
+                  {activePortfolio && (
+                    <Badge className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-slate-700 to-slate-800 dark:from-slate-600 dark:to-slate-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200">
+                      <Target className="w-4 h-4 mr-2" />
+                      Aktiv sedan {new Date(activePortfolio.created_at).toLocaleDateString('sv-SE')}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              
+              <Button
+                variant="outline"
+                onClick={handleUpdateProfile}
+                className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 shadow-lg transition-all duration-200 px-6 py-3 hover:shadow-xl hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+              >
+                <Settings className="w-5 h-5 mr-2" />
+                Uppdatera Profil
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleUpdateProfile}
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              Uppdatera profil
-            </Button>
           </div>
-          
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              <Brain className="w-3 h-3 mr-1" />
-              AI-optimerad
-            </Badge>
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-              Aktiv strategi
-            </Badge>
-            {activePortfolio && (
-              <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                Skapad {new Date(activePortfolio.created_at).toLocaleDateString('sv-SE')}
-              </Badge>
-            )}
-          </div>
-        </div>
 
-        <Tabs defaultValue="chat" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="chat" data-value="chat" className="flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" />
-              AI-Chat
-            </TabsTrigger>
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Översikt
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="chat" className="mt-6">
-            <div className="space-y-6">
-              {/* Example Prompts */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Lightbulb className="w-5 h-5 text-yellow-600" />
-                    Exempel på vad du kan fråga
-                  </CardTitle>
+          <Tabs defaultValue="chat" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-8 bg-white/60 dark:bg-slate-800/60 backdrop-blur-lg border border-slate-200 dark:border-slate-700 shadow-lg rounded-2xl p-1">
+              <TabsTrigger 
+                value="chat" 
+                data-value="chat" 
+                className="flex items-center gap-3 rounded-xl py-3 px-4 font-medium transition-all duration-200 text-slate-600 dark:text-slate-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg"
+              >
+                <MessageSquare className="w-5 h-5" />
+                <span className="hidden sm:inline">AI-Assistent</span>
+                <span className="sm:hidden">AI</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="overview" 
+                className="flex items-center gap-3 rounded-xl py-3 px-4 font-medium transition-all duration-200 text-slate-600 dark:text-slate-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg"
+              >
+                <BarChart3 className="w-5 h-5" />
+                <span className="hidden sm:inline">Portföljöversikt</span>
+                <span className="sm:hidden">Översikt</span>
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="chat" className="space-y-6 lg:space-y-8">
+              {/* Modern Example Prompts */}
+              <Card className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg border border-slate-200 dark:border-slate-700 shadow-2xl rounded-3xl overflow-hidden transform hover:scale-[1.01] transition-transform duration-300">
+                <CardHeader className="border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 pb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gradient-to-br from-cyan-500 to-teal-600 shadow-lg transform rotate-12 hover:rotate-0 transition-transform duration-300">
+                      <Lightbulb className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                        Kom igång med AI-assistenten
+                      </CardTitle>
+                      <CardDescription className="text-lg mt-1 text-slate-600 dark:text-slate-300">
+                        Välj ett förslag nedan eller skriv din egen fråga
+                      </CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <CardContent className="p-6 lg:p-8">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
                     {examplePrompts.map((example, index) => (
                       <Button
                         key={index}
                         variant="outline"
-                        className="h-auto p-4 text-left justify-start hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                        className="h-auto p-6 lg:p-8 text-left justify-start transition-all duration-300 group rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm shadow-lg hover:shadow-2xl hover:scale-105 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800"
                         onClick={() => handleExamplePrompt(example.prompt)}
                       >
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 mt-0.5 text-blue-600">
+                        <div className="flex items-start gap-4 lg:gap-6 w-full">
+                          <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl lg:rounded-3xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-cyan-500 to-teal-600 shadow-lg group-hover:shadow-xl transition-all duration-300 text-white transform group-hover:rotate-12">
                             {example.icon}
                           </div>
-                          <div>
-                            <div className="font-medium text-gray-900 dark:text-white mb-1">
+                          <div className="flex-1 min-w-0 space-y-2">
+                            <div className="font-bold text-base lg:text-lg text-slate-800 dark:text-slate-100">
                               {example.title}
                             </div>
-                            <div className="text-sm text-gray-600 dark:text-gray-400">
-                              {example.prompt}
+                            <div className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                              {example.description}
+                            </div>
+                            <div className="text-xs italic text-slate-500 dark:text-slate-400 line-clamp-2">
+                              "{example.prompt}"
                             </div>
                           </div>
                         </div>
@@ -233,33 +265,28 @@ const PortfolioImplementation = () => {
                 </CardContent>
               </Card>
 
-              {/* AI Chat - Full Width */}
-              <Card>
-                <CardContent className="p-0">
-                  <AIChat portfolioId={activePortfolio?.id} />
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="overview" className="mt-6">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              {/* Main Content */}
-              <div className="lg:col-span-3">
-                <PortfolioOverview 
-                  portfolio={activePortfolio}
-                  onQuickChat={handleQuickChat}
-                  onActionClick={handleActionClick}
-                />
+              {/* AI Chat - Modern styling */}
+              <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden transform hover:scale-[1.005] transition-transform duration-300">
+                <AIChat portfolioId={activePortfolio?.id} />
               </div>
-
-              {/* Sidebar - Only in Overview */}
-              <div className="lg:col-span-1">
-                <UserInsightsPanel />
+            </TabsContent>
+            
+            <TabsContent value="overview">
+              <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 lg:gap-8">
+                <div className="xl:col-span-3">
+                  <PortfolioOverview 
+                    portfolio={activePortfolio}
+                    onQuickChat={handleQuickChat}
+                    onActionClick={handleActionClick}
+                  />
+                </div>
+                <div className="xl:col-span-1">
+                  <UserInsightsPanel />
+                </div>
               </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </Layout>
   );

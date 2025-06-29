@@ -18,7 +18,7 @@ const MainNavigation = () => {
       <NavigationMenuList>
         {/* Community Section */}
         <NavigationMenuItem>
-          <NavigationMenuTrigger className="h-10 px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-gray-700 dark:focus:bg-gray-700">
+          <NavigationMenuTrigger className="h-10 px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50">
             <Users className="w-4 h-4 mr-2" />
             Community
           </NavigationMenuTrigger>
@@ -29,15 +29,15 @@ const MainNavigation = () => {
                   <Link
                     to="/"
                     className={cn(
-                      "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground dark:hover:bg-gray-700 dark:focus:bg-gray-700",
-                      isActive('/') && "bg-accent text-accent-foreground dark:bg-gray-700"
+                      "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+                      isActive('/') && "bg-accent text-accent-foreground"
                     )}
                   >
-                    <div className="text-sm font-medium leading-none flex items-center dark:text-white">
+                    <div className="text-sm font-medium leading-none flex items-center">
                       <MessageCircle className="w-4 h-4 mr-2" />
                       Community Feed
                     </div>
-                    <p className="line-clamp-2 text-sm leading-snug text-muted-foreground dark:text-gray-400">
+                    <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
                       Se de senaste insikterna från personer du följer
                     </p>
                   </Link>
@@ -47,15 +47,15 @@ const MainNavigation = () => {
                 <Link
                   to="/stock-cases"
                   className={cn(
-                    "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground dark:hover:bg-gray-700 dark:focus:bg-gray-700",
-                    isActive('/stock-cases') && "bg-accent text-accent-foreground dark:bg-gray-700"
+                    "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+                    isActive('/stock-cases') && "bg-accent text-accent-foreground"
                   )}
                 >
-                  <div className="text-sm font-medium leading-none flex items-center dark:text-white">
+                  <div className="text-sm font-medium leading-none flex items-center">
                     <TrendingUp className="w-4 h-4 mr-2" />
                     Browse Cases
                   </div>
-                  <p className="line-clamp-2 text-sm leading-snug text-muted-foreground dark:text-gray-400">
+                  <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
                     Explore curated investment opportunities
                   </p>
                 </Link>
@@ -65,15 +65,15 @@ const MainNavigation = () => {
                   <Link
                     to="/watchlist"
                     className={cn(
-                      "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground dark:hover:bg-gray-700 dark:focus:bg-gray-700",
-                      isActive('/watchlist') && "bg-accent text-accent-foreground dark:bg-gray-700"
+                      "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+                      isActive('/watchlist') && "bg-accent text-accent-foreground"
                     )}
                   >
-                    <div className="text-sm font-medium leading-none flex items-center dark:text-white">
+                    <div className="text-sm font-medium leading-none flex items-center">
                       <Heart className="w-4 h-4 mr-2" />
                       Watchlist
                     </div>
-                    <p className="line-clamp-2 text-sm leading-snug text-muted-foreground dark:text-gray-400">
+                    <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
                       Track your followed stock cases
                     </p>
                   </Link>
@@ -83,15 +83,15 @@ const MainNavigation = () => {
                 <Link
                   to="/learning"
                   className={cn(
-                    "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground dark:hover:bg-gray-700 dark:focus:bg-gray-700",
-                    isActive('/learning') && "bg-accent text-accent-foreground dark:bg-gray-700"
+                    "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+                    isActive('/learning') && "bg-accent text-accent-foreground"
                   )}
                 >
-                  <div className="text-sm font-medium leading-none flex items-center dark:text-white">
+                  <div className="text-sm font-medium leading-none flex items-center">
                     <BookOpen className="w-4 h-4 mr-2" />
                     Learning Center
                   </div>
-                  <p className="line-clamp-2 text-sm leading-snug text-muted-foreground dark:text-gray-400">
+                  <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
                     Interactive quizzes and educational content
                   </p>
                 </Link>
@@ -107,8 +107,8 @@ const MainNavigation = () => {
               <Link
                 to="/portfolio-implementation"
                 className={cn(
-                  "h-10 px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 inline-flex items-center rounded-md dark:hover:bg-gray-700 dark:focus:bg-gray-700",
-                  (isActive('/portfolio-implementation') || isActive('/portfolio-advisor')) && "bg-accent text-accent-foreground dark:bg-gray-700"
+                  "h-10 px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 inline-flex items-center rounded-md",
+                  (isActive('/portfolio-implementation') || isActive('/portfolio-advisor')) && "bg-accent text-accent-foreground"
                 )}
               >
                 <Brain className="w-4 h-4 mr-2" />
