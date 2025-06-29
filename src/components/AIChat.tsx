@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -262,59 +263,85 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
   console.log('Usage object:', usage);
 
   return (
-    <div className="flex h-[700px] bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden border">
-      {/* Sidebar - ChatGPT Style */}
+    <div className="flex h-[90vh] max-h-[900px] bg-gradient-to-br from-slate-50 to-blue-50/30 dark:from-gray-900 dark:to-blue-950/20 rounded-xl overflow-hidden border border-gray-200/50 dark:border-gray-700/50 shadow-xl">
+      {/* Sidebar - Modern Design */}
       <div className={`
         ${showSidebar ? 'translate-x-0' : '-translate-x-full'}
-        fixed inset-y-0 left-0 z-50 w-80 bg-gray-900 text-white transition-transform duration-300 ease-in-out
-        lg:translate-x-0 lg:static lg:inset-0 lg:w-72
+        fixed inset-y-0 left-0 z-50 w-80 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white transition-transform duration-300 ease-in-out
+        lg:translate-x-0 lg:static lg:inset-0 lg:w-80 xl:w-72
       `}>
         <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="p-4 border-b border-gray-700">
+          {/* Header with glassmorphism effect */}
+          <div className="p-6 border-b border-gray-700/50 bg-gradient-to-r from-blue-600/20 to-purple-600/20 backdrop-blur-sm">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Brain className="w-6 h-6 text-blue-400" />
-                <h2 className="text-lg font-semibold">AI Portfolio</h2>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                  <Brain className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                    AI Portfolio
+                  </h2>
+                  <p className="text-xs text-gray-400">Din smarta assistent</p>
+                </div>
               </div>
               <Button
                 size="sm"
                 onClick={handleCreateNewSession}
-                className="bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 rounded-lg shadow-lg"
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Ny Chat
               </Button>
             </div>
             
-            {/* Premium Status */}
-            <div className="mt-3">
+            {/* Premium Status with enhanced styling */}
+            <div className="mt-4">
               {isPremium ? (
-                <Badge className="bg-yellow-600 text-white">
+                <Badge className="bg-gradient-to-r from-yellow-500 to-amber-500 text-white shadow-lg">
                   <Crown className="w-3 h-3 mr-1" />
                   Premium
                 </Badge>
               ) : (
-                <Badge variant="outline" className="border-gray-600 text-gray-300">
-                  {remainingMessages}/5 kvar idag
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="border-gray-600 text-gray-300 bg-gray-800/50">
+                    {remainingMessages}/5 kvar idag
+                  </Badge>
+                  <div className="w-full bg-gray-700 rounded-full h-1.5">
+                    <div 
+                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-1.5 rounded-full transition-all"
+                      style={{ width: `${(remainingMessages / 5) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
               )}
             </div>
           </div>
 
-          {/* Chat History */}
-          <div className="flex-1 overflow-y-auto p-2">
-            <div className="space-y-1">
+          {/* Chat History with improved styling */}
+          <div className="flex-1 overflow-y-auto p-3">
+            <div className="space-y-2">
               {sessions.map((session) => (
                 <div
                   key={session.id}
                   className={`
-                    group flex items-center gap-2 p-3 rounded-lg cursor-pointer hover:bg-gray-800 transition-colors
-                    ${currentSessionId === session.id ? 'bg-gray-800 border-l-2 border-blue-400' : ''}
+                    group flex items-center gap-3 p-4 rounded-xl cursor-pointer transition-all duration-200
+                    ${currentSessionId === session.id 
+                      ? 'bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 shadow-lg' 
+                      : 'hover:bg-gray-800/50 hover:shadow-md'
+                    }
                   `}
                   onClick={() => handleLoadSession(session.id)}
                 >
-                  <MessageSquare className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <div className={`
+                    w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0
+                    ${currentSessionId === session.id 
+                      ? 'bg-gradient-to-br from-blue-500 to-purple-600' 
+                      : 'bg-gray-700 group-hover:bg-gray-600'
+                    }
+                  `}>
+                    <MessageSquare className="w-4 h-4 text-white" />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white truncate">
                       {session.session_name}
@@ -326,7 +353,7 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400 p-1 h-auto"
+                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400 p-1 h-auto transition-opacity"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDeleteSession(session.id);
@@ -339,12 +366,12 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="p-4 border-t border-gray-700">
+          {/* Footer with upgrade CTA */}
+          <div className="p-4 border-t border-gray-700/50 bg-gradient-to-r from-gray-900/80 to-gray-800/80 backdrop-blur-sm">
             {!isPremium && (
               <Button
                 onClick={() => createCheckout('premium')}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
                 size="sm"
               >
                 <Crown className="w-4 h-4 mr-2" />
@@ -358,30 +385,33 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
       {/* Overlay for mobile */}
       {showSidebar && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setShowSidebar(false)}
         />
       )}
 
-      {/* Main Chat Area - Fixed Height */}
-      <div className="flex-1 flex flex-col min-h-0">
-        {/* Top Bar */}
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
+      {/* Main Chat Area - Enhanced Design */}
+      <div className="flex-1 flex flex-col min-h-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm">
+        {/* Top Bar with glassmorphism */}
+        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 p-4 lg:p-6 flex-shrink-0 shadow-sm">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowSidebar(!showSidebar)}
-                className="lg:hidden"
+                className="lg:hidden hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl"
               >
                 <History className="w-5 h-5" />
               </Button>
               <div>
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h1 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                    <Brain className="w-4 h-4 text-white" />
+                  </div>
                   {currentSessionName || 'AI Portfolio Assistent'}
                 </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                   {isPremium ? 'Obegränsad AI-analys' : `${remainingMessages} meddelanden kvar idag`}
                 </p>
               </div>
@@ -389,25 +419,29 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
           </div>
         </div>
 
-        {/* Messages Area - Scrollable with Fixed Height */}
+        {/* Messages Area - Enhanced scrolling */}
         <div className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
-            <div className="p-4">
-              {/* Usage Limit Alerts */}
+            <div className="p-4 lg:p-6 max-w-5xl mx-auto">
+              {/* Usage Limit Alerts with better styling */}
               {!isPremium && isAtMessageLimit && (
-                <div className="mb-4">
-                  <Alert className="border-red-200 bg-red-50">
-                    <Lock className="h-4 w-4 text-red-600" />
+                <div className="mb-6">
+                  <Alert className="border-red-200 bg-gradient-to-r from-red-50 to-orange-50 shadow-lg">
+                    <Lock className="h-5 w-5 text-red-600" />
                     <AlertDescription className="text-red-800">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <span className="text-sm">
-                          <strong>Daglig gräns nådd:</strong> Du har använt alla dina 5 gratis AI-meddelanden för idag.
-                        </span>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <div className="font-semibold mb-1">Daglig gräns nådd</div>
+                          <div className="text-sm opacity-90">
+                            Du har använt alla dina 5 gratis AI-meddelanden för idag.
+                          </div>
+                        </div>
                         <Button 
                           size="sm" 
-                          className="bg-red-600 hover:bg-red-700 text-white"
+                          className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white shadow-lg"
                           onClick={() => createCheckout('premium')}
                         >
+                          <Crown className="w-4 h-4 mr-1" />
                           Uppgradera nu
                         </Button>
                       </div>
@@ -417,45 +451,49 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
               )}
 
               {quotaExceeded && (
-                <div className="mb-4">
-                  <Alert className="border-red-200 bg-red-50">
-                    <AlertCircle className="h-4 w-4 text-red-600" />
-                    <AlertDescription className="text-red-800 text-sm">
-                      <strong>OpenAI API-kvot överskriden:</strong> Du har nått din dagliga gräns för AI-användning. 
-                      Kontrollera din OpenAI-fakturering eller försök igen senare.
+                <div className="mb-6">
+                  <Alert className="border-red-200 bg-gradient-to-r from-red-50 to-pink-50 shadow-lg">
+                    <AlertCircle className="h-5 w-5 text-red-600" />
+                    <AlertDescription className="text-red-800">
+                      <div className="font-semibold mb-1">OpenAI API-kvot överskriden</div>
+                      <div className="text-sm opacity-90">
+                        Du har nått din dagliga gräns för AI-användning. Kontrollera din OpenAI-fakturering eller försök igen senare.
+                      </div>
                     </AlertDescription>
                   </Alert>
                 </div>
               )}
 
-              {/* Quick Questions */}
+              {/* Welcome Screen with enhanced design */}
               {messages.length === 0 && (
-                <div className="max-w-3xl mx-auto py-8">
-                  <div className="text-center mb-8">
-                    <Brain className="w-16 h-16 mx-auto mb-4 text-blue-600" />
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                <div className="max-w-4xl mx-auto py-12">
+                  <div className="text-center mb-12">
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl">
+                      <Brain className="w-10 h-10 text-white" />
+                    </div>
+                    <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-4">
                       Hur kan jag hjälpa dig idag?
                     </h2>
-                    <p className="text-gray-600 dark:text-gray-400">
-                      Välj ett av förslagen nedan eller ställ din egen fråga
+                    <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                      Välj ett av förslagen nedan eller ställ din egen fråga om din portfölj
                     </p>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
                     {quickQuestions.map((q, index) => (
                       <Button
                         key={index}
                         variant="outline"
-                        className="p-4 h-auto text-left justify-start hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                        className="p-6 h-auto text-left justify-start hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-blue-900/20 dark:hover:to-purple-900/20 border-gray-200 hover:border-blue-300 transition-all duration-200 shadow-sm hover:shadow-md"
                         onClick={q.action}
                         disabled={isLoading || quotaExceeded || isAtMessageLimit}
                       >
-                        <div>
-                          <div className="font-medium text-gray-900 dark:text-white">
+                        <div className="text-left">
+                          <div className="font-semibold text-gray-900 dark:text-white mb-2 text-base">
                             {q.text}
                           </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            Få svar direkt
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            Få svar direkt från din AI-assistent
                           </div>
                         </div>
                       </Button>
@@ -464,41 +502,47 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
                 </div>
               )}
 
-              {/* Messages */}
+              {/* Messages with enhanced styling */}
               {messages.length > 0 && (
-                <div className="max-w-4xl mx-auto space-y-6">
+                <div className="space-y-8">
                   {messages.map((message) => (
                     <div key={message.id}>
-                      <div className="flex gap-4">
+                      <div className="flex gap-4 lg:gap-6">
                         {message.role === 'assistant' && (
-                          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                            <Brain className="w-4 h-4 text-white" />
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                            <Brain className="w-5 h-5 text-white" />
                           </div>
                         )}
                         {message.role === 'user' && (
-                          <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
-                            <span className="text-white text-sm font-medium">Du</span>
+                          <div className="w-10 h-10 bg-gradient-to-br from-gray-600 to-gray-700 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                            <span className="text-white text-sm font-semibold">Du</span>
                           </div>
                         )}
                         
                         <div className="flex-1 min-w-0">
-                          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                          <div className={`
+                            rounded-2xl p-6 shadow-sm
+                            ${message.role === 'assistant' 
+                              ? 'bg-gradient-to-br from-gray-50 to-blue-50/50 dark:from-gray-700 dark:to-gray-600 border border-gray-200/50 dark:border-gray-600/50' 
+                              : 'bg-gradient-to-br from-blue-600 to-purple-600 text-white shadow-lg'
+                            }
+                          `}>
                             {message.role === 'assistant' ? 
                               formatAIResponse(message.content) : 
-                              <p className="text-gray-900 dark:text-white">{message.content}</p>
+                              <p className="text-white font-medium leading-relaxed">{message.content}</p>
                             }
                           </div>
                           
-                          <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                          <div className="flex items-center justify-between mt-3 text-xs text-gray-500 px-2">
                             <span>
                               {new Date(message.timestamp).toLocaleTimeString('sv-SE', {
                                 hour: '2-digit',
                                 minute: '2-digit'
                               })}
                             </span>
-                            <div className="flex gap-1">
+                            <div className="flex gap-2">
                               {message.context?.analysisType && (
-                                <Badge variant="secondary" className="text-xs">
+                                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
                                   {message.context.analysisType}
                                 </Badge>
                               )}
@@ -512,55 +556,58 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
                         </div>
                       </div>
                       
-                      {/* Stock Suggestions */}
+                      {/* Stock Suggestions with enhanced styling */}
                       {message.role === 'assistant' && message.context?.isExchangeRequest && (
-                        <div className="ml-12 mt-4">
+                        <div className="ml-16 mt-6">
                           {(() => {
                             const suggestions = parseStockSuggestions(message.content);
                             if (suggestions.length > 0) {
                               return (
-                                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
-                                  <h4 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
-                                    <TrendingUp className="w-4 h-4" />
+                                <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-2xl p-6 shadow-lg">
+                                  <h4 className="font-bold text-blue-800 mb-4 flex items-center gap-2 text-lg">
+                                    <TrendingUp className="w-5 h-5" />
                                     Identifierade aktieförslag
                                   </h4>
-                                  <div className="space-y-3">
+                                  <div className="space-y-4">
                                     {suggestions.map((suggestion, idx) => (
-                                      <div key={idx} className="bg-white rounded p-3 border border-blue-100">
-                                        <div className="flex items-center justify-between mb-2">
-                                          <span className="font-medium text-gray-900">
+                                      <div key={idx} className="bg-white rounded-xl p-4 border border-blue-100 shadow-sm">
+                                        <div className="flex items-center justify-between mb-3">
+                                          <span className="font-semibold text-gray-900 text-base">
                                             {suggestion.name} ({suggestion.ticker})
                                           </span>
-                                          <Badge variant="outline" className="text-xs">
+                                          <Badge variant="outline" className="text-xs font-medium">
                                             {suggestion.weight}
                                           </Badge>
                                         </div>
-                                        <p className="text-xs text-gray-600 mb-2">
+                                        <p className="text-sm text-gray-600 mb-3 leading-relaxed">
                                           {suggestion.reason}
                                         </p>
-                                        <div className="flex gap-2">
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="text-xs h-7"
-                                            onClick={() => {
-                                              const event = new CustomEvent('createStockChat', {
-                                                detail: { 
-                                                  sessionName: `Diskussion: ${suggestion.name}`,
-                                                  message: `Berätta mer om ${suggestion.name} (${suggestion.ticker}) och varför det skulle passa min portfölj. Vad är riskerna och möjligheterna?`
-                                                }
-                                              });
-                                              window.dispatchEvent(event);
-                                            }}
-                                          >
-                                            Diskutera mer
-                                          </Button>
-                                        </div>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="text-xs h-8 hover:bg-blue-50 border-blue-200"
+                                          onClick={() => {
+                                            const event = new CustomEvent('createStockChat', {
+                                              detail: { 
+                                                sessionName: `Diskussion: ${suggestion.name}`,
+                                                message: `Berätta mer om ${suggestion.name} (${suggestion.ticker}) och varför det skulle passa min portfölj. Vad är riskerna och möjligheterna?`
+                                              }
+                                            });
+                                            window.dispatchEvent(event);
+                                          }}
+                                        >
+                                          Diskutera mer
+                                        </Button>
                                       </div>
                                     ))}
                                   </div>
-                                  <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-                                    <strong>Påminnelse:</strong> Detta är utbildningssyfte endast. Gör egen research innan investeringsbeslut.
+                                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                                    <div className="flex items-start gap-2">
+                                      <AlertCircle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                                      <p className="text-xs text-yellow-800 font-medium">
+                                        <strong>Påminnelse:</strong> Detta är utbildningssyfte endast. Gör egen research innan investeringsbeslut.
+                                      </p>
+                                    </div>
                                   </div>
                                 </div>
                               );
@@ -573,14 +620,14 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
                   ))}
                   
                   {isLoading && (
-                    <div className="flex gap-4">
-                      <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Brain className="w-4 h-4 text-white" />
+                    <div className="flex gap-4 lg:gap-6">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                        <Brain className="w-5 h-5 text-white" />
                       </div>
                       <div className="flex-1">
-                        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 flex items-center gap-3">
-                          <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                          <span className="text-gray-700 dark:text-gray-300">
+                        <div className="bg-gradient-to-br from-gray-50 to-blue-50/50 dark:from-gray-700 dark:to-gray-600 rounded-2xl p-6 flex items-center gap-3 shadow-sm border border-gray-200/50 dark:border-gray-600/50">
+                          <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                          <span className="text-gray-700 dark:text-gray-300 font-medium">
                             AI-assistenten tänker...
                           </span>
                         </div>
@@ -594,10 +641,10 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
           </ScrollArea>
         </div>
 
-        {/* Input Area - Fixed at Bottom */}
-        <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
+        {/* Input Area - Enhanced Design */}
+        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-t border-gray-200/50 dark:border-gray-700/50 p-4 lg:p-6 flex-shrink-0 shadow-lg">
           <div className="max-w-4xl mx-auto">
-            <form onSubmit={handleSendMessage} className="flex gap-3">
+            <form onSubmit={handleSendMessage} className="flex gap-3 lg:gap-4">
               <div className="flex-1">
                 <Input
                   ref={inputRef}
@@ -609,39 +656,42 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
                     "Skriv ditt meddelande här..."
                   }
                   disabled={isLoading || quotaExceeded || isAtMessageLimit}
-                  className="border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500"
+                  className="h-12 lg:h-14 text-base border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 rounded-xl bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm shadow-sm"
                 />
               </div>
               <Button 
                 type="submit" 
                 disabled={!inputMessage.trim() || isLoading || quotaExceeded || isAtMessageLimit}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4"
+                className="h-12 lg:h-14 px-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl shadow-lg transition-all duration-200"
               >
                 {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-5 h-5 animate-spin" />
                 ) : isAtMessageLimit ? (
-                  <Lock className="w-4 h-4" />
+                  <Lock className="w-5 h-5" />
                 ) : (
-                  <Send className="w-4 h-4" />
+                  <Send className="w-5 h-5" />
                 )}
               </Button>
             </form>
             
             {!isPremium && (
-              <div className="mt-2 text-center">
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {remainingMessages} av 5 gratis meddelanden kvar idag
-                </span>
-                {remainingMessages <= 2 && (
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="text-xs ml-2 p-0 h-auto text-blue-600"
-                    onClick={() => createCheckout('premium')}
-                  >
-                    Uppgradera för obegränsad användning
-                  </Button>
-                )}
+              <div className="mt-3 text-center">
+                <div className="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                  <span>{remainingMessages} av 5 gratis meddelanden kvar idag</span>
+                  {remainingMessages <= 2 && (
+                    <>
+                      <span>•</span>
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="text-sm p-0 h-auto text-blue-600 hover:text-blue-700 font-medium"
+                        onClick={() => createCheckout('premium')}
+                      >
+                        Uppgradera för obegränsad användning
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
             )}
           </div>
