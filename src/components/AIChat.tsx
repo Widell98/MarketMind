@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -251,12 +252,12 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
   console.log('Usage object:', usage);
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-[700px] bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden border">
       {/* Sidebar - ChatGPT Style */}
       <div className={`
         ${showSidebar ? 'translate-x-0' : '-translate-x-full'}
         fixed inset-y-0 left-0 z-50 w-80 bg-gray-900 text-white transition-transform duration-300 ease-in-out
-        lg:translate-x-0 lg:static lg:inset-0
+        lg:translate-x-0 lg:static lg:inset-0 lg:w-72
       `}>
         <div className="flex flex-col h-full">
           {/* Header */}
@@ -352,10 +353,10 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
         />
       )}
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
+      {/* Main Chat Area - Fixed Height */}
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Top Bar */}
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Button
@@ -378,213 +379,213 @@ const AIChat: React.FC<AIChatProps> = ({ portfolioId }) => {
           </div>
         </div>
 
-        {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-800">
-          {/* Usage Limit Alerts */}
-          {!isPremium && isAtMessageLimit && (
+        {/* Messages Area - Scrollable with Fixed Height */}
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
             <div className="p-4">
-              <Alert className="border-red-200 bg-red-50">
-                <Lock className="h-4 w-4 text-red-600" />
-                <AlertDescription className="text-red-800">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <span className="text-sm">
-                      <strong>Daglig gräns nådd:</strong> Du har använt alla dina 5 gratis AI-meddelanden för idag.
-                    </span>
-                    <Button 
-                      size="sm" 
-                      className="bg-red-600 hover:bg-red-700 text-white"
-                      onClick={() => createCheckout('premium')}
-                    >
-                      Uppgradera nu
-                    </Button>
-                  </div>
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
-
-          {quotaExceeded && (
-            <div className="p-4">
-              <Alert className="border-red-200 bg-red-50">
-                <AlertCircle className="h-4 w-4 text-red-600" />
-                <AlertDescription className="text-red-800 text-sm">
-                  <strong>OpenAI API-kvot överskriden:</strong> Du har nått din dagliga gräns för AI-användning. 
-                  Kontrollera din OpenAI-fakturering eller försök igen senare.
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
-
-          {/* Quick Questions */}
-          {messages.length === 0 && (
-            <div className="p-6">
-              <div className="max-w-3xl mx-auto">
-                <div className="text-center mb-8">
-                  <Brain className="w-16 h-16 mx-auto mb-4 text-blue-600" />
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                    Hur kan jag hjälpa dig idag?
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Välj ett av förslagen nedan eller ställ din egen fråga
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {quickQuestions.map((q, index) => (
-                    <Button
-                      key={index}
-                      variant="outline"
-                      className="p-4 h-auto text-left justify-start hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                      onClick={q.action}
-                      disabled={isLoading || quotaExceeded || isAtMessageLimit}
-                    >
-                      <div>
-                        <div className="font-medium text-gray-900 dark:text-white">
-                          {q.text}
-                        </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                          Få svar direkt
-                        </div>
+              {/* Usage Limit Alerts */}
+              {!isPremium && isAtMessageLimit && (
+                <div className="mb-4">
+                  <Alert className="border-red-200 bg-red-50">
+                    <Lock className="h-4 w-4 text-red-600" />
+                    <AlertDescription className="text-red-800">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <span className="text-sm">
+                          <strong>Daglig gräns nådd:</strong> Du har använt alla dina 5 gratis AI-meddelanden för idag.
+                        </span>
+                        <Button 
+                          size="sm" 
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                          onClick={() => createCheckout('premium')}
+                        >
+                          Uppgradera nu
+                        </Button>
                       </div>
-                    </Button>
-                  ))}
+                    </AlertDescription>
+                  </Alert>
                 </div>
-              </div>
-            </div>
-          )}
+              )}
 
-          {/* Messages */}
-          {messages.length > 0 && (
-            <div className="max-w-4xl mx-auto p-4">
-              <div className="space-y-6">
-                {messages.map((message) => (
-                  <div key={message.id}>
-                    <div className="flex gap-4">
-                      {message.role === 'assistant' && (
-                        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                          <Brain className="w-4 h-4 text-white" />
+              {quotaExceeded && (
+                <div className="mb-4">
+                  <Alert className="border-red-200 bg-red-50">
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <AlertDescription className="text-red-800 text-sm">
+                      <strong>OpenAI API-kvot överskriden:</strong> Du har nått din dagliga gräns för AI-användning. 
+                      Kontrollera din OpenAI-fakturering eller försök igen senare.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              )}
+
+              {/* Quick Questions */}
+              {messages.length === 0 && (
+                <div className="max-w-3xl mx-auto py-8">
+                  <div className="text-center mb-8">
+                    <Brain className="w-16 h-16 mx-auto mb-4 text-blue-600" />
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                      Hur kan jag hjälpa dig idag?
+                    </h2>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      Välj ett av förslagen nedan eller ställ din egen fråga
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {quickQuestions.map((q, index) => (
+                      <Button
+                        key={index}
+                        variant="outline"
+                        className="p-4 h-auto text-left justify-start hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                        onClick={q.action}
+                        disabled={isLoading || quotaExceeded || isAtMessageLimit}
+                      >
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-white">
+                            {q.text}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            Få svar direkt
+                          </div>
                         </div>
-                      )}
-                      {message.role === 'user' && (
-                        <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-white text-sm font-medium">Du</span>
-                        </div>
-                      )}
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                          {message.role === 'assistant' ? 
-                            formatAIResponse(message.content) : 
-                            <p className="text-gray-900 dark:text-white">{message.content}</p>
-                          }
-                        </div>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Messages */}
+              {messages.length > 0 && (
+                <div className="max-w-4xl mx-auto space-y-6">
+                  {messages.map((message) => (
+                    <div key={message.id}>
+                      <div className="flex gap-4">
+                        {message.role === 'assistant' && (
+                          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                            <Brain className="w-4 h-4 text-white" />
+                          </div>
+                        )}
+                        {message.role === 'user' && (
+                          <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-sm font-medium">Du</span>
+                          </div>
+                        )}
                         
-                        <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
-                          <span>
-                            {new Date(message.timestamp).toLocaleTimeString('sv-SE', {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                          <div className="flex gap-1">
-                            {message.context?.analysisType && (
-                              <Badge variant="secondary" className="text-xs">
-                                {message.context.analysisType}
-                              </Badge>
-                            )}
-                            {message.context?.confidence && (
-                              <Badge variant="outline" className="text-xs">
-                                {Math.round(message.context.confidence * 100)}%
-                              </Badge>
-                            )}
+                        <div className="flex-1 min-w-0">
+                          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                            {message.role === 'assistant' ? 
+                              formatAIResponse(message.content) : 
+                              <p className="text-gray-900 dark:text-white">{message.content}</p>
+                            }
+                          </div>
+                          
+                          <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                            <span>
+                              {new Date(message.timestamp).toLocaleTimeString('sv-SE', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                            <div className="flex gap-1">
+                              {message.context?.analysisType && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {message.context.analysisType}
+                                </Badge>
+                              )}
+                              {message.context?.confidence && (
+                                <Badge variant="outline" className="text-xs">
+                                  {Math.round(message.context.confidence * 100)}%
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                    
-                    {/* Stock Suggestions */}
-                    {message.role === 'assistant' && message.context?.isExchangeRequest && (
-                      <div className="ml-12 mt-4">
-                        {(() => {
-                          const suggestions = parseStockSuggestions(message.content);
-                          if (suggestions.length > 0) {
-                            return (
-                              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
-                                <h4 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
-                                  <TrendingUp className="w-4 h-4" />
-                                  Identifierade aktieförslag
-                                </h4>
-                                <div className="space-y-3">
-                                  {suggestions.map((suggestion, idx) => (
-                                    <div key={idx} className="bg-white rounded p-3 border border-blue-100">
-                                      <div className="flex items-center justify-between mb-2">
-                                        <span className="font-medium text-gray-900">
-                                          {suggestion.name} ({suggestion.ticker})
-                                        </span>
-                                        <Badge variant="outline" className="text-xs">
-                                          {suggestion.weight}
-                                        </Badge>
+                      
+                      {/* Stock Suggestions */}
+                      {message.role === 'assistant' && message.context?.isExchangeRequest && (
+                        <div className="ml-12 mt-4">
+                          {(() => {
+                            const suggestions = parseStockSuggestions(message.content);
+                            if (suggestions.length > 0) {
+                              return (
+                                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                                  <h4 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                                    <TrendingUp className="w-4 h-4" />
+                                    Identifierade aktieförslag
+                                  </h4>
+                                  <div className="space-y-3">
+                                    {suggestions.map((suggestion, idx) => (
+                                      <div key={idx} className="bg-white rounded p-3 border border-blue-100">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <span className="font-medium text-gray-900">
+                                            {suggestion.name} ({suggestion.ticker})
+                                          </span>
+                                          <Badge variant="outline" className="text-xs">
+                                            {suggestion.weight}
+                                          </Badge>
+                                        </div>
+                                        <p className="text-xs text-gray-600 mb-2">
+                                          {suggestion.reason}
+                                        </p>
+                                        <div className="flex gap-2">
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="text-xs h-7"
+                                            onClick={() => {
+                                              const event = new CustomEvent('createStockChat', {
+                                                detail: { 
+                                                  sessionName: `Diskussion: ${suggestion.name}`,
+                                                  message: `Berätta mer om ${suggestion.name} (${suggestion.ticker}) och varför det skulle passa min portfölj. Vad är riskerna och möjligheterna?`
+                                                }
+                                              });
+                                              window.dispatchEvent(event);
+                                            }}
+                                          >
+                                            Diskutera mer
+                                          </Button>
+                                        </div>
                                       </div>
-                                      <p className="text-xs text-gray-600 mb-2">
-                                        {suggestion.reason}
-                                      </p>
-                                      <div className="flex gap-2">
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          className="text-xs h-7"
-                                          onClick={() => {
-                                            const event = new CustomEvent('createStockChat', {
-                                              detail: { 
-                                                sessionName: `Diskussion: ${suggestion.name}`,
-                                                message: `Berätta mer om ${suggestion.name} (${suggestion.ticker}) och varför det skulle passa min portfölj. Vad är riskerna och möjligheterna?`
-                                              }
-                                            });
-                                            window.dispatchEvent(event);
-                                          }}
-                                        >
-                                          Diskutera mer
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  ))}
+                                    ))}
+                                  </div>
+                                  <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                                    <strong>Påminnelse:</strong> Detta är utbildningssyfte endast. Gör egen research innan investeringsbeslut.
+                                  </div>
                                 </div>
-                                <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-                                  <strong>Påminnelse:</strong> Detta är utbildningssyfte endast. Gör egen research innan investeringsbeslut.
-                                </div>
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                
-                {isLoading && (
-                  <div className="flex gap-4">
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Brain className="w-4 h-4 text-white" />
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex-1">
-                      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 flex items-center gap-3">
-                        <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                        <span className="text-gray-700 dark:text-gray-300">
-                          AI-assistenten tänker...
-                        </span>
+                  ))}
+                  
+                  {isLoading && (
+                    <div className="flex gap-4">
+                      <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Brain className="w-4 h-4 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 flex items-center gap-3">
+                          <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                          <span className="text-gray-700 dark:text-gray-300">
+                            AI-assistenten tänker...
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-              <div ref={messagesEndRef} />
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
             </div>
-          )}
+          </ScrollArea>
         </div>
 
-        {/* Input Area */}
-        <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
+        {/* Input Area - Fixed at Bottom */}
+        <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
           <div className="max-w-4xl mx-auto">
             <form onSubmit={handleSendMessage} className="flex gap-3">
               <div className="flex-1">
