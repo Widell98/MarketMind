@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -75,6 +74,33 @@ const PortfolioImplementation = () => {
     }, 100);
   };
 
+  const examplePrompts = [
+    {
+      title: "Djupgående Portföljanalys",
+      prompt: "Ge mig en komplett analys av min portfölj med detaljerade rekommendationer för optimering",
+      icon: <PieChart className="w-6 h-6" />,
+      description: "Få en omfattande genomgång av din portföljs prestanda och struktur"
+    },
+    {
+      title: "Riskhantering & Diversifiering", 
+      prompt: "Analysera riskerna i min portfölj och föreslå strategier för bättre diversifiering",
+      icon: <Activity className="w-6 h-6" />,
+      description: "Identifiera och minimera risker för en mer balanserad portfölj"
+    },
+    {
+      title: "Smarta Investeringsförslag",
+      prompt: "Vilka aktier och tillgångar borde jag överväga nästa baserat på min profil och marknadsläget?",
+      icon: <Zap className="w-6 h-6" />,
+      description: "Få personliga rekommendationer baserade på din riskprofil"
+    },
+    {
+      title: "Marknadsinsikter & Timing",
+      prompt: "Vad händer på marknaden just nu och hur påverkar det min investeringsstrategi?",
+      icon: <TrendingUp className="w-6 h-6" />,
+      description: "Håll dig uppdaterad med aktuella marknadstrender och möjligheter"
+    }
+  ];
+
   // Show loading while portfolio is loading
   if (loading) {
     return (
@@ -115,33 +141,6 @@ const PortfolioImplementation = () => {
       </Layout>
     );
   }
-
-  const examplePrompts = [
-    {
-      title: "Djupgående Portföljanalys",
-      prompt: "Ge mig en komplett analys av min portfölj med detaljerade rekommendationer för optimering",
-      icon: <PieChart className="w-6 h-6" />,
-      description: "Få en omfattande genomgång av din portföljs prestanda och struktur"
-    },
-    {
-      title: "Riskhantering & Diversifiering", 
-      prompt: "Analysera riskerna i min portfölj och föreslå strategier för bättre diversifiering",
-      icon: <Activity className="w-6 h-6" />,
-      description: "Identifiera och minimera risker för en mer balanserad portfölj"
-    },
-    {
-      title: "Smarta Investeringsförslag",
-      prompt: "Vilka aktier och tillgångar borde jag överväga nästa baserat på min profil och marknadsläget?",
-      icon: <Zap className="w-6 h-6" />,
-      description: "Få personliga rekommendationer baserade på din riskprofil"
-    },
-    {
-      title: "Marknadsinsikter & Timing",
-      prompt: "Vad händer på marknaden just nu och hur påverkar det min investeringsstrategi?",
-      icon: <TrendingUp className="w-6 h-6" />,
-      description: "Håll dig uppdaterad med aktuella marknadstrender och möjligheter"
-    }
-  ];
 
   // Show portfolio implementation page with tabs
   return (
