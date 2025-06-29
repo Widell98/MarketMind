@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,8 +18,8 @@ interface AIChatProps {
 
 interface Message {
   id: string;
-  text: string;
-  isUser: boolean;
+  role: 'user' | 'assistant';
+  content: string;
   timestamp: Date;
   context?: {
     analysisType?: string;
