@@ -15,16 +15,16 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 w-full">
-      {/* Mobile Navigation - always rendered */}
+      {/* Mobile Navigation - always rendered and positioned correctly */}
       <MobileNavigation />
       
-      <header className="sticky top-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm backdrop-blur-sm">
+      <header className="sticky top-0 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm backdrop-blur-sm">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 max-w-7xl py-3 lg:py-4 xl:py-5 flex justify-between items-center">
-          <div className="flex items-center space-x-4 md:space-x-8 lg:space-x-12">
-            {/* Mobile spacing for menu button - only on mobile */}
-            <div className="md:hidden w-12"></div>
+          <div className="flex items-center space-x-4 md:space-x-8 lg:space-x-12 w-full">
+            {/* Mobile spacing - leave room for hamburger menu */}
+            <div className="md:hidden w-14 flex-shrink-0"></div>
             
-            <Link to="/" className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-finance-navy dark:text-gray-200 flex items-center">
+            <Link to="/" className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-finance-navy dark:text-gray-200 flex items-center flex-1 justify-center md:justify-start">
               <span className="mr-2 lg:mr-3 text-2xl lg:text-3xl xl:text-4xl">🧠</span>
               <span className="hidden sm:inline">Market Mind</span>
               <span className="sm:hidden">MM</span>
@@ -36,7 +36,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </div>
           </div>
           
-          <div className="flex items-center space-x-2 md:space-x-3 lg:space-x-4 xl:space-x-6">
+          <div className="flex items-center space-x-2 md:space-x-3 lg:space-x-4 xl:space-x-6 flex-shrink-0">
             {/* Show ThemeToggle only on desktop */}
             <div className="hidden md:block">
               <ThemeToggle />
