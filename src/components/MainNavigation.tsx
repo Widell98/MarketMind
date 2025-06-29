@@ -18,26 +18,26 @@ const MainNavigation = () => {
       <NavigationMenuList>
         {/* Community Section */}
         <NavigationMenuItem>
-          <NavigationMenuTrigger className="h-10 px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50">
+          <NavigationMenuTrigger className="h-10 px-4 py-2 text-sm font-medium transition-all duration-300 hover:bg-[#00ADB5]/10 dark:hover:bg-[#00ADB5]/20 focus:bg-[#00ADB5]/10 dark:focus:bg-[#00ADB5]/20 focus:outline-none disabled:pointer-events-none disabled:opacity-50 text-[#222831] dark:text-[#EEEEEE] rounded-xl backdrop-blur-sm">
             <Users className="w-4 h-4 mr-2" />
             Community
           </NavigationMenuTrigger>
-          <NavigationMenuContent className="z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
+          <NavigationMenuContent className="z-50 bg-white/95 dark:bg-[#222831]/95 backdrop-blur-xl border border-slate-200/50 dark:border-[#393E46]/50 shadow-2xl rounded-2xl">
             <div className="grid gap-3 p-6 w-[400px]">
               {user && (
                 <NavigationMenuLink asChild>
                   <Link
                     to="/"
                     className={cn(
-                      "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
-                      isActive('/') && "bg-accent text-accent-foreground"
+                      "block select-none space-y-1 rounded-xl p-3 leading-none no-underline outline-none transition-all duration-300 hover:bg-[#00ADB5]/10 dark:hover:bg-[#00ADB5]/20 focus:bg-[#00ADB5]/10 dark:focus:bg-[#00ADB5]/20 hover:shadow-lg",
+                      isActive('/') && "bg-[#00ADB5]/20 dark:bg-[#00ADB5]/30 text-[#00ADB5] shadow-lg"
                     )}
                   >
-                    <div className="text-sm font-medium leading-none flex items-center">
+                    <div className="text-sm font-medium leading-none flex items-center text-[#222831] dark:text-[#EEEEEE]">
                       <MessageCircle className="w-4 h-4 mr-2" />
                       Community Feed
                     </div>
-                    <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                    <p className="line-clamp-2 text-sm leading-snug text-[#393E46] dark:text-[#EEEEEE]/70">
                       Se de senaste insikterna från personer du följer
                     </p>
                   </Link>
@@ -47,15 +47,15 @@ const MainNavigation = () => {
                 <Link
                   to="/stock-cases"
                   className={cn(
-                    "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
-                    isActive('/stock-cases') && "bg-accent text-accent-foreground"
+                    "block select-none space-y-1 rounded-xl p-3 leading-none no-underline outline-none transition-all duration-300 hover:bg-[#00ADB5]/10 dark:hover:bg-[#00ADB5]/20 focus:bg-[#00ADB5]/10 dark:focus:bg-[#00ADB5]/20 hover:shadow-lg",
+                    isActive('/stock-cases') && "bg-[#00ADB5]/20 dark:bg-[#00ADB5]/30 text-[#00ADB5] shadow-lg"
                   )}
                 >
-                  <div className="text-sm font-medium leading-none flex items-center">
+                  <div className="text-sm font-medium leading-none flex items-center text-[#222831] dark:text-[#EEEEEE]">
                     <TrendingUp className="w-4 h-4 mr-2" />
                     Browse Cases
                   </div>
-                  <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                  <p className="line-clamp-2 text-sm leading-snug text-[#393E46] dark:text-[#EEEEEE]/70">
                     Explore curated investment opportunities
                   </p>
                 </Link>
@@ -65,15 +65,15 @@ const MainNavigation = () => {
                   <Link
                     to="/watchlist"
                     className={cn(
-                      "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
-                      isActive('/watchlist') && "bg-accent text-accent-foreground"
+                      "block select-none space-y-1 rounded-xl p-3 leading-none no-underline outline-none transition-all duration-300 hover:bg-[#00ADB5]/10 dark:hover:bg-[#00ADB5]/20 focus:bg-[#00ADB5]/10 dark:focus:bg-[#00ADB5]/20 hover:shadow-lg",
+                      isActive('/watchlist') && "bg-[#00ADB5]/20 dark:bg-[#00ADB5]/30 text-[#00ADB5] shadow-lg"
                     )}
                   >
-                    <div className="text-sm font-medium leading-none flex items-center">
+                    <div className="text-sm font-medium leading-none flex items-center text-[#222831] dark:text-[#EEEEEE]">
                       <Heart className="w-4 h-4 mr-2" />
                       Watchlist
                     </div>
-                    <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                    <p className="line-clamp-2 text-sm leading-snug text-[#393E46] dark:text-[#EEEEEE]/70">
                       Track your followed stock cases
                     </p>
                   </Link>
@@ -83,15 +83,15 @@ const MainNavigation = () => {
                 <Link
                   to="/learning"
                   className={cn(
-                    "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
-                    isActive('/learning') && "bg-accent text-accent-foreground"
+                    "block select-none space-y-1 rounded-xl p-3 leading-none no-underline outline-none transition-all duration-300 hover:bg-[#00ADB5]/10 dark:hover:bg-[#00ADB5]/20 focus:bg-[#00ADB5]/10 dark:focus:bg-[#00ADB5]/20 hover:shadow-lg",
+                    isActive('/learning') && "bg-[#00ADB5]/20 dark:bg-[#00ADB5]/30 text-[#00ADB5] shadow-lg"
                   )}
                 >
-                  <div className="text-sm font-medium leading-none flex items-center">
+                  <div className="text-sm font-medium leading-none flex items-center text-[#222831] dark:text-[#EEEEEE]">
                     <BookOpen className="w-4 h-4 mr-2" />
                     Learning Center
                   </div>
-                  <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                  <p className="line-clamp-2 text-sm leading-snug text-[#393E46] dark:text-[#EEEEEE]/70">
                     Interactive quizzes and educational content
                   </p>
                 </Link>
@@ -107,8 +107,8 @@ const MainNavigation = () => {
               <Link
                 to="/portfolio-implementation"
                 className={cn(
-                  "h-10 px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 inline-flex items-center rounded-md",
-                  (isActive('/portfolio-implementation') || isActive('/portfolio-advisor')) && "bg-accent text-accent-foreground"
+                  "h-10 px-4 py-2 text-sm font-medium transition-all duration-300 hover:bg-[#00ADB5]/10 dark:hover:bg-[#00ADB5]/20 focus:bg-[#00ADB5]/10 dark:focus:bg-[#00ADB5]/20 focus:outline-none disabled:pointer-events-none disabled:opacity-50 inline-flex items-center rounded-xl text-[#222831] dark:text-[#EEEEEE] backdrop-blur-sm",
+                  (isActive('/portfolio-implementation') || isActive('/portfolio-advisor')) && "bg-[#00ADB5]/20 dark:bg-[#00ADB5]/30 text-[#00ADB5] shadow-lg"
                 )}
               >
                 <Brain className="w-4 h-4 mr-2" />
