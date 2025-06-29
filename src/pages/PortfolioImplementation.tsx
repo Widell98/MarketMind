@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -105,13 +106,13 @@ const PortfolioImplementation = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #555879 0%, #98A1BC 50%, #DED3C4 100%)' }}>
-          <div className="text-center p-8">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl" style={{ background: 'linear-gradient(135deg, #555879, #98A1BC)' }}>
-              <div className="w-8 h-8 border-4 border-[#F4EBD3] border-t-transparent rounded-full animate-spin"></div>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-slate-950 dark:via-slate-800 dark:to-slate-950">
+          <div className="text-center p-8 bg-white/10 dark:bg-slate-800/30 backdrop-blur-lg border border-white/20 dark:border-slate-700/50 rounded-3xl shadow-2xl">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 bg-gradient-to-br from-cyan-500 to-teal-600 shadow-2xl">
+              <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
             </div>
-            <h2 className="text-xl font-semibold mb-2" style={{ color: '#555879' }}>Laddar din portfölj</h2>
-            <p style={{ color: '#98A1BC' }}>Hämtar dina investeringsdata...</p>
+            <h2 className="text-xl font-semibold mb-2 text-slate-800 dark:text-slate-100">Laddar din portfölj</h2>
+            <p className="text-slate-600 dark:text-slate-300">Hämtar dina investeringsdata...</p>
           </div>
         </div>
       </Layout>
@@ -122,16 +123,16 @@ const PortfolioImplementation = () => {
   if (showOnboarding || !activePortfolio) {
     return (
       <Layout>
-        <div className="min-h-screen py-8 px-4" style={{ background: 'linear-gradient(135deg, #555879 0%, #98A1BC 30%, #DED3C4 70%, #F4EBD3 100%)' }}>
+        <div className="min-h-screen py-8 px-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-slate-950 dark:via-slate-700 dark:to-slate-950">
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-8">
-              <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl transform rotate-3" style={{ background: 'linear-gradient(135deg, #555879, #98A1BC)' }}>
-                <Brain className="w-10 h-10 text-[#F4EBD3]" />
+              <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 bg-gradient-to-br from-cyan-500 to-teal-600 shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                <Brain className="w-10 h-10 text-white" />
               </div>
-              <h1 className="text-3xl lg:text-4xl font-bold mb-4" style={{ color: '#555879' }}>
+              <h1 className="text-3xl lg:text-4xl font-bold mb-4 text-white">
                 Välkommen till AI Portfolio
               </h1>
-              <p className="text-lg max-w-2xl mx-auto" style={{ color: '#98A1BC' }}>
+              <p className="text-lg max-w-2xl mx-auto text-slate-300">
                 Låt oss skapa din personliga investeringsstrategi genom en kort konversation
               </p>
             </div>
@@ -145,37 +146,37 @@ const PortfolioImplementation = () => {
   // Show portfolio implementation page with tabs
   return (
     <Layout>
-      <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #555879 0%, #98A1BC 25%, #DED3C4 60%, #F4EBD3 100%)' }}>
-        <div className="container mx-auto px-4 py-8 max-w-[1600px]">
-          {/* Artistic Header */}
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-900 dark:via-slate-800 dark:to-slate-950">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-[1600px]">
+          {/* Modern Header */}
           <div className="mb-8">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-3xl flex items-center justify-center shadow-2xl transform -rotate-6 hover:rotate-0 transition-transform duration-300" style={{ background: 'linear-gradient(135deg, #555879, #98A1BC)' }}>
-                    <Brain className="w-8 h-8 text-[#F4EBD3]" />
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-gradient-to-br from-cyan-500 to-teal-600 shadow-xl transform -rotate-6 hover:rotate-0 transition-transform duration-300">
+                    <Brain className="w-8 h-8 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-4xl xl:text-5xl font-bold mb-2" style={{ color: '#555879' }}>
+                    <h1 className="text-3xl sm:text-4xl xl:text-5xl font-bold mb-2 bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
                       AI Portfolio Hub
                     </h1>
-                    <p className="text-xl" style={{ color: '#98A1BC' }}>
+                    <p className="text-lg sm:text-xl text-slate-600 dark:text-slate-300">
                       Intelligenta investeringsinsikter för din framgång
                     </p>
                   </div>
                 </div>
                 
                 <div className="flex flex-wrap gap-3">
-                  <Badge className="px-4 py-2 text-sm font-medium shadow-lg border-0 text-[#F4EBD3]" style={{ background: 'linear-gradient(135deg, #555879, #98A1BC)' }}>
+                  <Badge className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-cyan-500 to-teal-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200">
                     <Brain className="w-4 h-4 mr-2" />
                     AI-Optimerad
                   </Badge>
-                  <Badge className="px-4 py-2 text-sm font-medium shadow-lg border-0 text-[#555879]" style={{ background: 'linear-gradient(135deg, #DED3C4, #F4EBD3)' }}>
+                  <Badge className="px-4 py-2 text-sm font-medium bg-slate-800 dark:bg-slate-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200">
                     <Activity className="w-4 h-4 mr-2" />
                     Realtidsanalys
                   </Badge>
                   {activePortfolio && (
-                    <Badge className="px-4 py-2 text-sm font-medium shadow-lg border-0 text-[#F4EBD3]" style={{ background: 'linear-gradient(135deg, #98A1BC, #555879)' }}>
+                    <Badge className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-slate-700 to-slate-800 dark:from-slate-600 dark:to-slate-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200">
                       <Target className="w-4 h-4 mr-2" />
                       Aktiv sedan {new Date(activePortfolio.created_at).toLocaleDateString('sv-SE')}
                     </Badge>
@@ -186,12 +187,7 @@ const PortfolioImplementation = () => {
               <Button
                 variant="outline"
                 onClick={handleUpdateProfile}
-                className="backdrop-blur-sm border shadow-lg transition-all duration-200 px-6 py-3 hover:shadow-xl"
-                style={{ 
-                  backgroundColor: 'rgba(244, 235, 211, 0.9)',
-                  borderColor: '#DED3C4',
-                  color: '#555879'
-                }}
+                className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 shadow-lg transition-all duration-200 px-6 py-3 hover:shadow-xl hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
               >
                 <Settings className="w-5 h-5 mr-2" />
                 Uppdatera Profil
@@ -200,74 +196,65 @@ const PortfolioImplementation = () => {
           </div>
 
           <Tabs defaultValue="chat" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-8 backdrop-blur-sm border shadow-lg rounded-2xl p-1" style={{ backgroundColor: 'rgba(244, 235, 211, 0.9)', borderColor: '#DED3C4' }}>
+            <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-8 bg-white/60 dark:bg-slate-800/60 backdrop-blur-lg border border-slate-200 dark:border-slate-700 shadow-lg rounded-2xl p-1">
               <TabsTrigger 
                 value="chat" 
                 data-value="chat" 
-                className="flex items-center gap-3 rounded-xl py-3 px-4 font-medium transition-all duration-200 data-[state=active]:shadow-lg text-[#98A1BC] data-[state=active]:text-[#F4EBD3]"
-                style={{
-                  background: 'transparent'
-                }}
+                className="flex items-center gap-3 rounded-xl py-3 px-4 font-medium transition-all duration-200 text-slate-600 dark:text-slate-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg"
               >
                 <MessageSquare className="w-5 h-5" />
-                AI-Assistent
+                <span className="hidden sm:inline">AI-Assistent</span>
+                <span className="sm:hidden">AI</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="overview" 
-                className="flex items-center gap-3 rounded-xl py-3 px-4 font-medium transition-all duration-200 data-[state=active]:shadow-lg text-[#98A1BC] data-[state=active]:text-[#F4EBD3]"
-                style={{
-                  background: 'transparent'
-                }}
+                className="flex items-center gap-3 rounded-xl py-3 px-4 font-medium transition-all duration-200 text-slate-600 dark:text-slate-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg"
               >
                 <BarChart3 className="w-5 h-5" />
-                Portföljöversikt
+                <span className="hidden sm:inline">Portföljöversikt</span>
+                <span className="sm:hidden">Översikt</span>
               </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="chat" className="space-y-8">
-              {/* Artistic Example Prompts */}
-              <Card className="backdrop-blur-sm border shadow-2xl rounded-3xl overflow-hidden transform hover:scale-[1.02] transition-transform duration-300" style={{ backgroundColor: 'rgba(244, 235, 211, 0.95)', borderColor: '#DED3C4' }}>
-                <CardHeader className="border-b pb-6" style={{ backgroundColor: 'rgba(222, 211, 196, 0.5)', borderColor: '#DED3C4' }}>
+            <TabsContent value="chat" className="space-y-6 lg:space-y-8">
+              {/* Modern Example Prompts */}
+              <Card className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg border border-slate-200 dark:border-slate-700 shadow-2xl rounded-3xl overflow-hidden transform hover:scale-[1.01] transition-transform duration-300">
+                <CardHeader className="border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 pb-6">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transform rotate-12 hover:rotate-0 transition-transform duration-300" style={{ background: 'linear-gradient(135deg, #555879, #98A1BC)' }}>
-                      <Lightbulb className="w-6 h-6 text-[#F4EBD3]" />
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gradient-to-br from-cyan-500 to-teal-600 shadow-lg transform rotate-12 hover:rotate-0 transition-transform duration-300">
+                      <Lightbulb className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <CardTitle className="text-2xl font-bold" style={{ color: '#555879' }}>
+                      <CardTitle className="text-2xl font-bold text-slate-800 dark:text-slate-100">
                         Kom igång med AI-assistenten
                       </CardTitle>
-                      <CardDescription className="text-lg mt-1" style={{ color: '#98A1BC' }}>
+                      <CardDescription className="text-lg mt-1 text-slate-600 dark:text-slate-300">
                         Välj ett förslag nedan eller skriv din egen fråga
                       </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="p-8">
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <CardContent className="p-6 lg:p-8">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
                     {examplePrompts.map((example, index) => (
                       <Button
                         key={index}
                         variant="outline"
-                        className="h-auto p-8 text-left justify-start transition-all duration-300 group rounded-2xl backdrop-blur-sm shadow-lg hover:shadow-2xl hover:scale-105 border"
-                        style={{ 
-                          backgroundColor: 'rgba(244, 235, 211, 0.8)',
-                          borderColor: '#DED3C4',
-                          color: '#555879'
-                        }}
+                        className="h-auto p-6 lg:p-8 text-left justify-start transition-all duration-300 group rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm shadow-lg hover:shadow-2xl hover:scale-105 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800"
                         onClick={() => handleExamplePrompt(example.prompt)}
                       >
-                        <div className="flex items-start gap-6 w-full">
-                          <div className="w-14 h-14 rounded-3xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:shadow-xl transition-all duration-300 text-[#F4EBD3] transform group-hover:rotate-12" style={{ background: 'linear-gradient(135deg, #555879, #98A1BC)' }}>
+                        <div className="flex items-start gap-4 lg:gap-6 w-full">
+                          <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl lg:rounded-3xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-cyan-500 to-teal-600 shadow-lg group-hover:shadow-xl transition-all duration-300 text-white transform group-hover:rotate-12">
                             {example.icon}
                           </div>
                           <div className="flex-1 min-w-0 space-y-2">
-                            <div className="font-bold text-lg" style={{ color: '#555879' }}>
+                            <div className="font-bold text-base lg:text-lg text-slate-800 dark:text-slate-100">
                               {example.title}
                             </div>
-                            <div className="text-sm leading-relaxed" style={{ color: '#98A1BC' }}>
+                            <div className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
                               {example.description}
                             </div>
-                            <div className="text-xs italic" style={{ color: '#98A1BC' }}>
+                            <div className="text-xs italic text-slate-500 dark:text-slate-400 line-clamp-2">
                               "{example.prompt}"
                             </div>
                           </div>
@@ -278,14 +265,14 @@ const PortfolioImplementation = () => {
                 </CardContent>
               </Card>
 
-              {/* AI Chat - Artistic styling */}
-              <div className="backdrop-blur-sm rounded-3xl shadow-2xl border overflow-hidden transform hover:scale-[1.01] transition-transform duration-300" style={{ backgroundColor: 'rgba(244, 235, 211, 0.95)', borderColor: '#DED3C4' }}>
+              {/* AI Chat - Modern styling */}
+              <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden transform hover:scale-[1.005] transition-transform duration-300">
                 <AIChat portfolioId={activePortfolio?.id} />
               </div>
             </TabsContent>
             
             <TabsContent value="overview">
-              <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+              <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 lg:gap-8">
                 <div className="xl:col-span-3">
                   <PortfolioOverview 
                     portfolio={activePortfolio}
@@ -301,13 +288,6 @@ const PortfolioImplementation = () => {
           </Tabs>
         </div>
       </div>
-
-      <style jsx>{`
-        [data-state=active] {
-          background: linear-gradient(135deg, #555879, #98A1BC) !important;
-          color: #F4EBD3 !important;
-        }
-      `}</style>
     </Layout>
   );
 };
