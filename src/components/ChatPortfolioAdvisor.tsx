@@ -15,6 +15,8 @@ interface Message {
   type: 'bot' | 'user';
   content: string;
   timestamp: Date;
+  hasOptions?: boolean;
+  options?: Array<{ value: string; label: string }>;
 }
 
 interface ConversationData {
@@ -62,20 +64,31 @@ const ChatPortfolioAdvisor = () => {
       id: 'intro',
       question: 'Hej! Jag är din AI-portföljrådgivare. Är du ny inom investeringar eller har du erfarenhet?',
       key: 'isBeginnerInvestor',
-      processAnswer: (answer: string) => {
-        const lowerAnswer = answer.toLowerCase();
-        return lowerAnswer.includes('ny') || lowerAnswer.includes('nybörjare') || lowerAnswer.includes('börjar');
-      }
+      hasOptions: true,
+      options: [
+        { value: 'beginner', label: 'Ny inom investeringar' },
+        { value: 'experienced', label: 'Har erfarenhet av investeringar' }
+      ],
+      processAnswer: (answer: string) => answer === 'beginner'
     },
     {
       id: 'age',
-      question: 'Vilken åldersgrupp tillhör du? (18-25, 26-35, 36-45, 46-55, eller 56+)',
-      key: 'age'
+      question: 'Vilken åldersgrupp tillhör du?',
+      key: 'age',
+      hasOptions: true,
+      options: [
+        { value: '18-25', label: '18-25 år' },
+        { value: '26-35', label: '26-35 år' },
+        { value: '36-45', label: '36-45 år' },
+        { value: '46-55', label: '46-55 år' },
+        { value: '56+', label: '56+ år' }
+      ]
     },
     {
       id: 'interests',
       question: 'Vad intresserar dig mest? Detta hjälper mig föreslå relevanta investeringar. (t.ex. teknik, hälsa, miljö, bank, spel, fastigheter)',
       key: 'interests',
+      hasOptions: false,
       showIf: () => conversationData.isBeginnerInvestor === true,
       processAnswer: (answer: string) => answer.split(',').map(item => item.trim()).filter(item => item)
     },
@@ -83,67 +96,79 @@ const ChatPortfolioAdvisor = () => {
       id: 'companies',
       question: 'Vilka företag eller varumärken använder du ofta eller tycker om? (Du kan nämna flera)',
       key: 'companies',
+      hasOptions: false,
       showIf: () => conversationData.isBeginnerInvestor === true,
       processAnswer: (answer: string) => answer.split(',').map(item => item.trim()).filter(item => item)
     },
     {
       id: 'goal',
-      question: 'Vad är ditt huvudsakliga mål med investeringarna? (t.ex. pensionssparande, förmögenhetsuppbyggnad, regelbunden inkomst)',
-      key: 'investmentGoal'
+      question: 'Vad är ditt huvudsakliga mål med investeringarna?',
+      key: 'investmentGoal',
+      hasOptions: true,
+      options: [
+        { value: 'pension', label: 'Pensionssparande' },
+        { value: 'wealth', label: 'Förmögenhetsuppbyggnad' },
+        { value: 'income', label: 'Regelbunden inkomst' },
+        { value: 'growth', label: 'Kapital tillväxt' }
+      ]
     },
     {
       id: 'timeHorizon',
-      question: 'Hur lång tid tänker du investera pengarna? (kort sikt 1-3 år, medellång sikt 3-7 år, eller lång sikt 7+ år)',
+      question: 'Hur lång tid tänker du investera pengarna?',
       key: 'timeHorizon',
-      processAnswer: (answer: string) => {
-        const lowerAnswer = answer.toLowerCase();
-        if (lowerAnswer.includes('1-3') || lowerAnswer.includes('kort')) return 'short';
-        if (lowerAnswer.includes('3-7') || lowerAnswer.includes('medel')) return 'medium';
-        return 'long';
-      }
+      hasOptions: true,
+      options: [
+        { value: 'short', label: 'Kort sikt (1-3 år)' },
+        { value: 'medium', label: 'Medellång sikt (3-7 år)' },
+        { value: 'long', label: 'Lång sikt (7+ år)' }
+      ]
     },
     {
       id: 'risk',
-      question: 'Hur känner du inför risk i dina investeringar? (konservativ, balanserad, eller aggressiv)',
+      question: 'Hur känner du inför risk i dina investeringar?',
       key: 'riskTolerance',
-      processAnswer: (answer: string) => {
-        const lowerAnswer = answer.toLowerCase();
-        if (lowerAnswer.includes('konservativ') || lowerAnswer.includes('låg')) return 'conservative';
-        if (lowerAnswer.includes('balanserad') || lowerAnswer.includes('måttlig')) return 'balanced';
-        return 'aggressive';
-      }
+      hasOptions: true,
+      options: [
+        { value: 'conservative', label: 'Konservativ (låg risk)' },
+        { value: 'balanced', label: 'Balanserad (måttlig risk)' },
+        { value: 'aggressive', label: 'Aggressiv (hög risk)' }
+      ]
     },
     {
       id: 'monthlyAmount',
-      question: 'Ungefär hur mycket tänker du investera per månad? (i kronor)',
-      key: 'monthlyAmount'
+      question: 'Ungefär hur mycket tänker du investera per månad? (skriv summan i kronor)',
+      key: 'monthlyAmount',
+      hasOptions: false
     },
     {
       id: 'hasPortfolio',
       question: 'Har du redan några investeringar som du vill optimera?',
       key: 'hasCurrentPortfolio',
-      processAnswer: (answer: string) => {
-        const lowerAnswer = answer.toLowerCase();
-        return lowerAnswer.includes('ja') || lowerAnswer.includes('har');
-      }
+      hasOptions: true,
+      options: [
+        { value: 'yes', label: 'Ja, jag har befintliga investeringar' },
+        { value: 'no', label: 'Nej, jag börjar från början' }
+      ],
+      processAnswer: (answer: string) => answer === 'yes'
     },
     {
       id: 'portfolioHelp',
-      question: 'Hur vill du att jag hjälper dig? (börja enkelt, skapa diversifierad portfölj, fokusera på tillväxt, eller prioritera utdelning)',
+      question: 'Hur vill du att jag hjälper dig?',
       key: 'portfolioHelp',
+      hasOptions: true,
       showIf: () => conversationData.hasCurrentPortfolio === false && conversationData.isBeginnerInvestor === true,
-      processAnswer: (answer: string) => {
-        const lowerAnswer = answer.toLowerCase();
-        if (lowerAnswer.includes('enkelt')) return 'simple_start';
-        if (lowerAnswer.includes('diversifierad')) return 'diverse_portfolio';
-        if (lowerAnswer.includes('tillväxt')) return 'growth_focused';
-        return 'dividend_income';
-      }
+      options: [
+        { value: 'simple_start', label: 'Hjälp mig börja enkelt' },
+        { value: 'diverse_portfolio', label: 'Skapa diversifierad portfölj' },
+        { value: 'growth_focused', label: 'Fokusera på tillväxt' },
+        { value: 'dividend_income', label: 'Prioritera utdelning' }
+      ]
     },
     {
       id: 'portfolioSize',
-      question: 'Ungefär hur stor är din nuvarande portfölj? (i kronor)',
+      question: 'Ungefär hur stor är din nuvarande portfölj? (skriv summan i kronor)',
       key: 'portfolioSize',
+      hasOptions: false,
       showIf: () => conversationData.isBeginnerInvestor === false,
       processAnswer: (answer: string) => {
         const amount = parseInt(answer.replace(/[^\d]/g, ''));
@@ -155,16 +180,16 @@ const ChatPortfolioAdvisor = () => {
     },
     {
       id: 'rebalancing',
-      question: 'Hur ofta vill du justera din portfölj? (månadsvis, kvartalsvis, årligen, eller sällan)',
+      question: 'Hur ofta vill du justera din portfölj?',
       key: 'rebalancingFrequency',
+      hasOptions: true,
       showIf: () => conversationData.isBeginnerInvestor === false,
-      processAnswer: (answer: string) => {
-        const lowerAnswer = answer.toLowerCase();
-        if (lowerAnswer.includes('månad')) return 'monthly';
-        if (lowerAnswer.includes('kvartal')) return 'quarterly';
-        if (lowerAnswer.includes('år')) return 'yearly';
-        return 'rarely';
-      }
+      options: [
+        { value: 'monthly', label: 'Månadsvis' },
+        { value: 'quarterly', label: 'Kvartalsvis' },
+        { value: 'yearly', label: 'Årligen' },
+        { value: 'rarely', label: 'Sällan' }
+      ]
     }
   ];
 
@@ -180,17 +205,19 @@ const ChatPortfolioAdvisor = () => {
     // Start conversation
     if (messages.length === 0) {
       const firstQuestion = questions[0];
-      addBotMessage(firstQuestion.question);
+      addBotMessage(firstQuestion.question, firstQuestion.hasOptions, firstQuestion.options);
       setWaitingForAnswer(true);
     }
   }, []);
 
-  const addBotMessage = (content: string) => {
+  const addBotMessage = (content: string, hasOptions: boolean = false, options?: Array<{ value: string; label: string }>) => {
     const message: Message = {
       id: Date.now().toString(),
       type: 'bot',
       content,
-      timestamp: new Date()
+      timestamp: new Date(),
+      hasOptions,
+      options
     };
     setMessages(prev => [...prev, message]);
   };
@@ -220,12 +247,21 @@ const ChatPortfolioAdvisor = () => {
   const handleAnswer = (answer: string) => {
     if (!waitingForAnswer || isComplete) return;
 
-    addUserMessage(answer);
-    setWaitingForAnswer(false);
-    
     const currentQuestion = getCurrentQuestion();
     if (!currentQuestion) return;
 
+    // Find the label for the answer if it has options
+    let displayAnswer = answer;
+    if (currentQuestion.hasOptions && currentQuestion.options) {
+      const option = currentQuestion.options.find(opt => opt.value === answer);
+      if (option) {
+        displayAnswer = option.label;
+      }
+    }
+
+    addUserMessage(displayAnswer);
+    setWaitingForAnswer(false);
+    
     // Process the answer
     let processedAnswer: any = answer;
     if (currentQuestion.processAnswer) {
@@ -265,7 +301,7 @@ const ChatPortfolioAdvisor = () => {
       const nextQuestion = questions[nextStep];
       
       setTimeout(() => {
-        addBotMessage(nextQuestion.question);
+        addBotMessage(nextQuestion.question, nextQuestion.hasOptions, nextQuestion.options);
         setWaitingForAnswer(true);
       }, 500);
     }
@@ -362,6 +398,23 @@ const ChatPortfolioAdvisor = () => {
                     <div className="flex-1">
                       <div className="bg-blue-50 p-4 rounded-2xl rounded-tl-none">
                         <p className="text-gray-800 leading-relaxed">{message.content}</p>
+                        
+                        {/* Show predefined options if available */}
+                        {message.hasOptions && message.options && waitingForAnswer && (
+                          <div className="mt-3 space-y-2">
+                            {message.options.map((option) => (
+                              <Button
+                                key={option.value}
+                                variant="outline"
+                                size="sm"
+                                className="mr-2 mb-2 text-left justify-start"
+                                onClick={() => handleAnswer(option.value)}
+                              >
+                                {option.label}
+                              </Button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -424,22 +477,24 @@ const ChatPortfolioAdvisor = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Chat input */}
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <Input
-              value={currentInput}
-              onChange={(e) => setCurrentInput(e.target.value)}
-              placeholder={waitingForAnswer ? "Skriv ditt svar här..." : "Vänta på nästa fråga..."}
-              className="flex-1"
-              disabled={!waitingForAnswer || isComplete}
-            />
-            <Button 
-              type="submit" 
-              disabled={!currentInput.trim() || !waitingForAnswer || isComplete}
-            >
-              <Send className="w-4 h-4" />
-            </Button>
-          </form>
+          {/* Chat input - only show for open-ended questions */}
+          {waitingForAnswer && !isComplete && (
+            <form onSubmit={handleSubmit} className="flex gap-2">
+              <Input
+                value={currentInput}
+                onChange={(e) => setCurrentInput(e.target.value)}
+                placeholder="Skriv ditt svar här..."
+                className="flex-1"
+                disabled={isComplete}
+              />
+              <Button 
+                type="submit" 
+                disabled={!currentInput.trim() || isComplete}
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>
