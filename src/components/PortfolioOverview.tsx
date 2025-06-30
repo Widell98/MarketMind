@@ -91,6 +91,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   const aiRecommendations = portfolio?.recommended_stocks || [];
   
   // Combine database recommendations with portfolio recommendations
+  // Filter out recommendations that match existing actual holdings (by name or symbol)
   const allRecommendations = [
     ...recommendations,
     ...aiRecommendations.map((stock: any, index: number) => ({
@@ -102,7 +103,14 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       sector: stock.sector,
       currency: 'SEK'
     }))
-  ];
+  ].filter(recommendation => {
+    // Filter out recommendations that already exist as actual holdings
+    return !actualHoldings.some(holding => 
+      holding.name.toLowerCase() === recommendation.name.toLowerCase() ||
+      (holding.symbol && recommendation.symbol && 
+       holding.symbol.toLowerCase() === recommendation.symbol.toLowerCase())
+    );
+  });
 
   // Calculate portfolio exposure data
   const calculateExposureData = () => {
@@ -396,7 +404,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         title: "Innehav tillagt",
         description: `${holdingData.name} har lagts till i dina innehav.`,
       });
-      // Refresh the data to show the new holding
+      // Refresh the data to show the new holding and update recommendations
       refetch();
     }
   };
@@ -711,24 +719,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                   </AlertDialogContent>
                 </AlertDialog>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onQuickChat && onQuickChat("Varför rekommenderas just dessa aktier för min portfölj? Förklara logiken bakom valen.")}
-                className="flex items-center gap-2"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span className="hidden sm:inline">Förklara val</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onQuickChat && onQuickChat("Föreslå alternativa aktier som skulle passa min portfölj och riskprofil")}
-                className="flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Alternativ</span>
-              </Button>
             </div>
           </div>
         </CardHeader>
@@ -921,12 +911,12 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             <Button
               variant="outline"
               className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
-              onClick={() => handleExamplePrompt("Analysera alla AI-rekommendationer och förklara varför de passar min portfölj")}
+              onClick={() => handleExamplePrompt("Jämför AI-rekommendationerna med mina nuvarande innehav. Vad borde jag sälja?")}
             >
-              <Brain className="w-4 h-4 text-purple-600" />
+              <BarChart3 className="w-4 h-4 text-blue-600" />
               <div>
-                <div className="font-medium text-sm">Förklara AI-val</div>
-                <div className="text-xs text-muted-foreground">Motivering bakom rekommendationer</div>
+                <div className="font-medium text-sm">Portföljjämförelse</div>
+                <div className="text-xs text-muted-foreground">Nuvarande vs. rekommenderat</div>
               </div>
             </Button>
             
@@ -939,18 +929,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               <div>
                 <div className="font-medium text-sm">Köpordning</div>
                 <div className="text-xs text-muted-foreground">Prioritera investeringar</div>
-              </div>
-            </Button>
-            
-            <Button
-              variant="outline"
-              className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
-              onClick={() => handleExamplePrompt("Jämför AI-rekommendationerna med mina nuvarande innehav. Vad borde jag sälja?")}
-            >
-              <BarChart3 className="w-4 h-4 text-blue-600" />
-              <div>
-                <div className="font-medium text-sm">Portföljjämförelse</div>
-                <div className="text-xs text-muted-foreground">Nuvarande vs. rekommenderat</div>
               </div>
             </Button>
             
