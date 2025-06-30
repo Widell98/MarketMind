@@ -101,25 +101,11 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
     {
       id: 'companies',
       question: 'Vilka företag eller varumärken använder du ofta eller tycker om?',
-      type: 'multiple',
-      options: [
-        { value: 'Apple', label: 'Apple' },
-        { value: 'Microsoft', label: 'Microsoft' },
-        { value: 'Tesla', label: 'Tesla' },
-        { value: 'Amazon', label: 'Amazon' },
-        { value: 'Google', label: 'Google/Alphabet' },
-        { value: 'Netflix', label: 'Netflix' },
-        { value: 'Spotify', label: 'Spotify' },
-        { value: 'H&M', label: 'H&M' },
-        { value: 'Volvo', label: 'Volvo' },
-        { value: 'Ericsson', label: 'Ericsson' },
-        { value: 'SEB', label: 'SEB' },
-        { value: 'Investor', label: 'Investor' }
-      ],
+      type: 'text',
       key: 'companies',
       showIf: () => conversationData.isBeginnerInvestor === true,
       allowTextInput: true,
-      textInputPrompt: 'Eller berätta om andra företag du gillar:'
+      textInputPrompt: 'Berätta om företag du gillar:'
     },
     {
       id: 'goal',
@@ -273,14 +259,20 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
   const handleTextSubmit = () => {
     if (!freeTextInput.trim()) return;
 
-    let processedValue = freeTextInput.trim();
+    let processedValue: any = freeTextInput.trim();
     
-    // For multiple choice questions, convert text to array
+    // For multiple choice questions, convert text to array and add to existing values
     if (currentQuestion.type === 'multiple') {
       const existingValues = conversationData[currentQuestion.key as keyof ConversationData] as string[] || [];
-      const textValues = processedValue.split(',').map(v => v.trim()).filter(v => v);
+      const textValues = processedValue.split(',').map((v: string) => v.trim()).filter((v: string) => v);
       processedValue = [...existingValues, ...textValues];
     }
+    // For text-type questions expecting arrays (like companies), convert to array
+    else if (currentQuestion.key === 'companies' || currentQuestion.key === 'interests') {
+      const textValues = processedValue.split(',').map((v: string) => v.trim()).filter((v: string) => v);
+      processedValue = textValues;
+    }
+    // For other questions, keep as string
 
     const updatedData = { ...conversationData, [currentQuestion.key]: processedValue };
     setConversationData(updatedData);
@@ -434,6 +426,70 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
                         </Button>
                       </div>
                     )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {currentQuestion.type === 'text' && (
+              <div className="space-y-2">
+                {!showTextInput ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowTextInput(true)}
+                    className="w-full justify-start text-left h-auto p-3"
+                  >
+                    <Type className="w-4 h-4 mr-2" />
+                    {currentQuestion.textInputPrompt || 'Skriv ditt svar...'}
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    <Label className="text-sm text-blue-600">
+                      {currentQuestion.textInputPrompt || 'Ditt svar:'}
+                    </Label>
+                    <div className="flex gap-2">
+                      <Textarea
+                        value={freeTextInput}
+                        onChange={(e) => setFreeTextInput(e.target.value)}
+                        placeholder="T.ex. Apple, Spotify, Tesla..."
+                        className="flex-1 min-h-[80px]"
+                      />
+                      <Button
+                        onClick={handleTextSubmit}
+                        disabled={!freeTextInput.trim()}
+                        size="sm"
+                      >
+                        Skicka
+                      </Button>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShowTextInput(false);
+                        setFreeTextInput('');
+                      }}
+                      className="text-gray-500"
+                    >
+                      Avbryt
+                    </Button>
+                  </div>
+                )}
+
+                {/* Show entered companies/interests */}
+                {conversationData[currentQuestion.key as keyof ConversationData] && 
+                 Array.isArray(conversationData[currentQuestion.key as keyof ConversationData]) && 
+                 (conversationData[currentQuestion.key as keyof ConversationData] as string[]).length > 0 && (
+                  <div className="mt-2 p-2 bg-blue-50 rounded-lg">
+                    <Label className="text-xs text-blue-600 font-medium">Dina val:</Label>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {(conversationData[currentQuestion.key as keyof ConversationData] as string[])
+                        .map((value, index) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            {value}
+                          </Badge>
+                        ))}
+                    </div>
                   </div>
                 )}
               </div>
