@@ -58,8 +58,8 @@ const ConversationalPortfolioAdvisor = () => {
   };
 
   const handleImplementStrategy = () => {
-    // Force a page reload to refresh the portfolio data
-    window.location.reload();
+    // Navigate to portfolio implementation page
+    navigate('/portfolio-implementation');
   };
 
   const formatAIResponse = (content: string) => {

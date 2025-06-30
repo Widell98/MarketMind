@@ -147,11 +147,6 @@ UPPDRAG FÖR NYBÖRJARE:
       prompt += `ERFAREN INVESTERARE - AVANCERAD PROFIL:
 - Portföljstorlek: ${data.portfolioSize || 'Ej specificerad'}
 - Rebalanseringsfrekvens: ${data.rebalancingFrequency || 'Ej specificerad'}
-- Market timing approach: ${data.marketTiming || 'Ej specificerad'}
-- Erfarenhet av komplexa strategier: ${data.complexStrategies?.join(', ') || 'Inga'}
-- Riskhantering: ${data.riskManagement || 'Ej specificerad'}
-- Geografisk exponering: ${data.globalExposure || 'Ej specificerad'}
-- Alternativa investeringar: ${data.alternativeInvestments?.join(', ') || 'Inga'}
 - Befintlig portfölj: ${data.hasCurrentPortfolio ? 'Ja' : 'Nej'}
 
 `;
@@ -170,8 +165,7 @@ UPPDRAG FÖR ERFAREN INVESTERARE:
 5. Diskutera tax-loss harvesting och andra skatteoptimerings strategier
 6. Analysera korrelationer och riskjusterad avkastning
 7. Föreslå hedge-strategier om relevant
-8. Inkludera alternativa tillgångsklasser om intresse finns
-9. Ge konkreta exit-strategier och rebalanseringsregler
+8. Ge konkreta exit-strategier och rebalanseringsregler
 
 `;
     }

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +25,11 @@ interface ConversationData {
   age?: string;
   experience?: string;
   sectors?: string[];
+  interests?: string[];
+  companies?: string[];
+  portfolioHelp?: string;
+  portfolioSize?: string;
+  rebalancingFrequency?: string;
 }
 
 interface ConversationalRiskAssessmentProps {
@@ -73,8 +77,46 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
       key: 'isBeginnerInvestor'
     },
     {
+      id: 'interests',
+      question: 'Vad intresserar dig mest i vardagen? (Detta hjälper mig föreslå relevanta investeringar)',
+      type: 'multiple',
+      options: [
+        { value: 'technology', label: 'Teknik och innovation' },
+        { value: 'healthcare', label: 'Hälsa och välmående' },
+        { value: 'environment', label: 'Miljö och hållbarhet' },
+        { value: 'finance', label: 'Bank och finans' },
+        { value: 'gaming', label: 'Spel och underhållning' },
+        { value: 'real_estate', label: 'Fastigheter' },
+        { value: 'consumer_goods', label: 'Konsumentprodukter' },
+        { value: 'automotive', label: 'Bilar och transport' }
+      ],
+      key: 'interests',
+      showIf: () => conversationData.isBeginnerInvestor === true
+    },
+    {
+      id: 'companies',
+      question: 'Vilka företag eller varumärken använder du ofta eller tycker om? (Du kan välja flera)',
+      type: 'multiple',
+      options: [
+        { value: 'Apple', label: 'Apple' },
+        { value: 'Microsoft', label: 'Microsoft' },
+        { value: 'Tesla', label: 'Tesla' },
+        { value: 'Amazon', label: 'Amazon' },
+        { value: 'Google', label: 'Google/Alphabet' },
+        { value: 'Netflix', label: 'Netflix' },
+        { value: 'Spotify', label: 'Spotify' },
+        { value: 'H&M', label: 'H&M' },
+        { value: 'Volvo', label: 'Volvo' },
+        { value: 'Ericsson', label: 'Ericsson' },
+        { value: 'SEB', label: 'SEB' },
+        { value: 'Investor', label: 'Investor' }
+      ],
+      key: 'companies',
+      showIf: () => conversationData.isBeginnerInvestor === true
+    },
+    {
       id: 'goal',
-      question: 'Perfekt! Vad är ditt huvudsakliga mål med investeringarna?',
+      question: 'Vad är ditt huvudsakliga mål med investeringarna?',
       type: 'chat',
       options: [
         { value: 'retirement', label: 'Pensionssparande' },
@@ -131,11 +173,50 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
       key: 'hasCurrentPortfolio'
     },
     {
+      id: 'portfolioHelp',
+      question: 'Hur vill du att jag hjälper dig med din nya portfölj?',
+      type: 'chat',
+      options: [
+        { value: 'simple_start', label: 'Börja enkelt med några få fonder' },
+        { value: 'diverse_portfolio', label: 'Skapa en diversifierad portfölj' },
+        { value: 'growth_focused', label: 'Fokusera på tillväxtbolag' },
+        { value: 'dividend_income', label: 'Prioritera utdelningsinkomst' }
+      ],
+      key: 'portfolioHelp',
+      showIf: () => conversationData.hasCurrentPortfolio === false && conversationData.isBeginnerInvestor === true
+    },
+    {
       id: 'currentHoldings',
-      question: 'Utmärkt! Kan du berätta vilka investeringar du har idag?',
+      question: 'Kan du berätta vilka investeringar du har idag?',
       type: 'holdings',
       key: 'currentHoldings',
       showIf: () => conversationData.hasCurrentPortfolio === true
+    },
+    {
+      id: 'portfolioSize',
+      question: 'Ungefär hur stor är din nuvarande portfölj?',
+      type: 'chat',
+      options: [
+        { value: 'small', label: 'Under 100 000 kr' },
+        { value: 'medium', label: '100 000 - 500 000 kr' },
+        { value: 'large', label: '500 000 - 1 miljon kr' },
+        { value: 'very_large', label: 'Över 1 miljon kr' }
+      ],
+      key: 'portfolioSize',
+      showIf: () => conversationData.isBeginnerInvestor === false
+    },
+    {
+      id: 'rebalancing',
+      question: 'Hur ofta vill du justera din portfölj?',
+      type: 'chat',
+      options: [
+        { value: 'monthly', label: 'Månadsvis' },
+        { value: 'quarterly', label: 'Kvartalsvis' },
+        { value: 'yearly', label: 'Årligen' },
+        { value: 'rarely', label: 'Sällan, bara vid stora förändringar' }
+      ],
+      key: 'rebalancingFrequency',
+      showIf: () => conversationData.isBeginnerInvestor === false
     },
     {
       id: 'age',
@@ -149,32 +230,6 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         { value: '56+', label: '56+ år' }
       ],
       key: 'age'
-    },
-    {
-      id: 'experience',
-      question: 'Hur skulle du beskriva din investeringserfarenhet?',
-      type: 'chat',
-      options: [
-        { value: 'beginner', label: 'Nybörjare' },
-        { value: 'intermediate', label: 'Medel' },
-        { value: 'advanced', label: 'Avancerad' }
-      ],
-      key: 'experience'
-    },
-    {
-      id: 'sectors',
-      question: 'Slutligen - vilka branscher intresserar dig mest? (Du kan välja flera)',
-      type: 'multiple',
-      options: [
-        { value: 'technology', label: 'Teknologi' },
-        { value: 'healthcare', label: 'Hälsovård' },
-        { value: 'finance', label: 'Finans' },
-        { value: 'energy', label: 'Energi' },
-        { value: 'consumer', label: 'Konsument' },
-        { value: 'industrial', label: 'Industri' },
-        { value: 'real_estate', label: 'Fastigheter' }
-      ],
-      key: 'sectors'
     }
   ];
 
@@ -299,17 +354,17 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
                   <Button
                     key={option.value}
                     variant={
-                      (conversationData.sectors || []).includes(option.value)
+                      (conversationData[currentQuestion.key as keyof ConversationData] as string[] || []).includes(option.value)
                         ? "default" 
                         : "outline"
                     }
                     className="w-full justify-start text-left h-auto p-3"
                     onClick={() => {
-                      const currentSectors = conversationData.sectors || [];
-                      const newSectors = currentSectors.includes(option.value)
-                        ? currentSectors.filter(s => s !== option.value)
-                        : [...currentSectors, option.value];
-                      handleAnswer(newSectors);
+                      const currentValues = conversationData[currentQuestion.key as keyof ConversationData] as string[] || [];
+                      const newValues = currentValues.includes(option.value)
+                        ? currentValues.filter(s => s !== option.value)
+                        : [...currentValues, option.value];
+                      handleAnswer(newValues);
                     }}
                   >
                     {option.label}
