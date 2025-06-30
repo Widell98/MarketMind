@@ -154,23 +154,17 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     const sessionName = stockName;
     const message = `Vad gör ${stockName}${stockSymbol ? ` (${stockSymbol})` : ''} för något? Berätta om företaget, vad de arbetar med, och varför det skulle vara en bra investering.`;
     
-    // Navigate to portfolio-implementation and activate chat tab
-    navigate('/portfolio-implementation');
+    // Activate the chat tab
+    const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
+    if (chatTab) {
+      chatTab.click();
+    }
     
-    // Wait for navigation to complete, then activate chat tab and prepare message
-    setTimeout(() => {
-      // Activate the chat tab
-      const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
-      if (chatTab) {
-        chatTab.click();
-      }
-      
-      // Dispatch event to create new session with the message
-      const event = new CustomEvent('createStockChat', {
-        detail: { sessionName, message }
-      });
-      window.dispatchEvent(event);
-    }, 100);
+    // Dispatch event to create new session with the message
+    const event = new CustomEvent('createStockChat', {
+      detail: { sessionName, message }
+    });
+    window.dispatchEvent(event);
   };
 
   const toggleStockExpansion = (index: number) => {
