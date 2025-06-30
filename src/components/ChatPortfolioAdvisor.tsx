@@ -1,10 +1,9 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Send, User, Bot, CheckCircle, TrendingUp, Plus, Trash2 } from 'lucide-react';
+import { Brain, Send, User, Bot, CheckCircle, TrendingUp, Plus, Trash2, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationalPortfolio } from '@/hooks/useConversationalPortfolio';
 import { usePortfolio } from '@/hooks/usePortfolio';
@@ -260,9 +259,9 @@ const ChatPortfolioAdvisor = () => {
   };
 
   const submitHoldings = () => {
+    // More flexible validation - symbol is optional but encouraged
     const validHoldings = holdings.filter(h => 
       h.name && h.name.trim() !== '' && 
-      h.symbol && h.symbol.trim() !== '' && 
       h.quantity > 0 && 
       h.purchasePrice > 0
     );
@@ -273,14 +272,15 @@ const ChatPortfolioAdvisor = () => {
     if (validHoldings.length === 0) {
       toast({
         title: "Inga innehav angivna",
-        description: "Du måste ange minst ett innehav för att fortsätta.",
+        description: "Du måste ange minst ett innehav med namn, antal och köppris för att fortsätta.",
         variant: "destructive",
       });
       return;
     }
 
+    // Show confirmation of what was added
     const holdingsText = validHoldings.map(h => 
-      `${h.name} (${h.symbol}): ${h.quantity} st à ${h.purchasePrice} SEK`
+      `${h.name}${h.symbol && h.symbol.trim() ? ` (${h.symbol})` : ''}: ${h.quantity} st à ${h.purchasePrice} SEK`
     ).join(', ');
 
     addUserMessage(`Mina nuvarande innehav: ${holdingsText}`);
@@ -295,8 +295,13 @@ const ChatPortfolioAdvisor = () => {
     setShowHoldingsInput(false);
     setWaitingForAnswer(false);
     
+    // Show confirmation message
     setTimeout(() => {
-      moveToNextQuestion();
+      addBotMessage(`Perfekt! Jag har registrerat dina ${validHoldings.length} innehav. Nu kan jag analysera din befintliga portfölj och ge bättre rekommendationer.`);
+      
+      setTimeout(() => {
+        moveToNextQuestion();
+      }, 1500);
     }, 1000);
   };
 
@@ -549,14 +554,22 @@ const ChatPortfolioAdvisor = () => {
                       {/* Holdings Input Form */}
                       {message.hasHoldingsInput && showHoldingsInput && (
                         <div className="mt-4 space-y-4">
+                          <div className="text-sm text-muted-foreground mb-3">
+                            <p className="flex items-center gap-2">
+                              <Check className="w-4 h-4 text-green-600" />
+                              Fyll i dina innehav nedan. Symbol/ticker är valfritt men rekommenderat för bättre analys.
+                            </p>
+                          </div>
+                          
                           <div className="max-h-60 overflow-y-auto space-y-3">
                             {holdings.map((holding, index) => (
                               <div key={holding.id} className="grid grid-cols-1 sm:grid-cols-5 gap-2 p-3 bg-background/50 rounded-lg border">
                                 <Input
-                                  placeholder="Företagsnamn"
+                                  placeholder="Företagsnamn *"
                                   value={holding.name}
                                   onChange={(e) => updateHolding(holding.id, 'name', e.target.value)}
                                   className="text-xs sm:text-sm"
+                                  required
                                 />
                                 <Input
                                   placeholder="Symbol (t.ex. AAPL)"
@@ -566,29 +579,53 @@ const ChatPortfolioAdvisor = () => {
                                 />
                                 <Input
                                   type="number"
-                                  placeholder="Antal"
+                                  placeholder="Antal *"
                                   value={holding.quantity || ''}
                                   onChange={(e) => updateHolding(holding.id, 'quantity', parseInt(e.target.value) || 0)}
                                   className="text-xs sm:text-sm"
+                                  required
+                                  min="1"
                                 />
                                 <Input
                                   type="number"
-                                  placeholder="Köppris (SEK)"
+                                  placeholder="Köppris (SEK) *"
                                   value={holding.purchasePrice || ''}
                                   onChange={(e) => updateHolding(holding.id, 'purchasePrice', parseFloat(e.target.value) || 0)}
                                   className="text-xs sm:text-sm"
+                                  required
+                                  min="0"
+                                  step="0.01"
                                 />
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   onClick={() => removeHolding(holding.id)}
                                   className="h-8 sm:h-9 px-2 text-red-600 hover:text-red-700"
+                                  disabled={holdings.length === 1}
                                 >
                                   <Trash2 className="w-3 h-3" />
                                 </Button>
                               </div>
                             ))}
                           </div>
+                          
+                          {/* Holdings Summary */}
+                          {holdings.some(h => h.name && h.quantity > 0 && h.purchasePrice > 0) && (
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                              <p className="text-sm font-medium text-green-800 mb-2">Innehav att registrera:</p>
+                              <div className="space-y-1">
+                                {holdings
+                                  .filter(h => h.name && h.name.trim() !== '' && h.quantity > 0 && h.purchasePrice > 0)
+                                  .map(h => (
+                                    <div key={h.id} className="text-xs text-green-700 flex items-center gap-1">
+                                      <Check className="w-3 h-3" />
+                                      {h.name}{h.symbol && h.symbol.trim() ? ` (${h.symbol})` : ''}: {h.quantity} st à {h.purchasePrice} SEK
+                                    </div>
+                                  ))
+                                }
+                              </div>
+                            </div>
+                          )}
                           
                           <div className="flex gap-2 flex-wrap">
                             <Button
