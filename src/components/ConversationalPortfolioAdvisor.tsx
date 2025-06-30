@@ -175,7 +175,7 @@ const ConversationalPortfolioAdvisor = () => {
 
       console.log('Risk profile created:', riskProfile);
 
-      // Create portfolio with AI recommendations - cast as Json type
+      // Create portfolio with AI recommendations
       const portfolioData = {
         user_id: user.id,
         risk_profile_id: riskProfile.id,
@@ -184,8 +184,8 @@ const ConversationalPortfolioAdvisor = () => {
           stocks: 70,
           bonds: 20,
           alternatives: 10
-        } as any,
-        recommended_stocks: conversationData.aiRecommendations as any,
+        },
+        recommended_stocks: conversationData.aiRecommendations,
         total_value: parseFloat(conversationData.monthlyAmount) * 12 || 60000,
         expected_return: 7.5,
         risk_score: getRiskScore(conversationData.riskTolerance),
@@ -213,7 +213,7 @@ const ConversationalPortfolioAdvisor = () => {
             holding_type: 'recommendation' as const,
             name: recommendation.name || recommendation.symbol,
             symbol: recommendation.symbol,
-            purchase_price: recommendation.targetPrice || 100,
+            purchase_price: recommendation.targetPrice || recommendation.price || 100,
             sector: recommendation.sector || 'Technology',
             market: recommendation.market || 'Swedish',
             currency: 'SEK'
