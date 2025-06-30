@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -832,7 +833,7 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
                   <div className="mt-2 p-2 bg-blue-50 rounded-lg">
                     <Label className="text-xs text-blue-600 font-medium">Ditt svar:</Label>
                     <div className="text-sm text-blue-800">
-                      {conversationData[currentQuestion.key as keyof ConversationData]} år
+                      {renderConversationValue(conversationData[currentQuestion.key as keyof ConversationData])} år
                     </div>
                   </div>
                 )}
