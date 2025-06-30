@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,19 @@ const SubscriptionCard: React.FC = () => {
       toast({
         title: "Fel",
         description: "Kunde inte starta uppgradering. Kontrollera att du är inloggad och försök igen.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOpenPortal = async () => {
+    try {
+      await openCustomerPortal();
+    } catch (error) {
+      console.error('Portal error:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte öppna kundportalen. Du kanske behöver ha en aktiv prenumeration först. Kontakta support om problemet kvarstår.",
         variant: "destructive",
       });
     }
@@ -140,7 +154,7 @@ const SubscriptionCard: React.FC = () => {
             )}
 
             <Button 
-              onClick={openCustomerPortal}
+              onClick={handleOpenPortal}
               variant="outline" 
               className="w-full"
             >
