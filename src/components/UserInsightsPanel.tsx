@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -63,7 +62,7 @@ const UserInsightsPanel = () => {
 
       if (data && data.insights_data) {
         // Cast the jsonb data to our expected type
-        const insightsData = data.insights_data as AIInsight[];
+        const insightsData = data.insights_data as unknown as AIInsight[];
         setInsights(insightsData);
         setLastUpdated(new Date(data.updated_at).toLocaleString('sv-SE'));
       } else {
