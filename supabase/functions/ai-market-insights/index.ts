@@ -91,43 +91,64 @@ async function generatePersonalizedInsights(userId: string, type: string) {
       portfolioValue: portfolio?.total_value || 0
     };
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
+   const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${openAIApiKey}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    model: 'gpt-4o',
+    messages: [
+      {
+        role: 'system',
+        content: `
+Du är en AI-specialist inom aktie- och portföljanalys. Generera ENDAST en ren JSON-array med 2–3 personliga marknadsinsikter enligt följande struktur:
+
+[
+  {
+    "id": "unik-insight-id",
+    "title": "Kort rubrik på svenska",
+    "content": "Koncis analys, max 40 ord",
+    "confidence_score": 0.0–1.0,
+    "insight_type": "macro" | "equity" | "sector" | "sentiment",
+    "key_factors": ["faktor1", "faktor2"]
+  }
+]
+
+Regler:
+- Inga rubriker, markdown eller extra text
+- Inget prat före eller efter – endast ren JSON
+- Allt ska vara på svenska
+- Kort, tydligt, strukturerat
+`
       },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: `Du är en personlig AI-investeringsrådgivare. Skapa personaliserade marknadsinsikter baserat på användarens profil och nuvarande innehav. Formatera som JSON array med objekt som innehåller: id, title, content, confidence_score (0-1), insight_type, key_factors (array).`
-          },
-          {
-            role: 'user',
-            content: `Generera personaliserade ${type} insikter för en användare med följande profil:
-            
-            Riskprofil: ${userContext.riskTolerance}
-            Investeringshorisont: ${userContext.investmentHorizon}
-            Sektorintressen: ${JSON.stringify(userContext.sectors)}
-            Nuvarande innehav: ${JSON.stringify(userContext.currentHoldings)}
-            Portföljvärde: ${userContext.portfolioValue} SEK
-            
-            Fokusera på:
-            - Personliga rekommendationer baserat på deras portfölj
-            - Riskanalys specifik för deras innehav
-            - Diversifieringsmöjligheter
-            - Sektorrotationsförslag
-            - Aktuella marknadstrender som påverkar deras investeringar
-            
-            Skapa 3-4 konkreta och genomförbara insikter på svenska.`
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 1500,
-      }),
-    });
+      {
+        role: 'user',
+        content: `
+Generera personliga ${type}-insikter för en användare med:
+
+- Riskprofil: ${userContext.riskTolerance}
+- Investeringshorisont: ${userContext.investmentHorizon}
+- Portföljvärde: ${userContext.portfolioValue} SEK
+- Sektorintressen: ${userContext.sectors.join(', ')}
+- Innehav:
+${userContext.currentHoldings.map(h => `  - ${h.symbol} (${h.sector}, ${h.value} SEK)`).join('\n')}
+
+Fokusera på:
+- Risker i innehaven
+- Möjligheter till bättre diversifiering
+- Sektorer att över- eller undervikta
+- Aktuella trender som påverkar innehaven
+
+Svara med endast JSON enligt systemprompt. Max 3 insikter.`
+      }
+    ],
+    temperature: 0.6,
+    max_tokens: 900,
+  }),
+});
+
 
     const data = await response.json();
     
@@ -169,42 +190,63 @@ async function generateGeneralInsights(type: string) {
         messages: [
           {
             role: 'system',
-            content: `Du är en expert marknadsanalytiker. Skapa aktuella marknadsinsikter baserat på verkliga förhållanden. Formatera som JSON array med objekt som innehåller: id, title, content, confidence_score (0-1), insight_type, key_factors (array).`
+            content: `
+Du är en professionell marknadsanalytiker.
+
+Generera endast en ren JSON-array med 3–4 aktuella marknadsinsikter enligt följande struktur:
+
+[
+  {
+    "id": "unik-insight-id",
+    "title": "Kort rubrik på svenska",
+    "content": "Koncis analys, max 40 ord",
+    "confidence_score": 0.0–1.0,
+    "insight_type": "macro" | "equity" | "sector" | "geopolitical" | "sentiment",
+    "key_factors": ["faktor1", "faktor2"]
+  }
+]
+
+Viktigt:
+- Inga markdown-symboler
+- Ingen text utanför JSON
+- Kort, konkret, aktuell analys på svenska
+            `.trim()
           },
           {
             role: 'user',
-            content: `Generera ${type} insikter för svenska och globala marknader. Fokusera på:
-            
-            - AI och teknologisektorns utveckling
-            - Centralbankspolitik (Fed, ECB, Riksbank)
-            - Geopolitiska risker och möjligheter
-            - Sektorrotation och värderingsnivåer
-            - Makroekonomiska trender
-            - Svenska marknadsspecifika faktorer
-            - ESG och hållbarhetstrend
-            
-            Skapa 4-5 insights med hög relevans för svenska investerare på svenska.`
+            content: `
+Skapa insikter inom området: ${type}.
+
+Fokusera på:
+- AI och tekniksektorns utveckling
+- Centralbanker (Fed, ECB, Riksbank)
+- Geopolitiska risker
+- Sektorrotation och värderingar
+- Makrotrender som påverkar svenska investerare
+- ESG och hållbarhet
+
+Endast 3–4 insikter. På svenska. Svara enbart med JSON-array enligt formatet ovan.
+            `.trim()
           }
         ],
-        temperature: 0.7,
-        max_tokens: 2000,
+        temperature: 0.6,
+        max_tokens: 900,
       }),
     });
 
     const data = await response.json();
-    
+
     if (!response.ok) {
       console.error('OpenAI API error:', data);
       return await generateAIMockInsights(type, false);
     }
 
-    const content = data.choices[0].message.content;
-    
+    const content = data.choices?.[0]?.message?.content || '';
     try {
       const insights = JSON.parse(content);
       return Array.isArray(insights) ? insights : await generateAIMockInsights(type, false);
     } catch (parseError) {
-      console.error('Error parsing general insights:', parseError);
+      console.error('Error parsing general insights JSON:', parseError, '\nGPT response:', content);
       return await generateAIMockInsights(type, false);
     }
   } catch (error) {
@@ -212,6 +254,7 @@ async function generateGeneralInsights(type: string) {
     return await generateAIMockInsights(type, false);
   }
 }
+
 
 async function generateAIMockInsights(type: string, isPersonalized: boolean) {
   if (!openAIApiKey) {
