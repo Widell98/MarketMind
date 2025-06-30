@@ -28,6 +28,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
+import { useRiskProfile } from '@/hooks/useRiskProfile';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface PortfolioOverviewProps {
   portfolio: any;
@@ -41,6 +46,9 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   onActionClick 
 }) => {
   const { holdings, loading } = useUserHoldings();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
   const insights = [
     {
@@ -111,9 +119,59 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     onQuickChat && onQuickChat(`NEW_SESSION:${sessionName}:${message}`);
   };
 
-  const handleResetProfile = () => {
-    // Navigate to profile page or show reset dialog
-    window.location.href = '/profile';
+  const handleResetProfile = async () => {
+    if (!user) {
+      toast({
+        title: "Fel",
+        description: "Du måste vara inloggad för att återställa din profil",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Delete the user's risk profile
+      const { error: profileError } = await supabase
+        .from('user_risk_profiles')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (profileError) {
+        console.error('Error deleting risk profile:', profileError);
+        toast({
+          title: "Fel",
+          description: "Kunde inte återställa profilen. Försök igen senare.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Delete the user's portfolio
+      const { error: portfolioError } = await supabase
+        .from('user_portfolios')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (portfolioError) {
+        console.error('Error deleting portfolio:', portfolioError);
+        // Don't show error for portfolio deletion as it might not exist
+      }
+
+      toast({
+        title: "Profil återställd",
+        description: "Din riskprofil har raderats. Du kan nu skapa en ny profil.",
+      });
+
+      // Navigate to portfolio advisor to start over
+      navigate('/portfolio-advisor');
+    } catch (error) {
+      console.error('Error resetting profile:', error);
+      toast({
+        title: "Fel",
+        description: "Ett oväntat fel uppstod. Försök igen senare.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
