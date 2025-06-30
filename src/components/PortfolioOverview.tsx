@@ -17,7 +17,10 @@ import {
   Plus,
   Edit3,
   MessageCircle,
-  Settings
+  Settings,
+  ChevronDown,
+  ChevronUp,
+  Info
 } from 'lucide-react';
 import { 
   Table,
@@ -27,6 +30,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,6 +69,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isResetting, setIsResetting] = useState(false);
+  const [expandedStocks, setExpandedStocks] = useState<Set<number>>(new Set());
 
   const insights = [
     {
@@ -129,6 +138,16 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     
     // Call onQuickChat with special format to indicate new session creation
     onQuickChat && onQuickChat(`NEW_SESSION:${sessionName}:${message}`);
+  };
+
+  const toggleStockExpansion = (index: number) => {
+    const newExpanded = new Set(expandedStocks);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedStocks(newExpanded);
   };
 
   const handleResetProfile = async () => {
@@ -289,58 +308,125 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Företag</TableHead>
-                    <TableHead>Sektor</TableHead>
-                    <TableHead>Rekommenderad vikt</TableHead>
-                    <TableHead>Motivering</TableHead>
-                    <TableHead className="text-right">Diskutera</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recommendedStocks.map((stock: any, index: number) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{stock.name || stock.symbol}</div>
-                          {stock.symbol && stock.name && (
-                            <div className="text-sm text-muted-foreground">{stock.symbol}</div>
-                          )}
+            <div className="space-y-3">
+              {recommendedStocks.map((stock: any, index: number) => (
+                <div key={index} className="border rounded-lg overflow-hidden">
+                  <div className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <div>
+                            <div className="font-medium text-lg">{stock.name || stock.symbol}</div>
+                            {stock.symbol && stock.name && (
+                              <div className="text-sm text-muted-foreground">{stock.symbol}</div>
+                            )}
+                          </div>
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {stock.sector || 'Teknologi'}
+                          </Badge>
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            {stock.weight ? `${stock.weight}%` : '5-10%'}
+                          </Badge>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={getHoldingTypeColor('stock')}>
-                          {stock.sector || 'Teknologi'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">
-                          {stock.weight ? `${stock.weight}%` : '5-10%'}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground">
+                        
+                        <p className="text-sm text-muted-foreground mt-2">
                           {stock.reasoning || 'Passar din riskprofil och diversifiering'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
+                        </p>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleStockChat(stock.name || stock.symbol, stock.symbol)}
-                          className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                         >
                           <MessageCircle className="w-4 h-4" />
                           <span className="hidden sm:inline">Diskutera</span>
                         </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        
+                        <Collapsible>
+                          <CollapsibleTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleStockExpansion(index)}
+                              className="flex items-center gap-1"
+                            >
+                              <Info className="w-4 h-4" />
+                              {expandedStocks.has(index) ? (
+                                <ChevronUp className="w-4 h-4" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </CollapsibleTrigger>
+                          
+                          <CollapsibleContent>
+                            <div className="mt-3 pt-3 border-t bg-muted/30 rounded-lg p-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                                <div>
+                                  <span className="font-medium">Förväntat pris:</span>
+                                  <span className="ml-2 text-muted-foreground">
+                                    {stock.expected_price || 'Ej specificerat'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="font-medium">Riskbedömning:</span>
+                                  <span className="ml-2 text-muted-foreground">
+                                    {stock.risk_assessment || 'Måttlig'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="font-medium">Tidshorisont:</span>
+                                  <span className="ml-2 text-muted-foreground">
+                                    {stock.time_horizon || 'Lång sikt'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="font-medium">Konfidensgrad:</span>
+                                  <span className="ml-2 text-muted-foreground">
+                                    {stock.confidence || '75%'}
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              <div className="mt-3 flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleStockChat(
+                                    stock.name || stock.symbol, 
+                                    stock.symbol,
+                                    `Berätta mer om ${stock.name || stock.symbol} som investering. Vad är de specifika riskerna och möjligheterna?`
+                                  )}
+                                  className="text-xs"
+                                >
+                                  <BarChart3 className="w-3 h-3 mr-1" />
+                                  Djupanalys
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleStockChat(
+                                    stock.name || stock.symbol, 
+                                    stock.symbol,
+                                    `Hur passar ${stock.name || stock.symbol} in i min portföljstrategi och riskprofil?`
+                                  )}
+                                  className="text-xs"
+                                >
+                                  <Target className="w-3 h-3 mr-1" />
+                                  Portföljpassning
+                                </Button>
+                              </div>
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
