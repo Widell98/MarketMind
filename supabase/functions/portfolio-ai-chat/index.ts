@@ -133,6 +133,6 @@ async function saveInsights(insights: any[], userId: string, isPersonalized: boo
 }
 
 async function getLiveFallbackInsights(type: string) {
-  const prompt = `Skapa 3 aktuella ${type} insikter relaterade till marknadstrender i början av 2025. Returnera som JSON array med objekt som innehåller: id, title, content, confidence_score (0-1), insight_type, key_factors (array), impact_timeline (short/medium/long).`;
+  const prompt = `Skapa 3 aktuella ${type} insikter relaterade till marknadstrender. Returnera som JSON array med objekt som innehåller: id, title, content, confidence_score (0-1), insight_type, key_factors (array), impact_timeline (short/medium/long).`;
   return await requestOpenAI('gpt-4o', generalSystemPrompt(), prompt, 1200) || [];
 }
