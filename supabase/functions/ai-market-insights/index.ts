@@ -57,7 +57,8 @@ serve(async (req) => {
 
 async function generatePersonalizedInsights(userId: string, type: string) {
   if (!openAIApiKey) {
-    return getMockInsights(type);
+    console.warn('OpenAI API key not found, generating AI-powered mock insights');
+    return await generateAIMockInsights(type, true);
   }
 
   try {
@@ -87,7 +88,7 @@ async function generatePersonalizedInsights(userId: string, type: string) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -122,20 +123,21 @@ async function generatePersonalizedInsights(userId: string, type: string) {
     
     try {
       const insights = JSON.parse(content);
-      return Array.isArray(insights) ? insights : getMockInsights(type);
+      return Array.isArray(insights) ? insights : await generateAIMockInsights(type, true);
     } catch (parseError) {
       console.error('Error parsing AI insights:', parseError);
-      return getMockInsights(type);
+      return await generateAIMockInsights(type, true);
     }
   } catch (error) {
     console.error('Error generating personalized insights:', error);
-    return getMockInsights(type);
+    return await generateAIMockInsights(type, true);
   }
 }
 
 async function generateGeneralInsights(type: string) {
   if (!openAIApiKey) {
-    return getMockInsights(type);
+    console.warn('OpenAI API key not found, generating AI-powered mock insights');
+    return await generateAIMockInsights(type, false);
   }
 
   try {
@@ -146,7 +148,7 @@ async function generateGeneralInsights(type: string) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -177,14 +179,14 @@ async function generateGeneralInsights(type: string) {
     
     try {
       const insights = JSON.parse(content);
-      return Array.isArray(insights) ? insights : getMockInsights(type);
+      return Array.isArray(insights) ? insights : await generateAIMockInsights(type, false);
     } catch (parseError) {
       console.error('Error parsing general insights:', parseError);
-      return getMockInsights(type);
+      return await generateAIMockInsights(type, false);
     }
   } catch (error) {
     console.error('Error generating general insights:', error);
-    return getMockInsights(type);
+    return await generateAIMockInsights(type, false);
   }
 }
 
@@ -211,34 +213,95 @@ async function saveInsightsToDatabase(insights: any[], userId: string, isPersona
   }
 }
 
-function getMockInsights(type: string) {
-  return [
-    {
-      id: '1',
-      title: 'AI-sektorn redo för genombrott 2025',
-      content: 'Teknologijättarna fortsätter investera massivt i AI-infrastruktur. NVIDIA:s nya chip-generation väntas driva nästa våg av AI-innovation.',
-      confidence_score: 0.85,
-      insight_type: type,
-      key_factors: ['Chip-efterfrågan', 'Enterprise AI-adoption', 'Regulatorisk miljö'],
-      impact_timeline: 'medium'
-    },
-    {
-      id: '2',
-      title: 'Svenska exportföretag gynnas av svag krona',
-      content: 'Den svenska kronans svaghet ger exportföretag som Volvo, ABB och Ericsson konkurransfördelar på globala marknader.',
-      confidence_score: 0.78,
-      insight_type: type,
-      key_factors: ['Valutakurser', 'Export-konkurrenskraft', 'Global efterfrågan'],
-      impact_timeline: 'short'
-    },
-    {
-      id: '3',
-      title: 'Defensiva sektorer attraktiva vid volatilitet',
-      content: 'Utilities och konsumentvaror erbjuder stabilitet när marknadsvolatiliteten ökar inför det nya året.',
-      confidence_score: 0.72,
-      insight_type: type,
-      key_factors: ['Marknadsvolatilitet', 'Defensiv positionering', 'Dividendutbetalningar'],
-      impact_timeline: 'short'
-    }
-  ];
+async function generateAIMockInsights(type: string, isPersonalized: boolean) {
+  if (!openAIApiKey) {
+    console.warn('OpenAI API key not available, using static fallback');
+    return [
+      {
+        id: '1',
+        title: 'AI-sektorn redo för genombrott 2025',
+        content: 'Teknologijättarna fortsätter investera massivt i AI-infrastruktur. NVIDIA:s nya chip-generation väntas driva nästa våg av AI-innovation.',
+        confidence_score: 0.85,
+        insight_type: type,
+        key_factors: ['Chip-efterfrågan', 'Enterprise AI-adoption', 'Regulatorisk miljö'],
+        impact_timeline: 'medium'
+      },
+      {
+        id: '2',
+        title: 'Svenska exportföretag gynnas av svag krona',
+        content: 'Den svenska kronans svaghet ger exportföretag som Volvo, ABB och Ericsson konkurransfördelar på globala marknader.',
+        confidence_score: 0.78,
+        insight_type: type,
+        key_factors: ['Valutakurser', 'Export-konkurrenskraft', 'Global efterfrågan'],
+        impact_timeline: 'short'
+      },
+      {
+        id: '3',
+        title: 'Defensiva sektorer attraktiva vid volatilitet',
+        content: 'Utilities och konsumentvaror erbjuder stabilitet när marknadsvolatiliteten ökar inför det nya året.',
+        confidence_score: 0.72,
+        insight_type: type,
+        key_factors: ['Marknadsvolatilitet', 'Defensiv positionering', 'Dividendutbetalningar'],
+        impact_timeline: 'short'
+      }
+    ];
+  }
+
+  try {
+    const prompt = isPersonalized 
+      ? `Generera 3-4 personaliserade ${type} marknadsinsikter för svenska investerare med fokus på praktiska råd och rekommendationer.`
+      : `Generera 4-5 allmänna ${type} marknadsinsikter för svenska och globala marknader med fokus på aktuella trender och möjligheter.`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `Du är en marknadsanalytiker. Skapa marknadsinsikter och formatera som JSON array med objekt: id, title, content, confidence_score (0-1), insight_type, key_factors (array), impact_timeline (short/medium/long).`
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1500,
+      }),
+    });
+
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+    
+    const insights = JSON.parse(content);
+    return Array.isArray(insights) ? insights : [
+      {
+        id: '1',
+        title: 'AI-genererade insikter tillgängliga',
+        content: 'Marknadsinsikter genereras nu med AI för bättre precision och relevans.',
+        confidence_score: 0.9,
+        insight_type: type,
+        key_factors: ['AI-analys', 'Realtidsdata'],
+        impact_timeline: 'medium'
+      }
+    ];
+  } catch (error) {
+    console.error('Error generating AI mock insights:', error);
+    return [
+      {
+        id: '1',
+        title: 'Fallback marknadsinsikter',
+        content: 'AI-tjänsten är temporärt otillgänglig, men marknadsövervakning fortsätter.',
+        confidence_score: 0.5,
+        insight_type: type,
+        key_factors: ['Teknisk begränsning'],
+        impact_timeline: 'short'
+      }
+    ];
+  }
 }
