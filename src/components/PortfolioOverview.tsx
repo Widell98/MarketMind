@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -152,10 +153,16 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
 
   const handleStockChat = (stockName: string, stockSymbol?: string) => {
     const sessionName = stockName;
-    const message = `Berätta om ${stockName}${stockSymbol ? ` (${stockSymbol})` : ''}. Varför rekommenderas denna aktie för min portfölj? Vad är fördelarna och riskerna?`;
+    const message = `Vad gör ${stockName}${stockSymbol ? ` (${stockSymbol})` : ''} för något? Berätta om företaget, vad de arbetar med, och varför det skulle vara en bra investering.`;
     
-    // Call onQuickChat with special format to indicate new session creation
-    onQuickChat && onQuickChat(`NEW_SESSION:${sessionName}:${message}`);
+    // Navigate to AI Assistant and create new session
+    navigate('/portfolio-advisor', { 
+      state: { 
+        createNewSession: true,
+        sessionName: sessionName,
+        initialMessage: message
+      }
+    });
   };
 
   const toggleStockExpansion = (index: number) => {
@@ -421,7 +428,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                   <TableRow>
                     <TableHead>Rekommenderad Aktie</TableHead>
                     <TableHead>Typ</TableHead>
-                    <TableHead>Värde/Pris</TableHead>
+                    <TableHead>Sektor</TableHead>
                     <TableHead className="text-right">Diskutera</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -445,12 +452,9 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium">
-                          {formatCurrency(recommendation.purchase_price, recommendation.currency)}
+                        <div className="text-sm">
+                          {recommendation.sector || 'Okänd sektor'}
                         </div>
-                        {recommendation.sector && (
-                          <div className="text-xs text-muted-foreground">{recommendation.sector}</div>
-                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button

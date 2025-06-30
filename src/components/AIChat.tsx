@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useToast } from '@/hooks/use-toast';
+import { useLocation } from 'react-router-dom';
 import ChatHeader from './chat/ChatHeader';
 import ChatMessages from './chat/ChatMessages';
 import ChatInput from './chat/ChatInput';
@@ -45,6 +46,7 @@ const AIChat = ({ portfolioId }: AIChatProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const location = useLocation();
 
   useEffect(() => {
     // Auto-scroll when messages change
@@ -57,6 +59,17 @@ const AIChat = ({ portfolioId }: AIChatProps) => {
       // loadSessions(); // Ensure sessions are loaded when component mounts
     }
   }, [portfolioId]);
+
+  useEffect(() => {
+    // Handle navigation state for creating new sessions
+    if (location.state?.createNewSession) {
+      const { sessionName, initialMessage } = location.state;
+      createNewSession(sessionName, initialMessage);
+      
+      // Clear the state to prevent re-triggering
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, createNewSession]);
 
   useEffect(() => {
     const handleCreateStockChat = (event: CustomEvent) => {
