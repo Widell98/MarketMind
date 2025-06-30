@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -371,8 +370,8 @@ const ChatPortfolioAdvisor = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <Card className="h-[80vh] flex flex-col">
+    <div className="max-w-4xl mx-auto h-screen flex flex-col">
+      <Card className="flex-1 flex flex-col">
         <CardHeader className="flex-shrink-0">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
@@ -385,9 +384,9 @@ const ChatPortfolioAdvisor = () => {
           </div>
         </CardHeader>
         
-        <CardContent className="flex-1 flex flex-col">
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+        <CardContent className="flex-1 flex flex-col min-h-0">
+          {/* Messages Container - Fixed height with scroll */}
+          <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2">
             {messages.map((message) => (
               <div key={message.id} className="space-y-2">
                 {message.type === 'bot' ? (
@@ -477,23 +476,25 @@ const ChatPortfolioAdvisor = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Chat input - only show for open-ended questions */}
+          {/* Chat input - Fixed at bottom */}
           {waitingForAnswer && !isComplete && (
-            <form onSubmit={handleSubmit} className="flex gap-2">
-              <Input
-                value={currentInput}
-                onChange={(e) => setCurrentInput(e.target.value)}
-                placeholder="Skriv ditt svar här..."
-                className="flex-1"
-                disabled={isComplete}
-              />
-              <Button 
-                type="submit" 
-                disabled={!currentInput.trim() || isComplete}
-              >
-                <Send className="w-4 h-4" />
-              </Button>
-            </form>
+            <div className="flex-shrink-0">
+              <form onSubmit={handleSubmit} className="flex gap-2">
+                <Input
+                  value={currentInput}
+                  onChange={(e) => setCurrentInput(e.target.value)}
+                  placeholder="Skriv ditt svar här..."
+                  className="flex-1"
+                  disabled={isComplete}
+                />
+                <Button 
+                  type="submit" 
+                  disabled={!currentInput.trim() || isComplete}
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </form>
+            </div>
           )}
         </CardContent>
       </Card>
