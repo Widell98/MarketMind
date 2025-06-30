@@ -8,6 +8,8 @@ import { useNavigate } from 'react-router-dom';
 import { useConversationalPortfolio } from '@/hooks/useConversationalPortfolio';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Message {
   id: string;
@@ -62,6 +64,7 @@ const ChatPortfolioAdvisor = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
 
   const questions = [
     {
@@ -418,9 +421,53 @@ const ChatPortfolioAdvisor = () => {
     }
   };
 
+  const saveUserHoldings = async (holdings: Holding[]) => {
+    if (!user || holdings.length === 0) return;
+
+    try {
+      console.log('Saving user holdings to database:', holdings);
+      
+      // Transform holdings to match the user_holdings table structure
+      const holdingsToInsert = holdings.map(holding => ({
+        user_id: user.id,
+        name: holding.name,
+        symbol: holding.symbol || null,
+        quantity: holding.quantity,
+        purchase_price: holding.purchasePrice,
+        current_value: holding.quantity * holding.purchasePrice, // Initial value based on purchase
+        currency: 'SEK',
+        holding_type: 'stock', // Default to stock
+        purchase_date: new Date().toISOString()
+      }));
+
+      const { error } = await supabase
+        .from('user_holdings')
+        .insert(holdingsToInsert);
+
+      if (error) {
+        console.error('Error saving user holdings:', error);
+        throw error;
+      }
+
+      console.log('Successfully saved user holdings');
+    } catch (error) {
+      console.error('Failed to save user holdings:', error);
+      toast({
+        title: "Varning",
+        description: "Kunde inte spara dina innehav. De kommer fortfarande att analyseras av AI:n.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const completeConversation = async () => {
     setIsGenerating(true);
     addBotMessage('Tack för alla svar! Jag skapar nu din personliga portföljstrategi...');
+    
+    // Save user holdings to database if they exist
+    if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
+      await saveUserHoldings(conversationData.currentHoldings);
+    }
     
     const result = await generatePortfolioFromConversation(conversationData);
     
