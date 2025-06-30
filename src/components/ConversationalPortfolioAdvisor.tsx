@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,22 +58,8 @@ const ConversationalPortfolioAdvisor = () => {
   };
 
   const handleImplementStrategy = () => {
-    // Set a flag in localStorage to trigger page refresh in PortfolioImplementation
-    localStorage.setItem('portfolio_generation_complete', 'true');
-    
-    // Navigate to the portfolio implementation page
-    navigate('/portfolio-implementation');
-    
-    // Trigger a storage event for the current page
-    window.dispatchEvent(new StorageEvent('storage', {
-      key: 'portfolio_generation_complete',
-      newValue: 'true'
-    }));
-    
-    // Clean up the flag
-    setTimeout(() => {
-      localStorage.removeItem('portfolio_generation_complete');
-    }, 1000);
+    // Force a page reload to refresh the portfolio data
+    window.location.reload();
   };
 
   const formatAIResponse = (content: string) => {
