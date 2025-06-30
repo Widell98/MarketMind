@@ -31,6 +31,11 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
   const { addHolding } = useUserHoldings();
   const { toast } = useToast();
 
+  // Parse markdown formatting
+  const parseMarkdown = (text: string): string => {
+    return text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900 dark:text-gray-100">$1</strong>');
+  };
+
   // Extract stock suggestions from AI message
   const extractStockSuggestions = (content: string): StockSuggestion[] => {
     const suggestions: StockSuggestion[] = [];
@@ -105,46 +110,46 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       // Handle headers
       if (line.startsWith('###')) {
         return (
-          <h3 key={index} className="font-semibold text-sm sm:text-base mt-3 mb-2 text-foreground leading-tight">
-            {line.replace('###', '').trim()}
-          </h3>
+          <h3 key={index} className="font-semibold text-sm sm:text-base mt-3 mb-2 text-gray-900 dark:text-gray-100 leading-tight"
+              dangerouslySetInnerHTML={{ __html: parseMarkdown(line.replace('###', '').trim()) }}
+          />
         );
       }
       
       if (line.startsWith('##')) {
         return (
-          <h2 key={index} className="font-semibold text-base sm:text-lg mt-4 mb-2 text-foreground leading-tight">
-            {line.replace('##', '').trim()}
-          </h2>
+          <h2 key={index} className="font-semibold text-base sm:text-lg mt-4 mb-2 text-gray-900 dark:text-gray-100 leading-tight"
+              dangerouslySetInnerHTML={{ __html: parseMarkdown(line.replace('##', '').trim()) }}
+          />
         );
       }
       
       // Handle lists
       if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
         return (
-          <li key={index} className="ml-3 sm:ml-4 text-xs sm:text-sm text-muted-foreground leading-relaxed mb-1">
-            {line.trim().substring(1).trim()}
-          </li>
+          <li key={index} className="ml-3 sm:ml-4 text-xs sm:text-sm text-gray-800 dark:text-gray-200 leading-relaxed mb-1"
+              dangerouslySetInnerHTML={{ __html: parseMarkdown(line.trim().substring(1).trim()) }}
+          />
         );
       }
       
       // Handle numbered lists
       if (/^\d+\./.test(line.trim())) {
         return (
-          <li key={index} className="ml-3 sm:ml-4 text-xs sm:text-sm text-muted-foreground leading-relaxed mb-1 list-decimal">
-            {line.trim().replace(/^\d+\.\s*/, '')}
-          </li>
+          <li key={index} className="ml-3 sm:ml-4 text-xs sm:text-sm text-gray-800 dark:text-gray-200 leading-relaxed mb-1 list-decimal"
+              dangerouslySetInnerHTML={{ __html: parseMarkdown(line.trim().replace(/^\d+\.\s*/, '')) }}
+          />
         );
       }
       
-      // Handle bold text
-      const boldFormatted = line.replace(/\*\*(.*?)\*\*/g, '<strong class="font-medium text-foreground">$1</strong>');
+      // Handle regular text with markdown
+      const parsedContent = parseMarkdown(line);
       
       return (
         <p 
           key={index} 
-          className="text-xs sm:text-sm text-muted-foreground mb-2 leading-relaxed break-words"
-          dangerouslySetInnerHTML={{ __html: boldFormatted }}
+          className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 mb-2 leading-relaxed break-words"
+          dangerouslySetInnerHTML={{ __html: parsedContent }}
         />
       );
     });
