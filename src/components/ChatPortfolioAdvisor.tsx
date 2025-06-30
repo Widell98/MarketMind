@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Send, User, Bot, CheckCircle, TrendingUp } from 'lucide-react';
+import { Brain, Send, User, Bot, CheckCircle, TrendingUp, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationalPortfolio } from '@/hooks/useConversationalPortfolio';
 import { usePortfolio } from '@/hooks/usePortfolio';
@@ -16,6 +16,15 @@ interface Message {
   timestamp: Date;
   hasOptions?: boolean;
   options?: Array<{ value: string; label: string }>;
+  hasHoldingsInput?: boolean;
+}
+
+interface Holding {
+  id: string;
+  name: string;
+  symbol: string;
+  quantity: number;
+  purchasePrice: number;
 }
 
 interface ConversationData {
@@ -25,13 +34,7 @@ interface ConversationData {
   riskTolerance?: string;
   monthlyAmount?: string;
   hasCurrentPortfolio?: boolean;
-  currentHoldings?: Array<{
-    id: string;
-    name: string;
-    quantity: number;
-    purchasePrice: number;
-    symbol?: string;
-  }>;
+  currentHoldings?: Holding[];
   age?: string;
   experience?: string;
   sectors?: string[];
@@ -51,6 +54,8 @@ const ChatPortfolioAdvisor = () => {
   const [portfolioResult, setPortfolioResult] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [waitingForAnswer, setWaitingForAnswer] = useState(false);
+  const [holdings, setHoldings] = useState<Holding[]>([]);
+  const [showHoldingsInput, setShowHoldingsInput] = useState(false);
   
   const { generatePortfolioFromConversation, loading } = useConversationalPortfolio();
   const { refetch } = usePortfolio();
@@ -209,14 +214,15 @@ const ChatPortfolioAdvisor = () => {
     }
   }, []);
 
-  const addBotMessage = (content: string, hasOptions: boolean = false, options?: Array<{ value: string; label: string }>) => {
+  const addBotMessage = (content: string, hasOptions: boolean = false, options?: Array<{ value: string; label: string }>, hasHoldingsInput: boolean = false) => {
     const message: Message = {
       id: Date.now().toString(),
       type: 'bot',
       content,
       timestamp: new Date(),
       hasOptions,
-      options
+      options,
+      hasHoldingsInput
     };
     setMessages(prev => [...prev, message]);
   };
@@ -229,6 +235,60 @@ const ChatPortfolioAdvisor = () => {
       timestamp: new Date()
     };
     setMessages(prev => [...prev, message]);
+  };
+
+  const addHolding = () => {
+    const newHolding: Holding = {
+      id: Date.now().toString(),
+      name: '',
+      symbol: '',
+      quantity: 0,
+      purchasePrice: 0
+    };
+    setHoldings(prev => [...prev, newHolding]);
+  };
+
+  const updateHolding = (id: string, field: keyof Holding, value: string | number) => {
+    setHoldings(prev => prev.map(holding => 
+      holding.id === id ? { ...holding, [field]: value } : holding
+    ));
+  };
+
+  const removeHolding = (id: string) => {
+    setHoldings(prev => prev.filter(holding => holding.id !== id));
+  };
+
+  const submitHoldings = () => {
+    const validHoldings = holdings.filter(h => h.name && h.symbol && h.quantity > 0 && h.purchasePrice > 0);
+    
+    if (validHoldings.length === 0) {
+      toast({
+        title: "Inga innehav angivna",
+        description: "Du måste ange minst ett innehav för att fortsätta.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const holdingsText = validHoldings.map(h => 
+      `${h.name} (${h.symbol}): ${h.quantity} st à ${h.purchasePrice} SEK`
+    ).join(', ');
+
+    addUserMessage(`Mina nuvarande innehav: ${holdingsText}`);
+    
+    // Update conversation data
+    const updatedData = {
+      ...conversationData,
+      currentHoldings: validHoldings
+    };
+    setConversationData(updatedData);
+    
+    setShowHoldingsInput(false);
+    setWaitingForAnswer(false);
+    
+    setTimeout(() => {
+      moveToNextQuestion();
+    }, 1000);
   };
 
   const getCurrentQuestion = () => {
@@ -249,6 +309,44 @@ const ChatPortfolioAdvisor = () => {
     const currentQuestion = getCurrentQuestion();
     if (!currentQuestion) return;
 
+    // Special handling for portfolio holdings
+    if (currentQuestion.id === 'hasPortfolio' && answer === 'yes') {
+      // Find the label for the answer
+      const option = currentQuestion.options?.find(opt => opt.value === answer);
+      const displayAnswer = option ? option.label : answer;
+      
+      addUserMessage(displayAnswer);
+      setWaitingForAnswer(false);
+      
+      // Process the answer
+      let processedAnswer: any = answer;
+      if (currentQuestion.processAnswer) {
+        processedAnswer = currentQuestion.processAnswer(answer);
+      }
+
+      // Update conversation data
+      const updatedData = {
+        ...conversationData,
+        [currentQuestion.key]: processedAnswer
+      };
+      setConversationData(updatedData);
+
+      // Show holdings input form
+      setTimeout(() => {
+        addBotMessage(
+          'Perfekt! Ange dina nuvarande innehav nedan så kan jag analysera din portfölj och ge bättre rekommendationer.',
+          false,
+          undefined,
+          true
+        );
+        setShowHoldingsInput(true);
+        setHoldings([{ id: '1', name: '', symbol: '', quantity: 0, purchasePrice: 0 }]);
+      }, 1000);
+      
+      return;
+    }
+
+    // Normal question handling
     // Find the label for the answer if it has options
     let displayAnswer = answer;
     if (currentQuestion.hasOptions && currentQuestion.options) {
@@ -423,7 +521,7 @@ const ChatPortfolioAdvisor = () => {
                       </div>
                       
                       {/* Show predefined options if available */}
-                      {message.hasOptions && message.options && waitingForAnswer && (
+                      {message.hasOptions && message.options && waitingForAnswer && !showHoldingsInput && (
                         <div className="mt-3 sm:mt-4 flex flex-wrap gap-1.5 sm:gap-2">
                           {message.options.map((option) => (
                             <Button
@@ -436,6 +534,71 @@ const ChatPortfolioAdvisor = () => {
                               {option.label}
                             </Button>
                           ))}
+                        </div>
+                      )}
+
+                      {/* Holdings Input Form */}
+                      {message.hasHoldingsInput && showHoldingsInput && (
+                        <div className="mt-4 space-y-4">
+                          <div className="max-h-60 overflow-y-auto space-y-3">
+                            {holdings.map((holding, index) => (
+                              <div key={holding.id} className="grid grid-cols-1 sm:grid-cols-5 gap-2 p-3 bg-background/50 rounded-lg border">
+                                <Input
+                                  placeholder="Företagsnamn"
+                                  value={holding.name}
+                                  onChange={(e) => updateHolding(holding.id, 'name', e.target.value)}
+                                  className="text-xs sm:text-sm"
+                                />
+                                <Input
+                                  placeholder="Symbol (t.ex. AAPL)"
+                                  value={holding.symbol}
+                                  onChange={(e) => updateHolding(holding.id, 'symbol', e.target.value.toUpperCase())}
+                                  className="text-xs sm:text-sm"
+                                />
+                                <Input
+                                  type="number"
+                                  placeholder="Antal"
+                                  value={holding.quantity || ''}
+                                  onChange={(e) => updateHolding(holding.id, 'quantity', parseInt(e.target.value) || 0)}
+                                  className="text-xs sm:text-sm"
+                                />
+                                <Input
+                                  type="number"
+                                  placeholder="Köppris (SEK)"
+                                  value={holding.purchasePrice || ''}
+                                  onChange={(e) => updateHolding(holding.id, 'purchasePrice', parseFloat(e.target.value) || 0)}
+                                  className="text-xs sm:text-sm"
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => removeHolding(holding.id)}
+                                  className="h-8 sm:h-9 px-2 text-red-600 hover:text-red-700"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          <div className="flex gap-2 flex-wrap">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={addHolding}
+                              className="flex items-center gap-1 text-xs sm:text-sm"
+                            >
+                              <Plus className="w-3 h-3" />
+                              Lägg till innehav
+                            </Button>
+                            <Button
+                              onClick={submitHoldings}
+                              size="sm"
+                              className="bg-primary hover:bg-primary/90 text-xs sm:text-sm"
+                            >
+                              Fortsätt med konsultation
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -499,7 +662,7 @@ const ChatPortfolioAdvisor = () => {
       </div>
 
       {/* Chat Input - matching AIChat style */}
-      {waitingForAnswer && !isComplete && (
+      {waitingForAnswer && !isComplete && !showHoldingsInput && (
         <div className="flex-shrink-0 p-3 sm:p-4 border-t bg-card/30 backdrop-blur-sm">
           <form onSubmit={handleSubmit} className="flex gap-2">
             <div className="flex-1 relative">
