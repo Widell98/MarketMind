@@ -1,86 +1,210 @@
 
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, TrendingUp, AlertTriangle, CheckCircle, Clock, Zap } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import MarketMomentum from './MarketMomentum';
+import { Lightbulb, TrendingUp, AlertTriangle, Target, Brain, RefreshCw } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+interface AIInsight {
+  id: string;
+  title: string;
+  content: string;
+  confidence_score: number;
+  insight_type: string;
+  key_factors?: string[];
+  impact_timeline?: string;
+}
 
 const UserInsightsPanel = () => {
+  const [insights, setInsights] = useState<AIInsight[]>([]);
+  const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const generateInsights = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase.functions.invoke('ai-market-insights', {
+        body: { 
+          type: 'personalized_insights',
+          personalized: true 
+        }
+      });
+
+      if (error) {
+        console.error('Error generating insights:', error);
+        toast({
+          title: "Fel",
+          description: "Kunde inte generera AI-insikter. Försök igen senare.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data && Array.isArray(data)) {
+        setInsights(data);
+        toast({
+          title: "Framgång!",
+          description: "AI-insikter har genererats baserat på din portfölj",
+        });
+      }
+    } catch (error) {
+      console.error('Error generating insights:', error);
+      toast({
+        title: "Fel",
+        description: "Ett oväntat fel uppstod. Försök igen.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchGeneralInsights = async () => {
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase.functions.invoke('ai-market-insights', {
+        body: { 
+          type: 'market_sentiment',
+          personalized: false 
+        }
+      });
+
+      if (error) {
+        console.error('Error fetching general insights:', error);
+        return;
+      }
+
+      if (data && Array.isArray(data)) {
+        setInsights(data);
+      }
+    } catch (error) {
+      console.error('Error fetching general insights:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGeneralInsights();
+  }, []);
+
+  const getInsightIcon = (type: string) => {
+    switch (type) {
+      case 'opportunity': return <TrendingUp className="w-4 h-4 text-green-600" />;
+      case 'risk_warning': return <AlertTriangle className="w-4 h-4 text-red-600" />;
+      case 'rebalancing': return <Target className="w-4 h-4 text-blue-600" />;
+      default: return <Lightbulb className="w-4 h-4 text-yellow-600" />;
+    }
+  };
+
+  const getConfidenceColor = (score: number) => {
+    if (score >= 0.8) return 'bg-green-100 text-green-800';
+    if (score >= 0.6) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-red-100 text-red-800';
+  };
+
   return (
-    <div className="space-y-6">
-      {/* AI Insights */}
-      <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
-            <Brain className="w-4 h-4 text-blue-500" />
-            AI Portfolio Insikter
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="p-3 bg-white/70 dark:bg-gray-800/70 rounded-lg border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="w-4 h-4 text-orange-500" />
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Rebalansering Rekommenderad
-              </span>
+    <Card className="h-fit">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Brain className="w-5 h-5 text-purple-600" />
+            <div>
+              <CardTitle className="text-base">AI-Insikter & Rekommendationer</CardTitle>
+              <CardDescription className="text-xs">
+                Personliga investeringsinsikter
+              </CardDescription>
             </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-              Din tech-exponering är 67%. Överväg att minska till 45-50% för bättre riskspridning.
+          </div>
+          <Button
+            size="sm"
+            onClick={generateInsights}
+            disabled={loading || !user}
+            className="text-xs"
+          >
+            {loading ? (
+              <RefreshCw className="w-3 h-3 animate-spin" />
+            ) : (
+              <Brain className="w-3 h-3" />
+            )}
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {loading ? (
+          <div className="text-center py-4">
+            <RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin text-purple-600" />
+            <p className="text-sm text-muted-foreground">Genererar AI-insikter...</p>
+          </div>
+        ) : insights.length > 0 ? (
+          <>
+            {insights.slice(0, 4).map((insight) => (
+              <div key={insight.id} className="p-3 bg-muted/50 rounded-lg border">
+                <div className="flex items-start gap-2 mb-2">
+                  {getInsightIcon(insight.insight_type)}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-sm leading-tight">{insight.title}</h4>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="outline" className="text-xs">
+                        {insight.insight_type.replace('_', ' ')}
+                      </Badge>
+                      <Badge className={`text-xs ${getConfidenceColor(insight.confidence_score)}`}>
+                        {Math.round(insight.confidence_score * 100)}% säker
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed break-words">
+                  {insight.content}
+                </p>
+                {insight.key_factors && insight.key_factors.length > 0 && (
+                  <div className="mt-2">
+                    <div className="flex flex-wrap gap-1">
+                      {insight.key_factors.slice(0, 3).map((factor, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs px-1.5 py-0.5">
+                          {factor}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+            
+            {!user && (
+              <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-xs text-blue-700 mb-2">
+                  Logga in för personaliserade AI-insikter
+                </p>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-6">
+            <Brain className="w-8 h-8 mx-auto mb-3 opacity-50" />
+            <p className="text-sm text-muted-foreground mb-3">
+              Inga AI-insikter genererade än
             </p>
-            <Button size="sm" variant="outline" className="text-xs" asChild>
-              <Link to="/portfolio-advisor">Se detaljer</Link>
+            <Button 
+              size="sm" 
+              onClick={user ? generateInsights : fetchGeneralInsights}
+              disabled={loading}
+            >
+              <Brain className="w-3 h-3 mr-2" />
+              {user ? 'Generera personliga insikter' : 'Ladda allmänna insikter'}
             </Button>
           </div>
-          
-          <div className="p-3 bg-white/70 dark:bg-gray-800/70 rounded-lg border border-green-200 dark:border-green-800">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle className="w-4 h-4 text-green-500" />
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Stark Diversifiering
-              </span>
-            </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Din sektorfördelning följer rekommenderat mönster för din riskprofil.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2">
-            <Zap className="w-4 h-4 text-purple-500" />
-            Snabba Åtgärder
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <Button variant="outline" size="sm" className="w-full justify-start text-xs" asChild>
-            <Link to="/portfolio-advisor">
-              <Brain className="w-4 h-4 mr-2" />
-              Kör ny AI-analys
-            </Link>
-          </Button>
-          
-          <Button variant="outline" size="sm" className="w-full justify-start text-xs" asChild>
-            <Link to="/stock-cases">
-              <TrendingUp className="w-4 h-4 mr-2" />
-              Utforska nya cases
-            </Link>
-          </Button>
-          
-          <Button variant="outline" size="sm" className="w-full justify-start text-xs">
-            <Clock className="w-4 h-4 mr-2" />
-            Schemalägg rebalansering
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Market Momentum */}
-      <MarketMomentum />
-    </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

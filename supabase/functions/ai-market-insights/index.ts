@@ -40,9 +40,6 @@ serve(async (req) => {
       insights = await generateGeneralInsights(type);
     }
 
-    // Spara insikterna i databasen
-    await saveInsightsToDatabase(insights, user.id, personalized);
-
     return new Response(JSON.stringify(insights), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -74,11 +71,24 @@ async function generatePersonalizedInsights(userId: string, type: string) {
       .select('*')
       .eq('user_id', userId);
 
+    const { data: portfolio } = await supabase
+      .from('user_portfolios')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .single();
+
     const userContext = {
       riskTolerance: riskProfile?.risk_tolerance || 'medium',
       investmentHorizon: riskProfile?.investment_horizon || 'long',
       sectors: riskProfile?.sector_interests || [],
-      currentHoldings: holdings?.map(h => ({ symbol: h.symbol, sector: h.sector, value: h.current_value })) || []
+      currentHoldings: holdings?.map(h => ({ 
+        symbol: h.symbol, 
+        sector: h.sector, 
+        value: h.current_value,
+        name: h.name 
+      })) || [],
+      portfolioValue: portfolio?.total_value || 0
     };
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -92,7 +102,7 @@ async function generatePersonalizedInsights(userId: string, type: string) {
         messages: [
           {
             role: 'system',
-            content: `Du är en personlig AI-investeringsrådgivare. Skapa personaliserade marknadsinsikter baserat på användarens profil och nuvarande innehav. Formatera som JSON array med objekt som innehåller: id, title, content, confidence_score (0-1), insight_type, actionable_steps (array), risk_level (low/medium/high).`
+            content: `Du är en personlig AI-investeringsrådgivare. Skapa personaliserade marknadsinsikter baserat på användarens profil och nuvarande innehav. Formatera som JSON array med objekt som innehåller: id, title, content, confidence_score (0-1), insight_type, key_factors (array).`
           },
           {
             role: 'user',
@@ -102,23 +112,30 @@ async function generatePersonalizedInsights(userId: string, type: string) {
             Investeringshorisont: ${userContext.investmentHorizon}
             Sektorintressen: ${JSON.stringify(userContext.sectors)}
             Nuvarande innehav: ${JSON.stringify(userContext.currentHoldings)}
+            Portföljvärde: ${userContext.portfolioValue} SEK
             
             Fokusera på:
-            - Personliga rekommendationer baserat på deras portfolio
+            - Personliga rekommendationer baserat på deras portfölj
             - Riskanalys specifik för deras innehav
             - Diversifieringsmöjligheter
             - Sektorrotationsförslag
             - Aktuella marknadstrender som påverkar deras investeringar
             
-            Skapa 3-5 konkreta och genomförbara insikter.`
+            Skapa 3-4 konkreta och genomförbara insikter på svenska.`
           }
         ],
         temperature: 0.7,
-        max_tokens: 2000,
+        max_tokens: 1500,
       }),
     });
 
     const data = await response.json();
+    
+    if (!response.ok) {
+      console.error('OpenAI API error:', data);
+      return await generateAIMockInsights(type, true);
+    }
+
     const content = data.choices[0].message.content;
     
     try {
@@ -152,7 +169,7 @@ async function generateGeneralInsights(type: string) {
         messages: [
           {
             role: 'system',
-            content: `Du är en expert marknadsanalytiker. Skapa aktuella marknadsinsikter baserat på verkliga förhållanden slutet av 2024/början av 2025. Formatera som JSON array med objekt som innehåller: id, title, content, confidence_score (0-1), insight_type, key_factors (array), impact_timeline (short/medium/long).`
+            content: `Du är en expert marknadsanalytiker. Skapa aktuella marknadsinsikter baserat på verkliga förhållanden slutet av 2024/början av 2025. Formatera som JSON array med objekt som innehåller: id, title, content, confidence_score (0-1), insight_type, key_factors (array).`
           },
           {
             role: 'user',
@@ -166,15 +183,21 @@ async function generateGeneralInsights(type: string) {
             - Svenska marknadsspecifika faktorer
             - ESG och hållbarhetstrend
             
-            Skapa 4-6 insights med hög relevans för svenska investerare.`
+            Skapa 4-5 insights med hög relevans för svenska investerare på svenska.`
           }
         ],
         temperature: 0.7,
-        max_tokens: 2500,
+        max_tokens: 2000,
       }),
     });
 
     const data = await response.json();
+    
+    if (!response.ok) {
+      console.error('OpenAI API error:', data);
+      return await generateAIMockInsights(type, false);
+    }
+
     const content = data.choices[0].message.content;
     
     try {
@@ -190,29 +213,6 @@ async function generateGeneralInsights(type: string) {
   }
 }
 
-async function saveInsightsToDatabase(insights: any[], userId: string, isPersonalized: boolean) {
-  try {
-    const insightsToSave = insights.map(insight => ({
-      user_id: isPersonalized ? userId : null,
-      insight_type: insight.insight_type || 'market_analysis',
-      title: insight.title,
-      content: insight.content,
-      confidence_score: insight.confidence_score || 0.8,
-      is_personalized: isPersonalized,
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 timmar
-      data_sources: insight.key_factors || insight.actionable_steps || []
-    }));
-
-    await supabase
-      .from('ai_market_insights')
-      .insert(insightsToSave);
-
-    console.log(`Saved ${insightsToSave.length} insights to database`);
-  } catch (error) {
-    console.error('Error saving insights to database:', error);
-  }
-}
-
 async function generateAIMockInsights(type: string, isPersonalized: boolean) {
   if (!openAIApiKey) {
     console.warn('OpenAI API key not available, using static fallback');
@@ -223,8 +223,7 @@ async function generateAIMockInsights(type: string, isPersonalized: boolean) {
         content: 'Teknologijättarna fortsätter investera massivt i AI-infrastruktur. NVIDIA:s nya chip-generation väntas driva nästa våg av AI-innovation.',
         confidence_score: 0.85,
         insight_type: type,
-        key_factors: ['Chip-efterfrågan', 'Enterprise AI-adoption', 'Regulatorisk miljö'],
-        impact_timeline: 'medium'
+        key_factors: ['Chip-efterfrågan', 'Enterprise AI-adoption', 'Regulatorisk miljö']
       },
       {
         id: '2',
@@ -232,8 +231,7 @@ async function generateAIMockInsights(type: string, isPersonalized: boolean) {
         content: 'Den svenska kronans svaghet ger exportföretag som Volvo, ABB och Ericsson konkurransfördelar på globala marknader.',
         confidence_score: 0.78,
         insight_type: type,
-        key_factors: ['Valutakurser', 'Export-konkurrenskraft', 'Global efterfrågan'],
-        impact_timeline: 'short'
+        key_factors: ['Valutakurser', 'Export-konkurrenskraft', 'Global efterfrågan']
       },
       {
         id: '3',
@@ -241,8 +239,7 @@ async function generateAIMockInsights(type: string, isPersonalized: boolean) {
         content: 'Utilities och konsumentvaror erbjuder stabilitet när marknadsvolatiliteten ökar inför det nya året.',
         confidence_score: 0.72,
         insight_type: type,
-        key_factors: ['Marknadsvolatilitet', 'Defensiv positionering', 'Dividendutbetalningar'],
-        impact_timeline: 'short'
+        key_factors: ['Marknadsvolatilitet', 'Defensiv positionering', 'Dividendutbetalningar']
       }
     ];
   }
@@ -263,7 +260,7 @@ async function generateAIMockInsights(type: string, isPersonalized: boolean) {
         messages: [
           {
             role: 'system',
-            content: `Du är en marknadsanalytiker. Skapa marknadsinsikter och formatera som JSON array med objekt: id, title, content, confidence_score (0-1), insight_type, key_factors (array), impact_timeline (short/medium/long).`
+            content: `Du är en marknadsanalytiker. Skapa marknadsinsikter och formatera som JSON array med objekt: id, title, content, confidence_score (0-1), insight_type, key_factors (array).`
           },
           {
             role: 'user',
@@ -286,8 +283,7 @@ async function generateAIMockInsights(type: string, isPersonalized: boolean) {
         content: 'Marknadsinsikter genereras nu med AI för bättre precision och relevans.',
         confidence_score: 0.9,
         insight_type: type,
-        key_factors: ['AI-analys', 'Realtidsdata'],
-        impact_timeline: 'medium'
+        key_factors: ['AI-analys', 'Realtidsdata']
       }
     ];
   } catch (error) {
@@ -299,8 +295,7 @@ async function generateAIMockInsights(type: string, isPersonalized: boolean) {
         content: 'AI-tjänsten är temporärt otillgänglig, men marknadsövervakning fortsätter.',
         confidence_score: 0.5,
         insight_type: type,
-        key_factors: ['Teknisk begränsning'],
-        impact_timeline: 'short'
+        key_factors: ['Teknisk begränsning']
       }
     ];
   }
