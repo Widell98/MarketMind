@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -370,134 +371,141 @@ const ChatPortfolioAdvisor = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto h-screen flex flex-col">
-      <Card className="flex-1 flex flex-col">
-        <CardHeader className="flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Brain className="w-5 h-5 text-blue-600" />
-              AI Portfolio Rådgivare
-            </CardTitle>
-            <Badge variant="outline" className="bg-blue-50">
-              Personlig konsultation
-            </Badge>
+    <div className="flex flex-col h-[75vh] lg:h-[80vh] xl:h-[85vh] bg-transparent overflow-hidden">
+      {/* Chat Header - matching AIChat style */}
+      <div className="flex-shrink-0 p-3 sm:p-4 border-b bg-card/50 backdrop-blur-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-primary shadow-sm">
+              <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-semibold text-sm sm:text-base">AI Portfolio Rådgivare</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground">Personlig konsultation</p>
+            </div>
           </div>
-        </CardHeader>
-        
-        <CardContent className="flex-1 flex flex-col min-h-0">
-          {/* Messages Container - Fixed height with scroll */}
-          <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2">
-            {messages.map((message) => (
-              <div key={message.id} className="space-y-2">
-                {message.type === 'bot' ? (
-                  <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                      <Bot className="w-4 h-4 text-blue-600" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="bg-blue-50 p-4 rounded-2xl rounded-tl-none">
-                        <p className="text-gray-800 leading-relaxed">{message.content}</p>
-                        
-                        {/* Show predefined options if available */}
-                        {message.hasOptions && message.options && waitingForAnswer && (
-                          <div className="mt-3 space-y-2">
-                            {message.options.map((option) => (
-                              <Button
-                                key={option.value}
-                                variant="outline"
-                                size="sm"
-                                className="mr-2 mb-2 text-left justify-start"
-                                onClick={() => handleAnswer(option.value)}
-                              >
-                                {option.label}
-                              </Button>
-                            ))}
-                          </div>
-                        )}
+          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs sm:text-sm">
+            Konsultation
+          </Badge>
+        </div>
+      </div>
+
+      {/* Messages Container - matching AIChat style */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+          {messages.map((message) => (
+            <div key={message.id} className="space-y-2">
+              {message.type === 'bot' ? (
+                <div className="flex gap-2 sm:gap-3 items-start">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="bg-muted/50 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border shadow-sm">
+                      <div className="prose prose-sm max-w-none text-foreground">
+                        <p className="text-sm sm:text-base leading-relaxed mb-0">{message.content}</p>
                       </div>
+                      
+                      {/* Show predefined options if available */}
+                      {message.hasOptions && message.options && waitingForAnswer && (
+                        <div className="mt-3 sm:mt-4 flex flex-wrap gap-1.5 sm:gap-2">
+                          {message.options.map((option) => (
+                            <Button
+                              key={option.value}
+                              variant="outline"
+                              size="sm"
+                              className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3 bg-background/80 hover:bg-background border-border/50 hover:border-border transition-all duration-200"
+                              onClick={() => handleAnswer(option.value)}
+                            >
+                              {option.label}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
-                ) : (
-                  <div className="flex gap-3 justify-end">
-                    <div className="bg-gray-100 p-3 rounded-2xl rounded-tr-none max-w-xs">
-                      <p className="text-gray-800">{message.content}</p>
-                    </div>
-                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                      <User className="w-4 h-4 text-gray-600" />
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {/* Show AI response when complete */}
-            {isComplete && portfolioResult && (
-              <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
                 </div>
-                <div className="flex-1">
-                  <div className="bg-green-50 p-4 rounded-2xl rounded-tl-none border border-green-200">
+              ) : (
+                <div className="flex gap-2 sm:gap-3 items-start justify-end">
+                  <div className="bg-primary/10 backdrop-blur-sm rounded-2xl rounded-tr-lg p-2.5 sm:p-3 border border-primary/20 shadow-sm max-w-[80%] sm:max-w-md">
+                    <p className="text-sm sm:text-base text-foreground">{message.content}</p>
+                  </div>
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                    <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Show AI response when complete */}
+          {isComplete && portfolioResult && (
+            <div className="flex gap-2 sm:gap-3 items-start">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="bg-green-50 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border border-green-200 shadow-sm">
+                  <div className="prose prose-sm max-w-none">
                     {formatAIResponse(portfolioResult.aiResponse)}
-                    
-                    <div className="mt-4 pt-4 border-t border-green-200">
-                      <Button 
-                        onClick={handleImplementStrategy}
-                        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                        disabled={loading}
-                      >
-                        <TrendingUp className="w-4 h-4 mr-2" />
-                        Implementera Strategin
-                      </Button>
-                    </div>
+                  </div>
+                  
+                  <div className="mt-4 pt-4 border-t border-green-200">
+                    <Button 
+                      onClick={handleImplementStrategy}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                      disabled={loading}
+                    >
+                      <TrendingUp className="w-4 h-4 mr-2" />
+                      Implementera Strategin
+                    </Button>
                   </div>
                 </div>
               </div>
-            )}
-
-            {isGenerating && (
-              <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 animate-pulse">
-                  <Brain className="w-4 h-4 text-blue-600" />
-                </div>
-                <div className="bg-blue-50 p-4 rounded-2xl rounded-tl-none">
-                  <div className="flex items-center gap-2">
-                    <span>Analyserar dina svar och skapar strategi...</span>
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Chat input - Fixed at bottom */}
-          {waitingForAnswer && !isComplete && (
-            <div className="flex-shrink-0">
-              <form onSubmit={handleSubmit} className="flex gap-2">
-                <Input
-                  value={currentInput}
-                  onChange={(e) => setCurrentInput(e.target.value)}
-                  placeholder="Skriv ditt svar här..."
-                  className="flex-1"
-                  disabled={isComplete}
-                />
-                <Button 
-                  type="submit" 
-                  disabled={!currentInput.trim() || isComplete}
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
-              </form>
             </div>
           )}
-        </CardContent>
-      </Card>
+
+          {isGenerating && (
+            <div className="flex gap-2 sm:gap-3 items-start">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+              </div>
+              <div className="bg-muted/50 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border shadow-sm">
+                <div className="flex items-center gap-2 text-sm sm:text-base text-muted-foreground">
+                  <span>Analyserar dina svar och skapar strategi...</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+
+      {/* Chat Input - matching AIChat style */}
+      {waitingForAnswer && !isComplete && (
+        <div className="flex-shrink-0 p-3 sm:p-4 border-t bg-card/30 backdrop-blur-sm">
+          <form onSubmit={handleSubmit} className="flex gap-2">
+            <div className="flex-1 relative">
+              <Input
+                value={currentInput}
+                onChange={(e) => setCurrentInput(e.target.value)}
+                placeholder="Skriv ditt svar här..."
+                className="pr-12 bg-background/80 backdrop-blur-sm border-border/50 focus:border-primary/50 transition-colors text-sm sm:text-base h-9 sm:h-10"
+                disabled={isComplete}
+              />
+            </div>
+            <Button 
+              type="submit" 
+              size="sm"
+              disabled={!currentInput.trim() || isComplete}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200 h-9 sm:h-10 px-3 sm:px-4"
+            >
+              <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </Button>
+          </form>
+        </div>
+      )}
     </div>
   );
 };
