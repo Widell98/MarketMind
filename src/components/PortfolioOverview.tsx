@@ -24,7 +24,8 @@ import {
   Star,
   User,
   Globe,
-  Building2
+  Building2,
+  X
 } from 'lucide-react';
 import { 
   Table,
@@ -74,12 +75,13 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   onQuickChat, 
   onActionClick 
 }) => {
-  const { holdings, actualHoldings, recommendations, loading } = useUserHoldings();
+  const { holdings, actualHoldings, recommendations, loading, deleteHolding, refetch } = useUserHoldings();
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isResetting, setIsResetting] = useState(false);
   const [expandedStocks, setExpandedStocks] = useState<Set<number>>(new Set());
+  const [isDeletingRecommendations, setIsDeletingRecommendations] = useState(false);
 
   // Get AI recommendations from portfolio data
   const aiRecommendations = portfolio?.recommended_stocks || [];
@@ -259,6 +261,55 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     handleExamplePrompt(insight.chatMessage);
   };
 
+  const clearAIRecommendations = async () => {
+    if (!user) {
+      toast({
+        title: "Fel",
+        description: "Du måste vara inloggad för att rensa rekommendationer",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDeletingRecommendations(true);
+
+    try {
+      // Delete all AI recommendations from user_holdings
+      const { error } = await supabase
+        .from('user_holdings')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('holding_type', 'recommendation');
+
+      if (error) {
+        console.error('Error deleting AI recommendations:', error);
+        toast({
+          title: "Fel",
+          description: "Kunde inte rensa AI-rekommendationer. Försök igen senare.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Refresh holdings data
+      refetch();
+
+      toast({
+        title: "Rekommendationer rensade",
+        description: "Alla AI-rekommendationer har tagits bort från din portfölj.",
+      });
+    } catch (error) {
+      console.error('Error clearing AI recommendations:', error);
+      toast({
+        title: "Fel",
+        description: "Ett oväntat fel uppstod. Försök igen senare.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingRecommendations(false);
+    }
+  };
+
   const handleResetProfile = async () => {
     if (!user) {
       toast({
@@ -272,6 +323,17 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     setIsResetting(true);
 
     try {
+      // First, clear AI recommendations
+      const { error: recommendationsError } = await supabase
+        .from('user_holdings')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('holding_type', 'recommendation');
+
+      if (recommendationsError) {
+        console.error('Error deleting AI recommendations:', recommendationsError);
+      }
+
       // Delete the user's risk profile
       const { error: profileError } = await supabase
         .from('user_risk_profiles')
@@ -301,7 +363,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
 
       toast({
         title: "Profil återställd",
-        description: "Din riskprofil har raderats. Du kan nu skapa en ny profil.",
+        description: "Din riskprofil och AI-rekommendationer har raderats. Du kan nu skapa en ny profil.",
       });
 
       // Navigate to portfolio advisor to start over
@@ -592,6 +654,42 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               <CardDescription>Aktier som AI-advisorn rekommenderar för din portfölj</CardDescription>
             </div>
             <div className="flex gap-2">
+              {allRecommendations.length > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isDeletingRecommendations}
+                      className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <X className="w-4 h-4" />
+                      <span className="hidden sm:inline">Rensa alla</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Rensa alla AI-rekommendationer?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Detta kommer att ta bort alla AI-rekommenderade aktier från din portfölj. 
+                        Dina egna innehav påverkas inte.
+                        <br /><br />
+                        <strong>Denna åtgärd kan inte ångras.</strong>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={clearAIRecommendations}
+                        disabled={isDeletingRecommendations}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        {isDeletingRecommendations ? "Rensar..." : "Ja, rensa alla"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -642,7 +740,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                     <TableHead>Rekommenderad Aktie</TableHead>
                     <TableHead>Typ</TableHead>
                     <TableHead>Sektor</TableHead>
-                    <TableHead className="text-right">Diskutera</TableHead>
+                    <TableHead className="text-right">Åtgärder</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -670,15 +768,27 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleStockChat(recommendation.name, recommendation.symbol)}
-                          className="flex items-center gap-1 text-purple-600 hover:text-purple-800 hover:bg-purple-50"
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                          <span className="hidden sm:inline">Diskutera</span>
-                        </Button>
+                        <div className="flex items-center gap-1 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleStockChat(recommendation.name, recommendation.symbol)}
+                            className="flex items-center gap-1 text-purple-600 hover:text-purple-800 hover:bg-purple-50"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                            <span className="hidden sm:inline">Diskutera</span>
+                          </Button>
+                          {recommendation.id && recommendation.id.startsWith('portfolio-rec-') === false && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteHolding(recommendation.id)}
+                              className="flex items-center gap-1 text-red-600 hover:text-red-800 hover:bg-red-50"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

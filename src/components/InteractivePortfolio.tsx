@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -108,20 +107,20 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
       </Card>
 
       {/* Current Holdings */}
-      <Card className="w-full">
-        <CardHeader className="pb-3 p-3 sm:p-6">
-          <CardTitle className="text-sm sm:text-base flex items-center gap-2">
-            <span className="truncate">Dina innehav</span>
-            <Badge variant="secondary" className="text-xs flex-shrink-0">
-              {holdings.length} aktier
-            </Badge>
-          </CardTitle>
-          <CardDescription className="text-xs sm:text-sm">
-            Klicka på en aktie för att ersätta den eller prata med AI:n
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0 p-3 sm:p-6">
-          {holdings.length > 0 ? (
+      {holdings.length > 0 && (
+        <Card className="w-full">
+          <CardHeader className="pb-3 p-3 sm:p-6">
+            <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+              <span className="truncate">Dina AI-rekommendationer</span>
+              <Badge variant="secondary" className="text-xs flex-shrink-0">
+                {holdings.length} aktier
+              </Badge>
+            </CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
+              Klicka på en aktie för att ersätta den eller prata med AI:n
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0 p-3 sm:p-6">
             <div className="space-y-2 sm:space-y-3">
               {holdings.map((stock: any, index: number) => (
                 <div 
@@ -199,13 +198,9 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="text-center py-6 sm:py-8 text-muted-foreground">
-              <div className="text-xs sm:text-sm">Ingen portfölj genererad än</div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* AI Interaction Tip */}
       <Alert className="w-full">
