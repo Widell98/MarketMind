@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,9 @@ import {
   ChevronUp,
   Info,
   Star,
-  User
+  User,
+  Globe,
+  Building2
 } from 'lucide-react';
 import { 
   Table,
@@ -48,6 +51,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart';
+import { PieChart as RechartsPieChart, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis } from 'recharts';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { useToast } from '@/hooks/use-toast';
@@ -89,6 +98,55 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       currency: 'SEK'
     }))
   ];
+
+  // Calculate portfolio exposure data
+  const calculateExposureData = () => {
+    const allHoldings = [...actualHoldings, ...allRecommendations];
+    
+    // Sector exposure
+    const sectorExposure: { [key: string]: number } = {};
+    // Market exposure (based on currency and market info)
+    const marketExposure: { [key: string]: number } = {};
+    
+    allHoldings.forEach(holding => {
+      const value = holding.current_value || holding.purchase_price || 100; // Default value for recommendations
+      
+      // Sector distribution
+      const sector = holding.sector || 'Övrigt';
+      sectorExposure[sector] = (sectorExposure[sector] || 0) + value;
+      
+      // Market distribution (based on currency and available market data)
+      let market = 'Sverige'; // Default
+      if (holding.currency === 'USD') market = 'USA';
+      else if (holding.currency === 'EUR') market = 'Europa';
+      else if (holding.market) market = holding.market;
+      
+      marketExposure[market] = (marketExposure[market] || 0) + value;
+    });
+    
+    // Convert to chart data
+    const totalValue = Object.values(sectorExposure).reduce((sum, val) => sum + val, 0);
+    
+    const sectorData = Object.entries(sectorExposure).map(([sector, value]) => ({
+      name: sector,
+      value: value,
+      percentage: totalValue > 0 ? Math.round((value / totalValue) * 100) : 0
+    })).sort((a, b) => b.value - a.value);
+    
+    const marketData = Object.entries(marketExposure).map(([market, value]) => ({
+      name: market,
+      value: value,
+      percentage: totalValue > 0 ? Math.round((value / totalValue) * 100) : 0
+    })).sort((a, b) => b.value - a.value);
+    
+    return { sectorData, marketData, totalValue };
+  };
+
+  const exposureData = calculateExposureData();
+
+  // Color palettes for charts
+  const sectorColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316'];
+  const marketColors = ['#1E40AF', '#059669', '#D97706', '#DC2626', '#7C3AED'];
 
   const insights = [
     {
@@ -279,6 +337,135 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
           </CardContent>
         </Card>
       </div>
+
+      {/* Portfolio Exposure Section */}
+      {(actualHoldings.length > 0 || allRecommendations.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          {/* Sector Exposure */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-blue-600" />
+                Sektorexponering
+              </CardTitle>
+              <CardDescription>Fördelning över olika industrisektorer</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {exposureData.sectorData.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsPieChart>
+                        <RechartsPieChart data={exposureData.sectorData}>
+                          {exposureData.sectorData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={sectorColors[index % sectorColors.length]} />
+                          ))}
+                        </RechartsPieChart>
+                        <ChartTooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-white p-2 border rounded shadow">
+                                  <p className="font-medium">{data.name}</p>
+                                  <p className="text-sm text-muted-foreground">{data.percentage}%</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                      </RechartsPieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="space-y-2">
+                    {exposureData.sectorData.slice(0, 5).map((sector, index) => (
+                      <div key={sector.name} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-3 h-3 rounded-full" 
+                            style={{ backgroundColor: sectorColors[index % sectorColors.length] }}
+                          />
+                          <span className="text-sm font-medium">{sector.name}</span>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {sector.percentage}%
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Building2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>Ingen sektordata tillgänglig</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Market Exposure */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                <Globe className="w-5 h-5 text-green-600" />
+                Marknadsexponering
+              </CardTitle>
+              <CardDescription>Geografisk fördelning av investeringar</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {exposureData.marketData.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={exposureData.marketData} layout="horizontal">
+                        <XAxis type="number" />
+                        <YAxis dataKey="name" type="category" width={60} />
+                        <ChartTooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-white p-2 border rounded shadow">
+                                  <p className="font-medium">{data.name}</p>
+                                  <p className="text-sm text-muted-foreground">{data.percentage}%</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Bar dataKey="percentage" fill="#10B981" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="space-y-2">
+                    {exposureData.marketData.map((market, index) => (
+                      <div key={market.name} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-3 h-3 rounded-full" 
+                            style={{ backgroundColor: marketColors[index % marketColors.length] }}
+                          />
+                          <span className="text-sm font-medium">{market.name}</span>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {market.percentage}%
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Globe className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>Ingen marknadsdata tillgänglig</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* User's Current Holdings */}
       {actualHoldings.length > 0 && (
