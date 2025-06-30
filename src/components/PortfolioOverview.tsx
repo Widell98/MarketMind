@@ -397,8 +397,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                                   size="sm"
                                   onClick={() => handleStockChat(
                                     stock.name || stock.symbol, 
-                                    stock.symbol,
-                                    `Berätta mer om ${stock.name || stock.symbol} som investering. Vad är de specifika riskerna och möjligheterna?`
+                                    stock.symbol
                                   )}
                                   className="text-xs"
                                 >
@@ -410,8 +409,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                                   size="sm"
                                   onClick={() => handleStockChat(
                                     stock.name || stock.symbol, 
-                                    stock.symbol,
-                                    `Hur passar ${stock.name || stock.symbol} in i min portföljstrategi och riskprofil?`
+                                    stock.symbol
                                   )}
                                   className="text-xs"
                                 >

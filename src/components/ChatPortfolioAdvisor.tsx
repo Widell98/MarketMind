@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -335,19 +334,36 @@ const ChatPortfolioAdvisor = () => {
 
   const handleImplementStrategy = async () => {
     try {
-      await refetch();
+      // Show immediate feedback
       toast({
-        title: "Navigerar till implementering",
-        description: "Din portföljstrategi är nu redo att implementera",
+        title: "Implementerar strategi",
+        description: "Din portföljstrategi implementeras och profilen uppdateras...",
       });
+
+      // Refresh portfolio data to ensure we have the latest
+      await refetch();
+      
+      // Navigate to implementation page
       navigate('/portfolio-implementation');
+      
+      // Show success message after navigation
+      setTimeout(() => {
+        toast({
+          title: "Strategi implementerad!",
+          description: "Din portföljstrategi är nu aktiv och redo att användas",
+        });
+      }, 1000);
+      
     } catch (error) {
-      console.error('Error refreshing portfolio data:', error);
+      console.error('Error implementing strategy:', error);
       toast({
         title: "Ett fel uppstod",
-        description: "Kunde inte ladda portföljdata. Försök igen.",
+        description: "Kunde inte implementera strategin helt. Kontrollera din profil på implementeringssidan.",
         variant: "destructive",
       });
+      
+      // Navigate anyway since the portfolio might still be created
+      navigate('/portfolio-implementation');
     }
   };
 
@@ -457,7 +473,7 @@ const ChatPortfolioAdvisor = () => {
                       disabled={loading}
                     >
                       <TrendingUp className="w-4 h-4 mr-2" />
-                      Implementera Strategin
+                      {loading ? "Implementerar..." : "Implementera Strategin"}
                     </Button>
                   </div>
                 </div>
