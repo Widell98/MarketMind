@@ -99,6 +99,17 @@ const ChatPortfolioAdvisor = () => {
       processAnswer: (answer: string) => answer === 'beginner'
     },
     {
+      id: 'hasPortfolio',
+      question: 'Har du redan några investeringar som du vill optimera?',
+      key: 'hasCurrentPortfolio',
+      hasOptions: true,
+      options: [
+        { value: 'yes', label: 'Ja, jag har befintliga investeringar' },
+        { value: 'no', label: 'Nej, jag börjar från början' }
+      ],
+      processAnswer: (answer: string) => answer === 'yes'
+    },
+    {
       id: 'age',
       question: 'Hur gammal är du? Detta hjälper mig förstå din investeringshorisont.',
       key: 'age',
@@ -182,13 +193,13 @@ const ChatPortfolioAdvisor = () => {
         { value: 'buy_more', label: 'Köpa mer medan det är billigt' }
       ]
     },
-    // Enhanced questions for experienced investors
+    // Enhanced questions for experienced investors with existing portfolio
     {
       id: 'marketExperience',
       question: 'Hur många år har du investerat aktivt?',
       key: 'marketExperience',
       hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false,
+      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio === true,
       options: [
         { value: '2-5', label: '2-5 år' },
         { value: '5-10', label: '5-10 år' },
@@ -201,20 +212,34 @@ const ChatPortfolioAdvisor = () => {
       question: 'Hur ser din nuvarande tillgångsallokering ut? (skriv t.ex. 70% aktier, 20% obligationer, 10% fastigheter)',
       key: 'currentAllocation',
       hasOptions: false,
-      showIf: () => conversationData.isBeginnerInvestor === false
+      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio === true
     },
     {
       id: 'previousPerformance',
       question: 'Hur har din portfölj presterat jämfört med marknaden?',
       key: 'previousPerformance',
       hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false,
+      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio === true,
       options: [
         { value: 'outperformed', label: 'Bättre än marknaden' },
         { value: 'matched', label: 'Samma som marknaden' },
         { value: 'underperformed', label: 'Sämre än marknaden' },
         { value: 'unsure', label: 'Osäker/har inte mätt' }
       ]
+    },
+    {
+      id: 'portfolioSize',
+      question: 'Ungefär hur stor är din nuvarande portfölj? (skriv summan i kronor)',
+      key: 'portfolioSize',
+      hasOptions: false,
+      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio === true,
+      processAnswer: (answer: string) => {
+        const amount = parseInt(answer.replace(/[^\d]/g, ''));
+        if (amount < 100000) return 'small';
+        if (amount < 500000) return 'medium';
+        if (amount < 1000000) return 'large';
+        return 'very_large';
+      }
     },
     {
       id: 'investmentStyle',
@@ -322,17 +347,6 @@ const ChatPortfolioAdvisor = () => {
       hasOptions: false
     },
     {
-      id: 'hasPortfolio',
-      question: 'Har du redan några investeringar som du vill optimera?',
-      key: 'hasCurrentPortfolio',
-      hasOptions: true,
-      options: [
-        { value: 'yes', label: 'Ja, jag har befintliga investeringar' },
-        { value: 'no', label: 'Nej, jag börjar från början' }
-      ],
-      processAnswer: (answer: string) => answer === 'yes'
-    },
-    {
       id: 'portfolioHelp',
       question: 'Hur vill du att jag hjälper dig?',
       key: 'portfolioHelp',
@@ -346,25 +360,11 @@ const ChatPortfolioAdvisor = () => {
       ]
     },
     {
-      id: 'portfolioSize',
-      question: 'Ungefär hur stor är din nuvarande portfölj? (skriv summan i kronor)',
-      key: 'portfolioSize',
-      hasOptions: false,
-      showIf: () => conversationData.isBeginnerInvestor === false,
-      processAnswer: (answer: string) => {
-        const amount = parseInt(answer.replace(/[^\d]/g, ''));
-        if (amount < 100000) return 'small';
-        if (amount < 500000) return 'medium';
-        if (amount < 1000000) return 'large';
-        return 'very_large';
-      }
-    },
-    {
       id: 'rebalancing',
       question: 'Hur ofta vill du justera din portfölj?',
       key: 'rebalancingFrequency',
       hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false,
+      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio === true,
       options: [
         { value: 'monthly', label: 'Månadsvis' },
         { value: 'quarterly', label: 'Kvartalsvis' },
