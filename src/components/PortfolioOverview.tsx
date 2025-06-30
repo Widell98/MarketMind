@@ -26,7 +26,8 @@ import {
   Globe,
   Building2,
   X,
-  ShoppingCart
+  ShoppingCart,
+  Edit
 } from 'lucide-react';
 import { 
   Table,
@@ -65,6 +66,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import AddHoldingDialog from './AddHoldingDialog';
+import EditHoldingDialog from './EditHoldingDialog';
 
 interface PortfolioOverviewProps {
   portfolio: any;
@@ -77,7 +79,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   onQuickChat, 
   onActionClick 
 }) => {
-  const { holdings, actualHoldings, recommendations, loading, deleteHolding, addHolding, refetch } = useUserHoldings();
+  const { holdings, actualHoldings, recommendations, loading, deleteHolding, addHolding, updateHolding, refetch } = useUserHoldings();
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -85,7 +87,9 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   const [expandedStocks, setExpandedStocks] = useState<Set<number>>(new Set());
   const [isDeletingRecommendations, setIsDeletingRecommendations] = useState(false);
   const [addHoldingDialogOpen, setAddHoldingDialogOpen] = useState(false);
+  const [editHoldingDialogOpen, setEditHoldingDialogOpen] = useState(false);
   const [selectedRecommendation, setSelectedRecommendation] = useState<any>(null);
+  const [selectedHolding, setSelectedHolding] = useState<any>(null);
 
   // Get AI recommendations from portfolio data
   const aiRecommendations = portfolio?.recommended_stocks || [];
@@ -400,6 +404,11 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     setAddHoldingDialogOpen(true);
   };
 
+  const handleEditHolding = (holding: any) => {
+    setSelectedHolding(holding);
+    setEditHoldingDialogOpen(true);
+  };
+
   const handleAddHolding = async (holdingData: any) => {
     const success = await addHolding(holdingData);
     if (success) {
@@ -408,6 +417,19 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         description: `${holdingData.name} har lagts till i dina innehav.`,
       });
       // Refresh the data to show the new holding and update recommendations
+      refetch();
+    }
+  };
+
+  const handleUpdateHolding = async (holdingData: any) => {
+    if (!selectedHolding) return;
+    
+    const success = await updateHolding(selectedHolding.id, holdingData);
+    if (success) {
+      toast({
+        title: "Innehav uppdaterat",
+        description: `${holdingData.name} har uppdaterats.`,
+      });
       refetch();
     }
   };
@@ -610,15 +632,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                 </CardTitle>
                 <CardDescription>Aktier och fonder du redan äger</CardDescription>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onQuickChat && onQuickChat("Jämför mina nuvarande innehav med AI-rekommendationerna. Vad borde jag köpa, sälja eller behålla?")}
-                className="flex items-center gap-2"
-              >
-                <BarChart3 className="w-4 h-4" />
-                <span className="hidden sm:inline">Jämför</span>
-              </Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -630,7 +643,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                     <TableHead>Typ</TableHead>
                     <TableHead>Antal</TableHead>
                     <TableHead>Värde</TableHead>
-                    <TableHead className="text-right">Diskutera</TableHead>
+                    <TableHead className="text-right">Åtgärder</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -660,15 +673,26 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleStockChat(holding.name, holding.symbol)}
-                          className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                          <span className="hidden sm:inline">Diskutera</span>
-                        </Button>
+                        <div className="flex items-center gap-1 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditHolding(holding)}
+                            className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                          >
+                            <Edit className="w-4 h-4" />
+                            <span className="hidden sm:inline">Redigera</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleStockChat(holding.name, holding.symbol)}
+                            className="flex items-center gap-1 text-purple-600 hover:text-purple-800 hover:bg-purple-50"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                            <span className="hidden sm:inline">Diskutera</span>
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -993,6 +1017,17 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         }}
         onAdd={handleAddHolding}
         recommendation={selectedRecommendation}
+      />
+
+      {/* Edit Holding Dialog */}
+      <EditHoldingDialog
+        isOpen={editHoldingDialogOpen}
+        onClose={() => {
+          setEditHoldingDialogOpen(false);
+          setSelectedHolding(null);
+        }}
+        onSave={handleUpdateHolding}
+        holding={selectedHolding}
       />
     </div>
   );
