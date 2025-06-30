@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +27,17 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { useToast } from '@/hooks/use-toast';
@@ -49,6 +60,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [isResetting, setIsResetting] = useState(false);
 
   const insights = [
     {
@@ -129,6 +141,8 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       return;
     }
 
+    setIsResetting(true);
+
     try {
       // Delete the user's risk profile
       const { error: profileError } = await supabase
@@ -171,6 +185,8 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         description: "Ett oväntat fel uppstod. Försök igen senare.",
         variant: "destructive",
       });
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -415,16 +431,41 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                 Personaliserade förslag baserat på din portfölj och marknadstrender
               </CardDescription>
             </div>
-            <Button
-              variant="outline"
-              onClick={handleResetProfile}
-              size="sm"
-              className="bg-background border shadow-sm transition-all duration-200 hover:shadow-md text-xs sm:text-sm flex-shrink-0"
-            >
-              <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-              <span className="hidden sm:inline">Gör om profil</span>
-              <span className="sm:hidden">Reset</span>
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isResetting}
+                  className="bg-background border shadow-sm transition-all duration-200 hover:shadow-md text-xs sm:text-sm flex-shrink-0"
+                >
+                  <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+                  <span className="hidden sm:inline">Gör om profil</span>
+                  <span className="sm:hidden">Reset</span>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Återställ din riskprofil?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Detta kommer att radera din nuvarande riskprofil och portföljrekommendationer. 
+                    Du kommer att behöva göra om formuläret från början för att få nya AI-rekommendationer.
+                    <br /><br />
+                    <strong>Denna åtgärd kan inte ångras.</strong>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleResetProfile}
+                    disabled={isResetting}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    {isResetting ? "Återställer..." : "Ja, återställ profil"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
