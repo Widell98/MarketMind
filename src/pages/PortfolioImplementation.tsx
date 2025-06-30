@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -6,6 +5,7 @@ import PortfolioOverview from '@/components/PortfolioOverview';
 import AIChat from '@/components/AIChat';
 import UserInsightsPanel from '@/components/UserInsightsPanel';
 import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolioAdvisor';
+import UserInvestmentAnalysis from '@/components/UserInvestmentAnalysis';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -188,7 +188,7 @@ const PortfolioImplementation = () => {
           </div>
 
           <Tabs defaultValue="chat" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 max-w-xs sm:max-w-md mx-auto mb-4 sm:mb-6 bg-muted p-1 rounded-xl">
+            <TabsList className="grid w-full grid-cols-3 max-w-lg mx-auto mb-4 sm:mb-6 bg-muted p-1 rounded-xl">
               <TabsTrigger 
                 value="chat" 
                 data-value="chat" 
@@ -203,8 +203,16 @@ const PortfolioImplementation = () => {
                 className="flex items-center gap-1.5 sm:gap-2 rounded-lg py-1.5 sm:py-2 px-2 sm:px-3 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs sm:text-sm"
               >
                 <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline">Portföljöversikt</span>
+                <span className="hidden xs:inline">Portfölj</span>
                 <span className="xs:hidden">Översikt</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="analysis" 
+                className="flex items-center gap-1.5 sm:gap-2 rounded-lg py-1.5 sm:py-2 px-2 sm:px-3 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs sm:text-sm"
+              >
+                <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden xs:inline">Min Analys</span>
+                <span className="xs:hidden">Analys</span>
               </TabsTrigger>
             </TabsList>
             
@@ -273,6 +281,10 @@ const PortfolioImplementation = () => {
                   <UserInsightsPanel />
                 </div>
               </div>
+            </TabsContent>
+
+            <TabsContent value="analysis">
+              <UserInvestmentAnalysis />
             </TabsContent>
           </Tabs>
         </div>

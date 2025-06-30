@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -275,7 +274,8 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
     setLoading(true);
 
     try {
-      console.log('Generated enhanced AI prompt:', buildEnhancedAIPrompt(conversationData));
+      const enhancedPrompt = buildEnhancedAIPrompt(conversationData);
+      console.log('Generated enhanced AI prompt:', enhancedPrompt);
       
       // Create enhanced risk profile data with all new fields
       const riskProfileData = {
@@ -334,7 +334,7 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
       // Generate AI response with enhanced prompt
       const { data: aiResponse, error: aiError } = await supabase.functions.invoke('portfolio-ai-chat', {
         body: {
-          message: buildEnhancedAIPrompt(conversationData),
+          message: enhancedPrompt,
           userId: user.id,
           analysisType: 'portfolio_generation',
           conversationData
@@ -351,10 +351,11 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
         return null;
       }
 
-      // Create enhanced asset allocation with all conversation data
+      // Create enhanced asset allocation with all conversation data and AI analysis
       const assetAllocation = {
         conversation_data: JSON.parse(JSON.stringify(conversationData)),
         ai_strategy: aiResponse.response,
+        ai_prompt_used: enhancedPrompt,
         risk_profile_summary: {
           experience_level: conversationData.isBeginnerInvestor ? 'beginner' : 'advanced',
           risk_comfort: conversationData.volatilityComfort || 5,
@@ -362,6 +363,13 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
           sustainability_focus: conversationData.sustainabilityPreference,
           investment_style: conversationData.investmentStyle,
           market_crash_behavior: conversationData.marketCrashReaction
+        },
+        analysis_metadata: {
+          created_at: new Date().toISOString(),
+          prompt_length: enhancedPrompt.length,
+          response_length: aiResponse.response?.length || 0,
+          ai_model: 'gpt-4o',
+          analysis_type: 'comprehensive_portfolio_strategy'
         }
       };
 
@@ -402,7 +410,8 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
       return {
         aiResponse: aiResponse.response,
         portfolio,
-        riskProfile
+        riskProfile,
+        enhancedPrompt
       };
 
     } catch (error: any) {

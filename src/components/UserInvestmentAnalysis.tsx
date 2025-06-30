@@ -1,0 +1,274 @@
+
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { 
+  User, 
+  Target, 
+  TrendingUp, 
+  DollarSign, 
+  Calendar, 
+  PieChart,
+  Brain,
+  BarChart3,
+  AlertCircle,
+  CheckCircle
+} from 'lucide-react';
+import { useRiskProfile } from '@/hooks/useRiskProfile';
+import { usePortfolio } from '@/hooks/usePortfolio';
+
+const UserInvestmentAnalysis = () => {
+  const { riskProfile, loading: riskLoading } = useRiskProfile();
+  const { activePortfolio, loading: portfolioLoading } = usePortfolio();
+
+  if (riskLoading || portfolioLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="animate-pulse bg-muted h-32 rounded-lg"></div>
+        <div className="animate-pulse bg-muted h-48 rounded-lg"></div>
+      </div>
+    );
+  }
+
+  if (!riskProfile) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="flex items-center justify-center h-32">
+          <div className="text-center text-muted-foreground">
+            <AlertCircle className="w-8 h-8 mx-auto mb-2" />
+            <p>Ingen riskprofil hittades</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const getRiskToleranceLabel = (tolerance: string) => {
+    switch (tolerance) {
+      case 'conservative': return 'Konservativ';
+      case 'moderate': return 'Måttlig';
+      case 'aggressive': return 'Aggressiv';
+      default: return tolerance || 'Ej angiven';
+    }
+  };
+
+  const getInvestmentHorizonLabel = (horizon: string) => {
+    switch (horizon) {
+      case 'short': return 'Kort (1-3 år)';
+      case 'medium': return 'Medel (3-7 år)';
+      case 'long': return 'Lång (7+ år)';
+      default: return horizon || 'Ej angiven';
+    }
+  };
+
+  const getExperienceLabel = (experience: string) => {
+    switch (experience) {
+      case 'beginner': return 'Nybörjare';
+      case 'intermediate': return 'Mellannivå';
+      case 'advanced': return 'Avancerad';
+      default: return experience || 'Ej angiven';
+    }
+  };
+
+  const aiStrategy = activePortfolio?.asset_allocation?.ai_strategy || '';
+  const conversationData = activePortfolio?.asset_allocation?.conversation_data || {};
+
+  return (
+    <div className="space-y-6">
+      {/* Profile Summary */}
+      <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-sky-50 dark:from-blue-950/20 dark:to-sky-950/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="w-5 h-5 text-blue-600" />
+            Din Investeringsprofil
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Ålder</p>
+                <p className="font-semibold">{riskProfile.age || 'Ej angiven'} år</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Erfarenhetsnivå</p>
+                <p className="font-semibold">{getExperienceLabel(riskProfile.investment_experience || '')}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Risktolerans</p>
+                <p className="font-semibold">{getRiskToleranceLabel(riskProfile.risk_tolerance || '')}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center">
+                <Target className="w-5 h-5 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Tidshorisont</p>
+                <p className="font-semibold">{getInvestmentHorizonLabel(riskProfile.investment_horizon || '')}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Månadssparande</p>
+                <p className="font-semibold">
+                  {riskProfile.monthly_investment_amount 
+                    ? `${riskProfile.monthly_investment_amount.toLocaleString()} SEK` 
+                    : 'Ej angiven'}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+                <PieChart className="w-5 h-5 text-indigo-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Riskkomfort</p>
+                <div className="flex items-center gap-2">
+                  <Progress value={(riskProfile.risk_comfort_level || 0) * 10} className="h-2 w-16" />
+                  <span className="text-sm font-semibold">{riskProfile.risk_comfort_level || 0}/10</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* AI-Generated Strategy */}
+      {aiStrategy && (
+        <Card className="border-l-4 border-l-green-500 bg-gradient-to-r from-green-50 to-lime-50 dark:from-green-950/20 dark:to-lime-950/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-green-600" />
+              AI-Genererad Investeringsstrategi
+              <Badge variant="secondary" className="bg-green-100 text-green-700">
+                Personlig Analys
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="prose prose-sm max-w-none text-gray-800 dark:text-gray-200">
+              <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                {aiStrategy}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Conversation Context */}
+      {conversationData && Object.keys(conversationData).length > 0 && (
+        <Card className="border-l-4 border-l-purple-500 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-purple-600" />
+              Dina Svar från Konsultationen
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4">
+              {conversationData.isBeginnerInvestor !== undefined && (
+                <div className="flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded-lg">
+                  <span className="font-medium">Erfarenhetsnivå:</span>
+                  <Badge variant={conversationData.isBeginnerInvestor ? "secondary" : "default"}>
+                    {conversationData.isBeginnerInvestor ? 'Nybörjare' : 'Erfaren'}
+                  </Badge>
+                </div>
+              )}
+              
+              {conversationData.investmentGoal && (
+                <div className="flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded-lg">
+                  <span className="font-medium">Investeringsmål:</span>
+                  <span className="text-sm text-muted-foreground capitalize">
+                    {conversationData.investmentGoal}
+                  </span>
+                </div>
+              )}
+              
+              {conversationData.timeHorizon && (
+                <div className="flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded-lg">
+                  <span className="font-medium">Tidshorisont:</span>
+                  <span className="text-sm text-muted-foreground capitalize">
+                    {conversationData.timeHorizon}
+                  </span>
+                </div>
+              )}
+              
+              {conversationData.riskTolerance && (
+                <div className="flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded-lg">
+                  <span className="font-medium">Risktolerans:</span>
+                  <span className="text-sm text-muted-foreground capitalize">
+                    {conversationData.riskTolerance}
+                  </span>
+                </div>
+              )}
+              
+              {conversationData.investmentStyle && (
+                <div className="flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded-lg">
+                  <span className="font-medium">Investeringsstil:</span>
+                  <span className="text-sm text-muted-foreground capitalize">
+                    {conversationData.investmentStyle}
+                  </span>
+                </div>
+              )}
+              
+              {conversationData.hasCurrentPortfolio !== undefined && (
+                <div className="flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded-lg">
+                  <span className="font-medium">Befintlig portfölj:</span>
+                  <Badge variant={conversationData.hasCurrentPortfolio ? "default" : "secondary"}>
+                    {conversationData.hasCurrentPortfolio ? 'Ja' : 'Nej'}
+                  </Badge>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Risk Profile Summary */}
+      {riskProfile.sector_interests && riskProfile.sector_interests.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              Sektorintressen
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {riskProfile.sector_interests.map((sector, index) => (
+                <Badge key={index} variant="outline" className="capitalize">
+                  {sector}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+export default UserInvestmentAnalysis;
