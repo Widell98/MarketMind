@@ -57,7 +57,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { PieChart as RechartsPieChart, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis } from 'recharts';
+import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { useToast } from '@/hooks/use-toast';
@@ -473,12 +473,19 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                 <div className="space-y-4">
                   <div className="relative h-48">
                     <ResponsiveContainer width="100%" height="100%">
-                      <RechartsPieChart data={exposureData.sectorData}>
-                        <Cell />
-                        {exposureData.sectorData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={sectorColors[index % sectorColors.length]} />
-                        ))}
-                        <ChartTooltip
+                      <RechartsPieChart>
+                        <Pie
+                          data={exposureData.sectorData}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={70}
+                          dataKey="value"
+                        >
+                          {exposureData.sectorData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={sectorColors[index % sectorColors.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
                           content={({ active, payload }) => {
                             if (active && payload && payload.length) {
                               const data = payload[0].payload;
@@ -540,7 +547,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                       <BarChart data={exposureData.marketData} layout="horizontal" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                         <XAxis type="number" />
                         <YAxis dataKey="name" type="category" width={60} />
-                        <ChartTooltip
+                        <Tooltip
                           content={({ active, payload }) => {
                             if (active && payload && payload.length) {
                               const data = payload[0].payload;
