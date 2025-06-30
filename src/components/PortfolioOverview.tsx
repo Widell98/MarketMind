@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -154,21 +153,24 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       icon: <TrendingUp className="w-4 h-4 text-green-600" />,
       title: 'Stark prestanda',
       description: 'Din portfölj har presterat bättre än marknaden med +8.2% i år',
-      action: 'Se detaljerad analys'
+      action: 'Se detaljerad analys',
+      chatMessage: 'Analysera min portföljs prestanda i detalj. Visa hur den har presterat jämfört med marknaden och vilka innehav som bidragit mest till avkastningen.'
     },
     {
       type: 'warning',
       icon: <AlertTriangle className="w-4 h-4 text-yellow-600" />,
       title: 'Rebalanseringsmöjlighet',
       description: 'Dina tech-aktier har vuxit och utgör nu 35% av portföljen',
-      action: 'Visa förslag'
+      action: 'Visa förslag',
+      chatMessage: 'Min tech-sektor har vuxit till 35% av portföljen. Analysera om detta är för mycket exponering och föreslå rebalanseringsstrategier för bättre diversifiering.'
     },
     {
       type: 'info',
       icon: <Target className="w-4 h-4 text-blue-600" />,
       title: 'Diversifiering',
       description: 'Bra spridning över olika sektorer och geografiska marknader',
-      action: 'Utforska mer'
+      action: 'Utforska mer',
+      chatMessage: 'Analysera min portföljs diversifiering i detalj. Visa fördelningen över sektorer och geografiska marknader och föreslå eventuella förbättringar.'
     }
   ];
 
@@ -233,6 +235,28 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       newExpanded.add(index);
     }
     setExpandedStocks(newExpanded);
+  };
+
+  const handleRebalanceAction = () => {
+    if (onQuickChat) {
+      onQuickChat('Analysera min nuvarande portfölj och föreslå en rebalanseringsstrategi. Visa vilka aktier jag borde köpa mer av, sälja eller behålla för att optimera min riskjusterade avkastning.');
+    }
+    // Activate the chat tab
+    const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
+    if (chatTab) {
+      chatTab.click();
+    }
+  };
+
+  const handleInsightAction = (insight: typeof insights[0]) => {
+    if (onQuickChat) {
+      onQuickChat(insight.chatMessage);
+    }
+    // Activate the chat tab
+    const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
+    if (chatTab) {
+      chatTab.click();
+    }
   };
 
   const handleResetProfile = async () => {
@@ -730,7 +754,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => onQuickChat && onQuickChat(`Berätta mer om: ${insight.title}`)}
+                  onClick={() => handleInsightAction(insight)}
                   className="text-xs"
                 >
                   {insight.action}
@@ -817,7 +841,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             <Button
               variant="outline"
               className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
-              onClick={() => onActionClick && onActionClick('rebalance')}
+              onClick={handleRebalanceAction}
             >
               <Target className="w-4 h-4 text-green-600" />
               <div>
