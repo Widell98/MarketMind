@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,7 +10,13 @@ interface ConversationData {
   riskTolerance?: string;
   monthlyAmount?: string;
   hasCurrentPortfolio?: boolean;
-  currentHoldings?: any[];
+  currentHoldings?: Array<{
+    id: string;
+    name: string;
+    quantity: number;
+    purchasePrice: number;
+    symbol?: string;
+  }>;
   age?: string;
   experience?: string;
   sectors?: string[];
@@ -166,7 +171,7 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
              conversationData.age === '36-45' ? 40 :
              conversationData.age === '46-55' ? 50 : 60,
         monthly_investment_amount: conversationData.monthlyAmount ? 
-          parseInt(conversationData.monthlyAmount.replace(/[^\d]/g, '')) || 30005000 : 30005000,
+          parseInt(conversationData.monthlyAmount.replace(/[^\d]/g, '')) || 5000 : 5000,
         investment_horizon: conversationData.timeHorizon || null,
         investment_goal: 'growth',
         risk_tolerance: conversationData.riskTolerance || null,
@@ -199,7 +204,7 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
 
       const { data: riskProfile, error: riskProfileError } = await supabase
         .from('user_risk_profiles')
-        .insert([riskProfileData])
+        .insert(riskProfileData)
         .select()
         .single();
 
@@ -233,15 +238,18 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
         return null;
       }
 
+      // Create asset allocation compatible with Json type
+      const assetAllocation = {
+        conversation_data: JSON.parse(JSON.stringify(conversationData)),
+        ai_strategy: aiResponse.response
+      };
+
       // Create a portfolio in the database with the AI response
       const portfolioData = {
         user_id: user.id,
         risk_profile_id: riskProfile.id,
         portfolio_name: 'AI-Genererad Portfölj',
-        asset_allocation: {
-          conversation_data: conversationData,
-          ai_strategy: aiResponse.response
-        },
+        asset_allocation: assetAllocation,
         recommended_stocks: [],
         total_value: 0,
         expected_return: 0.08,
@@ -251,7 +259,7 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
 
       const { data: portfolio, error: portfolioError } = await supabase
         .from('user_portfolios')
-        .insert([portfolioData])
+        .insert(portfolioData)
         .select()
         .single();
 
