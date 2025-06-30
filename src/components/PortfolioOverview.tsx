@@ -20,7 +20,9 @@ import {
   Settings,
   ChevronDown,
   ChevronUp,
-  Info
+  Info,
+  Star,
+  User
 } from 'lucide-react';
 import { 
   Table,
@@ -64,7 +66,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   onQuickChat, 
   onActionClick 
 }) => {
-  const { holdings, loading } = useUserHoldings();
+  const { holdings, actualHoldings, recommendations, loading } = useUserHoldings();
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -112,6 +114,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       crypto: 'bg-purple-100 text-purple-800',
       bonds: 'bg-yellow-100 text-yellow-800',
       real_estate: 'bg-orange-100 text-orange-800',
+      recommendation: 'bg-indigo-100 text-indigo-800',
       other: 'bg-gray-100 text-gray-800'
     };
     return colors[type as keyof typeof colors] || colors.other;
@@ -124,13 +127,11 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       crypto: 'Krypto',
       bonds: 'Obligation',
       real_estate: 'Fastighet',
+      recommendation: 'AI-Rekommendation',
       other: 'Övrigt'
     };
     return labels[type as keyof typeof labels] || 'Övrigt';
   };
-
-  // Get AI-recommended stocks from portfolio data
-  const recommendedStocks = portfolio?.recommended_stocks || [];
 
   const handleStockChat = (stockName: string, stockSymbol?: string) => {
     const sessionName = stockName;
@@ -261,6 +262,11 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               <CardTitle className="text-base sm:text-lg flex items-center gap-2">
                 <Brain className="w-5 h-5 text-purple-600" />
                 AI-Rekommenderade Innehav
+                {recommendations.length > 0 && (
+                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                    {recommendations.length} rekommendationer
+                  </Badge>
+                )}
               </CardTitle>
               <CardDescription>Aktier som AI-advisorn rekommenderar för din portfölj</CardDescription>
             </div>
@@ -292,7 +298,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
               <p className="text-sm text-muted-foreground">Laddar rekommendationer...</p>
             </div>
-          ) : recommendedStocks.length === 0 ? (
+          ) : recommendations.length === 0 ? (
             <div className="text-center py-8">
               <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">Inga AI-rekommendationer ännu</h3>
@@ -308,135 +314,76 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               </Button>
             </div>
           ) : (
-            <div className="space-y-3">
-              {recommendedStocks.map((stock: any, index: number) => (
-                <div key={index} className="border rounded-lg overflow-hidden">
-                  <div className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Rekommenderad Aktie</TableHead>
+                    <TableHead>Typ</TableHead>
+                    <TableHead>Värde/Pris</TableHead>
+                    <TableHead className="text-right">Diskutera</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recommendations.map((recommendation) => (
+                    <TableRow key={recommendation.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Star className="w-4 h-4 text-purple-600" />
                           <div>
-                            <div className="font-medium text-lg">{stock.name || stock.symbol}</div>
-                            {stock.symbol && stock.name && (
-                              <div className="text-sm text-muted-foreground">{stock.symbol}</div>
+                            <div className="font-medium">{recommendation.name}</div>
+                            {recommendation.symbol && (
+                              <div className="text-sm text-muted-foreground">{recommendation.symbol}</div>
                             )}
                           </div>
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                            {stock.sector || 'Teknologi'}
-                          </Badge>
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                            {stock.weight ? `${stock.weight}%` : '5-10%'}
-                          </Badge>
                         </div>
-                        
-                        <p className="text-sm text-muted-foreground mt-2">
-                          {stock.reasoning || 'Passar din riskprofil och diversifiering'}
-                        </p>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={getHoldingTypeColor(recommendation.holding_type)}>
+                          {getHoldingTypeLabel(recommendation.holding_type)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">
+                          {formatCurrency(recommendation.purchase_price, recommendation.currency)}
+                        </div>
+                        {recommendation.sector && (
+                          <div className="text-xs text-muted-foreground">{recommendation.sector}</div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleStockChat(stock.name || stock.symbol, stock.symbol)}
-                          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                          onClick={() => handleStockChat(recommendation.name, recommendation.symbol)}
+                          className="flex items-center gap-1 text-purple-600 hover:text-purple-800 hover:bg-purple-50"
                         >
                           <MessageCircle className="w-4 h-4" />
                           <span className="hidden sm:inline">Diskutera</span>
                         </Button>
-                        
-                        <Collapsible>
-                          <CollapsibleTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => toggleStockExpansion(index)}
-                              className="flex items-center gap-1"
-                            >
-                              <Info className="w-4 h-4" />
-                              {expandedStocks.has(index) ? (
-                                <ChevronUp className="w-4 h-4" />
-                              ) : (
-                                <ChevronDown className="w-4 h-4" />
-                              )}
-                            </Button>
-                          </CollapsibleTrigger>
-                          
-                          <CollapsibleContent>
-                            <div className="mt-3 pt-3 border-t bg-muted/30 rounded-lg p-3">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                                <div>
-                                  <span className="font-medium">Förväntat pris:</span>
-                                  <span className="ml-2 text-muted-foreground">
-                                    {stock.expected_price || 'Ej specificerat'}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="font-medium">Riskbedömning:</span>
-                                  <span className="ml-2 text-muted-foreground">
-                                    {stock.risk_assessment || 'Måttlig'}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="font-medium">Tidshorisont:</span>
-                                  <span className="ml-2 text-muted-foreground">
-                                    {stock.time_horizon || 'Lång sikt'}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="font-medium">Konfidensgrad:</span>
-                                  <span className="ml-2 text-muted-foreground">
-                                    {stock.confidence || '75%'}
-                                  </span>
-                                </div>
-                              </div>
-                              
-                              <div className="mt-3 flex gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleStockChat(
-                                    stock.name || stock.symbol, 
-                                    stock.symbol
-                                  )}
-                                  className="text-xs"
-                                >
-                                  <BarChart3 className="w-3 h-3 mr-1" />
-                                  Djupanalys
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleStockChat(
-                                    stock.name || stock.symbol, 
-                                    stock.symbol
-                                  )}
-                                  className="text-xs"
-                                >
-                                  <Target className="w-3 h-3 mr-1" />
-                                  Portföljpassning
-                                </Button>
-                              </div>
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>
       </Card>
 
       {/* User's Current Holdings */}
-      {holdings.length > 0 && (
+      {actualHoldings.length > 0 && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-base sm:text-lg">Dina Nuvarande Innehav</CardTitle>
+                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                  <User className="w-5 h-5 text-blue-600" />
+                  Dina Nuvarande Innehav
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                    {actualHoldings.length} innehav
+                  </Badge>
+                </CardTitle>
                 <CardDescription>Aktier och fonder du redan äger</CardDescription>
               </div>
               <Button
@@ -457,12 +404,13 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                   <TableRow>
                     <TableHead>Innehav</TableHead>
                     <TableHead>Typ</TableHead>
+                    <TableHead>Antal</TableHead>
                     <TableHead>Värde</TableHead>
                     <TableHead className="text-right">Diskutera</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {holdings.slice(0, 5).map((holding) => (
+                  {actualHoldings.map((holding) => (
                     <TableRow key={holding.id}>
                       <TableCell>
                         <div>
@@ -478,8 +426,13 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                         </Badge>
                       </TableCell>
                       <TableCell>
+                        {holding.quantity && (
+                          <div className="font-medium">{holding.quantity} st</div>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         <div className="font-medium">
-                          {formatCurrency(holding.current_value, holding.currency)}
+                          {formatCurrency(holding.current_value || holding.purchase_price, holding.currency)}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">

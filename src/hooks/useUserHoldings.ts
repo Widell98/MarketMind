@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 export interface UserHolding {
   id: string;
   user_id: string;
-  holding_type: 'stock' | 'fund' | 'crypto' | 'real_estate' | 'bonds' | 'other';
+  holding_type: 'stock' | 'fund' | 'crypto' | 'real_estate' | 'bonds' | 'other' | 'recommendation';
   name: string;
   symbol?: string;
   quantity?: number;
@@ -23,6 +23,8 @@ export interface UserHolding {
 
 export const useUserHoldings = () => {
   const [holdings, setHoldings] = useState<UserHolding[]>([]);
+  const [actualHoldings, setActualHoldings] = useState<UserHolding[]>([]);
+  const [recommendations, setRecommendations] = useState<UserHolding[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -63,7 +65,18 @@ export const useUserHoldings = () => {
         holding_type: item.holding_type as UserHolding['holding_type']
       }));
 
+      console.log('All holdings fetched:', typedData);
+
+      // Separate recommendations from actual holdings
+      const actualHoldingsData = typedData.filter(h => h.holding_type !== 'recommendation');
+      const recommendationsData = typedData.filter(h => h.holding_type === 'recommendation');
+
+      console.log('Actual holdings:', actualHoldingsData);
+      console.log('Recommendations:', recommendationsData);
+
       setHoldings(typedData);
+      setActualHoldings(actualHoldingsData);
+      setRecommendations(recommendationsData);
     } catch (error) {
       console.error('Error fetching holdings:', error);
     } finally {
@@ -99,7 +112,15 @@ export const useUserHoldings = () => {
           ...data,
           holding_type: data.holding_type as UserHolding['holding_type']
         };
+        
         setHoldings(prev => [typedData, ...prev]);
+        
+        if (typedData.holding_type === 'recommendation') {
+          setRecommendations(prev => [typedData, ...prev]);
+        } else {
+          setActualHoldings(prev => [typedData, ...prev]);
+        }
+        
         toast({
           title: "Success",
           description: "Holding added successfully",
@@ -142,7 +163,15 @@ export const useUserHoldings = () => {
           ...data,
           holding_type: data.holding_type as UserHolding['holding_type']
         };
+        
         setHoldings(prev => prev.map(h => h.id === id ? typedData : h));
+        
+        if (typedData.holding_type === 'recommendation') {
+          setRecommendations(prev => prev.map(h => h.id === id ? typedData : h));
+        } else {
+          setActualHoldings(prev => prev.map(h => h.id === id ? typedData : h));
+        }
+        
         toast({
           title: "Success",
           description: "Holding updated successfully",
@@ -176,6 +205,9 @@ export const useUserHoldings = () => {
       }
 
       setHoldings(prev => prev.filter(h => h.id !== id));
+      setActualHoldings(prev => prev.filter(h => h.id !== id));
+      setRecommendations(prev => prev.filter(h => h.id !== id));
+      
       toast({
         title: "Success",
         description: "Holding deleted successfully",
@@ -189,6 +221,8 @@ export const useUserHoldings = () => {
 
   return {
     holdings,
+    actualHoldings,
+    recommendations,
     loading,
     addHolding,
     updateHolding,

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,7 @@ import { usePortfolio } from '@/hooks/usePortfolio';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserHoldings } from '@/hooks/useUserHoldings';
 
 interface Message {
   id: string;
@@ -62,6 +62,7 @@ const ChatPortfolioAdvisor = () => {
   
   const { generatePortfolioFromConversation, loading } = useConversationalPortfolio();
   const { refetch } = usePortfolio();
+  const { refetch: refetchHoldings } = useUserHoldings();
   const { toast } = useToast();
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -552,8 +553,11 @@ const ChatPortfolioAdvisor = () => {
         description: "Din portföljstrategi implementeras och profilen uppdateras...",
       });
 
-      // Refresh portfolio data to ensure we have the latest
-      await refetch();
+      // Refresh both portfolio and holdings data to ensure we have the latest
+      await Promise.all([
+        refetch(),
+        refetchHoldings()
+      ]);
       
       // Navigate to implementation page
       navigate('/portfolio-implementation');
@@ -562,7 +566,7 @@ const ChatPortfolioAdvisor = () => {
       setTimeout(() => {
         toast({
           title: "Strategi implementerad!",
-          description: "Din portföljstrategi är nu aktiv och redo att användas",
+          description: "Din portföljstrategi är nu aktiv och redo att användas. Innehaven visas nu i översikten.",
         });
       }, 1000);
       
