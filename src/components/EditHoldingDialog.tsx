@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -27,6 +26,8 @@ interface EditHoldingDialogProps {
   holding: UserHolding | null;
 }
 
+type HoldingType = 'stock' | 'fund' | 'crypto' | 'bonds' | 'real_estate' | 'other' | 'recommendation';
+
 const EditHoldingDialog: React.FC<EditHoldingDialogProps> = ({
   isOpen,
   onClose,
@@ -43,7 +44,7 @@ const EditHoldingDialog: React.FC<EditHoldingDialogProps> = ({
     sector: '',
     market: '',
     currency: 'SEK',
-    holding_type: 'stock' as const
+    holding_type: 'stock' as HoldingType
   });
 
   useEffect(() => {
@@ -58,7 +59,7 @@ const EditHoldingDialog: React.FC<EditHoldingDialogProps> = ({
         sector: holding.sector || '',
         market: holding.market || '',
         currency: holding.currency || 'SEK',
-        holding_type: holding.holding_type || 'stock'
+        holding_type: (holding.holding_type as HoldingType) || 'stock'
       });
     }
   }, [holding]);
@@ -125,7 +126,7 @@ const EditHoldingDialog: React.FC<EditHoldingDialogProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="holding_type">Typ</Label>
-              <Select value={formData.holding_type} onValueChange={(value) => setFormData({ ...formData, holding_type: value as any })}>
+              <Select value={formData.holding_type} onValueChange={(value: HoldingType) => setFormData({ ...formData, holding_type: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
