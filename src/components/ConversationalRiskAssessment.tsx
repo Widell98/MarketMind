@@ -418,34 +418,24 @@ ${response}`;
           console.error('Error saving recommendations:', recommendationsError);
         }
 
-        // Save to AI insights cache as well for UserInsightsPanel
+        // Save to AI market insights instead of cache
         const insightsData = aiRecommendations.map((rec, index) => ({
-          id: `rec-${index}`,
+          user_id: user.id,
+          insight_type: 'recommendation',
           title: `${rec.name} (${rec.symbol})`,
           content: `${rec.allocation}% allokering i ${rec.sector}. ${rec.reasoning || 'AI-rekommendation baserad på din riskprofil.'}`,
           confidence_score: 0.85,
-          insight_type: 'recommendation',
-          key_factors: [rec.sector, `${rec.allocation}% allokering`],
-          ...(rec.isin && { isin: rec.isin }),
-          ...(rec.fee && { fee: rec.fee })
+          is_personalized: true,
+          expires_at: new Date(Date.now() + 3.5 * 24 * 60 * 60 * 1000).toISOString()
         }));
 
-        // Cache the recommendations as AI insights
-        const { error: cacheError } = await supabase
-          .from('ai_insights_cache')
-          .upsert({
-            user_id: user.id,
-            insight_type: 'personalized_insights',
-            is_personalized: true,
-            insights_data: insightsData,
-            updated_at: new Date().toISOString(),
-            expires_at: new Date(Date.now() + 3.5 * 24 * 60 * 60 * 1000).toISOString() // 3.5 days
-          }, {
-            onConflict: 'user_id,insight_type,is_personalized'
-          });
+        // Save insights to ai_market_insights table
+        const { error: insightsError } = await supabase
+          .from('ai_market_insights')
+          .insert(insightsData);
 
-        if (cacheError) {
-          console.error('Error caching AI insights:', cacheError);
+        if (insightsError) {
+          console.error('Error saving AI insights:', insightsError);
         }
       }
 
@@ -483,9 +473,9 @@ ${response}`;
         .delete()
         .eq('user_id', user.id);
 
-      // Clear AI insights cache
+      // Clear AI market insights
       await supabase
-        .from('ai_insights_cache')
+        .from('ai_market_insights')
         .delete()
         .eq('user_id', user.id);
 
