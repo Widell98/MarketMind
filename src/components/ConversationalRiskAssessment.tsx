@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -109,6 +110,7 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
 
       const data = await response.json();
       if (data && data.response) {
+        console.log('Extracting stock recommendations from AI response:', data.response);
         setAiResponse(data.response);
         const recommendations = extractRecommendations(data.response);
         setAiRecommendations(recommendations);
@@ -138,95 +140,147 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
     
     const recommendations: RecommendedStock[] = [];
     
-    // Find the "Avancerade Portföljtekniker" section
+    // Enhanced patterns to match various recommendation formats
+    const patterns = [
+      // Pattern 1: **Company Name (Symbol)**: Description with percentage
+      /\*\*([^*]+?)\s*\(([^)]+?)\)\*\*:?\s*[^.]*?(\d+)%/gi,
+      // Pattern 2: **Company Name**: Description with symbol somewhere
+      /\*\*([^*]+?)\*\*:?\s*[^.]*?(?:\(([A-Z]{2,8})\))?[^.]*?(\d+)%/gi,
+      // Pattern 3: Company Name (Symbol) with percentage
+      /([A-ZÅÄÖ][a-zåäö\s&.-]+)\s*\(([A-Z]{2,8})\)[^.]*?(\d+)%/g,
+      // Pattern 4: Look for ISIN codes
+      /([^:]+?):\s*.*?ISIN:\s*([A-Z]{2}\d{10})[^.]*?(\d+(?:\.\d+)?)%/gi,
+      // Pattern 5: Simple format with allocation
+      /([A-ZÅÄÖ][a-zåäö\s&.-]+)\s*(?:\(([A-Z]{2,8})\))?\s*[:-]?\s*(\d+)%/g
+    ];
+
+    // Extract structured recommendations
     const lines = text.split('\n');
-    let inAdvancedSection = false;
-    let inAllocationSection = false;
+    let currentSection = '';
+    let allocationPercentage = 0;
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       
-      // Detect if we're in the Advanced Portfolio Techniques section
-      if (line.match(/avancerade?\s+portföljtekniker/i)) {
-        inAdvancedSection = true;
-        console.log('Found Advanced Portfolio Techniques section');
+      // Detect sections with percentages
+      const sectionMatch = line.match(/^#+\s*(.+?)\s*\((\d+)%\)/) || 
+                          line.match(/^(\d+)\.\s*\*\*(.+?)\s*\((\d+)%\)\*\*/);
+      
+      if (sectionMatch) {
+        currentSection = sectionMatch[1] || sectionMatch[2];
+        allocationPercentage = parseInt(sectionMatch[2] || sectionMatch[3]);
+        console.log(`Found section: ${currentSection} with ${allocationPercentage}%`);
         continue;
       }
       
-      // Stop when we reach another major section (next #### or ###)
-      if (inAdvancedSection && line.match(/^#{3,4}\s+(?!.*avancerade|.*allokering)/i)) {
-        console.log('Exiting Advanced Portfolio Techniques section');
-        inAdvancedSection = false;
-        inAllocationSection = false;
-        continue;
-      }
-      
-      // Look for allocation subsection
-      if (inAdvancedSection && line.match(/allokering/i)) {
-        inAllocationSection = true;
-        console.log('Found Allocation subsection');
-        continue;
-      }
-      
-      // Extract recommendations from allocation section
-      if (inAdvancedSection && inAllocationSection) {
-        // Pattern: - **Sector**: X% - Exempel: Company (SYMBOL), Company (SYMBOL)
-        const sectorMatch = line.match(/^\s*-\s*\*\*([^*]+)\*\*:\s*(\d+)%\s*-\s*exempel:\s*(.+)/i);
-        if (sectorMatch) {
-          const [, sector, percentage, examples] = sectorMatch;
-          const allocation = parseInt(percentage);
-          
-          console.log(`Found sector: ${sector}, allocation: ${allocation}%, examples: ${examples}`);
-          
-          // Extract individual stocks/funds from examples
-          const stockMatches = examples.match(/([^,]+?)\s*\(([^)]+)\)/g);
-          if (stockMatches) {
-            const stocksPerSector = stockMatches.length;
-            const allocationPerStock = Math.round(allocation / stocksPerSector);
-            
-            stockMatches.forEach(match => {
-              const stockMatch = match.match(/([^(]+?)\s*\(([^)]+)\)/);
-              if (stockMatch) {
-                const [, name, symbol] = stockMatch;
-                const recommendation = {
-                  name: name.trim(),
-                  symbol: symbol.trim(),
-                  allocation: allocationPerStock,
-                  sector: sector.trim(),
-                  reasoning: `AI-rekommenderad för ${sector.toLowerCase()} med ${allocationPerStock}% allokering av totalt ${allocation}% för sektorn`
-                };
-                recommendations.push(recommendation);
-                console.log('Added recommendation:', recommendation);
-              }
-            });
-          }
+      // Look for individual stocks within sections
+      if (currentSection && allocationPercentage > 0) {
+        // Pattern for stocks with ISIN and fees
+        const isinMatch = line.match(/\*\*([^*]+?)\s*\(ISIN:\s*([A-Z]{2}\d{10})\)\*\*:?\s*(.+?)(?:avgift|fee)\s*\(([^)]+)\)/i);
+        if (isinMatch) {
+          const [, name, isin, description, fee] = isinMatch;
+          recommendations.push({
+            name: name.trim(),
+            symbol: extractSymbolFromName(name.trim()),
+            allocation: allocationPercentage,
+            sector: currentSection,
+            reasoning: description.trim(),
+            isin: isin,
+            fee: fee
+          });
+          console.log('Added ISIN recommendation:', { name: name.trim(), isin, fee });
+          continue;
         }
         
-        // Alternative pattern: - **Sector**: X% - Company (SYMBOL)
-        const altSectorMatch = line.match(/^\s*-\s*\*\*([^*]+)\*\*:\s*(\d+)%\s*-?\s*([^(]+)\s*\(([^)]+)\)/i);
-        if (altSectorMatch) {
-          const [, sector, percentage, name, symbol] = altSectorMatch;
-          const recommendation = {
+        // Pattern for stocks with symbols
+        const stockMatch = line.match(/\*\*([^*]+?)\s*(?:\(([A-Z]{2,8})\))?\*\*:?\s*(.+)/i) ||
+                          line.match(/[-•]\s*\*\*([^*]+?)\s*(?:\(([A-Z]{2,8})\))?\*\*:?\s*(.+)/i);
+        
+        if (stockMatch) {
+          const [, name, symbol, description] = stockMatch;
+          recommendations.push({
             name: name.trim(),
-            symbol: symbol.trim(),
-            allocation: parseInt(percentage),
-            sector: sector.trim(),
-            reasoning: `AI-rekommenderad för ${sector.toLowerCase()} med ${percentage}% allokering`
-          };
-          recommendations.push(recommendation);
-          console.log('Added alternative pattern recommendation:', recommendation);
+            symbol: symbol || extractSymbolFromName(name.trim()),
+            allocation: Math.round(allocationPercentage / 2), // Split allocation if multiple stocks
+            sector: currentSection,
+            reasoning: description.trim()
+          });
+          console.log('Added stock recommendation:', { name: name.trim(), symbol: symbol || 'N/A' });
         }
       }
     }
     
-    // Remove duplicates based on symbol
-    const uniqueRecommendations = recommendations.filter((rec, index, arr) => 
-      arr.findIndex(r => r.symbol.toLowerCase() === rec.symbol.toLowerCase()) === index
-    );
+    // Fallback: Use general patterns if structured extraction didn't work
+    if (recommendations.length === 0) {
+      patterns.forEach(pattern => {
+        let match;
+        while ((match = pattern.exec(text)) !== null) {
+          const [, name, symbolOrPercentage, percentageOrSymbol] = match;
+          
+          let actualName = name.trim();
+          let actualSymbol = '';
+          let actualPercentage = 0;
+          
+          // Determine which capture group contains what
+          if (/^\d+$/.test(symbolOrPercentage)) {
+            actualPercentage = parseInt(symbolOrPercentage);
+            actualSymbol = extractSymbolFromName(actualName);
+          } else {
+            actualSymbol = symbolOrPercentage || extractSymbolFromName(actualName);
+            actualPercentage = parseInt(percentageOrSymbol) || 0;
+          }
+          
+          if (actualName.length > 2 && !recommendations.find(r => 
+            r.name.toLowerCase() === actualName.toLowerCase() || 
+            r.symbol.toLowerCase() === actualSymbol.toLowerCase()
+          )) {
+            recommendations.push({
+              name: actualName,
+              symbol: actualSymbol,
+              allocation: actualPercentage,
+              sector: 'Allmän',
+              reasoning: `AI-rekommenderad med ${actualPercentage}% allokering`
+            });
+          }
+        }
+      });
+    }
     
-    console.log('Final extracted recommendations:', uniqueRecommendations);
+    console.log('Final extracted recommendations:', recommendations);
+    return recommendations.slice(0, 10);
+  };
+
+  const extractSymbolFromName = (name: string): string => {
+    // Map common Swedish company names to their symbols
+    const symbolMap: { [key: string]: string } = {
+      'proethos fond': 'PROETHOS',
+      'spiltan aktiefond investmentbolag': 'SPILTAN',
+      'nvidia': 'NVDA',
+      'embracer group': 'EMBRAC B',
+      'essity': 'ESSITY B',
+      'orkla': 'ORK',
+      'volvo': 'VOLV B',
+      'abb': 'ABB',
+      'ericsson': 'ERIC B',
+      'h&m': 'HM B',
+      'atlas copco': 'ATCO A'
+    };
     
-    return uniqueRecommendations.slice(0, 10); // Allow up to 10 recommendations
+    const lowerName = name.toLowerCase();
+    for (const [key, symbol] of Object.entries(symbolMap)) {
+      if (lowerName.includes(key)) {
+        return symbol;
+      }
+    }
+    
+    // Extract symbol from parentheses if present
+    const symbolMatch = name.match(/\(([A-Z]{2,8})\)/);
+    if (symbolMatch) {
+      return symbolMatch[1];
+    }
+    
+    // Generate symbol from name
+    return name.toUpperCase().replace(/[^A-Z]/g, '').substring(0, 5);
   };
 
   const formatAIResponseWithSummary = (response: string, recommendations: RecommendedStock[]) => {
@@ -363,6 +417,36 @@ ${response}`;
         if (recommendationsError) {
           console.error('Error saving recommendations:', recommendationsError);
         }
+
+        // Save to AI insights cache as well for UserInsightsPanel
+        const insightsData = aiRecommendations.map((rec, index) => ({
+          id: `rec-${index}`,
+          title: `${rec.name} (${rec.symbol})`,
+          content: `${rec.allocation}% allokering i ${rec.sector}. ${rec.reasoning || 'AI-rekommendation baserad på din riskprofil.'}`,
+          confidence_score: 0.85,
+          insight_type: 'recommendation',
+          key_factors: [rec.sector, `${rec.allocation}% allokering`],
+          ...(rec.isin && { isin: rec.isin }),
+          ...(rec.fee && { fee: rec.fee })
+        }));
+
+        // Cache the recommendations as AI insights
+        const { error: cacheError } = await supabase
+          .from('ai_insights_cache')
+          .upsert({
+            user_id: user.id,
+            insight_type: 'personalized_insights',
+            is_personalized: true,
+            insights_data: insightsData,
+            updated_at: new Date().toISOString(),
+            expires_at: new Date(Date.now() + 3.5 * 24 * 60 * 60 * 1000).toISOString() // 3.5 days
+          }, {
+            onConflict: 'user_id,insight_type,is_personalized'
+          });
+
+        if (cacheError) {
+          console.error('Error caching AI insights:', cacheError);
+        }
       }
 
       toast({
@@ -396,6 +480,12 @@ ${response}`;
       // Clear existing portfolio
       await supabase
         .from('user_portfolios')
+        .delete()
+        .eq('user_id', user.id);
+
+      // Clear AI insights cache
+      await supabase
+        .from('ai_insights_cache')
         .delete()
         .eq('user_id', user.id);
 
@@ -602,7 +692,7 @@ ${response}`;
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                           <Tag className="w-3 h-3" />
-                          <span>{rec.sector}</span>
+                          <span className="font-medium text-purple-600">{rec.sector}</span>
                           {rec.allocation && (
                             <>
                               <span>•</span>

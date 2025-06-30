@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Lightbulb, TrendingUp, AlertTriangle, Target, Brain, RefreshCw, Crown } from 'lucide-react';
+import { Lightbulb, TrendingUp, AlertTriangle, Target, Brain, RefreshCw, Crown, Building2, Tag } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +17,8 @@ interface AIInsight {
   insight_type: string;
   key_factors?: string[];
   impact_timeline?: string;
+  isin?: string;
+  fee?: string;
 }
 
 const UserInsightsPanel = () => {
@@ -142,6 +144,7 @@ const UserInsightsPanel = () => {
       case 'opportunity': return <TrendingUp className="w-4 h-4 text-green-600" />;
       case 'risk_warning': return <AlertTriangle className="w-4 h-4 text-red-600" />;
       case 'rebalancing': return <Target className="w-4 h-4 text-blue-600" />;
+      case 'recommendation': return <Building2 className="w-4 h-4 text-purple-600" />;
       default: return <Lightbulb className="w-4 h-4 text-yellow-600" />;
     }
   };
@@ -150,6 +153,90 @@ const UserInsightsPanel = () => {
     if (score >= 0.8) return 'bg-green-100 text-green-800';
     if (score >= 0.6) return 'bg-yellow-100 text-yellow-800';
     return 'bg-red-100 text-red-800';
+  };
+
+  const formatSectorHeader = (sectorName: string) => {
+    // Style sector names as headers with CSS
+    return (
+      <h3 className="font-semibold text-base text-purple-700 dark:text-purple-300 mb-2 border-b border-purple-200 dark:border-purple-700 pb-1">
+        {sectorName}
+      </h3>
+    );
+  };
+
+  const renderInsightContent = (insight: AIInsight) => {
+    // Check if this is a recommendation type insight
+    if (insight.insight_type === 'recommendation') {
+      return (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-purple-600" />
+            <h4 className="font-medium text-sm leading-tight text-purple-800 dark:text-purple-200">
+              {insight.title}
+            </h4>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {insight.isin && (
+              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-600 font-mono">
+                {insight.isin}
+              </Badge>
+            )}
+            {insight.key_factors && insight.key_factors.length > 0 && (
+              <div className="flex items-center gap-1">
+                <Tag className="w-3 h-3 text-gray-500" />
+                <span className="text-xs text-gray-600 dark:text-gray-400">
+                  {insight.key_factors[0]}
+                </span>
+              </div>
+            )}
+            {insight.fee && (
+              <span className="text-xs text-gray-500">
+                Avgift: {insight.fee}
+              </span>
+            )}
+          </div>
+          
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {insight.content}
+          </p>
+        </div>
+      );
+    }
+
+    // Regular insight display
+    return (
+      <>
+        <div className="flex items-start gap-2 mb-2">
+          {getInsightIcon(insight.insight_type)}
+          <div className="flex-1 min-w-0">
+            <h4 className="font-medium text-sm leading-tight">{insight.title}</h4>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant="outline" className="text-xs">
+                {insight.insight_type.replace('_', ' ')}
+              </Badge>
+              <Badge className={`text-xs ${getConfidenceColor(insight.confidence_score)}`}>
+                {Math.round(insight.confidence_score * 100)}% säker
+              </Badge>
+            </div>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed break-words">
+          {insight.content}
+        </p>
+        {insight.key_factors && insight.key_factors.length > 0 && (
+          <div className="mt-2">
+            <div className="flex flex-wrap gap-1">
+              {insight.key_factors.slice(0, 3).map((factor, index) => (
+                <Badge key={index} variant="secondary" className="text-xs px-1.5 py-0.5">
+                  {factor}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+      </>
+    );
   };
 
   return (
@@ -195,34 +282,7 @@ const UserInsightsPanel = () => {
           <>
             {insights.slice(0, 4).map((insight) => (
               <div key={insight.id} className="p-3 bg-muted/50 rounded-lg border">
-                <div className="flex items-start gap-2 mb-2">
-                  {getInsightIcon(insight.insight_type)}
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-sm leading-tight">{insight.title}</h4>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-xs">
-                        {insight.insight_type.replace('_', ' ')}
-                      </Badge>
-                      <Badge className={`text-xs ${getConfidenceColor(insight.confidence_score)}`}>
-                        {Math.round(insight.confidence_score * 100)}% säker
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed break-words">
-                  {insight.content}
-                </p>
-                {insight.key_factors && insight.key_factors.length > 0 && (
-                  <div className="mt-2">
-                    <div className="flex flex-wrap gap-1">
-                      {insight.key_factors.slice(0, 3).map((factor, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs px-1.5 py-0.5">
-                          {factor}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {renderInsightContent(insight)}
               </div>
             ))}
             
