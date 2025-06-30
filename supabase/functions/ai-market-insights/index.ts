@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
@@ -30,15 +29,30 @@ serve(async (req) => {
       });
     }
 
-    const { type = 'market_sentiment', personalized = false } = await req.json();
-    console.log(`Generating AI insights for user ${user.id}, type: ${type}`);
+    const { type = 'market_sentiment', personalized = false, forceRefresh = false } = await req.json();
+    console.log(`Getting AI insights for user ${user.id}, type: ${type}, personalized: ${personalized}`);
 
+    // Check for cached insights first (unless forced refresh)
+    if (!forceRefresh) {
+      const cachedInsights = await getCachedInsights(user.id, type, personalized);
+      if (cachedInsights) {
+        console.log('Returning cached insights');
+        return new Response(JSON.stringify(cachedInsights), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    console.log('Generating new insights');
     let insights;
     if (personalized) {
       insights = await generatePersonalizedInsights(user.id, type);
     } else {
       insights = await generateGeneralInsights(type);
     }
+
+    // Cache the new insights
+    await cacheInsights(user.id, type, personalized, insights);
 
     return new Response(JSON.stringify(insights), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -51,6 +65,57 @@ serve(async (req) => {
     });
   }
 });
+
+async function getCachedInsights(userId: string, type: string, isPersonalized: boolean) {
+  try {
+    const { data, error } = await supabase
+      .from('ai_insights_cache')
+      .select('insights_data, expires_at')
+      .eq('user_id', isPersonalized ? userId : null)
+      .eq('insight_type', type)
+      .eq('is_personalized', isPersonalized)
+      .gt('expires_at', new Date().toISOString())
+      .single();
+
+    if (error || !data) {
+      console.log('No valid cached insights found:', error?.message);
+      return null;
+    }
+
+    return data.insights_data;
+  } catch (error) {
+    console.error('Error fetching cached insights:', error);
+    return null;
+  }
+}
+
+async function cacheInsights(userId: string, type: string, isPersonalized: boolean, insights: any[]) {
+  try {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 3.5); // 3.5 days = twice per week
+
+    const { error } = await supabase
+      .from('ai_insights_cache')
+      .upsert({
+        user_id: isPersonalized ? userId : null,
+        insight_type: type,
+        is_personalized: isPersonalized,
+        insights_data: insights,
+        updated_at: new Date().toISOString(),
+        expires_at: expiresAt.toISOString()
+      }, {
+        onConflict: 'user_id,insight_type,is_personalized'
+      });
+
+    if (error) {
+      console.error('Error caching insights:', error);
+    } else {
+      console.log('Successfully cached insights');
+    }
+  } catch (error) {
+    console.error('Error caching insights:', error);
+  }
+}
 
 async function generatePersonalizedInsights(userId: string, type: string) {
   if (!openAIApiKey) {
@@ -148,7 +213,6 @@ Svara med endast JSON enligt systemprompt. Max 3 insikter.`
     max_tokens: 900,
   }),
 });
-
 
     const data = await response.json();
     
@@ -254,7 +318,6 @@ Endast 3–4 insikter. På svenska. Svara enbart med JSON-array enligt formatet 
     return await generateAIMockInsights(type, false);
   }
 }
-
 
 async function generateAIMockInsights(type: string, isPersonalized: boolean) {
   if (!openAIApiKey) {

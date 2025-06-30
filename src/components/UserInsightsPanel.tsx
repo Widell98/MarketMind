@@ -21,11 +21,15 @@ interface AIInsight {
 const UserInsightsPanel = () => {
   const [insights, setInsights] = useState<AIInsight[]>([]);
   const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const generateInsights = async () => {
-    if (!user) return;
+  const fetchInsights = async (forceRefresh = false) => {
+    if (!user) {
+      await fetchGeneralInsights(forceRefresh);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -33,15 +37,16 @@ const UserInsightsPanel = () => {
       const { data, error } = await supabase.functions.invoke('ai-market-insights', {
         body: { 
           type: 'personalized_insights',
-          personalized: true 
+          personalized: true,
+          forceRefresh: forceRefresh
         }
       });
 
       if (error) {
-        console.error('Error generating insights:', error);
+        console.error('Error fetching insights:', error);
         toast({
           title: "Fel",
-          description: "Kunde inte generera AI-insikter. Försök igen senare.",
+          description: "Kunde inte hämta AI-insikter. Försök igen senare.",
           variant: "destructive",
         });
         return;
@@ -49,13 +54,10 @@ const UserInsightsPanel = () => {
 
       if (data && Array.isArray(data)) {
         setInsights(data);
-        toast({
-          title: "Framgång!",
-          description: "AI-insikter har genererats baserat på din portfölj",
-        });
+        setLastUpdated(new Date().toLocaleString('sv-SE'));
       }
     } catch (error) {
-      console.error('Error generating insights:', error);
+      console.error('Error fetching insights:', error);
       toast({
         title: "Fel",
         description: "Ett oväntat fel uppstod. Försök igen.",
@@ -66,14 +68,15 @@ const UserInsightsPanel = () => {
     }
   };
 
-  const fetchGeneralInsights = async () => {
+  const fetchGeneralInsights = async (forceRefresh = false) => {
     try {
       setLoading(true);
       
       const { data, error } = await supabase.functions.invoke('ai-market-insights', {
         body: { 
           type: 'market_sentiment',
-          personalized: false 
+          personalized: false,
+          forceRefresh: forceRefresh
         }
       });
 
@@ -84,6 +87,7 @@ const UserInsightsPanel = () => {
 
       if (data && Array.isArray(data)) {
         setInsights(data);
+        setLastUpdated(new Date().toLocaleString('sv-SE'));
       }
     } catch (error) {
       console.error('Error fetching general insights:', error);
@@ -92,9 +96,17 @@ const UserInsightsPanel = () => {
     }
   };
 
+  const handleRefresh = () => {
+    fetchInsights(true); // Force refresh
+    toast({
+      title: "Uppdaterar insikter",
+      description: "Hämtar nya AI-insikter...",
+    });
+  };
+
   useEffect(() => {
-    fetchGeneralInsights();
-  }, []);
+    fetchInsights(false); // Load cached insights initially
+  }, [user]);
 
   const getInsightIcon = (type: string) => {
     switch (type) {
@@ -120,20 +132,26 @@ const UserInsightsPanel = () => {
             <div>
               <CardTitle className="text-base">AI-Insikter & Rekommendationer</CardTitle>
               <CardDescription className="text-xs">
-                Personliga investeringsinsikter
+                {user ? 'Personliga investeringsinsikter' : 'Allmänna marknadsinsikter'}
+                {lastUpdated && (
+                  <span className="block text-xs text-muted-foreground mt-1">
+                    Senast uppdaterad: {lastUpdated}
+                  </span>
+                )}
               </CardDescription>
             </div>
           </div>
           <Button
             size="sm"
-            onClick={generateInsights}
-            disabled={loading || !user}
+            onClick={handleRefresh}
+            disabled={loading}
             className="text-xs"
+            variant="outline"
           >
             {loading ? (
               <RefreshCw className="w-3 h-3 animate-spin" />
             ) : (
-              <Brain className="w-3 h-3" />
+              <RefreshCw className="w-3 h-3" />
             )}
           </Button>
         </div>
@@ -142,7 +160,7 @@ const UserInsightsPanel = () => {
         {loading ? (
           <div className="text-center py-4">
             <RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin text-purple-600" />
-            <p className="text-sm text-muted-foreground">Genererar AI-insikter...</p>
+            <p className="text-sm text-muted-foreground">Hämtar AI-insikter...</p>
           </div>
         ) : insights.length > 0 ? (
           <>
@@ -191,11 +209,11 @@ const UserInsightsPanel = () => {
           <div className="text-center py-6">
             <Brain className="w-8 h-8 mx-auto mb-3 opacity-50" />
             <p className="text-sm text-muted-foreground mb-3">
-              Inga AI-insikter genererade än
+              Inga AI-insikter tillgängliga än
             </p>
             <Button 
               size="sm" 
-              onClick={user ? generateInsights : fetchGeneralInsights}
+              onClick={() => fetchInsights(true)}
               disabled={loading}
             >
               <Brain className="w-3 h-3 mr-2" />
