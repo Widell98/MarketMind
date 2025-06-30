@@ -471,43 +471,50 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             <CardContent>
               {exposureData.sectorData.length > 0 ? (
                 <div className="space-y-4">
-                  <div className="h-48">
+                  <div className="relative h-48">
                     <ResponsiveContainer width="100%" height="100%">
-                      <RechartsPieChart>
-                        <RechartsPieChart data={exposureData.sectorData}>
-                          {exposureData.sectorData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={sectorColors[index % sectorColors.length]} />
-                          ))}
-                        </RechartsPieChart>
-                        <ChartTooltip
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0].payload;
-                              return (
-                                <div className="bg-white p-2 border rounded shadow">
-                                  <p className="font-medium">{data.name}</p>
-                                  <p className="text-sm text-muted-foreground">{data.percentage}%</p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
+                      <RechartsPieChart
+                        data={exposureData.sectorData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={70}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {exposureData.sectorData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={sectorColors[index % sectorColors.length]} />
+                        ))}
                       </RechartsPieChart>
+                      <ChartTooltip
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="bg-white dark:bg-gray-800 p-3 border rounded-lg shadow-lg">
+                                <p className="font-medium text-foreground">{data.name}</p>
+                                <p className="text-sm text-muted-foreground">{data.percentage}% av portföljen</p>
+                                <p className="text-sm text-muted-foreground">{formatCurrency(data.value)}</p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
                     </ResponsiveContainer>
                   </div>
                   <div className="space-y-2">
                     {exposureData.sectorData.slice(0, 5).map((sector, index) => (
-                      <div key={sector.name} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                      <div key={sector.name} className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
+                        <div className="flex items-center gap-3">
                           <div 
-                            className="w-3 h-3 rounded-full" 
+                            className="w-4 h-4 rounded-full shadow-sm" 
                             style={{ backgroundColor: sectorColors[index % sectorColors.length] }}
                           />
                           <span className="text-sm font-medium">{sector.name}</span>
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          {sector.percentage}%
+                        <div className="text-right">
+                          <div className="text-sm font-medium">{sector.percentage}%</div>
+                          <div className="text-xs text-muted-foreground">{formatCurrency(sector.value)}</div>
                         </div>
                       </div>
                     ))}
@@ -534,9 +541,9 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             <CardContent>
               {exposureData.marketData.length > 0 ? (
                 <div className="space-y-4">
-                  <div className="h-48">
+                  <div className="relative h-48">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={exposureData.marketData} layout="horizontal">
+                      <BarChart data={exposureData.marketData} layout="horizontal" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                         <XAxis type="number" />
                         <YAxis dataKey="name" type="category" width={60} />
                         <ChartTooltip
@@ -544,31 +551,33 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                             if (active && payload && payload.length) {
                               const data = payload[0].payload;
                               return (
-                                <div className="bg-white p-2 border rounded shadow">
-                                  <p className="font-medium">{data.name}</p>
-                                  <p className="text-sm text-muted-foreground">{data.percentage}%</p>
+                                <div className="bg-white dark:bg-gray-800 p-3 border rounded-lg shadow-lg">
+                                  <p className="font-medium text-foreground">{data.name}</p>
+                                  <p className="text-sm text-muted-foreground">{data.percentage}% av portföljen</p>
+                                  <p className="text-sm text-muted-foreground">{formatCurrency(data.value)}</p>
                                 </div>
                               );
                             }
                             return null;
                           }}
                         />
-                        <Bar dataKey="percentage" fill="#10B981" />
+                        <Bar dataKey="percentage" fill="#10B981" radius={[0, 4, 4, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                   <div className="space-y-2">
                     {exposureData.marketData.map((market, index) => (
-                      <div key={market.name} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                      <div key={market.name} className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
+                        <div className="flex items-center gap-3">
                           <div 
-                            className="w-3 h-3 rounded-full" 
+                            className="w-4 h-4 rounded-full shadow-sm" 
                             style={{ backgroundColor: marketColors[index % marketColors.length] }}
                           />
                           <span className="text-sm font-medium">{market.name}</span>
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          {market.percentage}%
+                        <div className="text-right">
+                          <div className="text-sm font-medium">{market.percentage}%</div>
+                          <div className="text-xs text-muted-foreground">{formatCurrency(market.value)}</div>
                         </div>
                       </div>
                     ))}

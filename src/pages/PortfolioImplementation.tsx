@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -6,13 +7,14 @@ import AIChat from '@/components/AIChat';
 import UserInsightsPanel from '@/components/UserInsightsPanel';
 import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolioAdvisor';
 import UserInvestmentAnalysis from '@/components/UserInvestmentAnalysis';
+import SubscriptionCard from '@/components/SubscriptionCard';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Brain, MessageSquare, TrendingUp, Target, BarChart3, Lightbulb, Zap, Activity, PieChart } from 'lucide-react';
+import { Brain, MessageSquare, TrendingUp, Target, BarChart3, Lightbulb, Zap, Activity, PieChart, Crown } from 'lucide-react';
 
 const PortfolioImplementation = () => {
   const { activePortfolio, loading } = usePortfolio();
@@ -188,7 +190,7 @@ const PortfolioImplementation = () => {
           </div>
 
           <Tabs defaultValue="chat" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 max-w-lg mx-auto mb-4 sm:mb-6 bg-muted p-1 rounded-xl">
+            <TabsList className="grid w-full grid-cols-4 max-w-2xl mx-auto mb-4 sm:mb-6 bg-muted p-1 rounded-xl">
               <TabsTrigger 
                 value="chat" 
                 data-value="chat" 
@@ -213,6 +215,14 @@ const PortfolioImplementation = () => {
                 <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span className="hidden xs:inline">Min Analys</span>
                 <span className="xs:hidden">Analys</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="membership" 
+                className="flex items-center gap-1.5 sm:gap-2 rounded-lg py-1.5 sm:py-2 px-2 sm:px-3 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs sm:text-sm"
+              >
+                <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden xs:inline">Medlemskap</span>
+                <span className="xs:hidden">Plan</span>
               </TabsTrigger>
             </TabsList>
             
@@ -285,6 +295,16 @@ const PortfolioImplementation = () => {
 
             <TabsContent value="analysis">
               <UserInvestmentAnalysis onUpdateProfile={handleUpdateProfile} />
+            </TabsContent>
+
+            <TabsContent value="membership">
+              <div className="max-w-2xl mx-auto">
+                <div className="mb-6 text-center">
+                  <h2 className="text-2xl font-bold mb-2 text-foreground">Medlemskap & Prenumeration</h2>
+                  <p className="text-muted-foreground">Hantera din plan och få tillgång till avancerade funktioner</p>
+                </div>
+                <SubscriptionCard />
+              </div>
             </TabsContent>
           </Tabs>
         </div>
