@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Slider } from '@/components/ui/slider';
 import { Brain, Plus, Trash2, ArrowRight, ArrowLeft, MessageSquare, Type } from 'lucide-react';
 
 interface Holding {
@@ -23,7 +24,7 @@ interface ConversationData {
   monthlyAmount?: string;
   hasCurrentPortfolio?: boolean;
   currentHoldings?: Holding[];
-  age?: string;
+  age?: number;
   experience?: string;
   sectors?: string[];
   interests?: string[];
@@ -31,6 +32,32 @@ interface ConversationData {
   portfolioHelp?: string;
   portfolioSize?: string;
   rebalancingFrequency?: string;
+  // New fields for enhanced risk profiling
+  monthlyIncome?: string;
+  availableCapital?: string;
+  financialObligations?: string[];
+  sustainabilityPreference?: string;
+  geographicPreference?: string;
+  marketCrashReaction?: string;
+  lossExperience?: string;
+  volatilityComfort?: number;
+  currentAllocation?: string;
+  previousPerformance?: string;
+  sectorExposure?: string[];
+  investmentStyle?: string;
+  dividendYieldRequirement?: string;
+  internationalDiversification?: string;
+  maxDrawdownTolerance?: number;
+  sharpeRatioExpectation?: string;
+  rebalancingStrategy?: string;
+  riskCapacity?: number;
+  investmentKnowledge?: number;
+  emergencyFund?: string;
+  investmentTimeline?: string;
+  specificGoalAmount?: string;
+  marketExperience?: string;
+  portfolioComplexity?: string;
+  taxConsideration?: string;
 }
 
 interface ConversationalRiskAssessmentProps {
@@ -73,11 +100,79 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
       question: 'Hej! Låt oss börja enkelt - är du ny inom investeringar?',
       type: 'chat',
       options: [
-        { value: 'true', label: 'Ja, jag är relativt ny' },
-        { value: 'false', label: 'Nej, jag har erfarenhet' }
+        { value: 'true', label: 'Ja, jag är relativt ny (mindre än 2 års erfarenhet)' },
+        { value: 'false', label: 'Nej, jag har flera års erfarenhet av investeringar' }
       ],
       key: 'isBeginnerInvestor',
       allowTextInput: false
+    },
+    {
+      id: 'age',
+      question: 'Hur gammal är du? Detta hjälper mig förstå din investeringshorisont.',
+      type: 'number',
+      key: 'age',
+      allowTextInput: true,
+      textInputPrompt: 'Ange din ålder:'
+    },
+    // Enhanced questions for beginners
+    {
+      id: 'monthlyIncome',
+      question: 'Ungefär vad har du för månadsinkomst? Detta hjälper mig förstå din investeringskapacitet.',
+      type: 'chat',
+      options: [
+        { value: '20000-30000', label: '20 000 - 30 000 kr' },
+        { value: '30000-45000', label: '30 000 - 45 000 kr' },
+        { value: '45000-60000', label: '45 000 - 60 000 kr' },
+        { value: '60000+', label: 'Över 60 000 kr' }
+      ],
+      key: 'monthlyIncome',
+      showIf: () => conversationData.isBeginnerInvestor === true,
+      allowTextInput: true,
+      textInputPrompt: 'Eller ange din månadsinkomst:'
+    },
+    {
+      id: 'availableCapital',
+      question: 'Hur mycket sparkapital har du tillgängligt för investeringar just nu?',
+      type: 'chat',
+      options: [
+        { value: '10000-50000', label: '10 000 - 50 000 kr' },
+        { value: '50000-100000', label: '50 000 - 100 000 kr' },
+        { value: '100000-250000', label: '100 000 - 250 000 kr' },
+        { value: '250000+', label: 'Över 250 000 kr' }
+      ],
+      key: 'availableCapital',
+      showIf: () => conversationData.isBeginnerInvestor === true,
+      allowTextInput: true,
+      textInputPrompt: 'Ange din tillgängliga summa:'
+    },
+    {
+      id: 'emergencyFund',
+      question: 'Har du en buffert för oväntade utgifter (3-6 månaders utgifter)?',
+      type: 'chat',
+      options: [
+        { value: 'yes_full', label: 'Ja, jag har 6+ månaders buffert' },
+        { value: 'yes_partial', label: 'Ja, men bara 1-3 månaders buffert' },
+        { value: 'no', label: 'Nej, jag har ingen buffert än' }
+      ],
+      key: 'emergencyFund',
+      showIf: () => conversationData.isBeginnerInvestor === true,
+      allowTextInput: false
+    },
+    {
+      id: 'financialObligations',
+      question: 'Har du några större ekonomiska förpliktelser?',
+      type: 'multiple',
+      options: [
+        { value: 'mortgage', label: 'Bolån' },
+        { value: 'student_loan', label: 'Studielån' },
+        { value: 'car_loan', label: 'Billån' },
+        { value: 'child_support', label: 'Barnkostnader' },
+        { value: 'none', label: 'Inga större förpliktelser' }
+      ],
+      key: 'financialObligations',
+      showIf: () => conversationData.isBeginnerInvestor === true,
+      allowTextInput: true,
+      textInputPrompt: 'Andra förpliktelser:'
     },
     {
       id: 'interests',
@@ -91,12 +186,41 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         { value: 'gaming', label: 'Spel och underhållning' },
         { value: 'real_estate', label: 'Fastigheter' },
         { value: 'consumer_goods', label: 'Konsumentprodukter' },
-        { value: 'automotive', label: 'Bilar och transport' }
+        { value: 'automotive', label: 'Bilar och transport' },
+        { value: 'energy', label: 'Energi och utilities' },
+        { value: 'mining', label: 'Gruvbolag och råvaror' }
       ],
       key: 'interests',
       showIf: () => conversationData.isBeginnerInvestor === true,
       allowTextInput: true,
       textInputPrompt: 'Eller skriv dina egna intressen:'
+    },
+    {
+      id: 'sustainabilityPreference',
+      question: 'Hur viktigt är hållbarhet och ESG (miljö, socialt ansvar, bolagsstyrning) för dig?',
+      type: 'chat',
+      options: [
+        { value: 'very_important', label: 'Mycket viktigt - vill bara investera hållbart' },
+        { value: 'somewhat_important', label: 'Ganska viktigt - föredrar hållbara alternativ' },
+        { value: 'not_priority', label: 'Inte en prioritet - fokuserar på avkastning' }
+      ],
+      key: 'sustainabilityPreference',
+      showIf: () => conversationData.isBeginnerInvestor === true,
+      allowTextInput: false
+    },
+    {
+      id: 'geographicPreference',
+      question: 'Vad föredrar du geografiskt när det gäller investeringar?',
+      type: 'chat',
+      options: [
+        { value: 'sweden_only', label: 'Mest svenska företag jag känner igen' },
+        { value: 'nordics', label: 'Svenska och nordiska företag' },
+        { value: 'europe', label: 'Europiska marknader' },
+        { value: 'global', label: 'Global spridning över alla marknader' }
+      ],
+      key: 'geographicPreference',
+      showIf: () => conversationData.isBeginnerInvestor === true,
+      allowTextInput: false
     },
     {
       id: 'companies',
@@ -107,6 +231,183 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
       allowTextInput: true,
       textInputPrompt: 'Berätta om företag du gillar:'
     },
+    {
+      id: 'marketCrashReaction',
+      question: 'Om börsen föll med 20% på en månad, vad skulle du göra?',
+      type: 'chat',
+      options: [
+        { value: 'sell_all', label: 'Sälja allt för att stoppa förlusterna' },
+        { value: 'sell_some', label: 'Sälja en del av mina innehav' },
+        { value: 'hold', label: 'Behålla allt och vänta på återhämtning' },
+        { value: 'buy_more', label: 'Köpa mer aktier medan de är billiga' }
+      ],
+      key: 'marketCrashReaction',
+      showIf: () => conversationData.isBeginnerInvestor === true,
+      allowTextInput: false
+    },
+    {
+      id: 'volatilityComfort',
+      question: 'Hur bekväm är du med att se din portfölj variera i värde? (1 = inte alls, 10 = helt bekväm)',
+      type: 'slider',
+      key: 'volatilityComfort',
+      showIf: () => conversationData.isBeginnerInvestor === true,
+      allowTextInput: false,
+      min: 1,
+      max: 10,
+      defaultValue: 5
+    },
+    // Enhanced questions for experienced investors
+    {
+      id: 'marketExperience',
+      question: 'Hur många år har du investerat aktivt på börsen?',
+      type: 'chat',
+      options: [
+        { value: '2-5', label: '2-5 år' },
+        { value: '5-10', label: '5-10 år' },
+        { value: '10-20', label: '10-20 år' },
+        { value: '20+', label: 'Över 20 år' }
+      ],
+      key: 'marketExperience',
+      showIf: () => conversationData.isBeginnerInvestor === false,
+      allowTextInput: false
+    },
+    {
+      id: 'currentAllocation',
+      question: 'Hur ser din nuvarande tillgångsallokering ut ungefär?',
+      type: 'text',
+      key: 'currentAllocation',
+      showIf: () => conversationData.isBeginnerInvestor === false,
+      allowTextInput: true,
+      textInputPrompt: 'T.ex. 70% aktier, 20% obligationer, 10% fastigheter'
+    },
+    {
+      id: 'previousPerformance',
+      question: 'Hur har din portfölj presterat historiskt jämfört med marknaden?',
+      type: 'chat',
+      options: [
+        { value: 'outperformed', label: 'Bättre än marknaden' },
+        { value: 'matched', label: 'Ungefär samma som marknaden' },
+        { value: 'underperformed', label: 'Sämre än marknaden' },
+        { value: 'unsure', label: 'Osäker/har inte mätt' }
+      ],
+      key: 'previousPerformance',
+      showIf: () => conversationData.isBeginnerInvestor === false,
+      allowTextInput: false
+    },
+    {
+      id: 'sectorExposure',
+      question: 'Vilka sektorer har du redan stor exponering mot i din portfölj?',
+      type: 'multiple',
+      options: [
+        { value: 'technology', label: 'Teknologi' },
+        { value: 'finance', label: 'Finans/Bank' },
+        { value: 'healthcare', label: 'Hälsovård' },
+        { value: 'industrials', label: 'Industri' },
+        { value: 'consumer', label: 'Konsument' },
+        { value: 'energy', label: 'Energi' },
+        { value: 'real_estate', label: 'Fastigheter' },
+        { value: 'materials', label: 'Material/Gruvbolag' }
+      ],
+      key: 'sectorExposure',
+      showIf: () => conversationData.isBeginnerInvestor === false,
+      allowTextInput: true,
+      textInputPrompt: 'Andra sektorer:'
+    },
+    {
+      id: 'investmentStyle',
+      question: 'Vilken investeringsstil föredrar du?',
+      type: 'chat',
+      options: [
+        { value: 'value', label: 'Value - undervärderade företag' },
+        { value: 'growth', label: 'Growth - snabbt växande företag' },
+        { value: 'dividend', label: 'Dividend - fokus på utdelningar' },
+        { value: 'momentum', label: 'Momentum - trender och teknisk analys' },
+        { value: 'mixed', label: 'Blandad strategi' }
+      ],
+      key: 'investmentStyle',
+      showIf: () => conversationData.isBeginnerInvestor === false,
+      allowTextInput: false
+    },
+    {
+      id: 'dividendYieldRequirement',
+      question: 'Vad har du för krav på direktavkastning (utdelning)?',
+      type: 'chat',
+      options: [
+        { value: 'high', label: 'Hög (4%+) - vill ha regelbunden inkomst' },
+        { value: 'moderate', label: 'Måttlig (2-4%) - utdelning är trevligt' },
+        { value: 'low', label: 'Låg (<2%) - fokuserar på kursuppgång' },
+        { value: 'none', label: 'Ingen - vill att företag återinvesterar vinsten' }
+      ],
+      key: 'dividendYieldRequirement',
+      showIf: () => conversationData.isBeginnerInvestor === false,
+      allowTextInput: false
+    },
+    {
+      id: 'maxDrawdownTolerance',
+      question: 'Vilken maximal nedgång kan du acceptera i din portfölj? (1 = 5%, 10 = 50%+)',
+      type: 'slider',
+      key: 'maxDrawdownTolerance',
+      showIf: () => conversationData.isBeginnerInvestor === false,
+      allowTextInput: false,
+      min: 1,
+      max: 10,
+      defaultValue: 5
+    },
+    {
+      id: 'sharpeRatioExpectation',
+      question: 'Vad har du för förväntningar på riskjusterad avkastning (Sharpe ratio)?',
+      type: 'chat',
+      options: [
+        { value: 'conservative', label: 'Konservativ - föredrar låg risk över hög avkastning' },
+        { value: 'balanced', label: 'Balanserad - vill ha bra förhållande risk/avkastning' },
+        { value: 'aggressive', label: 'Aggressiv - accepterar hög risk för högre avkastning' }
+      ],
+      key: 'sharpeRatioExpectation',
+      showIf: () => conversationData.isBeginnerInvestor === false,
+      allowTextInput: false
+    },
+    {
+      id: 'rebalancingStrategy',
+      question: 'Hur hanterar du rebalansering av din portfölj?',
+      type: 'chat',
+      options: [
+        { value: 'calendar', label: 'Kalenderbaser (t.ex. kvartalsvis)' },
+        { value: 'threshold', label: 'Tröskelvärden (när allokering avviker X%)' },
+        { value: 'tactical', label: 'Taktiskt (baserat på marknadsläge)' },
+        { value: 'rarely', label: 'Sällan - buy and hold' }
+      ],
+      key: 'rebalancingStrategy',
+      showIf: () => conversationData.isBeginnerInvestor === false,
+      allowTextInput: false
+    },
+    {
+      id: 'portfolioComplexity',
+      question: 'Hur komplex portfölj är du bekväm med att hantera?',
+      type: 'chat',
+      options: [
+        { value: 'simple', label: 'Enkel - några få breda fonder/ETF:er' },
+        { value: 'moderate', label: 'Måttlig - 10-20 olika innehav' },
+        { value: 'complex', label: 'Komplex - 20+ innehav och olika tillgångsklasser' },
+        { value: 'very_complex', label: 'Mycket komplex - derivat, alternativa investeringar' }
+      ],
+      key: 'portfolioComplexity',
+      showIf: () => conversationData.isBeginnerInvestor === false,
+      allowTextInput: false
+    },
+    {
+      id: 'taxConsideration',
+      question: 'Hur viktigt är skatteoptimering för dig?',
+      type: 'chat',
+      options: [
+        { value: 'very_important', label: 'Mycket viktigt - ISK/KF optimering' },
+        { value: 'somewhat', label: 'Ganska viktigt - tar hänsyn till det' },
+        { value: 'not_important', label: 'Mindre viktigt - fokuserar på totalavkastning' }
+      ],
+      key: 'taxConsideration',
+      showIf: () => conversationData.isBeginnerInvestor === false,
+      allowTextInput: false
+    },
+    // Common questions for both groups
     {
       id: 'goal',
       question: 'Vad är ditt huvudsakliga mål med investeringarna?',
@@ -124,20 +425,29 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
       textInputPrompt: 'Eller beskriv ditt eget mål:'
     },
     {
+      id: 'specificGoalAmount',
+      question: 'Har du ett specifikt målbelopp eller tidpunkt för ditt investeringsmål?',
+      type: 'text',
+      key: 'specificGoalAmount',
+      allowTextInput: true,
+      textInputPrompt: 'T.ex. 2 miljoner kr till pension år 2045'
+    },
+    {
       id: 'timeHorizon',
-      question: 'Intressant! Hur lång tid tänker du investera pengarna?',
+      question: 'Hur lång tid tänker du investera pengarna?',
       type: 'chat',
       options: [
         { value: 'short', label: 'Kort sikt (1-3 år)' },
         { value: 'medium', label: 'Medellång sikt (3-7 år)' },
-        { value: 'long', label: 'Lång sikt (7+ år)' }
+        { value: 'long', label: 'Lång sikt (7-15 år)' },
+        { value: 'very_long', label: 'Mycket lång sikt (15+ år)' }
       ],
       key: 'timeHorizon',
       allowTextInput: false
     },
     {
       id: 'risk',
-      question: 'Bra att veta! Hur känner du inför risk i dina investeringar?',
+      question: 'Hur känner du inför risk i dina investeringar?',
       type: 'chat',
       options: [
         { value: 'conservative', label: 'Konservativ - Vill undvika förluster' },
@@ -223,20 +533,6 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
       key: 'rebalancingFrequency',
       showIf: () => conversationData.isBeginnerInvestor === false,
       allowTextInput: false
-    },
-    {
-      id: 'age',
-      question: 'Vilken åldersgrupp tillhör du?',
-      type: 'chat',
-      options: [
-        { value: '18-25', label: '18-25 år' },
-        { value: '26-35', label: '26-35 år' },
-        { value: '36-45', label: '36-45 år' },
-        { value: '46-55', label: '46-55 år' },
-        { value: '56+', label: '56+ år' }
-      ],
-      key: 'age',
-      allowTextInput: false
     }
   ];
 
@@ -261,6 +557,11 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
 
     let processedValue: any = freeTextInput.trim();
     
+    // For age and number fields, convert to number
+    if (currentQuestion.key === 'age') {
+      processedValue = parseInt(processedValue) || 0;
+    }
+    
     // For multiple choice questions, convert text to array and add to existing values
     if (currentQuestion.type === 'multiple') {
       const existingValues = conversationData[currentQuestion.key as keyof ConversationData] as string[] || [];
@@ -272,12 +573,17 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
       const textValues = processedValue.split(',').map((v: string) => v.trim()).filter((v: string) => v);
       processedValue = textValues;
     }
-    // For other questions, keep as string
+    // For other questions, keep as string or number
 
     const updatedData = { ...conversationData, [currentQuestion.key]: processedValue };
     setConversationData(updatedData);
     setShowTextInput(false);
     setFreeTextInput('');
+  };
+
+  const handleSliderChange = (value: number[]) => {
+    const updatedData = { ...conversationData, [currentQuestion.key]: value[0] };
+    setConversationData(updatedData);
   };
 
   const handleNext = () => {
@@ -431,6 +737,87 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
               </div>
             )}
 
+            {currentQuestion.type === 'number' && (
+              <div className="space-y-2">
+                {!showTextInput ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowTextInput(true)}
+                    className="w-full justify-start text-left h-auto p-3"
+                  >
+                    <Type className="w-4 h-4 mr-2" />
+                    {currentQuestion.textInputPrompt || 'Ange ditt svar...'}
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    <Label className="text-sm text-blue-600">
+                      {currentQuestion.textInputPrompt || 'Ditt svar:'}
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        value={freeTextInput}
+                        onChange={(e) => setFreeTextInput(e.target.value)}
+                        placeholder="Ange ålder..."
+                        onKeyPress={(e) => e.key === 'Enter' && handleTextSubmit()}
+                        className="flex-1"
+                      />
+                      <Button
+                        onClick={handleTextSubmit}
+                        disabled={!freeTextInput.trim()}
+                        size="sm"
+                      >
+                        Skicka
+                      </Button>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShowTextInput(false);
+                        setFreeTextInput('');
+                      }}
+                      className="text-gray-500"
+                    >
+                      Avbryt
+                    </Button>
+                  </div>
+                )}
+
+                {/* Show entered value */}
+                {conversationData[currentQuestion.key as keyof ConversationData] && (
+                  <div className="mt-2 p-2 bg-blue-50 rounded-lg">
+                    <Label className="text-xs text-blue-600 font-medium">Ditt svar:</Label>
+                    <div className="text-sm text-blue-800">
+                      {conversationData[currentQuestion.key as keyof ConversationData]} år
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {currentQuestion.type === 'slider' && (
+              <div className="space-y-4">
+                <div className="px-2">
+                  <Slider
+                    value={[conversationData[currentQuestion.key as keyof ConversationData] as number || currentQuestion.defaultValue || 5]}
+                    onValueChange={handleSliderChange}
+                    max={currentQuestion.max || 10}
+                    min={currentQuestion.min || 1}
+                    step={1}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-sm text-gray-500 mt-1">
+                    <span>{currentQuestion.min || 1}</span>
+                    <span className="font-medium text-blue-600">
+                      {conversationData[currentQuestion.key as keyof ConversationData] || currentQuestion.defaultValue || 5}
+                    </span>
+                    <span>{currentQuestion.max || 10}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {currentQuestion.type === 'text' && (
               <div className="space-y-2">
                 {!showTextInput ? (
@@ -476,7 +863,7 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
                   </div>
                 )}
 
-                {/* Show entered companies/interests */}
+                {/* Show entered text */}
                 {conversationData[currentQuestion.key as keyof ConversationData] && 
                  Array.isArray(conversationData[currentQuestion.key as keyof ConversationData]) && 
                  (conversationData[currentQuestion.key as keyof ConversationData] as string[]).length > 0 && (
