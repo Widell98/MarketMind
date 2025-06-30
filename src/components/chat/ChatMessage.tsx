@@ -1,108 +1,237 @@
 
-import React from 'react';
+import React, { useState } from 'react';
+import { Bot, User, Plus, Check, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Clock, User, Bot, TrendingUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { useUserHoldings } from '@/hooks/useUserHoldings';
 
-interface MessageContext {
-  analysisType?: string;
-  confidence?: number;
-  isExchangeRequest?: boolean;
-}
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-  context?: MessageContext;
+interface StockSuggestion {
+  symbol: string;
+  name: string;
+  reason?: string;
 }
 
 interface ChatMessageProps {
-  message: Message;
+  message: {
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    timestamp: Date;
+    context?: {
+      analysisType?: string;
+      confidence?: number;
+      isExchangeRequest?: boolean;
+    };
+  };
 }
 
 const ChatMessage = ({ message }: ChatMessageProps) => {
-  const isUser = message.role === 'user';
-  
-  const formatTimestamp = (timestamp: Date) => {
-    return new Intl.DateTimeFormat('sv-SE', {
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(timestamp);
+  const [addedStocks, setAddedStocks] = useState<Set<string>>(new Set());
+  const { addHolding } = useUserHoldings();
+  const { toast } = useToast();
+
+  // Extract stock suggestions from AI message
+  const extractStockSuggestions = (content: string): StockSuggestion[] => {
+    const suggestions: StockSuggestion[] = [];
+    
+    // Look for patterns like "Förslag: [Company] ([TICKER])" or "[Company] ([TICKER])"
+    const patterns = [
+      /(?:Förslag:|Rekommendation:)\s*([^(]+)\s*\(([A-Z]{2,5})\)/gi,
+      /([A-ZÅÄÖ][a-zåäö\s&-]+)\s*\(([A-Z]{2,5})\)/g,
+      /\*\*([^*]+)\*\*\s*\(([A-Z]{2,5})\)/g
+    ];
+
+    patterns.forEach(pattern => {
+      let match;
+      while ((match = pattern.exec(content)) !== null) {
+        const name = match[1].trim();
+        const symbol = match[2].trim();
+        
+        // Skip if already added or if it's not a proper stock suggestion
+        if (!suggestions.find(s => s.symbol === symbol) && 
+            name.length > 2 && 
+            symbol.length >= 2 && 
+            symbol.length <= 5) {
+          suggestions.push({
+            name,
+            symbol,
+            reason: 'AI-rekommendation'
+          });
+        }
+      }
+    });
+
+    return suggestions;
   };
 
-  // Improved function to format AI response content for mobile
-  const formatAIContent = (content: string) => {
-    let formatted = content
-      // Convert headers to mobile-friendly format
-      .replace(/### (.+)/g, '<div class="font-semibold text-sm sm:text-base mb-2 mt-4 first:mt-0 text-foreground border-l-2 border-primary pl-3">$1</div>')
-      // Convert bold text
-      .replace(/\*\*(.+?)\*\*/g, '<span class="font-medium text-foreground">$1</span>')
-      // Handle main bullet points with better mobile spacing
-      .replace(/^- (.+)/gm, '<div class="flex items-start gap-2 mb-2 text-sm leading-relaxed"><span class="w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"></span><span class="flex-1 break-words">$1</span></div>')
-      // Handle sub-bullets with company examples - better mobile formatting
-      .replace(/  - (.+?) – (.+)/gm, '<div class="ml-4 flex items-start gap-2 mb-1.5 text-xs sm:text-sm"><span class="w-1 h-1 rounded-full bg-muted-foreground mt-2 flex-shrink-0"></span><div class="flex-1 break-words"><span class="font-medium text-foreground">$1</span><span class="text-muted-foreground block sm:inline"> – $2</span></div></div>')
-      // Clean up extra whitespace
-      .replace(/\n\s*\n/g, '\n')
-      .trim();
+  const stockSuggestions = message.role === 'assistant' ? extractStockSuggestions(message.content) : [];
 
-    return formatted;
+  const handleAddStock = async (suggestion: StockSuggestion) => {
+    try {
+      const success = await addHolding({
+        holding_type: 'recommendation',
+        name: suggestion.name,
+        symbol: suggestion.symbol,
+        quantity: 0,
+        current_value: 0,
+        purchase_price: 0,
+        currency: 'SEK',
+        sector: 'Okänd',
+        market: 'Swedish'
+      });
+
+      if (success) {
+        setAddedStocks(prev => new Set([...prev, suggestion.symbol]));
+        toast({
+          title: "Aktie tillagd!",
+          description: `${suggestion.name} (${suggestion.symbol}) har lagts till i dina AI-rekommendationer`,
+        });
+      }
+    } catch (error) {
+      console.error('Error adding stock:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte lägga till aktien. Försök igen.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const formatMessageContent = (content: string) => {
+    return content.split('\n').map((line, index) => {
+      if (line.trim() === '') return <br key={index} />;
+      
+      // Handle headers
+      if (line.startsWith('###')) {
+        return (
+          <h3 key={index} className="font-semibold text-base mt-4 mb-2 text-foreground">
+            {line.replace('###', '').trim()}
+          </h3>
+        );
+      }
+      
+      if (line.startsWith('##')) {
+        return (
+          <h2 key={index} className="font-semibold text-lg mt-4 mb-2 text-foreground">
+            {line.replace('##', '').trim()}
+          </h2>
+        );
+      }
+      
+      // Handle lists
+      if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
+        return (
+          <li key={index} className="ml-4 text-sm text-muted-foreground">
+            {line.trim().substring(1).trim()}
+          </li>
+        );
+      }
+      
+      // Handle bold text
+      const boldFormatted = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      
+      return (
+        <p 
+          key={index} 
+          className="text-sm text-muted-foreground mb-1"
+          dangerouslySetInnerHTML={{ __html: boldFormatted }}
+        />
+      );
+    });
   };
 
   return (
-    <div className={`flex gap-2 sm:gap-3 ${isUser ? 'justify-end' : 'justify-start'} group mb-3 sm:mb-4`}>
-      <div className={`flex gap-2 sm:gap-3 max-w-[85%] sm:max-w-[75%] lg:max-w-3xl ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-        <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm ${
-          isUser 
-            ? 'bg-primary' 
-            : 'bg-muted'
-        }`}>
-          {isUser ? (
-            <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary-foreground" />
-          ) : (
-            <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
-          )}
-        </div>
-        
-        <div className={`flex flex-col gap-1.5 ${isUser ? 'items-end' : 'items-start'}`}>
-          <div className={`px-3 py-2 sm:px-3 sm:py-2.5 rounded-2xl border shadow-sm max-w-full ${
-            isUser
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-card text-card-foreground'
-          }`}>
-            {isUser ? (
-              <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                {message.content}
+    <div className="flex gap-2 sm:gap-3 items-start">
+      {message.role === 'assistant' ? (
+        <>
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="bg-muted/50 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border shadow-sm">
+              <div className="prose prose-sm max-w-none text-foreground">
+                {formatMessageContent(message.content)}
               </div>
-            ) : (
-              <div 
-                className="text-sm leading-relaxed ai-response break-words overflow-hidden"
-                dangerouslySetInnerHTML={{ 
-                  __html: formatAIContent(message.content) 
-                }}
-                style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
-              />
-            )}
-            
-            {message.context?.isExchangeRequest && !isUser && (
-              <div className="mt-3 p-2.5 sm:p-3 rounded-xl border bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
-                <div className="flex items-center gap-2 font-medium mb-1 text-amber-700 dark:text-amber-300 text-xs sm:text-sm">
-                  <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  Portföljförändring föreslås
+              
+              {/* Stock suggestions */}
+              {stockSuggestions.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-border/50">
+                  <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                    <TrendingUp className="w-3 h-3" />
+                    Aktieförslag från AI
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {stockSuggestions.map((suggestion) => {
+                      const isAdded = addedStocks.has(suggestion.symbol);
+                      return (
+                        <div
+                          key={suggestion.symbol}
+                          className="flex items-center gap-2 bg-background/80 rounded-lg p-2 border border-border/50"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-foreground truncate">
+                              {suggestion.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {suggestion.symbol}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant={isAdded ? "outline" : "default"}
+                            onClick={() => handleAddStock(suggestion)}
+                            disabled={isAdded}
+                            className="h-7 px-2 text-xs"
+                          >
+                            {isAdded ? (
+                              <>
+                                <Check className="w-3 h-3 mr-1" />
+                                Tillagd
+                              </>
+                            ) : (
+                              <>
+                                <Plus className="w-3 h-3 mr-1" />
+                                Lägg till
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <p className="text-amber-600 dark:text-amber-400 text-xs leading-relaxed">
-                  Detta förslag kan påverka din portföljs sammansättning. Överväg riskerna innan du genomför ändringar.
-                </p>
-              </div>
-            )}
+              )}
+              
+              {/* Context badges */}
+              {message.context && (
+                <div className="flex gap-2 mt-3 pt-3 border-t border-border/50">
+                  {message.context.isExchangeRequest && (
+                    <Badge variant="outline" className="text-xs">
+                      <TrendingUp className="w-3 h-3 mr-1" />
+                      Portföljförslag
+                    </Badge>
+                  )}
+                  {message.context.confidence && (
+                    <Badge variant="outline" className="text-xs">
+                      Säkerhet: {Math.round(message.context.confidence * 100)}%
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-          
-          <div className={`text-xs flex items-center gap-1 ${isUser ? 'justify-end' : 'justify-start'} text-muted-foreground px-1`}>
-            <Clock className="w-3 h-3" />
-            {formatTimestamp(message.timestamp)}
+        </>
+      ) : (
+        <>
+          <div className="bg-primary/10 backdrop-blur-sm rounded-2xl rounded-tr-lg p-2.5 sm:p-3 border border-primary/20 shadow-sm max-w-[80%] sm:max-w-md">
+            <p className="text-sm sm:text-base text-foreground">{message.content}</p>
           </div>
-        </div>
-      </div>
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+            <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+          </div>
+        </>
+      )}
     </div>
   );
 };
