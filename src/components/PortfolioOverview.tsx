@@ -16,7 +16,8 @@ import {
   Shield,
   Plus,
   Edit3,
-  MessageCircle
+  MessageCircle,
+  Settings
 } from 'lucide-react';
 import { 
   Table,
@@ -108,6 +109,11 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     
     // Call onQuickChat with special format to indicate new session creation
     onQuickChat && onQuickChat(`NEW_SESSION:${sessionName}:${message}`);
+  };
+
+  const handleResetProfile = () => {
+    // Navigate to profile page or show reset dialog
+    window.location.href = '/profile';
   };
 
   return (
@@ -341,13 +347,27 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       {/* AI Insights */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-            <Brain className="w-5 h-5 text-purple-600" />
-            AI-insikter och rekommendationer
-          </CardTitle>
-          <CardDescription>
-            Personaliserade förslag baserat på din portfölj och marknadstrender
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <Brain className="w-5 h-5 text-purple-600" />
+                AI-insikter och rekommendationer
+              </CardTitle>
+              <CardDescription>
+                Personaliserade förslag baserat på din portfölj och marknadstrender
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              onClick={handleResetProfile}
+              size="sm"
+              className="bg-background border shadow-sm transition-all duration-200 hover:shadow-md text-xs sm:text-sm flex-shrink-0"
+            >
+              <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+              <span className="hidden sm:inline">Gör om profil</span>
+              <span className="sm:hidden">Reset</span>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {insights.map((insight, index) => (
