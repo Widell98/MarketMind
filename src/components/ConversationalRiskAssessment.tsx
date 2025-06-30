@@ -307,23 +307,32 @@ ${response}`;
         throw new Error('Could not retrieve risk profile ID');
       }
 
+      // Convert recommendations to proper JSON format
+      const recommendationsAsJson = aiRecommendations.map(rec => ({
+        name: rec.name,
+        symbol: rec.symbol,
+        allocation: rec.allocation,
+        sector: rec.sector,
+        reasoning: rec.reasoning,
+        isin: rec.isin,
+        fee: rec.fee
+      }));
+
       // Save portfolio to database with required fields
       const { error: portfolioError } = await supabase
         .from('user_portfolios')
-        .upsert([
-          {
-            user_id: user.id,
-            risk_profile_id: riskProfileData.id,
-            portfolio_name: 'AI-Generated Portfolio',
-            asset_allocation: {
-              stocks: 70,
-              bonds: 20,
-              alternatives: 10
-            },
-            recommended_stocks: aiRecommendations,
-            is_active: true,
-          }
-        ], { onConflict: 'user_id' });
+        .upsert({
+          user_id: user.id,
+          risk_profile_id: riskProfileData.id,
+          portfolio_name: 'AI-Generated Portfolio',
+          asset_allocation: {
+            stocks: 70,
+            bonds: 20,
+            alternatives: 10
+          },
+          recommended_stocks: recommendationsAsJson,
+          is_active: true,
+        }, { onConflict: 'user_id' });
 
       if (portfolioError) {
         console.error('Error saving portfolio:', portfolioError);
