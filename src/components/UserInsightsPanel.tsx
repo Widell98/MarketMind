@@ -62,7 +62,9 @@ const UserInsightsPanel = () => {
       }
 
       if (data && data.insights_data) {
-        setInsights(data.insights_data);
+        // Cast the jsonb data to our expected type
+        const insightsData = data.insights_data as AIInsight[];
+        setInsights(insightsData);
         setLastUpdated(new Date(data.updated_at).toLocaleString('sv-SE'));
       } else {
         // No saved insights, load general ones
