@@ -194,7 +194,7 @@ VIKTIGA RIKTLINJER:
     ];
 
     console.log('=== CALLING OPENAI API ===');
-    console.log('Model: gpt-4.1-2025-04-14');
+    console.log('Model: gpt-4o');
     console.log('Messages count:', messages.length);
     console.log('User message:', message);
     console.log('Is exchange request:', isExchangeRequest);
@@ -206,7 +206,7 @@ VIKTIGA RIKTLINJER:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-4o',
         messages: messages,
         max_tokens: isExchangeRequest ? 400 : 300,
         temperature: 0.6,
@@ -343,7 +343,7 @@ VIKTIGA RIKTLINJER:
           portfolioValue: portfolio?.total_value || 0,
           holdingsCount: holdings?.length || 0,
           insightsCount: insights?.length || 0,
-          model: 'GPT-4.1-2025-04-14',
+          model: 'GPT-4o',
           canSuggestChanges: isExchangeRequest
         }
       }),
