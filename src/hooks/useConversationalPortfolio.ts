@@ -3,6 +3,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
+interface Holding {
+  id: string;
+  name: string;
+  quantity: number;
+  purchasePrice: number;
+  symbol?: string;
+}
+
 interface ConversationData {
   isBeginnerInvestor?: boolean;
   investmentGoal?: string;
@@ -10,7 +18,7 @@ interface ConversationData {
   riskTolerance?: string;
   monthlyAmount?: string;
   hasCurrentPortfolio?: boolean;
-  currentHoldings?: Array<{ name: string; percentage: number }>;
+  currentHoldings?: Holding[];
   age?: string;
   experience?: string;
   sectors?: string[];
@@ -114,7 +122,7 @@ GRUNDLÄGGANDE PROFIL:
 `;
 
       if (data.hasCurrentPortfolio && data.currentHoldings) {
-        prompt += `- Nuvarande innehav: ${data.currentHoldings.map(h => `${h.name} (${h.percentage}%)`).join(', ')}
+        prompt += `- Nuvarande innehav: ${data.currentHoldings.map(h => `${h.name} (${h.quantity} st à ${h.purchasePrice} SEK = ${(h.quantity * h.purchasePrice).toLocaleString('sv-SE')} SEK totalt)`).join(', ')}
 `;
       }
 
@@ -149,7 +157,7 @@ UPPDRAG FÖR NYBÖRJARE:
 `;
 
       if (data.hasCurrentPortfolio && data.currentHoldings) {
-        prompt += `- Nuvarande innehav: ${data.currentHoldings.map(h => `${h.name} (${h.percentage}%)`).join(', ')}
+        prompt += `- Nuvarande innehav: ${data.currentHoldings.map(h => `${h.name} (${h.quantity} st à ${h.purchasePrice} SEK = ${(h.quantity * h.purchasePrice).toLocaleString('sv-SE')} SEK totalt)`).join(', ')}
 `;
       }
 
@@ -186,6 +194,14 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
   const saveEnhancedRiskProfile = async (data: ConversationData) => {
     if (!user) return;
 
+    // Convert current holdings to the format expected by the database
+    const holdingsForDb = data.currentHoldings?.map(holding => ({
+      name: holding.name,
+      quantity: holding.quantity,
+      purchase_price: holding.purchasePrice,
+      symbol: holding.symbol || null
+    })) || [];
+
     // Convert enhanced conversation data to risk profile format
     // Only include fields that exist in the user_risk_profiles table
     const riskProfile = {
@@ -196,7 +212,7 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
       risk_tolerance: mapRiskTolerance(data.riskTolerance),
       investment_experience: data.isBeginnerInvestor ? 'beginner' : 'advanced',
       sector_interests: data.sectors || [],
-      current_holdings: data.currentHoldings || [],
+      current_holdings: holdingsForDb,
       current_allocation: {},
       
       // Required fields with defaults

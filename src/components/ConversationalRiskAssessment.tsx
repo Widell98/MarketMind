@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -70,8 +69,8 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
       question: 'Är du ny inom investeringar?',
       type: 'radio',
       options: [
-        { value: 'yes', label: 'Ja, jag är relativt ny' },
-        { value: 'no', label: 'Nej, jag har erfarenhet' }
+        { value: 'true', label: 'Ja, jag är relativt ny' },
+        { value: 'false', label: 'Nej, jag har erfarenhet' }
       ],
       key: 'isBeginnerInvestor'
     },
@@ -128,8 +127,8 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
       question: 'Har du en befintlig portfölj du vill optimera?',
       type: 'radio',
       options: [
-        { value: 'yes', label: 'Ja, jag har redan investeringar' },
-        { value: 'no', label: 'Nej, jag börjar från början' }
+        { value: 'true', label: 'Ja, jag har redan investeringar' },
+        { value: 'false', label: 'Nej, jag börjar från början' }
       ],
       key: 'hasCurrentPortfolio'
     },
@@ -138,7 +137,7 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
       question: 'Berätta om dina nuvarande innehav',
       type: 'holdings',
       key: 'currentHoldings',
-      showIf: () => conversationData.hasCurrentPortfolio === 'yes'
+      showIf: () => conversationData.hasCurrentPortfolio === true
     },
     {
       id: 'age',
@@ -185,7 +184,13 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
   const isLastStep = currentStep === questions.length - 1;
 
   const handleAnswer = (value: any) => {
-    const updatedData = { ...conversationData, [currentQuestion.key]: value };
+    // Convert string values to boolean for specific fields
+    let processedValue = value;
+    if (currentQuestion.key === 'isBeginnerInvestor' || currentQuestion.key === 'hasCurrentPortfolio') {
+      processedValue = value === 'true';
+    }
+    
+    const updatedData = { ...conversationData, [currentQuestion.key]: processedValue };
     setConversationData(updatedData);
   };
 
@@ -263,7 +268,7 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
           
           {currentQuestion.type === 'radio' && (
             <RadioGroup
-              value={conversationData[currentQuestion.key as keyof ConversationData] as string}
+              value={String(conversationData[currentQuestion.key as keyof ConversationData])}
               onValueChange={handleAnswer}
             >
               {currentQuestion.options?.map((option) => (
