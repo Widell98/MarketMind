@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Plus, Trash2, ArrowRight, ArrowLeft, MessageSquare } from 'lucide-react';
+import { Brain, Plus, Trash2, ArrowRight, ArrowLeft, MessageSquare, Type } from 'lucide-react';
 
 interface Holding {
   id: string;
@@ -40,7 +41,8 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
   const [currentStep, setCurrentStep] = useState(0);
   const [conversationData, setConversationData] = useState<ConversationData>({});
   const [currentHoldings, setCurrentHoldings] = useState<Holding[]>([]);
-  const [isAddingHoldings, setIsAddingHoldings] = useState(false);
+  const [freeTextInput, setFreeTextInput] = useState('');
+  const [showTextInput, setShowTextInput] = useState(false);
 
   const addHolding = () => {
     const newHolding: Holding = {
@@ -74,7 +76,8 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         { value: 'true', label: 'Ja, jag är relativt ny' },
         { value: 'false', label: 'Nej, jag har erfarenhet' }
       ],
-      key: 'isBeginnerInvestor'
+      key: 'isBeginnerInvestor',
+      allowTextInput: false
     },
     {
       id: 'interests',
@@ -91,11 +94,13 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         { value: 'automotive', label: 'Bilar och transport' }
       ],
       key: 'interests',
-      showIf: () => conversationData.isBeginnerInvestor === true
+      showIf: () => conversationData.isBeginnerInvestor === true,
+      allowTextInput: true,
+      textInputPrompt: 'Eller skriv dina egna intressen:'
     },
     {
       id: 'companies',
-      question: 'Vilka företag eller varumärken använder du ofta eller tycker om? (Du kan välja flera)',
+      question: 'Vilka företag eller varumärken använder du ofta eller tycker om?',
       type: 'multiple',
       options: [
         { value: 'Apple', label: 'Apple' },
@@ -112,7 +117,9 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         { value: 'Investor', label: 'Investor' }
       ],
       key: 'companies',
-      showIf: () => conversationData.isBeginnerInvestor === true
+      showIf: () => conversationData.isBeginnerInvestor === true,
+      allowTextInput: true,
+      textInputPrompt: 'Eller berätta om andra företag du gillar:'
     },
     {
       id: 'goal',
@@ -126,7 +133,9 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         { value: 'house', label: 'Bostadsköp' },
         { value: 'other', label: 'Annat mål' }
       ],
-      key: 'investmentGoal'
+      key: 'investmentGoal',
+      allowTextInput: true,
+      textInputPrompt: 'Eller beskriv ditt eget mål:'
     },
     {
       id: 'timeHorizon',
@@ -137,7 +146,8 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         { value: 'medium', label: 'Medellång sikt (3-7 år)' },
         { value: 'long', label: 'Lång sikt (7+ år)' }
       ],
-      key: 'timeHorizon'
+      key: 'timeHorizon',
+      allowTextInput: false
     },
     {
       id: 'risk',
@@ -148,7 +158,8 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         { value: 'balanced', label: 'Balanserad - Okej med måttlig risk för bättre avkastning' },
         { value: 'aggressive', label: 'Aggressiv - Vill maximera avkastning trots högre risk' }
       ],
-      key: 'riskTolerance'
+      key: 'riskTolerance',
+      allowTextInput: false
     },
     {
       id: 'monthlyAmount',
@@ -160,7 +171,9 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         { value: '5000-10000', label: '5 000 - 10 000 kr' },
         { value: '10000+', label: '10 000 kr eller mer' }
       ],
-      key: 'monthlyAmount'
+      key: 'monthlyAmount',
+      allowTextInput: true,
+      textInputPrompt: 'Eller ange ett specifikt belopp:'
     },
     {
       id: 'hasPortfolio',
@@ -170,7 +183,8 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         { value: 'true', label: 'Ja, jag har redan investeringar' },
         { value: 'false', label: 'Nej, jag börjar från början' }
       ],
-      key: 'hasCurrentPortfolio'
+      key: 'hasCurrentPortfolio',
+      allowTextInput: false
     },
     {
       id: 'portfolioHelp',
@@ -183,14 +197,17 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         { value: 'dividend_income', label: 'Prioritera utdelningsinkomst' }
       ],
       key: 'portfolioHelp',
-      showIf: () => conversationData.hasCurrentPortfolio === false && conversationData.isBeginnerInvestor === true
+      showIf: () => conversationData.hasCurrentPortfolio === false && conversationData.isBeginnerInvestor === true,
+      allowTextInput: true,
+      textInputPrompt: 'Eller beskriv hur du vill att jag ska hjälpa dig:'
     },
     {
       id: 'currentHoldings',
       question: 'Kan du berätta vilka investeringar du har idag?',
       type: 'holdings',
       key: 'currentHoldings',
-      showIf: () => conversationData.hasCurrentPortfolio === true
+      showIf: () => conversationData.hasCurrentPortfolio === true,
+      allowTextInput: false
     },
     {
       id: 'portfolioSize',
@@ -203,7 +220,9 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         { value: 'very_large', label: 'Över 1 miljon kr' }
       ],
       key: 'portfolioSize',
-      showIf: () => conversationData.isBeginnerInvestor === false
+      showIf: () => conversationData.isBeginnerInvestor === false,
+      allowTextInput: true,
+      textInputPrompt: 'Eller ange en specifik summa:'
     },
     {
       id: 'rebalancing',
@@ -216,7 +235,8 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         { value: 'rarely', label: 'Sällan, bara vid stora förändringar' }
       ],
       key: 'rebalancingFrequency',
-      showIf: () => conversationData.isBeginnerInvestor === false
+      showIf: () => conversationData.isBeginnerInvestor === false,
+      allowTextInput: false
     },
     {
       id: 'age',
@@ -229,7 +249,8 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         { value: '46-55', label: '46-55 år' },
         { value: '56+', label: '56+ år' }
       ],
-      key: 'age'
+      key: 'age',
+      allowTextInput: false
     }
   ];
 
@@ -245,6 +266,26 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
     
     const updatedData = { ...conversationData, [currentQuestion.key]: processedValue };
     setConversationData(updatedData);
+    setShowTextInput(false);
+    setFreeTextInput('');
+  };
+
+  const handleTextSubmit = () => {
+    if (!freeTextInput.trim()) return;
+
+    let processedValue = freeTextInput.trim();
+    
+    // For multiple choice questions, convert text to array
+    if (currentQuestion.type === 'multiple') {
+      const existingValues = conversationData[currentQuestion.key as keyof ConversationData] as string[] || [];
+      const textValues = processedValue.split(',').map(v => v.trim()).filter(v => v);
+      processedValue = [...existingValues, ...textValues];
+    }
+
+    const updatedData = { ...conversationData, [currentQuestion.key]: processedValue };
+    setConversationData(updatedData);
+    setShowTextInput(false);
+    setFreeTextInput('');
   };
 
   const handleNext = () => {
@@ -276,6 +317,8 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
       }
       setCurrentStep(Math.max(0, prevStep));
     }
+    setShowTextInput(false);
+    setFreeTextInput('');
   };
 
   const canProceed = () => {
@@ -345,6 +388,54 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
                     {option.label}
                   </Button>
                 ))}
+                
+                {currentQuestion.allowTextInput && (
+                  <div className="mt-3 pt-3 border-t">
+                    {!showTextInput ? (
+                      <Button
+                        variant="ghost"
+                        onClick={() => setShowTextInput(true)}
+                        className="w-full justify-start text-left h-auto p-3 text-blue-600 hover:text-blue-700"
+                      >
+                        <Type className="w-4 h-4 mr-2" />
+                        {currentQuestion.textInputPrompt || 'Skriv ditt eget svar...'}
+                      </Button>
+                    ) : (
+                      <div className="space-y-2">
+                        <Label className="text-sm text-blue-600">
+                          {currentQuestion.textInputPrompt || 'Ditt svar:'}
+                        </Label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={freeTextInput}
+                            onChange={(e) => setFreeTextInput(e.target.value)}
+                            placeholder="Skriv här..."
+                            onKeyPress={(e) => e.key === 'Enter' && handleTextSubmit()}
+                            className="flex-1"
+                          />
+                          <Button
+                            onClick={handleTextSubmit}
+                            disabled={!freeTextInput.trim()}
+                            size="sm"
+                          >
+                            Skicka
+                          </Button>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setShowTextInput(false);
+                            setFreeTextInput('');
+                          }}
+                          className="text-gray-500"
+                        >
+                          Avbryt
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -370,6 +461,73 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
                     {option.label}
                   </Button>
                 ))}
+                
+                {currentQuestion.allowTextInput && (
+                  <div className="mt-3 pt-3 border-t">
+                    {!showTextInput ? (
+                      <Button
+                        variant="ghost"
+                        onClick={() => setShowTextInput(true)}
+                        className="w-full justify-start text-left h-auto p-3 text-blue-600 hover:text-blue-700"
+                      >
+                        <Type className="w-4 h-4 mr-2" />
+                        {currentQuestion.textInputPrompt || 'Lägg till egna alternativ...'}
+                      </Button>
+                    ) : (
+                      <div className="space-y-2">
+                        <Label className="text-sm text-blue-600">
+                          {currentQuestion.textInputPrompt || 'Lägg till egna alternativ (separera med komma):'}
+                        </Label>
+                        <div className="flex gap-2">
+                          <Textarea
+                            value={freeTextInput}
+                            onChange={(e) => setFreeTextInput(e.target.value)}
+                            placeholder="T.ex. IKEA, ICA, Handelsbanken..."
+                            className="flex-1 min-h-[80px]"
+                          />
+                          <Button
+                            onClick={handleTextSubmit}
+                            disabled={!freeTextInput.trim()}
+                            size="sm"
+                          >
+                            Lägg till
+                          </Button>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setShowTextInput(false);
+                            setFreeTextInput('');
+                          }}
+                          className="text-gray-500"
+                        >
+                          Avbryt
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Show selected custom values */}
+                {conversationData[currentQuestion.key as keyof ConversationData] && 
+                 Array.isArray(conversationData[currentQuestion.key as keyof ConversationData]) && 
+                 (conversationData[currentQuestion.key as keyof ConversationData] as string[]).some(val => 
+                   !currentQuestion.options?.some(opt => opt.value === val)
+                 ) && (
+                  <div className="mt-2 p-2 bg-blue-50 rounded-lg">
+                    <Label className="text-xs text-blue-600 font-medium">Dina egna tillägg:</Label>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {(conversationData[currentQuestion.key as keyof ConversationData] as string[])
+                        .filter(val => !currentQuestion.options?.some(opt => opt.value === val))
+                        .map((customValue, index) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            {customValue}
+                          </Badge>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
