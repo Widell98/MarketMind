@@ -508,6 +508,192 @@ const ChatPortfolioAdvisor = () => {
     }
   };
 
+  const saveAIRecommendationsAsHoldings = async (aiResponse: string) => {
+    if (!user) return;
+
+    try {
+      console.log('Saving AI recommendations from response...');
+      
+      const recommendations = extractStockRecommendationsFromAI(aiResponse);
+      
+      if (recommendations.length === 0) {
+        console.log('No recommendations found to save');
+        return;
+      }
+
+      console.log('Found recommendations to save:', recommendations);
+
+      // Transform recommendations to holdings format
+      const holdingsToInsert = recommendations.map(rec => ({
+        user_id: user.id,
+        name: rec.name,
+        symbol: rec.symbol || null,
+        quantity: 0, // No quantity yet, these are recommendations
+        purchase_price: rec.expected_price || 0,
+        current_value: 0, // No current value since not purchased yet
+        currency: 'SEK',
+        holding_type: 'recommendation', // Mark as recommendation
+        purchase_date: new Date().toISOString(),
+        sector: rec.sector || null,
+        market: 'Swedish'
+      }));
+
+      const { error } = await supabase
+        .from('user_holdings')
+        .insert(holdingsToInsert);
+
+      if (error) {
+        console.error('Error saving AI recommendations as holdings:', error);
+        throw error;
+      }
+
+      console.log('Successfully saved AI recommendations as holdings:', holdingsToInsert.length);
+      
+      toast({
+        title: "AI-rekommendationer sparade",
+        description: `${holdingsToInsert.length} AI-rekommenderade aktier har lagts till i din översikt`,
+      });
+
+      // Refresh holdings data
+      await refetchHoldings();
+
+    } catch (error) {
+      console.error('Failed to save AI recommendations:', error);
+      toast({
+        title: "Varning", 
+        description: "Kunde inte spara alla AI-rekommendationer",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const extractStockRecommendationsFromAI = (aiResponse: string) => {
+    console.log('Extracting stock recommendations from AI response:', aiResponse);
+    
+    // Look for common patterns in AI responses that indicate stock recommendations
+    const patterns = [
+      // Pattern for "Rekommenderade aktier:" followed by list
+      /rekommenderade\s+aktier?[:\s]+(.*?)(?=\n\n|$)/gis,
+      // Pattern for "Förslag:" followed by list  
+      /förslag[:\s]+(.*?)(?=\n\n|$)/gis,
+      // Pattern for "Köp:" followed by list
+      /köp[:\s]+(.*?)(?=\n\n|$)/gis,
+      // Pattern for bullet points with stock names
+      /[-•]\s*([A-ZÅÄÖ][a-zåäöA-ZÅÄÖ\s&]+)(?:\s*\([A-Z]+\))?(?:\s*[-–]\s*[^.\n]+)?/g,
+      // Pattern for numbered lists with companies
+      /\d+\.\s*([A-ZÅÄÖ][a-zåäöA-ZÅÄÖ\s&]+)(?:\s*\([A-Z]+\))?/g
+    ];
+
+    const recommendations: Array<{
+      name: string;
+      symbol?: string;
+      sector?: string;
+      expected_price?: number;
+    }> = [];
+
+    // Try each pattern
+    for (const pattern of patterns) {
+      const matches = aiResponse.match(pattern);
+      if (matches) {
+        matches.forEach(match => {
+          // Extract company name and potential symbol
+          const cleanMatch = match.replace(/^[-•\d+\.\s]+/, '').trim();
+          const symbolMatch = cleanMatch.match(/\(([A-Z]+)\)/);
+          const symbol = symbolMatch ? symbolMatch[1] : undefined;
+          const name = cleanMatch.replace(/\s*\([A-Z]+\).*$/, '').trim();
+          
+          // Basic validation - should be a reasonable company name
+          if (name.length > 2 && name.length < 50 && /^[A-ZÅÄÖ]/.test(name)) {
+            // Check if we already have this recommendation
+            const exists = recommendations.some(r => r.name.toLowerCase() === name.toLowerCase());
+            if (!exists) {
+              recommendations.push({
+                name,
+                symbol,
+                sector: extractSectorFromContext(aiResponse, name),
+                expected_price: extractPriceFromContext(aiResponse, name)
+              });
+            }
+          }
+        });
+      }
+    }
+
+    // Also look for well-known Swedish companies mentioned in context
+    const knownSwedishStocks = [
+      'Investor', 'Volvo', 'Ericsson', 'H&M', 'Spotify', 'Evolution Gaming',
+      'Elekta', 'Atlas Copco', 'Sandvik', 'SKF', 'Telia', 'Nordea',
+      'SEB', 'Handelsbanken', 'Swedbank', 'Kinnevik', 'ICA Gruppen',
+      'Getinge', 'Boliden', 'SSAB', 'Saab', 'Autoliv'
+    ];
+
+    knownSwedishStocks.forEach(stock => {
+      const regex = new RegExp(`\\b${stock}\\b`, 'gi');
+      if (regex.test(aiResponse)) {
+        const exists = recommendations.some(r => r.name.toLowerCase() === stock.toLowerCase());
+        if (!exists) {
+          recommendations.push({
+            name: stock,
+            sector: getKnownStockSector(stock),
+          });
+        }
+      }
+    });
+
+    console.log('Extracted recommendations:', recommendations);
+    return recommendations.slice(0, 8); // Limit to 8 recommendations
+  };
+
+  const extractSectorFromContext = (text: string, companyName: string): string | undefined => {
+    const sectors = ['teknologi', 'hälsa', 'finans', 'industri', 'konsument', 'energi', 'fastighet'];
+    const lowerText = text.toLowerCase();
+    const companyIndex = lowerText.indexOf(companyName.toLowerCase());
+    
+    if (companyIndex !== -1) {
+      const contextWindow = lowerText.substring(Math.max(0, companyIndex - 100), companyIndex + 100);
+      for (const sector of sectors) {
+        if (contextWindow.includes(sector)) {
+          return sector.charAt(0).toUpperCase() + sector.slice(1);
+        }
+      }
+    }
+    return undefined;
+  };
+
+  const extractPriceFromContext = (text: string, companyName: string): number | undefined => {
+    const companyIndex = text.toLowerCase().indexOf(companyName.toLowerCase());
+    if (companyIndex !== -1) {
+      const contextWindow = text.substring(Math.max(0, companyIndex - 50), companyIndex + 100);
+      const priceMatch = contextWindow.match(/(\d+(?:[.,]\d+)?)\s*(?:kr|sek|kronor)/i);
+      if (priceMatch) {
+        return parseFloat(priceMatch[1].replace(',', '.'));
+      }
+    }
+    return undefined;
+  };
+
+  const getKnownStockSector = (stockName: string): string => {
+    const sectorMap: Record<string, string> = {
+      'Investor': 'Finans',
+      'Volvo': 'Industri', 
+      'Ericsson': 'Teknologi',
+      'H&M': 'Konsument',
+      'Spotify': 'Teknologi',
+      'Evolution Gaming': 'Teknologi',
+      'Elekta': 'Hälsa',
+      'Atlas Copco': 'Industri',
+      'Sandvik': 'Industri',
+      'SKF': 'Industri',
+      'Telia': 'Teknologi',
+      'Nordea': 'Finans',
+      'SEB': 'Finans',
+      'Handelsbanken': 'Finans',
+      'Swedbank': 'Finans',
+      'Saab': 'Industri'
+    };
+    return sectorMap[stockName] || 'Övrigt';
+  };
+
   const completeConversation = async () => {
     setIsGenerating(true);
     addBotMessage('Tack för alla svar! Jag skapar nu din personliga portföljstrategi...');
@@ -523,7 +709,12 @@ const ChatPortfolioAdvisor = () => {
       setPortfolioResult(result);
       setIsComplete(true);
       
-      // Save AI-recommended stocks as holdings - get from portfolio.recommended_stocks
+      // Extract and save AI recommendations from the response
+      if (result.aiResponse) {
+        await saveAIRecommendationsAsHoldings(result.aiResponse);
+      }
+      
+      // Also save portfolio recommended stocks if they exist
       if (result.portfolio?.recommended_stocks && Array.isArray(result.portfolio.recommended_stocks) && result.portfolio.recommended_stocks.length > 0) {
         await saveRecommendedStocks(result.portfolio.recommended_stocks);
       }
