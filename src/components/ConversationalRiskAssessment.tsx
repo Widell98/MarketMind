@@ -2,11 +2,40 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Slider } from '@/components/ui/slider';
-import { Brain, Plus, Trash2, ArrowRight, ArrowLeft, MessageSquare, Type } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { 
+  User, 
+  DollarSign, 
+  TrendingUp, 
+  Target, 
+  Calendar,
+  AlertTriangle,
+  CheckCircle,
+  ChevronDown,
+  ChevronUp,
+  Building2,
+  Briefcase,
+  Heart,
+  Globe,
+  Leaf,
+  Brain,
+  MessageSquare,
+  Lightbulb,
+  PieChart,
+  Activity,
+  BarChart3,
+  Eye,
+  EyeOff
+} from 'lucide-react';
+import { useConversationalPortfolio } from '@/hooks/useConversationalPortfolio';
+import { useNavigate } from 'react-router-dom';
 
 interface Holding {
   id: string;
@@ -32,1102 +61,961 @@ interface ConversationData {
   portfolioHelp?: string;
   portfolioSize?: string;
   rebalancingFrequency?: string;
-  // New fields for enhanced risk profiling
   monthlyIncome?: string;
   availableCapital?: string;
+  emergencyFund?: string;
   financialObligations?: string[];
   sustainabilityPreference?: string;
   geographicPreference?: string;
   marketCrashReaction?: string;
-  lossExperience?: string;
   volatilityComfort?: number;
+  marketExperience?: string;
   currentAllocation?: string;
   previousPerformance?: string;
   sectorExposure?: string[];
   investmentStyle?: string;
   dividendYieldRequirement?: string;
-  internationalDiversification?: string;
   maxDrawdownTolerance?: number;
-  sharpeRatioExpectation?: string;
-  rebalancingStrategy?: string;
-  riskCapacity?: number;
-  investmentKnowledge?: number;
-  emergencyFund?: string;
-  investmentTimeline?: string;
   specificGoalAmount?: string;
-  marketExperience?: string;
-  portfolioComplexity?: string;
   taxConsideration?: string;
 }
 
-interface ConversationalRiskAssessmentProps {
-  onComplete: (data: ConversationData) => void;
-}
-
-const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> = ({ onComplete }) => {
+const ConversationalRiskAssessment = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [conversationData, setConversationData] = useState<ConversationData>({});
-  const [currentHoldings, setCurrentHoldings] = useState<Holding[]>([]);
-  const [freeTextInput, setFreeTextInput] = useState('');
-  const [showTextInput, setShowTextInput] = useState(false);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [aiResponse, setAiResponse] = useState<string>('');
+  const [showPortfolioPreview, setShowPortfolioPreview] = useState(false);
+  const { generatePortfolioFromConversation, loading } = useConversationalPortfolio();
+  const navigate = useNavigate();
 
-  const addHolding = () => {
-    const newHolding: Holding = {
-      id: Date.now().toString(),
-      name: '',
-      quantity: 0,
-      purchasePrice: 0,
-      symbol: ''
-    };
-    setCurrentHoldings([...currentHoldings, newHolding]);
-  };
-
-  const updateHolding = (id: string, field: keyof Holding, value: string | number) => {
-    setCurrentHoldings(holdings =>
-      holdings.map(holding =>
-        holding.id === id ? { ...holding, [field]: value } : holding
-      )
-    );
-  };
-
-  const removeHolding = (id: string) => {
-    setCurrentHoldings(holdings => holdings.filter(holding => holding.id !== id));
-  };
-
-  // Helper function to render conversation data values properly
-  const renderConversationValue = (value: any): React.ReactNode => {
-    if (value === undefined || value === null) return null;
+  // Helper function to extract actual stock/fund recommendations from AI response
+  const extractRecommendations = (response: string): Array<{name: string, type: string, reasoning: string}> => {
+    const recommendations: Array<{name: string, type: string, reasoning: string}> = [];
     
+    // Look for stock symbols, fund names, and company names
+    const stockPattern = /([A-Z]{2,5}(?:-[A-Z])?\.ST|[A-Z]{3,5})\s*(?:\([^)]+\))?/g;
+    const fundPattern = /(Avanza|Nordnet|Swedbank|SEB|Länsförsäkringar|SPP|AMF|Handelsbanken)\s+[A-Za-z\s]+(?:fond|index|aktie)/gi;
+    const companyPattern = /(Evolution Gaming|Spotify|Investor|Atlas Copco|H&M|Ericsson|Volvo|Sandvik|SKF|Telia|Essity|Getinge|Alfa Laval|SEB|Hexagon|Assa Abloy|ICA|Nibe|BioGaia|Addtech|Epiroc|Embracer|Sinch|Paradox|Tobii|Northvolt|Klarna)/gi;
+    
+    let match;
+    
+    // Extract stock symbols
+    while ((match = stockPattern.exec(response)) !== null) {
+      const symbol = match[1];
+      if (symbol && !recommendations.some(r => r.name === symbol)) {
+        recommendations.push({
+          name: symbol,
+          type: 'Aktie',
+          reasoning: extractReasoningForStock(response, symbol)
+        });
+      }
+    }
+    
+    // Extract fund names
+    while ((match = fundPattern.exec(response)) !== null) {
+      const fundName = match[0];
+      if (fundName && !recommendations.some(r => r.name === fundName)) {
+        recommendations.push({
+          name: fundName,
+          type: 'Fond',
+          reasoning: extractReasoningForStock(response, fundName)
+        });
+      }
+    }
+    
+    // Extract company names
+    while ((match = companyPattern.exec(response)) !== null) {
+      const companyName = match[0];
+      if (companyName && !recommendations.some(r => r.name === companyName)) {
+        recommendations.push({
+          name: companyName,
+          type: 'Aktie',
+          reasoning: extractReasoningForStock(response, companyName)
+        });
+      }
+    }
+    
+    return recommendations;
+  };
+
+  const extractReasoningForStock = (response: string, stockName: string): string => {
+    const lines = response.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].toLowerCase().includes(stockName.toLowerCase())) {
+        // Look for the next few lines that might contain reasoning
+        for (let j = i; j < Math.min(i + 3, lines.length); j++) {
+          const line = lines[j].trim();
+          if (line.length > 20 && !line.includes('**') && !line.includes('#')) {
+            return line;
+          }
+        }
+      }
+    }
+    return 'Rekommenderad baserat på din riskprofil och investeringsmål';
+  };
+
+  const steps = [
+    {
+      id: 'investor_type',
+      title: 'Investerartyp',
+      description: 'Berätta om din investeringserfarenhet',
+      icon: <User className="w-5 h-5" />,
+      component: () => (
+        <div className="space-y-4">
+          <div className="text-center space-y-2">
+            <h3 className="text-lg font-semibold">Är du en nybörjare eller erfaren investerare?</h3>
+            <p className="text-sm text-muted-foreground">
+              Detta hjälper oss att anpassa rekommendationerna till din kunskapsnivå
+            </p>
+          </div>
+          
+          <RadioGroup 
+            value={conversationData.isBeginnerInvestor?.toString()} 
+            onValueChange={(value) => 
+              setConversationData(prev => ({ 
+                ...prev, 
+                isBeginnerInvestor: value === 'true' 
+              }))
+            }
+            className="space-y-3"
+          >
+            <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50">
+              <RadioGroupItem value="true" id="beginner" />
+              <Label htmlFor="beginner" className="flex-1 cursor-pointer">
+                <div className="font-medium">Nybörjare</div>
+                <div className="text-sm text-muted-foreground">Detta är första gången jag investerar</div>
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50">
+              <RadioGroupItem value="false" id="experienced" />
+              <Label htmlFor="experienced" className="flex-1 cursor-pointer">
+                <div className="font-medium">Erfaren</div>
+                <div className="text-sm text-muted-foreground">Jag har investerat tidigare och förstår grunderna</div>
+              </Label>
+            </div>
+          </RadioGroup>
+        </div>
+      )
+    },
+    {
+      id: 'basic_info',
+      title: 'Grundläggande Information',
+      description: 'Ålder och investeringsbelopp',
+      icon: <User className="w-5 h-5" />,
+      component: () => (
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="age">Ålder</Label>
+            <Input
+              id="age"
+              type="number"
+              placeholder="25"
+              value={conversationData.age || ''}
+              onChange={(e) => setConversationData(prev => ({ 
+                ...prev, 
+                age: parseInt(e.target.value) || undefined 
+              }))}
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="monthlyAmount">Månadsbelopp för investering (SEK)</Label>
+            <Input
+              id="monthlyAmount"
+              placeholder="5000"
+              value={conversationData.monthlyAmount || ''}
+              onChange={(e) => setConversationData(prev => ({ 
+                ...prev, 
+                monthlyAmount: e.target.value 
+              }))}
+            />
+          </div>
+        </div>
+      )
+    },
+    ...(conversationData.isBeginnerInvestor ? [
+      {
+        id: 'economic_situation',
+        title: 'Ekonomisk Situation',
+        description: 'Din ekonomiska grund',
+        icon: <DollarSign className="w-5 h-5" />,
+        component: () => (
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="monthlyIncome">Månadsinkomst (SEK)</Label>
+              <RadioGroup 
+                value={conversationData.monthlyIncome} 
+                onValueChange={(value) => setConversationData(prev => ({ ...prev, monthlyIncome: value }))}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="under_25000" id="income_1" />
+                  <Label htmlFor="income_1">Under 25 000 SEK</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="25000_40000" id="income_2" />
+                  <Label htmlFor="income_2">25 000 - 40 000 SEK</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="40000_60000" id="income_3" />
+                  <Label htmlFor="income_3">40 000 - 60 000 SEK</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="over_60000" id="income_4" />
+                  <Label htmlFor="income_4">Över 60 000 SEK</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div>
+              <Label>Tillgängligt kapital för investering</Label>
+              <RadioGroup 
+                value={conversationData.availableCapital} 
+                onValueChange={(value) => setConversationData(prev => ({ ...prev, availableCapital: value }))}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="under_50000" id="capital_1" />
+                  <Label htmlFor="capital_1">Under 50 000 SEK</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="50000_200000" id="capital_2" />
+                  <Label htmlFor="capital_2">50 000 - 200 000 SEK</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="200000_500000" id="capital_3" />
+                  <Label htmlFor="capital_3">200 000 - 500 000 SEK</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="over_500000" id="capital_4" />
+                  <Label htmlFor="capital_4">Över 500 000 SEK</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div>
+              <Label>Har du en ekonomisk buffert?</Label>
+              <RadioGroup 
+                value={conversationData.emergencyFund} 
+                onValueChange={(value) => setConversationData(prev => ({ ...prev, emergencyFund: value }))}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="yes_full" id="buffer_1" />
+                  <Label htmlFor="buffer_1">Ja, 6+ månaders utgifter</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="yes_partial" id="buffer_2" />
+                  <Label htmlFor="buffer_2">Ja, men mindre än 6 månader</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="no" id="buffer_3" />
+                  <Label htmlFor="buffer_3">Nej, ingen buffert</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div>
+              <Label>Ekonomiska förpliktelser (välj alla som stämmer)</Label>
+              <div className="space-y-2 mt-2">
+                {[
+                  { id: 'mortgage', label: 'Bolån' },
+                  { id: 'student_loan', label: 'Studielån' },
+                  { id: 'car_loan', label: 'Billån' },
+                  { id: 'child_support', label: 'Barnkostnader' },
+                  { id: 'other_debt', label: 'Andra lån' },
+                  { id: 'none', label: 'Inga större förpliktelser' }
+                ].map((obligation) => (
+                  <div key={obligation.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={obligation.id}
+                      checked={conversationData.financialObligations?.includes(obligation.id) || false}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setConversationData(prev => ({
+                            ...prev,
+                            financialObligations: [...(prev.financialObligations || []), obligation.id]
+                          }));
+                        } else {
+                          setConversationData(prev => ({
+                            ...prev,
+                            financialObligations: prev.financialObligations?.filter(id => id !== obligation.id) || []
+                          }));
+                        }
+                      }}
+                    />
+                    <Label htmlFor={obligation.id}>{obligation.label}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+      },
+      {
+        id: 'interests',
+        title: 'Intressen & Preferenser',
+        description: 'Vad intresserar dig?',
+        icon: <Heart className="w-5 h-5" />,
+        component: () => (
+          <div className="space-y-4">
+            <div>
+              <Label>Vad är du intresserad av? (välj flera)</Label>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                {[
+                  'Teknik', 'Hälsa', 'Miljö', 'Gaming', 'Mode', 'Mat & Dryck',
+                  'Resor', 'Bilar', 'Fastigheter', 'Finans', 'Utbildning', 'Sport'
+                ].map((interest) => (
+                  <div key={interest} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={interest}
+                      checked={conversationData.interests?.includes(interest) || false}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setConversationData(prev => ({
+                            ...prev,
+                            interests: [...(prev.interests || []), interest]
+                          }));
+                        } else {
+                          setConversationData(prev => ({
+                            ...prev,
+                            interests: prev.interests?.filter(i => i !== interest) || []
+                          }));
+                        }
+                      }}
+                    />
+                    <Label htmlFor={interest} className="text-sm">{interest}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="companies">Vilka företag gillar du eller använder du ofta?</Label>
+              <Textarea
+                id="companies"
+                placeholder="T.ex. Spotify, H&M, ICA, Volvo..."
+                value={conversationData.companies?.join(', ') || ''}
+                onChange={(e) => setConversationData(prev => ({ 
+                  ...prev, 
+                  companies: e.target.value.split(',').map(c => c.trim()).filter(c => c) 
+                }))}
+              />
+            </div>
+
+            <div>
+              <Label>Hållbarhet och miljö</Label>
+              <RadioGroup 
+                value={conversationData.sustainabilityPreference} 
+                onValueChange={(value) => setConversationData(prev => ({ ...prev, sustainabilityPreference: value }))}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="very_important" id="sust_1" />
+                  <Label htmlFor="sust_1">Mycket viktigt - vill bara investera hållbart</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="somewhat_important" id="sust_2" />
+                  <Label htmlFor="sust_2">Ganska viktigt - föredrar hållbara alternativ</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="not_important" id="sust_3" />
+                  <Label htmlFor="sust_3">Inte så viktigt - fokuserar på avkastning</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div>
+              <Label>Geografisk preferens</Label>
+              <RadioGroup 
+                value={conversationData.geographicPreference} 
+                onValueChange={(value) => setConversationData(prev => ({ ...prev, geographicPreference: value }))}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="sweden_only" id="geo_1" />
+                  <Label htmlFor="geo_1">Bara svenska företag</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="nordic" id="geo_2" />
+                  <Label htmlFor="geo_2">Nordiska företag</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="global" id="geo_3" />
+                  <Label htmlFor="geo_3">Globala företag</Label>
+                </div>
+              </RadioGroup>
+            </div>
+          </div>
+        )
+      }
+    ] : [
+      {
+        id: 'advanced_profile',
+        title: 'Avancerad Profil',
+        description: 'Din investeringserfarenhet',
+        icon: <BarChart3 className="w-5 h-5" />,
+        component: () => (
+          <div className="space-y-4">
+            <div>
+              <Label>Hur länge har du investerat?</Label>
+              <RadioGroup 
+                value={conversationData.marketExperience} 
+                onValueChange={(value) => setConversationData(prev => ({ ...prev, marketExperience: value }))}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="1-3_years" id="exp_1" />
+                  <Label htmlFor="exp_1">1-3 år</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="3-7_years" id="exp_2" />
+                  <Label htmlFor="exp_2">3-7 år</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="7-15_years" id="exp_3" />
+                  <Label htmlFor="exp_3">7-15 år</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="over_15_years" id="exp_4" />
+                  <Label htmlFor="exp_4">Över 15 år</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div>
+              <Label>Nuvarande portföljstorlek</Label>
+              <RadioGroup 
+                value={conversationData.portfolioSize} 
+                onValueChange={(value) => setConversationData(prev => ({ ...prev, portfolioSize: value }))}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="small" id="size_1" />
+                  <Label htmlFor="size_1">Under 100 000 SEK</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="medium" id="size_2" />
+                  <Label htmlFor="size_2">100 000 - 500 000 SEK</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="large" id="size_3" />
+                  <Label htmlFor="size_3">500 000 - 1 000 000 SEK</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="very_large" id="size_4" />
+                  <Label htmlFor="size_4">Över 1 000 000 SEK</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div>
+              <Label>Hur ofta rebalanserar du din portfölj?</Label>
+              <RadioGroup 
+                value={conversationData.rebalancingFrequency} 
+                onValueChange={(value) => setConversationData(prev => ({ ...prev, rebalancingFrequency: value }))}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="monthly" id="rebal_1" />
+                  <Label htmlFor="rebal_1">Månadsvis</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="quarterly" id="rebal_2" />
+                  <Label htmlFor="rebal_2">Kvartalsvis</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="yearly" id="rebal_3" />
+                  <Label htmlFor="rebal_3">Årligen</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="rarely" id="rebal_4" />
+                  <Label htmlFor="rebal_4">Sällan eller aldrig</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div>
+              <Label>Investeringsstil</Label>
+              <RadioGroup 
+                value={conversationData.investmentStyle} 
+                onValueChange={(value) => setConversationData(prev => ({ ...prev, investmentStyle: value }))}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="value" id="style_1" />
+                  <Label htmlFor="style_1">Värdeinvestering</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="growth" id="style_2" />
+                  <Label htmlFor="style_2">Tillväxtinvestering</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="dividend" id="style_3" />
+                  <Label htmlFor="style_3">Utdelningsfokus</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="momentum" id="style_4" />
+                  <Label htmlFor="style_4">Momentum/Trend</Label>
+                </div>
+              </RadioGroup>
+            </div>
+          </div>
+        )
+      }
+    ]),
+    {
+      id: 'goals_risk',
+      title: 'Mål & Risk',
+      description: 'Dina investeringsmål och risktolerans',
+      icon: <Target className="w-5 h-5" />,
+      component: () => (
+        <div className="space-y-4">
+          <div>
+            <Label>Vad är ditt huvudsakliga investeringsmål?</Label>
+            <RadioGroup 
+              value={conversationData.investmentGoal} 
+              onValueChange={(value) => setConversationData(prev => ({ ...prev, investmentGoal: value }))}
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="wealth_building" id="goal_1" />
+                <Label htmlFor="goal_1">Bygga förmögenhet långsiktigt</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="retirement" id="goal_2" />
+                <Label htmlFor="goal_2">Spara till pension</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="house" id="goal_3" />
+                <Label htmlFor="goal_3">Spara till bostad</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="income" id="goal_4" />
+                <Label htmlFor="goal_4">Skapa passiv inkomst</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="education" id="goal_5" />
+                <Label htmlFor="goal_5">Utbildning/barnens framtid</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <div>
+            <Label>Tidshorisont för investeringen</Label>
+            <RadioGroup 
+              value={conversationData.timeHorizon} 
+              onValueChange={(value) => setConversationData(prev => ({ ...prev, timeHorizon: value }))}
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="short" id="time_1" />
+                <Label htmlFor="time_1">1-3 år</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="medium" id="time_2" />
+                <Label htmlFor="time_2">3-10 år</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="long" id="time_3" />
+                <Label htmlFor="time_3">Över 10 år</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <div>
+            <Label>Risktolerans</Label>
+            <RadioGroup 
+              value={conversationData.riskTolerance} 
+              onValueChange={(value) => setConversationData(prev => ({ ...prev, riskTolerance: value }))}
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="conservative" id="risk_1" />
+                <Label htmlFor="risk_1">Konservativ - säkerhet viktigast</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="moderate" id="risk_2" />
+                <Label htmlFor="risk_2">Måttlig - balans mellan risk och avkastning</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="aggressive" id="risk_3" />
+                <Label htmlFor="risk_3">Aggressiv - högre risk för högre avkastning</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {conversationData.investmentGoal && (
+            <div>
+              <Label htmlFor="specificGoal">Specifikt mål (valfritt)</Label>
+              <Input
+                id="specificGoal"
+                placeholder="T.ex. 500 000 SEK till 2030"
+                value={conversationData.specificGoalAmount || ''}
+                onChange={(e) => setConversationData(prev => ({ 
+                  ...prev, 
+                  specificGoalAmount: e.target.value 
+                }))}
+              />
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
+      id: 'psychology',
+      title: 'Investeringspsykologi',
+      description: 'Hur reagerar du på marknadsrörelser?',
+      icon: <Brain className="w-5 h-5" />,
+      component: () => (
+        <div className="space-y-4">
+          <div>
+            <Label>Om börsen kraschar 30%, vad skulle du göra?</Label>
+            <RadioGroup 
+              value={conversationData.marketCrashReaction} 
+              onValueChange={(value) => setConversationData(prev => ({ ...prev, marketCrashReaction: value }))}
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="buy_more" id="crash_1" />
+                <Label htmlFor="crash_1">Köpa mer - det är ett tillfälle!</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="hold" id="crash_2" />
+                <Label htmlFor="crash_2">Hålla kvar och vänta</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="sell_some" id="crash_3" />
+                <Label htmlFor="crash_3">Sälja en del för att minska risken</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="sell_all" id="crash_4" />
+                <Label htmlFor="crash_4">Sälja allt för att undvika mer förlust</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <div>
+            <Label>Hur bekväm är du med volatilitet? (1 = mycket obekväm, 10 = mycket bekväm)</Label>
+            <div className="flex items-center space-x-4 mt-2">
+              <span className="text-sm">1</span>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                value={conversationData.volatilityComfort || 5}
+                onChange={(e) => setConversationData(prev => ({ 
+                  ...prev, 
+                  volatilityComfort: parseInt(e.target.value) 
+                }))}
+                className="flex-1"
+              />
+              <span className="text-sm">10</span>
+            </div>
+            <div className="text-center mt-2">
+              <Badge variant="outline">
+                {conversationData.volatilityComfort || 5}/10
+              </Badge>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'current_portfolio',
+      title: 'Nuvarande Portfölj',
+      description: 'Har du redan investeringar?',
+      icon: <PieChart className="w-5 h-5" />,
+      component: () => (
+        <div className="space-y-4">
+          <div>
+            <Label>Har du redan en portfölj?</Label>
+            <RadioGroup 
+              value={conversationData.hasCurrentPortfolio?.toString()} 
+              onValueChange={(value) => setConversationData(prev => ({ 
+                ...prev, 
+                hasCurrentPortfolio: value === 'true' 
+              }))}
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="true" id="portfolio_yes" />
+                <Label htmlFor="portfolio_yes">Ja, jag har redan investeringar</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="false" id="portfolio_no" />
+                <Label htmlFor="portfolio_no">Nej, jag börjar från början</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {conversationData.hasCurrentPortfolio && (
+            <div className="space-y-4">
+              <div>
+                <Label>Vad vill du ha hjälp med?</Label>
+                <RadioGroup 
+                  value={conversationData.portfolioHelp} 
+                  onValueChange={(value) => setConversationData(prev => ({ ...prev, portfolioHelp: value }))}
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="optimize" id="help_1" />
+                    <Label htmlFor="help_1">Optimera min befintliga portfölj</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="diversify" id="help_2" />
+                    <Label htmlFor="help_2">Diversifiera bättre</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="rebalance" id="help_3" />
+                    <Label htmlFor="help_3">Rebalansera allokeringen</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="start_over" id="help_4" />
+                    <Label htmlFor="help_4">Börja om från början</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  Du kan lägga till dina nuvarande innehav senare i portföljhanteraren för mer specifika rekommendationer.
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+        </div>
+      )
+    }
+  ];
+
+  const handleNext = () => {
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleComplete = async () => {
+    console.log('Final conversation data:', conversationData);
+    
+    const result = await generatePortfolioFromConversation(conversationData);
+    
+    if (result?.aiResponse) {
+      setAiResponse(result.aiResponse);
+      setShowPortfolioPreview(true);
+    }
+  };
+
+  const handleCreatePortfolio = () => {
+    navigate('/portfolio-implementation');
+  };
+
+  const renderConversationValue = (value: any): React.ReactNode => {
     if (Array.isArray(value)) {
-      if (value.length === 0) return null;
+      if (value.length === 0) return 'Inga val gjorda';
       
-      // Handle Holding arrays
+      // Special handling for holdings array
       if (value.length > 0 && typeof value[0] === 'object' && 'name' in value[0]) {
         return (
-          <div className="flex flex-wrap gap-1">
+          <div className="space-y-1">
             {value.map((holding: Holding, index: number) => (
-              <Badge key={index} variant="secondary" className="text-xs">
-                {holding.name} ({holding.quantity}st)
-              </Badge>
+              <div key={index} className="text-xs bg-muted/50 p-1 rounded">
+                {holding.name} ({holding.quantity} st)
+              </div>
             ))}
           </div>
         );
       }
       
-      // Handle string arrays
-      return (
-        <div className="flex flex-wrap gap-1">
-          {value.map((item: string, index: number) => (
-            <Badge key={index} variant="secondary" className="text-xs">
-              {item}
-            </Badge>
-          ))}
-        </div>
-      );
+      // Regular string arrays
+      return value.join(', ');
     }
     
     if (typeof value === 'boolean') {
       return value ? 'Ja' : 'Nej';
     }
     
-    if (typeof value === 'number') {
+    if (typeof value === 'string' || typeof value === 'number') {
       return value.toString();
     }
     
-    return String(value);
+    return 'Inte angivet';
   };
 
-  const questions = [
-    {
-      id: 'beginner',
-      question: 'Hej! Låt oss börja enkelt - är du ny inom investeringar?',
-      type: 'chat',
-      options: [
-        { value: 'true', label: 'Ja, jag är relativt ny (mindre än 2 års erfarenhet)' },
-        { value: 'false', label: 'Nej, jag har flera års erfarenhet av investeringar' }
-      ],
-      key: 'isBeginnerInvestor',
-      allowTextInput: false
-    },
-    {
-      id: 'age',
-      question: 'Hur gammal är du? Detta hjälper mig förstå din investeringshorisont.',
-      type: 'number',
-      key: 'age',
-      allowTextInput: true,
-      textInputPrompt: 'Ange din ålder:'
-    },
-    // Enhanced questions for beginners
-    {
-      id: 'monthlyIncome',
-      question: 'Ungefär vad har du för månadsinkomst? Detta hjälper mig förstå din investeringskapacitet.',
-      type: 'chat',
-      options: [
-        { value: '20000-30000', label: '20 000 - 30 000 kr' },
-        { value: '30000-45000', label: '30 000 - 45 000 kr' },
-        { value: '45000-60000', label: '45 000 - 60 000 kr' },
-        { value: '60000+', label: 'Över 60 000 kr' }
-      ],
-      key: 'monthlyIncome',
-      showIf: () => conversationData.isBeginnerInvestor === true,
-      allowTextInput: true,
-      textInputPrompt: 'Eller ange din månadsinkomst:'
-    },
-    {
-      id: 'availableCapital',
-      question: 'Hur mycket sparkapital har du tillgängligt för investeringar just nu?',
-      type: 'chat',
-      options: [
-        { value: '10000-50000', label: '10 000 - 50 000 kr' },
-        { value: '50000-100000', label: '50 000 - 100 000 kr' },
-        { value: '100000-250000', label: '100 000 - 250 000 kr' },
-        { value: '250000+', label: 'Över 250 000 kr' }
-      ],
-      key: 'availableCapital',
-      showIf: () => conversationData.isBeginnerInvestor === true,
-      allowTextInput: true,
-      textInputPrompt: 'Ange din tillgängliga summa:'
-    },
-    {
-      id: 'emergencyFund',
-      question: 'Har du en buffert för oväntade utgifter (3-6 månaders utgifter)?',
-      type: 'chat',
-      options: [
-        { value: 'yes_full', label: 'Ja, jag har 6+ månaders buffert' },
-        { value: 'yes_partial', label: 'Ja, men bara 1-3 månaders buffert' },
-        { value: 'no', label: 'Nej, jag har ingen buffert än' }
-      ],
-      key: 'emergencyFund',
-      showIf: () => conversationData.isBeginnerInvestor === true,
-      allowTextInput: false
-    },
-    {
-      id: 'financialObligations',
-      question: 'Har du några större ekonomiska förpliktelser?',
-      type: 'multiple',
-      options: [
-        { value: 'mortgage', label: 'Bolån' },
-        { value: 'student_loan', label: 'Studielån' },
-        { value: 'car_loan', label: 'Billån' },
-        { value: 'child_support', label: 'Barnkostnader' },
-        { value: 'none', label: 'Inga större förpliktelser' }
-      ],
-      key: 'financialObligations',
-      showIf: () => conversationData.isBeginnerInvestor === true,
-      allowTextInput: true,
-      textInputPrompt: 'Andra förpliktelser:'
-    },
-    {
-      id: 'interests',
-      question: 'Vad intresserar dig mest i vardagen? (Detta hjälper mig föreslå relevanta investeringar)',
-      type: 'multiple',
-      options: [
-        { value: 'technology', label: 'Teknik och innovation' },
-        { value: 'healthcare', label: 'Hälsa och välmående' },
-        { value: 'environment', label: 'Miljö och hållbarhet' },
-        { value: 'finance', label: 'Bank och finans' },
-        { value: 'gaming', label: 'Spel och underhållning' },
-        { value: 'real_estate', label: 'Fastigheter' },
-        { value: 'consumer_goods', label: 'Konsumentprodukter' },
-        { value: 'automotive', label: 'Bilar och transport' },
-        { value: 'energy', label: 'Energi och utilities' },
-        { value: 'mining', label: 'Gruvbolag och råvaror' }
-      ],
-      key: 'interests',
-      showIf: () => conversationData.isBeginnerInvestor === true,
-      allowTextInput: true,
-      textInputPrompt: 'Eller skriv dina egna intressen:'
-    },
-    {
-      id: 'sustainabilityPreference',
-      question: 'Hur viktigt är hållbarhet och ESG (miljö, socialt ansvar, bolagsstyrning) för dig?',
-      type: 'chat',
-      options: [
-        { value: 'very_important', label: 'Mycket viktigt - vill bara investera hållbart' },
-        { value: 'somewhat_important', label: 'Ganska viktigt - föredrar hållbara alternativ' },
-        { value: 'not_priority', label: 'Inte en prioritet - fokuserar på avkastning' }
-      ],
-      key: 'sustainabilityPreference',
-      showIf: () => conversationData.isBeginnerInvestor === true,
-      allowTextInput: false
-    },
-    {
-      id: 'geographicPreference',
-      question: 'Vad föredrar du geografiskt när det gäller investeringar?',
-      type: 'chat',
-      options: [
-        { value: 'sweden_only', label: 'Mest svenska företag jag känner igen' },
-        { value: 'nordics', label: 'Svenska och nordiska företag' },
-        { value: 'europe', label: 'Europiska marknader' },
-        { value: 'global', label: 'Global spridning över alla marknader' }
-      ],
-      key: 'geographicPreference',
-      showIf: () => conversationData.isBeginnerInvestor === true,
-      allowTextInput: false
-    },
-    {
-      id: 'companies',
-      question: 'Vilka företag eller varumärken använder du ofta eller tycker om?',
-      type: 'text',
-      key: 'companies',
-      showIf: () => conversationData.isBeginnerInvestor === true,
-      allowTextInput: true,
-      textInputPrompt: 'Berätta om företag du gillar:'
-    },
-    {
-      id: 'marketCrashReaction',
-      question: 'Om börsen föll med 20% på en månad, vad skulle du göra?',
-      type: 'chat',
-      options: [
-        { value: 'sell_all', label: 'Sälja allt för att stoppa förlusterna' },
-        { value: 'sell_some', label: 'Sälja en del av mina innehav' },
-        { value: 'hold', label: 'Behålla allt och vänta på återhämtning' },
-        { value: 'buy_more', label: 'Köpa mer aktier medan de är billiga' }
-      ],
-      key: 'marketCrashReaction',
-      showIf: () => conversationData.isBeginnerInvestor === true,
-      allowTextInput: false
-    },
-    {
-      id: 'volatilityComfort',
-      question: 'Hur bekväm är du med att se din portfölj variera i värde? (1 = inte alls, 10 = helt bekväm)',
-      type: 'slider',
-      key: 'volatilityComfort',
-      showIf: () => conversationData.isBeginnerInvestor === true,
-      allowTextInput: false,
-      min: 1,
-      max: 10,
-      defaultValue: 5
-    },
-    // Enhanced questions for experienced investors
-    {
-      id: 'marketExperience',
-      question: 'Hur många år har du investerat aktivt på börsen?',
-      type: 'chat',
-      options: [
-        { value: '2-5', label: '2-5 år' },
-        { value: '5-10', label: '5-10 år' },
-        { value: '10-20', label: '10-20 år' },
-        { value: '20+', label: 'Över 20 år' }
-      ],
-      key: 'marketExperience',
-      showIf: () => conversationData.isBeginnerInvestor === false,
-      allowTextInput: false
-    },
-    {
-      id: 'currentAllocation',
-      question: 'Hur ser din nuvarande tillgångsallokering ut ungefär?',
-      type: 'text',
-      key: 'currentAllocation',
-      showIf: () => conversationData.isBeginnerInvestor === false,
-      allowTextInput: true,
-      textInputPrompt: 'T.ex. 70% aktier, 20% obligationer, 10% fastigheter'
-    },
-    {
-      id: 'previousPerformance',
-      question: 'Hur har din portfölj presterat historiskt jämfört med marknaden?',
-      type: 'chat',
-      options: [
-        { value: 'outperformed', label: 'Bättre än marknaden' },
-        { value: 'matched', label: 'Ungefär samma som marknaden' },
-        { value: 'underperformed', label: 'Sämre än marknaden' },
-        { value: 'unsure', label: 'Osäker/har inte mätt' }
-      ],
-      key: 'previousPerformance',
-      showIf: () => conversationData.isBeginnerInvestor === false,
-      allowTextInput: false
-    },
-    {
-      id: 'sectorExposure',
-      question: 'Vilka sektorer har du redan stor exponering mot i din portfölj?',
-      type: 'multiple',
-      options: [
-        { value: 'technology', label: 'Teknologi' },
-        { value: 'finance', label: 'Finans/Bank' },
-        { value: 'healthcare', label: 'Hälsovård' },
-        { value: 'industrials', label: 'Industri' },
-        { value: 'consumer', label: 'Konsument' },
-        { value: 'energy', label: 'Energi' },
-        { value: 'real_estate', label: 'Fastigheter' },
-        { value: 'materials', label: 'Material/Gruvbolag' }
-      ],
-      key: 'sectorExposure',
-      showIf: () => conversationData.isBeginnerInvestor === false,
-      allowTextInput: true,
-      textInputPrompt: 'Andra sektorer:'
-    },
-    {
-      id: 'investmentStyle',
-      question: 'Vilken investeringsstil föredrar du?',
-      type: 'chat',
-      options: [
-        { value: 'value', label: 'Value - undervärderade företag' },
-        { value: 'growth', label: 'Growth - snabbt växande företag' },
-        { value: 'dividend', label: 'Dividend - fokus på utdelningar' },
-        { value: 'momentum', label: 'Momentum - trender och teknisk analys' },
-        { value: 'mixed', label: 'Blandad strategi' }
-      ],
-      key: 'investmentStyle',
-      showIf: () => conversationData.isBeginnerInvestor === false,
-      allowTextInput: false
-    },
-    {
-      id: 'dividendYieldRequirement',
-      question: 'Vad har du för krav på direktavkastning (utdelning)?',
-      type: 'chat',
-      options: [
-        { value: 'high', label: 'Hög (4%+) - vill ha regelbunden inkomst' },
-        { value: 'moderate', label: 'Måttlig (2-4%) - utdelning är trevligt' },
-        { value: 'low', label: 'Låg (<2%) - fokuserar på kursuppgång' },
-        { value: 'none', label: 'Ingen - vill att företag återinvesterar vinsten' }
-      ],
-      key: 'dividendYieldRequirement',
-      showIf: () => conversationData.isBeginnerInvestor === false,
-      allowTextInput: false
-    },
-    {
-      id: 'maxDrawdownTolerance',
-      question: 'Vilken maximal nedgång kan du acceptera i din portfölj? (1 = 5%, 10 = 50%+)',
-      type: 'slider',
-      key: 'maxDrawdownTolerance',
-      showIf: () => conversationData.isBeginnerInvestor === false,
-      allowTextInput: false,
-      min: 1,
-      max: 10,
-      defaultValue: 5
-    },
-    {
-      id: 'sharpeRatioExpectation',
-      question: 'Vad har du för förväntningar på riskjusterad avkastning (Sharpe ratio)?',
-      type: 'chat',
-      options: [
-        { value: 'conservative', label: 'Konservativ - föredrar låg risk över hög avkastning' },
-        { value: 'balanced', label: 'Balanserad - vill ha bra förhållande risk/avkastning' },
-        { value: 'aggressive', label: 'Aggressiv - accepterar hög risk för högre avkastning' }
-      ],
-      key: 'sharpeRatioExpectation',
-      showIf: () => conversationData.isBeginnerInvestor === false,
-      allowTextInput: false
-    },
-    {
-      id: 'rebalancingStrategy',
-      question: 'Hur hanterar du rebalansering av din portfölj?',
-      type: 'chat',
-      options: [
-        { value: 'calendar', label: 'Kalenderbaser (t.ex. kvartalsvis)' },
-        { value: 'threshold', label: 'Tröskelvärden (när allokering avviker X%)' },
-        { value: 'tactical', label: 'Taktiskt (baserat på marknadsläge)' },
-        { value: 'rarely', label: 'Sällan - buy and hold' }
-      ],
-      key: 'rebalancingStrategy',
-      showIf: () => conversationData.isBeginnerInvestor === false,
-      allowTextInput: false
-    },
-    {
-      id: 'portfolioComplexity',
-      question: 'Hur komplex portfölj är du bekväm med att hantera?',
-      type: 'chat',
-      options: [
-        { value: 'simple', label: 'Enkel - några få breda fonder/ETF:er' },
-        { value: 'moderate', label: 'Måttlig - 10-20 olika innehav' },
-        { value: 'complex', label: 'Komplex - 20+ innehav och olika tillgångsklasser' },
-        { value: 'very_complex', label: 'Mycket komplex - derivat, alternativa investeringar' }
-      ],
-      key: 'portfolioComplexity',
-      showIf: () => conversationData.isBeginnerInvestor === false,
-      allowTextInput: false
-    },
-    {
-      id: 'taxConsideration',
-      question: 'Hur viktigt är skatteoptimering för dig?',
-      type: 'chat',
-      options: [
-        { value: 'very_important', label: 'Mycket viktigt - ISK/KF optimering' },
-        { value: 'somewhat', label: 'Ganska viktigt - tar hänsyn till det' },
-        { value: 'not_important', label: 'Mindre viktigt - fokuserar på totalavkastning' }
-      ],
-      key: 'taxConsideration',
-      showIf: () => conversationData.isBeginnerInvestor === false,
-      allowTextInput: false
-    },
-    // Common questions for both groups
-    {
-      id: 'goal',
-      question: 'Vad är ditt huvudsakliga mål med investeringarna?',
-      type: 'chat',
-      options: [
-        { value: 'retirement', label: 'Pensionssparande' },
-        { value: 'wealth_building', label: 'Förmögenhetsuppbyggnad' },
-        { value: 'income', label: 'Regelbunden inkomst' },
-        { value: 'education', label: 'Utbildning/Barn' },
-        { value: 'house', label: 'Bostadsköp' },
-        { value: 'other', label: 'Annat mål' }
-      ],
-      key: 'investmentGoal',
-      allowTextInput: true,
-      textInputPrompt: 'Eller beskriv ditt eget mål:'
-    },
-    {
-      id: 'specificGoalAmount',
-      question: 'Har du ett specifikt målbelopp eller tidpunkt för ditt investeringsmål?',
-      type: 'text',
-      key: 'specificGoalAmount',
-      allowTextInput: true,
-      textInputPrompt: 'T.ex. 2 miljoner kr till pension år 2045'
-    },
-    {
-      id: 'timeHorizon',
-      question: 'Hur lång tid tänker du investera pengarna?',
-      type: 'chat',
-      options: [
-        { value: 'short', label: 'Kort sikt (1-3 år)' },
-        { value: 'medium', label: 'Medellång sikt (3-7 år)' },
-        { value: 'long', label: 'Lång sikt (7-15 år)' },
-        { value: 'very_long', label: 'Mycket lång sikt (15+ år)' }
-      ],
-      key: 'timeHorizon',
-      allowTextInput: false
-    },
-    {
-      id: 'risk',
-      question: 'Hur känner du inför risk i dina investeringar?',
-      type: 'chat',
-      options: [
-        { value: 'conservative', label: 'Konservativ - Vill undvika förluster' },
-        { value: 'balanced', label: 'Balanserad - Okej med måttlig risk för bättre avkastning' },
-        { value: 'aggressive', label: 'Aggressiv - Vill maximera avkastning trots högre risk' }
-      ],
-      key: 'riskTolerance',
-      allowTextInput: false
-    },
-    {
-      id: 'monthlyAmount',
-      question: 'Ungefär hur mycket tänker du investera per månad?',
-      type: 'chat',
-      options: [
-        { value: '1000-3000', label: '1 000 - 3 000 kr' },
-        { value: '3000-5000', label: '3 000 - 5 000 kr' },
-        { value: '5000-10000', label: '5 000 - 10 000 kr' },
-        { value: '10000+', label: '10 000 kr eller mer' }
-      ],
-      key: 'monthlyAmount',
-      allowTextInput: true,
-      textInputPrompt: 'Eller ange ett specifikt belopp:'
-    },
-    {
-      id: 'hasPortfolio',
-      question: 'Har du redan några investeringar som du vill optimera?',
-      type: 'chat',
-      options: [
-        { value: 'true', label: 'Ja, jag har redan investeringar' },
-        { value: 'false', label: 'Nej, jag börjar från början' }
-      ],
-      key: 'hasCurrentPortfolio',
-      allowTextInput: false
-    },
-    {
-      id: 'portfolioHelp',
-      question: 'Hur vill du att jag hjälper dig med din nya portfölj?',
-      type: 'chat',
-      options: [
-        { value: 'simple_start', label: 'Börja enkelt med några få fonder' },
-        { value: 'diverse_portfolio', label: 'Skapa en diversifierad portfölj' },
-        { value: 'growth_focused', label: 'Fokusera på tillväxtbolag' },
-        { value: 'dividend_income', label: 'Prioritera utdelningsinkomst' }
-      ],
-      key: 'portfolioHelp',
-      showIf: () => conversationData.hasCurrentPortfolio === false && conversationData.isBeginnerInvestor === true,
-      allowTextInput: true,
-      textInputPrompt: 'Eller beskriv hur du vill att jag ska hjälpa dig:'
-    },
-    {
-      id: 'currentHoldings',
-      question: 'Kan du berätta vilka investeringar du har idag?',
-      type: 'holdings',
-      key: 'currentHoldings',
-      showIf: () => conversationData.hasCurrentPortfolio === true,
-      allowTextInput: false
-    },
-    {
-      id: 'portfolioSize',
-      question: 'Ungefär hur stor är din nuvarande portfölj?',
-      type: 'chat',
-      options: [
-        { value: 'small', label: 'Under 100 000 kr' },
-        { value: 'medium', label: '100 000 - 500 000 kr' },
-        { value: 'large', label: '500 000 - 1 miljon kr' },
-        { value: 'very_large', label: 'Över 1 miljon kr' }
-      ],
-      key: 'portfolioSize',
-      showIf: () => conversationData.isBeginnerInvestor === false,
-      allowTextInput: true,
-      textInputPrompt: 'Eller ange en specifik summa:'
-    },
-    {
-      id: 'rebalancing',
-      question: 'Hur ofta vill du justera din portfölj?',
-      type: 'chat',
-      options: [
-        { value: 'monthly', label: 'Månadsvis' },
-        { value: 'quarterly', label: 'Kvartalsvis' },
-        { value: 'yearly', label: 'Årligen' },
-        { value: 'rarely', label: 'Sällan, bara vid stora förändringar' }
-      ],
-      key: 'rebalancingFrequency',
-      showIf: () => conversationData.isBeginnerInvestor === false,
-      allowTextInput: false
-    }
-  ];
+  const currentStepData = steps[currentStep];
+  const progress = ((currentStep + 1) / steps.length) * 100;
 
-  const currentQuestion = questions[currentStep];
-  const isLastStep = currentStep === questions.length - 1;
-
-  const handleAnswer = (value: any) => {
-    // Convert string values to boolean for specific fields
-    let processedValue = value;
-    if (currentQuestion.key === 'isBeginnerInvestor' || currentQuestion.key === 'hasCurrentPortfolio') {
-      processedValue = value === 'true';
-    }
+  if (showPortfolioPreview && aiResponse) {
+    const recommendations = extractRecommendations(aiResponse);
     
-    const updatedData = { ...conversationData, [currentQuestion.key]: processedValue };
-    setConversationData(updatedData);
-    setShowTextInput(false);
-    setFreeTextInput('');
-  };
+    return (
+      <div className="max-w-4xl mx-auto p-4 space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-primary" />
+              Din Personliga Portföljstrategi
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Portfolio Strategy */}
+            <div className="prose max-w-none">
+              <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                {aiResponse}
+              </div>
+            </div>
 
-  const handleTextSubmit = () => {
-    if (!freeTextInput.trim()) return;
+            {/* Extracted Recommendations */}
+            {recommendations.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <PieChart className="w-5 h-5" />
+                  Identifierade Rekommendationer ({recommendations.length})
+                </h3>
+                <div className="grid gap-3">
+                  {recommendations.map((rec, index) => (
+                    <div key={index} className="p-3 border rounded-lg bg-muted/30">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-medium">{rec.name}</div>
+                        <Badge variant="secondary" className="text-xs">
+                          {rec.type}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{rec.reasoning}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-    let processedValue: any = freeTextInput.trim();
-    
-    // For age and number fields, convert to number
-    if (currentQuestion.key === 'age') {
-      processedValue = parseInt(processedValue) || 0;
-    }
-    
-    // For multiple choice questions, convert text to array and add to existing values
-    if (currentQuestion.type === 'multiple') {
-      const existingValues = conversationData[currentQuestion.key as keyof ConversationData] as string[] || [];
-      const textValues = processedValue.split(',').map((v: string) => v.trim()).filter((v: string) => v);
-      processedValue = [...existingValues, ...textValues];
-    }
-    // For text-type questions expecting arrays (like companies), convert to array
-    else if (currentQuestion.key === 'companies' || currentQuestion.key === 'interests') {
-      const textValues = processedValue.split(',').map((v: string) => v.trim()).filter((v: string) => v);
-      processedValue = textValues;
-    }
-    // For other questions, keep as string or number
+            {/* Conversation Summary */}
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" className="w-full justify-between">
+                  <span>Visa din riskprofil</span>
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4">
+                <div className="grid gap-3">
+                  {Object.entries(conversationData).map(([key, value]) => {
+                    if (value === undefined || value === null || value === '') return null;
+                    
+                    const displayKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                    
+                    return (
+                      <div key={key} className="flex justify-between items-start p-2 bg-muted/50 rounded text-sm">
+                        <span className="font-medium text-muted-foreground">{displayKey}:</span>
+                        <span className="text-right max-w-xs">
+                          {renderConversationValue(value)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
 
-    const updatedData = { ...conversationData, [currentQuestion.key]: processedValue };
-    setConversationData(updatedData);
-    setShowTextInput(false);
-    setFreeTextInput('');
-  };
-
-  const handleSliderChange = (value: number[]) => {
-    const updatedData = { ...conversationData, [currentQuestion.key]: value[0] };
-    setConversationData(updatedData);
-  };
-
-  const handleNext = () => {
-    if (currentQuestion.type === 'holdings') {
-      const validHoldings = currentHoldings.filter(h => h.name.trim() && h.quantity > 0 && h.purchasePrice > 0);
-      setConversationData({ ...conversationData, currentHoldings: validHoldings });
-    }
-
-    if (isLastStep) {
-      const finalData = currentQuestion.type === 'holdings' 
-        ? { ...conversationData, currentHoldings: currentHoldings.filter(h => h.name.trim() && h.quantity > 0 && h.purchasePrice > 0) }
-        : conversationData;
-      onComplete(finalData);
-    } else {
-      // Skip holdings step if user doesn't have existing portfolio
-      let nextStep = currentStep + 1;
-      while (nextStep < questions.length && questions[nextStep].showIf && !questions[nextStep].showIf!()) {
-        nextStep++;
-      }
-      setCurrentStep(nextStep);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentStep > 0) {
-      let prevStep = currentStep - 1;
-      while (prevStep >= 0 && questions[prevStep].showIf && !questions[prevStep].showIf!()) {
-        prevStep--;
-      }
-      setCurrentStep(Math.max(0, prevStep));
-    }
-    setShowTextInput(false);
-    setFreeTextInput('');
-  };
-
-  const canProceed = () => {
-    if (currentQuestion.type === 'holdings') {
-      return currentHoldings.length === 0 || currentHoldings.some(h => h.name.trim() && h.quantity > 0 && h.purchasePrice > 0);
-    }
-    return conversationData[currentQuestion.key as keyof ConversationData] !== undefined;
-  };
-
-  // Skip questions that shouldn't be shown
-  if (currentQuestion.showIf && !currentQuestion.showIf()) {
-    let nextStep = currentStep + 1;
-    while (nextStep < questions.length && questions[nextStep].showIf && !questions[nextStep].showIf!()) {
-      nextStep++;
-    }
-    if (nextStep < questions.length) {
-      setCurrentStep(nextStep);
-    }
+            <div className="flex gap-3">
+              <Button onClick={handleCreatePortfolio} className="flex-1">
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Skapa Portfölj
+              </Button>
+              <Button variant="outline" onClick={() => setShowPortfolioPreview(false)}>
+                Tillbaka
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
-    <Card className="max-w-2xl mx-auto">
-      <CardHeader>
-        <div className="flex items-center justify-between">
+    <div className="max-w-2xl mx-auto p-4">
+      <Card>
+        <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Brain className="w-5 h-5 text-blue-600" />
-            AI Portfolio Rådgivning
+            <MessageSquare className="w-5 h-5 text-primary" />
+            Personlig Portföljkonsultation
           </CardTitle>
-          <Badge variant="outline">
-            {currentStep + 1} av {questions.length}
-          </Badge>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div 
-            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${((currentStep + 1) / questions.length) * 100}%` }}
-          />
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Chat-style question display */}
-        <div className="space-y-4">
-          <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-              <MessageSquare className="w-4 h-4 text-blue-600" />
-            </div>
-            <div className="bg-blue-50 p-4 rounded-2xl rounded-tl-none flex-1">
-              <p className="text-gray-800 leading-relaxed">{currentQuestion.question}</p>
+          <div className="w-full bg-muted rounded-full h-2">
+            <div 
+              className="bg-primary h-2 rounded-full transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Steg {currentStep + 1} av {steps.length}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center gap-3 p-4 bg-primary/5 rounded-lg">
+            {currentStepData.icon}
+            <div>
+              <h3 className="font-semibold">{currentStepData.title}</h3>
+              <p className="text-sm text-muted-foreground">{currentStepData.description}</p>
             </div>
           </div>
-          
-          {/* Answer options */}
-          <div className="space-y-3 ml-11">
-            {currentQuestion.type === 'chat' && (
-              <div className="space-y-2">
-                {currentQuestion.options?.map((option) => (
-                  <Button
-                    key={option.value}
-                    variant={
-                      String(conversationData[currentQuestion.key as keyof ConversationData]) === option.value 
-                        ? "default" 
-                        : "outline"
-                    }
-                    className="w-full justify-start text-left h-auto p-3"
-                    onClick={() => handleAnswer(option.value)}
-                  >
-                    {option.label}
-                  </Button>
-                ))}
-                
-                {currentQuestion.allowTextInput && (
-                  <div className="mt-3 pt-3 border-t">
-                    {!showTextInput ? (
-                      <Button
-                        variant="ghost"
-                        onClick={() => setShowTextInput(true)}
-                        className="w-full justify-start text-left h-auto p-3 text-blue-600 hover:text-blue-700"
-                      >
-                        <Type className="w-4 h-4 mr-2" />
-                        {currentQuestion.textInputPrompt || 'Skriv ditt eget svar...'}
-                      </Button>
-                    ) : (
-                      <div className="space-y-2">
-                        <Label className="text-sm text-blue-600">
-                          {currentQuestion.textInputPrompt || 'Ditt svar:'}
-                        </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            value={freeTextInput}
-                            onChange={(e) => setFreeTextInput(e.target.value)}
-                            placeholder="Skriv här..."
-                            onKeyPress={(e) => e.key === 'Enter' && handleTextSubmit()}
-                            className="flex-1"
-                          />
-                          <Button
-                            onClick={handleTextSubmit}
-                            disabled={!freeTextInput.trim()}
-                            size="sm"
-                          >
-                            Skicka
-                          </Button>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setShowTextInput(false);
-                            setFreeTextInput('');
-                          }}
-                          className="text-gray-500"
-                        >
-                          Avbryt
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
 
-            {currentQuestion.type === 'number' && (
-              <div className="space-y-2">
-                {!showTextInput ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowTextInput(true)}
-                    className="w-full justify-start text-left h-auto p-3"
-                  >
-                    <Type className="w-4 h-4 mr-2" />
-                    {currentQuestion.textInputPrompt || 'Ange ditt svar...'}
-                  </Button>
+          {currentStepData.component()}
+
+          <div className="flex justify-between pt-4">
+            <Button 
+              variant="outline" 
+              onClick={handlePrevious}
+              disabled={currentStep === 0}
+            >
+              Föregående
+            </Button>
+            
+            {currentStep === steps.length - 1 ? (
+              <Button 
+                onClick={handleComplete}
+                disabled={loading}
+                className="min-w-24"
+              >
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                    Skapar...
+                  </div>
                 ) : (
-                  <div className="space-y-2">
-                    <Label className="text-sm text-blue-600">
-                      {currentQuestion.textInputPrompt || 'Ditt svar:'}
-                    </Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        value={freeTextInput}
-                        onChange={(e) => setFreeTextInput(e.target.value)}
-                        placeholder="Ange ålder..."
-                        onKeyPress={(e) => e.key === 'Enter' && handleTextSubmit()}
-                        className="flex-1"
-                      />
-                      <Button
-                        onClick={handleTextSubmit}
-                        disabled={!freeTextInput.trim()}
-                        size="sm"
-                      >
-                        Skicka
-                      </Button>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setShowTextInput(false);
-                        setFreeTextInput('');
-                      }}
-                      className="text-gray-500"
-                    >
-                      Avbryt
-                    </Button>
-                  </div>
+                  <>
+                    <Lightbulb className="w-4 h-4 mr-2" />
+                    Skapa Strategi
+                  </>
                 )}
-
-                {/* Show entered value */}
-                {conversationData[currentQuestion.key as keyof ConversationData] && (
-                  <div className="mt-2 p-2 bg-blue-50 rounded-lg">
-                    <Label className="text-xs text-blue-600 font-medium">Ditt svar:</Label>
-                    <div className="text-sm text-blue-800">
-                      {renderConversationValue(conversationData[currentQuestion.key as keyof ConversationData])} år
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {currentQuestion.type === 'slider' && (
-              <div className="space-y-4">
-                <div className="px-2">
-                  <Slider
-                    value={[conversationData[currentQuestion.key as keyof ConversationData] as number || currentQuestion.defaultValue || 5]}
-                    onValueChange={handleSliderChange}
-                    max={currentQuestion.max || 10}
-                    min={currentQuestion.min || 1}
-                    step={1}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-sm text-gray-500 mt-1">
-                    <span>{currentQuestion.min || 1}</span>
-                    <span className="font-medium text-blue-600">
-                      {conversationData[currentQuestion.key as keyof ConversationData] || currentQuestion.defaultValue || 5}
-                    </span>
-                    <span>{currentQuestion.max || 10}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {currentQuestion.type === 'text' && (
-              <div className="space-y-2">
-                {!showTextInput ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowTextInput(true)}
-                    className="w-full justify-start text-left h-auto p-3"
-                  >
-                    <Type className="w-4 h-4 mr-2" />
-                    {currentQuestion.textInputPrompt || 'Skriv ditt svar...'}
-                  </Button>
-                ) : (
-                  <div className="space-y-2">
-                    <Label className="text-sm text-blue-600">
-                      {currentQuestion.textInputPrompt || 'Ditt svar:'}
-                    </Label>
-                    <div className="flex gap-2">
-                      <Textarea
-                        value={freeTextInput}
-                        onChange={(e) => setFreeTextInput(e.target.value)}
-                        placeholder="T.ex. Apple, Spotify, Tesla..."
-                        className="flex-1 min-h-[80px]"
-                      />
-                      <Button
-                        onClick={handleTextSubmit}
-                        disabled={!freeTextInput.trim()}
-                        size="sm"
-                      >
-                        Skicka
-                      </Button>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setShowTextInput(false);
-                        setFreeTextInput('');
-                      }}
-                      className="text-gray-500"
-                    >
-                      Avbryt
-                    </Button>
-                  </div>
-                )}
-
-                {/* Show entered text */}
-                {conversationData[currentQuestion.key as keyof ConversationData] && 
-                 Array.isArray(conversationData[currentQuestion.key as keyof ConversationData]) && 
-                 (conversationData[currentQuestion.key as keyof ConversationData] as string[]).length > 0 && (
-                  <div className="mt-2 p-2 bg-blue-50 rounded-lg">
-                    <Label className="text-xs text-blue-600 font-medium">Dina val:</Label>
-                    <div className="text-sm text-blue-800">
-                      {renderConversationValue(conversationData[currentQuestion.key as keyof ConversationData])}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {currentQuestion.type === 'multiple' && (
-              <div className="space-y-2">
-                {currentQuestion.options?.map((option) => (
-                  <Button
-                    key={option.value}
-                    variant={
-                      (conversationData[currentQuestion.key as keyof ConversationData] as string[] || []).includes(option.value)
-                        ? "default" 
-                        : "outline"
-                    }
-                    className="w-full justify-start text-left h-auto p-3"
-                    onClick={() => {
-                      const currentValues = conversationData[currentQuestion.key as keyof ConversationData] as string[] || [];
-                      const newValues = currentValues.includes(option.value)
-                        ? currentValues.filter(s => s !== option.value)
-                        : [...currentValues, option.value];
-                      handleAnswer(newValues);
-                    }}
-                  >
-                    {option.label}
-                  </Button>
-                ))}
-                
-                {currentQuestion.allowTextInput && (
-                  <div className="mt-3 pt-3 border-t">
-                    {!showTextInput ? (
-                      <Button
-                        variant="ghost"
-                        onClick={() => setShowTextInput(true)}
-                        className="w-full justify-start text-left h-auto p-3 text-blue-600 hover:text-blue-700"
-                      >
-                        <Type className="w-4 h-4 mr-2" />
-                        {currentQuestion.textInputPrompt || 'Lägg till egna alternativ...'}
-                      </Button>
-                    ) : (
-                      <div className="space-y-2">
-                        <Label className="text-sm text-blue-600">
-                          {currentQuestion.textInputPrompt || 'Lägg till egna alternativ (separera med komma):'}
-                        </Label>
-                        <div className="flex gap-2">
-                          <Textarea
-                            value={freeTextInput}
-                            onChange={(e) => setFreeTextInput(e.target.value)}
-                            placeholder="T.ex. IKEA, ICA, Handelsbanken..."
-                            className="flex-1 min-h-[80px]"
-                          />
-                          <Button
-                            onClick={handleTextSubmit}
-                            disabled={!freeTextInput.trim()}
-                            size="sm"
-                          >
-                            Lägg till
-                          </Button>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setShowTextInput(false);
-                            setFreeTextInput('');
-                          }}
-                          className="text-gray-500"
-                        >
-                          Avbryt
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Show selected custom values */}
-                {conversationData[currentQuestion.key as keyof ConversationData] && 
-                 Array.isArray(conversationData[currentQuestion.key as keyof ConversationData]) && 
-                 (conversationData[currentQuestion.key as keyof ConversationData] as string[]).some(val => 
-                   !currentQuestion.options?.some(opt => opt.value === val)
-                 ) && (
-                  <div className="mt-2 p-2 bg-blue-50 rounded-lg">
-                    <Label className="text-xs text-blue-600 font-medium">Dina egna tillägg:</Label>
-                    <div className="text-sm text-blue-800">
-                      {renderConversationValue(
-                        (conversationData[currentQuestion.key as keyof ConversationData] as string[])
-                        .filter(val => !currentQuestion.options?.some(opt => opt.value === val))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {currentQuestion.type === 'holdings' && (
-              <div className="space-y-4">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-3">
-                    Lägg till dina nuvarande investeringar med antal och inköpspris för bättre analys.
-                  </p>
-                  
-                  <div className="space-y-3">
-                    {currentHoldings.map((holding, index) => (
-                      <div key={holding.id} className="p-3 border rounded-lg bg-white space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-medium text-sm">Innehav {index + 1}</h4>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeHolding(holding.id)}
-                            className="text-red-600 hover:text-red-800 h-6 w-6 p-0"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <div>
-                            <Label htmlFor={`name-${holding.id}`} className="text-xs">Företag/Fond</Label>
-                            <Input
-                              id={`name-${holding.id}`}
-                              placeholder="t.ex. Volvo, SEB"
-                              value={holding.name}
-                              onChange={(e) => updateHolding(holding.id, 'name', e.target.value)}
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                          
-                          <div>
-                            <Label htmlFor={`symbol-${holding.id}`} className="text-xs">Symbol (valfritt)</Label>
-                            <Input
-                              id={`symbol-${holding.id}`}
-                              placeholder="VOLV-B"
-                              value={holding.symbol || ''}
-                              onChange={(e) => updateHolding(holding.id, 'symbol', e.target.value)}
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                          
-                          <div>
-                            <Label htmlFor={`quantity-${holding.id}`} className="text-xs">Antal aktier</Label>
-                            <Input
-                              id={`quantity-${holding.id}`}
-                              type="number"
-                              placeholder="100"
-                              min="0"
-                              step="1"
-                              value={holding.quantity || ''}
-                              onChange={(e) => updateHolding(holding.id, 'quantity', parseInt(e.target.value) || 0)}
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                          
-                          <div>
-                            <Label htmlFor={`price-${holding.id}`} className="text-xs">Inköpspris (SEK)</Label>
-                            <Input
-                              id={`price-${holding.id}`}
-                              type="number"
-                              placeholder="150.50"
-                              min="0"
-                              step="0.01"
-                              value={holding.purchasePrice || ''}
-                              onChange={(e) => updateHolding(holding.id, 'purchasePrice', parseFloat(e.target.value) || 0)}
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <Button
-                    variant="outline"
-                    onClick={addHolding}
-                    className="w-full mt-3"
-                    size="sm"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Lägg till innehav
-                  </Button>
-                  
-                  {currentHoldings.length === 0 && (
-                    <div className="text-center py-4 text-gray-500">
-                      <p className="text-sm">Inga innehav än. Du kan också hoppa över detta steg.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+              </Button>
+            ) : (
+              <Button 
+                onClick={handleNext}
+                disabled={!canProceed()}
+              >
+                Nästa
+              </Button>
             )}
           </div>
-        </div>
-
-        <div className="flex justify-between pt-6">
-          <Button
-            variant="outline"
-            onClick={handlePrevious}
-            disabled={currentStep === 0}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Föregående
-          </Button>
-          
-          <Button
-            onClick={handleNext}
-            disabled={!canProceed()}
-          >
-            {isLastStep ? 'Skapa min strategi' : 'Nästa'}
-            {!isLastStep && <ArrowRight className="w-4 h-4 ml-2" />}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
+
+  function canProceed(): boolean {
+    const step = steps[currentStep];
+    
+    switch (step.id) {
+      case 'investor_type':
+        return conversationData.isBeginnerInvestor !== undefined;
+      case 'basic_info':
+        return !!(conversationData.age && conversationData.monthlyAmount);
+      case 'economic_situation':
+        return !!(conversationData.monthlyIncome && conversationData.availableCapital && conversationData.emergencyFund);
+      case 'interests':
+        return !!(conversationData.interests?.length || conversationData.companies?.length);
+      case 'goals_risk':
+        return !!(conversationData.investmentGoal && conversationData.timeHorizon && conversationData.riskTolerance);
+      case 'psychology':
+        return !!(conversationData.marketCrashReaction && conversationData.volatilityComfort);
+      case 'advanced_profile':
+        return true; // Optional step
+      default:
+        return true;
+    }
+  }
 };
 
 export default ConversationalRiskAssessment;
