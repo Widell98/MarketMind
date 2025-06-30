@@ -28,7 +28,7 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
   recommendations 
 }) => {
   const { insights, unreadCount, criticalInsights } = usePortfolioInsights();
-  const { holdings } = useUserHoldings();
+  const { actualHoldings } = useUserHoldings();
 
   const allocationColors = {
     stocks: '#3B82F6',
@@ -38,6 +38,53 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
     commodities: '#8B5CF6',
     crypto: '#EF4444'
   };
+
+  // Calculate sector exposure from actual holdings
+  const calculateSectorExposure = () => {
+    const sectorMap: { [key: string]: number } = {};
+    const totalValue = actualHoldings.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
+    
+    if (totalValue === 0) return {};
+    
+    actualHoldings.forEach(holding => {
+      const sector = holding.sector || 'Okänd';
+      const value = holding.current_value || 0;
+      sectorMap[sector] = (sectorMap[sector] || 0) + value;
+    });
+
+    // Convert to percentages
+    const sectorExposure: { [key: string]: number } = {};
+    Object.entries(sectorMap).forEach(([sector, value]) => {
+      sectorExposure[sector] = Math.round((value / totalValue) * 100);
+    });
+
+    return sectorExposure;
+  };
+
+  // Calculate market exposure from actual holdings
+  const calculateMarketExposure = () => {
+    const marketMap: { [key: string]: number } = {};
+    const totalValue = actualHoldings.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
+    
+    if (totalValue === 0) return {};
+    
+    actualHoldings.forEach(holding => {
+      const market = holding.market || 'Okänd marknad';
+      const value = holding.current_value || 0;
+      marketMap[market] = (marketMap[market] || 0) + value;
+    });
+
+    // Convert to percentages
+    const marketExposure: { [key: string]: number } = {};
+    Object.entries(marketMap).forEach(([market, value]) => {
+      marketExposure[market] = Math.round((value / totalValue) * 100);
+    });
+
+    return marketExposure;
+  };
+
+  const sectorExposure = calculateSectorExposure();
+  const marketExposure = calculateMarketExposure();
 
   const getTrendIcon = (value: number) => {
     if (value > 0) return <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-green-600 flex-shrink-0" />;
@@ -54,7 +101,7 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
     }
   };
 
-  const totalHoldingsValue = holdings.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
+  const totalHoldingsValue = actualHoldings.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
   const targetProgress = portfolio.total_value ? (totalHoldingsValue / portfolio.total_value) * 100 : 0;
 
   return (
@@ -113,15 +160,15 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
         </Card>
       </div>
 
-      {/* Portfolio allocation and progress - Stack on mobile */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
+      {/* Portfolio allocation, Sector exposure, and Market exposure */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
         <Card className="w-full">
           <CardHeader className="p-3 sm:p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm sm:text-base md:text-lg">
               <PieChart className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
               <span className="truncate">Tillgångsfördelning</span>
             </CardTitle>
-            <CardDescription className="text-xs sm:text-sm">Rekommenderad allokering vs nuvarande</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Rekommenderad allokering</CardDescription>
           </CardHeader>
           <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
             <div className="space-y-3 sm:space-y-4">
@@ -147,31 +194,73 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
         <Card className="w-full">
           <CardHeader className="p-3 sm:p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-sm sm:text-base md:text-lg">
-              <Target className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-              <span className="truncate">Måluppfyllelse</span>
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              <span className="truncate">Sektorexponering</span>
             </CardTitle>
-            <CardDescription className="text-xs sm:text-sm">Progress mot dina investeringsmål</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Baserat på dina nuvarande innehav</CardDescription>
           </CardHeader>
           <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
             <div className="space-y-3 sm:space-y-4">
-              <div>
-                <div className="flex justify-between text-xs sm:text-sm mb-1 sm:mb-2">
-                  <span>Måluppfyllelse</span>
-                  <span>{Math.min(100, targetProgress).toFixed(1)}%</span>
+              {Object.keys(sectorExposure).length > 0 ? (
+                Object.entries(sectorExposure)
+                  .sort(([,a], [,b]) => b - a)
+                  .slice(0, 6)
+                  .map(([sector, percentage]) => (
+                    <div key={sector} className="space-y-1 sm:space-y-2">
+                      <div className="flex justify-between text-xs sm:text-sm">
+                        <span className="truncate max-w-[70%]">{sector}</span>
+                        <span className="flex-shrink-0 ml-2">{percentage}%</span>
+                      </div>
+                      <Progress 
+                        value={percentage} 
+                        className="h-1.5 sm:h-2"
+                      />
+                    </div>
+                  ))
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Inga innehav att visa sektorexponering för
+                  </p>
                 </div>
-                <Progress value={Math.min(100, targetProgress)} className="h-2 sm:h-3" />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-2 sm:gap-4 pt-1 sm:pt-2">
-                <div className="text-center p-2 sm:p-3 bg-blue-50 rounded-lg">
-                  <p className="text-xs text-muted-foreground">Nuvarande</p>
-                  <p className="font-semibold text-xs sm:text-sm truncate">{totalHoldingsValue.toLocaleString()} SEK</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="w-full">
+          <CardHeader className="p-3 sm:p-4 md:p-6">
+            <CardTitle className="flex items-center gap-2 text-sm sm:text-base md:text-lg">
+              <Target className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              <span className="truncate">Marknadsexponering</span>
+            </CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Baserat på dina nuvarande innehav</CardDescription>
+          </CardHeader>
+          <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
+            <div className="space-y-3 sm:space-y-4">
+              {Object.keys(marketExposure).length > 0 ? (
+                Object.entries(marketExposure)
+                  .sort(([,a], [,b]) => b - a)
+                  .slice(0, 6)
+                  .map(([market, percentage]) => (
+                    <div key={market} className="space-y-1 sm:space-y-2">
+                      <div className="flex justify-between text-xs sm:text-sm">
+                        <span className="truncate max-w-[70%]">{market}</span>
+                        <span className="flex-shrink-0 ml-2">{percentage}%</span>
+                      </div>
+                      <Progress 
+                        value={percentage} 
+                        className="h-1.5 sm:h-2"
+                      />
+                    </div>
+                  ))
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Inga innehav att visa marknadsexponering för
+                  </p>
                 </div>
-                <div className="text-center p-2 sm:p-3 bg-green-50 rounded-lg">
-                  <p className="text-xs text-muted-foreground">Målvärde</p>
-                  <p className="font-semibold text-xs sm:text-sm truncate">{(portfolio.total_value || 0).toLocaleString()} SEK</p>
-                </div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -229,7 +318,7 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
       {portfolio.recommended_stocks && portfolio.recommended_stocks.length > 0 && (
         <Card className="w-full overflow-hidden">
           <CardHeader className="p-3 sm:p-4 md:p-6">
-            <CardTitle className="text-sm sm:text-base md:text-lg">Rekommenderade Investeringar</CardTitle>
+            <CardTitle className="text-sm sm:text-base md:text-lg">AI-Rekommenderade Investeringar</CardTitle>
             <CardDescription className="text-xs sm:text-sm">AI-genererade förslag baserat på din profil</CardDescription>
           </CardHeader>
           <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
