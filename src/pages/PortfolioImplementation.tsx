@@ -284,7 +284,7 @@ const PortfolioImplementation = () => {
             </TabsContent>
 
             <TabsContent value="analysis">
-              <UserInvestmentAnalysis />
+              <UserInvestmentAnalysis onUpdateProfile={handleUpdateProfile} />
             </TabsContent>
           </Tabs>
         </div>
