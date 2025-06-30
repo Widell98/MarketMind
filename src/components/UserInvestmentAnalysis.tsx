@@ -28,6 +28,67 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
   const { riskProfile, loading: riskLoading } = useRiskProfile();
   const { activePortfolio, loading: portfolioLoading } = usePortfolio();
 
+  // Function to format AI strategy text with proper CSS styling
+  const formatAIStrategy = (text: string) => {
+    if (!text) return text;
+
+    // Split text into lines for processing
+    const lines = text.split('\n');
+    const formattedLines = lines.map((line, index) => {
+      // Check if line contains percentage allocation (like "Svenska och nordiska aktier (20%)")
+      const percentageMatch = line.match(/^#+\s*(.+?)\s*\((\d+)%\)/);
+      if (percentageMatch) {
+        const [, sectionName, percentage] = percentageMatch;
+        return (
+          <h3 key={index} className="text-lg font-bold text-green-700 dark:text-green-300 mt-4 mb-2 pb-1 border-b-2 border-green-200 dark:border-green-700">
+            {sectionName.trim()} ({percentage}%)
+          </h3>
+        );
+      }
+
+      // Check for other markdown headers
+      const headerMatch = line.match(/^(#+)\s*(.+)/);
+      if (headerMatch) {
+        const [, hashes, title] = headerMatch;
+        const level = hashes.length;
+        
+        if (level === 1) {
+          return (
+            <h1 key={index} className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-6 mb-3">
+              {title.trim()}
+            </h1>
+          );
+        } else if (level === 2) {
+          return (
+            <h2 key={index} className="text-xl font-bold text-gray-800 dark:text-gray-200 mt-5 mb-2">
+              {title.trim()}
+            </h2>
+          );
+        } else if (level === 3) {
+          return (
+            <h3 key={index} className="text-lg font-semibold text-gray-700 dark:text-gray-300 mt-4 mb-2">
+              {title.trim()}
+            </h3>
+          );
+        }
+      }
+
+      // Regular text line
+      if (line.trim()) {
+        return (
+          <p key={index} className="mb-2 leading-relaxed">
+            {line.trim()}
+          </p>
+        );
+      }
+
+      // Empty line
+      return <br key={index} />;
+    });
+
+    return <div className="space-y-1">{formattedLines}</div>;
+  };
+
   if (riskLoading || portfolioLoading) {
     return (
       <div className="space-y-6">
@@ -198,8 +259,8 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
           </CardHeader>
           <CardContent>
             <div className="prose prose-sm max-w-none text-gray-800 dark:text-gray-200 p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-              <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                {aiStrategy}
+              <div className="text-sm leading-relaxed">
+                {formatAIStrategy(aiStrategy)}
               </div>
             </div>
           </CardContent>
