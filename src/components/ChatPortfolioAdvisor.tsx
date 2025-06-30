@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -259,7 +260,15 @@ const ChatPortfolioAdvisor = () => {
   };
 
   const submitHoldings = () => {
-    const validHoldings = holdings.filter(h => h.name && h.symbol && h.quantity > 0 && h.purchasePrice > 0);
+    const validHoldings = holdings.filter(h => 
+      h.name && h.name.trim() !== '' && 
+      h.symbol && h.symbol.trim() !== '' && 
+      h.quantity > 0 && 
+      h.purchasePrice > 0
+    );
+    
+    console.log('Holdings before validation:', holdings);
+    console.log('Valid holdings after filtering:', validHoldings);
     
     if (validHoldings.length === 0) {
       toast({
