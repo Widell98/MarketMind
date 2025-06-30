@@ -238,24 +238,28 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   };
 
   const handleRebalanceAction = () => {
-    if (onQuickChat) {
-      onQuickChat('Analysera min nuvarande portfölj och föreslå en rebalanseringsstrategi. Visa vilka aktier jag borde köpa mer av, sälja eller behålla för att optimera min riskjusterade avkastning.');
-    }
     // Activate the chat tab
     const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
     if (chatTab) {
       chatTab.click();
+    }
+    
+    // Send the message to the chat
+    if (onQuickChat) {
+      onQuickChat('Analysera min nuvarande portfölj och föreslå en rebalanseringsstrategi. Visa vilka aktier jag borde köpa mer av, sälja eller behålla för att optimera min riskjusterade avkastning.');
     }
   };
 
   const handleInsightAction = (insight: typeof insights[0]) => {
-    if (onQuickChat) {
-      onQuickChat(insight.chatMessage);
-    }
     // Activate the chat tab
     const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
     if (chatTab) {
       chatTab.click();
+    }
+    
+    // Send the message to the chat
+    if (onQuickChat) {
+      onQuickChat(insight.chatMessage);
     }
   };
 
