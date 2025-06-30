@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -22,7 +21,7 @@ serve(async (req) => {
     const requestBody = await req.json();
     console.log('Request body received:', JSON.stringify(requestBody, null, 2));
     
-    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe } = requestBody;
+    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData } = requestBody;
 
     console.log('Portfolio AI Chat function called with:', { 
       message: message?.substring(0, 50) + '...', 
@@ -88,22 +87,54 @@ serve(async (req) => {
       .order('created_at', { ascending: false })
       .limit(3);
 
+    // Check if this is a portfolio generation request
+    const isPortfolioGeneration = analysisType === 'portfolio_generation' || 
+                                  message.toLowerCase().includes('portföljstrategi') ||
+                                  message.toLowerCase().includes('skapa en detaljerad');
+
     // Check if this is a stock exchange request
     const isExchangeRequest = /(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|amerikanska|svenska|europeiska|asiatiska|aktier|innehav)/i.test(message);
 
-    // Build enhanced context for AI with emphasis on actionable portfolio changes
+    // Build enhanced context for AI
     let contextInfo = `Du är en professionell AI-assistent för investeringar. Ge ALLTID korta, välstrukturerade svar på svenska.
 
 VIKTIGA RIKTLINJER:
-- Håll svar under 250 ord
+- Håll svar under 300 ord för vanliga frågor
+- För portföljstrategier: ge detaljerad information med konkreta aktieförslag
 - Använd markdown-formatering med ### för rubriker
 - Använd - för punktlistor 
-- Fokusera på de 2-3 viktigaste punkterna
+- Fokusera på de viktigaste punkterna
 - Ge konkreta siffror och procenttal
-- Undvik långa tekniska förklaringar
-- Var direkt och actionable
 - Ge ALDRIG investeringsråd - du ger endast utbildning och information
 - Påminn användare att själva ta beslut och konsultera licentierade rådgivare`;
+
+    if (isPortfolioGeneration && conversationData) {
+      contextInfo += `\n\nPORTFÖLJSTRATEGI - DETALJERAT SVAR KRÄVS:
+- Skapa konkreta aktieförslag (8-12 aktier) med namn, symbol och sektor
+- Förklara varför varje aktie passar användarens profil
+- Inkludera svenska och internationella aktier
+- Ge procentsatser för allokering
+- Föreslå konkreta fonder och ETF:er tillgängliga på svenska marknaden
+- Inkludera ISIN-koder när möjligt
+- Förklara risker och avgifter
+- Ge månadsplan för investering
+
+ANVÄNDARENS PROFIL:
+- Ålder: ${conversationData.age || 'Ej angivet'}
+- Erfarenhet: ${conversationData.isBeginnerInvestor ? 'Nybörjare' : 'Erfaren'}
+- Intressen: ${conversationData.interests?.join(', ') || 'Ej angivet'}
+- Investeringsmål: ${conversationData.investmentGoal || 'Ej angivet'}
+- Risktolerans: ${conversationData.riskTolerance || 'Ej angivet'}
+- Tidshorisont: ${conversationData.timeHorizon || 'Ej angivet'}
+- Månatlig budget: ${conversationData.monthlyAmount || 'Ej angivet'} SEK
+
+SVAR MÅSTE INKLUDERA:
+- Lista med 8-12 konkreta aktieförslag med symboler
+- Kort motivering för varje aktie
+- Fördelning i procent
+- Svenska/nordiska fonder
+- Månadsplan för implementering`;
+    }
 
     if (isExchangeRequest) {
       contextInfo += `\n\nPORTFÖLJÄNDRINGAR:
@@ -197,6 +228,7 @@ VIKTIGA RIKTLINJER:
     console.log('Model: gpt-4.1-2025-04-14');
     console.log('Messages count:', messages.length);
     console.log('User message:', message);
+    console.log('Is portfolio generation:', isPortfolioGeneration);
     console.log('Is exchange request:', isExchangeRequest);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -208,7 +240,7 @@ VIKTIGA RIKTLINJER:
       body: JSON.stringify({
         model: 'gpt-4.1-2025-04-14',
         messages: messages,
-        max_tokens: isExchangeRequest ? 400 : 300,
+        max_tokens: isPortfolioGeneration ? 800 : isExchangeRequest ? 400 : 300,
         temperature: 0.6,
       }),
     });
@@ -262,6 +294,28 @@ VIKTIGA RIKTLINJER:
     console.log('AI response length:', aiResponse?.length);
     console.log('AI response preview:', aiResponse?.substring(0, 100));
 
+    // Extract stock recommendations from portfolio generation responses
+    let extractedRecommendations = [];
+    if (isPortfolioGeneration && aiResponse) {
+      try {
+        // Look for stock patterns in the response
+        const stockPattern = /(\w+)\s*\(([A-Z]+(?:\.[A-Z]+)?)\)/g;
+        const matches = [...aiResponse.matchAll(stockPattern)];
+        
+        extractedRecommendations = matches.map((match, index) => ({
+          name: match[1],
+          symbol: match[2],
+          sector: 'Technology', // Default sector
+          targetPrice: 100 + (index * 50), // Default prices
+          market: match[2].includes('.ST') ? 'Swedish' : 'International'
+        })).slice(0, 10); // Limit to 10 recommendations
+
+        console.log('Extracted stock recommendations:', extractedRecommendations);
+      } catch (error) {
+        console.error('Error extracting recommendations:', error);
+      }
+    }
+
     // Calculate confidence score based on available data
     let confidence = 0.5; // Base confidence
     if (portfolio) confidence += 0.2;
@@ -306,6 +360,7 @@ VIKTIGA RIKTLINJER:
           context_data: { 
             timestamp: new Date().toISOString(),
             analysisType: analysisType || 'general',
+            isPortfolioGeneration: isPortfolioGeneration,
             isExchangeRequest: isExchangeRequest
           }
         },
@@ -320,8 +375,9 @@ VIKTIGA RIKTLINJER:
             model: 'gpt-4.1-2025-04-14',
             analysisType: analysisType || 'general',
             confidence: confidence,
+            isPortfolioGeneration: isPortfolioGeneration,
             isExchangeRequest: isExchangeRequest,
-            suggestedChanges: isExchangeRequest
+            extractedRecommendations: extractedRecommendations
           }
         }
       ]);
@@ -338,13 +394,15 @@ VIKTIGA RIKTLINJER:
         success: true,
         analysisType: analysisType || 'general',
         confidence: confidence,
+        isPortfolioGeneration: isPortfolioGeneration,
         isExchangeRequest: isExchangeRequest,
+        extractedRecommendations: extractedRecommendations,
         relatedData: {
           portfolioValue: portfolio?.total_value || 0,
           holdingsCount: holdings?.length || 0,
           insightsCount: insights?.length || 0,
           model: 'GPT-4.1-2025-04-14',
-          canSuggestChanges: isExchangeRequest
+          canSuggestChanges: isExchangeRequest || isPortfolioGeneration
         }
       }),
       { 
