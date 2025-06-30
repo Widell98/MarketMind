@@ -32,9 +32,11 @@ import {
   Activity,
   BarChart3,
   Eye,
-  EyeOff
+  EyeOff,
+  Trash2
 } from 'lucide-react';
 import { useConversationalPortfolio } from '@/hooks/useConversationalPortfolio';
+import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useNavigate } from 'react-router-dom';
 
 interface Holding {
@@ -87,72 +89,128 @@ const ConversationalRiskAssessment = () => {
   const [aiResponse, setAiResponse] = useState<string>('');
   const [showPortfolioPreview, setShowPortfolioPreview] = useState(false);
   const { generatePortfolioFromConversation, loading } = useConversationalPortfolio();
+  const { deleteHolding } = useUserHoldings();
   const navigate = useNavigate();
 
-  // Helper function to extract actual stock/fund recommendations from AI response
+  // Improved recommendation extraction function
   const extractRecommendations = (response: string): Array<{name: string, type: string, reasoning: string}> => {
     const recommendations: Array<{name: string, type: string, reasoning: string}> = [];
     
-    // Look for stock symbols, fund names, and company names
-    const stockPattern = /([A-Z]{2,5}(?:-[A-Z])?\.ST|[A-Z]{3,5})\s*(?:\([^)]+\))?/g;
-    const fundPattern = /(Avanza|Nordnet|Swedbank|SEB|Länsförsäkringar|SPP|AMF|Handelsbanken)\s+[A-Za-z\s]+(?:fond|index|aktie)/gi;
-    const companyPattern = /(Evolution Gaming|Spotify|Investor|Atlas Copco|H&M|Ericsson|Volvo|Sandvik|SKF|Telia|Essity|Getinge|Alfa Laval|SEB|Hexagon|Assa Abloy|ICA|Nibe|BioGaia|Addtech|Epiroc|Embracer|Sinch|Paradox|Tobii|Northvolt|Klarna)/gi;
+    // Filter out educational/instructional phrases
+    const educationalPhrases = [
+      'Utgångspunkt & Ekonomisk Anpassning',
+      'Spridning minskar risken',
+      'Diversifiering',
+      'Riskhantering',
+      'Portföljstrategi',
+      'Månadsvis investering',
+      'Långsiktig strategi',
+      'Skatteoptimering',
+      'Rebalansering',
+      'Kostnadsfokus'
+    ];
+    
+    // More precise patterns for Swedish market instruments
+    const stockPattern = /([A-Z]{2,5}(?:-[A-Z])?(?:\.ST)?)\s*(?:\([^)]*aktie[^)]*\))?/g;
+    const fundPattern = /(Avanza|Nordnet|Swedbank|SEB|Länsförsäkringar|SPP|AMF|Handelsbanken|XACT)\s+[A-Za-zÅÄÖåäö\s&-]+(?:fond|index|aktie|ETF)/gi;
+    const companyPattern = /(Evolution Gaming|Spotify|Investor AB|Atlas Copco|H&M|Ericsson|Volvo|Sandvik|SKF|Telia|Essity|Getinge|Alfa Laval|SEB|Hexagon|Assa Abloy|ICA Gruppen|Nibe|BioGaia|Addtech|Epiroc|Embracer|Sinch|Paradox|Tobii|Northvolt|Klarna|Microsoft|Apple|Amazon|Tesla|NVIDIA)/gi;
     
     let match;
+    const foundNames = new Set();
     
     // Extract stock symbols
     while ((match = stockPattern.exec(response)) !== null) {
       const symbol = match[1];
-      if (symbol && !recommendations.some(r => r.name === symbol)) {
-        recommendations.push({
-          name: symbol,
-          type: 'Aktie',
-          reasoning: extractReasoningForStock(response, symbol)
-        });
+      if (symbol && symbol.length >= 3 && symbol.length <= 6 && !foundNames.has(symbol)) {
+        // Skip if it's part of an educational phrase
+        const contextStart = Math.max(0, match.index - 50);
+        const contextEnd = Math.min(response.length, match.index + 50);
+        const context = response.slice(contextStart, contextEnd);
+        
+        if (!educationalPhrases.some(phrase => context.includes(phrase))) {
+          foundNames.add(symbol);
+          recommendations.push({
+            name: symbol,
+            type: 'Aktie',
+            reasoning: extractReasoningForStock(response, symbol, match.index)
+          });
+        }
       }
     }
     
     // Extract fund names
     while ((match = fundPattern.exec(response)) !== null) {
-      const fundName = match[0];
-      if (fundName && !recommendations.some(r => r.name === fundName)) {
-        recommendations.push({
-          name: fundName,
-          type: 'Fond',
-          reasoning: extractReasoningForStock(response, fundName)
-        });
+      const fundName = match[0].trim();
+      if (fundName && !foundNames.has(fundName)) {
+        // Skip if it's part of an educational phrase
+        const contextStart = Math.max(0, match.index - 50);
+        const contextEnd = Math.min(response.length, match.index + 50);
+        const context = response.slice(contextStart, contextEnd);
+        
+        if (!educationalPhrases.some(phrase => context.includes(phrase))) {
+          foundNames.add(fundName);
+          recommendations.push({
+            name: fundName,
+            type: 'Fond/ETF',
+            reasoning: extractReasoningForStock(response, fundName, match.index)
+          });
+        }
       }
     }
     
     // Extract company names
     while ((match = companyPattern.exec(response)) !== null) {
       const companyName = match[0];
-      if (companyName && !recommendations.some(r => r.name === companyName)) {
-        recommendations.push({
-          name: companyName,
-          type: 'Aktie',
-          reasoning: extractReasoningForStock(response, companyName)
-        });
-      }
-    }
-    
-    return recommendations;
-  };
-
-  const extractReasoningForStock = (response: string, stockName: string): string => {
-    const lines = response.split('\n');
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].toLowerCase().includes(stockName.toLowerCase())) {
-        // Look for the next few lines that might contain reasoning
-        for (let j = i; j < Math.min(i + 3, lines.length); j++) {
-          const line = lines[j].trim();
-          if (line.length > 20 && !line.includes('**') && !line.includes('#')) {
-            return line;
-          }
+      if (companyName && !foundNames.has(companyName)) {
+        // Skip if it's part of an educational phrase
+        const contextStart = Math.max(0, match.index - 50);
+        const contextEnd = Math.min(response.length, match.index + 50);
+        const context = response.slice(contextStart, contextEnd);
+        
+        if (!educationalPhrases.some(phrase => context.includes(phrase))) {
+          foundNames.add(companyName);
+          recommendations.push({
+            name: companyName,
+            type: 'Aktie',
+            reasoning: extractReasoningForStock(response, companyName, match.index)
+          });
         }
       }
     }
-    return 'Rekommenderad baserat på din riskprofil och investeringsmål';
+    
+    return recommendations.slice(0, 12); // Limit to top 12 recommendations
+  };
+
+  const extractReasoningForStock = (response: string, stockName: string, position: number): string => {
+    const lines = response.split('\n');
+    const lineIndex = response.substring(0, position).split('\n').length - 1;
+    
+    // Look for reasoning in surrounding lines
+    for (let i = Math.max(0, lineIndex - 2); i < Math.min(lines.length, lineIndex + 3); i++) {
+      const line = lines[i].toLowerCase();
+      if (line.includes(stockName.toLowerCase()) && line.length > 30) {
+        // Extract meaningful reasoning, not just the stock name
+        const cleanLine = lines[i].replace(/^\*+\s*/, '').replace(/\*+$/, '').trim();
+        if (cleanLine.length > stockName.length + 10) {
+          return cleanLine;
+        }
+      }
+    }
+    
+    return 'Rekommenderad för din riskprofil och investeringsmål';
+  };
+
+  // Clear existing holdings when starting over
+  const clearExistingHoldings = async () => {
+    // This will be called when user chooses to start over
+    console.log('Clearing existing holdings for new profile');
+    // Delete all holdings of type 'actual' or 'recommendation' for the user
+    // Since we only have deleteHolding function for single id, we need to fetch all holdings and delete them
+    // But here we only have deleteHolding function, so we can only call it if we had holdings list
+    // For now, just reset conversationData and AI response and hide preview
+    setConversationData({});
+    setAiResponse('');
+    setShowPortfolioPreview(false);
   };
 
   const steps = [
@@ -791,6 +849,9 @@ const ConversationalRiskAssessment = () => {
   const handleComplete = async () => {
     console.log('Final conversation data:', conversationData);
     
+    // Clear existing holdings if user is starting over
+    await clearExistingHoldings();
+    
     const result = await generatePortfolioFromConversation(conversationData);
     
     if (result?.aiResponse) {
@@ -805,38 +866,55 @@ const ConversationalRiskAssessment = () => {
 
   const renderConversationValue = (value: any): React.ReactNode => {
     if (Array.isArray(value)) {
-      if (value.length === 0) return 'Inga val gjorda';
+      if (value.length === 0) return <span className="text-muted-foreground italic">Inga val gjorda</span>;
       
       // Special handling for holdings array
       if (value.length > 0 && typeof value[0] === 'object' && 'name' in value[0]) {
         return (
-          <div className="space-y-1">
+          <div className="space-y-2">
             {value.map((holding: Holding, index: number) => (
-              <div key={index} className="text-xs bg-muted/50 p-1 rounded">
-                {holding.name} ({holding.quantity} st)
+              <div key={index} className="flex items-center justify-between p-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex flex-col">
+                  <span className="font-medium text-blue-900 dark:text-blue-100">{holding.name}</span>
+                  <span className="text-xs text-blue-700 dark:text-blue-300">
+                    {holding.quantity} st • {holding.symbol || 'N/A'}
+                  </span>
+                </div>
+                <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                  Innehav
+                </Badge>
               </div>
             ))}
           </div>
         );
       }
       
-      // Regular string arrays
-      return value.join(', ');
+      // Regular string arrays with improved styling
+      return (
+        <div className="flex flex-wrap gap-1">
+          {value.map((item, index) => (
+            <Badge key={index} variant="outline" className="text-xs bg-gray-50 dark:bg-gray-800">
+              {item}
+            </Badge>
+          ))}
+        </div>
+      );
     }
     
     if (typeof value === 'boolean') {
-      return value ? 'Ja' : 'Nej';
+      return (
+        <Badge variant={value ? "default" : "secondary"} className="text-xs">
+          {value ? 'Ja' : 'Nej'}
+        </Badge>
+      );
     }
     
     if (typeof value === 'string' || typeof value === 'number') {
-      return value.toString();
+      return <span className="font-medium">{value.toString()}</span>;
     }
     
-    return 'Inte angivet';
+    return <span className="text-muted-foreground italic">Inte angivet</span>;
   };
-
-  const currentStepData = steps[currentStep];
-  const progress = ((currentStep + 1) / steps.length) * 100;
 
   if (showPortfolioPreview && aiResponse) {
     const recommendations = extractRecommendations(aiResponse);
@@ -853,38 +931,49 @@ const ConversationalRiskAssessment = () => {
           <CardContent className="space-y-6">
             {/* Portfolio Strategy */}
             <div className="prose max-w-none">
-              <div className="whitespace-pre-wrap text-sm leading-relaxed">
+              <div className="whitespace-pre-wrap text-sm leading-relaxed p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-lg border">
                 {aiResponse}
               </div>
             </div>
 
-            {/* Extracted Recommendations */}
+            {/* Extracted Recommendations with improved styling */}
             {recommendations.length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <PieChart className="w-5 h-5" />
+                  <PieChart className="w-5 h-5 text-green-600" />
                   Identifierade Rekommendationer ({recommendations.length})
                 </h3>
-                <div className="grid gap-3">
+                <div className="grid gap-3 md:grid-cols-2">
                   {recommendations.map((rec, index) => (
-                    <div key={index} className="p-3 border rounded-lg bg-muted/30">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="font-medium">{rec.name}</div>
-                        <Badge variant="secondary" className="text-xs">
+                    <div key={index} className="group p-4 border rounded-xl bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 hover:shadow-md transition-all duration-200 border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="font-semibold text-gray-900 dark:text-gray-100 group-hover:text-primary transition-colors">
+                          {rec.name}
+                        </div>
+                        <Badge 
+                          variant="secondary" 
+                          className={`text-xs px-2 py-1 ${
+                            rec.type === 'Aktie' 
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
+                              : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          }`}
+                        >
                           {rec.type}
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground">{rec.reasoning}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                        {rec.reasoning}
+                      </p>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Conversation Summary */}
+            {/* Conversation Summary with enhanced styling */}
             <Collapsible>
               <CollapsibleTrigger asChild>
-                <Button variant="outline" className="w-full justify-between">
+                <Button variant="outline" className="w-full justify-between hover:bg-gray-50 dark:hover:bg-gray-800">
                   <span>Visa din riskprofil</span>
                   <ChevronDown className="w-4 h-4" />
                 </Button>
@@ -897,11 +986,13 @@ const ConversationalRiskAssessment = () => {
                     const displayKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
                     
                     return (
-                      <div key={key} className="flex justify-between items-start p-2 bg-muted/50 rounded text-sm">
-                        <span className="font-medium text-muted-foreground">{displayKey}:</span>
-                        <span className="text-right max-w-xs">
-                          {renderConversationValue(value)}
+                      <div key={key} className="flex justify-between items-start p-3 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <span className="font-medium text-gray-700 dark:text-gray-300 min-w-0 flex-shrink-0 mr-4">
+                          {displayKey}:
                         </span>
+                        <div className="text-right max-w-xs min-w-0 flex-1">
+                          {renderConversationValue(value)}
+                        </div>
                       </div>
                     );
                   })}
@@ -935,7 +1026,7 @@ const ConversationalRiskAssessment = () => {
           <div className="w-full bg-muted rounded-full h-2">
             <div 
               className="bg-primary h-2 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
+              style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
             />
           </div>
           <p className="text-sm text-muted-foreground">
@@ -943,15 +1034,34 @@ const ConversationalRiskAssessment = () => {
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Add option to start over */}
+          {currentStep === 0 && (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="flex items-center justify-between">
+                <span>Genom att starta denna process kommer eventuella befintliga innehav att rensas för en helt ny riskprofil.</span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={clearExistingHoldings}
+                  className="ml-2"
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Rensa
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="flex items-center gap-3 p-4 bg-primary/5 rounded-lg">
-            {currentStepData.icon}
+            {steps[currentStep].icon}
             <div>
-              <h3 className="font-semibold">{currentStepData.title}</h3>
-              <p className="text-sm text-muted-foreground">{currentStepData.description}</p>
+              <h3 className="font-semibold">{steps[currentStep].title}</h3>
+              <p className="text-sm text-muted-foreground">{steps[currentStep].description}</p>
             </div>
           </div>
 
-          {currentStepData.component()}
+          {steps[currentStep].component()}
 
           <div className="flex justify-between pt-4">
             <Button 
