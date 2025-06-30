@@ -30,6 +30,8 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import AdminImageHistoryManager from '@/components/AdminImageHistoryManager';
+import AdminAnalysesDashboard from '@/components/AdminAnalysesDashboard';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type StockCaseWithActions = {
   id: string;
@@ -581,395 +583,411 @@ const AdminStockCases = () => {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                {isAdmin ? 'Admin - Hantera Aktiecases' : 'Mina Aktiecases'}
+                {isAdmin ? 'Admin - Hantera Innehåll' : 'Mina Aktiecases'}
               </h1>
               <p className="text-gray-600 mt-2">
                 {isAdmin 
-                  ? 'Hantera alla aktiecases i systemet' 
+                  ? 'Hantera aktiecases och analyser i systemet' 
                   : 'Hantera dina egna aktiecases'
                 }
               </p>
             </div>
-            <Button
-              onClick={() => setShowCreateForm(true)}
-              className="flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Skapa nytt case
-            </Button>
           </div>
         </div>
 
-        {showCreateForm && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>
-                {editingCase ? 'Redigera Akticase' : 'Skapa nytt Akticase'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Index checkbox - only show when creating new case */}
-                {!editingCase && (
-                  <div className="flex items-center space-x-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <Checkbox
-                      id="creating-index"
-                      checked={isCreatingIndex}
-                      onCheckedChange={handleIndexCheckboxChange}
-                    />
-                    <Label htmlFor="creating-index" className="text-sm font-medium">
-                      Skapar nytt index
-                    </Label>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 ml-2">
-                      (Ställer automatiskt in kategori till "Index" och döljer irrelevanta fält)
-                    </p>
-                  </div>
-                )}
+        <Tabs defaultValue="stock-cases" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="stock-cases">Aktiecases</TabsTrigger>
+            <TabsTrigger value="analyses">Analyser</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="stock-cases" className="space-y-8">
+            <div className="flex justify-end">
+              <Button
+                onClick={() => setShowCreateForm(true)}
+                className="flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Skapa nytt case
+              </Button>
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Titel *</Label>
-                    <Input
-                      id="title"
-                      name="title"
-                      value={formData.title}
-                      onChange={handleInputChange}
-                      placeholder={isCreatingIndex ? "Ex: S&P 500 - Amerikanska storbolag" : "Ex: Tesla - Framtidens mobilitet"}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="company_name">Ticker *</Label>
-                    <Input
-                      id="company_name"
-                      name="company_name"
-                      value={formData.company_name}
-                      onChange={handleInputChange}
-                      placeholder={isCreatingIndex ? "Ex: $SPY" : "Ex: $TSLA"}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Kategori/Sektor</Label>
-                    <Select 
-                      value={formData.category_id || "none"} 
-                      onValueChange={handleCategoryChange}
-                      disabled={isCreatingIndex}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Välj kategori..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Ingen kategori</SelectItem>
-                        {categories.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>
-                            <div className="flex items-center gap-2">
-                              <div 
-                                className="w-3 h-3 rounded-full" 
-                                style={{ backgroundColor: category.color }}
-                              />
-                              {category.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {isCreatingIndex && (
-                      <p className="text-xs text-blue-600 dark:text-blue-400">
-                        Kategori sätts automatiskt till "Index"
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="sector">Sektor (fritext)</Label>
-                    <Input
-                      id="sector"
-                      name="sector"
-                      value={formData.sector}
-                      onChange={handleInputChange}
-                      placeholder={isCreatingIndex ? "Index" : "Ex: Bilindustri"}
-                      disabled={isCreatingIndex}
-                    />
-                    {isCreatingIndex && (
-                      <p className="text-xs text-blue-600 dark:text-blue-400">
-                        Sektor sätts automatiskt till "Index"
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Hide market cap field when creating index */}
-                  {!isCreatingIndex && (
-                    <div className="space-y-2">
-                      <Label htmlFor="market_cap">Börsvärde</Label>
-                      <Input
-                        id="market_cap"
-                        name="market_cap"
-                        value={formData.market_cap}
-                        onChange={handleInputChange}
-                        placeholder="Ex: 800 miljarder USD"
-                      />
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label htmlFor="entry_price">Inköpspris (kr)</Label>
-                    <Input
-                      id="entry_price"
-                      name="entry_price"
-                      type="number"
-                      step="0.01"
-                      value={formData.entry_price}
-                      onChange={handleInputChange}
-                      placeholder="Ex: 1250.50"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="current_price">Nuvarande pris (kr)</Label>
-                    <Input
-                      id="current_price"
-                      name="current_price"
-                      type="number"
-                      step="0.01"
-                      value={formData.current_price}
-                      onChange={handleInputChange}
-                      placeholder="Ex: 1450.75"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="target_price">Målpris (kr)</Label>
-                    <Input
-                      id="target_price"
-                      name="target_price"
-                      type="number"
-                      step="0.01"
-                      value={formData.target_price}
-                      onChange={handleInputChange}
-                      placeholder="Ex: 1800.00"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="stop_loss">Stop Loss (kr)</Label>
-                    <Input
-                      id="stop_loss"
-                      name="stop_loss"
-                      type="number"
-                      step="0.01"
-                      value={formData.stop_loss}
-                      onChange={handleInputChange}
-                      placeholder="Ex: 1100.00"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="image">
-                    {isCreatingIndex ? 'Index Chart (JPG, PNG, WebP - max 5MB)' : 'Aktiekurs Chart (JPG, PNG, WebP - max 5MB)'}
-                  </Label>
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-2">
-                      <Input
-                        id="image"
-                        type="file"
-                        accept="image/jpeg,image/jpg,image/png,image/webp"
-                        onChange={handleImageChange}
-                        className="flex-1"
-                      />
-                      <Upload className="w-4 h-4 text-gray-400" />
-                    </div>
-                    
-                    {imagePreview && (
-                      <div className="relative inline-block">
-                        <img
-                          src={imagePreview}
-                          alt="Preview"
-                          className="w-32 h-32 object-cover rounded-lg border"
+            {showCreateForm && (
+              <Card className="mb-8">
+                <CardHeader>
+                  <CardTitle>
+                    {editingCase ? 'Redigera Akticase' : 'Skapa nytt Akticase'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Index checkbox - only show when creating new case */}
+                    {!editingCase && (
+                      <div className="flex items-center space-x-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <Checkbox
+                          id="creating-index"
+                          checked={isCreatingIndex}
+                          onCheckedChange={handleIndexCheckboxChange}
                         />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
-                          onClick={removeImage}
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
+                        <Label htmlFor="creating-index" className="text-sm font-medium">
+                          Skapar nytt index
+                        </Label>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 ml-2">
+                          (Ställer automatiskt in kategori till "Index" och döljer irrelevanta fält)
+                        </p>
                       </div>
                     )}
-                    
-                    {imageFile && (
-                      <p className="text-sm text-gray-600">Vald fil: {imageFile.name}</p>
-                    )}
-                  </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="description">Beskrivning</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    placeholder={isCreatingIndex ? "Kort beskrivning av indexet..." : "Kort beskrivning av företaget..."}
-                    rows={3}
-                  />
-                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="title">Titel *</Label>
+                        <Input
+                          id="title"
+                          name="title"
+                          value={formData.title}
+                          onChange={handleInputChange}
+                          placeholder={isCreatingIndex ? "Ex: S&P 500 - Amerikanska storbolag" : "Ex: Tesla - Framtidens mobilitet"}
+                          required
+                        />
+                      </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="admin_comment">Admin Kommentar</Label>
-                  <Textarea
-                    id="admin_comment"
-                    name="admin_comment"
-                    value={formData.admin_comment}
-                    onChange={handleInputChange}
-                    placeholder={isCreatingIndex ? "Varför är detta ett bra index att investera i? Din analys och rekommendation..." : "Varför är detta en bra aktie att köpa? Din analys och rekommendation..."}
-                    rows={4}
-                  />
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="company_name">Ticker *</Label>
+                        <Input
+                          id="company_name"
+                          name="company_name"
+                          value={formData.company_name}
+                          onChange={handleInputChange}
+                          placeholder={isCreatingIndex ? "Ex: $SPY" : "Ex: $TSLA"}
+                          required
+                        />
+                      </div>
 
-                <div className="flex gap-4">
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="flex-1"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    {loading ? 'Sparar...' : editingCase ? 'Uppdatera Case' : 'Skapa Case'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={resetForm}
-                    className="flex-1"
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    Avbryt
-                  </Button>
-                </div>
-              </form>
+                      <div className="space-y-2">
+                        <Label htmlFor="category">Kategori/Sektor</Label>
+                        <Select 
+                          value={formData.category_id || "none"} 
+                          onValueChange={handleCategoryChange}
+                          disabled={isCreatingIndex}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Välj kategori..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Ingen kategori</SelectItem>
+                            {categories.map((category) => (
+                              <SelectItem key={category.id} value={category.id}>
+                                <div className="flex items-center gap-2">
+                                  <div 
+                                    className="w-3 h-3 rounded-full" 
+                                    style={{ backgroundColor: category.color }}
+                                  />
+                                  {category.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {isCreatingIndex && (
+                          <p className="text-xs text-blue-600 dark:text-blue-400">
+                            Kategori sätts automatiskt till "Index"
+                          </p>
+                        )}
+                      </div>
 
-              {/* Add image history manager for editing mode */}
-              {editingCase && (
-                <AdminImageHistoryManager
-                  stockCaseId={editingCase}
-                  canEdit={true}
-                />
-              )}
-            </CardContent>
-          </Card>
-        )}
+                      <div className="space-y-2">
+                        <Label htmlFor="sector">Sektor (fritext)</Label>
+                        <Input
+                          id="sector"
+                          name="sector"
+                          value={formData.sector}
+                          onChange={handleInputChange}
+                          placeholder={isCreatingIndex ? "Index" : "Ex: Bilindustri"}
+                          disabled={isCreatingIndex}
+                        />
+                        {isCreatingIndex && (
+                          <p className="text-xs text-blue-600 dark:text-blue-400">
+                            Sektor sätts automatiskt till "Index"
+                          </p>
+                        )}
+                      </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {isAdmin ? 'Alla Aktiecases' : 'Mina Aktiecases'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">Laddar aktiecases...</p>
-              </div>
-            ) : allCases.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-gray-600">Inga aktiecases hittades.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Titel</TableHead>
-                      <TableHead>Ticker</TableHead>
-                      <TableHead>Kategori</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Skapare</TableHead>
-                      <TableHead>Inköp/Mål</TableHead>
-                      <TableHead>Skapad</TableHead>
-                      <TableHead>Åtgärder</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {allCases.map((stockCase) => (
-                      <TableRow key={stockCase.id}>
-                        <TableCell className="font-medium">
-                          {stockCase.title}
-                        </TableCell>
-                        <TableCell>{stockCase.company_name}</TableCell>
-                        <TableCell>
-                          {getCategoryBadge(stockCase.case_categories)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {getStatusBadge(stockCase.status)}
-                            <Select
-                              value={stockCase.status}
-                              onValueChange={(value) => handleStatusChange(stockCase.id, value as 'active' | 'winner' | 'loser')}
-                              disabled={!canEditCase(stockCase)}
+                      {/* Hide market cap field when creating index */}
+                      {!isCreatingIndex && (
+                        <div className="space-y-2">
+                          <Label htmlFor="market_cap">Börsvärde</Label>
+                          <Input
+                            id="market_cap"
+                            name="market_cap"
+                            value={formData.market_cap}
+                            onChange={handleInputChange}
+                            placeholder="Ex: 800 miljarder USD"
+                          />
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <Label htmlFor="entry_price">Inköpspris (kr)</Label>
+                        <Input
+                          id="entry_price"
+                          name="entry_price"
+                          type="number"
+                          step="0.01"
+                          value={formData.entry_price}
+                          onChange={handleInputChange}
+                          placeholder="Ex: 1250.50"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="current_price">Nuvarande pris (kr)</Label>
+                        <Input
+                          id="current_price"
+                          name="current_price"
+                          type="number"
+                          step="0.01"
+                          value={formData.current_price}
+                          onChange={handleInputChange}
+                          placeholder="Ex: 1450.75"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="target_price">Målpris (kr)</Label>
+                        <Input
+                          id="target_price"
+                          name="target_price"
+                          type="number"
+                          step="0.01"
+                          value={formData.target_price}
+                          onChange={handleInputChange}
+                          placeholder="Ex: 1800.00"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="stop_loss">Stop Loss (kr)</Label>
+                        <Input
+                          id="stop_loss"
+                          name="stop_loss"
+                          type="number"
+                          step="0.01"
+                          value={formData.stop_loss}
+                          onChange={handleInputChange}
+                          placeholder="Ex: 1100.00"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="image">
+                        {isCreatingIndex ? 'Index Chart (JPG, PNG, WebP - max 5MB)' : 'Aktiekurs Chart (JPG, PNG, WebP - max 5MB)'}
+                      </Label>
+                      <div className="space-y-4">
+                        <div className="flex items-center space-x-2">
+                          <Input
+                            id="image"
+                            type="file"
+                            accept="image/jpeg,image/jpg,image/png,image/webp"
+                            onChange={handleImageChange}
+                            className="flex-1"
+                          />
+                          <Upload className="w-4 h-4 text-gray-400" />
+                        </div>
+                        
+                        {imagePreview && (
+                          <div className="relative inline-block">
+                            <img
+                              src={imagePreview}
+                              alt="Preview"
+                              className="w-32 h-32 object-cover rounded-lg border"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                              onClick={removeImage}
                             >
-                              <SelectTrigger className="w-32 h-8">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="active">Aktiv</SelectItem>
-                                <SelectItem value="winner">Vinnare</SelectItem>
-                                <SelectItem value="loser">Förlorare</SelectItem>
-                              </SelectContent>
-                            </Select>
+                              <X className="w-3 h-3" />
+                            </Button>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          {stockCase.profiles?.display_name || stockCase.profiles?.username || 'Admin'}
-                        </TableCell>
-                        <TableCell>
-                          {stockCase.entry_price && stockCase.target_price ? (
-                            <div className="text-sm">
-                              <div>{stockCase.entry_price} kr</div>
-                              <div className="text-gray-500">→ {stockCase.target_price} kr</div>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(stockCase.created_at).toLocaleDateString('sv-SE')}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            {canEditCase(stockCase) && (
-                              <>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleEdit(stockCase)}
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => handleDelete(stockCase.id)}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                        )}
+                        
+                        {imageFile && (
+                          <p className="text-sm text-gray-600">Vald fil: {imageFile.name}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Beskrivning</Label>
+                      <Textarea
+                        id="description"
+                        name="description"
+                        value={formData.description}
+                        onChange={handleInputChange}
+                        placeholder={isCreatingIndex ? "Kort beskrivning av indexet..." : "Kort beskrivning av företaget..."}
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="admin_comment">Admin Kommentar</Label>
+                      <Textarea
+                        id="admin_comment"
+                        name="admin_comment"
+                        value={formData.admin_comment}
+                        onChange={handleInputChange}
+                        placeholder={isCreatingIndex ? "Varför är detta ett bra index att investera i? Din analys och rekommendation..." : "Varför är detta en bra aktie att köpa? Din analys och rekommendation..."}
+                        rows={4}
+                      />
+                    </div>
+
+                    <div className="flex gap-4">
+                      <Button
+                        type="submit"
+                        disabled={loading}
+                        className="flex-1"
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        {loading ? 'Sparar...' : editingCase ? 'Uppdatera Case' : 'Skapa Case'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={resetForm}
+                        className="flex-1"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Avbryt
+                      </Button>
+                    </div>
+                  </form>
+
+                  {/* Add image history manager for editing mode */}
+                  {editingCase && (
+                    <AdminImageHistoryManager
+                      stockCaseId={editingCase}
+                      canEdit={true}
+                    />
+                  )}
+                </CardContent>
+              </Card>
             )}
-          </CardContent>
-        </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {isAdmin ? 'Alla Aktiecases' : 'Mina Aktiecases'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Laddar aktiecases...</p>
+                  </div>
+                ) : allCases.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">Inga aktiecases hittades.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Titel</TableHead>
+                          <TableHead>Ticker</TableHead>
+                          <TableHead>Kategori</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Skapare</TableHead>
+                          <TableHead>Inköp/Mål</TableHead>
+                          <TableHead>Skapad</TableHead>
+                          <TableHead>Åtgärder</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {allCases.map((stockCase) => (
+                          <TableRow key={stockCase.id}>
+                            <TableCell className="font-medium">
+                              {stockCase.title}
+                            </TableCell>
+                            <TableCell>{stockCase.company_name}</TableCell>
+                            <TableCell>
+                              {getCategoryBadge(stockCase.case_categories)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {getStatusBadge(stockCase.status)}
+                                <Select
+                                  value={stockCase.status}
+                                  onValueChange={(value) => handleStatusChange(stockCase.id, value as 'active' | 'winner' | 'loser')}
+                                  disabled={!canEditCase(stockCase)}
+                                >
+                                  <SelectTrigger className="w-32 h-8">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="active">Aktiv</SelectItem>
+                                    <SelectItem value="winner">Vinnare</SelectItem>
+                                    <SelectItem value="loser">Förlorare</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {stockCase.profiles?.display_name || stockCase.profiles?.username || 'Admin'}
+                            </TableCell>
+                            <TableCell>
+                              {stockCase.entry_price && stockCase.target_price ? (
+                                <div className="text-sm">
+                                  <div>{stockCase.entry_price} kr</div>
+                                  <div className="text-gray-500">→ {stockCase.target_price} kr</div>
+                                </div>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {new Date(stockCase.created_at).toLocaleDateString('sv-SE')}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                {canEditCase(stockCase) && (
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleEdit(stockCase)}
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => handleDelete(stockCase.id)}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="analyses">
+            <AdminAnalysesDashboard />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
