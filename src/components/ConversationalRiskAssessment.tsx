@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -92,6 +93,49 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
 
   const removeHolding = (id: string) => {
     setCurrentHoldings(holdings => holdings.filter(holding => holding.id !== id));
+  };
+
+  // Helper function to render conversation data values properly
+  const renderConversationValue = (value: any) => {
+    if (value === undefined || value === null) return null;
+    
+    if (Array.isArray(value)) {
+      if (value.length === 0) return null;
+      
+      // Handle Holding arrays
+      if (value.length > 0 && typeof value[0] === 'object' && 'name' in value[0]) {
+        return (
+          <div className="flex flex-wrap gap-1">
+            {value.map((holding: Holding, index: number) => (
+              <Badge key={index} variant="secondary" className="text-xs">
+                {holding.name} ({holding.quantity}st)
+              </Badge>
+            ))}
+          </div>
+        );
+      }
+      
+      // Handle string arrays
+      return (
+        <div className="flex flex-wrap gap-1">
+          {value.map((item: string, index: number) => (
+            <Badge key={index} variant="secondary" className="text-xs">
+              {item}
+            </Badge>
+          ))}
+        </div>
+      );
+    }
+    
+    if (typeof value === 'boolean') {
+      return value ? 'Ja' : 'Nej';
+    }
+    
+    if (typeof value === 'number') {
+      return value.toString();
+    }
+    
+    return String(value);
   };
 
   const questions = [
