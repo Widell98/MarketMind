@@ -95,15 +95,16 @@ serve(async (req) => {
     let contextInfo = `Du är en professionell AI-assistent för investeringar. Ge ALLTID korta, välstrukturerade svar på svenska.
 
 VIKTIGA RIKTLINJER:
-- Håll svar under 250 ord
-- Använd markdown-formatering med ### för rubriker
-- Använd - för punktlistor 
-- Fokusera på de 2-3 viktigaste punkterna
-- Ge konkreta siffror och procenttal
-- Undvik långa tekniska förklaringar
-- Var direkt och actionable
-- Ge ALDRIG investeringsråd - du ger endast utbildning och information
-- Påminn användare att själva ta beslut och konsultera licentierade rådgivare`;
+- Håll svaren korta, max ca 250 ord
+- Undvik markdown eller kodliknande formatering
+- Använd vanliga rubriker och mellanrum för struktur
+- Fokusera på de 2–3 viktigaste insikterna
+- Inkludera siffror och procent där det stärker trovärdigheten
+- Undvik långa tekniska termer eller förklaringar
+- Skriv direkt, tydligt och lätt att agera på
+- Svara aldrig med personlig investeringsrådgivning
+- Tydliggör att svaret är för utbildning och information
+- Påminn alltid om att beslut bör tas med licensierad rådgivare`;
 
     if (isExchangeRequest) {
       contextInfo += `\n\nPORTFÖLJÄNDRINGAR:
@@ -161,14 +162,19 @@ VIKTIGA RIKTLINJER:
 - Format: "Förslag: [Aktie] ([Ticker]) - [Kort beskrivning]"`;
     }
     
-    systemPrompt += `\n\nSVARSFORMAT:
-- Max 200-250 ord
-- Använd ### för huvudrubriker
-- Använd - för listor
-- Ge konkreta information med siffror
-- Fokusera på det viktigaste
-- Vid aktieförslag: inkludera ticker och kortfattad analys
-- Påminn att detta är utbildning, inte investeringsråd`;
+systemPrompt += `
+
+SVARSFORMAT:
+- Max 200–250 ord
+- Undvik markdown eller kodliknande formatering
+- Använd tydliga rubriker med tom rad före/efter
+- Strukturera med punktlistor eller korta stycken
+- Ge konkret information med siffror och procent där det är relevant
+- Fokusera på de 2–3 viktigaste insikterna
+- Vid aktieförslag: ange aktiens namn, ticker och en kortfattad motivering
+- Undvik spekulationer och överdrivet tekniskt språk
+- Påminn tydligt om att detta är utbildning, inte personlig investeringsråd
+`;
 
     if (analysisType === 'insight_generation') {
       systemPrompt += `\n\nGENERERA KORT INSIKT för ${insightType}:
