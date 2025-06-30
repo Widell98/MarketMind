@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -304,23 +303,26 @@ const UserInsightsPanel = () => {
             <p className="text-sm text-muted-foreground mb-3">
               Inga AI-insikter tillgängliga än
             </p>
-            {isPremiumUser ? (
-              <Button 
-                size="sm" 
-                onClick={handleRefresh}
-                disabled={loading}
-              >
-                <Brain className="w-3 h-3 mr-2" />
-                {user ? 'Generera personliga insikter' : 'Ladda allmänna insikter'}
-              </Button>
-            ) : (
-              <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
-                <Crown className="w-5 h-5 mx-auto mb-2 text-blue-600" />
-                <p className="text-xs text-blue-700 font-medium">
-                  Premium krävs för att generera AI-insikter
-                </p>
-              </div>
-            )}
+            <div className="space-y-3">
+              {isPremiumUser ? (
+                <Button 
+                  size="sm" 
+                  onClick={handleRefresh}
+                  disabled={loading}
+                  className="w-full"
+                >
+                  <Brain className="w-3 h-3 mr-2" />
+                  {user ? 'Generera personliga insikter' : 'Ladda allmänna insikter'}
+                </Button>
+              ) : (
+                <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                  <Crown className="w-5 h-5 mx-auto mb-2 text-blue-600" />
+                  <p className="text-xs text-blue-700 font-medium">
+                    Premium krävs för att generera AI-insikter
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </CardContent>
