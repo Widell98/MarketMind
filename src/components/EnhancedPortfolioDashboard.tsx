@@ -179,7 +179,7 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
 
       {/* Insights and Warnings - Better mobile layout */}
       {insights.length > 0 && (
-        <Card className="w-full">
+        <Card className="w-full overflow-hidden">
           <CardHeader className="p-3 sm:p-4 md:p-6">
             <CardTitle className="flex flex-wrap items-center gap-2 text-sm sm:text-base md:text-lg">
               <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
@@ -197,13 +197,13 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
               {insights.slice(0, 5).map((insight) => (
                 <div 
                   key={insight.id} 
-                  className={`p-2 sm:p-3 border rounded-lg ${getSeverityColor(insight.severity)} ${
+                  className={`p-2 sm:p-3 border rounded-lg overflow-hidden ${getSeverityColor(insight.severity)} ${
                     !insight.is_read ? 'border-l-4 border-l-blue-500' : ''
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-1 space-y-1 sm:space-y-0">
-                    <h4 className="font-medium text-xs sm:text-sm pr-2">{insight.title}</h4>
-                    <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                    <h4 className="font-medium text-xs sm:text-sm pr-2 break-words">{insight.title}</h4>
+                    <div className="flex flex-wrap items-center gap-1 sm:gap-2 flex-shrink-0">
                       <Badge variant="outline" className="text-xs">
                         {insight.insight_type.replace('_', ' ')}
                       </Badge>
@@ -214,7 +214,7 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
                       )}
                     </div>
                   </div>
-                  <p className="text-xs sm:text-sm opacity-90 break-words">{insight.description}</p>
+                  <p className="text-xs sm:text-sm opacity-90 break-words overflow-wrap-anywhere">{insight.description}</p>
                   <p className="text-xs opacity-70 mt-1">
                     {new Date(insight.created_at).toLocaleDateString('sv-SE')}
                   </p>
@@ -225,9 +225,9 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
         </Card>
       )}
 
-      {/* Recommended Stocks - Mobile optimized grid */}
+      {/* Recommended Stocks - Mobile optimized grid with better text wrapping */}
       {portfolio.recommended_stocks && portfolio.recommended_stocks.length > 0 && (
-        <Card className="w-full">
+        <Card className="w-full overflow-hidden">
           <CardHeader className="p-3 sm:p-4 md:p-6">
             <CardTitle className="text-sm sm:text-base md:text-lg">Rekommenderade Investeringar</CardTitle>
             <CardDescription className="text-xs sm:text-sm">AI-genererade förslag baserat på din profil</CardDescription>
@@ -235,18 +235,18 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
           <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
               {portfolio.recommended_stocks.slice(0, 6).map((stock, index) => (
-                <div key={index} className="p-2 sm:p-3 md:p-4 border rounded-lg hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start mb-1 sm:mb-2">
-                    <div className="min-w-0 flex-1 pr-2">
-                      <h4 className="font-medium text-xs sm:text-sm truncate">{stock.name || stock.symbol}</h4>
-                      <p className="text-xs text-muted-foreground truncate">{stock.sector}</p>
+                <div key={index} className="p-2 sm:p-3 md:p-4 border rounded-lg hover:shadow-md transition-shadow overflow-hidden">
+                  <div className="flex justify-between items-start mb-1 sm:mb-2 gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-medium text-xs sm:text-sm break-words overflow-wrap-anywhere line-clamp-2">{stock.name || stock.symbol}</h4>
+                      <p className="text-xs text-muted-foreground break-words overflow-wrap-anywhere line-clamp-1">{stock.sector}</p>
                     </div>
-                    <Badge variant="outline" className="text-xs flex-shrink-0">
+                    <Badge variant="outline" className="text-xs flex-shrink-0 whitespace-nowrap">
                       {stock.allocation || '5'}%
                     </Badge>
                   </div>
                   {stock.reasoning && (
-                    <p className="text-xs text-muted-foreground mt-1 sm:mt-2 break-words">
+                    <p className="text-xs text-muted-foreground mt-1 sm:mt-2 break-words overflow-wrap-anywhere leading-relaxed">
                       {stock.reasoning}
                     </p>
                   )}

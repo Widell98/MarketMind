@@ -143,9 +143,9 @@ const MarketMomentum = () => {
             <div className="flex items-center gap-1 mt-0.5 flex-shrink-0">
               {getTrendIcon(item.trend)}
             </div>
-            <div className="flex-1 space-y-2 min-w-0">
+            <div className="flex-1 space-y-2 min-w-0 overflow-hidden">
               <div className="flex items-start justify-between gap-2">
-                <p className="text-xs font-medium text-gray-900 dark:text-gray-100 break-words line-clamp-2 flex-1">
+                <p className="text-xs font-medium text-gray-900 dark:text-gray-100 break-words overflow-wrap-anywhere line-clamp-2 flex-1">
                   {item.title}
                 </p>
                 <div className="flex items-center gap-1 flex-shrink-0">
@@ -157,7 +157,7 @@ const MarketMomentum = () => {
                   </Badge>
                 </div>
               </div>
-              <p className="text-xs text-gray-600 dark:text-gray-400 break-words line-clamp-2">
+              <p className="text-xs text-gray-600 dark:text-gray-400 break-words overflow-wrap-anywhere line-clamp-2 leading-relaxed">
                 {item.description}
               </p>
               {item.sentiment && (
@@ -176,7 +176,7 @@ const MarketMomentum = () => {
               Marknadssammanfattning
             </span>
           </div>
-          <p className="text-xs text-blue-600 dark:text-blue-400 break-words">
+          <p className="text-xs text-blue-600 dark:text-blue-400 break-words overflow-wrap-anywhere leading-relaxed">
             Baserat på aktuell data och marknadsanalys. Uppdateras regelbundet för att ge dig den senaste informationen.
           </p>
         </div>
