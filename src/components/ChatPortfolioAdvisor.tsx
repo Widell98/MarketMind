@@ -460,6 +460,52 @@ const ChatPortfolioAdvisor = () => {
     }
   };
 
+  const saveRecommendedStocks = async (recommendedStocks: any[]) => {
+    if (!user || !recommendedStocks || recommendedStocks.length === 0) return;
+
+    try {
+      console.log('Saving AI-recommended stocks as holdings:', recommendedStocks);
+      
+      // Transform recommended stocks to holdings format
+      const holdingsToInsert = recommendedStocks.map(stock => ({
+        user_id: user.id,
+        name: stock.name || stock.symbol || 'Rekommenderad aktie',
+        symbol: stock.symbol || null,
+        quantity: 0, // No quantity yet, these are recommendations
+        purchase_price: stock.expected_price || 0,
+        current_value: 0, // No current value since not purchased yet
+        currency: 'SEK',
+        holding_type: 'recommendation', // Mark as recommendation
+        purchase_date: new Date().toISOString(),
+        sector: stock.sector || null,
+        market: stock.market || 'Swedish'
+      }));
+
+      const { error } = await supabase
+        .from('user_holdings')
+        .insert(holdingsToInsert);
+
+      if (error) {
+        console.error('Error saving recommended stocks:', error);
+        throw error;
+      }
+
+      console.log('Successfully saved recommended stocks as holdings');
+      
+      toast({
+        title: "Rekommendationer sparade",
+        description: `${recommendedStocks.length} AI-rekommenderade aktier har sparats i din översikt`,
+      });
+    } catch (error) {
+      console.error('Failed to save recommended stocks:', error);
+      toast({
+        title: "Varning", 
+        description: "Kunde inte spara AI-rekommendationerna som innehav",
+        variant: "destructive",
+      });
+    }
+  };
+
   const completeConversation = async () => {
     setIsGenerating(true);
     addBotMessage('Tack för alla svar! Jag skapar nu din personliga portföljstrategi...');
@@ -474,6 +520,12 @@ const ChatPortfolioAdvisor = () => {
     if (result) {
       setPortfolioResult(result);
       setIsComplete(true);
+      
+      // Save AI-recommended stocks as holdings
+      if (result.recommendedStocks && result.recommendedStocks.length > 0) {
+        await saveRecommendedStocks(result.recommendedStocks);
+      }
+      
       await refetch();
       
       setTimeout(() => {
