@@ -73,6 +73,23 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   const [isResetting, setIsResetting] = useState(false);
   const [expandedStocks, setExpandedStocks] = useState<Set<number>>(new Set());
 
+  // Get AI recommendations from portfolio data
+  const aiRecommendations = portfolio?.recommended_stocks || [];
+  
+  // Combine database recommendations with portfolio recommendations
+  const allRecommendations = [
+    ...recommendations,
+    ...aiRecommendations.map((stock: any, index: number) => ({
+      id: `portfolio-rec-${index}`,
+      name: stock.name || stock.symbol,
+      symbol: stock.symbol,
+      holding_type: 'recommendation',
+      purchase_price: stock.targetPrice || stock.price,
+      sector: stock.sector,
+      currency: 'SEK'
+    }))
+  ];
+
   const insights = [
     {
       type: 'opportunity',
@@ -262,9 +279,9 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               <CardTitle className="text-base sm:text-lg flex items-center gap-2">
                 <Brain className="w-5 h-5 text-purple-600" />
                 AI-Rekommenderade Innehav
-                {recommendations.length > 0 && (
+                {allRecommendations.length > 0 && (
                   <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                    {recommendations.length} rekommendationer
+                    {allRecommendations.length} rekommendationer
                   </Badge>
                 )}
               </CardTitle>
@@ -298,19 +315,19 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
               <p className="text-sm text-muted-foreground">Laddar rekommendationer...</p>
             </div>
-          ) : recommendations.length === 0 ? (
+          ) : allRecommendations.length === 0 ? (
             <div className="text-center py-8">
               <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">Inga AI-rekommendationer ännu</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Skapa din riskprofil för att få personliga aktieförslag från AI-advisorn
+                Implementera din riskprofil för att få personliga aktieförslag från AI-advisorn
               </p>
               <Button
-                onClick={() => onQuickChat && onQuickChat("Hjälp mig att få aktieförslag genom att analysera min riskprofil")}
+                onClick={() => navigate('/portfolio-advisor')}
                 className="flex items-center gap-2"
               >
                 <Brain className="w-4 h-4" />
-                Få AI-rekommendationer
+                Skapa investeringsstrategi
               </Button>
             </div>
           ) : (
@@ -325,8 +342,8 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recommendations.map((recommendation) => (
-                    <TableRow key={recommendation.id}>
+                  {allRecommendations.map((recommendation, index) => (
+                    <TableRow key={recommendation.id || index}>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Star className="w-4 h-4 text-purple-600" />
@@ -340,7 +357,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className={getHoldingTypeColor(recommendation.holding_type)}>
-                          {getHoldingTypeLabel(recommendation.holding_type)}
+                          AI-Rekommendation
                         </Badge>
                       </TableCell>
                       <TableCell>
