@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Lightbulb, TrendingUp, AlertTriangle, Target, Brain, RefreshCw } from 'lucide-react';
+import { Lightbulb, TrendingUp, AlertTriangle, Target, Brain, RefreshCw, Crown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -23,32 +24,28 @@ const UserInsightsPanel = () => {
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const { user } = useAuth();
+  const { subscription } = useSubscription();
   const { toast } = useToast();
 
-  const fetchInsights = async (forceRefresh = false) => {
+  const isPremiumUser = subscription?.subscribed;
+
+  const fetchCachedInsights = async () => {
     if (!user) {
-      await fetchGeneralInsights(forceRefresh);
+      await fetchGeneralInsights();
       return;
     }
 
     try {
-      setLoading(true);
-      
       const { data, error } = await supabase.functions.invoke('ai-market-insights', {
         body: { 
           type: 'personalized_insights',
           personalized: true,
-          forceRefresh: forceRefresh
+          forceRefresh: false // Only fetch cached data
         }
       });
 
       if (error) {
-        console.error('Error fetching insights:', error);
-        toast({
-          title: "Fel",
-          description: "Kunde inte hämta AI-insikter. Försök igen senare.",
-          variant: "destructive",
-        });
+        console.error('Error fetching cached insights:', error);
         return;
       }
 
@@ -57,26 +54,17 @@ const UserInsightsPanel = () => {
         setLastUpdated(new Date().toLocaleString('sv-SE'));
       }
     } catch (error) {
-      console.error('Error fetching insights:', error);
-      toast({
-        title: "Fel",
-        description: "Ett oväntat fel uppstod. Försök igen.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+      console.error('Error fetching cached insights:', error);
     }
   };
 
-  const fetchGeneralInsights = async (forceRefresh = false) => {
+  const fetchGeneralInsights = async () => {
     try {
-      setLoading(true);
-      
       const { data, error } = await supabase.functions.invoke('ai-market-insights', {
         body: { 
           type: 'market_sentiment',
           personalized: false,
-          forceRefresh: forceRefresh
+          forceRefresh: false // Only fetch cached data
         }
       });
 
@@ -91,21 +79,62 @@ const UserInsightsPanel = () => {
       }
     } catch (error) {
       console.error('Error fetching general insights:', error);
+    }
+  };
+
+  const handleRefresh = async () => {
+    if (!isPremiumUser) {
+      toast({
+        title: "Premium krävs",
+        description: "Uppgradera till Premium för att uppdatera AI-insikter.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase.functions.invoke('ai-market-insights', {
+        body: { 
+          type: user ? 'personalized_insights' : 'market_sentiment',
+          personalized: !!user,
+          forceRefresh: true // Force refresh for premium users
+        }
+      });
+
+      if (error) {
+        console.error('Error refreshing insights:', error);
+        toast({
+          title: "Fel",
+          description: "Kunde inte uppdatera AI-insikter. Försök igen senare.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data && Array.isArray(data)) {
+        setInsights(data);
+        setLastUpdated(new Date().toLocaleString('sv-SE'));
+        toast({
+          title: "Insikter uppdaterade",
+          description: "AI-insikterna har uppdaterats med ny data.",
+        });
+      }
+    } catch (error) {
+      console.error('Error refreshing insights:', error);
+      toast({
+        title: "Fel",
+        description: "Ett oväntat fel uppstod. Försök igen.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRefresh = () => {
-    fetchInsights(true); // Force refresh
-    toast({
-      title: "Uppdaterar insikter",
-      description: "Hämtar nya AI-insikter...",
-    });
-  };
-
   useEffect(() => {
-    fetchInsights(false); // Load cached insights initially
+    fetchCachedInsights(); // Only fetch cached insights on load
   }, [user]);
 
   const getInsightIcon = (type: string) => {
@@ -160,7 +189,7 @@ const UserInsightsPanel = () => {
         {loading ? (
           <div className="text-center py-4">
             <RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin text-purple-600" />
-            <p className="text-sm text-muted-foreground">Hämtar AI-insikter...</p>
+            <p className="text-sm text-muted-foreground">Uppdaterar AI-insikter...</p>
           </div>
         ) : insights.length > 0 ? (
           <>
@@ -197,10 +226,14 @@ const UserInsightsPanel = () => {
               </div>
             ))}
             
-            {!user && (
-              <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-xs text-blue-700 mb-2">
-                  Logga in för personaliserade AI-insikter
+            {!isPremiumUser && (
+              <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                <Crown className="w-5 h-5 mx-auto mb-2 text-blue-600" />
+                <p className="text-xs text-blue-700 mb-2 font-medium">
+                  Uppgradera till Premium för att uppdatera AI-insikter
+                </p>
+                <p className="text-xs text-blue-600">
+                  Få tillgång till färska AI-analyser och personliga rekommendationer
                 </p>
               </div>
             )}
@@ -211,14 +244,23 @@ const UserInsightsPanel = () => {
             <p className="text-sm text-muted-foreground mb-3">
               Inga AI-insikter tillgängliga än
             </p>
-            <Button 
-              size="sm" 
-              onClick={() => fetchInsights(true)}
-              disabled={loading}
-            >
-              <Brain className="w-3 h-3 mr-2" />
-              {user ? 'Generera personliga insikter' : 'Ladda allmänna insikter'}
-            </Button>
+            {isPremiumUser ? (
+              <Button 
+                size="sm" 
+                onClick={handleRefresh}
+                disabled={loading}
+              >
+                <Brain className="w-3 h-3 mr-2" />
+                {user ? 'Generera personliga insikter' : 'Ladda allmänna insikter'}
+              </Button>
+            ) : (
+              <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                <Crown className="w-5 h-5 mx-auto mb-2 text-blue-600" />
+                <p className="text-xs text-blue-700 font-medium">
+                  Premium krävs för att generera AI-insikter
+                </p>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
