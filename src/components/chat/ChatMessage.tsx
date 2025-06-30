@@ -105,7 +105,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       // Handle headers
       if (line.startsWith('###')) {
         return (
-          <h3 key={index} className="font-semibold text-base mt-4 mb-2 text-foreground">
+          <h3 key={index} className="font-semibold text-sm sm:text-base mt-3 mb-2 text-foreground leading-tight">
             {line.replace('###', '').trim()}
           </h3>
         );
@@ -113,7 +113,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       
       if (line.startsWith('##')) {
         return (
-          <h2 key={index} className="font-semibold text-lg mt-4 mb-2 text-foreground">
+          <h2 key={index} className="font-semibold text-base sm:text-lg mt-4 mb-2 text-foreground leading-tight">
             {line.replace('##', '').trim()}
           </h2>
         );
@@ -122,19 +122,28 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       // Handle lists
       if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
         return (
-          <li key={index} className="ml-4 text-sm text-muted-foreground">
+          <li key={index} className="ml-3 sm:ml-4 text-xs sm:text-sm text-muted-foreground leading-relaxed mb-1">
             {line.trim().substring(1).trim()}
           </li>
         );
       }
       
+      // Handle numbered lists
+      if (/^\d+\./.test(line.trim())) {
+        return (
+          <li key={index} className="ml-3 sm:ml-4 text-xs sm:text-sm text-muted-foreground leading-relaxed mb-1 list-decimal">
+            {line.trim().replace(/^\d+\.\s*/, '')}
+          </li>
+        );
+      }
+      
       // Handle bold text
-      const boldFormatted = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      const boldFormatted = line.replace(/\*\*(.*?)\*\*/g, '<strong class="font-medium text-foreground">$1</strong>');
       
       return (
         <p 
           key={index} 
-          className="text-sm text-muted-foreground mb-1"
+          className="text-xs sm:text-sm text-muted-foreground mb-2 leading-relaxed break-words"
           dangerouslySetInnerHTML={{ __html: boldFormatted }}
         />
       );
@@ -142,35 +151,35 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
   };
 
   return (
-    <div className="flex gap-2 sm:gap-3 items-start">
+    <div className="flex gap-2 sm:gap-3 items-start w-full">
       {message.role === 'assistant' ? (
         <>
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
             <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="bg-muted/50 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border shadow-sm">
-              <div className="prose prose-sm max-w-none text-foreground">
+          <div className="flex-1 min-w-0 max-w-full">
+            <div className="bg-muted/50 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border shadow-sm max-w-full overflow-hidden">
+              <div className="ai-response max-w-full overflow-hidden">
                 {formatMessageContent(message.content)}
               </div>
               
               {/* Stock suggestions */}
               {stockSuggestions.length > 0 && (
                 <div className="mt-4 pt-3 border-t border-border/50">
-                  <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                  <p className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-1">
                     <TrendingUp className="w-3 h-3" />
                     Aktieförslag från AI
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-col gap-2">
                     {stockSuggestions.map((suggestion) => {
                       const isAdded = addedStocks.has(suggestion.symbol);
                       return (
                         <div
                           key={suggestion.symbol}
-                          className="flex items-center gap-2 bg-background/80 rounded-lg p-2 border border-border/50"
+                          className="flex items-center justify-between gap-3 bg-background/80 rounded-lg p-3 border border-border/50"
                         >
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-foreground truncate">
+                            <p className="text-xs sm:text-sm font-medium text-foreground truncate">
                               {suggestion.name}
                             </p>
                             <p className="text-xs text-muted-foreground">
@@ -182,7 +191,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
                             variant={isAdded ? "outline" : "default"}
                             onClick={() => handleAddStock(suggestion)}
                             disabled={isAdded}
-                            className="h-7 px-2 text-xs"
+                            className="h-8 px-3 text-xs flex-shrink-0"
                           >
                             {isAdded ? (
                               <>
@@ -205,7 +214,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
               
               {/* Context badges */}
               {message.context && (
-                <div className="flex gap-2 mt-3 pt-3 border-t border-border/50">
+                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border/50">
                   {message.context.isExchangeRequest && (
                     <Badge variant="outline" className="text-xs">
                       <TrendingUp className="w-3 h-3 mr-1" />
@@ -224,10 +233,10 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         </>
       ) : (
         <>
-          <div className="bg-primary/10 backdrop-blur-sm rounded-2xl rounded-tr-lg p-2.5 sm:p-3 border border-primary/20 shadow-sm max-w-[80%] sm:max-w-md">
-            <p className="text-sm sm:text-base text-foreground">{message.content}</p>
+          <div className="bg-primary/10 backdrop-blur-sm rounded-2xl rounded-tr-lg p-2.5 sm:p-3 border border-primary/20 shadow-sm max-w-[85%] sm:max-w-md order-2">
+            <p className="text-sm sm:text-base text-foreground break-words">{message.content}</p>
           </div>
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 mt-1 order-1">
             <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
           </div>
         </>
