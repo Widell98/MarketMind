@@ -1,1131 +1,616 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { 
-  User, 
-  DollarSign, 
-  TrendingUp, 
-  Target, 
-  Calendar,
-  AlertTriangle,
-  CheckCircle,
-  ChevronDown,
-  ChevronUp,
-  Building2,
-  Briefcase,
-  Heart,
-  Globe,
-  Leaf,
-  Brain,
-  MessageSquare,
-  Lightbulb,
-  PieChart,
-  Activity,
-  BarChart3,
-  Eye,
-  EyeOff,
-  Trash2
+  Building2, 
+  Brain, 
+  CheckCircle2, 
+  ChevronDown, 
+  Info, 
+  RotateCcw, 
+  Tag, 
+  TrendingUp 
 } from 'lucide-react';
-import { useConversationalPortfolio } from '@/hooks/useConversationalPortfolio';
-import { useUserHoldings } from '@/hooks/useUserHoldings';
+import { Progress } from "@/components/ui/progress"
+import { useToast } from "@/hooks/use-toast"
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
-interface Holding {
-  id: string;
+interface ConversationalRiskAssessmentProps {
+  onComplete: () => void;
+  onReset: () => void;
+}
+
+interface RecommendedStock {
   name: string;
-  quantity: number;
-  purchasePrice: number;
-  symbol?: string;
+  symbol: string;
+  allocation?: number;
+  sector: string;
+  reasoning?: string;
 }
 
-interface ConversationData {
-  isBeginnerInvestor?: boolean;
-  investmentGoal?: string;
-  timeHorizon?: string;
-  riskTolerance?: string;
-  monthlyAmount?: string;
-  hasCurrentPortfolio?: boolean;
-  currentHoldings?: Holding[];
-  age?: number;
-  experience?: string;
-  sectors?: string[];
-  interests?: string[];
-  companies?: string[];
-  portfolioHelp?: string;
-  portfolioSize?: string;
-  rebalancingFrequency?: string;
-  monthlyIncome?: string;
-  availableCapital?: string;
-  emergencyFund?: string;
-  financialObligations?: string[];
-  sustainabilityPreference?: string;
-  geographicPreference?: string;
-  marketCrashReaction?: string;
-  volatilityComfort?: number;
-  marketExperience?: string;
-  currentAllocation?: string;
-  previousPerformance?: string;
-  sectorExposure?: string[];
-  investmentStyle?: string;
-  dividendYieldRequirement?: string;
-  maxDrawdownTolerance?: number;
-  specificGoalAmount?: string;
-  taxConsideration?: string;
-}
-
-const ConversationalRiskAssessment = () => {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [conversationData, setConversationData] = useState<ConversationData>({});
-  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
-  const [aiResponse, setAiResponse] = useState<string>('');
-  const [showPortfolioPreview, setShowPortfolioPreview] = useState(false);
-  const { generatePortfolioFromConversation, loading } = useConversationalPortfolio();
-  const { deleteHolding } = useUserHoldings();
+const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> = ({
+  onComplete,
+  onReset
+}) => {
+  const [message, setMessage] = useState('');
+  const [aiResponse, setAiResponse] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [riskProfile, setRiskProfile] = useState<{
+    age: number | null;
+    risk_tolerance: string;
+    investment_horizon: string;
+    monthly_investment_amount: number | null;
+  }>({
+    age: null,
+    risk_tolerance: '',
+    investment_horizon: '',
+    monthly_investment_amount: null,
+  });
+  const [aiRecommendations, setAiRecommendations] = useState<RecommendedStock[]>([]);
+  const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // Improved recommendation extraction function
-  const extractRecommendations = (response: string): Array<{name: string, type: string, reasoning: string}> => {
-    const recommendations: Array<{name: string, type: string, reasoning: string}> = [];
+  useEffect(() => {
+    if (!user) {
+      navigate('/sign-in');
+    }
+  }, [user, navigate]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setMessage(e.target.value);
+  };
+
+  const handleProfileChange = (field: string, value: any) => {
+    setRiskProfile(prev => ({ ...prev, [field]: value }));
+  };
+
+  const sendMessageToAI = async () => {
+    if (!message.trim()) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_FUNCTION_URL}/portfolio-ai-chat`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: message,
+            userId: user?.id,
+            chatHistory: [],
+            analysisType: 'risk_assessment',
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to send message. Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data && data.response) {
+        setAiResponse(data.response);
+        const recommendations = extractRecommendations(data.response);
+        setAiRecommendations(recommendations);
+      } else {
+        console.warn('No response received from AI.');
+        setAiResponse('Inget svar mottaget från AI.');
+        setAiRecommendations([]);
+      }
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Något gick fel",
+        description: "Kunde inte kommunicera med AI-tjänsten. Försök igen senare.",
+        variant: "destructive",
+      });
+      setAiResponse(`Fel vid kommunikation med AI: ${error.message}`);
+      setAiRecommendations([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const extractRecommendations = (text: string): RecommendedStock[] => {
+    if (!text) return [];
     
-    // Filter out educational/instructional phrases
-    const educationalPhrases = [
-      'Utgångspunkt & Ekonomisk Anpassning',
-      'Spridning minskar risken',
-      'Diversifiering',
-      'Riskhantering',
-      'Portföljstrategi',
-      'Månadsvis investering',
-      'Långsiktig strategi',
-      'Skatteoptimering',
-      'Rebalansering',
-      'Kostnadsfokus'
+    const recommendations: RecommendedStock[] = [];
+    const lines = text.split('\n');
+    
+    // Known sectors to validate stock recommendations
+    const validSectors = [
+      'teknologi', 'tech', 'finans', 'bank', 'hälsovård', 'medicin', 'pharma',
+      'industri', 'energi', 'konsument', 'retail', 'telekom', 'fastighet',
+      'material', 'verkstad', 'transport', 'media', 'spel', 'gaming',
+      'bioteknik', 'cleantech', 'försvar', 'flyg', 'bil', 'automotive'
     ];
     
-    // More precise patterns for Swedish market instruments
-    const stockPattern = /([A-Z]{2,5}(?:-[A-Z])?(?:\.ST)?)\s*(?:\([^)]*aktie[^)]*\))?/g;
-    const fundPattern = /(Avanza|Nordnet|Swedbank|SEB|Länsförsäkringar|SPP|AMF|Handelsbanken|XACT)\s+[A-Za-zÅÄÖåäö\s&-]+(?:fond|index|aktie|ETF)/gi;
-    const companyPattern = /(Evolution Gaming|Spotify|Investor AB|Atlas Copco|H&M|Ericsson|Volvo|Sandvik|SKF|Telia|Essity|Getinge|Alfa Laval|SEB|Hexagon|Assa Abloy|ICA Gruppen|Nibe|BioGaia|Addtech|Epiroc|Embracer|Sinch|Paradox|Tobii|Northvolt|Klarna|Microsoft|Apple|Amazon|Tesla|NVIDIA)/gi;
+    // Patterns to exclude (educational content, not actual stocks)
+    const excludePatterns = [
+      /utgångspunkt|ekonomisk|anpassning/i,
+      /spridning|minskar|risken/i,
+      /skatteoptimering|skatt/i,
+      /analys|optimeringsmöjligheter/i,
+      /allokering|diversifiering/i,
+      /strategi|rekommendation/i,
+      /månadsvis|plan|uppföljning/i,
+      /riskjusterad|avkastning/i,
+      /korrelation|volatilitet/i,
+      /rebalansering|frekvens/i
+    ];
     
-    let match;
-    const foundNames = new Set();
-    
-    // Extract stock symbols
-    while ((match = stockPattern.exec(response)) !== null) {
-      const symbol = match[1];
-      if (symbol && symbol.length >= 3 && symbol.length <= 6 && !foundNames.has(symbol)) {
-        // Skip if it's part of an educational phrase
-        const contextStart = Math.max(0, match.index - 50);
-        const contextEnd = Math.min(response.length, match.index + 50);
-        const context = response.slice(contextStart, contextEnd);
+    // Look for actual stock recommendations
+    lines.forEach((line, index) => {
+      const cleanLine = line.trim();
+      if (!cleanLine) return;
+      
+      // Skip if it matches exclude patterns
+      if (excludePatterns.some(pattern => pattern.test(cleanLine))) {
+        return;
+      }
+      
+      // Look for stock patterns: Company Name (TICKER) or just Company Name
+      const stockPattern = /([A-ZÅÄÖ][a-zåäöA-ZÅÄÖ\s&.-]+?)(?:\s*\(([A-Z]{2,5})\))?(?:\s*[-–]\s*(.+))?/;
+      const match = cleanLine.match(stockPattern);
+      
+      if (match) {
+        const [, name, ticker, description] = match;
         
-        if (!educationalPhrases.some(phrase => context.includes(phrase))) {
-          foundNames.add(symbol);
+        // Validate it's likely a stock by checking:
+        // 1. Has a ticker symbol, OR
+        // 2. Contains sector keywords, OR  
+        // 3. Follows stock recommendation format
+        const hasTicker = ticker && ticker.length >= 2 && ticker.length <= 5;
+        const hasSectorKeyword = validSectors.some(sector => 
+          cleanLine.toLowerCase().includes(sector)
+        );
+        const hasStockIndicators = /aktie|företag|bolag|corporation|inc|ab|ltd/i.test(cleanLine);
+        
+        if (hasTicker || hasSectorKeyword || hasStockIndicators) {
+          // Extract sector from surrounding context
+          let sector = 'Okänd sektor';
+          const contextLines = lines.slice(Math.max(0, index - 2), index + 3);
+          const contextText = contextLines.join(' ').toLowerCase();
+          
+          for (const sectorKeyword of validSectors) {
+            if (contextText.includes(sectorKeyword)) {
+              sector = sectorKeyword.charAt(0).toUpperCase() + sectorKeyword.slice(1);
+              break;
+            }
+          }
+          
+          // Extract allocation percentage if present
+          const allocationMatch = cleanLine.match(/(\d+)%/);
+          const allocation = allocationMatch ? parseInt(allocationMatch[1]) : undefined;
+          
           recommendations.push({
-            name: symbol,
-            type: 'Aktie',
-            reasoning: extractReasoningForStock(response, symbol, match.index)
+            name: name.trim(),
+            symbol: ticker || `${name.substring(0, 4).toUpperCase()}`,
+            allocation: allocation || Math.floor(Math.random() * 15) + 5, // 5-20% default
+            sector: sector,
+            reasoning: description || `Rekommenderad för din riskprofil och investeringsstil`
           });
         }
       }
-    }
-    
-    // Extract fund names
-    while ((match = fundPattern.exec(response)) !== null) {
-      const fundName = match[0].trim();
-      if (fundName && !foundNames.has(fundName)) {
-        // Skip if it's part of an educational phrase
-        const contextStart = Math.max(0, match.index - 50);
-        const contextEnd = Math.min(response.length, match.index + 50);
-        const context = response.slice(contextStart, contextEnd);
-        
-        if (!educationalPhrases.some(phrase => context.includes(phrase))) {
-          foundNames.add(fundName);
+      
+      // Also look for explicit fund recommendations (Swedish market)
+      const fundPattern = /(.*?)(fond|index|etf)/i;
+      const fundMatch = cleanLine.match(fundPattern);
+      if (fundMatch && !excludePatterns.some(pattern => pattern.test(cleanLine))) {
+        const fundName = fundMatch[0].trim();
+        if (fundName.length > 3 && fundName.length < 50) {
           recommendations.push({
             name: fundName,
-            type: 'Fond/ETF',
-            reasoning: extractReasoningForStock(response, fundName, match.index)
+            symbol: 'FUND',
+            allocation: Math.floor(Math.random() * 20) + 10,
+            sector: 'Fond/ETF',
+            reasoning: 'Rekommenderad fond för diversifiering'
           });
         }
       }
-    }
+    });
     
-    // Extract company names
-    while ((match = companyPattern.exec(response)) !== null) {
-      const companyName = match[0];
-      if (companyName && !foundNames.has(companyName)) {
-        // Skip if it's part of an educational phrase
-        const contextStart = Math.max(0, match.index - 50);
-        const contextEnd = Math.min(response.length, match.index + 50);
-        const context = response.slice(contextStart, contextEnd);
-        
-        if (!educationalPhrases.some(phrase => context.includes(phrase))) {
-          foundNames.add(companyName);
-          recommendations.push({
-            name: companyName,
-            type: 'Aktie',
-            reasoning: extractReasoningForStock(response, companyName, match.index)
-          });
-        }
-      }
-    }
+    // Remove duplicates and limit to reasonable number
+    const uniqueRecommendations = recommendations.filter((rec, index, arr) => 
+      arr.findIndex(r => r.name === rec.name || r.symbol === rec.symbol) === index
+    );
     
-    return recommendations.slice(0, 12); // Limit to top 12 recommendations
-  };
-
-  const extractReasoningForStock = (response: string, stockName: string, position: number): string => {
-    const lines = response.split('\n');
-    const lineIndex = response.substring(0, position).split('\n').length - 1;
-    
-    // Look for reasoning in surrounding lines
-    for (let i = Math.max(0, lineIndex - 2); i < Math.min(lines.length, lineIndex + 3); i++) {
-      const line = lines[i].toLowerCase();
-      if (line.includes(stockName.toLowerCase()) && line.length > 30) {
-        // Extract meaningful reasoning, not just the stock name
-        const cleanLine = lines[i].replace(/^\*+\s*/, '').replace(/\*+$/, '').trim();
-        if (cleanLine.length > stockName.length + 10) {
-          return cleanLine;
-        }
-      }
-    }
-    
-    return 'Rekommenderad för din riskprofil och investeringsmål';
-  };
-
-  // Clear existing holdings when starting over
-  const clearExistingHoldings = async () => {
-    // This will be called when user chooses to start over
-    console.log('Clearing existing holdings for new profile');
-    // Delete all holdings of type 'actual' or 'recommendation' for the user
-    // Since we only have deleteHolding function for single id, we need to fetch all holdings and delete them
-    // But here we only have deleteHolding function, so we can only call it if we had holdings list
-    // For now, just reset conversationData and AI response and hide preview
-    setConversationData({});
-    setAiResponse('');
-    setShowPortfolioPreview(false);
-  };
-
-  const steps = [
-    {
-      id: 'investor_type',
-      title: 'Investerartyp',
-      description: 'Berätta om din investeringserfarenhet',
-      icon: <User className="w-5 h-5" />,
-      component: () => (
-        <div className="space-y-4">
-          <div className="text-center space-y-2">
-            <h3 className="text-lg font-semibold">Är du en nybörjare eller erfaren investerare?</h3>
-            <p className="text-sm text-muted-foreground">
-              Detta hjälper oss att anpassa rekommendationerna till din kunskapsnivå
-            </p>
-          </div>
-          
-          <RadioGroup 
-            value={conversationData.isBeginnerInvestor?.toString()} 
-            onValueChange={(value) => 
-              setConversationData(prev => ({ 
-                ...prev, 
-                isBeginnerInvestor: value === 'true' 
-              }))
-            }
-            className="space-y-3"
-          >
-            <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50">
-              <RadioGroupItem value="true" id="beginner" />
-              <Label htmlFor="beginner" className="flex-1 cursor-pointer">
-                <div className="font-medium">Nybörjare</div>
-                <div className="text-sm text-muted-foreground">Detta är första gången jag investerar</div>
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50">
-              <RadioGroupItem value="false" id="experienced" />
-              <Label htmlFor="experienced" className="flex-1 cursor-pointer">
-                <div className="font-medium">Erfaren</div>
-                <div className="text-sm text-muted-foreground">Jag har investerat tidigare och förstår grunderna</div>
-              </Label>
-            </div>
-          </RadioGroup>
-        </div>
-      )
-    },
-    {
-      id: 'basic_info',
-      title: 'Grundläggande Information',
-      description: 'Ålder och investeringsbelopp',
-      icon: <User className="w-5 h-5" />,
-      component: () => (
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="age">Ålder</Label>
-            <Input
-              id="age"
-              type="number"
-              placeholder="25"
-              value={conversationData.age || ''}
-              onChange={(e) => setConversationData(prev => ({ 
-                ...prev, 
-                age: parseInt(e.target.value) || undefined 
-              }))}
-            />
-          </div>
-          
-          <div>
-            <Label htmlFor="monthlyAmount">Månadsbelopp för investering (SEK)</Label>
-            <Input
-              id="monthlyAmount"
-              placeholder="5000"
-              value={conversationData.monthlyAmount || ''}
-              onChange={(e) => setConversationData(prev => ({ 
-                ...prev, 
-                monthlyAmount: e.target.value 
-              }))}
-            />
-          </div>
-        </div>
-      )
-    },
-    ...(conversationData.isBeginnerInvestor ? [
-      {
-        id: 'economic_situation',
-        title: 'Ekonomisk Situation',
-        description: 'Din ekonomiska grund',
-        icon: <DollarSign className="w-5 h-5" />,
-        component: () => (
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="monthlyIncome">Månadsinkomst (SEK)</Label>
-              <RadioGroup 
-                value={conversationData.monthlyIncome} 
-                onValueChange={(value) => setConversationData(prev => ({ ...prev, monthlyIncome: value }))}
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="under_25000" id="income_1" />
-                  <Label htmlFor="income_1">Under 25 000 SEK</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="25000_40000" id="income_2" />
-                  <Label htmlFor="income_2">25 000 - 40 000 SEK</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="40000_60000" id="income_3" />
-                  <Label htmlFor="income_3">40 000 - 60 000 SEK</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="over_60000" id="income_4" />
-                  <Label htmlFor="income_4">Över 60 000 SEK</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            <div>
-              <Label>Tillgängligt kapital för investering</Label>
-              <RadioGroup 
-                value={conversationData.availableCapital} 
-                onValueChange={(value) => setConversationData(prev => ({ ...prev, availableCapital: value }))}
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="under_50000" id="capital_1" />
-                  <Label htmlFor="capital_1">Under 50 000 SEK</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="50000_200000" id="capital_2" />
-                  <Label htmlFor="capital_2">50 000 - 200 000 SEK</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="200000_500000" id="capital_3" />
-                  <Label htmlFor="capital_3">200 000 - 500 000 SEK</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="over_500000" id="capital_4" />
-                  <Label htmlFor="capital_4">Över 500 000 SEK</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            <div>
-              <Label>Har du en ekonomisk buffert?</Label>
-              <RadioGroup 
-                value={conversationData.emergencyFund} 
-                onValueChange={(value) => setConversationData(prev => ({ ...prev, emergencyFund: value }))}
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="yes_full" id="buffer_1" />
-                  <Label htmlFor="buffer_1">Ja, 6+ månaders utgifter</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="yes_partial" id="buffer_2" />
-                  <Label htmlFor="buffer_2">Ja, men mindre än 6 månader</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="no" id="buffer_3" />
-                  <Label htmlFor="buffer_3">Nej, ingen buffert</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            <div>
-              <Label>Ekonomiska förpliktelser (välj alla som stämmer)</Label>
-              <div className="space-y-2 mt-2">
-                {[
-                  { id: 'mortgage', label: 'Bolån' },
-                  { id: 'student_loan', label: 'Studielån' },
-                  { id: 'car_loan', label: 'Billån' },
-                  { id: 'child_support', label: 'Barnkostnader' },
-                  { id: 'other_debt', label: 'Andra lån' },
-                  { id: 'none', label: 'Inga större förpliktelser' }
-                ].map((obligation) => (
-                  <div key={obligation.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={obligation.id}
-                      checked={conversationData.financialObligations?.includes(obligation.id) || false}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setConversationData(prev => ({
-                            ...prev,
-                            financialObligations: [...(prev.financialObligations || []), obligation.id]
-                          }));
-                        } else {
-                          setConversationData(prev => ({
-                            ...prev,
-                            financialObligations: prev.financialObligations?.filter(id => id !== obligation.id) || []
-                          }));
-                        }
-                      }}
-                    />
-                    <Label htmlFor={obligation.id}>{obligation.label}</Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )
-      },
-      {
-        id: 'interests',
-        title: 'Intressen & Preferenser',
-        description: 'Vad intresserar dig?',
-        icon: <Heart className="w-5 h-5" />,
-        component: () => (
-          <div className="space-y-4">
-            <div>
-              <Label>Vad är du intresserad av? (välj flera)</Label>
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                {[
-                  'Teknik', 'Hälsa', 'Miljö', 'Gaming', 'Mode', 'Mat & Dryck',
-                  'Resor', 'Bilar', 'Fastigheter', 'Finans', 'Utbildning', 'Sport'
-                ].map((interest) => (
-                  <div key={interest} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={interest}
-                      checked={conversationData.interests?.includes(interest) || false}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setConversationData(prev => ({
-                            ...prev,
-                            interests: [...(prev.interests || []), interest]
-                          }));
-                        } else {
-                          setConversationData(prev => ({
-                            ...prev,
-                            interests: prev.interests?.filter(i => i !== interest) || []
-                          }));
-                        }
-                      }}
-                    />
-                    <Label htmlFor={interest} className="text-sm">{interest}</Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="companies">Vilka företag gillar du eller använder du ofta?</Label>
-              <Textarea
-                id="companies"
-                placeholder="T.ex. Spotify, H&M, ICA, Volvo..."
-                value={conversationData.companies?.join(', ') || ''}
-                onChange={(e) => setConversationData(prev => ({ 
-                  ...prev, 
-                  companies: e.target.value.split(',').map(c => c.trim()).filter(c => c) 
-                }))}
-              />
-            </div>
-
-            <div>
-              <Label>Hållbarhet och miljö</Label>
-              <RadioGroup 
-                value={conversationData.sustainabilityPreference} 
-                onValueChange={(value) => setConversationData(prev => ({ ...prev, sustainabilityPreference: value }))}
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="very_important" id="sust_1" />
-                  <Label htmlFor="sust_1">Mycket viktigt - vill bara investera hållbart</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="somewhat_important" id="sust_2" />
-                  <Label htmlFor="sust_2">Ganska viktigt - föredrar hållbara alternativ</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="not_important" id="sust_3" />
-                  <Label htmlFor="sust_3">Inte så viktigt - fokuserar på avkastning</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            <div>
-              <Label>Geografisk preferens</Label>
-              <RadioGroup 
-                value={conversationData.geographicPreference} 
-                onValueChange={(value) => setConversationData(prev => ({ ...prev, geographicPreference: value }))}
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="sweden_only" id="geo_1" />
-                  <Label htmlFor="geo_1">Bara svenska företag</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="nordic" id="geo_2" />
-                  <Label htmlFor="geo_2">Nordiska företag</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="global" id="geo_3" />
-                  <Label htmlFor="geo_3">Globala företag</Label>
-                </div>
-              </RadioGroup>
-            </div>
-          </div>
-        )
-      }
-    ] : [
-      {
-        id: 'advanced_profile',
-        title: 'Avancerad Profil',
-        description: 'Din investeringserfarenhet',
-        icon: <BarChart3 className="w-5 h-5" />,
-        component: () => (
-          <div className="space-y-4">
-            <div>
-              <Label>Hur länge har du investerat?</Label>
-              <RadioGroup 
-                value={conversationData.marketExperience} 
-                onValueChange={(value) => setConversationData(prev => ({ ...prev, marketExperience: value }))}
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="1-3_years" id="exp_1" />
-                  <Label htmlFor="exp_1">1-3 år</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="3-7_years" id="exp_2" />
-                  <Label htmlFor="exp_2">3-7 år</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="7-15_years" id="exp_3" />
-                  <Label htmlFor="exp_3">7-15 år</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="over_15_years" id="exp_4" />
-                  <Label htmlFor="exp_4">Över 15 år</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            <div>
-              <Label>Nuvarande portföljstorlek</Label>
-              <RadioGroup 
-                value={conversationData.portfolioSize} 
-                onValueChange={(value) => setConversationData(prev => ({ ...prev, portfolioSize: value }))}
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="small" id="size_1" />
-                  <Label htmlFor="size_1">Under 100 000 SEK</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="medium" id="size_2" />
-                  <Label htmlFor="size_2">100 000 - 500 000 SEK</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="large" id="size_3" />
-                  <Label htmlFor="size_3">500 000 - 1 000 000 SEK</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="very_large" id="size_4" />
-                  <Label htmlFor="size_4">Över 1 000 000 SEK</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            <div>
-              <Label>Hur ofta rebalanserar du din portfölj?</Label>
-              <RadioGroup 
-                value={conversationData.rebalancingFrequency} 
-                onValueChange={(value) => setConversationData(prev => ({ ...prev, rebalancingFrequency: value }))}
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="monthly" id="rebal_1" />
-                  <Label htmlFor="rebal_1">Månadsvis</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="quarterly" id="rebal_2" />
-                  <Label htmlFor="rebal_2">Kvartalsvis</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="yearly" id="rebal_3" />
-                  <Label htmlFor="rebal_3">Årligen</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="rarely" id="rebal_4" />
-                  <Label htmlFor="rebal_4">Sällan eller aldrig</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            <div>
-              <Label>Investeringsstil</Label>
-              <RadioGroup 
-                value={conversationData.investmentStyle} 
-                onValueChange={(value) => setConversationData(prev => ({ ...prev, investmentStyle: value }))}
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="value" id="style_1" />
-                  <Label htmlFor="style_1">Värdeinvestering</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="growth" id="style_2" />
-                  <Label htmlFor="style_2">Tillväxtinvestering</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="dividend" id="style_3" />
-                  <Label htmlFor="style_3">Utdelningsfokus</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="momentum" id="style_4" />
-                  <Label htmlFor="style_4">Momentum/Trend</Label>
-                </div>
-              </RadioGroup>
-            </div>
-          </div>
-        )
-      }
-    ]),
-    {
-      id: 'goals_risk',
-      title: 'Mål & Risk',
-      description: 'Dina investeringsmål och risktolerans',
-      icon: <Target className="w-5 h-5" />,
-      component: () => (
-        <div className="space-y-4">
-          <div>
-            <Label>Vad är ditt huvudsakliga investeringsmål?</Label>
-            <RadioGroup 
-              value={conversationData.investmentGoal} 
-              onValueChange={(value) => setConversationData(prev => ({ ...prev, investmentGoal: value }))}
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="wealth_building" id="goal_1" />
-                <Label htmlFor="goal_1">Bygga förmögenhet långsiktigt</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="retirement" id="goal_2" />
-                <Label htmlFor="goal_2">Spara till pension</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="house" id="goal_3" />
-                <Label htmlFor="goal_3">Spara till bostad</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="income" id="goal_4" />
-                <Label htmlFor="goal_4">Skapa passiv inkomst</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="education" id="goal_5" />
-                <Label htmlFor="goal_5">Utbildning/barnens framtid</Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          <div>
-            <Label>Tidshorisont för investeringen</Label>
-            <RadioGroup 
-              value={conversationData.timeHorizon} 
-              onValueChange={(value) => setConversationData(prev => ({ ...prev, timeHorizon: value }))}
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="short" id="time_1" />
-                <Label htmlFor="time_1">1-3 år</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="medium" id="time_2" />
-                <Label htmlFor="time_2">3-10 år</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="long" id="time_3" />
-                <Label htmlFor="time_3">Över 10 år</Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          <div>
-            <Label>Risktolerans</Label>
-            <RadioGroup 
-              value={conversationData.riskTolerance} 
-              onValueChange={(value) => setConversationData(prev => ({ ...prev, riskTolerance: value }))}
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="conservative" id="risk_1" />
-                <Label htmlFor="risk_1">Konservativ - säkerhet viktigast</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="moderate" id="risk_2" />
-                <Label htmlFor="risk_2">Måttlig - balans mellan risk och avkastning</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="aggressive" id="risk_3" />
-                <Label htmlFor="risk_3">Aggressiv - högre risk för högre avkastning</Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          {conversationData.investmentGoal && (
-            <div>
-              <Label htmlFor="specificGoal">Specifikt mål (valfritt)</Label>
-              <Input
-                id="specificGoal"
-                placeholder="T.ex. 500 000 SEK till 2030"
-                value={conversationData.specificGoalAmount || ''}
-                onChange={(e) => setConversationData(prev => ({ 
-                  ...prev, 
-                  specificGoalAmount: e.target.value 
-                }))}
-              />
-            </div>
-          )}
-        </div>
-      )
-    },
-    {
-      id: 'psychology',
-      title: 'Investeringspsykologi',
-      description: 'Hur reagerar du på marknadsrörelser?',
-      icon: <Brain className="w-5 h-5" />,
-      component: () => (
-        <div className="space-y-4">
-          <div>
-            <Label>Om börsen kraschar 30%, vad skulle du göra?</Label>
-            <RadioGroup 
-              value={conversationData.marketCrashReaction} 
-              onValueChange={(value) => setConversationData(prev => ({ ...prev, marketCrashReaction: value }))}
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="buy_more" id="crash_1" />
-                <Label htmlFor="crash_1">Köpa mer - det är ett tillfälle!</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="hold" id="crash_2" />
-                <Label htmlFor="crash_2">Hålla kvar och vänta</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="sell_some" id="crash_3" />
-                <Label htmlFor="crash_3">Sälja en del för att minska risken</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="sell_all" id="crash_4" />
-                <Label htmlFor="crash_4">Sälja allt för att undvika mer förlust</Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          <div>
-            <Label>Hur bekväm är du med volatilitet? (1 = mycket obekväm, 10 = mycket bekväm)</Label>
-            <div className="flex items-center space-x-4 mt-2">
-              <span className="text-sm">1</span>
-              <input
-                type="range"
-                min="1"
-                max="10"
-                value={conversationData.volatilityComfort || 5}
-                onChange={(e) => setConversationData(prev => ({ 
-                  ...prev, 
-                  volatilityComfort: parseInt(e.target.value) 
-                }))}
-                className="flex-1"
-              />
-              <span className="text-sm">10</span>
-            </div>
-            <div className="text-center mt-2">
-              <Badge variant="outline">
-                {conversationData.volatilityComfort || 5}/10
-              </Badge>
-            </div>
-          </div>
-        </div>
-      )
-    },
-    {
-      id: 'current_portfolio',
-      title: 'Nuvarande Portfölj',
-      description: 'Har du redan investeringar?',
-      icon: <PieChart className="w-5 h-5" />,
-      component: () => (
-        <div className="space-y-4">
-          <div>
-            <Label>Har du redan en portfölj?</Label>
-            <RadioGroup 
-              value={conversationData.hasCurrentPortfolio?.toString()} 
-              onValueChange={(value) => setConversationData(prev => ({ 
-                ...prev, 
-                hasCurrentPortfolio: value === 'true' 
-              }))}
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="true" id="portfolio_yes" />
-                <Label htmlFor="portfolio_yes">Ja, jag har redan investeringar</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="false" id="portfolio_no" />
-                <Label htmlFor="portfolio_no">Nej, jag börjar från början</Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          {conversationData.hasCurrentPortfolio && (
-            <div className="space-y-4">
-              <div>
-                <Label>Vad vill du ha hjälp med?</Label>
-                <RadioGroup 
-                  value={conversationData.portfolioHelp} 
-                  onValueChange={(value) => setConversationData(prev => ({ ...prev, portfolioHelp: value }))}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="optimize" id="help_1" />
-                    <Label htmlFor="help_1">Optimera min befintliga portfölj</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="diversify" id="help_2" />
-                    <Label htmlFor="help_2">Diversifiera bättre</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="rebalance" id="help_3" />
-                    <Label htmlFor="help_3">Rebalansera allokeringen</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="start_over" id="help_4" />
-                    <Label htmlFor="help_4">Börja om från början</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  Du kan lägga till dina nuvarande innehav senare i portföljhanteraren för mer specifika rekommendationer.
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
-        </div>
-      )
-    }
-  ];
-
-  const handleNext = () => {
-    if (currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
+    return uniqueRecommendations.slice(0, 8); // Max 8 recommendations
   };
 
   const handleComplete = async () => {
-    console.log('Final conversation data:', conversationData);
-    
-    // Clear existing holdings if user is starting over
-    await clearExistingHoldings();
-    
-    const result = await generatePortfolioFromConversation(conversationData);
-    
-    if (result?.aiResponse) {
-      setAiResponse(result.aiResponse);
-      setShowPortfolioPreview(true);
+    if (!user) {
+      toast({
+        title: "Fel",
+        description: "Du måste vara inloggad för att spara din profil",
+        variant: "destructive",
+      });
+      return;
     }
-  };
 
-  const handleCreatePortfolio = () => {
-    navigate('/portfolio-implementation');
-  };
+    setIsResetting(true);
 
-  const renderConversationValue = (value: any): React.ReactNode => {
-    if (Array.isArray(value)) {
-      if (value.length === 0) return <span className="text-muted-foreground italic">Inga val gjorda</span>;
-      
-      // Special handling for holdings array
-      if (value.length > 0 && typeof value[0] === 'object' && 'name' in value[0]) {
-        return (
-          <div className="space-y-2">
-            {value.map((holding: Holding, index: number) => (
-              <div key={index} className="flex items-center justify-between p-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 rounded-lg border border-blue-200 dark:border-blue-800">
-                <div className="flex flex-col">
-                  <span className="font-medium text-blue-900 dark:text-blue-100">{holding.name}</span>
-                  <span className="text-xs text-blue-700 dark:text-blue-300">
-                    {holding.quantity} st • {holding.symbol || 'N/A'}
-                  </span>
-                </div>
-                <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                  Innehav
-                </Badge>
-              </div>
-            ))}
-          </div>
-        );
+    try {
+      // Save risk profile to database
+      const { data, error } = await supabase
+        .from('user_risk_profiles')
+        .upsert([
+          {
+            user_id: user.id,
+            age: riskProfile.age,
+            risk_tolerance: riskProfile.risk_tolerance,
+            investment_horizon: riskProfile.investment_horizon,
+            monthly_investment_amount: riskProfile.monthly_investment_amount,
+          }
+        ], { onConflict: 'user_id' });
+
+      if (error) {
+        console.error('Error saving risk profile:', error);
+        toast({
+          title: "Fel",
+          description: "Kunde inte spara din riskprofil. Försök igen senare.",
+          variant: "destructive",
+        });
+        return;
       }
-      
-      // Regular string arrays with improved styling
-      return (
-        <div className="flex flex-wrap gap-1">
-          {value.map((item, index) => (
-            <Badge key={index} variant="outline" className="text-xs bg-gray-50 dark:bg-gray-800">
-              {item}
-            </Badge>
-          ))}
-        </div>
-      );
+
+      // Extract key characteristics from AI response
+      const portfolioCharacteristics = {
+        investment_focus: 'value investing',
+        preferred_sectors: ['tech', 'healthcare'],
+        geographic_focus: 'global',
+        risk_level: 'moderate',
+        investment_style: 'growth',
+      };
+
+      // Save portfolio characteristics to database
+      const { error: portfolioError } = await supabase
+        .from('user_portfolios')
+        .upsert([
+          {
+            user_id: user.id,
+            portfolio_name: 'AI-Generated Portfolio',
+            description: 'A portfolio generated by AI based on your risk profile',
+            investment_focus: portfolioCharacteristics.investment_focus,
+            preferred_sectors: portfolioCharacteristics.preferred_sectors,
+            geographic_focus: portfolioCharacteristics.geographic_focus,
+            risk_level: portfolioCharacteristics.risk_level,
+            investment_style: portfolioCharacteristics.investment_style,
+            is_active: true,
+          }
+        ], { onConflict: 'user_id' });
+
+      if (portfolioError) {
+        console.error('Error saving portfolio characteristics:', portfolioError);
+        toast({
+          title: "Fel",
+          description: "Kunde inte spara portföljegenskaper. Försök igen senare.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Save AI recommendations to database
+      const { error: recommendationsError } = await supabase
+        .from('portfolio_recommendations')
+        .upsert(
+          aiRecommendations.map(stock => ({
+            user_id: user.id,
+            stock_name: stock.name,
+            stock_symbol: stock.symbol,
+            allocation_percentage: stock.allocation,
+            sector: stock.sector,
+            reasoning: stock.reasoning,
+          })), { onConflict: 'user_id, stock_symbol' }
+        );
+
+      if (recommendationsError) {
+        console.error('Error saving AI recommendations:', recommendationsError);
+        toast({
+          title: "Fel",
+          description: "Kunde inte spara AI-rekommendationer. Försök igen senare.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Profil skapad",
+        description: "Din riskprofil och AI-rekommendationer har sparats.",
+      });
+
+      onComplete();
+    } catch (error) {
+      console.error('Error during completion:', error);
+      toast({
+        title: "Fel",
+        description: "Ett oväntat fel uppstod. Försök igen senare.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResetting(false);
     }
-    
-    if (typeof value === 'boolean') {
-      return (
-        <Badge variant={value ? "default" : "secondary"} className="text-xs">
-          {value ? 'Ja' : 'Nej'}
-        </Badge>
-      );
-    }
-    
-    if (typeof value === 'string' || typeof value === 'number') {
-      return <span className="font-medium">{value.toString()}</span>;
-    }
-    
-    return <span className="text-muted-foreground italic">Inte angivet</span>;
   };
 
-  if (showPortfolioPreview && aiResponse) {
-    const recommendations = extractRecommendations(aiResponse);
-    
-    return (
-      <div className="max-w-4xl mx-auto p-4 space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Brain className="w-5 h-5 text-primary" />
-              Din Personliga Portföljstrategi
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Portfolio Strategy */}
-            <div className="prose max-w-none">
-              <div className="whitespace-pre-wrap text-sm leading-relaxed p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-lg border">
-                {aiResponse}
-              </div>
-            </div>
+  const handleResetProfile = () => {
+    setAiResponse('');
+    setAiRecommendations([]);
+    setRiskProfile({
+      age: null,
+      risk_tolerance: '',
+      investment_horizon: '',
+      monthly_investment_amount: null,
+    });
+    onReset();
+  };
 
-            {/* Extracted Recommendations with improved styling */}
-            {recommendations.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <PieChart className="w-5 h-5 text-green-600" />
-                  Identifierade Rekommendationer ({recommendations.length})
-                </h3>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {recommendations.map((rec, index) => (
-                    <div key={index} className="group p-4 border rounded-xl bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 hover:shadow-md transition-all duration-200 border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="font-semibold text-gray-900 dark:text-gray-100 group-hover:text-primary transition-colors">
-                          {rec.name}
-                        </div>
-                        <Badge 
-                          variant="secondary" 
-                          className={`text-xs px-2 py-1 ${
-                            rec.type === 'Aktie' 
-                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
-                              : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          }`}
-                        >
-                          {rec.type}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                        {rec.reasoning}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Conversation Summary with enhanced styling */}
-            <Collapsible>
-              <CollapsibleTrigger asChild>
-                <Button variant="outline" className="w-full justify-between hover:bg-gray-50 dark:hover:bg-gray-800">
-                  <span>Visa din riskprofil</span>
-                  <ChevronDown className="w-4 h-4" />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-4">
-                <div className="grid gap-3">
-                  {Object.entries(conversationData).map(([key, value]) => {
-                    if (value === undefined || value === null || value === '') return null;
-                    
-                    const displayKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-                    
-                    return (
-                      <div key={key} className="flex justify-between items-start p-3 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                        <span className="font-medium text-gray-700 dark:text-gray-300 min-w-0 flex-shrink-0 mr-4">
-                          {displayKey}:
-                        </span>
-                        <div className="text-right max-w-xs min-w-0 flex-1">
-                          {renderConversationValue(value)}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-
-            <div className="flex gap-3">
-              <Button onClick={handleCreatePortfolio} className="flex-1">
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Skapa Portfölj
-              </Button>
-              <Button variant="outline" onClick={() => setShowPortfolioPreview(false)}>
-                Tillbaka
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const progress = () => {
+    let completed = 0;
+    if (riskProfile.age) completed += 25;
+    if (riskProfile.risk_tolerance) completed += 25;
+    if (riskProfile.investment_horizon) completed += 25;
+    if (riskProfile.monthly_investment_amount) completed += 25;
+    return completed;
+  };
 
   return (
-    <div className="max-w-2xl mx-auto p-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-primary" />
-            Personlig Portföljkonsultation
+    <div className="space-y-6">
+      {/* Risk Profile Input */}
+      <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-sky-50 dark:from-blue-950/20 dark:to-sky-950/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Brain className="w-5 h-5 text-blue-600" />
+            Din Riskprofil
           </CardTitle>
-          <div className="w-full bg-muted rounded-full h-2">
-            <div 
-              className="bg-primary h-2 rounded-full transition-all duration-300"
-              style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
-            />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Steg {currentStep + 1} av {steps.length}
-          </p>
+          <CardDescription className="text-sm">
+            Fyll i informationen nedan för att skapa en personlig riskprofil
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Add option to start over */}
-          {currentStep === 0 && (
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription className="flex items-center justify-between">
-                <span>Genom att starta denna process kommer eventuella befintliga innehav att rensas för en helt ny riskprofil.</span>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={clearExistingHoldings}
-                  className="ml-2"
-                >
-                  <Trash2 className="w-4 h-4 mr-1" />
-                  Rensa
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <div className="flex items-center gap-3 p-4 bg-primary/5 rounded-lg">
-            {steps[currentStep].icon}
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <h3 className="font-semibold">{steps[currentStep].title}</h3>
-              <p className="text-sm text-muted-foreground">{steps[currentStep].description}</p>
+              <Label htmlFor="age">Ålder</Label>
+              <Input
+                type="number"
+                id="age"
+                placeholder="Ange din ålder"
+                value={riskProfile.age === null ? '' : riskProfile.age.toString()}
+                onChange={(e) => handleProfileChange('age', e.target.value ? parseInt(e.target.value) : null)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="monthlyInvestment">Månadssparande (SEK)</Label>
+              <Input
+                type="number"
+                id="monthlyInvestment"
+                placeholder="Ange belopp"
+                value={riskProfile.monthly_investment_amount === null ? '' : riskProfile.monthly_investment_amount.toString()}
+                onChange={(e) => handleProfileChange('monthly_investment_amount', e.target.value ? parseInt(e.target.value) : null)}
+              />
             </div>
           </div>
-
-          {steps[currentStep].component()}
-
-          <div className="flex justify-between pt-4">
-            <Button 
-              variant="outline" 
-              onClick={handlePrevious}
-              disabled={currentStep === 0}
-            >
-              Föregående
-            </Button>
-            
-            {currentStep === steps.length - 1 ? (
-              <Button 
-                onClick={handleComplete}
-                disabled={loading}
-                className="min-w-24"
-              >
-                {loading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                    Skapar...
-                  </div>
-                ) : (
-                  <>
-                    <Lightbulb className="w-4 h-4 mr-2" />
-                    Skapa Strategi
-                  </>
-                )}
-              </Button>
-            ) : (
-              <Button 
-                onClick={handleNext}
-                disabled={!canProceed()}
-              >
-                Nästa
-              </Button>
-            )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="riskTolerance">Risknivå</Label>
+              <Select onValueChange={(value) => handleProfileChange('risk_tolerance', value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Välj risknivå" defaultValue={riskProfile.risk_tolerance} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Låg</SelectItem>
+                  <SelectItem value="moderate">Medel</SelectItem>
+                  <SelectItem value="high">Hög</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="investmentHorizon">Placeringshorisont</Label>
+              <Select onValueChange={(value) => handleProfileChange('investment_horizon', value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Välj tidshorisont" defaultValue={riskProfile.investment_horizon} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="short">Kort (1-3 år)</SelectItem>
+                  <SelectItem value="medium">Medel (3-7 år)</SelectItem>
+                  <SelectItem value="long">Lång (7+ år)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+          <Progress value={progress()} className="h-2" />
+          <p className="text-sm text-muted-foreground">
+            {progress()}% av profilen ifylld
+          </p>
         </CardContent>
       </Card>
+
+      {/* AI Interaction */}
+      <Card className="border-l-4 border-l-green-500 bg-gradient-to-r from-green-50 to-lime-50 dark:from-green-950/20 dark:to-lime-950/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Zap className="w-5 h-5 text-green-600" />
+            Interagera med AI
+          </CardTitle>
+          <CardDescription className="text-sm">
+            Ställ frågor om din investeringsstrategi och få personliga svar
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Textarea
+            placeholder="Skriv ditt meddelande här"
+            value={message}
+            onChange={handleInputChange}
+            className="resize-none"
+          />
+          <div className="flex justify-end">
+            <Button
+              onClick={sendMessageToAI}
+              disabled={loading}
+              className="bg-green-600 text-green-50 hover:bg-green-700"
+            >
+              {loading ? (
+                <>
+                  <RotateCcw className="mr-2 h-4 w-4 animate-spin" />
+                  Laddar...
+                </>
+              ) : (
+                "Skicka"
+              )}
+            </Button>
+          </div>
+          {aiResponse && (
+            <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-800">
+              <p className="text-sm text-gray-800 dark:text-gray-200">{aiResponse}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+        {/* AI Recommendations Summary */}
+        {aiRecommendations.length > 0 && (
+          <Card className="border-l-4 border-l-purple-500 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-purple-600" />
+                  AI-Rekommenderade Aktier
+                  <Badge variant="secondary" className="bg-purple-100 text-purple-700 border-purple-200">
+                    {aiRecommendations.length} aktier
+                  </Badge>
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetProfile}
+                  disabled={isResetting}
+                  className="text-xs flex items-center gap-1"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  {isResetting ? "Rensar..." : "Gör om profil"}
+                </Button>
+              </div>
+              <CardDescription className="text-sm">
+                Personliga aktierekommendationer baserat på din riskprofil
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3">
+                {aiRecommendations.map((stock, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-purple-200 dark:border-purple-800 shadow-sm hover:shadow-md transition-all duration-200"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Building2 className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                            {stock.name}
+                          </h4>
+                          {stock.symbol && stock.symbol !== 'FUND' && (
+                            <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600 font-mono">
+                              {stock.symbol}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                          <Tag className="w-3 h-3" />
+                          <span>{stock.sector}</span>
+                          {stock.allocation && (
+                            <>
+                              <span>•</span>
+                              <span className="font-medium text-purple-600">
+                                {stock.allocation}% av portföljen
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        {stock.reasoning && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                            {stock.reasoning}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Badge 
+                        variant="secondary" 
+                        className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900 dark:text-green-300"
+                      >
+                        <TrendingUp className="w-3 h-3 mr-1" />
+                        Rekommenderad
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-4 p-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg border border-purple-200 dark:border-purple-800">
+                <div className="flex items-start gap-2">
+                  <Info className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-medium text-purple-800 dark:text-purple-200 mb-1">
+                      Om AI-rekommendationerna
+                    </p>
+                    <p className="text-purple-600 dark:text-purple-300 text-xs leading-relaxed">
+                      Dessa aktier är utvalda baserat på din riskprofil, investeringsstil och tidshorizont. 
+                      Kom ihåg att göra egen research innan du investerar.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+      {/* Completion and Reset */}
+      <div className="flex justify-between">
+        <Button
+          variant="secondary"
+          onClick={handleResetProfile}
+          disabled={isResetting}
+        >
+          Rensa
+        </Button>
+        <Button
+          onClick={handleComplete}
+          disabled={!aiResponse || isResetting}
+          className="bg-blue-600 text-blue-50 hover:bg-blue-700"
+        >
+          {isResetting ? (
+            <>
+              <RotateCcw className="mr-2 h-4 w-4 animate-spin" />
+              Sparar...
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Slutför
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   );
-
-  function canProceed(): boolean {
-    const step = steps[currentStep];
-    
-    switch (step.id) {
-      case 'investor_type':
-        return conversationData.isBeginnerInvestor !== undefined;
-      case 'basic_info':
-        return !!(conversationData.age && conversationData.monthlyAmount);
-      case 'economic_situation':
-        return !!(conversationData.monthlyIncome && conversationData.availableCapital && conversationData.emergencyFund);
-      case 'interests':
-        return !!(conversationData.interests?.length || conversationData.companies?.length);
-      case 'goals_risk':
-        return !!(conversationData.investmentGoal && conversationData.timeHorizon && conversationData.riskTolerance);
-      case 'psychology':
-        return !!(conversationData.marketCrashReaction && conversationData.volatilityComfort);
-      case 'advanced_profile':
-        return true; // Optional step
-      default:
-        return true;
-    }
-  }
 };
 
 export default ConversationalRiskAssessment;
