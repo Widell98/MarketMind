@@ -886,6 +886,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_ai_insights: {
+        Row: {
+          created_at: string
+          id: string
+          insight_type: string
+          insights_data: Json
+          is_personalized: boolean
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          insight_type: string
+          insights_data?: Json
+          is_personalized?: boolean
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          insight_type?: string
+          insights_data?: Json
+          is_personalized?: boolean
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_ai_usage: {
         Row: {
           ai_messages_count: number

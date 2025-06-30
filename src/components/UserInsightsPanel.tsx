@@ -21,6 +21,16 @@ interface AIInsight {
   fee?: string;
 }
 
+interface UserAIInsight {
+  id: string;
+  user_id: string;
+  insight_type: string;
+  is_personalized: boolean;
+  insights_data: AIInsight[];
+  created_at: string;
+  updated_at: string;
+}
+
 const UserInsightsPanel = () => {
   const [insights, setInsights] = useState<AIInsight[]>([]);
   const [loading, setLoading] = useState(false);
@@ -31,32 +41,36 @@ const UserInsightsPanel = () => {
 
   const isPremiumUser = subscription?.subscribed;
 
-  const fetchCachedInsights = async () => {
+  const loadSavedInsights = async () => {
     if (!user) {
       await fetchGeneralInsights();
       return;
     }
 
     try {
-      const { data, error } = await supabase.functions.invoke('ai-market-insights', {
-        body: { 
-          type: 'personalized_insights',
-          personalized: true,
-          forceRefresh: false // Only fetch cached data
-        }
-      });
+      const { data, error } = await supabase
+        .from('user_ai_insights')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('insight_type', 'personalized_insights')
+        .eq('is_personalized', true)
+        .single();
 
-      if (error) {
-        console.error('Error fetching cached insights:', error);
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading saved insights:', error);
         return;
       }
 
-      if (data && Array.isArray(data)) {
-        setInsights(data);
-        setLastUpdated(new Date().toLocaleString('sv-SE'));
+      if (data && data.insights_data) {
+        setInsights(data.insights_data);
+        setLastUpdated(new Date(data.updated_at).toLocaleString('sv-SE'));
+      } else {
+        // No saved insights, load general ones
+        await fetchGeneralInsights();
       }
     } catch (error) {
-      console.error('Error fetching cached insights:', error);
+      console.error('Error loading saved insights:', error);
+      await fetchGeneralInsights();
     }
   };
 
@@ -66,7 +80,7 @@ const UserInsightsPanel = () => {
         body: { 
           type: 'market_sentiment',
           personalized: false,
-          forceRefresh: false // Only fetch cached data
+          forceRefresh: false
         }
       });
 
@@ -85,6 +99,15 @@ const UserInsightsPanel = () => {
   };
 
   const handleRefresh = async () => {
+    if (!user) {
+      toast({
+        title: "Inloggning krävs",
+        description: "Du måste vara inloggad för att uppdatera AI-insikter.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!isPremiumUser) {
       toast({
         title: "Premium krävs",
@@ -99,9 +122,9 @@ const UserInsightsPanel = () => {
       
       const { data, error } = await supabase.functions.invoke('ai-market-insights', {
         body: { 
-          type: user ? 'personalized_insights' : 'market_sentiment',
-          personalized: !!user,
-          forceRefresh: true // Force refresh for premium users
+          type: 'personalized_insights',
+          personalized: true,
+          forceRefresh: true
         }
       });
 
@@ -116,6 +139,23 @@ const UserInsightsPanel = () => {
       }
 
       if (data && Array.isArray(data)) {
+        // Save insights to database
+        const { error: saveError } = await supabase
+          .from('user_ai_insights')
+          .upsert({
+            user_id: user.id,
+            insight_type: 'personalized_insights',
+            is_personalized: true,
+            insights_data: data,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id,insight_type,is_personalized'
+          });
+
+        if (saveError) {
+          console.error('Error saving insights:', saveError);
+        }
+
         setInsights(data);
         setLastUpdated(new Date().toLocaleString('sv-SE'));
         toast({
@@ -136,7 +176,7 @@ const UserInsightsPanel = () => {
   };
 
   useEffect(() => {
-    fetchCachedInsights(); // Only fetch cached insights on load
+    loadSavedInsights();
   }, [user]);
 
   const getInsightIcon = (type: string) => {
@@ -155,17 +195,7 @@ const UserInsightsPanel = () => {
     return 'bg-red-100 text-red-800';
   };
 
-  const formatSectorHeader = (sectorName: string) => {
-    // Style sector names as headers with CSS
-    return (
-      <h3 className="font-semibold text-base text-purple-700 dark:text-purple-300 mb-2 border-b border-purple-200 dark:border-purple-700 pb-1">
-        {sectorName}
-      </h3>
-    );
-  };
-
   const renderInsightContent = (insight: AIInsight) => {
-    // Check if this is a recommendation type insight
     if (insight.insight_type === 'recommendation') {
       return (
         <div className="space-y-3">
@@ -204,7 +234,6 @@ const UserInsightsPanel = () => {
       );
     }
 
-    // Regular insight display
     return (
       <>
         <div className="flex items-start gap-2 mb-2">
@@ -305,7 +334,7 @@ const UserInsightsPanel = () => {
               Inga AI-insikter tillgängliga än
             </p>
             <div className="w-full max-w-sm mx-auto">
-              {isPremiumUser ? (
+              {isPremiumUser && user ? (
                 <Button 
                   size="sm" 
                   onClick={handleRefresh}
@@ -319,7 +348,7 @@ const UserInsightsPanel = () => {
                 <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
                   <Crown className="w-5 h-5 mx-auto mb-2 text-blue-600" />
                   <p className="text-xs text-blue-700 font-medium">
-                    Premium krävs för att generera AI-insikter
+                    {!user ? 'Logga in för AI-insikter' : 'Premium krävs för att generera AI-insikter'}
                   </p>
                 </div>
               )}
