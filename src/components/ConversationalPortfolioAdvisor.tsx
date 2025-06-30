@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,14 @@ import { useNavigate } from 'react-router-dom';
 import ConversationalRiskAssessment from './ConversationalRiskAssessment';
 import { useConversationalPortfolio } from '@/hooks/useConversationalPortfolio';
 
+interface Holding {
+  id: string;
+  name: string;
+  quantity: number;
+  purchasePrice: number;
+  symbol?: string;
+}
+
 interface ConversationData {
   isBeginnerInvestor?: boolean;
   investmentGoal?: string;
@@ -14,7 +23,7 @@ interface ConversationData {
   riskTolerance?: string;
   monthlyAmount?: string;
   hasCurrentPortfolio?: boolean;
-  currentHoldings?: Array<{ name: string; percentage: number }>;
+  currentHoldings?: Holding[];
   age?: string;
   experience?: string;
   sectors?: string[];
