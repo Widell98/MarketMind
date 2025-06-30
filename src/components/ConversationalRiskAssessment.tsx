@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -96,7 +95,7 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
   };
 
   // Helper function to render conversation data values properly
-  const renderConversationValue = (value: any) => {
+  const renderConversationValue = (value: any): React.ReactNode => {
     if (value === undefined || value === null) return null;
     
     if (Array.isArray(value)) {
@@ -913,13 +912,8 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
                  (conversationData[currentQuestion.key as keyof ConversationData] as string[]).length > 0 && (
                   <div className="mt-2 p-2 bg-blue-50 rounded-lg">
                     <Label className="text-xs text-blue-600 font-medium">Dina val:</Label>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {(conversationData[currentQuestion.key as keyof ConversationData] as string[])
-                        .map((value, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {value}
-                          </Badge>
-                        ))}
+                    <div className="text-sm text-blue-800">
+                      {renderConversationValue(conversationData[currentQuestion.key as keyof ConversationData])}
                     </div>
                   </div>
                 )}
@@ -1004,14 +998,11 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
                  ) && (
                   <div className="mt-2 p-2 bg-blue-50 rounded-lg">
                     <Label className="text-xs text-blue-600 font-medium">Dina egna tillägg:</Label>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {(conversationData[currentQuestion.key as keyof ConversationData] as string[])
+                    <div className="text-sm text-blue-800">
+                      {renderConversationValue(
+                        (conversationData[currentQuestion.key as keyof ConversationData] as string[])
                         .filter(val => !currentQuestion.options?.some(opt => opt.value === val))
-                        .map((customValue, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {customValue}
-                          </Badge>
-                        ))}
+                      )}
                     </div>
                   </div>
                 )}
