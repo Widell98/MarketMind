@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -135,105 +134,130 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
   const extractRecommendations = (text: string): RecommendedStock[] => {
     if (!text) return [];
     
+    console.log('Extracting stock recommendations from AI response:', text);
+    
     const recommendations: RecommendedStock[] = [];
     
-    // Enhanced patterns to match funds and stocks with ISIN codes and fees
-    const patterns = [
-      // Pattern for funds with ISIN and fees: "Name (t.ex. Fund Name, ISIN: CODE, avgift: X%)"
-      /(?:t\.ex\.\s+)([^,\(]+?)(?:\s*,\s*ISIN:\s*([A-Z0-9]{12})\s*,\s*avgift:\s*([\d,\.]+%?))?/gi,
-      // Pattern for ETFs: "Name ETF (t.ex. Fund Name)"
-      /([^(]+?)\s*ETF\s*\(t\.ex\.\s+([^)]+)\)/gi,
-      // Pattern for simple fund names: "Name fond/ETF"
-      /([A-ZÅÄÖ][a-zåäöA-ZÅÄÖ\s&.-]+?)\s+(fond|ETF|fonder)/gi,
-      // Pattern for percentage allocations: "X% Name"
-      /(\d+)%\s+([A-ZÅÄÖ][a-zåäöA-ZÅÄÖ\s&.-]+?)(?:\s*\(|$)/gi
-    ];
-
-    // Known Swedish and international fund/stock providers
-    const validProviders = [
-      'länsförsäkringar', 'amf', 'avanza', 'nordnet', 'spiltan', 'handelsbanken',
-      'seb', 'swedbank', 'ishares', 'vanguard', 'xact', 'spdr', 'lyxor',
-      'invesco', 'blackrock', 'fidelity', 'jpmorgan'
-    ];
-
-    // Sector mapping for better categorization
-    const sectorMapping: { [key: string]: string } = {
-      'global': 'Global Fond',
-      'teknologi': 'Teknologi',
-      'tech': 'Teknologi', 
-      'innovation': 'Innovation',
-      'småbolag': 'Småbolag',
-      'small cap': 'Småbolag',
-      'tillväxt': 'Tillväxt',
-      'growth': 'Tillväxt',
-      'clean energy': 'Ren Energi',
-      'grön energi': 'Ren Energi',
-      'emerging': 'Tillväxtmarknader',
-      'sverige': 'Sverige',
-      'nasdaq': 'Teknologi',
-      'europa': 'Europa',
-      'asien': 'Asien',
-      'fastighetsfond': 'Fastighet',
-      'private equity': 'Private Equity'
-    };
-
-    // Process each pattern
-    patterns.forEach(pattern => {
-      let match;
-      while ((match = pattern.exec(text)) !== null) {
-        const [, name1, name2OrIsin, feeOrName] = match;
-        
-        let fundName = name1?.trim() || '';
-        let isin = '';
-        let fee = '';
-        
-        // Handle different match groups based on pattern
-        if (name2OrIsin && name2OrIsin.match(/^[A-Z0-9]{12}$/)) {
-          // ISIN pattern
-          isin = name2OrIsin;
-          fee = feeOrName || '';
-        } else if (name2OrIsin) {
-          // Fund name pattern
-          fundName = name2OrIsin.trim();
+    // Enhanced patterns to specifically target the "Avancerade Portföljtekniker" section
+    const lines = text.split('\n');
+    let inAdvancedSection = false;
+    let inAllocationSection = false;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Detect if we're in the Advanced Portfolio Techniques section
+      if (line.match(/avancerade?\s+portföljtekniker/i) || line.match(/allokering/i)) {
+        inAdvancedSection = true;
+        continue;
+      }
+      
+      // Stop when we reach another major section
+      if (inAdvancedSection && line.match(/^#{1,4}\s+(?!.*allokering)/i) && 
+          !line.match(/allokering/i)) {
+        inAdvancedSection = false;
+        inAllocationSection = false;
+        continue;
+      }
+      
+      // Look for allocation subsection
+      if (inAdvancedSection && (line.match(/allokering/i) || line.includes('**Allokering**'))) {
+        inAllocationSection = true;
+        continue;
+      }
+      
+      // Extract recommendations from allocation section
+      if (inAdvancedSection && (inAllocationSection || line.includes('%'))) {
+        // Pattern: **Sector**: X% - Exempel: Company (SYMBOL), Company (SYMBOL)
+        const sectorMatch = line.match(/\*\*([^*]+)\*\*:\s*(\d+)%\s*-\s*exempel:\s*(.+)/i);
+        if (sectorMatch) {
+          const [, sector, percentage, examples] = sectorMatch;
+          const allocation = parseInt(percentage);
+          
+          // Extract individual stocks/funds from examples
+          const stockMatches = examples.match(/([^,(]+)\s*\(([^)]+)\)/g);
+          if (stockMatches) {
+            stockMatches.forEach(match => {
+              const stockMatch = match.match(/([^(]+)\s*\(([^)]+)\)/);
+              if (stockMatch) {
+                const [, name, symbol] = stockMatch;
+                recommendations.push({
+                  name: name.trim(),
+                  symbol: symbol.trim(),
+                  allocation: Math.round(allocation / stockMatches.length), // Distribute allocation evenly
+                  sector: sector.trim(),
+                  reasoning: `Rekommenderad för ${sector.toLowerCase()} sektor med ${percentage}% allokering`
+                });
+              }
+            });
+          }
         }
         
-        // Skip if it's just a generic term or too short
-        if (fundName.length < 3 || 
-            /^(fond|etf|aktie|procent|%|tillväxt|global|teknologi)$/i.test(fundName)) {
-          continue;
+        // Alternative pattern: - **Sector**: X% - Company (SYMBOL)
+        const altSectorMatch = line.match(/-?\s*\*\*([^*]+)\*\*:\s*(\d+)%\s*-?\s*([^(]+)\s*\(([^)]+)\)/i);
+        if (altSectorMatch) {
+          const [, sector, percentage, name, symbol] = altSectorMatch;
+          recommendations.push({
+            name: name.trim(),
+            symbol: symbol.trim(),
+            allocation: parseInt(percentage),
+            sector: sector.trim(),
+            reasoning: `Rekommenderad för ${sector.toLowerCase()} sektor med ${percentage}% allokering`
+          });
         }
         
-        // Check if it contains a valid provider or sector
-        const lowerName = fundName.toLowerCase();
-        const hasValidProvider = validProviders.some(provider => lowerName.includes(provider));
-        const sector = Object.keys(sectorMapping).find(key => 
-          lowerName.includes(key.toLowerCase())
-        );
-        
-        if (hasValidProvider || sector || isin) {
-          // Extract allocation percentage from surrounding text
-          const allocationMatch = text.match(new RegExp(`(\\d+)%\\s+[^\\n]*${fundName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i'));
-          const allocation = allocationMatch ? parseInt(allocationMatch[1]) : undefined;
+        // Pattern for ETFs and funds: Company/Fund (SYMBOL) or Company ETF
+        const etfMatch = line.match(/([A-ZÅÄÖ][a-zåäöA-ZÅÄÖ\s&.-]+?)\s*(?:ETF|fond)?\s*\(([A-Z0-9]{2,5})\)/i);
+        if (etfMatch && line.includes('%')) {
+          const [, name, symbol] = etfMatch;
+          const percentMatch = line.match(/(\d+)%/);
+          const allocation = percentMatch ? parseInt(percentMatch[1]) : undefined;
           
           recommendations.push({
-            name: fundName,
-            symbol: isin || fundName.substring(0, 4).toUpperCase(),
+            name: name.trim(),
+            symbol: symbol.trim(),
             allocation: allocation,
-            sector: sector ? sectorMapping[sector] : 'Fond/ETF',
-            reasoning: `Rekommenderad för din riskprofil och investeringsstil`,
-            isin: isin || undefined,
-            fee: fee || undefined
+            sector: 'ETF/Fond',
+            reasoning: `Rekommenderad med ${allocation || 'specificerad'}% allokering`
           });
         }
       }
-    });
-
+    }
+    
+    // Fallback: Look for any percentage-based recommendations throughout the text
+    if (recommendations.length === 0) {
+      const percentageLines = text.split('\n').filter(line => 
+        line.includes('%') && (line.includes('(') || line.includes('Exempel'))
+      );
+      
+      percentageLines.forEach(line => {
+        const matches = line.match(/(\d+)%[^-]*-[^:]*:\s*([^(]+)\s*\(([^)]+)\)/g);
+        if (matches) {
+          matches.forEach(match => {
+            const parts = match.match(/(\d+)%[^-]*-[^:]*:\s*([^(]+)\s*\(([^)]+)\)/);
+            if (parts) {
+              const [, percentage, name, symbol] = parts;
+              recommendations.push({
+                name: name.trim(),
+                symbol: symbol.trim(),
+                allocation: parseInt(percentage),
+                sector: 'Allmän',
+                reasoning: `AI-rekommenderad med ${percentage}% allokering`
+              });
+            }
+          });
+        }
+      });
+    }
+    
     // Remove duplicates and clean up
     const uniqueRecommendations = recommendations.filter((rec, index, arr) => 
-      arr.findIndex(r => r.name.toLowerCase() === rec.name.toLowerCase()) === index
+      arr.findIndex(r => r.symbol.toLowerCase() === rec.symbol.toLowerCase()) === index
     );
-
-    return uniqueRecommendations.slice(0, 6); // Limit to 6 recommendations
+    
+    console.log('Extracted recommendations:', uniqueRecommendations);
+    
+    return uniqueRecommendations.slice(0, 8); // Limit to 8 recommendations
   };
 
   const formatAIResponseWithSummary = (response: string, recommendations: RecommendedStock[]) => {
