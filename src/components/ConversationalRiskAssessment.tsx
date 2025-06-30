@@ -1,14 +1,11 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Brain, Plus, Trash2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Brain, Plus, Trash2, ArrowRight, ArrowLeft, MessageSquare } from 'lucide-react';
 
 interface Holding {
   id: string;
@@ -39,6 +36,7 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
   const [currentStep, setCurrentStep] = useState(0);
   const [conversationData, setConversationData] = useState<ConversationData>({});
   const [currentHoldings, setCurrentHoldings] = useState<Holding[]>([]);
+  const [isAddingHoldings, setIsAddingHoldings] = useState(false);
 
   const addHolding = () => {
     const newHolding: Holding = {
@@ -66,8 +64,8 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
   const questions = [
     {
       id: 'beginner',
-      question: 'Är du ny inom investeringar?',
-      type: 'radio',
+      question: 'Hej! Låt oss börja enkelt - är du ny inom investeringar?',
+      type: 'chat',
       options: [
         { value: 'true', label: 'Ja, jag är relativt ny' },
         { value: 'false', label: 'Nej, jag har erfarenhet' }
@@ -76,8 +74,8 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
     },
     {
       id: 'goal',
-      question: 'Vad är ditt huvudsakliga investeringsmål?',
-      type: 'radio',
+      question: 'Perfekt! Vad är ditt huvudsakliga mål med investeringarna?',
+      type: 'chat',
       options: [
         { value: 'retirement', label: 'Pensionssparande' },
         { value: 'wealth_building', label: 'Förmögenhetsuppbyggnad' },
@@ -90,30 +88,30 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
     },
     {
       id: 'timeHorizon',
-      question: 'Hur lång är din investeringshorisont?',
-      type: 'radio',
+      question: 'Intressant! Hur lång tid tänker du investera pengarna?',
+      type: 'chat',
       options: [
-        { value: 'short', label: 'Kort (1-3 år)' },
-        { value: 'medium', label: 'Medellång (3-7 år)' },
-        { value: 'long', label: 'Lång (7+ år)' }
+        { value: 'short', label: 'Kort sikt (1-3 år)' },
+        { value: 'medium', label: 'Medellång sikt (3-7 år)' },
+        { value: 'long', label: 'Lång sikt (7+ år)' }
       ],
       key: 'timeHorizon'
     },
     {
       id: 'risk',
-      question: 'Hur ser du på risk i dina investeringar?',
-      type: 'radio',
+      question: 'Bra att veta! Hur känner du inför risk i dina investeringar?',
+      type: 'chat',
       options: [
         { value: 'conservative', label: 'Konservativ - Vill undvika förluster' },
-        { value: 'balanced', label: 'Balanserad - Vill ha bra avkastning med måttlig risk' },
+        { value: 'balanced', label: 'Balanserad - Okej med måttlig risk för bättre avkastning' },
         { value: 'aggressive', label: 'Aggressiv - Vill maximera avkastning trots högre risk' }
       ],
       key: 'riskTolerance'
     },
     {
       id: 'monthlyAmount',
-      question: 'Hur mycket planerar du att investera per månad?',
-      type: 'radio',
+      question: 'Ungefär hur mycket tänker du investera per månad?',
+      type: 'chat',
       options: [
         { value: '1000-3000', label: '1 000 - 3 000 kr' },
         { value: '3000-5000', label: '3 000 - 5 000 kr' },
@@ -124,8 +122,8 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
     },
     {
       id: 'hasPortfolio',
-      question: 'Har du en befintlig portfölj du vill optimera?',
-      type: 'radio',
+      question: 'Har du redan några investeringar som du vill optimera?',
+      type: 'chat',
       options: [
         { value: 'true', label: 'Ja, jag har redan investeringar' },
         { value: 'false', label: 'Nej, jag börjar från början' }
@@ -134,7 +132,7 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
     },
     {
       id: 'currentHoldings',
-      question: 'Berätta om dina nuvarande innehav',
+      question: 'Utmärkt! Kan du berätta vilka investeringar du har idag?',
       type: 'holdings',
       key: 'currentHoldings',
       showIf: () => conversationData.hasCurrentPortfolio === true
@@ -142,7 +140,7 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
     {
       id: 'age',
       question: 'Vilken åldersgrupp tillhör du?',
-      type: 'radio',
+      type: 'chat',
       options: [
         { value: '18-25', label: '18-25 år' },
         { value: '26-35', label: '26-35 år' },
@@ -155,7 +153,7 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
     {
       id: 'experience',
       question: 'Hur skulle du beskriva din investeringserfarenhet?',
-      type: 'radio',
+      type: 'chat',
       options: [
         { value: 'beginner', label: 'Nybörjare' },
         { value: 'intermediate', label: 'Medel' },
@@ -165,8 +163,8 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
     },
     {
       id: 'sectors',
-      question: 'Vilka sektorer intresserar dig mest? (välj flera)',
-      type: 'checkbox',
+      question: 'Slutligen - vilka branscher intresserar dig mest? (Du kan välja flera)',
+      type: 'multiple',
       options: [
         { value: 'technology', label: 'Teknologi' },
         { value: 'healthcare', label: 'Hälsovård' },
@@ -227,7 +225,7 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
 
   const canProceed = () => {
     if (currentQuestion.type === 'holdings') {
-      return currentHoldings.some(h => h.name.trim() && h.quantity > 0 && h.purchasePrice > 0);
+      return currentHoldings.length === 0 || currentHoldings.some(h => h.name.trim() && h.quantity > 0 && h.purchasePrice > 0);
     }
     return conversationData[currentQuestion.key as keyof ConversationData] !== undefined;
   };
@@ -249,7 +247,7 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Brain className="w-5 h-5 text-blue-600" />
-            Portfolio Rådgivning
+            AI Portfolio Rådgivning
           </CardTitle>
           <Badge variant="outline">
             {currentStep + 1} av {questions.length}
@@ -263,142 +261,159 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Chat-style question display */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">{currentQuestion.question}</h3>
-          
-          {currentQuestion.type === 'radio' && (
-            <RadioGroup
-              value={String(conversationData[currentQuestion.key as keyof ConversationData])}
-              onValueChange={handleAnswer}
-            >
-              {currentQuestion.options?.map((option) => (
-                <div key={option.value} className="flex items-center space-x-2">
-                  <RadioGroupItem value={option.value} id={option.value} />
-                  <Label htmlFor={option.value} className="cursor-pointer">
-                    {option.label}
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-          )}
-
-          {currentQuestion.type === 'checkbox' && (
-            <div className="space-y-3">
-              {currentQuestion.options?.map((option) => (
-                <div key={option.value} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={option.value}
-                    checked={(conversationData.sectors || []).includes(option.value)}
-                    onCheckedChange={(checked) => {
-                      const currentSectors = conversationData.sectors || [];
-                      const newSectors = checked
-                        ? [...currentSectors, option.value]
-                        : currentSectors.filter(s => s !== option.value);
-                      handleAnswer(newSectors);
-                    }}
-                  />
-                  <Label htmlFor={option.value} className="cursor-pointer">
-                    {option.label}
-                  </Label>
-                </div>
-              ))}
+          <div className="flex gap-3">
+            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+              <MessageSquare className="w-4 h-4 text-blue-600" />
             </div>
-          )}
-
-          {currentQuestion.type === 'holdings' && (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">
-                Lägg till dina nuvarande investeringar med antal aktier och inköpspris för en bättre analys.
-              </p>
-              
-              <div className="space-y-3">
-                {currentHoldings.map((holding, index) => (
-                  <div key={holding.id} className="p-4 border rounded-lg space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium">Innehav {index + 1}</h4>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeHolding(holding.id)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <Label htmlFor={`name-${holding.id}`}>Företag/Fond namn</Label>
-                        <Input
-                          id={`name-${holding.id}`}
-                          placeholder="t.ex. Volvo, SEB, Avanza Global"
-                          value={holding.name}
-                          onChange={(e) => updateHolding(holding.id, 'name', e.target.value)}
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor={`symbol-${holding.id}`}>Symbol (valfritt)</Label>
-                        <Input
-                          id={`symbol-${holding.id}`}
-                          placeholder="t.ex. VOLV-B, SEB-A"
-                          value={holding.symbol || ''}
-                          onChange={(e) => updateHolding(holding.id, 'symbol', e.target.value)}
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor={`quantity-${holding.id}`}>Antal aktier/andelar</Label>
-                        <Input
-                          id={`quantity-${holding.id}`}
-                          type="number"
-                          placeholder="100"
-                          min="0"
-                          step="1"
-                          value={holding.quantity || ''}
-                          onChange={(e) => updateHolding(holding.id, 'quantity', parseInt(e.target.value) || 0)}
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor={`price-${holding.id}`}>Inköpspris per aktie (SEK)</Label>
-                        <Input
-                          id={`price-${holding.id}`}
-                          type="number"
-                          placeholder="150.50"
-                          min="0"
-                          step="0.01"
-                          value={holding.purchasePrice || ''}
-                          onChange={(e) => updateHolding(holding.id, 'purchasePrice', parseFloat(e.target.value) || 0)}
-                        />
-                      </div>
-                    </div>
-                    
-                    {holding.name && holding.quantity > 0 && holding.purchasePrice > 0 && (
-                      <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                        Totalt värde vid köp: {(holding.quantity * holding.purchasePrice).toLocaleString('sv-SE')} SEK
-                      </div>
-                    )}
-                  </div>
+            <div className="bg-blue-50 p-4 rounded-2xl rounded-tl-none flex-1">
+              <p className="text-gray-800 leading-relaxed">{currentQuestion.question}</p>
+            </div>
+          </div>
+          
+          {/* Answer options */}
+          <div className="space-y-3 ml-11">
+            {currentQuestion.type === 'chat' && (
+              <div className="space-y-2">
+                {currentQuestion.options?.map((option) => (
+                  <Button
+                    key={option.value}
+                    variant={
+                      String(conversationData[currentQuestion.key as keyof ConversationData]) === option.value 
+                        ? "default" 
+                        : "outline"
+                    }
+                    className="w-full justify-start text-left h-auto p-3"
+                    onClick={() => handleAnswer(option.value)}
+                  >
+                    {option.label}
+                  </Button>
                 ))}
               </div>
-              
-              <Button
-                variant="outline"
-                onClick={addHolding}
-                className="w-full"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Lägg till innehav
-              </Button>
-              
-              {currentHoldings.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <p>Inga innehav tillagda än. Klicka på "Lägg till innehav" för att börja.</p>
+            )}
+
+            {currentQuestion.type === 'multiple' && (
+              <div className="space-y-2">
+                {currentQuestion.options?.map((option) => (
+                  <Button
+                    key={option.value}
+                    variant={
+                      (conversationData.sectors || []).includes(option.value)
+                        ? "default" 
+                        : "outline"
+                    }
+                    className="w-full justify-start text-left h-auto p-3"
+                    onClick={() => {
+                      const currentSectors = conversationData.sectors || [];
+                      const newSectors = currentSectors.includes(option.value)
+                        ? currentSectors.filter(s => s !== option.value)
+                        : [...currentSectors, option.value];
+                      handleAnswer(newSectors);
+                    }}
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
+            )}
+
+            {currentQuestion.type === 'holdings' && (
+              <div className="space-y-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-3">
+                    Lägg till dina nuvarande investeringar med antal och inköpspris för bättre analys.
+                  </p>
+                  
+                  <div className="space-y-3">
+                    {currentHoldings.map((holding, index) => (
+                      <div key={holding.id} className="p-3 border rounded-lg bg-white space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium text-sm">Innehav {index + 1}</h4>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeHolding(holding.id)}
+                            className="text-red-600 hover:text-red-800 h-6 w-6 p-0"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div>
+                            <Label htmlFor={`name-${holding.id}`} className="text-xs">Företag/Fond</Label>
+                            <Input
+                              id={`name-${holding.id}`}
+                              placeholder="t.ex. Volvo, SEB"
+                              value={holding.name}
+                              onChange={(e) => updateHolding(holding.id, 'name', e.target.value)}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor={`symbol-${holding.id}`} className="text-xs">Symbol (valfritt)</Label>
+                            <Input
+                              id={`symbol-${holding.id}`}
+                              placeholder="VOLV-B"
+                              value={holding.symbol || ''}
+                              onChange={(e) => updateHolding(holding.id, 'symbol', e.target.value)}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor={`quantity-${holding.id}`} className="text-xs">Antal aktier</Label>
+                            <Input
+                              id={`quantity-${holding.id}`}
+                              type="number"
+                              placeholder="100"
+                              min="0"
+                              step="1"
+                              value={holding.quantity || ''}
+                              onChange={(e) => updateHolding(holding.id, 'quantity', parseInt(e.target.value) || 0)}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor={`price-${holding.id}`} className="text-xs">Inköpspris (SEK)</Label>
+                            <Input
+                              id={`price-${holding.id}`}
+                              type="number"
+                              placeholder="150.50"
+                              min="0"
+                              step="0.01"
+                              value={holding.purchasePrice || ''}
+                              onChange={(e) => updateHolding(holding.id, 'purchasePrice', parseFloat(e.target.value) || 0)}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={addHolding}
+                    className="w-full mt-3"
+                    size="sm"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Lägg till innehav
+                  </Button>
+                  
+                  {currentHoldings.length === 0 && (
+                    <div className="text-center py-4 text-gray-500">
+                      <p className="text-sm">Inga innehav än. Du kan också hoppa över detta steg.</p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex justify-between pt-6">
@@ -415,7 +430,7 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
             onClick={handleNext}
             disabled={!canProceed()}
           >
-            {isLastStep ? 'Slutför' : 'Nästa'}
+            {isLastStep ? 'Skapa min strategi' : 'Nästa'}
             {!isLastStep && <ArrowRight className="w-4 h-4 ml-2" />}
           </Button>
         </div>
