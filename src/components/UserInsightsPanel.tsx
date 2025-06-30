@@ -239,7 +239,7 @@ const UserInsightsPanel = () => {
   };
 
   return (
-    <Card className="h-fit">
+    <Card className="h-fit w-full">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -260,7 +260,7 @@ const UserInsightsPanel = () => {
             size="sm"
             onClick={handleRefresh}
             disabled={loading}
-            className="text-xs"
+            className="text-xs shrink-0"
             variant="outline"
           >
             {loading ? (
@@ -278,7 +278,7 @@ const UserInsightsPanel = () => {
             <p className="text-sm text-muted-foreground">Uppdaterar AI-insikter...</p>
           </div>
         ) : insights.length > 0 ? (
-          <>
+          <div className="space-y-3">
             {insights.slice(0, 4).map((insight) => (
               <div key={insight.id} className="p-3 bg-muted/50 rounded-lg border">
                 {renderInsightContent(insight)}
@@ -296,14 +296,14 @@ const UserInsightsPanel = () => {
                 </p>
               </div>
             )}
-          </>
+          </div>
         ) : (
           <div className="text-center py-6">
             <Brain className="w-8 h-8 mx-auto mb-3 opacity-50" />
             <p className="text-sm text-muted-foreground mb-3">
               Inga AI-insikter tillgängliga än
             </p>
-            <div className="space-y-3">
+            <div className="w-full max-w-sm mx-auto">
               {isPremiumUser ? (
                 <Button 
                   size="sm" 
@@ -312,7 +312,7 @@ const UserInsightsPanel = () => {
                   className="w-full"
                 >
                   <Brain className="w-3 h-3 mr-2" />
-                  {user ? 'Generera personliga insikter' : 'Ladda allmänna insikter'}
+                  Generera insikter
                 </Button>
               ) : (
                 <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
