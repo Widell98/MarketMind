@@ -473,33 +473,27 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                 <div className="space-y-4">
                   <div className="relative h-48">
                     <ResponsiveContainer width="100%" height="100%">
-                      <RechartsPieChart
-                        data={exposureData.sectorData}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={70}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
+                      <RechartsPieChart data={exposureData.sectorData}>
+                        <Cell />
                         {exposureData.sectorData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={sectorColors[index % sectorColors.length]} />
                         ))}
+                        <ChartTooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-white dark:bg-gray-800 p-3 border rounded-lg shadow-lg">
+                                  <p className="font-medium text-foreground">{data.name}</p>
+                                  <p className="text-sm text-muted-foreground">{data.percentage}% av portföljen</p>
+                                  <p className="text-sm text-muted-foreground">{formatCurrency(data.value)}</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
                       </RechartsPieChart>
-                      <ChartTooltip
-                        content={({ active, payload }) => {
-                          if (active && payload && payload.length) {
-                            const data = payload[0].payload;
-                            return (
-                              <div className="bg-white dark:bg-gray-800 p-3 border rounded-lg shadow-lg">
-                                <p className="font-medium text-foreground">{data.name}</p>
-                                <p className="text-sm text-muted-foreground">{data.percentage}% av portföljen</p>
-                                <p className="text-sm text-muted-foreground">{formatCurrency(data.value)}</p>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
                     </ResponsiveContainer>
                   </div>
                   <div className="space-y-2">
