@@ -25,7 +25,8 @@ import {
   User,
   Globe,
   Building2,
-  X
+  X,
+  ShoppingCart
 } from 'lucide-react';
 import { 
   Table,
@@ -63,6 +64,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import AddHoldingDialog from './AddHoldingDialog';
 
 interface PortfolioOverviewProps {
   portfolio: any;
@@ -75,13 +77,15 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   onQuickChat, 
   onActionClick 
 }) => {
-  const { holdings, actualHoldings, recommendations, loading, deleteHolding, refetch } = useUserHoldings();
+  const { holdings, actualHoldings, recommendations, loading, deleteHolding, addHolding, refetch } = useUserHoldings();
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isResetting, setIsResetting] = useState(false);
   const [expandedStocks, setExpandedStocks] = useState<Set<number>>(new Set());
   const [isDeletingRecommendations, setIsDeletingRecommendations] = useState(false);
+  const [addHoldingDialogOpen, setAddHoldingDialogOpen] = useState(false);
+  const [selectedRecommendation, setSelectedRecommendation] = useState<any>(null);
 
   // Get AI recommendations from portfolio data
   const aiRecommendations = portfolio?.recommended_stocks || [];
@@ -377,6 +381,23 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       });
     } finally {
       setIsResetting(false);
+    }
+  };
+
+  const handleAddFromRecommendation = (recommendation: any) => {
+    setSelectedRecommendation(recommendation);
+    setAddHoldingDialogOpen(true);
+  };
+
+  const handleAddHolding = async (holdingData: any) => {
+    const success = await addHolding(holdingData);
+    if (success) {
+      toast({
+        title: "Innehav tillagt",
+        description: `${holdingData.name} har lagts till i dina innehav.`,
+      });
+      // Refresh the data to show the new holding
+      refetch();
     }
   };
 
@@ -772,6 +793,15 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => handleAddFromRecommendation(recommendation)}
+                            className="flex items-center gap-1 text-green-600 hover:text-green-800 hover:bg-green-50"
+                          >
+                            <ShoppingCart className="w-4 h-4" />
+                            <span className="hidden sm:inline">Köp</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleStockChat(recommendation.name, recommendation.symbol)}
                             className="flex items-center gap-1 text-purple-600 hover:text-purple-800 hover:bg-purple-50"
                           >
@@ -962,6 +992,17 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
           </div>
         </CardContent>
       </Card>
+
+      {/* Add Holding Dialog */}
+      <AddHoldingDialog
+        isOpen={addHoldingDialogOpen}
+        onClose={() => {
+          setAddHoldingDialogOpen(false);
+          setSelectedRecommendation(null);
+        }}
+        onAdd={handleAddHolding}
+        recommendation={selectedRecommendation}
+      />
     </div>
   );
 };
