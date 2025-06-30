@@ -6,6 +6,8 @@ import { Brain, ArrowLeft, CheckCircle, Sparkles, TrendingUp } from 'lucide-reac
 import { useNavigate } from 'react-router-dom';
 import ConversationalRiskAssessment from './ConversationalRiskAssessment';
 import { useConversationalPortfolio } from '@/hooks/useConversationalPortfolio';
+import { usePortfolio } from '@/hooks/usePortfolio';
+import { useToast } from '@/hooks/use-toast';
 
 interface Holding {
   id: string;
@@ -26,12 +28,19 @@ interface ConversationData {
   age?: string;
   experience?: string;
   sectors?: string[];
+  interests?: string[];
+  companies?: string[];
+  portfolioHelp?: string;
+  portfolioSize?: string;
+  rebalancingFrequency?: string;
 }
 
 const ConversationalPortfolioAdvisor = () => {
   const [currentStep, setCurrentStep] = useState<'intro' | 'conversation' | 'generating' | 'results'>('intro');
   const [portfolioResult, setPortfolioResult] = useState<any>(null);
   const { generatePortfolioFromConversation, loading } = useConversationalPortfolio();
+  const { refetch } = usePortfolio();
+  const { toast } = useToast();
   const navigate = useNavigate();
 
   const handleStartConversation = () => {
@@ -46,6 +55,9 @@ const ConversationalPortfolioAdvisor = () => {
     if (result) {
       setPortfolioResult(result);
       setCurrentStep('results');
+      
+      // Refresh portfolio data to ensure we have the latest data
+      await refetch();
     } else {
       // Error occurred, go back to intro
       setCurrentStep('intro');
@@ -57,9 +69,26 @@ const ConversationalPortfolioAdvisor = () => {
     setPortfolioResult(null);
   };
 
-  const handleImplementStrategy = () => {
-    // Navigate to portfolio implementation page
-    navigate('/portfolio-implementation');
+  const handleImplementStrategy = async () => {
+    try {
+      // Ensure portfolio data is refreshed before navigating
+      await refetch();
+      
+      toast({
+        title: "Navigerar till implementering",
+        description: "Din portföljstrategi är nu redo att implementera",
+      });
+      
+      // Navigate to portfolio implementation page
+      navigate('/portfolio-implementation');
+    } catch (error) {
+      console.error('Error refreshing portfolio data:', error);
+      toast({
+        title: "Ett fel uppstod",
+        description: "Kunde inte ladda portföljdata. Försök igen.",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatAIResponse = (content: string) => {
@@ -238,7 +267,7 @@ const ConversationalPortfolioAdvisor = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-6 rounded-lg border border-blue-200">
-              {formatAIResponse(portfolioResult.aiResponse)}
+              {formatAIResponse && formatAIResponse(portfolioResult.aiResponse)}
             </div>
             
             <div className="flex gap-4">
@@ -249,6 +278,7 @@ const ConversationalPortfolioAdvisor = () => {
               <Button 
                 onClick={handleImplementStrategy}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                disabled={loading}
               >
                 <TrendingUp className="w-4 h-4 mr-2" />
                 Implementera Strategin
