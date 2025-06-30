@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -521,9 +522,9 @@ const ChatPortfolioAdvisor = () => {
       setPortfolioResult(result);
       setIsComplete(true);
       
-      // Save AI-recommended stocks as holdings
-      if (result.recommendedStocks && result.recommendedStocks.length > 0) {
-        await saveRecommendedStocks(result.recommendedStocks);
+      // Save AI-recommended stocks as holdings - get from portfolio.recommended_stocks
+      if (result.portfolio?.recommended_stocks && Array.isArray(result.portfolio.recommended_stocks) && result.portfolio.recommended_stocks.length > 0) {
+        await saveRecommendedStocks(result.portfolio.recommended_stocks);
       }
       
       await refetch();
