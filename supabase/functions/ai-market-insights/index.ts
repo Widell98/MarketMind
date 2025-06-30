@@ -98,7 +98,7 @@ async function generatePersonalizedInsights(userId: string, type: string) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -165,11 +165,11 @@ async function generateGeneralInsights(type: string) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
-            content: `Du är en expert marknadsanalytiker. Skapa aktuella marknadsinsikter baserat på verkliga förhållanden. Formatera som JSON array med objekt som innehåller: id, title, content, confidence_score (0-1), insight_type, key_factors (array).`
+            content: `Du är en expert marknadsanalytiker. Skapa aktuella marknadsinsikter baserat på verkliga förhållanden slutet av 2024/början av 2025. Formatera som JSON array med objekt som innehåller: id, title, content, confidence_score (0-1), insight_type, key_factors (array).`
           },
           {
             role: 'user',
