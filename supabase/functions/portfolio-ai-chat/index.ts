@@ -1,387 +1,138 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+);
 
-  console.log('=== PORTFOLIO AI CHAT FUNCTION STARTED ===');
-  console.log('Request method:', req.method);
-  console.log('Request URL:', req.url);
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const requestBody = await req.json();
-    console.log('Request body received:', JSON.stringify(requestBody, null, 2));
-    
-    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe } = requestBody;
+    const auth = req.headers.get('Authorization')?.replace('Bearer ', '');
+    const { data: { user } } = await supabase.auth.getUser(auth);
+    if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
 
-    console.log('Portfolio AI Chat function called with:', { 
-      message: message?.substring(0, 50) + '...', 
-      userId, 
-      portfolioId, 
-      sessionId,
-      analysisType 
-    });
+    const { type = 'market_sentiment', personalized = false } = await req.json();
+    const insights = personalized
+      ? await generatePersonalizedInsights(user.id, type)
+      : await generateGeneralInsights(type);
 
-    if (!message || !userId) {
-      console.error('Missing required fields:', { message: !!message, userId: !!userId });
-      throw new Error('Message and userId are required');
-    }
+    await saveInsights(insights, user.id, personalized);
+    return jsonResponse(insights);
+  } catch (err) {
+    console.error('AI error:', err);
+    return jsonResponse({ error: err.message }, 500);
+  }
+});
 
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      console.error('OpenAI API key not found in environment');
-      throw new Error('OpenAI API key not configured');
-    }
+function jsonResponse(data: any, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
 
-    console.log('OpenAI API key found, length:', openAIApiKey.length);
+async function generatePersonalizedInsights(userId: string, type: string) {
+  if (!openAIApiKey) return await getLiveFallbackInsights(type);
 
-    // Initialize Supabase client
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+  try {
+    const [{ data: profile }, { data: holdings }] = await Promise.all([
+      supabase.from('user_risk_profiles').select('*').eq('user_id', userId).single(),
+      supabase.from('user_holdings').select('*').eq('user_id', userId),
+    ]);
 
-    console.log('Supabase client initialized');
+    const context = {
+      riskTolerance: profile?.risk_tolerance || 'medium',
+      investmentHorizon: profile?.investment_horizon || 'long',
+      sectors: profile?.sector_interests || [],
+      currentHoldings: holdings?.map(h => ({ symbol: h.symbol, sector: h.sector, value: h.current_value })) || []
+    };
 
-    // Fetch enhanced context data
-    const { data: riskProfile } = await supabase
-      .from('user_risk_profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const prompt = `Generera personaliserade ${type} insikter för användare:
+Risk: ${context.riskTolerance}, Horisont: ${context.investmentHorizon},
+Sektorer: ${JSON.stringify(context.sectors)}, Innehav: ${JSON.stringify(context.currentHoldings)}.`;
 
-    const { data: portfolio } = await supabase
-      .from('user_portfolios')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('is_active', true)
-      .maybeSingle();
+    return await requestOpenAI('gpt-4o', personalizedSystemPrompt(), prompt, 2000) || await getLiveFallbackInsights(type);
+  } catch (err) {
+    console.error('Personalized error:', err);
+    return await getLiveFallbackInsights(type);
+  }
+}
 
-    const { data: holdings } = await supabase
-      .from('user_holdings')
-      .select('*')
-      .eq('user_id', userId);
+async function generateGeneralInsights(type: string) {
+  if (!openAIApiKey) return await getLiveFallbackInsights(type);
 
-    const { data: insights } = await supabase
-      .from('portfolio_insights')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(5);
+  const prompt = `Generera ${type} insikter för svenska och globala marknader. Fokus:
+AI/tech, centralbanker, geopolitik, sektorrotation, makrotrender, ESG.`;
 
-    const { data: recommendations } = await supabase
-      .from('portfolio_recommendations')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(3);
+  return await requestOpenAI('gpt-4o', generalSystemPrompt(), prompt, 2500) || await getLiveFallbackInsights(type);
+}
 
-    // Check if this is a stock exchange request
-    const isExchangeRequest = /(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|amerikanska|svenska|europeiska|asiatiska|aktier|innehav)/i.test(message);
-
-    // Build enhanced context for AI with emphasis on actionable portfolio changes
-    let contextInfo = `Du är en professionell AI-assistent för investeringar. Ge ALLTID korta, välstrukturerade svar på svenska.
-
-VIKTIGA RIKTLINJER:
-- Håll svar under 250 ord
-- Använd markdown-formatering med ### för rubriker
-- Använd - för punktlistor 
-- Fokusera på de 2-3 viktigaste punkterna
-- Ge konkreta siffror och procenttal
-- Undvik långa tekniska förklaringar
-- Var direkt och actionable
-- Ge ALDRIG investeringsråd - du ger endast utbildning och information
-- Påminn användare att själva ta beslut och konsultera licentierade rådgivare`;
-
-    if (isExchangeRequest) {
-      contextInfo += `\n\nPORTFÖLJÄNDRINGAR:
-- Om användaren vill ändra innehav, ge 2-3 konkreta förslag
-- Förklara varför varje förslag passar deras profil
-- Inkludera tickers/symboler för aktier
-- Förklara kort risker och möjligheter
-- Ge procentuell vikt i portföljen
-- Påminn om att detta är utbildning, inte råd`;
-    }
-
-    if (riskProfile) {
-      contextInfo += `\n\nANVÄNDARE:
-- Ålder: ${riskProfile.age || 'Ej angivet'}
-- Risktolerans: ${riskProfile.risk_tolerance || 'Ej angivet'} 
-- Tidshorisont: ${riskProfile.investment_horizon || 'Ej angivet'}
-- Månatlig budget: ${riskProfile.monthly_investment_amount ? riskProfile.monthly_investment_amount.toLocaleString() + ' SEK' : 'Ej angivet'}`;
-    }
-
-    if (portfolio) {
-      const totalValue = portfolio.total_value || 0;
-      const expectedReturn = portfolio.expected_return || 0;
-      const allocation = portfolio.asset_allocation || {};
-      
-      contextInfo += `\n\nPORTFÖLJ:
-- Värde: ${totalValue.toLocaleString()} SEK
-- Förväntad avkastning: ${expectedReturn}%
-- Aktier: ${allocation.stocks || 0}%
-- Obligationer: ${allocation.bonds || 0}%
-- Alternativ: ${allocation.alternatives || 0}%`;
-    }
-
-    if (holdings && holdings.length > 0) {
-      const totalHoldingsValue = holdings.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
-      contextInfo += `\n\nNUVARANDE INNEHAV:`;
-      holdings.forEach(holding => {
-        const value = holding.current_value || 0;
-        const percentage = totalHoldingsValue > 0 ? ((value / totalHoldingsValue) * 100).toFixed(1) : '0';
-        const market = holding.market || 'Okänd marknad';
-        contextInfo += `\n- ${holding.name} (${holding.symbol || 'N/A'}): ${percentage}%, ${market}, ${holding.sector || 'Okänd sektor'}`;
-      });
-    }
-
-    // Enhanced system prompt for portfolio change discussions
-    let systemPrompt = contextInfo;
-    
-    if (isExchangeRequest) {
-      systemPrompt += `\n\nVID PORTFÖLJÄNDRINGSFÖRFRÅGNINGAR:
-- Analysera nuvarande innehav först
-- Föreslå 2-3 konkreta alternativ med tickers
-- Förklara kort varför varje förslag passar
-- Inkludera fördelning i procent
-- Nämn market cap och sektor
-- Påminn om risker och att detta är utbildning
-- Format: "Förslag: [Aktie] ([Ticker]) - [Kort beskrivning]"`;
-    }
-    
-    systemPrompt += `\n\nSVARSFORMAT:
-- Max 200-250 ord
-- Använd ### för huvudrubriker
-- Använd - för listor
-- Ge konkreta information med siffror
-- Fokusera på det viktigaste
-- Vid aktieförslag: inkludera ticker och kortfattad analys
-- Påminn att detta är utbildning, inte investeringsråd`;
-
-    if (analysisType === 'insight_generation') {
-      systemPrompt += `\n\nGENERERA KORT INSIKT för ${insightType}:
-- Identifiera 1-2 huvudpunkter
-- Ge konkret information
-- Inkludera sannolikheter`;
-    }
-
-    // Prepare messages for OpenAI
-    const messages = [
-      {
-        role: 'system',
-        content: systemPrompt
-      },
-      ...chatHistory.slice(-4).map((msg: any) => ({
-        role: msg.role,
-        content: msg.content
-      })),
-      {
-        role: 'user',
-        content: message
-      }
-    ];
-
-    console.log('=== CALLING OPENAI API ===');
-    console.log('Model: gpt-4o');
-    console.log('Messages count:', messages.length);
-    console.log('User message:', message);
-    console.log('Is exchange request:', isExchangeRequest);
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+async function requestOpenAI(model: string, systemPrompt: string, userPrompt: string, max_tokens: number) {
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: messages,
-        max_tokens: isExchangeRequest ? 400 : 300,
-        temperature: 0.6,
-      }),
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.7,
+        max_tokens
+      })
     });
-
-    console.log('OpenAI response status:', response.status);
-    console.log('OpenAI response ok:', response.ok);
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('OpenAI API error details:', errorData);
-      
-      // Handle specific quota exceeded error
-      if (response.status === 429) {
-        const errorType = errorData.error?.type;
-        
-        if (errorType === 'insufficient_quota') {
-          return new Response(
-            JSON.stringify({ 
-              error: 'quota_exceeded',
-              message: 'Du har nått din dagliga gräns för OpenAI API-användning. Vänligen kontrollera din fakturering eller försök igen senare.',
-              success: false 
-            }),
-            { 
-              status: 429,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            }
-          );
-        } else if (errorType === 'rate_limit_exceeded') {
-          return new Response(
-            JSON.stringify({ 
-              error: 'rate_limit_exceeded',
-              message: 'För många förfrågningar. Vänligen vänta en stund innan du försöker igen.',
-              success: false 
-            }),
-            { 
-              status: 429,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            }
-          );
-        }
-      }
-      
-      throw new Error(`OpenAI API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
-    }
-
-    const data = await response.json();
-    console.log('OpenAI response data keys:', Object.keys(data));
-    console.log('OpenAI choices count:', data.choices?.length);
-    
-    const aiResponse = data.choices[0].message.content;
-    console.log('AI response length:', aiResponse?.length);
-    console.log('AI response preview:', aiResponse?.substring(0, 100));
-
-    // Calculate confidence score based on available data
-    let confidence = 0.5; // Base confidence
-    if (portfolio) confidence += 0.2;
-    if (holdings && holdings.length > 0) confidence += 0.2;
-    if (riskProfile) confidence += 0.1;
-    confidence = Math.min(confidence, 1.0);
-
-    // Generate structured insights for certain analysis types
-    if (analysisType === 'insight_generation' && insightType) {
-      const insightData = {
-        user_id: userId,
-        insight_type: insightType.includes('risk') ? 'risk_warning' : 
-                     insightType.includes('opportunity') ? 'opportunity' :
-                     insightType.includes('rebalancing') ? 'rebalancing' : 'news_impact',
-        title: `AI-Genererad ${insightType}`,
-        description: aiResponse.substring(0, 300) + (aiResponse.length > 300 ? '...' : ''),
-        severity: confidence > 0.8 ? 'high' : confidence > 0.6 ? 'medium' : 'low',
-        related_holdings: holdings?.map(h => h.symbol).slice(0, 5) || [],
-        action_required: insightType.includes('risk') || insightType.includes('rebalancing'),
-        is_read: false
-      };
-
-      const { error: insightError } = await supabase
-        .from('portfolio_insights')
-        .insert(insightData);
-
-      if (insightError) {
-        console.error('Error storing insight:', insightError);
-      }
-    }
-
-    // Store enhanced chat history in database
-    const { error: chatError } = await supabase
-      .from('portfolio_chat_history')
-      .insert([
-        {
-          user_id: userId,
-          portfolio_id: portfolioId,
-          chat_session_id: sessionId,
-          message_type: 'user',
-          message: message,
-          context_data: { 
-            timestamp: new Date().toISOString(),
-            analysisType: analysisType || 'general',
-            isExchangeRequest: isExchangeRequest
-          }
-        },
-        {
-          user_id: userId,
-          portfolio_id: portfolioId,
-          chat_session_id: sessionId,
-          message_type: 'assistant',
-          message: aiResponse,
-          context_data: { 
-            timestamp: new Date().toISOString(),
-            model: 'gpt-4.1-2025-04-14',
-            analysisType: analysisType || 'general',
-            confidence: confidence,
-            isExchangeRequest: isExchangeRequest,
-            suggestedChanges: isExchangeRequest
-          }
-        }
-      ]);
-
-    if (chatError) {
-      console.error('Error storing chat history:', chatError);
-    }
-
-    console.log('=== FUNCTION COMPLETED SUCCESSFULLY ===');
-
-    return new Response(
-      JSON.stringify({ 
-        response: aiResponse,
-        success: true,
-        analysisType: analysisType || 'general',
-        confidence: confidence,
-        isExchangeRequest: isExchangeRequest,
-        relatedData: {
-          portfolioValue: portfolio?.total_value || 0,
-          holdingsCount: holdings?.length || 0,
-          insightsCount: insights?.length || 0,
-          model: 'GPT-4o',
-          canSuggestChanges: isExchangeRequest
-        }
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
-
-  } catch (error) {
-    console.error('=== FUNCTION ERROR ===');
-    console.error('Error details:', error);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-    
-    // Check if it's a quota-related error
-    if (error.message.includes('quota') || error.message.includes('insufficient_quota')) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'quota_exceeded',
-          message: 'Du har nått din dagliga gräns för OpenAI API-användning. Vänligen kontrollera din fakturering eller försök igen senare.',
-          success: false 
-        }),
-        { 
-          status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-    
-    return new Response(
-      JSON.stringify({ 
-        error: error.message || 'An unexpected error occurred',
-        success: false 
-      }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+    const json = await res.json();
+    return JSON.parse(json.choices?.[0]?.message?.content);
+  } catch (err) {
+    console.error('OpenAI call failed:', err);
+    return null;
   }
-});
+}
+
+function generalSystemPrompt() {
+  return `Du är en expert marknadsanalytiker. Skapa JSON array med:
+id, title, content, confidence_score (0–1), insight_type, key_factors (array), impact_timeline (short/medium/long).`;
+}
+
+function personalizedSystemPrompt() {
+  return `Du är en AI-investeringsrådgivare. Skapa JSON array med:
+id, title, content, confidence_score (0–1), insight_type, actionable_steps (array), risk_level (low/medium/high).`;
+}
+
+async function saveInsights(insights: any[], userId: string, isPersonalized: boolean) {
+  try {
+    const mapped = insights.map(insight => ({
+      user_id: isPersonalized ? userId : null,
+      insight_type: insight.insight_type || 'market_analysis',
+      title: insight.title,
+      content: insight.content,
+      confidence_score: insight.confidence_score || 0.8,
+      is_personalized: isPersonalized,
+      expires_at: new Date(Date.now() + 86400000).toISOString(),
+      data_sources: insight.key_factors || insight.actionable_steps || []
+    }));
+    await supabase.from('ai_market_insights').insert(mapped);
+    console.log(`Saved ${mapped.length} insights.`);
+  } catch (err) {
+    console.error('Save failed:', err);
+  }
+}
+
+async function getLiveFallbackInsights(type: string) {
+  const prompt = `Skapa 3 aktuella ${type} insikter relaterade till marknadstrender i början av 2025. Returnera som JSON array med objekt som innehåller: id, title, content, confidence_score (0-1), insight_type, key_factors (array), impact_timeline (short/medium/long).`;
+  return await requestOpenAI('gpt-4o', generalSystemPrompt(), prompt, 1200) || [];
+}
