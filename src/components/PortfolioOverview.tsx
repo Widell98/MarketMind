@@ -271,6 +271,90 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </Card>
       </div>
 
+      {/* User's Current Holdings */}
+      {actualHoldings.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                  <User className="w-5 h-5 text-blue-600" />
+                  Dina Nuvarande Innehav
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                    {actualHoldings.length} innehav
+                  </Badge>
+                </CardTitle>
+                <CardDescription>Aktier och fonder du redan äger</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onQuickChat && onQuickChat("Jämför mina nuvarande innehav med AI-rekommendationerna. Vad borde jag köpa, sälja eller behålla?")}
+                className="flex items-center gap-2"
+              >
+                <BarChart3 className="w-4 h-4" />
+                <span className="hidden sm:inline">Jämför</span>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Innehav</TableHead>
+                    <TableHead>Typ</TableHead>
+                    <TableHead>Antal</TableHead>
+                    <TableHead>Värde</TableHead>
+                    <TableHead className="text-right">Diskutera</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {actualHoldings.map((holding) => (
+                    <TableRow key={holding.id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{holding.name}</div>
+                          {holding.symbol && (
+                            <div className="text-sm text-muted-foreground">{holding.symbol}</div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={getHoldingTypeColor(holding.holding_type)}>
+                          {getHoldingTypeLabel(holding.holding_type)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {holding.quantity && (
+                          <div className="font-medium">{holding.quantity} st</div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">
+                          {formatCurrency(holding.current_value || holding.purchase_price, holding.currency)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleStockChat(holding.name, holding.symbol)}
+                          className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          <span className="hidden sm:inline">Diskutera</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* AI-Recommended Holdings */}
       <Card>
         <CardHeader>
@@ -387,90 +471,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
           )}
         </CardContent>
       </Card>
-
-      {/* User's Current Holdings */}
-      {actualHoldings.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-                  <User className="w-5 h-5 text-blue-600" />
-                  Dina Nuvarande Innehav
-                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                    {actualHoldings.length} innehav
-                  </Badge>
-                </CardTitle>
-                <CardDescription>Aktier och fonder du redan äger</CardDescription>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onQuickChat && onQuickChat("Jämför mina nuvarande innehav med AI-rekommendationerna. Vad borde jag köpa, sälja eller behålla?")}
-                className="flex items-center gap-2"
-              >
-                <BarChart3 className="w-4 h-4" />
-                <span className="hidden sm:inline">Jämför</span>
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Innehav</TableHead>
-                    <TableHead>Typ</TableHead>
-                    <TableHead>Antal</TableHead>
-                    <TableHead>Värde</TableHead>
-                    <TableHead className="text-right">Diskutera</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {actualHoldings.map((holding) => (
-                    <TableRow key={holding.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{holding.name}</div>
-                          {holding.symbol && (
-                            <div className="text-sm text-muted-foreground">{holding.symbol}</div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={getHoldingTypeColor(holding.holding_type)}>
-                          {getHoldingTypeLabel(holding.holding_type)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {holding.quantity && (
-                          <div className="font-medium">{holding.quantity} st</div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">
-                          {formatCurrency(holding.current_value || holding.purchase_price, holding.currency)}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleStockChat(holding.name, holding.symbol)}
-                          className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                          <span className="hidden sm:inline">Diskutera</span>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* AI Insights */}
       <Card>
