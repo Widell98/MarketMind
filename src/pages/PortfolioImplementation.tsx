@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -11,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Brain, MessageSquare, TrendingUp, Target, Settings, BarChart3, Lightbulb, Zap, Activity, PieChart } from 'lucide-react';
+import { Brain, MessageSquare, TrendingUp, Target, BarChart3, Lightbulb, Zap, Activity, PieChart } from 'lucide-react';
 
 const PortfolioImplementation = () => {
   const { activePortfolio, loading } = usePortfolio();
@@ -163,16 +164,6 @@ const PortfolioImplementation = () => {
                       Intelligenta investeringsinsikter för din framgång
                     </p>
                   </div>
-                  <Button
-                    variant="outline"
-                    onClick={handleUpdateProfile}
-                    size="sm"
-                    className="bg-background border shadow-sm transition-all duration-200 hover:shadow-md text-xs sm:text-sm flex-shrink-0"
-                  >
-                    <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-                    <span className="hidden sm:inline">Uppdatera Profil</span>
-                    <span className="sm:hidden">Profil</span>
-                  </Button>
                 </div>
                 
                 <div className="flex flex-wrap gap-1.5 sm:gap-2">
