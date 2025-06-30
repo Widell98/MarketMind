@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -155,14 +154,23 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     const sessionName = stockName;
     const message = `Vad gör ${stockName}${stockSymbol ? ` (${stockSymbol})` : ''} för något? Berätta om företaget, vad de arbetar med, och varför det skulle vara en bra investering.`;
     
-    // Navigate to AI Assistant and create new session
-    navigate('/portfolio-advisor', { 
-      state: { 
-        createNewSession: true,
-        sessionName: sessionName,
-        initialMessage: message
+    // Navigate to portfolio-implementation and activate chat tab
+    navigate('/portfolio-implementation');
+    
+    // Wait for navigation to complete, then activate chat tab and prepare message
+    setTimeout(() => {
+      // Activate the chat tab
+      const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
+      if (chatTab) {
+        chatTab.click();
       }
-    });
+      
+      // Dispatch event to create new session with the message
+      const event = new CustomEvent('createStockChat', {
+        detail: { sessionName, message }
+      });
+      window.dispatchEvent(event);
+    }, 100);
   };
 
   const toggleStockExpansion = (index: number) => {
