@@ -237,30 +237,26 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     setExpandedStocks(newExpanded);
   };
 
-  const handleRebalanceAction = () => {
-    // Activate the chat tab
+  const handleExamplePrompt = (prompt: string) => {
     const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
     if (chatTab) {
       chatTab.click();
     }
     
-    // Send the message to the chat
-    if (onQuickChat) {
-      onQuickChat('Analysera min nuvarande portfölj och föreslå en rebalanseringsstrategi. Visa vilka aktier jag borde köpa mer av, sälja eller behålla för att optimera min riskjusterade avkastning.');
-    }
+    setTimeout(() => {
+      const event = new CustomEvent('sendExamplePrompt', {
+        detail: { message: prompt }
+      });
+      window.dispatchEvent(event);
+    }, 100);
+  };
+
+  const handleRebalanceAction = () => {
+    handleExamplePrompt('Analysera min nuvarande portfölj och föreslå en rebalanseringsstrategi. Visa vilka aktier jag borde köpa mer av, sälja eller behålla för att optimera min riskjusterade avkastning.');
   };
 
   const handleInsightAction = (insight: typeof insights[0]) => {
-    // Activate the chat tab
-    const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
-    if (chatTab) {
-      chatTab.click();
-    }
-    
-    // Send the message to the chat
-    if (onQuickChat) {
-      onQuickChat(insight.chatMessage);
-    }
+    handleExamplePrompt(insight.chatMessage);
   };
 
   const handleResetProfile = async () => {
@@ -785,7 +781,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             <Button
               variant="outline"
               className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
-              onClick={() => onQuickChat && onQuickChat("Analysera alla AI-rekommendationer och förklara varför de passar min portfölj")}
+              onClick={() => handleExamplePrompt("Analysera alla AI-rekommendationer och förklara varför de passar min portfölj")}
             >
               <Brain className="w-4 h-4 text-purple-600" />
               <div>
@@ -797,7 +793,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             <Button
               variant="outline"
               className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
-              onClick={() => onQuickChat && onQuickChat("Vilka aktier borde jag köpa först baserat på AI-rekommendationerna och min budget?")}
+              onClick={() => handleExamplePrompt("Vilka aktier borde jag köpa först baserat på AI-rekommendationerna och min budget?")}
             >
               <TrendingUp className="w-4 h-4 text-green-600" />
               <div>
@@ -809,7 +805,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             <Button
               variant="outline"
               className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
-              onClick={() => onQuickChat && onQuickChat("Jämför AI-rekommendationerna med mina nuvarande innehav. Vad borde jag sälja?")}
+              onClick={() => handleExamplePrompt("Jämför AI-rekommendationerna med mina nuvarande innehav. Vad borde jag sälja?")}
             >
               <BarChart3 className="w-4 h-4 text-blue-600" />
               <div>
@@ -821,7 +817,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             <Button
               variant="outline"
               className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
-              onClick={() => onQuickChat && onQuickChat("Berätta vilka risker som finns i de AI-rekommenderade aktierna")}
+              onClick={() => handleExamplePrompt("Berätta vilka risker som finns i de AI-rekommenderade aktierna")}
             >
               <Shield className="w-4 h-4 text-red-600" />
               <div>
@@ -833,7 +829,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             <Button
               variant="outline"
               className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
-              onClick={() => onQuickChat && onQuickChat("Föreslå alternativa aktier som inte finns i AI-rekommendationerna men som skulle passa min profil")}
+              onClick={() => handleExamplePrompt("Föreslå alternativa aktier som inte finns i AI-rekommendationerna men som skulle passa min profil")}
             >
               <Plus className="w-4 h-4 text-orange-600" />
               <div>
