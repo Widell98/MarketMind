@@ -118,20 +118,25 @@ const PortfolioOverview = ({ portfolio, onQuickChat, onActionClick }: PortfolioO
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.entries(assetAllocation).map(([key, value]) => (
-              <div key={key} className="text-center">
-                <div className="text-2xl font-bold text-primary mb-1">
-                  {value}%
+            {Object.entries(assetAllocation).map(([key, value]) => {
+              const numericValue = typeof value === 'number' ? value : 0;
+              const displayValue = typeof value === 'number' ? value.toString() : '0';
+              
+              return (
+                <div key={key} className="text-center">
+                  <div className="text-2xl font-bold text-primary mb-1">
+                    {displayValue}%
+                  </div>
+                  <div className="text-sm text-muted-foreground capitalize">
+                    {key === 'stocks' ? 'Aktier' : 
+                     key === 'bonds' ? 'Obligationer' :
+                     key === 'real_estate' ? 'Fastigheter' :
+                     key === 'cash' ? 'Kontanter' : key}
+                  </div>
+                  <Progress value={numericValue} className="mt-2 h-2" />
                 </div>
-                <div className="text-sm text-muted-foreground capitalize">
-                  {key === 'stocks' ? 'Aktier' : 
-                   key === 'bonds' ? 'Obligationer' :
-                   key === 'real_estate' ? 'Fastigheter' :
-                   key === 'cash' ? 'Kontanter' : key}
-                </div>
-                <Progress value={value} className="mt-2 h-2" />
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
@@ -161,7 +166,7 @@ const PortfolioOverview = ({ portfolio, onQuickChat, onActionClick }: PortfolioO
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-sm">{stock.name}</h3>
+                          <h3 className="font-semibold text-sm">{stock.name || 'Okänd aktie'}</h3>
                           {stock.symbol && (
                             <Badge variant="outline" className="text-xs">
                               {stock.symbol}
@@ -169,7 +174,7 @@ const PortfolioOverview = ({ portfolio, onQuickChat, onActionClick }: PortfolioO
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {stock.sector} • Allokering: {stock.allocation}%
+                          {stock.sector || 'Okänd sektor'} • Allokering: {stock.allocation || 0}%
                         </p>
                       </div>
                     </div>
@@ -200,13 +205,13 @@ const PortfolioOverview = ({ portfolio, onQuickChat, onActionClick }: PortfolioO
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                         <div>
                           <p className="font-medium text-muted-foreground mb-1">Sektor</p>
-                          <p className="font-semibold">{stock.sector}</p>
+                          <p className="font-semibold">{stock.sector || 'Okänd sektor'}</p>
                         </div>
                         <div>
                           <p className="font-medium text-muted-foreground mb-1">Rekommenderad Allokering</p>
                           <div className="flex items-center gap-2">
-                            <p className="font-semibold">{stock.allocation}%</p>
-                            <Progress value={stock.allocation} className="flex-1 h-2" />
+                            <p className="font-semibold">{stock.allocation || 0}%</p>
+                            <Progress value={stock.allocation || 0} className="flex-1 h-2" />
                           </div>
                         </div>
                         <div>
@@ -223,7 +228,7 @@ const PortfolioOverview = ({ portfolio, onQuickChat, onActionClick }: PortfolioO
                             variant="outline"
                             size="sm"
                             className="h-7 px-3 text-xs"
-                            onClick={() => onQuickChat(`Berätta mer om ${stock.name} och varför den passar min riskprofil`)}
+                            onClick={() => onQuickChat(`Berätta mer om ${stock.name || 'denna aktie'} och varför den passar min riskprofil`)}
                           >
                             <Info className="w-3 h-3 mr-1" />
                             Varför rekommenderad?
@@ -232,7 +237,7 @@ const PortfolioOverview = ({ portfolio, onQuickChat, onActionClick }: PortfolioO
                             variant="outline"
                             size="sm"
                             className="h-7 px-3 text-xs"
-                            onClick={() => onQuickChat(`Jämför ${stock.name} med andra alternativ i ${stock.sector} sektorn`)}
+                            onClick={() => onQuickChat(`Jämför ${stock.name || 'denna aktie'} med andra alternativ i ${stock.sector || 'samma'} sektorn`)}
                           >
                             <BarChart3 className="w-3 h-3 mr-1" />
                             Jämför alternativ
@@ -241,7 +246,7 @@ const PortfolioOverview = ({ portfolio, onQuickChat, onActionClick }: PortfolioO
                             variant="outline"
                             size="sm"
                             className="h-7 px-3 text-xs"
-                            onClick={() => onQuickChat(`Vad är riskerna med att investera i ${stock.name}?`)}
+                            onClick={() => onQuickChat(`Vad är riskerna med att investera i ${stock.name || 'denna aktie'}?`)}
                           >
                             <Target className="w-3 h-3 mr-1" />
                             Analysera risker
