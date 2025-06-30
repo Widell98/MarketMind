@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +21,8 @@ import {
   Info, 
   RotateCcw, 
   Tag, 
-  TrendingUp 
+  TrendingUp,
+  Zap
 } from 'lucide-react';
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
@@ -39,6 +41,8 @@ interface RecommendedStock {
   allocation?: number;
   sector: string;
   reasoning?: string;
+  isin?: string;
+  fee?: string;
 }
 
 const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> = ({
@@ -132,107 +136,128 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
     if (!text) return [];
     
     const recommendations: RecommendedStock[] = [];
-    const lines = text.split('\n');
     
-    // Known sectors to validate stock recommendations
-    const validSectors = [
-      'teknologi', 'tech', 'finans', 'bank', 'hälsovård', 'medicin', 'pharma',
-      'industri', 'energi', 'konsument', 'retail', 'telekom', 'fastighet',
-      'material', 'verkstad', 'transport', 'media', 'spel', 'gaming',
-      'bioteknik', 'cleantech', 'försvar', 'flyg', 'bil', 'automotive'
+    // Enhanced patterns to match funds and stocks with ISIN codes and fees
+    const patterns = [
+      // Pattern for funds with ISIN and fees: "Name (t.ex. Fund Name, ISIN: CODE, avgift: X%)"
+      /(?:t\.ex\.\s+)([^,\(]+?)(?:\s*,\s*ISIN:\s*([A-Z0-9]{12})\s*,\s*avgift:\s*([\d,\.]+%?))?/gi,
+      // Pattern for ETFs: "Name ETF (t.ex. Fund Name)"
+      /([^(]+?)\s*ETF\s*\(t\.ex\.\s+([^)]+)\)/gi,
+      // Pattern for simple fund names: "Name fond/ETF"
+      /([A-ZÅÄÖ][a-zåäöA-ZÅÄÖ\s&.-]+?)\s+(fond|ETF|fonder)/gi,
+      // Pattern for percentage allocations: "X% Name"
+      /(\d+)%\s+([A-ZÅÄÖ][a-zåäöA-ZÅÄÖ\s&.-]+?)(?:\s*\(|$)/gi
     ];
-    
-    // Patterns to exclude (educational content, not actual stocks)
-    const excludePatterns = [
-      /utgångspunkt|ekonomisk|anpassning/i,
-      /spridning|minskar|risken/i,
-      /skatteoptimering|skatt/i,
-      /analys|optimeringsmöjligheter/i,
-      /allokering|diversifiering/i,
-      /strategi|rekommendation/i,
-      /månadsvis|plan|uppföljning/i,
-      /riskjusterad|avkastning/i,
-      /korrelation|volatilitet/i,
-      /rebalansering|frekvens/i
+
+    // Known Swedish and international fund/stock providers
+    const validProviders = [
+      'länsförsäkringar', 'amf', 'avanza', 'nordnet', 'spiltan', 'handelsbanken',
+      'seb', 'swedbank', 'ishares', 'vanguard', 'xact', 'spdr', 'lyxor',
+      'invesco', 'blackrock', 'fidelity', 'jpmorgan'
     ];
-    
-    // Look for actual stock recommendations
-    lines.forEach((line, index) => {
-      const cleanLine = line.trim();
-      if (!cleanLine) return;
-      
-      // Skip if it matches exclude patterns
-      if (excludePatterns.some(pattern => pattern.test(cleanLine))) {
-        return;
-      }
-      
-      // Look for stock patterns: Company Name (TICKER) or just Company Name
-      const stockPattern = /([A-ZÅÄÖ][a-zåäöA-ZÅÄÖ\s&.-]+?)(?:\s*\(([A-Z]{2,5})\))?(?:\s*[-–]\s*(.+))?/;
-      const match = cleanLine.match(stockPattern);
-      
-      if (match) {
-        const [, name, ticker, description] = match;
+
+    // Sector mapping for better categorization
+    const sectorMapping: { [key: string]: string } = {
+      'global': 'Global Fond',
+      'teknologi': 'Teknologi',
+      'tech': 'Teknologi', 
+      'innovation': 'Innovation',
+      'småbolag': 'Småbolag',
+      'small cap': 'Småbolag',
+      'tillväxt': 'Tillväxt',
+      'growth': 'Tillväxt',
+      'clean energy': 'Ren Energi',
+      'grön energi': 'Ren Energi',
+      'emerging': 'Tillväxtmarknader',
+      'sverige': 'Sverige',
+      'nasdaq': 'Teknologi',
+      'europa': 'Europa',
+      'asien': 'Asien',
+      'fastighetsfond': 'Fastighet',
+      'private equity': 'Private Equity'
+    };
+
+    // Process each pattern
+    patterns.forEach(pattern => {
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        const [, name1, name2OrIsin, feeOrName] = match;
         
-        // Validate it's likely a stock by checking:
-        // 1. Has a ticker symbol, OR
-        // 2. Contains sector keywords, OR  
-        // 3. Follows stock recommendation format
-        const hasTicker = ticker && ticker.length >= 2 && ticker.length <= 5;
-        const hasSectorKeyword = validSectors.some(sector => 
-          cleanLine.toLowerCase().includes(sector)
+        let fundName = name1?.trim() || '';
+        let isin = '';
+        let fee = '';
+        
+        // Handle different match groups based on pattern
+        if (name2OrIsin && name2OrIsin.match(/^[A-Z0-9]{12}$/)) {
+          // ISIN pattern
+          isin = name2OrIsin;
+          fee = feeOrName || '';
+        } else if (name2OrIsin) {
+          // Fund name pattern
+          fundName = name2OrIsin.trim();
+        }
+        
+        // Skip if it's just a generic term or too short
+        if (fundName.length < 3 || 
+            /^(fond|etf|aktie|procent|%|tillväxt|global|teknologi)$/i.test(fundName)) {
+          continue;
+        }
+        
+        // Check if it contains a valid provider or sector
+        const lowerName = fundName.toLowerCase();
+        const hasValidProvider = validProviders.some(provider => lowerName.includes(provider));
+        const sector = Object.keys(sectorMapping).find(key => 
+          lowerName.includes(key.toLowerCase())
         );
-        const hasStockIndicators = /aktie|företag|bolag|corporation|inc|ab|ltd/i.test(cleanLine);
         
-        if (hasTicker || hasSectorKeyword || hasStockIndicators) {
-          // Extract sector from surrounding context
-          let sector = 'Okänd sektor';
-          const contextLines = lines.slice(Math.max(0, index - 2), index + 3);
-          const contextText = contextLines.join(' ').toLowerCase();
-          
-          for (const sectorKeyword of validSectors) {
-            if (contextText.includes(sectorKeyword)) {
-              sector = sectorKeyword.charAt(0).toUpperCase() + sectorKeyword.slice(1);
-              break;
-            }
-          }
-          
-          // Extract allocation percentage if present
-          const allocationMatch = cleanLine.match(/(\d+)%/);
+        if (hasValidProvider || sector || isin) {
+          // Extract allocation percentage from surrounding text
+          const allocationMatch = text.match(new RegExp(`(\\d+)%\\s+[^\\n]*${fundName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i'));
           const allocation = allocationMatch ? parseInt(allocationMatch[1]) : undefined;
           
           recommendations.push({
-            name: name.trim(),
-            symbol: ticker || `${name.substring(0, 4).toUpperCase()}`,
-            allocation: allocation || Math.floor(Math.random() * 15) + 5, // 5-20% default
-            sector: sector,
-            reasoning: description || `Rekommenderad för din riskprofil och investeringsstil`
-          });
-        }
-      }
-      
-      // Also look for explicit fund recommendations (Swedish market)
-      const fundPattern = /(.*?)(fond|index|etf)/i;
-      const fundMatch = cleanLine.match(fundPattern);
-      if (fundMatch && !excludePatterns.some(pattern => pattern.test(cleanLine))) {
-        const fundName = fundMatch[0].trim();
-        if (fundName.length > 3 && fundName.length < 50) {
-          recommendations.push({
             name: fundName,
-            symbol: 'FUND',
-            allocation: Math.floor(Math.random() * 20) + 10,
-            sector: 'Fond/ETF',
-            reasoning: 'Rekommenderad fond för diversifiering'
+            symbol: isin || fundName.substring(0, 4).toUpperCase(),
+            allocation: allocation,
+            sector: sector ? sectorMapping[sector] : 'Fond/ETF',
+            reasoning: `Rekommenderad för din riskprofil och investeringsstil`,
+            isin: isin || undefined,
+            fee: fee || undefined
           });
         }
       }
     });
-    
-    // Remove duplicates and limit to reasonable number
+
+    // Remove duplicates and clean up
     const uniqueRecommendations = recommendations.filter((rec, index, arr) => 
-      arr.findIndex(r => r.name === rec.name || r.symbol === rec.symbol) === index
+      arr.findIndex(r => r.name.toLowerCase() === rec.name.toLowerCase()) === index
     );
-    
-    return uniqueRecommendations.slice(0, 8); // Max 8 recommendations
+
+    return uniqueRecommendations.slice(0, 6); // Limit to 6 recommendations
+  };
+
+  const formatAIResponseWithSummary = (response: string, recommendations: RecommendedStock[]) => {
+    if (!recommendations.length) return response;
+
+    const summary = `
+
+## 📊 Sammanfattning av AI-rekommendationer
+
+Baserat på din riskprofil rekommenderar AI:n följande innehav:
+
+${recommendations.map((rec, index) => `
+**${index + 1}. ${rec.name}**
+- Sektor: ${rec.sector}
+- Fördelning: ${rec.allocation || 'Ej specificerad'}%
+${rec.isin ? `- ISIN: ${rec.isin}` : ''}
+${rec.fee ? `- Avgift: ${rec.fee}` : ''}
+`).join('')}
+
+---
+
+${response}`;
+
+    return summary;
   };
 
   const handleComplete = async () => {
@@ -271,64 +296,71 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         return;
       }
 
-      // Extract key characteristics from AI response
-      const portfolioCharacteristics = {
-        investment_focus: 'value investing',
-        preferred_sectors: ['tech', 'healthcare'],
-        geographic_focus: 'global',
-        risk_level: 'moderate',
-        investment_style: 'growth',
-      };
+      // Get risk profile ID
+      const { data: riskProfileData } = await supabase
+        .from('user_risk_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
 
-      // Save portfolio characteristics to database
+      if (!riskProfileData) {
+        throw new Error('Could not retrieve risk profile ID');
+      }
+
+      // Save portfolio to database with required fields
       const { error: portfolioError } = await supabase
         .from('user_portfolios')
         .upsert([
           {
             user_id: user.id,
+            risk_profile_id: riskProfileData.id,
             portfolio_name: 'AI-Generated Portfolio',
-            description: 'A portfolio generated by AI based on your risk profile',
-            investment_focus: portfolioCharacteristics.investment_focus,
-            preferred_sectors: portfolioCharacteristics.preferred_sectors,
-            geographic_focus: portfolioCharacteristics.geographic_focus,
-            risk_level: portfolioCharacteristics.risk_level,
-            investment_style: portfolioCharacteristics.investment_style,
+            asset_allocation: {
+              stocks: 70,
+              bonds: 20,
+              alternatives: 10
+            },
+            recommended_stocks: aiRecommendations,
             is_active: true,
           }
         ], { onConflict: 'user_id' });
 
       if (portfolioError) {
-        console.error('Error saving portfolio characteristics:', portfolioError);
+        console.error('Error saving portfolio:', portfolioError);
         toast({
           title: "Fel",
-          description: "Kunde inte spara portföljegenskaper. Försök igen senare.",
+          description: "Kunde inte spara portföljen. Försök igen senare.",
           variant: "destructive",
         });
         return;
       }
 
-      // Save AI recommendations to database
-      const { error: recommendationsError } = await supabase
-        .from('portfolio_recommendations')
-        .upsert(
-          aiRecommendations.map(stock => ({
-            user_id: user.id,
-            stock_name: stock.name,
-            stock_symbol: stock.symbol,
-            allocation_percentage: stock.allocation,
-            sector: stock.sector,
-            reasoning: stock.reasoning,
-          })), { onConflict: 'user_id, stock_symbol' }
-        );
+      // Get portfolio ID for recommendations
+      const { data: portfolioData } = await supabase
+        .from('user_portfolios')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .single();
 
-      if (recommendationsError) {
-        console.error('Error saving AI recommendations:', recommendationsError);
-        toast({
-          title: "Fel",
-          description: "Kunde inte spara AI-rekommendationer. Försök igen senare.",
-          variant: "destructive",
-        });
-        return;
+      if (portfolioData && aiRecommendations.length > 0) {
+        // Save recommendations to portfolio_recommendations table
+        const { error: recommendationsError } = await supabase
+          .from('portfolio_recommendations')
+          .upsert(
+            aiRecommendations.map(stock => ({
+              user_id: user.id,
+              portfolio_id: portfolioData.id,
+              recommendation_type: 'stock_recommendation',
+              title: stock.name,
+              description: `${stock.allocation || 0}% allocation in ${stock.sector}`,
+              ai_reasoning: stock.reasoning,
+            })), { onConflict: 'user_id, portfolio_id, title' }
+          );
+
+        if (recommendationsError) {
+          console.error('Error saving recommendations:', recommendationsError);
+        }
       }
 
       toast({
@@ -349,16 +381,46 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
     }
   };
 
-  const handleResetProfile = () => {
-    setAiResponse('');
-    setAiRecommendations([]);
-    setRiskProfile({
-      age: null,
-      risk_tolerance: '',
-      investment_horizon: '',
-      monthly_investment_amount: null,
-    });
-    onReset();
+  const handleResetProfile = async () => {
+    if (!user) return;
+
+    try {
+      // Clear existing AI recommendations
+      await supabase
+        .from('portfolio_recommendations')
+        .delete()
+        .eq('user_id', user.id);
+
+      // Clear existing portfolio
+      await supabase
+        .from('user_portfolios')
+        .delete()
+        .eq('user_id', user.id);
+
+      // Reset local state
+      setAiResponse('');
+      setAiRecommendations([]);
+      setRiskProfile({
+        age: null,
+        risk_tolerance: '',
+        investment_horizon: '',
+        monthly_investment_amount: null,
+      });
+
+      toast({
+        title: "Profil rensad",
+        description: "All tidigare data har rensats. Du kan nu skapa en ny profil.",
+      });
+
+      onReset();
+    } catch (error) {
+      console.error('Error resetting profile:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte rensa profilen helt. Försök igen.",
+        variant: "destructive",
+      });
+    }
   };
 
   const progress = () => {
@@ -477,7 +539,11 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
           </div>
           {aiResponse && (
             <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-800">
-              <p className="text-sm text-gray-800 dark:text-gray-200">{aiResponse}</p>
+              <div className="prose prose-sm max-w-none text-gray-800 dark:text-gray-200">
+                <div className="whitespace-pre-wrap text-sm">
+                  {formatAIResponseWithSummary(aiResponse, aiRecommendations)}
+                </div>
+              </div>
             </div>
           )}
         </CardContent>
@@ -490,9 +556,9 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Brain className="w-5 h-5 text-purple-600" />
-                  AI-Rekommenderade Aktier
+                  AI-Rekommenderade Innehav
                   <Badge variant="secondary" className="bg-purple-100 text-purple-700 border-purple-200">
-                    {aiRecommendations.length} aktier
+                    {aiRecommendations.length} innehav
                   </Badge>
                 </CardTitle>
                 <Button
@@ -507,12 +573,12 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
                 </Button>
               </div>
               <CardDescription className="text-sm">
-                Personliga aktierekommendationer baserat på din riskprofil
+                Personliga fond- och aktierekommendationer baserat på din riskprofil
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-3">
-                {aiRecommendations.map((stock, index) => (
+                {aiRecommendations.map((rec, index) => (
                   <div
                     key={index}
                     className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-purple-200 dark:border-purple-800 shadow-sm hover:shadow-md transition-all duration-200"
@@ -524,29 +590,37 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
-                            {stock.name}
+                            {rec.name}
                           </h4>
-                          {stock.symbol && stock.symbol !== 'FUND' && (
-                            <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600 font-mono">
-                              {stock.symbol}
+                          {rec.isin && (
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-600 font-mono">
+                              {rec.isin}
                             </Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                           <Tag className="w-3 h-3" />
-                          <span>{stock.sector}</span>
-                          {stock.allocation && (
+                          <span>{rec.sector}</span>
+                          {rec.allocation && (
                             <>
                               <span>•</span>
                               <span className="font-medium text-purple-600">
-                                {stock.allocation}% av portföljen
+                                {rec.allocation}% av portföljen
+                              </span>
+                            </>
+                          )}
+                          {rec.fee && (
+                            <>
+                              <span>•</span>
+                              <span className="text-xs text-gray-500">
+                                Avgift: {rec.fee}
                               </span>
                             </>
                           )}
                         </div>
-                        {stock.reasoning && (
+                        {rec.reasoning && (
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
-                            {stock.reasoning}
+                            {rec.reasoning}
                           </p>
                         )}
                       </div>
@@ -572,7 +646,7 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
                       Om AI-rekommendationerna
                     </p>
                     <p className="text-purple-600 dark:text-purple-300 text-xs leading-relaxed">
-                      Dessa aktier är utvalda baserat på din riskprofil, investeringsstil och tidshorizont. 
+                      Dessa fonder och aktier är utvalda baserat på din riskprofil, investeringsstil och tidshorizont. 
                       Kom ihåg att göra egen research innan du investerar.
                     </p>
                   </div>
