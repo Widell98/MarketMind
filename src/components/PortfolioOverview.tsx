@@ -429,6 +429,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       // Refresh the data to show the new holding and update recommendations
       refetch();
     }
+    return success;
   };
 
   const handleUpdateHolding = async (holdingData: any) => {
