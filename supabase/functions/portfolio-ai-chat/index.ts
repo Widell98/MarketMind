@@ -136,11 +136,14 @@ let contextInfo = `Du är en erfaren och professionell AI-investeringsrådgivare
     }
 
     if (riskProfile) {
+      const preferredStockCount = riskProfile.preferred_stock_count || 8;
       contextInfo += `\n\nANVÄNDARE:
 - Ålder: ${riskProfile.age || 'Ej angivet'}
 - Risktolerans: ${riskProfile.risk_tolerance || 'Ej angivet'} 
 - Tidshorisont: ${riskProfile.investment_horizon || 'Ej angivet'}
-- Månatlig budget: ${riskProfile.monthly_investment_amount ? riskProfile.monthly_investment_amount.toLocaleString() + ' SEK' : 'Ej angivet'}`;
+- Månatlig budget: ${riskProfile.monthly_investment_amount ? riskProfile.monthly_investment_amount.toLocaleString() + ' SEK' : 'Ej angivet'}
+- Önskat antal innehav: ${preferredStockCount} aktier/innehav
+- Investeringserfarenh: ${riskProfile.investment_experience || 'Ej angivet'}`;
     }
 
     if (portfolio) {
@@ -177,12 +180,14 @@ let contextInfo = `Du är en erfaren och professionell AI-investeringsrådgivare
     let systemPrompt = contextInfo;
     
     if (isExchangeRequest) {
+      const preferredCount = riskProfile?.preferred_stock_count || 8;
       systemPrompt += `\n\nVID PORTFÖLJÄNDRINGSFÖRFRÅGNINGAR:
 - Analysera nuvarande innehav först
 - Föreslå ENDAST aktier som INTE finns i nuvarande innehav
+- Respektera användarens önskade antal innehav: ${preferredCount} aktier/innehav
 - Föreslå 2-3 konkreta alternativ med tickers
 - Förklara kort varför varje förslag passar
-- Inkludera fördelning i procent
+- Inkludera fördelning i procent (totalt ska inte överstiga 100%)
 - Nämn market cap och sektor
 - Påminn om risker och att detta är utbildning
 - Format: "Förslag: [Aktie] ([Ticker]) - [Kort beskrivning]"`;
@@ -200,7 +205,8 @@ SVARSFORMAT:
 - Vid aktieförslag: ange aktiens namn, ticker och en kortfattad motivering
 - Undvik spekulationer och överdrivet tekniskt språk
 - Påminn tydligt om att detta är utbildning, inte personlig investeringsråd
-- VIKTIGT: Föreslå ALDRIG aktier som användaren redan äger`;
+- VIKTIGT: Föreslå ALDRIG aktier som användaren redan äger
+- VIKTIGT: Respektera användarens önskade antal innehav i portföljen`;
 
     if (analysisType === 'insight_generation') {
       systemPrompt += `\n\nGENERERA KORT INSIKT för ${insightType}:
@@ -231,6 +237,7 @@ SVARSFORMAT:
     console.log('User message:', message);
     console.log('Is exchange request:', isExchangeRequest);
     console.log('Existing holdings to avoid:', Array.from(existingSymbols));
+    console.log('Preferred stock count:', riskProfile?.preferred_stock_count || 8);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -355,7 +362,8 @@ SVARSFORMAT:
             confidence: confidence,
             isExchangeRequest: isExchangeRequest,
             suggestedChanges: isExchangeRequest,
-            existingHoldings: Array.from(existingSymbols)
+            existingHoldings: Array.from(existingSymbols),
+            preferredStockCount: riskProfile?.preferred_stock_count || 8
           }
         }
       ]);
@@ -379,7 +387,8 @@ SVARSFORMAT:
           insightsCount: insights?.length || 0,
           model: 'gpt-4o',
           canSuggestChanges: isExchangeRequest,
-          existingHoldings: Array.from(existingSymbols)
+          existingHoldings: Array.from(existingSymbols),
+          preferredStockCount: riskProfile?.preferred_stock_count || 8
         }
       }),
       { 

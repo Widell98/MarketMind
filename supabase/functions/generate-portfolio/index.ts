@@ -205,7 +205,10 @@ function generatePortfolioRecommendations(riskProfile: any) {
   const riskTolerance = riskProfile.risk_tolerance || 'moderate';
   const investmentHorizon = riskProfile.investment_horizon || 'medium';
   const monthlyAmount = riskProfile.monthly_investment_amount || 5000;
-  const preferredStockCount = riskProfile.preferred_stock_count || 8;
+  
+  // Use the user's preferred stock count from the risk profile
+  const preferredStockCount = parseInt(riskProfile.preferred_stock_count) || 8;
+  console.log('[GENERATE-PORTFOLIO] Using preferred stock count:', preferredStockCount);
   
   // Calculate target portfolio value (12 months of investment)
   const targetValue = monthlyAmount * 12;
@@ -270,7 +273,9 @@ function generatePortfolioRecommendations(riskProfile: any) {
       { name: 'SKF', symbol: 'SKF-B.ST', sector: 'Industrial', reasoning: 'Ledande inom lager och tätningar' },
       { name: 'Telia', symbol: 'TELIA.ST', sector: 'Telecommunications', reasoning: 'Stabil telekomoperatör med utdelning' },
       { name: 'Essity', symbol: 'ESSITY-B.ST', sector: 'Consumer Goods', reasoning: 'Hygien- och hälsoprodukter' },
-      { name: 'Getinge', symbol: 'GETI-B.ST', sector: 'Healthcare', reasoning: 'Medicinsk teknik och utrustning' }
+      { name: 'Getinge', symbol: 'GETI-B.ST', sector: 'Healthcare', reasoning: 'Medicinsk teknik och utrustning' },
+      { name: 'SEB', symbol: 'SEB-A.ST', sector: 'Financial Services', reasoning: 'Stark nordisk bank med företagsfokus' },
+      { name: 'ICA Gruppen', symbol: 'ICA.ST', sector: 'Consumer Goods', reasoning: 'Stabil dagligvaruhandel i Norden' }
     ],
     moderate: [
       { name: 'Investor AB', symbol: 'INVE-B.ST', sector: 'Financial Services', reasoning: 'Stabil investmentbolag med diversifierad portfölj' },
@@ -282,13 +287,13 @@ function generatePortfolioRecommendations(riskProfile: any) {
       { name: 'SEB', symbol: 'SEB-A.ST', sector: 'Financial Services', reasoning: 'Stark nordisk bank med företagsfokus' },
       { name: 'Hexagon', symbol: 'HEXA-B.ST', sector: 'Technology', reasoning: 'Mätteknologi och digitala lösningar' },
       { name: 'Assa Abloy', symbol: 'ASSA-B.ST', sector: 'Industrial', reasoning: 'Ledande inom lås- och säkerhetslösningar' },
-      { name: 'ICA Gruppen', symbol: 'ICA.ST', sector: 'Consumer Goods', reasoning: 'Stabil dagligvaruhandel i Norden' }
+      { name: 'ICA Gruppen', symbol: 'ICA.ST', sector: 'Consumer Goods', reasoning: 'Stabil dagligvaruhandel i Norden' },
+      { name: 'Evolution Gaming', symbol: 'EVO.ST', sector: 'Technology', reasoning: 'Ledande inom online-gaming med stark tillväxt' },
+      { name: 'Nibe', symbol: 'NIBE-B.ST', sector: 'Clean Energy', reasoning: 'Värmepumpar och hållbar energi' }
     ],
     aggressive: [
       { name: 'Spotify', symbol: 'SPOT', sector: 'Technology', reasoning: 'Hög tillväxtpotential inom streaming' },
       { name: 'Evolution Gaming', symbol: 'EVO.ST', sector: 'Technology', reasoning: 'Ledande inom online-gaming med stark tillväxt' },
-      { name: 'Klarna Bank', symbol: 'Private', sector: 'Financial Technology', reasoning: 'Fintech-innovation med global expansion' },
-      { name: 'Northvolt', symbol: 'Private', sector: 'Clean Energy', reasoning: 'Batteriteknologi för den gröna omställningen' },
       { name: 'Embracer Group', symbol: 'EMBRAC-B.ST', sector: 'Technology', reasoning: 'Spelstudio med global expansion' },
       { name: 'Sinch', symbol: 'SINCH.ST', sector: 'Technology', reasoning: 'Molnkommunikation och messaging' },
       { name: 'Paradox Interactive', symbol: 'PDX.ST', sector: 'Technology', reasoning: 'Strategispel och digital distribution' },
@@ -296,25 +301,31 @@ function generatePortfolioRecommendations(riskProfile: any) {
       { name: 'Nibe', symbol: 'NIBE-B.ST', sector: 'Clean Energy', reasoning: 'Värmepumpar och hållbar energi' },
       { name: 'BioGaia', symbol: 'BIOG-B.ST', sector: 'Healthcare', reasoning: 'Probiotika och hälsoprodukter' },
       { name: 'Addtech', symbol: 'ADDT-B.ST', sector: 'Technology', reasoning: 'Industriell teknik och komponenter' },
-      { name: 'Epiroc', symbol: 'EPI-A.ST', sector: 'Industrial', reasoning: 'Gruv- och infrastrukturutrustning' }
+      { name: 'Epiroc', symbol: 'EPI-A.ST', sector: 'Industrial', reasoning: 'Gruv- och infrastrukturutrustning' },
+      { name: 'Atlas Copco', symbol: 'ATCO-A.ST', sector: 'Industrial', reasoning: 'Stark industriell tillväxt och innovation' },
+      { name: 'Hexagon', symbol: 'HEXA-B.ST', sector: 'Technology', reasoning: 'Mätteknologi och digitala lösningar' }
     ]
   };
   
   const stockPool = allStocks[riskTolerance as keyof typeof allStocks] || allStocks.moderate;
   
-  // Select stocks based on preferred count
+  // Select stocks based on preferred count - ensure we have enough stocks
   let selectedStocks = [];
-  const baseAllocation = Math.floor(allocation.stocks / preferredStockCount);
+  const stocksToAllocate = Math.min(preferredStockCount, stockPool.length);
+  const baseAllocation = Math.floor(allocation.stocks / stocksToAllocate);
+  const remainder = allocation.stocks % stocksToAllocate;
+  
+  console.log('[GENERATE-PORTFOLIO] Allocating stocks:', stocksToAllocate, 'Base allocation per stock:', baseAllocation);
   
   // Shuffle and select the desired number of stocks
   const shuffledStocks = [...stockPool].sort(() => Math.random() - 0.5);
   
-  for (let i = 0; i < Math.min(preferredStockCount, shuffledStocks.length); i++) {
+  for (let i = 0; i < stocksToAllocate; i++) {
     const stock = shuffledStocks[i];
     let stockAllocation = baseAllocation;
     
     // Distribute remaining allocation to first few stocks
-    if (i < allocation.stocks % preferredStockCount) {
+    if (i < remainder) {
       stockAllocation += 1;
     }
     
@@ -323,6 +334,8 @@ function generatePortfolioRecommendations(riskProfile: any) {
       allocation: stockAllocation
     });
   }
+  
+  console.log('[GENERATE-PORTFOLIO] Selected stocks:', selectedStocks.length, 'Total allocation:', selectedStocks.reduce((sum, s) => sum + s.allocation, 0));
   
   return {
     allocation,
@@ -336,19 +349,25 @@ function generatePortfolioRecommendations(riskProfile: any) {
 function generateInitialRecommendations(riskProfile: any, portfolioData: any) {
   const recommendations = [];
   
-  // Stock count specific recommendation
-  const stockCount = riskProfile.preferred_stock_count || 8;
+  // Stock count specific recommendation based on user's choice
+  const stockCount = parseInt(riskProfile.preferred_stock_count) || 8;
   if (stockCount <= 5) {
     recommendations.push({
       title: 'Koncentrerad Portföljstrategi',
-      description: `Du har valt en koncentrerad portfölj med ${stockCount} aktier. Detta ger högre potential men också högre risk.`,
-      reasoning: 'Färre aktier kräver noggrann analys men kan ge bättre avkastning vid rätt val'
+      description: `Du har valt en koncentrerad portfölj med ${stockCount} innehav. Detta ger högre potential men också högre risk då varje investering får större påverkan på totalavkastningen.`,
+      reasoning: 'Färre innehav kräver noggrann analys men kan ge bättre avkastning vid rätt val. Viktigt att följa utvecklingen noga.'
     });
   } else if (stockCount >= 20) {
     recommendations.push({
       title: 'Bred Diversifiering',
-      description: `Din portfölj med ${stockCount} aktier ger bra riskspridning och stabilitet.`,
-      reasoning: 'Många aktier minskar portföljens volatilitet och ger mer stabil utveckling'
+      description: `Din portfölj med ${stockCount} innehav ger bra riskspridning och stabilitet med mindre volatilitet.`,
+      reasoning: 'Många innehav minskar portföljens volatilitet och ger mer stabil utveckling som närmar sig marknadsavkastning.'
+    });
+  } else {
+    recommendations.push({
+      title: 'Balanserad Portföljstorlek',
+      description: `Med ${stockCount} innehav får du en bra balans mellan fokus och diversifiering.`,
+      reasoning: 'Lagom antal innehav som ger möjlighet att följa utvecklingen utan att bli för komplicerat.'
     });
   }
   
