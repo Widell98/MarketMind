@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -170,11 +169,6 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
       icon: <Target className="w-5 h-5" />
     },
     {
-      title: 'Portföljpreferenser',
-      description: 'Hur vill du bygga din portfölj?',
-      icon: <Shield className="w-5 h-5" />
-    },
-    {
       title: 'Riskprofil & Psykologi',
       description: 'Hur hanterar du risk?',
       icon: <Brain className="w-5 h-5" />
@@ -230,15 +224,13 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
         if (formData.investment_purpose.length === 0) errors.investment_purpose = 'Välj minst ett sparmål';
         if (!formData.investment_horizon) errors.investment_horizon = 'Tidshorisont krävs';
         if (!formData.monthly_investment_amount) errors.monthly_investment_amount = 'Månadssparande krävs';
+        if (!formData.preferred_stock_count) errors.preferred_stock_count = 'Antal aktier krävs';
         break;
       case 2:
-        if (!formData.preferred_stock_count) errors.preferred_stock_count = 'Antal innehav krävs';
-        break;
-      case 3:
         if (!formData.risk_tolerance) errors.risk_tolerance = 'Risktolerans krävs';
         if (!formData.market_crash_reaction) errors.market_crash_reaction = 'Kraschreaktion krävs';
         break;
-      case 4:
+      case 3:
         if (!formData.activity_preference) errors.activity_preference = 'Aktivitetspreferens krävs';
         if (!formData.investment_experience) errors.investment_experience = 'Investeringserfarenh krävs';
         break;
@@ -506,66 +498,49 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
               </Select>
             </div>
 
-            <div>
-              <Label htmlFor="monthly_investment">Månadssparande (SEK) *</Label>
-              <Input
-                id="monthly_investment"
-                type="number"
-                placeholder="Hur mycket kan du spara per månad?"
-                value={formData.monthly_investment_amount}
-                onChange={(e) => handleInputChange('monthly_investment_amount', e.target.value)}
-              />
-              {validationErrors.monthly_investment_amount && (
-                <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  {validationErrors.monthly_investment_amount}
-                </div>
-              )}
-            </div>
-          </div>
-        );
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="monthly_investment">Månadssparande (SEK) *</Label>
+                <Input
+                  id="monthly_investment"
+                  type="number"
+                  placeholder="Hur mycket kan du spara per månad?"
+                  value={formData.monthly_investment_amount}
+                  onChange={(e) => handleInputChange('monthly_investment_amount', e.target.value)}
+                />
+                {validationErrors.monthly_investment_amount && (
+                  <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
+                    <AlertCircle className="w-4 h-4" />
+                    {validationErrors.monthly_investment_amount}
+                  </div>
+                )}
+              </div>
 
-      case 2:
-        return (
-          <div className="space-y-6">
-            <div>
-              <Label>Hur många innehav vill du ha i din portfölj? *</Label>
-              <p className="text-sm text-gray-600 mb-4">
-                Färre innehav ger mer koncentrerad risk men potentiellt högre avkastning. 
-                Fler innehav ger större riskspridning men kan vara svårare att följa.
-              </p>
-              <Select value={formData.preferred_stock_count} onValueChange={(value) => handleInputChange('preferred_stock_count', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Välj antal innehav" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="3">3-5 innehav (Koncentrerad portfölj)</SelectItem>
-                  <SelectItem value="8">6-10 innehav (Balanserad portfölj)</SelectItem>
-                  <SelectItem value="15">11-20 innehav (Diversifierad portfölj)</SelectItem>
-                  <SelectItem value="25">20+ innehav (Bred diversifiering)</SelectItem>
-                </SelectContent>
-              </Select>
-              {validationErrors.preferred_stock_count && (
-                <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  {validationErrors.preferred_stock_count}
-                </div>
-              )}
-              
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">Vägledning för val av antal innehav:</h4>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  <li><strong>3-5 innehav:</strong> För erfarna investerare som vill fokusera på sina bästa investeringsidéer</li>
-                  <li><strong>6-10 innehav:</strong> Bra balans mellan fokus och riskspridning för de flesta investerare</li>
-                  <li><strong>11-20 innehav:</strong> Ger god diversifiering utan att bli för komplicerat att följa</li>
-                  <li><strong>20+ innehav:</strong> Maximal riskspridning, närmar sig indexfondsstrategi</li>
-                </ul>
+              <div>
+                <Label htmlFor="preferred_stock_count">Antal aktier i portfölj *</Label>
+                <Select value={formData.preferred_stock_count} onValueChange={(value) => handleInputChange('preferred_stock_count', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Välj antal aktier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="3">3-5 aktier (koncentrerad)</SelectItem>
+                    <SelectItem value="8">6-10 aktier (balanserad)</SelectItem>
+                    <SelectItem value="15">11-20 aktier (diversifierad)</SelectItem>
+                    <SelectItem value="25">20+ aktier (bred spridning)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {validationErrors.preferred_stock_count && (
+                  <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
+                    <AlertCircle className="w-4 h-4" />
+                    {validationErrors.preferred_stock_count}
+                  </div>
+                )}
               </div>
             </div>
           </div>
         );
 
-      case 3:
+      case 2:
         return (
           <div className="space-y-6">
             <div>
@@ -656,7 +631,7 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
           </div>
         );
 
-      case 4:
+      case 3:
         return (
           <div className="space-y-6">
             <div>
@@ -733,7 +708,7 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
           </div>
         );
 
-      case 5:
+      case 4:
         return (
           <div className="space-y-6">
             <div>
@@ -817,7 +792,7 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
           />
         </div>
 
-        <div className="grid grid-cols-6 gap-2 mb-6">
+        <div className="grid grid-cols-5 gap-2 mb-6">
           {steps.map((step, index) => (
             <div
               key={index}
