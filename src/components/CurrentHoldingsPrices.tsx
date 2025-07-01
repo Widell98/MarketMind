@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,13 +7,25 @@ import {
   TrendingDown, 
   RefreshCw,
   DollarSign,
-  Clock
+  Clock,
+  Trash2
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useRealTimeMarketData } from '@/hooks/useRealTimeMarketData';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 
 const CurrentHoldingsPrices: React.FC = () => {
-  const { actualHoldings, loading: holdingsLoading } = useUserHoldings();
+  const { actualHoldings, loading: holdingsLoading, deleteHolding } = useUserHoldings();
   const { quotes, loading, error, refreshData } = useRealTimeMarketData();
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
@@ -45,6 +56,14 @@ const CurrentHoldingsPrices: React.FC = () => {
       console.log('Manual refresh triggered');
       refreshData(actualHoldings);
       setLastRefresh(new Date());
+    }
+  };
+
+  const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
+    console.log(`Deleting holding: ${holdingName} (${holdingId})`);
+    const success = await deleteHolding(holdingId);
+    if (success) {
+      console.log('Holding deleted successfully');
     }
   };
 
@@ -80,7 +99,7 @@ const CurrentHoldingsPrices: React.FC = () => {
 
   if (holdingsLoading || actualHoldings.length === 0) {
     return (
-      <Card>
+      <Card className="h-fit">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-green-600" />
@@ -110,15 +129,15 @@ const CurrentHoldingsPrices: React.FC = () => {
   const holdingsWithSymbols = actualHoldings.filter(holding => holding.symbol);
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="h-fit">
+      <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-green-600" />
               Aktuella Priser
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-sm">
               Realtidsdata från Alpha Vantage • Senast uppdaterad: {formatTime(lastRefresh)}
             </CardDescription>
           </div>
@@ -134,16 +153,16 @@ const CurrentHoldingsPrices: React.FC = () => {
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
             <strong>API-fel:</strong> {error}
             <div className="text-xs mt-1">Kontrollera att Alpha Vantage API-nyckeln är konfigurerad korrekt.</div>
           </div>
         )}
         
         {loading && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm flex items-center gap-2">
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm flex items-center gap-2">
             <RefreshCw className="w-4 h-4 animate-spin" />
             Hämtar aktuella priser från Alpha Vantage API...
           </div>
@@ -157,81 +176,104 @@ const CurrentHoldingsPrices: React.FC = () => {
             
             console.log(`Holding ${holding.symbol}:`, { quote, purchasePrice, quantity });
             
-            let returns = null;
-            if (quote && purchasePrice > 0) {
-              returns = calculateReturns(quote.price, purchasePrice, quantity);
-            }
-            
             return (
-              <div key={holding.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium">{holding.name}</div>
-                  <div className="text-sm text-muted-foreground flex items-center gap-2">
-                    <span className="font-mono bg-gray-100 px-1 rounded text-xs">{holding.symbol}</span>
-                    {holding.quantity && (
-                      <span>• {holding.quantity} aktier</span>
-                    )}
-                    {purchasePrice > 0 && (
-                      <span>• Köpt för {formatCurrency(purchasePrice)}</span>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="text-right">
-                  {loading && !quote ? (
-                    <div className="animate-pulse">
-                      <div className="h-5 bg-muted rounded w-16 mb-1"></div>
-                      <div className="h-4 bg-muted rounded w-12"></div>
+              <div key={holding.id} className="group relative bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-150 rounded-lg border border-gray-200 transition-all duration-200 hover:shadow-md">
+                <div className="flex items-center justify-between p-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-gray-900">{holding.name}</h3>
+                      <span className="font-mono bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-medium">
+                        {holding.symbol}
+                      </span>
                     </div>
-                  ) : quote ? (
-                    <>
-                      <div className="font-medium">
-                        <div className="flex items-center gap-1">
-                          <span>{formatCurrency(quote.price)}</span>
-                          <span className="text-xs text-muted-foreground">
-                            (API)
-                          </span>
-                        </div>
-                        {holding.quantity && (
-                          <div className="text-xs text-muted-foreground">
-                            Totalt värde: {formatCurrency(quote.price * quantity)}
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Daily change from API */}
-                      <div className={`text-sm flex items-center gap-1 justify-end ${
-                        quote.change >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {quote.change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                        <span>
-                          {quote.change >= 0 ? '+' : ''}{formatCurrency(Math.abs(quote.change))} 
-                          ({Math.abs(quote.changePercent).toFixed(2)}%)
+                    <div className="text-sm text-gray-600 flex items-center gap-3">
+                      {holding.quantity && (
+                        <span className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                          {holding.quantity} aktier
                         </span>
-                      </div>
-
-                      {/* Total return since purchase */}
-                      {returns && returns.absoluteReturn !== 0 && (
-                        <div className={`text-xs mt-1 flex items-center gap-1 justify-end ${
-                          returns.absoluteReturn >= 0 ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          <Badge variant="outline" className={`text-xs px-1 py-0 ${
-                            returns.absoluteReturn >= 0 
-                              ? 'bg-green-50 text-green-700 border-green-200' 
-                              : 'bg-red-50 text-red-700 border-red-200'
+                      )}
+                      {purchasePrice > 0 && (
+                        <span className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                          Köpt för {formatCurrency(purchasePrice)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      {loading && !quote ? (
+                        <div className="animate-pulse">
+                          <div className="h-6 bg-gray-200 rounded w-20 mb-1"></div>
+                          <div className="h-4 bg-gray-200 rounded w-16"></div>
+                        </div>
+                      ) : quote ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg font-semibold text-gray-900">
+                              {formatCurrency(quote.price)}
+                            </span>
+                            <span className="text-xs text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded">
+                              API
+                            </span>
+                          </div>
+                          {holding.quantity && (
+                            <div className="text-sm text-gray-600">
+                              Totalt: {formatCurrency(quote.price * quantity)}
+                            </div>
+                          )}
+                          
+                          {/* Dagens förändring */}
+                          <div className={`text-sm flex items-center gap-1 ${
+                            quote.change >= 0 ? 'text-green-600' : 'text-red-600'
                           }`}>
-                            Avkastning: {returns.absoluteReturn >= 0 ? '+' : ''}{formatCurrency(returns.absoluteReturn)} 
-                            ({returns.percentageReturn >= 0 ? '+' : ''}{returns.percentageReturn.toFixed(1)}%)
-                          </Badge>
+                            {quote.change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                            <span className="font-medium">
+                              {quote.change >= 0 ? '+' : ''}{formatCurrency(Math.abs(quote.change))} 
+                              ({Math.abs(quote.changePercent).toFixed(2)}%)
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500 text-center">
+                          <div>Ingen data</div>
+                          <div className="text-xs">Kontrollera: {holding.symbol}</div>
                         </div>
                       )}
-                    </>
-                  ) : (
-                    <div className="text-sm text-muted-foreground">
-                      <div>Ingen data tillgänglig</div>
-                      <div className="text-xs">Kontrollera symbol: {holding.symbol}</div>
                     </div>
-                  )}
+
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Radera innehav</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Är du säker på att du vill radera <strong>{holding.name}</strong> från dina innehav? 
+                            Denna åtgärd kan inte ångras.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteHolding(holding.id, holding.name)}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            Radera
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
               </div>
             );
@@ -239,13 +281,13 @@ const CurrentHoldingsPrices: React.FC = () => {
         </div>
         
         {holdingsWithSymbols.length === 0 && (
-          <div className="text-center py-4 text-muted-foreground text-sm">
+          <div className="text-center py-6 text-gray-500 text-sm bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
             Inga aktier med symboler hittades. Lägg till aktiesymboler (t.ex. AAPL, MSFT) för att se aktuella priser.
           </div>
         )}
 
         {holdingsWithSymbols.length > 0 && Object.keys(quotes).length === 0 && !loading && (
-          <div className="text-center py-4 text-amber-600 text-sm bg-amber-50 rounded-lg border border-amber-200">
+          <div className="text-center py-4 text-amber-700 text-sm bg-amber-50 rounded-lg border border-amber-200">
             <div className="font-medium">Inga priser hämtades från API</div>
             <div className="text-xs mt-1">
               Kontrollera att Alpha Vantage API-nyckeln är konfigurerad och att aktiesymbolerna är korrekta.
