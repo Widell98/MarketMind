@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -81,25 +80,25 @@ const PortfolioImplementation = () => {
     {
       title: "Portföljanalys",
       prompt: "Ge mig en komplett analys av min portfölj med rekommendationer för optimering",
-      icon: <PieChart className="w-5 h-5 sm:w-6 sm:h-6" />,
+      icon: <PieChart className="w-4 h-4 sm:w-5 sm:h-5" />,
       description: "Få en genomgång av din portföljs prestanda och struktur"
     },
     {
       title: "Riskhantering", 
       prompt: "Analysera riskerna i min portfölj och föreslå strategier för bättre diversifiering",
-      icon: <Activity className="w-5 h-5 sm:w-6 sm:h-6" />,
+      icon: <Activity className="w-4 h-4 sm:w-5 sm:h-5" />,
       description: "Identifiera och minimera risker för en mer balanserad portfölj"
     },
     {
       title: "Investeringsförslag",
       prompt: "Vilka aktier och tillgångar borde jag överväga nästa baserat på min profil?",
-      icon: <Zap className="w-5 h-5 sm:w-6 sm:h-6" />,
+      icon: <Zap className="w-4 h-4 sm:w-5 sm:h-5" />,
       description: "Få personliga rekommendationer baserade på din riskprofil"
     },
     {
       title: "Marknadsinsikter",
       prompt: "Vad händer på marknaden just nu och hur påverkar det min investeringsstrategi?",
-      icon: <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />,
+      icon: <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />,
       description: "Håll dig uppdaterad med aktuella marknadstrender"
     }
   ];
@@ -227,7 +226,7 @@ const PortfolioImplementation = () => {
             </TabsList>
             
             <TabsContent value="chat" className="space-y-4 sm:space-y-6">
-              {/* Modern Example Prompts - Mobile Optimized */}
+              {/* Modern Example Prompts - Mobile Optimized with Better Text Layout */}
               <Card className="bg-card border shadow-lg rounded-2xl overflow-hidden">
                 <CardHeader className="border-b bg-muted/30 pb-3 sm:pb-4 p-4 sm:p-6">
                   <div className="flex items-center gap-3">
@@ -250,18 +249,18 @@ const PortfolioImplementation = () => {
                       <Button
                         key={index}
                         variant="outline"
-                        className="h-auto p-3 sm:p-4 lg:p-5 text-left justify-start transition-all duration-200 group rounded-xl bg-background border shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95"
+                        className="h-auto p-3 sm:p-4 lg:p-5 text-left justify-start transition-all duration-200 group rounded-xl bg-background border shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 overflow-hidden"
                         onClick={() => handleExamplePrompt(example.prompt)}
                       >
-                        <div className="flex items-start gap-2.5 sm:gap-3 w-full">
+                        <div className="flex items-start gap-2.5 sm:gap-3 w-full min-w-0">
                           <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary shadow-sm group-hover:shadow-md transition-all duration-200 text-primary-foreground">
                             {example.icon}
                           </div>
                           <div className="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
-                            <div className="font-semibold text-xs sm:text-sm">
+                            <div className="font-semibold text-xs sm:text-sm leading-tight">
                               {example.title}
                             </div>
-                            <div className="text-xs leading-relaxed text-muted-foreground">
+                            <div className="text-xs leading-relaxed text-muted-foreground break-words">
                               {example.description}
                             </div>
                           </div>
