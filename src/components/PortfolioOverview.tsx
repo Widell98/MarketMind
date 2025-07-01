@@ -67,6 +67,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import AddHoldingDialog from './AddHoldingDialog';
 import EditHoldingDialog from './EditHoldingDialog';
+import RealTimePortfolioData from './RealTimePortfolioData';
 
 interface PortfolioOverviewProps {
   portfolio: any;
@@ -478,144 +479,8 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </Card>
       </div>
 
-      {/* Portfolio Exposure Section */}
-      {(actualHoldings.length > 0 || allRecommendations.length > 0) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* Sector Exposure */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-blue-600" />
-                Sektorexponering
-              </CardTitle>
-              <CardDescription>Fördelning över olika industrisektorer</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {exposureData.sectorData.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="relative h-48">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RechartsPieChart>
-                        <Pie
-                          data={exposureData.sectorData}
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={70}
-                          dataKey="value"
-                        >
-                          {exposureData.sectorData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={sectorColors[index % sectorColors.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0].payload;
-                              return (
-                                <div className="bg-white dark:bg-gray-800 p-3 border rounded-lg shadow-lg">
-                                  <p className="font-medium text-foreground">{data.name}</p>
-                                  <p className="text-sm text-muted-foreground">{data.percentage}% av portföljen</p>
-                                  <p className="text-sm text-muted-foreground">{formatCurrency(data.value)}</p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                      </RechartsPieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="space-y-2">
-                    {exposureData.sectorData.slice(0, 5).map((sector, index) => (
-                      <div key={sector.name} className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div 
-                            className="w-4 h-4 rounded-full shadow-sm" 
-                            style={{ backgroundColor: sectorColors[index % sectorColors.length] }}
-                          />
-                          <span className="text-sm font-medium">{sector.name}</span>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-medium">{sector.percentage}%</div>
-                          <div className="text-xs text-muted-foreground">{formatCurrency(sector.value)}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Building2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>Ingen sektordata tillgänglig</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Market Exposure */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-                <Globe className="w-5 h-5 text-green-600" />
-                Marknadsexponering
-              </CardTitle>
-              <CardDescription>Geografisk fördelning av investeringar</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {exposureData.marketData.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="relative h-48">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={exposureData.marketData} layout="horizontal" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                        <XAxis type="number" />
-                        <YAxis dataKey="name" type="category" width={60} />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0].payload;
-                              return (
-                                <div className="bg-white dark:bg-gray-800 p-3 border rounded-lg shadow-lg">
-                                  <p className="font-medium text-foreground">{data.name}</p>
-                                  <p className="text-sm text-muted-foreground">{data.percentage}% av portföljen</p>
-                                  <p className="text-sm text-muted-foreground">{formatCurrency(data.value)}</p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Bar dataKey="percentage" fill="#10B981" radius={[0, 4, 4, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="space-y-2">
-                    {exposureData.marketData.map((market, index) => (
-                      <div key={market.name} className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div 
-                            className="w-4 h-4 rounded-full shadow-sm" 
-                            style={{ backgroundColor: marketColors[index % marketColors.length] }}
-                          />
-                          <span className="text-sm font-medium">{market.name}</span>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-medium">{market.percentage}%</div>
-                          <div className="text-xs text-muted-foreground">{formatCurrency(market.value)}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Globe className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>Ingen marknadsdata tillgänglig</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* Real-time Portfolio Data - Replaces Market Exposure */}
+      <RealTimePortfolioData />
 
       {/* User's Current Holdings */}
       {actualHoldings.length > 0 && (
