@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useToast } from '@/hooks/use-toast';
@@ -21,9 +20,11 @@ interface Message {
 
 interface AIChatProps {
   portfolioId?: string;
+  initialStock?: string | null;
+  initialMessage?: string | null;
 }
 
-const AIChat = ({ portfolioId }: AIChatProps) => {
+const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
   const {
     messages,
     sessions,
@@ -44,6 +45,7 @@ const AIChat = ({ portfolioId }: AIChatProps) => {
   const [input, setInput] = useState('');
   const [showSessions, setShowSessions] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -54,6 +56,15 @@ const AIChat = ({ portfolioId }: AIChatProps) => {
     // Auto-scroll when messages change
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    // Handle initial stock and message from URL parameters
+    if (initialStock && initialMessage && !hasInitialized) {
+      console.log('Creating initial chat session for stock:', initialStock);
+      createNewSession(initialStock, initialMessage);
+      setHasInitialized(true);
+    }
+  }, [initialStock, initialMessage, hasInitialized, createNewSession]);
 
   useEffect(() => {
     // Load the most recent session on component mount

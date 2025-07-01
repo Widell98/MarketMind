@@ -19,6 +19,7 @@ import Watchlist from "./pages/Watchlist";
 import SocialIndex from "./pages/SocialIndex";
 import AdminStockCases from "./pages/AdminStockCases";
 import MyStockCases from "./pages/MyStockCases";
+import AIChat from "./pages/AIChat";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ function App() {
               <Route path="/social" element={<SocialIndex />} />
               <Route path="/admin/stock-cases" element={<AdminStockCases />} />
               <Route path="/my-stock-cases" element={<MyStockCases />} />
+              <Route path="/ai-chat" element={<AIChat />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>

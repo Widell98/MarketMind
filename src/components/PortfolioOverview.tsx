@@ -235,23 +235,13 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     const stockInfo = stockSymbol ? `${stockName} (${stockSymbol})` : stockName;
     const message = `Berätta mer om ${stockInfo}. Vad gör företaget, vilka är deras huvudsakliga affärsområden, och varför skulle det vara en bra investering för min portfölj? Analysera också eventuella risker och möjligheter.`;
     
-    // Create new chat session with stock name as title
-    const sessionName = stockName;
-    const fullMessage = `NEW_SESSION:${sessionName}:${message}`;
+    // Navigate to chat page with stock parameters
+    const params = new URLSearchParams({
+      stock: stockName,
+      message: message
+    });
     
-    // Switch to chat tab and create new session
-    const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
-    if (chatTab) {
-      chatTab.click();
-    }
-    
-    // Send the message to create new session after a short delay
-    setTimeout(() => {
-      const event = new CustomEvent('createStockChat', {
-        detail: { sessionName, message }
-      });
-      window.dispatchEvent(event);
-    }, 100);
+    navigate(`/ai-chat?${params.toString()}`);
   };
 
   const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
