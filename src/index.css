@@ -1,3 +1,4 @@
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@500;600;700&display=swap');
 
 @tailwind base;
@@ -97,6 +98,47 @@
   }
 }
 
+/* Mobile-specific focus and touch improvements */
+@layer base {
+  /* Remove default focus outlines on mobile while keeping accessibility */
+  @media (max-width: 768px) {
+    *:focus {
+      outline: none !important;
+    }
+    
+    /* Only show focus for keyboard navigation */
+    *:focus-visible {
+      outline: 2px solid theme('colors.blue.500');
+      outline-offset: 2px;
+    }
+    
+    /* Remove tap highlight on mobile */
+    * {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    
+    /* Allow text selection for specific elements */
+    input, textarea, [contenteditable] {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
+    }
+    
+    /* Remove blue highlight on buttons and links */
+    button, a, [role="button"] {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-focus-ring-color: transparent;
+      outline: none;
+    }
+  }
+}
+
 @layer components {
   /* Enhanced AI response styling for mobile */
   .ai-response {
@@ -177,11 +219,13 @@
   .btn-mobile {
     @apply px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200;
     @apply active:scale-95 touch-manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
   
   .btn-mobile-sm {
     @apply px-3 py-2 text-xs font-medium rounded-md transition-all duration-200;
     @apply active:scale-95 touch-manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
   
   /* Mobile spacing utilities */
@@ -320,6 +364,25 @@
     @apply text-base sm:text-sm; /* Prevents zoom on iOS */
     @apply px-3 py-3 sm:px-4 sm:py-2;
   }
+  
+  /* Mobile-specific component improvements */
+  .mobile-card {
+    @apply bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700;
+    @apply shadow-sm hover:shadow-md transition-shadow duration-200;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  .mobile-button {
+    @apply transition-all duration-200 active:scale-95;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  
+  .mobile-tab {
+    @apply transition-all duration-200 active:scale-95;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
 }
 
 /* Mobile-specific breakpoint overrides */
@@ -327,6 +390,23 @@
   .container-responsive {
     padding-left: 1rem;
     padding-right: 1rem;
+  }
+  
+  /* Ensure no blue outlines or highlights */
+  *, *:focus, *:active, *:hover {
+    outline: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+  
+  /* Better touch targets */
+  button, [role="button"], a {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
   }
 }
 
@@ -362,71 +442,7 @@
 /* Prevent horizontal scroll on mobile */
 html, body {
   overflow-x: hidden;
-}
-
-/* Mobile-friendly focus states */
-@media (max-width: 768px) {
-  *:focus {
-    outline: 2px solid theme('colors.blue.500');
-    outline-offset: 2px;
-  }
-}
-
-/* Enhanced mobile navigation improvements */
-@media (max-width: 768px) {
-  /* Ensure mobile navigation is always accessible */
-  .mobile-nav-trigger {
-    position: fixed !important;
-    top: 1rem !important;
-    left: 1rem !important;
-    z-index: 60 !important;
-  }
-  
-  /* Improve mobile header spacing */
-  .mobile-header-spacing {
-    padding-left: 4rem !important;
-  }
-  
-  /* Better mobile dropdown positioning */
-  .mobile-dropdown {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    max-height: 100vh !important;
-    overflow-y: auto !important;
-  }
-  
-  /* Improve touch targets on mobile */
-  .mobile-nav-item {
-    min-height: 48px !important;
-    padding: 0.75rem 1rem !important;
-  }
-  
-  /* Better mobile typography */
-  .mobile-nav-text {
-    font-size: 1rem !important;
-    line-height: 1.5 !important;
-  }
-  
-  /* Smooth mobile animations */
-  .mobile-nav-transition {
-    transition: all 0.2s ease-in-out !important;
-  }
-  
-  /* Fix mobile header layout */
-  .mobile-header-container {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    width: 100% !important;
-  }
-  
-  .mobile-header-title {
-    flex: 1 !important;
-    text-align: center !important;
-    margin: 0 1rem !important;
-  }
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Additional mobile-specific fixes */
@@ -446,5 +462,22 @@ html, body {
   .mobile-layout-fix {
     overflow-x: hidden !important;
     width: 100% !important;
+  }
+  
+  /* Remove all focus rings and tap highlights */
+  * {
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-focus-ring-color: transparent !important;
+    outline: none !important;
+  }
+}
+
+/* Ensure buttons and interactive elements work well on mobile */
+@media (pointer: coarse) {
+  .touch-friendly {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
 }

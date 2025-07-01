@@ -58,9 +58,10 @@ const MobileNavigation = () => {
             "p-2 h-10 w-10 rounded-full transition-all duration-200",
             "bg-white/95 dark:bg-gray-800/95 backdrop-blur-md shadow-lg border border-gray-200/80 dark:border-gray-700/80",
             "hover:bg-white dark:hover:bg-gray-800 hover:shadow-xl hover:scale-105",
-            "active:scale-95",
+            "active:scale-95 mobile-button touch-friendly",
             isOpen && "bg-gray-100 dark:bg-gray-700 scale-95"
           )}
+          style={{ WebkitTapHighlightColor: 'transparent' }}
         >
           {isOpen ? (
             <X className="w-5 h-5 text-gray-700 dark:text-gray-200" />
@@ -75,18 +76,20 @@ const MobileNavigation = () => {
         <>
           {/* Overlay */}
           <div 
-            className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300"
+            className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300 touch-friendly"
             onClick={() => setIsOpen(false)}
+            style={{ WebkitTapHighlightColor: 'transparent' }}
           />
 
           {/* Dropdown menu */}
-          <div className="md:hidden fixed top-0 left-0 right-0 bg-white dark:bg-gray-800 z-50 rounded-b-3xl shadow-2xl border-b border-gray-200 dark:border-gray-700 overflow-hidden max-h-screen">
+          <div className="md:hidden fixed top-0 left-0 right-0 bg-white dark:bg-gray-800 z-50 rounded-b-3xl shadow-2xl border-b border-gray-200 dark:border-gray-700 overflow-hidden max-h-screen mobile-card">
             {/* Header with proper spacing for close button */}
             <div className="border-b border-gray-200 dark:border-gray-700 p-6 pt-16 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30">
               <Link 
                 to="/" 
-                className="text-xl font-bold text-finance-navy dark:text-gray-200 flex items-center"
+                className="text-xl font-bold text-finance-navy dark:text-gray-200 flex items-center touch-friendly"
                 onClick={handleLinkClick}
+                style={{ WebkitTapHighlightColor: 'transparent' }}
               >
                 <span className="mr-3 text-2xl">🧠</span>
                 <div>
@@ -112,11 +115,12 @@ const MobileNavigation = () => {
                       onClick={handleLinkClick}
                       className={cn(
                         "flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-200",
-                        "hover:bg-gray-100 dark:hover:bg-gray-700/50 active:scale-95",
+                        "hover:bg-gray-100 dark:hover:bg-gray-700/50 active:scale-95 mobile-button touch-friendly",
                         isActive(item.url) 
                           ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-semibold shadow-sm" 
                           : "text-gray-700 dark:text-gray-300"
                       )}
+                      style={{ WebkitTapHighlightColor: 'transparent' }}
                     >
                       <item.icon className="w-5 h-5 flex-shrink-0" />
                       <span className="flex-1">{item.title}</span>
@@ -141,11 +145,12 @@ const MobileNavigation = () => {
                       onClick={handleLinkClick}
                       className={cn(
                         "flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-200",
-                        "hover:bg-gray-100 dark:hover:bg-gray-700/50 active:scale-95",
+                        "hover:bg-gray-100 dark:hover:bg-gray-700/50 active:scale-95 mobile-button touch-friendly",
                         (isActive('/portfolio-implementation') || isActive('/portfolio-advisor'))
                           ? "bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 font-semibold shadow-sm" 
                           : "text-gray-700 dark:text-gray-300"
                       )}
+                      style={{ WebkitTapHighlightColor: 'transparent' }}
                     >
                       <Brain className="w-5 h-5 flex-shrink-0" />
                       <div className="flex-1">
@@ -173,11 +178,12 @@ const MobileNavigation = () => {
                       onClick={handleLinkClick}
                       className={cn(
                         "flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-200",
-                        "hover:bg-gray-100 dark:hover:bg-gray-700/50 active:scale-95",
+                        "hover:bg-gray-100 dark:hover:bg-gray-700/50 active:scale-95 mobile-button touch-friendly",
                         isActive('/profile')
                           ? "bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 font-semibold shadow-sm" 
                           : "text-gray-700 dark:text-gray-300"
                       )}
+                      style={{ WebkitTapHighlightColor: 'transparent' }}
                     >
                       <Settings className="w-5 h-5 flex-shrink-0" />
                       <span className="flex-1">Profil</span>
@@ -192,7 +198,11 @@ const MobileNavigation = () => {
               {/* Auth Section for non-authenticated users */}
               {!user && (
                 <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <Button asChild className="w-full py-3 rounded-xl font-semibold text-base">
+                  <Button 
+                    asChild 
+                    className="w-full py-3 rounded-xl font-semibold text-base mobile-button touch-friendly"
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
+                  >
                     <Link to="/auth" onClick={handleLinkClick}>
                       Logga in / Registrera
                     </Link>
