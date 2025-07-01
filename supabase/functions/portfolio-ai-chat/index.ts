@@ -91,6 +91,21 @@ serve(async (req) => {
     // Check if this is a stock exchange request
     const isExchangeRequest = /(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|amerikanska|svenska|europeiska|asiatiska|aktier|innehav)/i.test(message);
 
+    // Filter out existing holdings from recommendations
+    const existingSymbols = new Set();
+    const existingCompanies = new Set();
+    
+    if (holdings && holdings.length > 0) {
+      holdings.forEach(holding => {
+        if (holding.symbol && holding.holding_type !== 'recommendation') {
+          existingSymbols.add(holding.symbol.toUpperCase());
+        }
+        if (holding.name && holding.holding_type !== 'recommendation') {
+          existingCompanies.add(holding.name.toLowerCase());
+        }
+      });
+    }
+
     // Build enhanced context for AI with emphasis on actionable portfolio changes
     let contextInfo = `Du är en professionell AI-assistent för investeringar. Ge ALLTID korta, välstrukturerade svar på svenska.
 
@@ -138,14 +153,20 @@ VIKTIGA RIKTLINJER:
     }
 
     if (holdings && holdings.length > 0) {
-      const totalHoldingsValue = holdings.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
-      contextInfo += `\n\nNUVARANDE INNEHAV:`;
-      holdings.forEach(holding => {
-        const value = holding.current_value || 0;
-        const percentage = totalHoldingsValue > 0 ? ((value / totalHoldingsValue) * 100).toFixed(1) : '0';
-        const market = holding.market || 'Okänd marknad';
-        contextInfo += `\n- ${holding.name} (${holding.symbol || 'N/A'}): ${percentage}%, ${market}, ${holding.sector || 'Okänd sektor'}`;
-      });
+      const actualHoldings = holdings.filter(h => h.holding_type !== 'recommendation');
+      const totalHoldingsValue = actualHoldings.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
+      
+      if (actualHoldings.length > 0) {
+        contextInfo += `\n\nNUVARANDE INNEHAV (ÄGS REDAN - REKOMMENDERA EJ):`;
+        actualHoldings.forEach(holding => {
+          const value = holding.current_value || 0;
+          const percentage = totalHoldingsValue > 0 ? ((value / totalHoldingsValue) * 100).toFixed(1) : '0';
+          const market = holding.market || 'Okänd marknad';
+          contextInfo += `\n- ${holding.name} (${holding.symbol || 'N/A'}): ${percentage}%, ${market}, ${holding.sector || 'Okänd sektor'}`;
+        });
+        
+        contextInfo += `\n\nVIKTIGT: Rekommendera ALDRIG aktier som användaren redan äger. Kontrollera alltid mot listan ovan.`;
+      }
     }
 
     // Enhanced system prompt for portfolio change discussions
@@ -154,6 +175,7 @@ VIKTIGA RIKTLINJER:
     if (isExchangeRequest) {
       systemPrompt += `\n\nVID PORTFÖLJÄNDRINGSFÖRFRÅGNINGAR:
 - Analysera nuvarande innehav först
+- Föreslå ENDAST aktier som INTE finns i nuvarande innehav
 - Föreslå 2-3 konkreta alternativ med tickers
 - Förklara kort varför varje förslag passar
 - Inkludera fördelning i procent
@@ -174,7 +196,7 @@ SVARSFORMAT:
 - Vid aktieförslag: ange aktiens namn, ticker och en kortfattad motivering
 - Undvik spekulationer och överdrivet tekniskt språk
 - Påminn tydligt om att detta är utbildning, inte personlig investeringsråd
-`;
+- VIKTIGT: Föreslå ALDRIG aktier som användaren redan äger`;
 
     if (analysisType === 'insight_generation') {
       systemPrompt += `\n\nGENERERA KORT INSIKT för ${insightType}:
@@ -204,6 +226,7 @@ SVARSFORMAT:
     console.log('Messages count:', messages.length);
     console.log('User message:', message);
     console.log('Is exchange request:', isExchangeRequest);
+    console.log('Existing holdings to avoid:', Array.from(existingSymbols));
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -327,7 +350,8 @@ SVARSFORMAT:
             analysisType: analysisType || 'general',
             confidence: confidence,
             isExchangeRequest: isExchangeRequest,
-            suggestedChanges: isExchangeRequest
+            suggestedChanges: isExchangeRequest,
+            existingHoldings: Array.from(existingSymbols)
           }
         }
       ]);
@@ -350,7 +374,8 @@ SVARSFORMAT:
           holdingsCount: holdings?.length || 0,
           insightsCount: insights?.length || 0,
           model: 'GPT-4o',
-          canSuggestChanges: isExchangeRequest
+          canSuggestChanges: isExchangeRequest,
+          existingHoldings: Array.from(existingSymbols)
         }
       }),
       { 

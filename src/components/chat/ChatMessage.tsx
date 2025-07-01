@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Bot, User, Plus, Check, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -28,7 +27,7 @@ interface ChatMessageProps {
 
 const ChatMessage = ({ message }: ChatMessageProps) => {
   const [addedStocks, setAddedStocks] = useState<Set<string>>(new Set());
-  const { addHolding } = useUserHoldings();
+  const { addHolding, actualHoldings } = useUserHoldings();
   const { toast } = useToast();
 
   // Parse markdown formatting
@@ -47,14 +46,20 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       /\*\*([^*]+)\*\*\s*\(([A-Z]{2,5})\)/g
     ];
 
+    // Get existing holdings symbols to filter out
+    const existingSymbols = new Set(
+      actualHoldings.map(holding => holding.symbol?.toUpperCase()).filter(Boolean)
+    );
+
     patterns.forEach(pattern => {
       let match;
       while ((match = pattern.exec(content)) !== null) {
         const name = match[1].trim();
         const symbol = match[2].trim();
         
-        // Skip if already added or if it's not a proper stock suggestion
+        // Skip if already added, already owned, or if it's not a proper stock suggestion
         if (!suggestions.find(s => s.symbol === symbol) && 
+            !existingSymbols.has(symbol) &&
             name.length > 2 && 
             symbol.length >= 2 && 
             symbol.length <= 5) {
@@ -103,6 +108,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     }
   };
 
+  // Format message content
   const formatMessageContent = (content: string) => {
     return content.split('\n').map((line, index) => {
       if (line.trim() === '') return <br key={index} />;
