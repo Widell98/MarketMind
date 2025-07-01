@@ -550,7 +550,10 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
                 Lägg till dina nuvarande aktier och fonder för att få en komplett bild av din portfölj och bättre AI-rekommendationer.
               </p>
-              <Button className="flex items-center gap-2" onClick={() => navigate('/ai-chat')}>
+              <Button 
+                className="flex items-center gap-2" 
+                onClick={() => setAddHoldingDialogOpen(true)}
+              >
                 <Plus className="w-4 h-4" />
                 Lägg till innehav
               </Button>
@@ -834,32 +837,32 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                       <TableCell className="text-right">
                         <div className="flex items-center gap-1 justify-end">
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => handleEditHolding(holding)}
-                            className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-200 hover:border-blue-300"
                           >
-                            <Edit className="w-4 h-4" />
-                            <span className="hidden sm:inline">Redigera</span>
+                            <Edit className="w-4 h-4 mr-1" />
+                            Redigera
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => handleStockChat(holding.name, holding.symbol)}
-                            className="flex items-center gap-1 text-purple-600 hover:text-purple-800 hover:bg-purple-50"
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-200 hover:border-blue-300"
                           >
-                            <MessageCircle className="w-4 h-4" />
-                            <span className="hidden sm:inline">Diskutera</span>
+                            <MessageCircle className="w-4 h-4 mr-1" />
+                            Diskutera
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="flex items-center gap-1 text-red-600 hover:text-red-800 hover:bg-red-50 border border-red-200 hover:border-red-300"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 hover:border-red-300"
                               >
-                                <Trash2 className="w-4 h-4" />
-                                <span className="hidden sm:inline">Radera</span>
+                                <Trash2 className="w-4 h-4 mr-1" />
+                                Radera
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
@@ -1202,6 +1205,15 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         isOpen={addHoldingDialogOpen}
         onClose={() => setAddHoldingDialogOpen(false)}
         onAdd={handleAddHolding}
+        initialData={selectedRecommendation}
+      />
+
+      {/* Edit Holding Dialog */}
+      <EditHoldingDialog
+        isOpen={editHoldingDialogOpen}
+        onClose={() => setEditHoldingDialogOpen(false)}
+        onSave={handleUpdateHolding}
+        holding={selectedHolding}
       />
     </div>
   );
