@@ -24,13 +24,9 @@ const PortfolioImplementation = () => {
   useEffect(() => {
     if (!user || loading) return;
 
-    if (activePortfolio) {
-      console.log('Active portfolio found, showing main page');
-      setShowOnboarding(false);
-    } else {
-      console.log('No active portfolio, showing onboarding');
-      setShowOnboarding(true);
-    }
+    // Only show onboarding if there's no active portfolio AND user wants to create one
+    // For now, we'll always show the main page layout
+    setShowOnboarding(false);
   }, [user, activePortfolio, loading]);
 
   const handleQuickChat = (message: string) => {
@@ -69,8 +65,8 @@ const PortfolioImplementation = () => {
     );
   }
 
-  // Show onboarding if user doesn't have an active portfolio
-  if (showOnboarding || !activePortfolio) {
+  // Show onboarding if user explicitly wants to create a profile
+  if (showOnboarding) {
     return (
       <Layout>
         <div className="min-h-screen py-4 sm:py-6 lg:py-8 px-4">
@@ -80,7 +76,7 @@ const PortfolioImplementation = () => {
                 <Brain className="w-8 h-8 sm:w-10 sm:h-10 text-primary-foreground" />
               </div>
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 text-foreground">
-                Välkommen till AI Portfolio
+                Skapa din investeringsprofil
               </h1>
               <p className="text-base sm:text-lg max-w-2xl mx-auto text-muted-foreground px-4">
                 Låt oss skapa din personliga investeringsstrategi genom en kort konversation
@@ -93,7 +89,7 @@ const PortfolioImplementation = () => {
     );
   }
 
-  // Show portfolio implementation page with tabs
+  // Show portfolio implementation page with tabs - Always show PortfolioOverview
   return (
     <Layout>
       <div className="min-h-screen">
