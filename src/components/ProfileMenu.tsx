@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,7 +16,6 @@ import {
 import { User, Settings, LogOut, Heart, BarChart3 } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import NotificationCenter from './NotificationCenter';
-import ThemeToggle from './ThemeToggle';
 
 const ProfileMenu = () => {
   const { user } = useAuth();
@@ -87,14 +87,6 @@ const ProfileMenu = () => {
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
-          {/* Theme toggle - only visible on larger screens */}
-          <div className="hidden md:block px-2 py-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Theme</span>
-              <ThemeToggle />
-            </div>
-          </div>
-          <DropdownMenuSeparator className="hidden md:block" />
           <DropdownMenuItem 
             onClick={handleSignOut} 
             className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"

@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
 import ProfileMenu from './ProfileMenu';
-import ThemeToggle from './ThemeToggle';
 import MainNavigation from './MainNavigation';
 import MobileNavigation from './MobileNavigation';
 import BreadcrumbNavigation from './Breadcrumb';
@@ -37,10 +36,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </div>
           
           <div className="flex items-center space-x-2 md:space-x-3 lg:space-x-4 xl:space-x-6 flex-shrink-0">
-            {/* Show ThemeToggle only on desktop */}
-            <div className="hidden md:block">
-              <ThemeToggle />
-            </div>
             {user ? (
               <ProfileMenu />
             ) : (
