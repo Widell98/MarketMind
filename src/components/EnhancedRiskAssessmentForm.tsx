@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,12 +8,15 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
-import { ArrowLeft, ArrowRight, CheckCircle, AlertCircle, TrendingUp, Shield, Target, Brain, PiggyBank } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, AlertCircle, TrendingUp, Shield, Target, Brain, PiggyBank, RotateCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface EnhancedRiskAssessmentFormProps {
   onComplete: (riskProfileId: string) => void;
 }
+
+const STORAGE_KEY = 'enhanced_risk_assessment_form_data';
+const STORAGE_STEP_KEY = 'enhanced_risk_assessment_current_step';
 
 const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({ onComplete }) => {
   const { saveRiskProfile, loading } = useRiskProfile();
@@ -59,6 +62,90 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
     overexposure_awareness: '',
     sector_interests: [] as string[]
   });
+
+  // Load saved data on component mount
+  useEffect(() => {
+    try {
+      const savedData = localStorage.getItem(STORAGE_KEY);
+      const savedStep = localStorage.getItem(STORAGE_STEP_KEY);
+      
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        setFormData(parsedData);
+        console.log('Loaded saved form data from localStorage');
+        
+        toast({
+          title: "Formulärdata återställt",
+          description: "Din tidigare ifyllda information har återställts",
+        });
+      }
+      
+      if (savedStep) {
+        setCurrentStep(parseInt(savedStep));
+        console.log('Loaded saved step from localStorage:', savedStep);
+      }
+    } catch (error) {
+      console.error('Error loading saved form data:', error);
+    }
+  }, [toast]);
+
+  // Save data to localStorage whenever formData or currentStep changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+      localStorage.setItem(STORAGE_STEP_KEY, currentStep.toString());
+    } catch (error) {
+      console.error('Error saving form data to localStorage:', error);
+    }
+  }, [formData, currentStep]);
+
+  // Clear saved data function
+  const clearSavedData = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(STORAGE_STEP_KEY);
+      
+      // Reset form to initial state
+      setFormData({
+        age: '',
+        annual_income: '',
+        housing_situation: '',
+        has_loans: false,
+        loan_details: '',
+        has_children: false,
+        liquid_capital: '',
+        investment_purpose: [] as string[],
+        target_amount: '',
+        target_date: '',
+        investment_horizon: '',
+        investment_goal: '',
+        monthly_investment_amount: '',
+        preferred_stock_count: '',
+        risk_tolerance: '',
+        risk_comfort_level: [3],
+        panic_selling_history: false,
+        control_importance: [3],
+        market_crash_reaction: '',
+        portfolio_change_frequency: '',
+        activity_preference: '',
+        investment_style_preference: '',
+        investment_experience: '',
+        current_portfolio_value: '',
+        overexposure_awareness: '',
+        sector_interests: [] as string[]
+      });
+      
+      setCurrentStep(0);
+      setValidationErrors({});
+      
+      toast({
+        title: "Formulär återställt",
+        description: "All ifylld data har raderats",
+      });
+    } catch (error) {
+      console.error('Error clearing saved data:', error);
+    }
+  };
 
   const investmentPurposes = [
     'Bostad', 'Pension', 'Ekonomisk frihet', 'Barnens framtid', 
@@ -208,6 +295,8 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
 
       const result = await saveRiskProfile(profileData);
       if (result) {
+        // Clear saved data on successful submission
+        clearSavedData();
         onComplete('profile-created');
       }
     } catch (error: any) {
@@ -676,10 +765,21 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
   return (
     <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          {steps[currentStep].icon}
-          Förbättrad Riskbedömning
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {steps[currentStep].icon}
+            <CardTitle>Förbättrad Riskbedömning</CardTitle>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearSavedData}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+          >
+            <RotateCcw className="w-4 h-4" />
+            Rensa formulär
+          </Button>
+        </div>
         <CardDescription>
           {steps[currentStep].description} (Steg {currentStep + 1} av {steps.length})
         </CardDescription>
