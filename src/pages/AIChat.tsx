@@ -94,50 +94,52 @@ const AIChatPage = () => {
             </div>
           </div>
 
-          {/* Example Prompts */}
-          <Card className="bg-card border shadow-lg rounded-2xl overflow-hidden mb-4 sm:mb-6">
-            <div className="border-b bg-muted/30 pb-3 sm:pb-4 p-4 sm:p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-primary shadow-sm">
-                  <Lightbulb className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-base sm:text-lg font-bold">
-                    Kom igång med AI-assistenten
-                  </h2>
-                  <p className="text-xs sm:text-sm mt-0.5 text-muted-foreground">
-                    Välj ett förslag nedan eller skriv din egen fråga
-                  </p>
+          {/* Example Prompts - Only show if not coming from stock discussion */}
+          {!stockName && !message && (
+            <Card className="bg-card border shadow-lg rounded-2xl overflow-hidden mb-4 sm:mb-6">
+              <div className="border-b bg-muted/30 pb-3 sm:pb-4 p-4 sm:p-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-primary shadow-sm">
+                    <Lightbulb className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-base sm:text-lg font-bold">
+                      Kom igång med AI-assistenten
+                    </h2>
+                    <p className="text-xs sm:text-sm mt-0.5 text-muted-foreground">
+                      Välj ett förslag nedan eller skriv din egen fråga
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="p-3 sm:p-4 lg:p-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 lg:gap-4">
-                {examplePrompts.map((example, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    className="h-auto p-3 sm:p-4 lg:p-5 text-left justify-start transition-all duration-200 group rounded-xl bg-background border shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 overflow-hidden"
-                    onClick={() => handleExamplePrompt(example.prompt)}
-                  >
-                    <div className="flex items-start gap-2.5 sm:gap-3 w-full min-w-0">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary shadow-sm group-hover:shadow-md transition-all duration-200 text-primary-foreground">
-                        {example.icon}
-                      </div>
-                      <div className="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
-                        <div className="font-semibold text-xs sm:text-sm leading-tight">
-                          {example.title}
+              <div className="p-3 sm:p-4 lg:p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 lg:gap-4">
+                  {examplePrompts.map((example, index) => (
+                    <Button
+                      key={index}
+                      variant="outline"
+                      className="h-auto p-3 sm:p-4 lg:p-5 text-left justify-start transition-all duration-200 group rounded-xl bg-background border shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 overflow-hidden"
+                      onClick={() => handleExamplePrompt(example.prompt)}
+                    >
+                      <div className="flex items-start gap-2.5 sm:gap-3 w-full min-w-0">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary shadow-sm group-hover:shadow-md transition-all duration-200 text-primary-foreground">
+                          {example.icon}
                         </div>
-                        <div className="text-xs leading-relaxed text-muted-foreground break-words">
-                          {example.description}
+                        <div className="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
+                          <div className="font-semibold text-xs sm:text-sm leading-tight">
+                            {example.title}
+                          </div>
+                          <div className="text-xs leading-relaxed text-muted-foreground break-words">
+                            {example.description}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Button>
-                ))}
+                    </Button>
+                  ))}
+                </div>
               </div>
-            </div>
-          </Card>
+            </Card>
+          )}
 
           {/* Chat Container */}
           <Card className="bg-card border shadow-lg rounded-2xl overflow-hidden">
