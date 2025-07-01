@@ -778,6 +778,17 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               </CardTitle>
               <CardDescription>Aktier och fonder du redan äger</CardDescription>
             </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setAddHoldingDialogOpen(true)}
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Lägg till innehav</span>
+                <span className="sm:hidden">Lägg till</span>
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
