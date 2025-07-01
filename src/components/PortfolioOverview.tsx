@@ -784,7 +784,10 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
                 Lägg till dina nuvarande aktier och fonder för att få en komplett bild av din portfölj och bättre AI-rekommendationer.
               </p>
-              <Button className="flex items-center gap-2" onClick={() => navigate('/ai-chat')}>
+              <Button 
+                className="flex items-center gap-2" 
+                onClick={() => setAddHoldingDialogOpen(true)}
+              >
                 <Plus className="w-4 h-4" />
                 Lägg till innehav
               </Button>
@@ -1196,23 +1199,8 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       {/* Add Holding Dialog */}
       <AddHoldingDialog
         isOpen={addHoldingDialogOpen}
-        onClose={() => {
-          setAddHoldingDialogOpen(false);
-          setSelectedRecommendation(null);
-        }}
+        onClose={() => setAddHoldingDialogOpen(false)}
         onAdd={handleAddHolding}
-        recommendation={selectedRecommendation}
-      />
-
-      {/* Edit Holding Dialog */}
-      <EditHoldingDialog
-        isOpen={editHoldingDialogOpen}
-        onClose={() => {
-          setEditHoldingDialogOpen(false);
-          setSelectedHolding(null);
-        }}
-        onSave={handleUpdateHolding}
-        holding={selectedHolding}
       />
     </div>
   );

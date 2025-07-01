@@ -4,184 +4,177 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
-import { sv } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { UserHolding } from '@/hooks/useUserHoldings';
 
 interface AddHoldingDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (holdingData: {
-    holding_type: string;
-    name: string;
-    symbol?: string;
-    quantity: number;
-    current_value: number;
-    purchase_price: number;
-    purchase_date: string;
-    sector?: string;
-    currency: string;
-  }) => void;
-  recommendation?: {
-    name: string;
-    symbol?: string;
-    sector?: string;
-  };
+  onAdd: (holdingData: Omit<UserHolding, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<boolean>;
+  recommendation?: any;
 }
 
-const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
-  isOpen,
-  onClose,
+const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({ 
+  isOpen, 
+  onClose, 
   onAdd,
-  recommendation
+  recommendation 
 }) => {
   const [formData, setFormData] = useState({
-    holding_type: 'stock',
     name: recommendation?.name || '',
     symbol: recommendation?.symbol || '',
+    holding_type: recommendation?.holding_type === 'recommendation' ? 'stock' : (recommendation?.holding_type || 'stock'),
     quantity: '',
+    purchase_price: recommendation?.purchase_price?.toString() || '',
     current_value: '',
-    purchase_price: '',
-    purchase_date: new Date(),
+    purchase_date: '',
     sector: recommendation?.sector || '',
-    currency: 'SEK'
+    market: recommendation?.market || '',
+    currency: recommendation?.currency || 'SEK'
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.name.trim()) return;
+
+    setIsSubmitting(true);
     
-    if (!formData.name || !formData.quantity || !formData.current_value || !formData.purchase_price) {
-      return;
+    const holdingData = {
+      name: formData.name.trim(),
+      symbol: formData.symbol.trim() || undefined,
+      holding_type: formData.holding_type as UserHolding['holding_type'],
+      quantity: formData.quantity ? parseFloat(formData.quantity) : undefined,
+      purchase_price: formData.purchase_price ? parseFloat(formData.purchase_price) : undefined,
+      current_value: formData.current_value ? parseFloat(formData.current_value) : undefined,
+      purchase_date: formData.purchase_date || undefined,
+      sector: formData.sector.trim() || undefined,
+      market: formData.market.trim() || undefined,
+      currency: formData.currency || 'SEK'
+    };
+
+    const success = await onAdd(holdingData);
+    
+    if (success) {
+      // Reset form
+      setFormData({
+        name: '',
+        symbol: '',
+        holding_type: 'stock',
+        quantity: '',
+        purchase_price: '',
+        current_value: '',
+        purchase_date: '',
+        sector: '',
+        market: '',
+        currency: 'SEK'
+      });
+      onClose();
     }
-
-    onAdd({
-      holding_type: formData.holding_type,
-      name: formData.name,
-      symbol: formData.symbol || undefined,
-      quantity: parseFloat(formData.quantity),
-      current_value: parseFloat(formData.current_value),
-      purchase_price: parseFloat(formData.purchase_price),
-      purchase_date: formData.purchase_date.toISOString().split('T')[0],
-      sector: formData.sector || undefined,
-      currency: formData.currency
-    });
-
-    // Reset form
-    setFormData({
-      holding_type: 'stock',
-      name: '',
-      symbol: '',
-      quantity: '',
-      current_value: '',
-      purchase_price: '',
-      purchase_date: new Date(),
-      sector: '',
-      currency: 'SEK'
-    });
     
-    onClose();
+    setIsSubmitting(false);
   };
 
   const handleClose = () => {
-    // Reset form when closing
-    setFormData({
-      holding_type: 'stock',
-      name: recommendation?.name || '',
-      symbol: recommendation?.symbol || '',
-      quantity: '',
-      current_value: '',
-      purchase_price: '',
-      purchase_date: new Date(),
-      sector: recommendation?.sector || '',
-      currency: 'SEK'
-    });
-    onClose();
+    if (!isSubmitting) {
+      setFormData({
+        name: '',
+        symbol: '',
+        holding_type: 'stock',
+        quantity: '',
+        purchase_price: '',
+        current_value: '',
+        purchase_date: '',
+        sector: '',
+        market: '',
+        currency: 'SEK'
+      });
+      onClose();
+    }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {recommendation ? 'Lägg till rekommendation som innehav' : 'Lägg till nytt innehav'}
+            {recommendation ? `Lägg till ${recommendation.name}` : 'Lägg till innehav'}
           </DialogTitle>
           <DialogDescription>
-            Fyll i uppgifterna för ditt innehav. Alla fält markerade med * är obligatoriska.
+            {recommendation 
+              ? 'Fyll i dina detaljer för att lägga till denna rekommendation till dina innehav.'
+              : 'Lägg till en ny aktie eller fond till din portfölj.'
+            }
           </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="holding_type">Typ av innehav *</Label>
-            <Select
-              value={formData.holding_type}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, holding_type: value }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Välj typ" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="stock">Aktie</SelectItem>
-                <SelectItem value="fund">Fond</SelectItem>
-                <SelectItem value="crypto">Krypto</SelectItem>
-                <SelectItem value="bonds">Obligation</SelectItem>
-                <SelectItem value="real_estate">Fastighet</SelectItem>
-                <SelectItem value="other">Övrigt</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="name">Namn *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="t.ex. Apple Inc."
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="symbol">Symbol</Label>
-            <Input
-              id="symbol"
-              value={formData.symbol}
-              onChange={(e) => setFormData(prev => ({ ...prev, symbol: e.target.value.toUpperCase() }))}
-              placeholder="t.ex. AAPL"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Namn *</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                placeholder="t.ex. Volvo B"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="symbol">Symbol</Label>
+              <Input
+                id="symbol"
+                value={formData.symbol}
+                onChange={(e) => handleInputChange('symbol', e.target.value)}
+                placeholder="t.ex. VOLV-B"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="quantity">Antal *</Label>
-              <Input
-                id="quantity"
-                type="number"
-                step="0.01"
-                value={formData.quantity}
-                onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
-                placeholder="0"
-                required
-              />
+              <Label htmlFor="holding_type">Typ</Label>
+              <Select 
+                value={formData.holding_type} 
+                onValueChange={(value) => handleInputChange('holding_type', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="stock">Aktie</SelectItem>
+                  <SelectItem value="fund">Fond</SelectItem>
+                  <SelectItem value="crypto">Krypto</SelectItem>
+                  <SelectItem value="bonds">Obligation</SelectItem>
+                  <SelectItem value="real_estate">Fastighet</SelectItem>
+                  <SelectItem value="other">Övrigt</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="currency">Valuta</Label>
-              <Select
-                value={formData.currency}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
+              <Select 
+                value={formData.currency} 
+                onValueChange={(value) => handleInputChange('currency', value)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -190,7 +183,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
                   <SelectItem value="SEK">SEK</SelectItem>
                   <SelectItem value="USD">USD</SelectItem>
                   <SelectItem value="EUR">EUR</SelectItem>
-                  <SelectItem value="GBP">GBP</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -198,80 +190,89 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="purchase_price">Inköpspris *</Label>
+              <Label htmlFor="quantity">Antal</Label>
+              <Input
+                id="quantity"
+                type="number"
+                step="0.01"
+                value={formData.quantity}
+                onChange={(e) => handleInputChange('quantity', e.target.value)}
+                placeholder="t.ex. 100"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="purchase_price">Köppris</Label>
               <Input
                 id="purchase_price"
                 type="number"
                 step="0.01"
                 value={formData.purchase_price}
-                onChange={(e) => setFormData(prev => ({ ...prev, purchase_price: e.target.value }))}
-                placeholder="0.00"
-                required
+                onChange={(e) => handleInputChange('purchase_price', e.target.value)}
+                placeholder="t.ex. 150.50"
               />
             </div>
+          </div>
 
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="current_value">Nuvarande värde *</Label>
+              <Label htmlFor="current_value">Nuvarande värde</Label>
               <Input
                 id="current_value"
                 type="number"
                 step="0.01"
                 value={formData.current_value}
-                onChange={(e) => setFormData(prev => ({ ...prev, current_value: e.target.value }))}
-                placeholder="0.00"
-                required
+                onChange={(e) => handleInputChange('current_value', e.target.value)}
+                placeholder="t.ex. 15000"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="purchase_date">Köpdatum</Label>
+              <Input
+                id="purchase_date"
+                type="date"
+                value={formData.purchase_date}
+                onChange={(e) => handleInputChange('purchase_date', e.target.value)}
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Inköpsdatum</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !formData.purchase_date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {formData.purchase_date ? (
-                    format(formData.purchase_date, "PPP", { locale: sv })
-                  ) : (
-                    <span>Välj datum</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={formData.purchase_date}
-                  onSelect={(date) => date && setFormData(prev => ({ ...prev, purchase_date: date }))}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="sector">Sektor</Label>
+              <Input
+                id="sector"
+                value={formData.sector}
+                onChange={(e) => handleInputChange('sector', e.target.value)}
+                placeholder="t.ex. Bilar"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="market">Marknad</Label>
+              <Input
+                id="market"
+                value={formData.market}
+                onChange={(e) => handleInputChange('market', e.target.value)}
+                placeholder="t.ex. NASDAQ Stockholm"
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="sector">Sektor</Label>
-            <Input
-              id="sector"
-              value={formData.sector}
-              onChange={(e) => setFormData(prev => ({ ...prev, sector: e.target.value }))}
-              placeholder="t.ex. Teknologi"
-            />
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleClose}>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={handleClose}
+              disabled={isSubmitting}
+            >
               Avbryt
             </Button>
-            <Button type="submit">
-              Lägg till innehav
+            <Button 
+              type="submit" 
+              disabled={isSubmitting || !formData.name.trim()}
+            >
+              {isSubmitting ? 'Lägger till...' : 'Lägg till innehav'}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
