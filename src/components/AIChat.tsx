@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useToast } from '@/hooks/use-toast';
@@ -7,8 +6,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import ChatHeader from './chat/ChatHeader';
 import ChatMessages from './chat/ChatMessages';
 import ChatInput from './chat/ChatInput';
-import { LogIn } from 'lucide-react';
+import { LogIn, MessageSquare, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 
 interface Message {
   id: string;
@@ -173,28 +173,6 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
     setInput('');
   };
 
-  // Show login required message if user is not authenticated
-  if (!user) {
-    return (
-      <div className="flex flex-col h-[75vh] lg:h-[80vh] xl:h-[85vh] bg-transparent overflow-hidden">
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="text-center max-w-md">
-            <LogIn className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted-foreground" />
-            <h3 className="text-xl font-semibold mb-2 text-foreground">Inloggning krävs</h3>
-            <p className="text-muted-foreground mb-6">
-              För att använda AI-chatten behöver du vara inloggad. 
-              Skapa ett konto eller logga in för att fortsätta.
-            </p>
-            <Button onClick={() => window.location.href = '/auth'}>
-              <LogIn className="w-4 h-4 mr-2" />
-              Logga in / Skapa konto
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Dynamic height based on expansion state
   const chatHeight = isExpanded 
     ? 'h-[85vh] sm:h-[75vh] lg:h-[80vh] xl:h-[85vh]' 
@@ -232,21 +210,82 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
         onDeleteSession={deleteSession}
       />
 
-      <ChatMessages
-        messages={messages}
-        isLoading={isLoading}
-        isLoadingSession={isLoadingSession}
-        messagesEndRef={messagesEndRef}
-      />
+      {user ? (
+        <>
+          <ChatMessages
+            messages={messages}
+            isLoading={isLoading}
+            isLoadingSession={isLoadingSession}
+            messagesEndRef={messagesEndRef}
+          />
 
-      <ChatInput
-        input={input}
-        setInput={setInput}
-        onSubmit={handleSubmit}
-        isLoading={isLoading}
-        quotaExceeded={quotaExceeded}
-        inputRef={inputRef}
-      />
+          <ChatInput
+            input={input}
+            setInput={setInput}
+            onSubmit={handleSubmit}
+            isLoading={isLoading}
+            quotaExceeded={quotaExceeded}
+            inputRef={inputRef}
+          />
+        </>
+      ) : (
+        <>
+          {/* Demo messages for unauthenticated users */}
+          <div className="flex-1 overflow-hidden">
+            <div className="h-full flex flex-col items-center justify-center p-6 text-center">
+              <div className="max-w-md space-y-6">
+                <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center mx-auto shadow-lg">
+                  <Brain className="w-10 h-10 text-primary-foreground" />
+                </div>
+                
+                <div className="space-y-3">
+                  <h3 className="text-xl font-bold text-foreground">AI Portfolio Assistent</h3>
+                  <p className="text-muted-foreground">
+                    Få personliga investeringsråd, portföljanalys och marknadsinsikter med hjälp av AI
+                  </p>
+                </div>
+
+                <Card className="p-4 bg-muted/30 border-dashed">
+                  <div className="flex items-start gap-3">
+                    <MessageSquare className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                    <div className="text-left">
+                      <p className="text-sm font-medium mb-1">Exempel på vad du kan fråga:</p>
+                      <ul className="text-xs text-muted-foreground space-y-1">
+                        <li>• "Analysera min portfölj och ge rekommendationer"</li>
+                        <li>• "Vilka risker har mina nuvarande innehav?"</li>
+                        <li>• "Föreslå bra aktier för min riskprofil"</li>
+                      </ul>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            </div>
+          </div>
+
+          {/* Login prompt instead of chat input */}
+          <div className="border-t bg-background p-4">
+            <div className="max-w-4xl mx-auto">
+              <Card className="p-4 bg-primary/5 border-primary/20">
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
+                      <LogIn className="w-6 h-6 text-primary-foreground" />
+                    </div>
+                    <div className="text-center sm:text-left">
+                      <h4 className="font-semibold text-foreground">Logga in för att chatta</h4>
+                      <p className="text-sm text-muted-foreground">Skapa ett konto för att få personliga AI-råd</p>
+                    </div>
+                  </div>
+                  <Button onClick={() => window.location.href = '/auth'} className="flex-shrink-0">
+                    <LogIn className="w-4 h-4 mr-2" />
+                    Logga in / Skapa konto
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
