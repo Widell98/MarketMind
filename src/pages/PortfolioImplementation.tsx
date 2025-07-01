@@ -89,7 +89,7 @@ const PortfolioImplementation = () => {
     );
   }
 
-  // Show portfolio implementation page with tabs - Always show PortfolioOverview
+  // Always show portfolio implementation page with tabs - Always show PortfolioOverview
   return (
     <Layout>
       <div className="min-h-screen">

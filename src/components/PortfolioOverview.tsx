@@ -28,7 +28,8 @@ import {
   X,
   ShoppingCart,
   Edit,
-  Trash2
+  Trash2,
+  LogIn
 } from 'lucide-react';
 import { 
   Table,
@@ -443,6 +444,206 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     }
   };
 
+  // Show login prompt if user is not authenticated
+  if (!user) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        {/* Key Metrics - Login Required */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Riskjusterad avkastning</CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-4">
+                <LogIn className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground mb-2">Logga in för att se dina data</p>
+                <Button size="sm" onClick={() => navigate('/auth')}>
+                  Logga in
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Diversifiering</CardTitle>
+              <PieChart className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-4">
+                <LogIn className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground mb-2">Logga in för att se dina data</p>
+                <Button size="sm" onClick={() => navigate('/auth')}>
+                  Logga in
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Riskpoäng</CardTitle>
+              <Shield className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-4">
+                <LogIn className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground mb-2">Logga in för att se dina data</p>
+                <Button size="sm" onClick={() => navigate('/auth')}>
+                  Logga in
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Market Exposure and Current Prices Side by Side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          {/* Sector Exposure */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <Building2 className="w-5 h-5 text-orange-600" />
+                Sektorexponering
+              </CardTitle>
+              <CardDescription>Fördelning över olika industrisektorer</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <LogIn className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+                <h3 className="text-lg font-medium mb-2 text-foreground">Inloggning krävs</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Logga in för att se din sektorfördelning och portföljanalys
+                </p>
+                <Button onClick={() => navigate('/auth')}>
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Logga in
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Current Holdings Prices */}
+          <CurrentHoldingsPrices />
+        </div>
+
+        {/* User's Current Holdings - Login Required */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                  <User className="w-5 h-5 text-blue-600" />
+                  Dina Nuvarande Innehav
+                </CardTitle>
+                <CardDescription>Aktier och fonder du redan äger</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <LogIn className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+              <h3 className="text-lg font-medium mb-2 text-foreground">Inga innehav registrerade</h3>
+              <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+                Lägg till dina nuvarande aktier och fonder för att få en komplett bild av din portfölj och bättre AI-rekommendationer.
+              </p>
+              <Button className="flex items-center gap-2" onClick={() => navigate('/ai-chat')}>
+                <Plus className="w-4 h-4" />
+                Lägg till innehav
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* AI-Recommended Holdings - Login Required */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-purple-600" />
+                  AI-Rekommenderade Innehav
+                </CardTitle>
+                <CardDescription>Aktier som AI-advisorn rekommenderar för din portfölj</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <LogIn className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+              <h3 className="text-lg font-medium mb-2 text-foreground">Inloggning krävs</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Logga in för att få personliga AI-rekommendationer för din portfölj
+              </p>
+              <Button onClick={() => navigate('/auth')}>
+                <LogIn className="w-4 h-4 mr-2" />
+                Logga in
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* AI Insights - Login Required */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Brain className="w-5 h-5 text-purple-600" />
+                  AI-insikter och rekommendationer
+                </CardTitle>
+                <CardDescription>
+                  Personaliserade förslag baserat på din portfölj och marknadstrender
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <LogIn className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+              <h3 className="text-lg font-medium mb-2 text-foreground">Inloggning krävs</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Logga in för att få personliga AI-insikter och investeringsförslag
+              </p>
+              <Button onClick={() => navigate('/auth')}>
+                <LogIn className="w-4 h-4 mr-2" />
+                Logga in
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Quick Actions - Login Required */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Zap className="w-5 h-5 text-blue-600" />
+              Snabbåtgärder för portfölj
+            </CardTitle>
+            <CardDescription>
+              AI-assisterade funktioner för att optimera din portfölj
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <LogIn className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+              <h3 className="text-lg font-medium mb-2 text-foreground">Inloggning krävs</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Logga in för att få tillgång till AI-assisterade portföljfunktioner
+              </p>
+              <Button onClick={() => navigate('/auth')}>
+                <LogIn className="w-4 h-4 mr-2" />
+                Logga in
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Key Metrics */}
@@ -558,23 +759,37 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       </div>
 
       {/* User's Current Holdings */}
-      {actualHoldings.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-                  <User className="w-5 h-5 text-blue-600" />
-                  Dina Nuvarande Innehav
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                <User className="w-5 h-5 text-blue-600" />
+                Dina Nuvarande Innehav
+                {actualHoldings.length > 0 && (
                   <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                     {actualHoldings.length} innehav
                   </Badge>
-                </CardTitle>
-                <CardDescription>Aktier och fonder du redan äger</CardDescription>
-              </div>
+                )}
+              </CardTitle>
+              <CardDescription>Aktier och fonder du redan äger</CardDescription>
             </div>
-          </CardHeader>
-          <CardContent>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {actualHoldings.length === 0 ? (
+            <div className="text-center py-8">
+              <User className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+              <h3 className="text-lg font-medium mb-2 text-foreground">Inga innehav registrerade</h3>
+              <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+                Lägg till dina nuvarande aktier och fonder för att få en komplett bild av din portfölj och bättre AI-rekommendationer.
+              </p>
+              <Button className="flex items-center gap-2" onClick={() => navigate('/ai-chat')}>
+                <Plus className="w-4 h-4" />
+                Lägg till innehav
+              </Button>
+            </div>
+          ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -669,9 +884,9 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                 </TableBody>
               </Table>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {/* AI-Recommended Holdings */}
       <Card>
