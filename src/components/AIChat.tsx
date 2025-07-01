@@ -1,10 +1,14 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import ChatHeader from './chat/ChatHeader';
 import ChatMessages from './chat/ChatMessages';
 import ChatInput from './chat/ChatInput';
+import { LogIn } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Message {
   id: string;
@@ -25,6 +29,7 @@ interface AIChatProps {
 }
 
 const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
+  const { user } = useAuth();
   const {
     messages,
     sessions,
@@ -154,7 +159,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !user) return;
 
     const messageToSend = input.trim();
     setInput('');
@@ -163,9 +168,32 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
   };
 
   const handleNewSession = async () => {
+    if (!user) return;
     await createNewSession();
     setInput('');
   };
+
+  // Show login required message if user is not authenticated
+  if (!user) {
+    return (
+      <div className="flex flex-col h-[75vh] lg:h-[80vh] xl:h-[85vh] bg-transparent overflow-hidden">
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="text-center max-w-md">
+            <LogIn className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted-foreground" />
+            <h3 className="text-xl font-semibold mb-2 text-foreground">Inloggning krävs</h3>
+            <p className="text-muted-foreground mb-6">
+              För att använda AI-chatten behöver du vara inloggad. 
+              Skapa ett konto eller logga in för att fortsätta.
+            </p>
+            <Button onClick={() => window.location.href = '/auth'}>
+              <LogIn className="w-4 h-4 mr-2" />
+              Logga in / Skapa konto
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Dynamic height based on expansion state
   const chatHeight = isExpanded 

@@ -1,21 +1,37 @@
 
-import React, { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import AIChat from '@/components/AIChat';
+import LoginPromptModal from '@/components/LoginPromptModal';
 import { usePortfolio } from '@/hooks/usePortfolio';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Brain, MessageSquare, Activity, Target, Lightbulb, Zap, PieChart, TrendingUp } from 'lucide-react';
+import { Brain, MessageSquare, Activity, Target, Lightbulb, Zap, PieChart, TrendingUp, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const AIChatPage = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const stockName = searchParams.get('stock');
   const message = searchParams.get('message');
   const { activePortfolio } = usePortfolio();
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setShowLoginModal(true);
+    }
+  }, [user]);
 
   const handleExamplePrompt = (prompt: string) => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+    
     setTimeout(() => {
       const event = new CustomEvent('sendExamplePrompt', {
         detail: { message: prompt }
@@ -50,6 +66,62 @@ const AIChatPage = () => {
       description: "Håll dig uppdaterad med aktuella marknadstrender"
     }
   ];
+
+  // Show login prompt for unauthenticated users
+  if (!user) {
+    return (
+      <Layout>
+        <LoginPromptModal 
+          isOpen={showLoginModal} 
+          onClose={() => {
+            setShowLoginModal(false);
+            navigate('/');
+          }} 
+        />
+        
+        <div className="min-h-screen">
+          <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8 max-w-[1400px]">
+            {/* Header */}
+            <div className="mb-4 sm:mb-6">
+              <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-primary shadow-lg">
+                      <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-0.5 sm:mb-1 text-foreground">
+                        AI Portfolio Assistent
+                      </h1>
+                      <p className="text-xs sm:text-sm lg:text-base text-muted-foreground">
+                        Din intelligenta investeringsrådgivare
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Login required message */}
+            <Card className="bg-card border shadow-lg rounded-2xl overflow-hidden">
+              <div className="p-8 text-center">
+                <LogIn className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted-foreground" />
+                <h2 className="text-2xl font-bold mb-2 text-foreground">Inloggning krävs</h2>
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                  För att chatta med vår AI-assistent behöver du skapa ett konto eller logga in. 
+                  Det är gratis och tar bara några sekunder.
+                </p>
+                <Button onClick={() => setShowLoginModal(true)} size="lg">
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Logga in / Skapa konto
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

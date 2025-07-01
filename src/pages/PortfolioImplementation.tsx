@@ -7,6 +7,7 @@ import UserInsightsPanel from '@/components/UserInsightsPanel';
 import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolioAdvisor';
 import UserInvestmentAnalysis from '@/components/UserInvestmentAnalysis';
 import SubscriptionCard from '@/components/SubscriptionCard';
+import LoginPromptModal from '@/components/LoginPromptModal';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +21,14 @@ const PortfolioImplementation = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  useEffect(() => {
+    if (!user && !loading) {
+      // Show login modal for unauthenticated users
+      setShowLoginModal(true);
+    }
+  }, [user, loading]);
 
   useEffect(() => {
     if (!user || loading) return;
@@ -92,6 +101,11 @@ const PortfolioImplementation = () => {
   // Always show portfolio implementation page with tabs - Always show PortfolioOverview
   return (
     <Layout>
+      <LoginPromptModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)} 
+      />
+      
       <div className="min-h-screen">
         <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8 max-w-[1400px]">
           {/* Modern Header - Mobile Optimized */}
