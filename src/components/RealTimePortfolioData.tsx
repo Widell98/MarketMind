@@ -20,9 +20,23 @@ const RealTimePortfolioData: React.FC = () => {
   const { actualHoldings, loading: holdingsLoading } = useUserHoldings();
   const { quotes, portfolioPerformance, loading, error, refreshData } = useRealTimeMarketData();
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [exchangeRate, setExchangeRate] = useState<number>(10.5);
+
+  const fetchExchangeRate = async () => {
+    try {
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+      const data = await response.json();
+      if (data.rates && data.rates.SEK) {
+        setExchangeRate(data.rates.SEK);
+      }
+    } catch (error) {
+      console.warn('Failed to fetch exchange rate, using default:', error);
+    }
+  };
 
   useEffect(() => {
     if (actualHoldings.length > 0 && !holdingsLoading) {
+      fetchExchangeRate();
       refreshData(actualHoldings);
       setLastRefresh(new Date());
     }
@@ -32,6 +46,7 @@ const RealTimePortfolioData: React.FC = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       if (actualHoldings.length > 0) {
+        fetchExchangeRate();
         refreshData(actualHoldings);
         setLastRefresh(new Date());
       }
@@ -42,17 +57,26 @@ const RealTimePortfolioData: React.FC = () => {
 
   const handleManualRefresh = () => {
     if (actualHoldings.length > 0) {
+      fetchExchangeRate();
       refreshData(actualHoldings);
       setLastRefresh(new Date());
     }
   };
 
-  const formatCurrency = (amount: number) => {
+  const convertToSEK = (amount: number, fromCurrency: string): number => {
+    if (fromCurrency === 'USD') {
+      return amount * exchangeRate;
+    }
+    return amount; // Assume SEK if not USD
+  };
+
+  const formatCurrency = (amount: number, currency: string = 'SEK') => {
+    const currencyCode = currency === 'SEK' ? 'SEK' : 'USD';
     return new Intl.NumberFormat('sv-SE', {
       style: 'currency',
-      currency: 'SEK',
+      currency: currencyCode,
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      maximumFractionDigits: currency === 'SEK' ? 0 : 2
     }).format(amount);
   };
 
@@ -104,7 +128,7 @@ const RealTimePortfolioData: React.FC = () => {
                 Realtids Portföljdata
               </CardTitle>
               <CardDescription>
-                Senast uppdaterad: {formatTime(lastRefresh)}
+                Senast uppdaterad: {formatTime(lastRefresh)} • 1 USD = {exchangeRate.toFixed(2)} SEK
               </CardDescription>
             </div>
             <Button
@@ -136,7 +160,7 @@ const RealTimePortfolioData: React.FC = () => {
                     <span className="text-sm font-medium">Totalt Värde</span>
                   </div>
                   <div className="text-2xl font-bold">
-                    {formatCurrency(portfolioPerformance.totalValue)}
+                    {formatCurrency(portfolioPerformance.totalValue, 'SEK')}
                   </div>
                 </div>
                 
@@ -146,7 +170,7 @@ const RealTimePortfolioData: React.FC = () => {
                     <span className="text-sm font-medium">Total Avkastning</span>
                   </div>
                   <div className="text-2xl font-bold flex items-center gap-2">
-                    {formatCurrency(portfolioPerformance.totalChange)}
+                    {formatCurrency(portfolioPerformance.totalChange, 'SEK')}
                     <Badge variant={portfolioPerformance.totalChangePercent >= 0 ? "default" : "destructive"}>
                       {portfolioPerformance.totalChangePercent >= 0 ? '+' : ''}
                       {portfolioPerformance.totalChangePercent.toFixed(2)}%
@@ -160,7 +184,7 @@ const RealTimePortfolioData: React.FC = () => {
                     <span className="text-sm font-medium">Dagens Förändring</span>
                   </div>
                   <div className="text-2xl font-bold flex items-center gap-2">
-                    {formatCurrency(portfolioPerformance.dailyChange)}
+                    {formatCurrency(portfolioPerformance.dailyChange, 'SEK')}
                     <Badge variant={portfolioPerformance.dailyChangePercent >= 0 ? "default" : "destructive"}>
                       {portfolioPerformance.dailyChangePercent >= 0 ? '+' : ''}
                       {portfolioPerformance.dailyChangePercent.toFixed(2)}%
@@ -187,7 +211,7 @@ const RealTimePortfolioData: React.FC = () => {
                         <YAxis tick={{ fontSize: 12 }} />
                         <Tooltip
                           labelFormatter={(value) => new Date(value).toLocaleDateString('sv-SE')}
-                          formatter={(value: number) => [formatCurrency(value), 'Stängningskurs']}
+                          formatter={(value: number) => [formatCurrency(value, 'SEK'), 'Stängningskurs']}
                         />
                         <Area
                           type="monotone"
@@ -222,7 +246,7 @@ const RealTimePortfolioData: React.FC = () => {
               <TrendingUp className="w-5 h-5 text-green-600" />
               Innehav Prestanda
             </CardTitle>
-            <CardDescription>Realtidskurser för dina aktier</CardDescription>
+            <CardDescription>Realtidskurser för dina aktier (konverterat till SEK)</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -230,22 +254,33 @@ const RealTimePortfolioData: React.FC = () => {
                 .filter(holding => quotes[holding.symbol])
                 .map(holding => {
                   const quote = quotes[holding.symbol];
-                  const totalValue = quote.price * (holding.quantity || 1);
-                  const totalChange = quote.change * (holding.quantity || 1);
+                  const holdingCurrency = holding.currency || 'SEK';
+                  
+                  // Convert prices to SEK for consistent display
+                  const priceInSEK = holdingCurrency === 'USD' ? convertToSEK(quote.price, 'USD') : quote.price;
+                  const changeInSEK = holdingCurrency === 'USD' ? convertToSEK(quote.change, 'USD') : quote.change;
+                  
+                  const totalValue = priceInSEK * (holding.quantity || 1);
+                  const totalChange = changeInSEK * (holding.quantity || 1);
                   
                   return (
                     <div key={holding.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                       <div className="min-w-0 flex-1">
                         <div className="font-medium">{holding.name}</div>
                         <div className="text-sm text-muted-foreground">
-                          {holding.quantity} aktier × {quote.price.toFixed(2)} SEK
+                          {holding.quantity} aktier × {formatCurrency(priceInSEK, 'SEK')}
+                          {holdingCurrency !== 'SEK' && (
+                            <span className="ml-2 text-xs text-blue-600">
+                              (Original: {formatCurrency(quote.price, holdingCurrency)})
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-medium">{formatCurrency(totalValue)}</div>
+                        <div className="font-medium">{formatCurrency(totalValue, 'SEK')}</div>
                         <div className={`text-sm flex items-center gap-1 ${quote.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {quote.change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                          {formatCurrency(Math.abs(totalChange))} ({Math.abs(quote.changePercent).toFixed(2)}%)
+                          {formatCurrency(Math.abs(totalChange), 'SEK')} ({Math.abs(quote.changePercent).toFixed(2)}%)
                         </div>
                       </div>
                     </div>

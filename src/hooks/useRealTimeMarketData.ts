@@ -15,6 +15,7 @@ interface StockQuote {
   open: number;
   previousClose: number;
   lastUpdated: string;
+  currency?: string;
 }
 
 interface HistoricalData {
@@ -41,8 +42,29 @@ export const useRealTimeMarketData = () => {
   const [portfolioPerformance, setPortfolioPerformance] = useState<PortfolioPerformance | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [exchangeRate, setExchangeRate] = useState<number>(10.5);
   const { user } = useAuth();
   const { toast } = useToast();
+
+  const fetchExchangeRate = useCallback(async (): Promise<number> => {
+    try {
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+      const data = await response.json();
+      const rate = data.rates?.SEK || 10.5;
+      setExchangeRate(rate);
+      return rate;
+    } catch (err) {
+      console.warn('Failed to fetch exchange rate, using default:', err);
+      return exchangeRate;
+    }
+  }, [exchangeRate]);
+
+  const convertToSEK = useCallback((amount: number, fromCurrency: string, rate: number): number => {
+    if (fromCurrency === 'USD') {
+      return amount * rate;
+    }
+    return amount; // Assume SEK if not USD
+  }, []);
 
   const fetchStockQuote = useCallback(async (symbol: string): Promise<StockQuote | null> => {
     try {
@@ -51,7 +73,10 @@ export const useRealTimeMarketData = () => {
       });
 
       if (error) throw error;
-      return data;
+      return {
+        ...data,
+        currency: data.currency || 'USD'
+      };
     } catch (err) {
       console.error(`Error fetching quote for ${symbol}:`, err);
       return null;
@@ -79,6 +104,9 @@ export const useRealTimeMarketData = () => {
     setError(null);
 
     try {
+      // Fetch current exchange rate
+      const currentRate = await fetchExchangeRate();
+
       const symbols = holdings
         .filter(h => h.symbol && h.holding_type !== 'recommendation')
         .map(h => h.symbol);
@@ -108,9 +136,27 @@ export const useRealTimeMarketData = () => {
           // Find the holding for this symbol
           const holding = holdings.find(h => h.symbol === symbol);
           if (holding && holding.quantity) {
-            const currentValue = quote.price * holding.quantity;
-            const costBasis = (holding.purchase_price || quote.price) * holding.quantity;
-            const dailyChangeValue = quote.change * holding.quantity;
+            const holdingCurrency = holding.currency || 'SEK';
+            const quoteCurrency = quote.currency || 'USD';
+            
+            // Convert all values to SEK for consistent calculation
+            let priceInSEK = quote.price;
+            let changeInSEK = quote.change;
+            let purchasePriceInSEK = holding.purchase_price || quote.price;
+
+            if (quoteCurrency === 'USD') {
+              priceInSEK = convertToSEK(quote.price, 'USD', currentRate);
+              changeInSEK = convertToSEK(quote.change, 'USD', currentRate);
+            }
+
+            if (holdingCurrency === 'USD' && quoteCurrency === 'SEK') {
+              // If holding is in USD but quote is in SEK, convert purchase price
+              purchasePriceInSEK = convertToSEK(holding.purchase_price || (quote.price / currentRate), 'USD', currentRate);
+            }
+
+            const currentValue = priceInSEK * holding.quantity;
+            const costBasis = purchasePriceInSEK * holding.quantity;
+            const dailyChangeValue = changeInSEK * holding.quantity;
             
             totalValue += currentValue;
             totalCost += costBasis;
@@ -148,7 +194,7 @@ export const useRealTimeMarketData = () => {
     } finally {
       setLoading(false);
     }
-  }, [fetchStockQuote, fetchHistoricalData, toast]);
+  }, [fetchStockQuote, fetchHistoricalData, fetchExchangeRate, convertToSEK, toast]);
 
   const refreshData = useCallback(async (holdings: any[]) => {
     await updatePortfolioPerformance(holdings);
@@ -161,6 +207,7 @@ export const useRealTimeMarketData = () => {
     error,
     refreshData,
     fetchStockQuote,
-    fetchHistoricalData
+    fetchHistoricalData,
+    exchangeRate
   };
 };
