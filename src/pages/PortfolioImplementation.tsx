@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -278,11 +279,18 @@ const PortfolioImplementation = () => {
             </TabsContent>
             
             <TabsContent value="overview">
-              <PortfolioOverview 
-                portfolio={activePortfolio}
-                onQuickChat={handleQuickChat}
-                onActionClick={handleActionClick}
-              />
+              <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 sm:gap-6">
+                <div className="xl:col-span-3">
+                  <PortfolioOverview 
+                    portfolio={activePortfolio}
+                    onQuickChat={handleQuickChat}
+                    onActionClick={handleActionClick}
+                  />
+                </div>
+                <div className="xl:col-span-1">
+                  <UserInsightsPanel />
+                </div>
+              </div>
             </TabsContent>
 
             <TabsContent value="analysis">
