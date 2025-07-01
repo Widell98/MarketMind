@@ -59,28 +59,6 @@ const UserHoldingsManager: React.FC = () => {
     }).format(amount);
   };
 
-  if (loading) {
-    return (
-      <Card className="h-fit">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="w-5 h-5 text-blue-600" />
-            Dina Nuvarande Innehav
-          </CardTitle>
-          <CardDescription>Hantera dina aktieinnehav</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <div className="flex items-center justify-center gap-2">
-              <Package className="w-4 h-4 animate-pulse" />
-              <span>Laddar innehav...</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card className="h-fit">
       <CardHeader>
@@ -89,14 +67,23 @@ const UserHoldingsManager: React.FC = () => {
           Dina Nuvarande Innehav
         </CardTitle>
         <CardDescription>
-          {actualHoldings.length > 0 
-            ? `Hantera dina aktieinnehav (${actualHoldings.length} st)`
-            : "Lägg till dina befintliga aktier och fonder för bättre portföljanalys"
+          {loading 
+            ? "Laddar dina innehav..."
+            : actualHoldings.length > 0 
+              ? `Hantera dina aktieinnehav (${actualHoldings.length} st)`
+              : "Lägg till dina befintliga aktier och fonder för bättre portföljanalys"
           }
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {actualHoldings.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <div className="flex items-center justify-center gap-2">
+              <Package className="w-4 h-4 animate-pulse" />
+              <span>Laddar innehav...</span>
+            </div>
+          </div>
+        ) : actualHoldings.length === 0 ? (
           <div className="text-center py-8">
             <Package className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
             <h3 className="text-lg font-medium mb-2 text-foreground">Inga innehav registrerade</h3>
