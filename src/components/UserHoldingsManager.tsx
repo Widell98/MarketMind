@@ -92,7 +92,7 @@ const UserHoldingsManager: React.FC = () => {
       </CardHeader>
       <CardContent className="space-y-3">
         {actualHoldings.map(holding => (
-          <div key={holding.id} className="group relative bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-sm">
+          <div key={holding.id} className="relative bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-sm">
             <div className="flex items-center justify-between p-4">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1">
@@ -123,35 +123,38 @@ const UserHoldingsManager: React.FC = () => {
                 </div>
               </div>
               
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Radera innehav</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Är du säker på att du vill radera <strong>{holding.name}</strong> från dina innehav? 
-                      Denna åtgärd kan inte ångras.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => handleDeleteHolding(holding.id, holding.name)}
-                      className="bg-red-600 hover:bg-red-700"
+              <div className="flex-shrink-0 ml-4">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 hover:border-red-300"
                     >
+                      <Trash2 className="w-4 h-4 mr-1" />
                       Radera
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Radera innehav</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Är du säker på att du vill radera <strong>{holding.name}</strong> från dina innehav? 
+                        Denna åtgärd kan inte ångras.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleDeleteHolding(holding.id, holding.name)}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        Radera
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
           </div>
         ))}

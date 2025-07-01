@@ -151,16 +151,15 @@ const CurrentHoldingsPrices: React.FC = () => {
         <div className="space-y-3">
           {holdingsWithSymbols.map(holding => {
             const quote = quotes[holding.symbol];
-            const purchasePrice = holding.purchase_price || 0;
             const quantity = holding.quantity || 1;
             
-            console.log(`Holding ${holding.symbol}:`, { quote, purchasePrice, quantity });
+            console.log(`Holding ${holding.symbol}:`, { quote, quantity });
             
             return (
-              <div key={holding.id} className="group relative bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-150 rounded-lg border border-gray-200 transition-all duration-200 hover:shadow-md">
-                <div className="flex items-center justify-between p-4">
+              <div key={holding.id} className="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-sm p-4">
+                <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-2">
                       <h3 className="font-semibold text-gray-900">{holding.name}</h3>
                       <span className="font-mono bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-medium">
                         {holding.symbol}
@@ -173,42 +172,43 @@ const CurrentHoldingsPrices: React.FC = () => {
                           {holding.quantity} aktier
                         </span>
                       )}
-                      {purchasePrice > 0 && (
+                      {holding.purchase_price && (
                         <span className="flex items-center gap-1">
                           <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
-                          Köpt för {formatCurrency(purchasePrice)}
+                          Köpt för {formatCurrency(holding.purchase_price)}
                         </span>
                       )}
                     </div>
                   </div>
                   
-                  <div className="text-right">
+                  <div className="text-right flex-shrink-0 ml-4">
                     {loading && !quote ? (
                       <div className="animate-pulse">
                         <div className="h-6 bg-gray-200 rounded w-20 mb-1"></div>
                         <div className="h-4 bg-gray-200 rounded w-16"></div>
                       </div>
                     ) : quote ? (
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-semibold text-gray-900">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-xl font-bold text-gray-900">
                             {formatCurrency(quote.price)}
                           </span>
-                          <span className="text-xs text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded">
-                            API
-                          </span>
+                          <Badge variant="outline" className="text-xs">
+                            Live
+                          </Badge>
                         </div>
+                        
                         {holding.quantity && (
-                          <div className="text-sm text-gray-600">
-                            Totalt: {formatCurrency(quote.price * quantity)}
+                          <div className="text-sm text-gray-600 text-right">
+                            Totalt värde: <span className="font-medium">{formatCurrency(quote.price * quantity)}</span>
                           </div>
                         )}
                         
                         {/* Dagens förändring */}
-                        <div className={`text-sm flex items-center gap-1 ${
+                        <div className={`text-sm flex items-center justify-end gap-1 ${
                           quote.change >= 0 ? 'text-green-600' : 'text-red-600'
                         }`}>
-                          {quote.change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                          {quote.change >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                           <span className="font-medium">
                             {quote.change >= 0 ? '+' : ''}{formatCurrency(Math.abs(quote.change))} 
                             ({Math.abs(quote.changePercent).toFixed(2)}%)
@@ -217,8 +217,8 @@ const CurrentHoldingsPrices: React.FC = () => {
                       </div>
                     ) : (
                       <div className="text-sm text-gray-500 text-center">
-                        <div>Ingen data</div>
-                        <div className="text-xs">Kontrollera: {holding.symbol}</div>
+                        <div className="text-gray-400">Ingen data</div>
+                        <div className="text-xs text-gray-400">Kontrollera: {holding.symbol}</div>
                       </div>
                     )}
                   </div>
