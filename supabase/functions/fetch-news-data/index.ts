@@ -139,7 +139,7 @@ async function fetchFinancialCalendarData() {
             
             SVENSKA HÄNDELSER:
             - Riksbankens räntebesked och inflationsdata
-            - Kvartalsrapporter från svenska storbolag (H&M, Ericsson, Volvo, SEB, Nordea, Atlas Copco, SKF, Sandvik)
+            - Kvartalsrapporter från svenska storbolag
             - Ekonomisk statistik från SCB
             - Utdelningsannonsering
             
@@ -149,6 +149,8 @@ async function fetchFinancialCalendarData() {
             - Kvartalsrapporter från stora tech- och finansbolag
             - Centralbanksbesked
             - Viktig ekonomisk data som påverkar svenska marknader
+            - Stora eknomiska händelser
+    
             
             Gör händelserna trovärdiga och relevanta för nuvarande marknadssituation och årstid.`
           }
@@ -208,6 +210,7 @@ async function fetchMarketMomentumData() {
             - Svenska specifika faktorer (kronkurs, export, råvaror)
             - ESG och hållbarhetsinvesteringar
             - Räntekänslighet och obligationsmarknaden
+            - Stora eknomiska händelser
             
             Skapa 6-8 trovärdiga momentumtrender med realistiska procenttal och tidsramar.`
           }
@@ -270,6 +273,7 @@ async function fetchLiveNewsData() {
             - Europeiska marknader och ECB
             - Råvarumarknader och energi
             - Kryptovalutor och digitala tillgångar
+            - Stora eknomiska händelser
             
             Gör nyheterna trovärdiga, relevanta och intressanta för svenska investerare.`
           }
