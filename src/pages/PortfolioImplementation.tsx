@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -7,6 +8,8 @@ import UserInsightsPanel from '@/components/UserInsightsPanel';
 import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolioAdvisor';
 import UserInvestmentAnalysis from '@/components/UserInvestmentAnalysis';
 import SubscriptionCard from '@/components/SubscriptionCard';
+import UserHoldingsManager from '@/components/UserHoldingsManager';
+import CurrentHoldingsPrices from '@/components/CurrentHoldingsPrices';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -279,12 +282,17 @@ const PortfolioImplementation = () => {
             
             <TabsContent value="overview">
               <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 sm:gap-6">
-                <div className="xl:col-span-3">
+                <div className="xl:col-span-3 space-y-4 sm:space-y-6">
                   <PortfolioOverview 
                     portfolio={activePortfolio}
                     onQuickChat={handleQuickChat}
                     onActionClick={handleActionClick}
                   />
+                  
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                    <UserHoldingsManager onStockChat={handleQuickChat} />
+                    <CurrentHoldingsPrices />
+                  </div>
                 </div>
                 <div className="xl:col-span-1">
                   <UserInsightsPanel />
