@@ -222,7 +222,7 @@ SVARSFORMAT:
     ];
 
     console.log('=== CALLING OPENAI API ===');
-    console.log('Model: gpt-3.5-turbo');
+    console.log('gpt-4o');
     console.log('Messages count:', messages.length);
     console.log('User message:', message);
     console.log('Is exchange request:', isExchangeRequest);
@@ -235,7 +235,7 @@ SVARSFORMAT:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
+        model: 'gpt-4o',
         messages: messages,
         max_tokens: isExchangeRequest ? 400 : 300,
         temperature: 0.6,
@@ -346,7 +346,7 @@ SVARSFORMAT:
           message: aiResponse,
           context_data: { 
             timestamp: new Date().toISOString(),
-            model: 'gpt-3.5-turbo',
+            model: 'gpt-4o',
             analysisType: analysisType || 'general',
             confidence: confidence,
             isExchangeRequest: isExchangeRequest,
@@ -373,7 +373,7 @@ SVARSFORMAT:
           portfolioValue: portfolio?.total_value || 0,
           holdingsCount: holdings?.length || 0,
           insightsCount: insights?.length || 0,
-          model: 'gpt-3.5-turbo',
+          model: 'gpt-4o',
           canSuggestChanges: isExchangeRequest,
           existingHoldings: Array.from(existingSymbols)
         }
