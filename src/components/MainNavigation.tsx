@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -6,8 +5,7 @@ import {
   Home, 
   TrendingUp, 
   BarChart3, 
-  MessageSquare,
-  Users
+  MessageSquare
 } from 'lucide-react';
 
 const MainNavigation = () => {
@@ -18,7 +16,6 @@ const MainNavigation = () => {
     { name: 'Aktiefall', href: '/stock-cases', icon: TrendingUp },
     { name: 'Min Portfölj', href: '/portfolio-implementation', icon: BarChart3 },
     { name: 'AI-Assistent', href: '/ai-chat', icon: MessageSquare },
-    { name: 'Community', href: '/social', icon: Users },
   ];
 
   return (
