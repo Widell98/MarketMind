@@ -34,6 +34,7 @@ const UserInsightsPanel = () => {
   const [insights, setInsights] = useState<AIInsight[]>([]);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [hasInitialLoad, setHasInitialLoad] = useState(false);
   const { user } = useAuth();
   const { subscription } = useSubscription();
   const { toast } = useToast();
@@ -42,7 +43,6 @@ const UserInsightsPanel = () => {
 
   const loadSavedInsights = async () => {
     if (!user) {
-      await fetchGeneralInsights();
       return;
     }
 
@@ -65,37 +65,9 @@ const UserInsightsPanel = () => {
         const insightsData = data.insights_data as unknown as AIInsight[];
         setInsights(insightsData);
         setLastUpdated(new Date(data.updated_at).toLocaleString('sv-SE'));
-      } else {
-        // No saved insights, load general ones
-        await fetchGeneralInsights();
       }
     } catch (error) {
       console.error('Error loading saved insights:', error);
-      await fetchGeneralInsights();
-    }
-  };
-
-  const fetchGeneralInsights = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke('ai-market-insights', {
-        body: { 
-          type: 'market_sentiment',
-          personalized: false,
-          forceRefresh: false
-        }
-      });
-
-      if (error) {
-        console.error('Error fetching general insights:', error);
-        return;
-      }
-
-      if (data && Array.isArray(data)) {
-        setInsights(data);
-        setLastUpdated(new Date().toLocaleString('sv-SE'));
-      }
-    } catch (error) {
-      console.error('Error fetching general insights:', error);
     }
   };
 
@@ -103,7 +75,7 @@ const UserInsightsPanel = () => {
     if (!user) {
       toast({
         title: "Inloggning krävs",
-        description: "Du måste vara inloggad för att uppdatera AI-insikter.",
+        description: "Du måste vara inloggad för att hämta AI-insikter.",
         variant: "destructive",
       });
       return;
@@ -112,7 +84,7 @@ const UserInsightsPanel = () => {
     if (!isPremiumUser) {
       toast({
         title: "Premium krävs",
-        description: "Uppgradera till Premium för att uppdatera AI-insikter.",
+        description: "Uppgradera till Premium för att hämta AI-insikter.",
         variant: "destructive",
       });
       return;
@@ -133,7 +105,7 @@ const UserInsightsPanel = () => {
         console.error('Error refreshing insights:', error);
         toast({
           title: "Fel",
-          description: "Kunde inte uppdatera AI-insikter. Försök igen senare.",
+          description: "Kunde inte hämta AI-insikter. Försök igen senare.",
           variant: "destructive",
         });
         return;
@@ -159,6 +131,7 @@ const UserInsightsPanel = () => {
 
         setInsights(data);
         setLastUpdated(new Date().toLocaleString('sv-SE'));
+        setHasInitialLoad(true);
         toast({
           title: "Insikter uppdaterade",
           description: "AI-insikterna har uppdaterats med ny data.",
@@ -176,8 +149,13 @@ const UserInsightsPanel = () => {
     }
   };
 
+  // Only load saved insights on mount, don't fetch new ones
   useEffect(() => {
-    loadSavedInsights();
+    if (user) {
+      loadSavedInsights().then(() => setHasInitialLoad(true));
+    } else {
+      setHasInitialLoad(true);
+    }
   }, [user]);
 
   const getInsightIcon = (type: string) => {
@@ -297,7 +275,7 @@ const UserInsightsPanel = () => {
         {loading ? (
           <div className="text-center py-4">
             <RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin text-purple-600" />
-            <p className="text-sm text-muted-foreground">Uppdaterar AI-insikter...</p>
+            <p className="text-sm text-muted-foreground">Hämtar AI-insikter...</p>
           </div>
         ) : insights.length > 0 ? (
           <div className="space-y-3">
@@ -323,7 +301,7 @@ const UserInsightsPanel = () => {
           <div className="text-center py-6">
             <Brain className="w-8 h-8 mx-auto mb-3 opacity-50" />
             <p className="text-sm text-muted-foreground mb-3">
-              Inga AI-insikter tillgängliga än
+              {hasInitialLoad ? 'Inga AI-insikter tillgängliga' : 'Klicka på uppdatera för att hämta AI-insikter'}
             </p>
             <div className="w-full max-w-sm mx-auto">
               {isPremiumUser && user ? (
@@ -334,13 +312,13 @@ const UserInsightsPanel = () => {
                   className="w-full"
                 >
                   <Brain className="w-3 h-3 mr-2" />
-                  Generera insikter
+                  Hämta insikter
                 </Button>
               ) : (
                 <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
                   <Crown className="w-5 h-5 mx-auto mb-2 text-blue-600" />
                   <p className="text-xs text-blue-700 font-medium">
-                    {!user ? 'Logga in för AI-insikter' : 'Premium krävs för att generera AI-insikter'}
+                    {!user ? 'Logga in för AI-insikter' : 'Premium krävs för att hämta AI-insikter'}
                   </p>
                 </div>
               )}
