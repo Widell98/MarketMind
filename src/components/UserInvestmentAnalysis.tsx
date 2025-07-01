@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,14 +18,16 @@ import {
 } from 'lucide-react';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolio } from '@/hooks/usePortfolio';
+import ResetProfileConfirmDialog from '@/components/ResetProfileConfirmDialog';
 
 interface UserInvestmentAnalysisProps {
   onUpdateProfile?: () => void;
 }
 
 const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps) => {
-  const { riskProfile, loading: riskLoading } = useRiskProfile();
+  const { riskProfile, loading: riskLoading, clearRiskProfile } = useRiskProfile();
   const { activePortfolio, loading: portfolioLoading } = usePortfolio();
+  const [showResetDialog, setShowResetDialog] = useState(false);
 
   // Function to format AI strategy text with proper CSS styling
   const formatAIStrategy = (text: string) => {
@@ -89,6 +90,16 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
     return <div className="space-y-1">{formattedLines}</div>;
   };
 
+  const handleResetProfile = async () => {
+    if (clearRiskProfile) {
+      const success = await clearRiskProfile();
+      if (success && onUpdateProfile) {
+        onUpdateProfile();
+      }
+    }
+    setShowResetDialog(false);
+  };
+
   if (riskLoading || portfolioLoading) {
     return (
       <div className="space-y-6">
@@ -143,6 +154,12 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
 
   return (
     <div className="space-y-6">
+      <ResetProfileConfirmDialog
+        isOpen={showResetDialog}
+        onClose={() => setShowResetDialog(false)}
+        onConfirm={handleResetProfile}
+      />
+
       {/* Header with Update Profile Button */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 sm:p-6 bg-gradient-to-r from-blue-50 to-sky-50 dark:from-blue-950/20 dark:to-sky-950/20 rounded-2xl border border-blue-200 dark:border-blue-800">
         <div>
@@ -155,7 +172,7 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
         </div>
         {onUpdateProfile && (
           <Button
-            onClick={onUpdateProfile}
+            onClick={() => setShowResetDialog(true)}
             variant="outline"
             className="flex items-center gap-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border-2 shadow-sm"
           >

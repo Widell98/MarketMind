@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -212,10 +211,55 @@ export const useRiskProfile = () => {
     }
   };
 
+  const clearRiskProfile = async () => {
+    if (!user) return false;
+
+    try {
+      console.log('Clearing risk profile for user:', user.id);
+      setLoading(true);
+
+      const { error } = await supabase
+        .from('user_risk_profiles')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error clearing risk profile:', error);
+        toast({
+          title: "Fel",
+          description: "Kunde inte radera riskprofilen",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      console.log('Risk profile cleared successfully');
+      setRiskProfile(null);
+      
+      toast({
+        title: "Profil raderad",
+        description: "Din riskprofil har raderats framgångsrikt",
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error clearing risk profile:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte radera riskprofilen",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     riskProfile,
     loading,
     saveRiskProfile,
+    clearRiskProfile,
     refetch: fetchRiskProfile
   };
 };
