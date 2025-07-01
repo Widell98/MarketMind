@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -800,13 +799,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
                 Lägg till dina nuvarande aktier och fonder för att få en komplett bild av din portfölj och bättre AI-rekommendationer.
               </p>
-              <Button 
-                className="flex items-center gap-2" 
-                onClick={() => setAddHoldingDialogOpen(true)}
-              >
-                <Plus className="w-4 h-4" />
-                Lägg till innehav
-              </Button>
             </div>
           ) : (
             <div className="overflow-x-auto">
