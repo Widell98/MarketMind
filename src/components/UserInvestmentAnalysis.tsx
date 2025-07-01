@@ -14,11 +14,16 @@ import {
   BarChart3,
   AlertCircle,
   CheckCircle,
-  Settings
+  Settings,
+  Plus
 } from 'lucide-react';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import ResetProfileConfirmDialog from '@/components/ResetProfileConfirmDialog';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface UserInvestmentAnalysisProps {
   onUpdateProfile?: () => void;
@@ -28,6 +33,9 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
   const { riskProfile, loading: riskLoading, clearRiskProfile } = useRiskProfile();
   const { activePortfolio, loading: portfolioLoading } = usePortfolio();
   const [showResetDialog, setShowResetDialog] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   // Function to format AI strategy text with proper CSS styling
   const formatAIStrategy = (text: string) => {
@@ -91,13 +99,56 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
   };
 
   const handleResetProfile = async () => {
-    if (clearRiskProfile) {
-      const success = await clearRiskProfile();
-      if (success && onUpdateProfile) {
-        onUpdateProfile();
-      }
+    if (!user) {
+      toast({
+        title: "Fel",
+        description: "Du måste vara inloggad för att återställa din profil",
+        variant: "destructive",
+      });
+      return;
     }
+
+    try {
+      // First, clear AI recommendations from user_holdings
+      const { error: holdingsError } = await supabase
+        .from('user_holdings')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('holding_type', 'recommendation');
+
+      if (holdingsError) {
+        console.error('Error clearing AI recommendations:', holdingsError);
+      }
+
+      // Then clear the risk profile
+      if (clearRiskProfile) {
+        const success = await clearRiskProfile();
+        if (success) {
+          toast({
+            title: "Profil återställd",
+            description: "Din riskprofil och AI-rekommendationer har raderats.",
+          });
+          if (onUpdateProfile) {
+            onUpdateProfile();
+          }
+          // Navigate to portfolio advisor to create new profile
+          navigate('/portfolio-advisor');
+        }
+      }
+    } catch (error) {
+      console.error('Error resetting profile:', error);
+      toast({
+        title: "Fel",
+        description: "Ett oväntat fel uppstod. Försök igen senare.",
+        variant: "destructive",
+      });
+    }
+    
     setShowResetDialog(false);
+  };
+
+  const handleCreateNewProfile = () => {
+    navigate('/portfolio-advisor');
   };
 
   if (riskLoading || portfolioLoading) {
@@ -111,14 +162,27 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
 
   if (!riskProfile) {
     return (
-      <Card className="border-dashed border-2 rounded-2xl">
-        <CardContent className="flex items-center justify-center h-32">
-          <div className="text-center text-muted-foreground">
-            <AlertCircle className="w-8 h-8 mx-auto mb-2" />
-            <p>Ingen riskprofil hittades</p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        {/* No Profile State */}
+        <Card className="border-dashed border-2 rounded-2xl">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <div className="text-center text-muted-foreground">
+              <Brain className="w-16 h-16 mx-auto mb-4 opacity-50" />
+              <h3 className="text-xl font-semibold mb-2 text-foreground">Ingen riskprofil hittades</h3>
+              <p className="text-base mb-6 max-w-md">
+                Du behöver skapa en riskprofil för att få personliga investeringsrekommendationer och AI-analys.
+              </p>
+              <Button 
+                onClick={handleCreateNewProfile}
+                className="flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Skapa ny riskprofil
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
