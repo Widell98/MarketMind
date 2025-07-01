@@ -27,7 +27,8 @@ import {
   Building2,
   X,
   ShoppingCart,
-  Edit
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { 
   Table,
@@ -234,19 +235,36 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     const stockInfo = stockSymbol ? `${stockName} (${stockSymbol})` : stockName;
     const message = `Berätta mer om ${stockInfo}. Vad gör företaget, vilka är deras huvudsakliga affärsområden, och varför skulle det vara en bra investering för min portfölj? Analysera också eventuella risker och möjligheter.`;
     
-    // Switch to chat tab
+    // Create new chat session with stock name as title
+    const sessionName = stockName;
+    const fullMessage = `NEW_SESSION:${sessionName}:${message}`;
+    
+    // Switch to chat tab and create new session
     const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
     if (chatTab) {
       chatTab.click();
     }
     
-    // Send the message to chat after a short delay to ensure tab switch
+    // Send the message to create new session after a short delay
     setTimeout(() => {
-      const event = new CustomEvent('sendExamplePrompt', {
-        detail: { message }
+      const event = new CustomEvent('createStockChat', {
+        detail: { sessionName, message }
       });
       window.dispatchEvent(event);
     }, 100);
+  };
+
+  const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
+    console.log(`Deleting holding: ${holdingName} (${holdingId})`);
+    const success = await deleteHolding(holdingId);
+    if (success) {
+      console.log('Holding deleted successfully');
+      toast({
+        title: "Innehav raderat",
+        description: `${holdingName} har tagits bort från dina innehav.`,
+      });
+      refetch();
+    }
   };
 
   const toggleStockExpansion = (index: number) => {
@@ -624,6 +642,36 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                             <MessageCircle className="w-4 h-4" />
                             <span className="hidden sm:inline">Diskutera</span>
                           </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="flex items-center gap-1 text-red-600 hover:text-red-800 hover:bg-red-50 border border-red-200 hover:border-red-300"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                <span className="hidden sm:inline">Radera</span>
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Radera innehav</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Är du säker på att du vill radera <strong>{holding.name}</strong> från dina innehav? 
+                                  Denna åtgärd kan inte ångras.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteHolding(holding.id, holding.name)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Radera
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </TableCell>
                     </TableRow>
