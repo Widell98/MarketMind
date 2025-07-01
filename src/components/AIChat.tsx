@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useToast } from '@/hooks/use-toast';
@@ -49,11 +50,9 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
 
   const [input, setInput] = useState('');
   const [showSessions, setShowSessions] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const location = useLocation();
 
@@ -112,51 +111,6 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
     };
   }, [createNewSession]);
 
-  // Intersection Observer for mobile chat expansion
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            // Chat is in view, expand on mobile
-            if (window.innerWidth <= 768) {
-              setIsExpanded(true);
-            }
-          } else {
-            // Chat is out of view, collapse on mobile
-            if (window.innerWidth <= 768) {
-              setIsExpanded(false);
-            }
-          }
-        });
-      },
-      {
-        threshold: 0.3, // Trigger when 30% of the chat is visible
-        rootMargin: '-50px 0px', // Add some margin to trigger earlier
-      }
-    );
-
-    if (chatContainerRef.current) {
-      observer.observe(chatContainerRef.current);
-    }
-
-    // Handle window resize
-    const handleResize = () => {
-      if (window.innerWidth > 768) {
-        setIsExpanded(false); // Reset expansion state on desktop
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      if (chatContainerRef.current) {
-        observer.unobserve(chatContainerRef.current);
-      }
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading || !user) return;
@@ -173,32 +127,8 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
     setInput('');
   };
 
-  // Dynamic height based on expansion state
-  const chatHeight = isExpanded 
-    ? 'h-[85vh] sm:h-[75vh] lg:h-[80vh] xl:h-[85vh]' 
-    : 'h-[75vh] lg:h-[80vh] xl:h-[85vh]';
-
   return (
-    <div 
-      ref={chatContainerRef}
-      className={`flex flex-col ${chatHeight} bg-transparent overflow-hidden transition-all duration-300 ease-in-out ${
-        isExpanded ? 'fixed inset-4 z-50 bg-background rounded-2xl shadow-2xl border md:relative md:inset-auto md:z-auto md:bg-transparent md:shadow-none md:border-0' : ''
-      }`}
-    >
-      {/* Mobile close button when expanded */}
-      {isExpanded && (
-        <div className="md:hidden flex justify-end p-3 border-b">
-          <button
-            onClick={() => setIsExpanded(false)}
-            className="p-2 hover:bg-muted rounded-lg transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      )}
-
+    <div className="flex flex-col h-[75vh] lg:h-[80vh] xl:h-[85vh] bg-transparent overflow-hidden">
       <ChatHeader
         showSessions={showSessions}
         setShowSessions={setShowSessions}
