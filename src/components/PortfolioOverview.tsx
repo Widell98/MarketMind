@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Card,
@@ -17,6 +18,7 @@ import {
   AlertTriangle,
   Edit,
   Trash2,
+  Brain,
 } from 'lucide-react';
 import { useUserHoldings, UserHolding } from '@/hooks/useUserHoldings';
 import { calculatePortfolioMetrics } from '@/lib/portfolioCalculations';
