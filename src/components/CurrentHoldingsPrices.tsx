@@ -60,6 +60,20 @@ const CurrentHoldingsPrices: React.FC = () => {
     });
   };
 
+  const calculateReturns = (currentPrice: number, purchasePrice: number, quantity: number = 1) => {
+    const currentValue = currentPrice * quantity;
+    const purchaseValue = purchasePrice * quantity;
+    const absoluteReturn = currentValue - purchaseValue;
+    const percentageReturn = purchaseValue > 0 ? (absoluteReturn / purchaseValue) * 100 : 0;
+    
+    return {
+      currentValue,
+      purchaseValue,
+      absoluteReturn,
+      percentageReturn
+    };
+  };
+
   if (holdingsLoading || actualHoldings.length === 0) {
     return (
       <Card>
@@ -126,8 +140,13 @@ const CurrentHoldingsPrices: React.FC = () => {
             .filter(holding => holding.symbol) // Only show holdings with symbols
             .map(holding => {
               const quote = quotes[holding.symbol];
-              const totalValue = quote ? quote.price * (holding.quantity || 1) : 0;
-              const totalChange = quote ? quote.change * (holding.quantity || 1) : 0;
+              const purchasePrice = holding.purchase_price || 0;
+              const quantity = holding.quantity || 1;
+              
+              let returns = null;
+              if (quote && purchasePrice > 0) {
+                returns = calculateReturns(quote.price, purchasePrice, quantity);
+              }
               
               return (
                 <div key={holding.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
@@ -137,6 +156,9 @@ const CurrentHoldingsPrices: React.FC = () => {
                       <span>{holding.symbol}</span>
                       {holding.quantity && (
                         <span>• {holding.quantity} aktier</span>
+                      )}
+                      {purchasePrice > 0 && (
+                        <span>• Köpt för {formatCurrency(purchasePrice)}</span>
                       )}
                     </div>
                   </div>
@@ -153,10 +175,12 @@ const CurrentHoldingsPrices: React.FC = () => {
                           {formatCurrency(quote.price)}
                           {holding.quantity && (
                             <div className="text-xs text-muted-foreground">
-                              Total: {formatCurrency(totalValue)}
+                              Totalt värde: {formatCurrency(quote.price * quantity)}
                             </div>
                           )}
                         </div>
+                        
+                        {/* Daily change */}
                         <div className={`text-sm flex items-center gap-1 justify-end ${
                           quote.change >= 0 ? 'text-green-600' : 'text-red-600'
                         }`}>
@@ -166,6 +190,22 @@ const CurrentHoldingsPrices: React.FC = () => {
                             ({Math.abs(quote.changePercent).toFixed(2)}%)
                           </span>
                         </div>
+
+                        {/* Total return since purchase */}
+                        {returns && returns.absoluteReturn !== 0 && (
+                          <div className={`text-xs mt-1 flex items-center gap-1 justify-end ${
+                            returns.absoluteReturn >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            <Badge variant="outline" className={`text-xs px-1 py-0 ${
+                              returns.absoluteReturn >= 0 
+                                ? 'bg-green-50 text-green-700 border-green-200' 
+                                : 'bg-red-50 text-red-700 border-red-200'
+                            }`}>
+                              Avkastning: {returns.absoluteReturn >= 0 ? '+' : ''}{formatCurrency(returns.absoluteReturn)} 
+                              ({returns.percentageReturn >= 0 ? '+' : ''}{returns.percentageReturn.toFixed(1)}%)
+                            </Badge>
+                          </div>
+                        )}
                       </>
                     ) : (
                       <div className="text-sm text-muted-foreground">
