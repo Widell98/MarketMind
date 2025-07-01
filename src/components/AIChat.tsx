@@ -1,13 +1,13 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useToast } from '@/hooks/use-toast';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRiskProfile } from '@/hooks/useRiskProfile';
 import ChatHeader from './chat/ChatHeader';
 import ChatMessages from './chat/ChatMessages';
 import ChatInput from './chat/ChatInput';
-import { LogIn, MessageSquare, Brain } from 'lucide-react';
+import { LogIn, MessageSquare, Brain, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
@@ -31,8 +31,10 @@ interface AIChatProps {
 
 const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
   const { user } = useAuth();
-  const {
-    messages,
+  const { riskProfile } = useRiskProfile();
+  const navigate = useNavigate();
+
+  const { messages,
     sessions,
     currentSessionId,
     isLoading,
@@ -55,6 +57,10 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const location = useLocation();
+
+  const handleBackToPortfolio = () => {
+    navigate('/portfolio-implementation');
+  };
 
   useEffect(() => {
     // Auto-scroll when messages change
@@ -139,6 +145,23 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
         onLoadSession={loadSession}
         onDeleteSession={deleteSession}
       />
+
+      {user && riskProfile && (
+        <div className="border-b bg-background p-2 sm:p-3">
+          <div className="max-w-4xl mx-auto">
+            <Button
+              onClick={handleBackToPortfolio}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2 hover:bg-muted/50 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Tillbaka till Min Portfölj</span>
+              <span className="sm:hidden">Min Portfölj</span>
+            </Button>
+          </div>
+        </div>
+      )}
 
       {user ? (
         <>
