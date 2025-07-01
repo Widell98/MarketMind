@@ -10,15 +10,18 @@ import SubscriptionCard from '@/components/SubscriptionCard';
 import LoginPromptModal from '@/components/LoginPromptModal';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Brain, TrendingUp, Target, BarChart3, Activity, Crown } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Brain, TrendingUp, Target, BarChart3, Activity, Crown, AlertCircle, User, MessageSquare } from 'lucide-react';
 
 const PortfolioImplementation = () => {
   const { activePortfolio, loading } = usePortfolio();
   const { user } = useAuth();
+  const { riskProfile, loading: riskProfileLoading } = useRiskProfile();
   const navigate = useNavigate();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -39,6 +42,11 @@ const PortfolioImplementation = () => {
   }, [user, activePortfolio, loading]);
 
   const handleQuickChat = (message: string) => {
+    if (!riskProfile) {
+      // Don't navigate to chat if no risk profile
+      return;
+    }
+    
     if (message.startsWith('NEW_SESSION:')) {
       const [, sessionName, actualMessage] = message.split(':');
       navigate('/ai-chat', {
@@ -58,7 +66,7 @@ const PortfolioImplementation = () => {
   };
 
   // Show loading while portfolio is loading
-  if (loading) {
+  if (loading || riskProfileLoading) {
     return (
       <Layout>
         <div className="min-h-screen flex items-center justify-center p-4">
@@ -146,6 +154,29 @@ const PortfolioImplementation = () => {
               </div>
             </div>
           </div>
+
+          {/* Risk Profile Required Alert */}
+          {user && !riskProfile && (
+            <Alert className="mb-4 sm:mb-6 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20">
+              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+              <AlertDescription className="text-amber-800 dark:text-amber-200">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    <span className="font-medium">Skapa en riskprofil för att få tillgång till AI-chatten och personliga rekommendationer</span>
+                  </div>
+                  <Button
+                    onClick={() => navigate('/portfolio-advisor')}
+                    size="sm"
+                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                  >
+                    <User className="w-4 h-4 mr-2" />
+                    Skapa profil
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
 
           <Tabs defaultValue="overview" className="w-full">
             <TabsList className="grid w-full grid-cols-3 max-w-xl mx-auto mb-4 sm:mb-6 bg-muted p-1 rounded-xl">
