@@ -1,8 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import PortfolioOverview from '@/components/PortfolioOverview';
-import AIChat from '@/components/AIChat';
 import UserInsightsPanel from '@/components/UserInsightsPanel';
 import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolioAdvisor';
 import UserInvestmentAnalysis from '@/components/UserInvestmentAnalysis';
@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Brain, MessageSquare, TrendingUp, Target, BarChart3, Lightbulb, Zap, Activity, PieChart, Crown } from 'lucide-react';
+import { Brain, TrendingUp, Target, BarChart3, Activity, Crown } from 'lucide-react';
 
 const PortfolioImplementation = () => {
   const { activePortfolio, loading } = usePortfolio();
@@ -36,21 +36,11 @@ const PortfolioImplementation = () => {
   const handleQuickChat = (message: string) => {
     if (message.startsWith('NEW_SESSION:')) {
       const [, sessionName, actualMessage] = message.split(':');
-      
-      const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
-      if (chatTab) {
-        chatTab.click();
-      }
-      
-      const event = new CustomEvent('createStockChat', {
-        detail: { sessionName, message: actualMessage }
+      navigate('/ai-chat', {
+        state: { createNewSession: true, sessionName, initialMessage: actualMessage }
       });
-      window.dispatchEvent(event);
     } else {
-      const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
-      if (chatTab) {
-        chatTab.click();
-      }
+      navigate('/ai-chat');
     }
   };
 
@@ -61,47 +51,6 @@ const PortfolioImplementation = () => {
   const handleUpdateProfile = () => {
     setShowOnboarding(true);
   };
-
-  const handleExamplePrompt = (prompt: string) => {
-    const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
-    if (chatTab) {
-      chatTab.click();
-    }
-    
-    setTimeout(() => {
-      const event = new CustomEvent('sendExamplePrompt', {
-        detail: { message: prompt }
-      });
-      window.dispatchEvent(event);
-    }, 100);
-  };
-
-  const examplePrompts = [
-    {
-      title: "Portföljanalys",
-      prompt: "Ge mig en komplett analys av min portfölj med rekommendationer för optimering",
-      icon: <PieChart className="w-4 h-4 sm:w-5 sm:h-5" />,
-      description: "Få en genomgång av din portföljs prestanda och struktur"
-    },
-    {
-      title: "Riskhantering", 
-      prompt: "Analysera riskerna i min portfölj och föreslå strategier för bättre diversifiering",
-      icon: <Activity className="w-4 h-4 sm:w-5 sm:h-5" />,
-      description: "Identifiera och minimera risker för en mer balanserad portfölj"
-    },
-    {
-      title: "Investeringsförslag",
-      prompt: "Vilka aktier och tillgångar borde jag överväga nästa baserat på min profil?",
-      icon: <Zap className="w-4 h-4 sm:w-5 sm:h-5" />,
-      description: "Få personliga rekommendationer baserade på din riskprofil"
-    },
-    {
-      title: "Marknadsinsikter",
-      prompt: "Vad händer på marknaden just nu och hur påverkar det min investeringsstrategi?",
-      icon: <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />,
-      description: "Håll dig uppdaterad med aktuella marknadstrender"
-    }
-  ];
 
   // Show loading while portfolio is loading
   if (loading) {
@@ -188,17 +137,8 @@ const PortfolioImplementation = () => {
             </div>
           </div>
 
-          <Tabs defaultValue="chat" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 max-w-2xl mx-auto mb-4 sm:mb-6 bg-muted p-1 rounded-xl">
-              <TabsTrigger 
-                value="chat" 
-                data-value="chat" 
-                className="flex items-center gap-1.5 sm:gap-2 rounded-lg py-1.5 sm:py-2 px-2 sm:px-3 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs sm:text-sm"
-              >
-                <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline">AI-Assistent</span>
-                <span className="xs:hidden">AI</span>
-              </TabsTrigger>
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 max-w-xl mx-auto mb-4 sm:mb-6 bg-muted p-1 rounded-xl">
               <TabsTrigger 
                 value="overview" 
                 className="flex items-center gap-1.5 sm:gap-2 rounded-lg py-1.5 sm:py-2 px-2 sm:px-3 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs sm:text-sm"
@@ -224,58 +164,6 @@ const PortfolioImplementation = () => {
                 <span className="xs:hidden">Plan</span>
               </TabsTrigger>
             </TabsList>
-            
-            <TabsContent value="chat" className="space-y-4 sm:space-y-6">
-              {/* Modern Example Prompts - Mobile Optimized with Better Text Layout */}
-              <Card className="bg-card border shadow-lg rounded-2xl overflow-hidden">
-                <CardHeader className="border-b bg-muted/30 pb-3 sm:pb-4 p-4 sm:p-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-primary shadow-sm">
-                      <Lightbulb className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <CardTitle className="text-base sm:text-lg font-bold">
-                        Kom igång med AI-assistenten
-                      </CardTitle>
-                      <CardDescription className="text-xs sm:text-sm mt-0.5">
-                        Välj ett förslag nedan eller skriv din egen fråga
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-3 sm:p-4 lg:p-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 lg:gap-4">
-                    {examplePrompts.map((example, index) => (
-                      <Button
-                        key={index}
-                        variant="outline"
-                        className="h-auto p-3 sm:p-4 lg:p-5 text-left justify-start transition-all duration-200 group rounded-xl bg-background border shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 overflow-hidden"
-                        onClick={() => handleExamplePrompt(example.prompt)}
-                      >
-                        <div className="flex items-start gap-2.5 sm:gap-3 w-full min-w-0">
-                          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary shadow-sm group-hover:shadow-md transition-all duration-200 text-primary-foreground">
-                            {example.icon}
-                          </div>
-                          <div className="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
-                            <div className="font-semibold text-xs sm:text-sm leading-tight">
-                              {example.title}
-                            </div>
-                            <div className="text-xs leading-relaxed text-muted-foreground break-words">
-                              {example.description}
-                            </div>
-                          </div>
-                        </div>
-                      </Button>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* AI Chat - Mobile Optimized */}
-              <div className="bg-card rounded-2xl shadow-lg border overflow-hidden">
-                <AIChat portfolioId={activePortfolio?.id} />
-              </div>
-            </TabsContent>
             
             <TabsContent value="overview">
               <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 sm:gap-6">
