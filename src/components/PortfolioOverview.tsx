@@ -282,6 +282,19 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     }, 100);
   };
 
+  const handleQuickAction = (message: string) => {
+    // Navigate to AI chat and trigger the pre-filled message
+    navigate('/ai-chat');
+    
+    // Small delay to ensure navigation is complete before dispatching event
+    setTimeout(() => {
+      const event = new CustomEvent('sendExamplePrompt', {
+        detail: { message }
+      });
+      window.dispatchEvent(event);
+    }, 100);
+  };
+
   const handleRebalanceAction = () => {
     handleExamplePrompt('Analysera min nuvarande portfölj och föreslå en rebalanseringsstrategi. Visa vilka aktier jag borde köpa mer av, sälja eller behålla för att optimera min riskjusterade avkastning.');
   };
@@ -1068,7 +1081,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             <Button
               variant="outline"
               className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
-              onClick={() => handleExamplePrompt("Jämför AI-rekommendationerna med mina nuvarande innehav. Vad borde jag sälja?")}
+              onClick={() => handleQuickAction("Jämför AI-rekommendationerna med mina nuvarande innehav. Vad borde jag sälja?")}
             >
               <BarChart3 className="w-4 h-4 text-blue-600" />
               <div>
@@ -1080,7 +1093,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             <Button
               variant="outline"
               className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
-              onClick={() => handleExamplePrompt("Vilka aktier borde jag köpa först baserat på AI-rekommendationerna och min budget?")}
+              onClick={() => handleQuickAction("Vilka aktier borde jag köpa först baserat på AI-rekommendationerna och min budget?")}
             >
               <TrendingUp className="w-4 h-4 text-green-600" />
               <div>
@@ -1092,7 +1105,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             <Button
               variant="outline"
               className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
-              onClick={() => handleExamplePrompt("Berätta vilka risker som finns i de AI-rekommenderade aktierna")}
+              onClick={() => handleQuickAction("Berätta vilka risker som finns i de AI-rekommenderade aktierna")}
             >
               <Shield className="w-4 h-4 text-red-600" />
               <div>
@@ -1104,7 +1117,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             <Button
               variant="outline"
               className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
-              onClick={() => handleExamplePrompt("Föreslå alternativa aktier som inte finns i AI-rekommendationerna men som skulle passa min profil")}
+              onClick={() => handleQuickAction("Föreslå alternativa aktier som inte finns i AI-rekommendationerna men som skulle passa min profil")}
             >
               <Plus className="w-4 h-4 text-orange-600" />
               <div>
@@ -1116,7 +1129,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             <Button
               variant="outline"
               className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
-              onClick={handleRebalanceAction}
+              onClick={() => handleQuickAction("Analysera min nuvarande portfölj och föreslå en rebalanseringsstrategi. Visa vilka aktier jag borde köpa mer av, sälja eller behålla för att optimera min riskjusterade avkastning.")}
             >
               <Target className="w-4 h-4 text-green-600" />
               <div>
