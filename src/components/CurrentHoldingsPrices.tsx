@@ -7,25 +7,13 @@ import {
   TrendingDown, 
   RefreshCw,
   DollarSign,
-  Clock,
-  Trash2
+  Clock
 } from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { useRealTimeMarketData } from '@/hooks/useRealTimeMarketData';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 
 const CurrentHoldingsPrices: React.FC = () => {
-  const { actualHoldings, loading: holdingsLoading, deleteHolding } = useUserHoldings();
+  const { actualHoldings, loading: holdingsLoading } = useUserHoldings();
   const { quotes, loading, error, refreshData } = useRealTimeMarketData();
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
@@ -56,14 +44,6 @@ const CurrentHoldingsPrices: React.FC = () => {
       console.log('Manual refresh triggered');
       refreshData(actualHoldings);
       setLastRefresh(new Date());
-    }
-  };
-
-  const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
-    console.log(`Deleting holding: ${holdingName} (${holdingId})`);
-    const success = await deleteHolding(holdingId);
-    if (success) {
-      console.log('Holding deleted successfully');
     }
   };
 
@@ -202,77 +182,45 @@ const CurrentHoldingsPrices: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      {loading && !quote ? (
-                        <div className="animate-pulse">
-                          <div className="h-6 bg-gray-200 rounded w-20 mb-1"></div>
-                          <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  <div className="text-right">
+                    {loading && !quote ? (
+                      <div className="animate-pulse">
+                        <div className="h-6 bg-gray-200 rounded w-20 mb-1"></div>
+                        <div className="h-4 bg-gray-200 rounded w-16"></div>
+                      </div>
+                    ) : quote ? (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-semibold text-gray-900">
+                            {formatCurrency(quote.price)}
+                          </span>
+                          <span className="text-xs text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded">
+                            API
+                          </span>
                         </div>
-                      ) : quote ? (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-semibold text-gray-900">
-                              {formatCurrency(quote.price)}
-                            </span>
-                            <span className="text-xs text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded">
-                              API
-                            </span>
+                        {holding.quantity && (
+                          <div className="text-sm text-gray-600">
+                            Totalt: {formatCurrency(quote.price * quantity)}
                           </div>
-                          {holding.quantity && (
-                            <div className="text-sm text-gray-600">
-                              Totalt: {formatCurrency(quote.price * quantity)}
-                            </div>
-                          )}
-                          
-                          {/* Dagens förändring */}
-                          <div className={`text-sm flex items-center gap-1 ${
-                            quote.change >= 0 ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {quote.change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                            <span className="font-medium">
-                              {quote.change >= 0 ? '+' : ''}{formatCurrency(Math.abs(quote.change))} 
-                              ({Math.abs(quote.changePercent).toFixed(2)}%)
-                            </span>
-                          </div>
+                        )}
+                        
+                        {/* Dagens förändring */}
+                        <div className={`text-sm flex items-center gap-1 ${
+                          quote.change >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {quote.change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                          <span className="font-medium">
+                            {quote.change >= 0 ? '+' : ''}{formatCurrency(Math.abs(quote.change))} 
+                            ({Math.abs(quote.changePercent).toFixed(2)}%)
+                          </span>
                         </div>
-                      ) : (
-                        <div className="text-sm text-gray-500 text-center">
-                          <div>Ingen data</div>
-                          <div className="text-xs">Kontrollera: {holding.symbol}</div>
-                        </div>
-                      )}
-                    </div>
-
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Radera innehav</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Är du säker på att du vill radera <strong>{holding.name}</strong> från dina innehav? 
-                            Denna åtgärd kan inte ångras.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteHolding(holding.id, holding.name)}
-                            className="bg-red-600 hover:bg-red-700"
-                          >
-                            Radera
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500 text-center">
+                        <div>Ingen data</div>
+                        <div className="text-xs">Kontrollera: {holding.symbol}</div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
