@@ -67,7 +67,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import AddHoldingDialog from './AddHoldingDialog';
 import EditHoldingDialog from './EditHoldingDialog';
-import RealTimePortfolioData from './RealTimePortfolioData';
+import CurrentHoldingsPrices from './CurrentHoldingsPrices';
 
 interface PortfolioOverviewProps {
   portfolio: any;
@@ -479,8 +479,75 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </Card>
       </div>
 
-      {/* Real-time Portfolio Data - Replaces Market Exposure */}
-      <RealTimePortfolioData />
+      {/* Market Exposure and Current Prices Side by Side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        {/* Sector Exposure */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Building2 className="w-5 h-5 text-orange-600" />
+              Sektorexponering
+            </CardTitle>
+            <CardDescription>Fördelning över olika industrisektorer</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {exposureData.sectorData.length > 0 ? (
+              <div className="space-y-4">
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsPieChart>
+                      <Pie
+                        data={exposureData.sectorData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={80}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {exposureData.sectorData.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={sectorColors[index % sectorColors.length]} 
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        formatter={(value: number, name: string) => [
+                          `${formatCurrency(value)} (${exposureData.sectorData.find(d => d.name === name)?.percentage}%)`,
+                          'Värde'
+                        ]}
+                      />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="space-y-2">
+                  {exposureData.sectorData.map((sector, index) => (
+                    <div key={sector.name} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: sectorColors[index % sectorColors.length] }}
+                        />
+                        <span>{sector.name}</span>
+                      </div>
+                      <span className="font-medium">{sector.percentage}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Building2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>Lägg till innehav för att se sektorfördelning</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Current Holdings Prices */}
+        <CurrentHoldingsPrices />
+      </div>
 
       {/* User's Current Holdings */}
       {actualHoldings.length > 0 && (
