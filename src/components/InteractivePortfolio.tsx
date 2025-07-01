@@ -1,4 +1,6 @@
+
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +29,7 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
 }) => {
   const [editingHolding, setEditingHolding] = useState<string | null>(null);
   const [newSymbol, setNewSymbol] = useState('');
+  const navigate = useNavigate();
 
   const holdings = portfolio?.recommended_stocks || [];
 
@@ -49,25 +52,38 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
     setNewSymbol('');
   };
 
+  const handleQuickAction = (message: string) => {
+    // Navigate to AI chat and trigger the pre-filled message
+    navigate('/ai-chat');
+    
+    // Small delay to ensure navigation is complete before dispatching event
+    setTimeout(() => {
+      const event = new CustomEvent('sendExamplePrompt', {
+        detail: { message }
+      });
+      window.dispatchEvent(event);
+    }, 100);
+  };
+
   const quickPortfolioActions = [
     {
       title: "Optimera portföljen",
       description: "Få förslag på förbättringar",
-      action: () => onQuickChat("Analysera min portfölj och ge konkreta förslag på hur jag kan optimera den för bättre risk-justerad avkastning"),
+      message: "Analysera min portfölj och ge konkreta förslag på hur jag kan optimera den för bättre risk-justerad avkastning",
       icon: Target,
       color: "text-blue-600"
     },
     {
       title: "Rebalansera innehav",
       description: "Justera fördelningen",
-      action: () => onQuickChat("Hjälp mig att rebalansera min portfölj. Vilka innehav borde jag öka eller minska?"),
+      message: "Hjälp mig att rebalansera min portfölj. Vilka innehav borde jag öka eller minska?",
       icon: ArrowRightLeft,
       color: "text-green-600"
     },
     {
       title: "Hitta nya möjligheter",
       description: "Upptäck intressanta aktier",
-      action: () => onQuickChat("Föreslå några nya aktier som skulle passa bra i min portfölj baserat på min riskprofil och nuvarande innehav"),
+      message: "Föreslå några nya aktier som skulle passa bra i min portfölj baserat på min riskprofil och nuvarande innehav",
       icon: Lightbulb,
       color: "text-yellow-600"
     }
@@ -92,7 +108,7 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
                   key={index}
                   variant="outline"
                   className="justify-start h-auto p-3 sm:p-4 text-left w-full"
-                  onClick={action.action}
+                  onClick={() => handleQuickAction(action.message)}
                 >
                   <Icon className={`w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 flex-shrink-0 ${action.color}`} />
                   <div className="flex-1 min-w-0">
@@ -187,7 +203,7 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => onQuickChat(`Berätta mer om ${stock.symbol} och varför den är med i min portfölj. Vad är riskerna och möjligheterna?`)}
+                          onClick={() => handleQuickAction(`Berätta mer om ${stock.symbol} och varför den är med i min portfölj. Vad är riskerna och möjligheterna?`)}
                           className="h-6 w-6 sm:h-8 sm:w-8 p-0"
                         >
                           <MessageCircle className="w-3 h-3" />
