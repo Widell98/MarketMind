@@ -171,43 +171,32 @@ VIKTIGA RIKTLINJER:
 
     // Enhanced system prompt for portfolio change discussions
     let systemPrompt = contextInfo;
-
+    
     if (isExchangeRequest) {
       systemPrompt += `\n\nVID PORTFÖLJÄNDRINGSFÖRFRÅGNINGAR:
 - Analysera nuvarande innehav först
 - Föreslå ENDAST aktier som INTE finns i nuvarande innehav
 - Föreslå 2-3 konkreta alternativ med tickers
-- Förklara varför varje förslag passar deras profil
+- Förklara kort varför varje förslag passar
 - Inkludera fördelning i procent
 - Nämn market cap och sektor
 - Påminn om risker och att detta är utbildning
 - Format: "Förslag: [Aktie] ([Ticker]) - [Kort beskrivning]"`;
     }
+    
+systemPrompt += `
 
-    systemPrompt += `\n\n📋 SVARSFORMAT OCH STRUKTUR:
-- Totalt svar max 300 ord (om möjligt – prioritera innehåll före exakt längd)
-- Svara alltid på svenska
-- Börja med aktierekommendationer, därefter fonder, sist sparstrategi och mål
-- Vid aktieförslag: Inkludera namn, ticker, vikt (%), risknivå och 1 rad motivering
-- Inkludera 2–3 svenska eller globala aktier som matchar riskprofilen
-- Undvik att föreslå något användaren redan äger
-- Därefter: föreslå fonder eller ETF:er med ISIN, avgift och risknivå
-- Sist: Ge månadsplan och strategi mot målet (t.ex. 5000 SEK/månad, rebalansering kvartalsvis)
-- Undvik markdown eller rubriker med "**" eller "####"
-- Använd rubriker som börjar på ny rad, t.ex.:
-
-Rekommenderade Aktier  
-- Aktie A (TICKER): Motivering
-
-Rekommenderade Fonder  
-- Fond A (ISIN): Motivering
-
-Månadsstrategi  
-- Investera X SEK/månad  
-- Granska portföljen kvartalsvis  
-- Reinvestera utdelningar
-
-- Påminn om att detta är utbildning, inte investeringsråd`;
+SVARSFORMAT:
+- Max 200–250 ord
+- Undvik markdown eller kodliknande formatering
+- Använd tydliga rubriker med tom rad före/efter
+- Strukturera med punktlistor eller korta stycken
+- Ge konkret information med siffror och procent där det är relevant
+- Fokusera på de 2–3 viktigaste insikterna
+- Vid aktieförslag: ange aktiens namn, ticker och en kortfattad motivering
+- Undvik spekulationer och överdrivet tekniskt språk
+- Påminn tydligt om att detta är utbildning, inte personlig investeringsråd
+- VIKTIGT: Föreslå ALDRIG aktier som användaren redan äger`;
 
     if (analysisType === 'insight_generation') {
       systemPrompt += `\n\nGENERERA KORT INSIKT för ${insightType}:
@@ -248,7 +237,7 @@ Månadsstrategi
       body: JSON.stringify({
         model: 'gpt-4o',
         messages: messages,
-        max_tokens: isExchangeRequest ? 400 : 300,
+        max_tokens: isExchangeRequest ? 600 : 900,
         temperature: 0.6,
       }),
     });
