@@ -1,10 +1,12 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
   Trash2,
-  Package
+  Package,
+  MessageSquare
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -21,6 +23,7 @@ import { useUserHoldings } from '@/hooks/useUserHoldings';
 
 const UserHoldingsManager: React.FC = () => {
   const { actualHoldings, loading, deleteHolding } = useUserHoldings();
+  const navigate = useNavigate();
 
   const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
     console.log(`Deleting holding: ${holdingName} (${holdingId})`);
@@ -28,6 +31,22 @@ const UserHoldingsManager: React.FC = () => {
     if (success) {
       console.log('Holding deleted successfully');
     }
+  };
+
+  const handleDiscussHolding = (holdingName: string, symbol?: string) => {
+    const sessionName = `${holdingName} Analys`;
+    const message = `Berätta mer om ${holdingName}${symbol ? ` (${symbol})` : ''}. Vad gör företaget, vilka är deras huvudsakliga affärsområden, och varför skulle det vara en bra investering för min portfölj? Analysera också eventuella risker och möjligheter.`;
+    
+    // Navigate to AI chat with custom event for creating new session
+    navigate('/ai-chat');
+    
+    // Small delay to ensure navigation is complete before dispatching event
+    setTimeout(() => {
+      const event = new CustomEvent('createStockChat', {
+        detail: { sessionName, message }
+      });
+      window.dispatchEvent(event);
+    }, 100);
   };
 
   const formatCurrency = (amount: number) => {
@@ -123,7 +142,17 @@ const UserHoldingsManager: React.FC = () => {
                 </div>
               </div>
               
-              <div className="flex-shrink-0 ml-4">
+              <div className="flex-shrink-0 ml-4 flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-200 hover:border-blue-300"
+                  onClick={() => handleDiscussHolding(holding.name, holding.symbol)}
+                >
+                  <MessageSquare className="w-4 h-4 mr-1" />
+                  Diskutera
+                </Button>
+                
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
