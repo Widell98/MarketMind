@@ -20,7 +20,7 @@ const MainNavigation = () => {
   ];
 
   return (
-    <nav className="hidden lg:flex space-x-8">
+    <nav className="hidden md:flex space-x-1 lg:space-x-2">
       {navigation.map((item) => {
         const Icon = item.icon;
         const isActive = location.pathname === item.href || 
@@ -38,7 +38,7 @@ const MainNavigation = () => {
             )}
           >
             <Icon className="w-4 h-4" />
-            {item.name}
+            <span className="hidden lg:inline">{item.name}</span>
           </Link>
         );
       })}
