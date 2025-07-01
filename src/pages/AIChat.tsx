@@ -6,19 +6,28 @@ import AIChat from '@/components/AIChat';
 import LoginPromptModal from '@/components/LoginPromptModal';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Brain, MessageSquare, Activity, Target, Lightbulb, Zap, PieChart, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Brain, MessageSquare, Activity, Target, Lightbulb, Zap, PieChart, TrendingUp, AlertCircle, User } from 'lucide-react';
 
 const AIChatPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { riskProfile, loading: riskProfileLoading } = useRiskProfile();
   const stockName = searchParams.get('stock');
   const message = searchParams.get('message');
   const { activePortfolio } = usePortfolio();
   const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // Redirect to portfolio advisor if no risk profile exists
+  useEffect(() => {
+    if (user && !riskProfileLoading && !riskProfile) {
+      navigate('/portfolio-advisor');
+    }
+  }, [user, riskProfile, riskProfileLoading, navigate]);
 
   const handleExamplePrompt = (prompt: string) => {
     if (!user) {
@@ -60,6 +69,49 @@ const AIChatPage = () => {
       description: "Håll dig uppdaterad med aktuella marknadstrender"
     }
   ];
+
+  // Show loading state while checking risk profile
+  if (user && riskProfileLoading) {
+    return (
+      <Layout>
+        <div className="min-h-screen">
+          <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8 max-w-[1400px]">
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Laddar...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Show message for users without risk profile (shouldn't happen due to redirect, but as fallback)
+  if (user && !riskProfile) {
+    return (
+      <Layout>
+        <div className="min-h-screen">
+          <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8 max-w-[1400px]">
+            <Card className="max-w-md mx-auto p-6 text-center">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Riskprofil krävs</h3>
+              <p className="text-muted-foreground mb-4">
+                Du behöver skapa en riskprofil för att använda AI-assistenten
+              </p>
+              <Button onClick={() => navigate('/portfolio-advisor')}>
+                <User className="w-4 h-4 mr-2" />
+                Skapa riskprofil
+              </Button>
+            </Card>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -110,7 +162,7 @@ const AIChatPage = () => {
           </div>
 
           {/* Example Prompts - Only show if not coming from stock discussion and user is authenticated */}
-          {!stockName && !message && user && (
+          {!stockName && !message && user && riskProfile && (
             <Card className="bg-card border shadow-lg rounded-2xl overflow-hidden mb-4 sm:mb-6">
               <div className="border-b bg-muted/30 pb-3 sm:pb-4 p-4 sm:p-6">
                 <div className="flex items-center gap-3">
@@ -157,13 +209,53 @@ const AIChatPage = () => {
           )}
 
           {/* Chat Container */}
-          <Card className="bg-card border shadow-lg rounded-2xl overflow-hidden">
-            <AIChat 
-              portfolioId={activePortfolio?.id} 
-              initialStock={stockName} 
-              initialMessage={message}
-            />
-          </Card>
+          {user && riskProfile ? (
+            <Card className="bg-card border shadow-lg rounded-2xl overflow-hidden">
+              <AIChat 
+                portfolioId={activePortfolio?.id} 
+                initialStock={stockName} 
+                initialMessage={message}
+              />
+            </Card>
+          ) : (
+            <>
+              {/* Demo messages for unauthenticated users */}
+              <div className="flex-1 overflow-hidden">
+                <div className="h-full flex flex-col items-center justify-center p-6 text-center">
+                  <div className="max-w-md space-y-6">
+                    <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center mx-auto shadow-lg">
+                      <Brain className="w-10 h-10 text-primary-foreground" />
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <h3 className="text-xl font-bold text-foreground">AI Portfolio Assistent</h3>
+                      <p className="text-muted-foreground">
+                        Få personliga investeringsråd, portföljanalys och marknadsinsikter med hjälp av AI
+                      </p>
+                    </div>
+
+                    <Card className="p-4 bg-muted/30 border-dashed">
+                      <div className="flex items-start gap-3">
+                        <MessageSquare className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                        <div className="text-left">
+                          <p className="text-sm font-medium mb-1">Exempel på vad du kan fråga:</p>
+                          <ul className="text-xs text-muted-foreground space-y-1">
+                            <li>• "Analysera min portfölj och ge rekommendationer"</li>
+                            <li>• "Vilka risker har mina nuvarande innehav?"</li>
+                            <li>• "Föreslå bra aktier för min riskprofil"</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </Card>
+
+                    <Button onClick={() => window.location.href = '/auth'} className="w-full">
+                      Logga in för att komma igång
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </Layout>

@@ -4,8 +4,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { 
   Home, 
-  TrendingUp, 
   MessageSquare,
+  TrendingUp, 
   BarChart3
 } from 'lucide-react';
 
@@ -14,8 +14,8 @@ const MainNavigation = () => {
   
   const navigation = [
     { name: 'Hem', href: '/', icon: Home },
-    { name: 'Aktiefall', href: '/stock-cases', icon: TrendingUp },
     { name: 'AI-Assistent', href: '/ai-chat', icon: MessageSquare },
+    { name: 'Aktiefall', href: '/stock-cases', icon: TrendingUp },
     { name: 'Min Portfölj', href: '/portfolio-implementation', icon: BarChart3 },
   ];
 
