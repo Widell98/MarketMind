@@ -5,9 +5,9 @@ import { cn } from '@/lib/utils';
 import { 
   Home, 
   TrendingUp, 
-  Target, 
   BarChart3,
-  MessageSquare
+  MessageSquare,
+  Users
 } from 'lucide-react';
 
 const MobileNavigation = () => {
@@ -18,7 +18,7 @@ const MobileNavigation = () => {
     { name: 'Aktiefall', href: '/stock-cases', icon: TrendingUp },
     { name: 'Portfölj', href: '/portfolio-implementation', icon: BarChart3 },
     { name: 'AI-Chat', href: '/ai-chat', icon: MessageSquare },
-    { name: 'AI-Rådgivare', href: '/portfolio-advisor', icon: Target },
+    { name: 'Community', href: '/social', icon: Users },
   ];
 
   return (

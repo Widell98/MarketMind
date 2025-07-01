@@ -5,10 +5,7 @@ import { cn } from '@/lib/utils';
 import { 
   Home, 
   TrendingUp, 
-  BookOpen, 
-  Target, 
   BarChart3, 
-  Eye,
   MessageSquare,
   Users
 } from 'lucide-react';
@@ -19,11 +16,8 @@ const MainNavigation = () => {
   const navigation = [
     { name: 'Hem', href: '/', icon: Home },
     { name: 'Aktiefall', href: '/stock-cases', icon: TrendingUp },
-    { name: 'Lärande', href: '/learning', icon: BookOpen },
-    { name: 'Portfölj-AI', href: '/portfolio-advisor', icon: Target },
     { name: 'Min Portfölj', href: '/portfolio-implementation', icon: BarChart3 },
     { name: 'AI-Assistent', href: '/ai-chat', icon: MessageSquare },
-    { name: 'Watchlist', href: '/watchlist', icon: Eye },
     { name: 'Community', href: '/social', icon: Users },
   ];
 
