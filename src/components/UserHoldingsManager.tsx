@@ -4,8 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { 
   Trash2,
-  Package,
-  MessageSquare
+  Package
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -20,11 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 
-interface UserHoldingsManagerProps {
-  onStockChat?: (message: string) => void;
-}
-
-const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ onStockChat }) => {
+const UserHoldingsManager: React.FC = () => {
   const { actualHoldings, loading, deleteHolding } = useUserHoldings();
 
   const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
@@ -32,15 +27,6 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ onStockChat }
     const success = await deleteHolding(holdingId);
     if (success) {
       console.log('Holding deleted successfully');
-    }
-  };
-
-  const handleDiscussStock = (holding: any) => {
-    const sessionName = `Diskussion: ${holding.name}`;
-    const message = `Jag vill diskutera mitt innehav i ${holding.name}${holding.symbol ? ` (${holding.symbol})` : ''}. Kan du ge mig en detaljerad analys av aktien och tips för hur jag bör hantera mitt innehav?`;
-    
-    if (onStockChat) {
-      onStockChat(`NEW_SESSION:${sessionName}:${message}`);
     }
   };
 
@@ -137,17 +123,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ onStockChat }
                 </div>
               </div>
               
-              <div className="flex-shrink-0 ml-4 flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDiscussStock(holding)}
-                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-200 hover:border-blue-300"
-                >
-                  <MessageSquare className="w-4 h-4 mr-1" />
-                  Diskutera
-                </Button>
-                
+              <div className="flex-shrink-0 ml-4">
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
