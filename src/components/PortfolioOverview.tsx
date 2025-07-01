@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -851,28 +852,28 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => handleEditHolding(holding)}
-                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-200 hover:border-blue-300"
+                            className="h-8 px-2 text-xs font-medium bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300 transition-colors"
                           >
-                            <Edit className="w-4 h-4 mr-1" />
+                            <Edit className="w-3 h-3 mr-1" />
                             Redigera
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleStockChat(holding.name, holding.symbol)}
-                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-200 hover:border-blue-300"
+                            className="h-8 px-2 text-xs font-medium bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300 transition-colors"
                           >
-                            <MessageCircle className="w-4 h-4 mr-1" />
+                            <MessageCircle className="w-3 h-3 mr-1" />
                             Diskutera
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 hover:border-red-300"
+                                className="h-8 px-2 text-xs font-medium bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 transition-colors"
                               >
-                                <Trash2 className="w-4 h-4 mr-1" />
+                                <Trash2 className="w-3 h-3 mr-1" />
                                 Radera
                               </Button>
                             </AlertDialogTrigger>
@@ -1021,31 +1022,32 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                       <TableCell className="text-right">
                         <div className="flex items-center gap-1 justify-end">
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => handleAddFromRecommendation(recommendation)}
-                            className="flex items-center gap-1 text-green-600 hover:text-green-800 hover:bg-green-50"
+                            className="h-8 px-2 text-xs font-medium bg-white hover:bg-green-50 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300 transition-colors"
                           >
-                            <ShoppingCart className="w-4 h-4" />
-                            <span className="hidden sm:inline">Köp</span>
+                            <ShoppingCart className="w-3 h-3 mr-1" />
+                            Köp
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => handleStockChat(recommendation.name, recommendation.symbol)}
-                            className="flex items-center gap-1 text-purple-600 hover:text-purple-800 hover:bg-purple-50"
+                            className="h-8 px-2 text-xs font-medium bg-white hover:bg-purple-50 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300 transition-colors"
                           >
-                            <MessageCircle className="w-4 h-4" />
-                            <span className="hidden sm:inline">Diskutera</span>
+                            <MessageCircle className="w-3 h-3 mr-1" />
+                            Diskutera
                           </Button>
                           {recommendation.id && recommendation.id.startsWith('portfolio-rec-') === false && (
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => deleteHolding(recommendation.id)}
-                              className="flex items-center gap-1 text-red-600 hover:text-red-800 hover:bg-red-50"
+                              className="h-8 px-2 text-xs font-medium bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 transition-colors"
                             >
-                              <X className="w-4 h-4" />
+                              <X className="w-3 h-3 mr-1" />
+                              Radera
                             </Button>
                           )}
                         </div>
