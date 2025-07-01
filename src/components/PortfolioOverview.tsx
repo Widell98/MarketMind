@@ -62,6 +62,7 @@ import {
 } from '@/components/ui/chart';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
+import { usePortfolioInsights } from '@/hooks/usePortfolioInsights';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -83,6 +84,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   onActionClick 
 }) => {
   const { holdings, actualHoldings, recommendations, loading, deleteHolding, addHolding, updateHolding, refetch } = useUserHoldings();
+  const { insights, loading: insightsLoading, markAsRead } = usePortfolioInsights();
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -168,32 +170,37 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   const sectorColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316'];
   const marketColors = ['#1E40AF', '#059669', '#D97706', '#DC2626', '#7C3AED'];
 
-  const insights = [
-    {
-      type: 'opportunity',
-      icon: <TrendingUp className="w-4 h-4 text-green-600" />,
-      title: 'Stark prestanda',
-      description: 'Din portfölj har presterat bättre än marknaden med +8.2% i år',
-      action: 'Se detaljerad analys',
-      chatMessage: 'Analysera min portföljs prestanda i detalj. Visa hur den har presterat jämfört med marknaden och vilka innehav som bidragit mest till avkastningen.'
-    },
-    {
-      type: 'warning',
-      icon: <AlertTriangle className="w-4 h-4 text-yellow-600" />,
-      title: 'Rebalanseringsmöjlighet',
-      description: 'Dina tech-aktier har vuxit och utgör nu 35% av portföljen',
-      action: 'Visa förslag',
-      chatMessage: 'Min tech-sektor har vuxit till 35% av portföljen. Analysera om detta är för mycket exponering och föreslå rebalanseringsstrategier för bättre diversifiering.'
-    },
-    {
-      type: 'info',
-      icon: <Target className="w-4 h-4 text-blue-600" />,
-      title: 'Diversifiering',
-      description: 'Bra spridning över olika sektorer och geografiska marknader',
-      action: 'Utforska mer',
-      chatMessage: 'Analysera min portföljs diversifiering i detalj. Visa fördelningen över sektorer och geografiska marknader och föreslå eventuella förbättringar.'
+  // Helper function to get insight icon based on type
+  const getInsightIcon = (type: string) => {
+    switch (type) {
+      case 'opportunity':
+        return <TrendingUp className="w-4 h-4 text-green-600" />;
+      case 'risk_warning':
+        return <AlertTriangle className="w-4 h-4 text-yellow-600" />;
+      case 'rebalancing':
+        return <Target className="w-4 h-4 text-blue-600" />;
+      case 'news_impact':
+        return <Info className="w-4 h-4 text-purple-600" />;
+      default:
+        return <Info className="w-4 h-4 text-blue-600" />;
     }
-  ];
+  };
+
+  // Helper function to get insight color based on severity
+  const getInsightColor = (severity: string) => {
+    switch (severity) {
+      case 'critical':
+        return 'border-red-200 bg-red-50';
+      case 'high':
+        return 'border-orange-200 bg-orange-50';
+      case 'medium':
+        return 'border-yellow-200 bg-yellow-50';
+      case 'low':
+        return 'border-blue-200 bg-blue-50';
+      default:
+        return 'border-gray-200 bg-gray-50';
+    }
+  };
 
   const formatCurrency = (amount: number | null | undefined, currency: string = 'SEK') => {
     if (!amount) return '0 kr';
@@ -299,8 +306,14 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     handleExamplePrompt('Analysera min nuvarande portfölj och föreslå en rebalanseringsstrategi. Visa vilka aktier jag borde köpa mer av, sälja eller behålla för att optimera min riskjusterade avkastning.');
   };
 
-  const handleInsightAction = (insight: typeof insights[0]) => {
-    handleExamplePrompt(insight.chatMessage);
+  const handleInsightAction = (insight: any) => {
+    const message = `Berätta mer om denna insikt: ${insight.title}. ${insight.description}`;
+    handleExamplePrompt(message);
+    
+    // Mark insight as read
+    if (!insight.is_read) {
+      markAsRead(insight.id);
+    }
   };
 
   const clearAIRecommendations = async () => {
@@ -1065,6 +1078,69 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
           )}
         </CardContent>
       </Card>
+
+      {/* AI Insights from Database */}
+      {insights.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Brain className="w-5 h-5 text-purple-600" />
+                  AI-insikter och rekommendationer
+                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                    {insights.filter(i => !i.is_read).length} nya
+                  </Badge>
+                </CardTitle>
+                <CardDescription>
+                  Personaliserade förslag baserat på din portfölj och marknadstrender
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {insights.slice(0, 5).map((insight) => (
+                <div 
+                  key={insight.id} 
+                  className={`p-4 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
+                    getInsightColor(insight.severity)
+                  } ${!insight.is_read ? 'ring-2 ring-purple-200' : ''}`}
+                  onClick={() => handleInsightAction(insight)}
+                >
+                  <div className="flex items-start gap-3">
+                    {getInsightIcon(insight.insight_type)}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-medium text-sm">{insight.title}</h4>
+                        {!insight.is_read && (
+                          <Badge variant="secondary" className="text-xs">
+                            Ny
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className="text-xs">
+                          {insight.severity}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {insight.description}
+                      </p>
+                      {insight.action_required && (
+                        <div className="mt-2">
+                          <Badge variant="destructive" className="text-xs">
+                            Åtgärd krävs
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Quick Actions */}
       <Card>
         <CardHeader>
