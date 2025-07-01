@@ -1,3 +1,4 @@
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@500;600;700&display=swap');
 
 @tailwind base;
@@ -99,16 +100,43 @@
 
 /* Mobile-specific focus and touch improvements */
 @layer base {
-  /* Remove default focus outlines on mobile while keeping accessibility */
+  /* Enhanced mobile focus styles */
   @media (max-width: 768px) {
+    /* Remove default focus outlines on mobile while keeping accessibility */
     *:focus {
       outline: none !important;
     }
     
-    /* Only show focus for keyboard navigation */
+    /* Enhanced focus for keyboard navigation with solid backgrounds */
     *:focus-visible {
-      outline: 2px solid theme('colors.blue.500');
+      outline: 2px solid hsl(var(--primary)) !important;
       outline-offset: 2px;
+      background-color: hsla(var(--primary), 0.1) !important;
+      border-radius: 0.375rem;
+    }
+    
+    /* Specific focus styles for interactive elements */
+    button:focus-visible,
+    [role="button"]:focus-visible,
+    a:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible,
+    select:focus-visible {
+      outline: 2px solid hsl(var(--primary)) !important;
+      outline-offset: 2px;
+      background-color: hsla(var(--primary), 0.15) !important;
+      box-shadow: 0 0 0 4px hsla(var(--primary), 0.1) !important;
+    }
+    
+    /* Enhanced navigation focus styles */
+    nav a:focus-visible,
+    nav button:focus-visible {
+      outline: 2px solid hsl(var(--primary)) !important;
+      outline-offset: 1px;
+      background-color: hsla(var(--primary), 0.2) !important;
+      color: hsl(var(--primary)) !important;
+      box-shadow: 0 0 0 3px hsla(var(--primary), 0.15) !important;
+      border-radius: 0.5rem;
     }
     
     /* Remove tap highlight on mobile */
@@ -133,7 +161,6 @@
     button, a, [role="button"] {
       -webkit-tap-highlight-color: transparent;
       -webkit-focus-ring-color: transparent;
-      outline: none;
     }
   }
 }
@@ -168,7 +195,7 @@
     min-height: 100dvh; /* Dynamic viewport height for mobile browsers */
   }
   
-  /* Enhanced mobile navigation */
+  /* Enhanced mobile navigation with better focus */
   .mobile-nav-overlay {
     @apply fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300;
   }
@@ -179,11 +206,20 @@
     @apply border-r border-gray-200 dark:border-gray-700;
   }
   
-  /* Mobile bottom navigation */
+  /* Mobile bottom navigation with enhanced focus */
   .mobile-bottom-nav {
     @apply fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800;
     @apply border-t border-gray-200 dark:border-gray-700 z-30;
     @apply pb-safe-area;
+  }
+
+  .mobile-bottom-nav a:focus-visible {
+    outline: 2px solid hsl(var(--primary)) !important;
+    outline-offset: -2px;
+    background-color: hsla(var(--primary), 0.2) !important;
+    color: hsl(var(--primary)) !important;
+    border-radius: 0.5rem;
+    margin: 2px;
   }
 
   /* Mobile expanded chat overlay */
@@ -211,26 +247,48 @@
     @apply text-lg sm:text-xl md:text-2xl lg:text-3xl;
   }
   
-  /* Mobile touch targets */
+  /* Mobile touch targets with enhanced focus */
   .touch-target {
     @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+  }
+  
+  .touch-target:focus-visible {
+    outline: 2px solid hsl(var(--primary)) !important;
+    outline-offset: 2px;
+    background-color: hsla(var(--primary), 0.15) !important;
+    box-shadow: 0 0 0 4px hsla(var(--primary), 0.1) !important;
+    border-radius: 0.5rem;
   }
   
   .touch-target-sm {
     @apply min-h-[40px] min-w-[40px] flex items-center justify-center;
   }
   
-  /* Mobile-friendly button styles */
+  /* Mobile-friendly button styles with better focus */
   .btn-mobile {
     @apply px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200;
     @apply active:scale-95 touch-manipulation;
     -webkit-tap-highlight-color: transparent;
   }
   
+  .btn-mobile:focus-visible {
+    outline: 2px solid hsl(var(--primary)) !important;
+    outline-offset: 2px;
+    background-color: hsla(var(--primary), 0.15) !important;
+    box-shadow: 0 0 0 4px hsla(var(--primary), 0.1) !important;
+  }
+  
   .btn-mobile-sm {
     @apply px-3 py-2 text-xs font-medium rounded-md transition-all duration-200;
     @apply active:scale-95 touch-manipulation;
     -webkit-tap-highlight-color: transparent;
+  }
+  
+  .btn-mobile-sm:focus-visible {
+    outline: 2px solid hsl(var(--primary)) !important;
+    outline-offset: 1px;
+    background-color: hsla(var(--primary), 0.15) !important;
+    box-shadow: 0 0 0 3px hsla(var(--primary), 0.1) !important;
   }
   
   /* Mobile spacing utilities */
@@ -314,9 +372,18 @@
     @apply container-mobile;
   }
   
-  /* Mobile-optimized form layouts */
+  /* Mobile-optimized form layouts with better focus */
   .form-mobile {
     @apply w-full max-w-sm sm:max-w-md md:max-w-lg mx-auto;
+  }
+  
+  .form-mobile input:focus-visible,
+  .form-mobile textarea:focus-visible,
+  .form-mobile select:focus-visible {
+    outline: 2px solid hsl(var(--primary)) !important;
+    outline-offset: 2px;
+    background-color: hsla(var(--primary), 0.05) !important;
+    box-shadow: 0 0 0 4px hsla(var(--primary), 0.1) !important;
   }
   
   /* Mobile navigation improvements */
@@ -364,10 +431,17 @@
     -webkit-overflow-scrolling: touch;
   }
   
-  /* Mobile input improvements */
+  /* Mobile input improvements with better focus */
   .input-mobile {
     @apply text-base sm:text-sm; /* Prevents zoom on iOS */
     @apply px-3 py-3 sm:px-4 sm:py-2;
+  }
+  
+  .input-mobile:focus-visible {
+    outline: 2px solid hsl(var(--primary)) !important;
+    outline-offset: 2px;
+    background-color: hsla(var(--primary), 0.05) !important;
+    box-shadow: 0 0 0 4px hsla(var(--primary), 0.1) !important;
   }
   
   /* Mobile-specific component improvements */
@@ -377,16 +451,36 @@
     -webkit-tap-highlight-color: transparent;
   }
   
+  .mobile-card:focus-visible {
+    outline: 2px solid hsl(var(--primary)) !important;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px hsla(var(--primary), 0.1) !important;
+  }
+  
   .mobile-button {
     @apply transition-all duration-200 active:scale-95;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
   }
   
+  .mobile-button:focus-visible {
+    outline: 2px solid hsl(var(--primary)) !important;
+    outline-offset: 2px;
+    background-color: hsla(var(--primary), 0.15) !important;
+    box-shadow: 0 0 0 4px hsla(var(--primary), 0.1) !important;
+  }
+  
   .mobile-tab {
     @apply transition-all duration-200 active:scale-95;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+  }
+  
+  .mobile-tab:focus-visible {
+    outline: 2px solid hsl(var(--primary)) !important;
+    outline-offset: 2px;
+    background-color: hsla(var(--primary), 0.15) !important;
+    box-shadow: 0 0 0 4px hsla(var(--primary), 0.1) !important;
   }
 }
 
@@ -397,13 +491,22 @@
     padding-right: 1rem;
   }
   
-  /* Ensure no blue outlines or highlights */
+  /* Enhanced focus styles with solid backgrounds */
   *, *:focus, *:active, *:hover {
     outline: none !important;
     -webkit-tap-highlight-color: transparent !important;
   }
   
-  /* Better touch targets */
+  /* Better focus visibility */
+  *:focus-visible {
+    outline: 2px solid hsl(var(--primary)) !important;
+    outline-offset: 2px;
+    background-color: hsla(var(--primary), 0.15) !important;
+    box-shadow: 0 0 0 4px hsla(var(--primary), 0.1) !important;
+    border-radius: 0.375rem;
+  }
+  
+  /* Better touch targets with enhanced focus */
   button, [role="button"], a {
     min-height: 44px;
     min-width: 44px;
@@ -412,6 +515,14 @@
     justify-content: center;
     -webkit-tap-highlight-color: transparent;
     outline: none;
+  }
+  
+  button:focus-visible, [role="button"]:focus-visible, a:focus-visible {
+    outline: 2px solid hsl(var(--primary)) !important;
+    outline-offset: 2px;
+    background-color: hsla(var(--primary), 0.2) !important;
+    box-shadow: 0 0 0 4px hsla(var(--primary), 0.15) !important;
+    border-radius: 0.5rem;
   }
 }
 
@@ -468,13 +579,6 @@ html, body {
     overflow-x: hidden !important;
     width: 100% !important;
   }
-  
-  /* Remove all focus rings and tap highlights */
-  * {
-    -webkit-tap-highlight-color: transparent !important;
-    -webkit-focus-ring-color: transparent !important;
-    outline: none !important;
-  }
 }
 
 /* Ensure buttons and interactive elements work well on mobile */
@@ -484,5 +588,13 @@ html, body {
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
+  }
+  
+  .touch-friendly:focus-visible {
+    outline: 2px solid hsl(var(--primary)) !important;
+    outline-offset: 2px;
+    background-color: hsla(var(--primary), 0.15) !important;
+    box-shadow: 0 0 0 4px hsla(var(--primary), 0.1) !important;
+    border-radius: 0.375rem;
   }
 }

@@ -1,11 +1,12 @@
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { 
   Home, 
   TrendingUp, 
-  BarChart3, 
-  MessageSquare
+  MessageSquare,
+  BarChart3
 } from 'lucide-react';
 
 const MainNavigation = () => {
@@ -14,8 +15,8 @@ const MainNavigation = () => {
   const navigation = [
     { name: 'Hem', href: '/', icon: Home },
     { name: 'Aktiefall', href: '/stock-cases', icon: TrendingUp },
-    { name: 'Min Portfölj', href: '/portfolio-implementation', icon: BarChart3 },
     { name: 'AI-Assistent', href: '/ai-chat', icon: MessageSquare },
+    { name: 'Min Portfölj', href: '/portfolio-implementation', icon: BarChart3 },
   ];
 
   return (
