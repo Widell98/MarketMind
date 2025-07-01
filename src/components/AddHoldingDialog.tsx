@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -23,26 +22,26 @@ interface AddHoldingDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (holdingData: Omit<UserHolding, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<boolean>;
-  recommendation?: any;
+  initialData?: any;
 }
 
 const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({ 
   isOpen, 
   onClose, 
   onAdd,
-  recommendation 
+  initialData 
 }) => {
   const [formData, setFormData] = useState({
-    name: recommendation?.name || '',
-    symbol: recommendation?.symbol || '',
-    holding_type: recommendation?.holding_type === 'recommendation' ? 'stock' : (recommendation?.holding_type || 'stock'),
+    name: initialData?.name || '',
+    symbol: initialData?.symbol || '',
+    holding_type: initialData?.holding_type === 'recommendation' ? 'stock' : (initialData?.holding_type || 'stock'),
     quantity: '',
-    purchase_price: recommendation?.purchase_price?.toString() || '',
+    purchase_price: initialData?.purchase_price?.toString() || '',
     current_value: '',
     purchase_date: '',
-    sector: recommendation?.sector || '',
-    market: recommendation?.market || '',
-    currency: recommendation?.currency || 'SEK'
+    sector: initialData?.sector || '',
+    market: initialData?.market || '',
+    currency: initialData?.currency || 'SEK'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -117,10 +116,10 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {recommendation ? `Lägg till ${recommendation.name}` : 'Lägg till innehav'}
+            {initialData ? `Lägg till ${initialData.name}` : 'Lägg till innehav'}
           </DialogTitle>
           <DialogDescription>
-            {recommendation 
+            {initialData 
               ? 'Fyll i dina detaljer för att lägga till denna rekommendation till dina innehav.'
               : 'Lägg till en ny aktie eller fond till din portfölj.'
             }
