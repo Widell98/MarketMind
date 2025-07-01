@@ -26,6 +26,10 @@ const UserHoldingsManager: React.FC = () => {
   const { actualHoldings, loading, deleteHolding } = useUserHoldings();
   const navigate = useNavigate();
 
+  // Consistent button styles
+  const primaryButtonClass = "text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-200 hover:border-blue-300";
+  const dangerButtonClass = "text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 hover:border-red-300";
+
   const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
     console.log(`Deleting holding: ${holdingName} (${holdingId})`);
     const success = await deleteHolding(holdingId);
@@ -90,8 +94,12 @@ const UserHoldingsManager: React.FC = () => {
             <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
               Lägg till dina nuvarande aktier och fonder för att få en komplett bild av din portfölj och bättre AI-rekommendationer.
             </p>
-            <Button className="flex items-center gap-2" onClick={() => navigate('/ai-chat')}>
-              <Plus className="w-4 h-4" />
+            <Button 
+              className={primaryButtonClass}
+              variant="outline"
+              onClick={() => navigate('/ai-chat')}
+            >
+              <Plus className="w-4 h-4 mr-2" />
               Lägg till innehav
             </Button>
           </div>
@@ -132,7 +140,7 @@ const UserHoldingsManager: React.FC = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-200 hover:border-blue-300"
+                    className={primaryButtonClass}
                     onClick={() => handleDiscussHolding(holding.name, holding.symbol)}
                   >
                     <MessageSquare className="w-4 h-4 mr-1" />
@@ -142,9 +150,9 @@ const UserHoldingsManager: React.FC = () => {
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 hover:border-red-300"
+                        className={dangerButtonClass}
                       >
                         <Trash2 className="w-4 h-4 mr-1" />
                         Radera
