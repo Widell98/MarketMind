@@ -163,7 +163,7 @@ async function generatePersonalizedInsights(userId: string, type: string) {
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: 'gpt-4o',
+    model: 'gpt-3.5-turbo',
     messages: [
       {
         role: 'system',
@@ -250,7 +250,7 @@ async function generateGeneralInsights(type: string) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-3.5-turbo',
         messages: [
           {
             role: 'system',
@@ -362,7 +362,7 @@ async function generateAIMockInsights(type: string, isPersonalized: boolean) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-3.5-turbo',
         messages: [
           {
             role: 'system',
