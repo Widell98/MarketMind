@@ -247,7 +247,7 @@ const AIChatPage = () => {
               <div className="lg:col-span-2">
                 <Card className="bg-card border shadow-lg rounded-2xl overflow-hidden">
                   {/* Demo Chat Interface for unauthenticated users */}
-                  <div className="flex flex-col h-[75vh] lg:h-[80vh] xl:h-[85vh]">
+                  <div className="flex flex-col h-[80vh] lg:h-[85vh] xl:h-[90vh]">
                     {/* Chat Header */}
                     <div className="border-b bg-muted/30 p-4">
                       <div className="flex items-center gap-3">

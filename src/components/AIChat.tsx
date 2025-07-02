@@ -145,7 +145,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
   };
 
   return (
-    <div className="flex flex-col h-[75vh] lg:h-[80vh] xl:h-[85vh] bg-transparent overflow-hidden relative">
+    <div className="flex flex-col h-[80vh] lg:h-[85vh] xl:h-[90vh] bg-transparent overflow-hidden relative">
       <ChatHeader
         showSessions={showSessions}
         setShowSessions={setShowSessions}
