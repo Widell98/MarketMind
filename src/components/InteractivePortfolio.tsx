@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,13 +46,24 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
     if (!newSymbol.trim()) return;
     
     const message = `Jag vill ersätta ${oldSymbol} med ${newSymbol.toUpperCase()} i min portfölj. Kan du analysera om det är en bra idé och genomföra bytet om det passar min riskprofil?`;
-    onQuickChat(message);
+    
+    // Navigate to AI chat and pre-fill the input instead of sending directly
+    navigate('/ai-chat');
+    
+    // Small delay to ensure navigation is complete before dispatching event
+    setTimeout(() => {
+      const event = new CustomEvent('sendExamplePrompt', {
+        detail: { message }
+      });
+      window.dispatchEvent(event);
+    }, 100);
+    
     setEditingHolding(null);
     setNewSymbol('');
   };
 
   const handleQuickAction = (message: string) => {
-    // Navigate to AI chat and trigger the pre-filled message
+    // Navigate to AI chat and pre-fill the input instead of sending directly
     navigate('/ai-chat');
     
     // Small delay to ensure navigation is complete before dispatching event
