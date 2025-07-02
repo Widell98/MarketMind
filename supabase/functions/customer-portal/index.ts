@@ -99,30 +99,10 @@ serve(async (req) => {
       }, { onConflict: 'email' });
     }
     
-let customerId: string;
-
-if (customers.data.length > 0) {
-  customerId = customers.data[0].id;
-} else {
-  const newCustomer = await stripe.customers.create({
-    email: user.email,
-    metadata: { user_id: user.id },
-  });
-
-  customerId = newCustomer.id;
-
-  // Uppdatera i Supabase direkt när ny kund skapas
-  await supabaseClient.from("subscribers").upsert({
-    email: user.email,
-    user_id: user.id,
-    stripe_customer_id: customerId,
-    subscribed: false,
-    subscription_tier: 'free',
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'email' });
-
-  logStep("New customer created and synced to Supabase", { customerId });
-}
+    const customerId = customers.data.length > 0 ? customers.data[0].id : (await stripe.customers.create({
+      email: user.email,
+      metadata: { user_id: user.id }
+    })).id;
     
     logStep("Using customer ID", { customerId });
 
