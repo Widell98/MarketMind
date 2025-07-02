@@ -36,12 +36,12 @@ const UserHoldingsManager: React.FC = () => {
   const handleDiscussHolding = (holdingName: string, symbol?: string) => {
     const message = `Berätta mer om ${holdingName}${symbol ? ` (${symbol})` : ''}. Vad gör företaget, vilka är deras huvudsakliga affärsområden, och varför skulle det vara en bra investering för min portfölj? Analysera också eventuella risker och möjligheter.`;
     
-    // Navigate to AI chat and pre-fill the input
+    // Navigate to AI chat and pre-fill the input (without sending)
     navigate('/ai-chat');
     
     // Small delay to ensure navigation is complete before dispatching event
     setTimeout(() => {
-      const event = new CustomEvent('sendExamplePrompt', {
+      const event = new CustomEvent('prefillChatInput', {
         detail: { message }
       });
       window.dispatchEvent(event);

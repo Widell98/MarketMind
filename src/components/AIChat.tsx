@@ -108,12 +108,22 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
       }, 100);
     };
 
+    const handlePrefillChatInput = (event: CustomEvent) => {
+      const { message } = event.detail;
+      setInput(message);
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    };
+
     window.addEventListener('createStockChat', handleCreateStockChat as EventListener);
     window.addEventListener('sendExamplePrompt', handleExamplePrompt as EventListener);
+    window.addEventListener('prefillChatInput', handlePrefillChatInput as EventListener);
 
     return () => {
       window.removeEventListener('createStockChat', handleCreateStockChat as EventListener);
       window.removeEventListener('sendExamplePrompt', handleExamplePrompt as EventListener);
+      window.removeEventListener('prefillChatInput', handlePrefillChatInput as EventListener);
     };
   }, [createNewSession]);
 
