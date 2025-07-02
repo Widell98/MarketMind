@@ -10,7 +10,7 @@ import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Brain, MessageSquare, Activity, Target, Lightbulb, Zap, PieChart, TrendingUp, AlertCircle, User } from 'lucide-react';
+import { Brain, MessageSquare, Activity, Target, Lightbulb, Zap, PieChart, TrendingUp, AlertCircle, User, LogIn } from 'lucide-react';
 
 const AIChatPage = () => {
   const [searchParams] = useSearchParams();
@@ -67,6 +67,25 @@ const AIChatPage = () => {
       prompt: "Vad händer på marknaden just nu och hur påverkar det min investeringsstrategi?",
       icon: <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />,
       description: "Håll dig uppdaterad med aktuella marknadstrender"
+    }
+  ];
+
+  // Mock chat messages for demo
+  const demoMessages = [
+    {
+      role: 'assistant',
+      content: 'Hej! Jag är din AI Portfolio Assistent. Jag hjälper dig med investeringsråd, portföljanalys och marknadsinsikter. Vad kan jag hjälpa dig med idag?',
+      timestamp: new Date(Date.now() - 300000) // 5 minutes ago
+    },
+    {
+      role: 'user', 
+      content: 'Kan du analysera Tesla som investering?',
+      timestamp: new Date(Date.now() - 240000) // 4 minutes ago
+    },
+    {
+      role: 'assistant',
+      content: 'Tesla (TSLA) är definitivt en intressant investering att diskutera! För att ge dig den bästa analysen behöver jag veta mer om din investeringsprofil och mål. Skapa ett konto så kan jag ge dig personliga rekommendationer baserat på din riskprofil.',
+      timestamp: new Date(Date.now() - 180000) // 3 minutes ago
     }
   ];
 
@@ -218,43 +237,68 @@ const AIChatPage = () => {
               />
             </Card>
           ) : (
-            <>
-              {/* Demo messages for unauthenticated users */}
-              <div className="flex-1 overflow-hidden">
-                <div className="h-full flex flex-col items-center justify-center p-6 text-center">
-                  <div className="max-w-md space-y-6">
-                    <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center mx-auto shadow-lg">
-                      <Brain className="w-10 h-10 text-primary-foreground" />
+            <Card className="bg-card border shadow-lg rounded-2xl overflow-hidden">
+              {/* Demo Chat Interface for unauthenticated users */}
+              <div className="flex flex-col h-[75vh] lg:h-[80vh] xl:h-[85vh]">
+                {/* Chat Header */}
+                <div className="border-b bg-muted/30 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                      <Brain className="w-4 h-4 text-primary-foreground" />
                     </div>
-                    
-                    <div className="space-y-3">
-                      <h3 className="text-xl font-bold text-foreground">AI Portfolio Assistent</h3>
-                      <p className="text-muted-foreground">
-                        Få personliga investeringsråd, portföljanalys och marknadsinsikter med hjälp av AI
-                      </p>
+                    <div>
+                      <h3 className="font-semibold">Demo Konversation</h3>
+                      <p className="text-xs text-muted-foreground">Se hur AI-assistenten fungerar</p>
                     </div>
+                  </div>
+                </div>
 
-                    <Card className="p-4 bg-muted/30 border-dashed">
-                      <div className="flex items-start gap-3">
-                        <MessageSquare className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                        <div className="text-left">
-                          <p className="text-sm font-medium mb-1">Exempel på vad du kan fråga:</p>
-                          <ul className="text-xs text-muted-foreground space-y-1">
-                            <li>• "Analysera min portfölj och ge rekommendationer"</li>
-                            <li>• "Vilka risker har mina nuvarande innehav?"</li>
-                            <li>• "Föreslå bra aktier för min riskprofil"</li>
-                          </ul>
+                {/* Demo Messages */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {demoMessages.map((msg, index) => (
+                    <div
+                      key={index}
+                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`max-w-[80%] ${
+                        msg.role === 'user' 
+                          ? 'bg-primary text-primary-foreground' 
+                          : 'bg-muted'
+                      } rounded-2xl px-4 py-3`}>
+                        <p className="text-sm">{msg.content}</p>
+                        <p className="text-xs opacity-70 mt-1">
+                          {msg.timestamp.toLocaleTimeString('sv-SE', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Login Prompt Input Area */}
+                <div className="border-t p-4">
+                  <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4">
+                    <div className="flex flex-col sm:flex-row items-center gap-4">
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
+                          <LogIn className="w-6 h-6 text-primary-foreground" />
+                        </div>
+                        <div className="text-center sm:text-left">
+                          <h4 className="font-semibold text-foreground">Fortsätt konversationen</h4>
+                          <p className="text-sm text-muted-foreground">Skapa ett konto för att få personliga AI-råd och portföljanalys</p>
                         </div>
                       </div>
-                    </Card>
-
-                    <Button onClick={() => window.location.href = '/auth'} className="w-full">
-                      Logga in för att komma igång
-                    </Button>
+                      <Button onClick={() => window.location.href = '/auth'} className="flex-shrink-0">
+                        <LogIn className="w-4 h-4 mr-2" />
+                        Logga in / Skapa konto
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </>
+            </Card>
           )}
         </div>
       </div>
