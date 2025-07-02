@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,15 +12,20 @@ import { useStockCaseFollows } from '@/hooks/useStockCaseFollows';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 
-const LatestCases = () => {
+interface LatestCasesProps {
+  limit?: number;
+  showHeader?: boolean;
+}
+
+const LatestCases = ({ limit = 6, showHeader = true }: LatestCasesProps) => {
   const [viewMode, setViewMode] = useState<'all' | 'trending' | 'followed'>('all');
   const navigate = useNavigate();
 
   // Fetch data based on view mode
   const { stockCases: allStockCases, loading: allLoading } = useStockCases(false);
   const { stockCases: followedStockCases, loading: followedLoading } = useStockCases(true);
-  const { trendingCases, loading: trendingLoading } = useTrendingStockCases(6);
-  const { latestCases: latestStockCases, loading: latestLoading } = useLatestStockCases(6);
+  const { trendingCases, loading: trendingLoading } = useTrendingStockCases(limit);
+  const { latestCases: latestStockCases, loading: latestLoading } = useLatestStockCases(limit);
 
   console.log('LatestCases - View mode:', viewMode);
   console.log('LatestCases - All stock cases:', allStockCases.length);
@@ -37,7 +41,7 @@ const LatestCases = () => {
       case 'trending':
         return { cases: trendingCases, loading: trendingLoading };
       case 'followed':
-        return { cases: followedStockCases.slice(0, 6), loading: followedLoading };
+        return { cases: followedStockCases.slice(0, limit), loading: followedLoading };
       default:
         return { cases: latestStockCases, loading: latestLoading };
     }
