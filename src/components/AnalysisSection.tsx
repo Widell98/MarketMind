@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, Heart, MessageCircle, TrendingUp, Sparkles, PieChart, User } from 'lucide-react';
+import { MessageCircle, TrendingUp, Sparkles, PieChart, User } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -221,14 +221,6 @@ const AnalysesSection = ({ limit = 6, showHeader = true }: AnalysesSectionProps)
             
             <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 border-t pt-3">
               <div className="flex items-center space-x-4">
-                <div className="flex items-center gap-1">
-                  <Eye className="w-3 h-3" />
-                  <span>{analysis.views_count}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Heart className={`w-3 h-3 ${analysis.isLiked ? 'fill-current text-red-500' : ''}`} />
-                  <span>{analysis.likes_count}</span>
-                </div>
                 <div className="flex items-center gap-1">
                   <MessageCircle className="w-3 h-3" />
                   <span>{analysis.comments_count}</span>
