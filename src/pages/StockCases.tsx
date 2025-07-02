@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useStockCases } from '@/hooks/useStockCases';
 import { useStockCaseOperations } from '@/hooks/useStockCaseOperations';
@@ -15,6 +16,7 @@ import StockCaseListItem from '@/components/StockCaseListItem';
 import StockCasesFilters from '@/components/StockCasesFilters';
 import StockCaseSkeletonCard from '@/components/StockCaseSkeletonCard';
 import CommunityStats from '@/components/CommunityStats';
+import AnalysesSection from '@/components/AnalysesSection';
 
 const StockCases = () => {
   const [viewMode, setViewMode] = useState<'all' | 'trending' | 'followed'>('all');
@@ -194,101 +196,109 @@ const StockCases = () => {
           categories={[]}
         />
 
-        {/* Results Count */}
-        <div className="flex items-center justify-between px-2 sm:px-0">
-          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-            <span className="hidden sm:inline">Showing </span>
-            {filteredAndSortedCases.length} of {displayCases.length} cases
-            {searchTerm && (
-              <span className="hidden sm:inline"> for "{searchTerm}"</span>
-            )}
-          </p>
-        </div>
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+          {/* Stock Cases Section - Takes up 2/3 on large screens */}
+          <div className="lg:col-span-2 space-y-3 sm:space-y-4">
+            {/* Results Count */}
+            <div className="flex items-center justify-between px-2 sm:px-0">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                <span className="hidden sm:inline">Showing </span>
+                {filteredAndSortedCases.length} of {displayCases.length} cases
+                {searchTerm && (
+                  <span className="hidden sm:inline"> for "{searchTerm}"</span>
+                )}
+              </p>
+            </div>
 
-        {/* Stock Cases Section */}
-        <div className="space-y-3 sm:space-y-4">
-          <div className="flex items-center gap-2 px-2 sm:px-0">
-            {viewMode === 'trending' ? (
-              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
-            ) : viewMode === 'followed' ? (
-              <Bookmark className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
-            ) : (
-              <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
-            )}
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
+            <div className="flex items-center gap-2 px-2 sm:px-0">
               {viewMode === 'trending' ? (
-                <>
-                  <span className="hidden sm:inline">Trending Stock Cases</span>
-                  <span className="sm:hidden">Trending</span>
-                </>
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
               ) : viewMode === 'followed' ? (
-                <>
-                  <span className="hidden sm:inline">Followed Stock Cases</span>
-                  <span className="sm:hidden">Followed</span>
-                </>
+                <Bookmark className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
               ) : (
-                <>
-                  <span className="hidden sm:inline">All Stock Cases</span>
-                  <span className="sm:hidden">All Cases</span>
-                </>
+                <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
               )}
-            </h2>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
+                {viewMode === 'trending' ? (
+                  <>
+                    <span className="hidden sm:inline">Trending Stock Cases</span>
+                    <span className="sm:hidden">Trending</span>
+                  </>
+                ) : viewMode === 'followed' ? (
+                  <>
+                    <span className="hidden sm:inline">Followed Stock Cases</span>
+                    <span className="sm:hidden">Followed</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="hidden sm:inline">All Stock Cases</span>
+                    <span className="sm:hidden">All Cases</span>
+                  </>
+                )}
+              </h2>
+            </div>
+
+            {filteredAndSortedCases.length === 0 ? (
+              <Card className="text-center py-6 sm:py-8 bg-gray-50 dark:bg-gray-800 mx-2 sm:mx-0">
+                <CardContent className="pt-4">
+                  {viewMode === 'followed' ? (
+                    <Bookmark className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
+                  ) : (
+                    <Activity className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
+                  )}
+                  <CardTitle className="text-base sm:text-lg mb-2 text-gray-900 dark:text-gray-100">
+                    {searchTerm
+                      ? 'No cases match your search'
+                      : viewMode === 'trending' 
+                      ? 'No trending cases yet'
+                      : viewMode === 'followed'
+                      ? 'No followed cases yet'
+                      : 'No stock cases yet'
+                    }
+                  </CardTitle>
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 px-4">
+                    {searchTerm
+                      ? 'Try adjusting your search criteria.'
+                      : viewMode === 'trending' 
+                      ? 'Cases will appear here when they start getting likes from the community.'
+                      : viewMode === 'followed'
+                      ? 'Start following some cases to see them here. You need to be logged in to follow cases.'
+                      : 'Stock cases will be displayed here when they are added by our experts.'
+                    }
+                  </p>
+                  {searchTerm && (
+                    <Button 
+                      onClick={() => setSearchTerm('')}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs sm:text-sm"
+                    >
+                      Clear Search
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="px-2 sm:px-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                  {filteredAndSortedCases.map((stockCase) => (
+                    <StockCaseCard
+                      key={stockCase.id}
+                      stockCase={stockCase}
+                      onViewDetails={handleViewStockCaseDetails}
+                      onDelete={handleDeleteStockCase}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          {filteredAndSortedCases.length === 0 ? (
-            <Card className="text-center py-6 sm:py-8 bg-gray-50 dark:bg-gray-800 mx-2 sm:mx-0">
-              <CardContent className="pt-4">
-                {viewMode === 'followed' ? (
-                  <Bookmark className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
-                ) : (
-                  <Activity className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
-                )}
-                <CardTitle className="text-base sm:text-lg mb-2 text-gray-900 dark:text-gray-100">
-                  {searchTerm
-                    ? 'No cases match your search'
-                    : viewMode === 'trending' 
-                    ? 'No trending cases yet'
-                    : viewMode === 'followed'
-                    ? 'No followed cases yet'
-                    : 'No stock cases yet'
-                  }
-                </CardTitle>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 px-4">
-                  {searchTerm
-                    ? 'Try adjusting your search criteria.'
-                    : viewMode === 'trending' 
-                    ? 'Cases will appear here when they start getting likes from the community.'
-                    : viewMode === 'followed'
-                    ? 'Start following some cases to see them here. You need to be logged in to follow cases.'
-                    : 'Stock cases will be displayed here when they are added by our experts.'
-                  }
-                </p>
-                {searchTerm && (
-                  <Button 
-                    onClick={() => setSearchTerm('')}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs sm:text-sm"
-                  >
-                    Clear Search
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="px-2 sm:px-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {filteredAndSortedCases.map((stockCase) => (
-                  <StockCaseCard
-                    key={stockCase.id}
-                    stockCase={stockCase}
-                    onViewDetails={handleViewStockCaseDetails}
-                    onDelete={handleDeleteStockCase}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Analyses Section - Takes up 1/3 on large screens, full width on smaller screens */}
+          <div className="lg:col-span-1">
+            <AnalysesSection limit={8} showHeader={true} />
+          </div>
         </div>
       </div>
     </Layout>
