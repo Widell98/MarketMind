@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -139,13 +138,6 @@ const ProfilePage = () => {
                   Admin: Hantera Cases
                 </Button>
               )}
-              <Button 
-                onClick={() => navigate('/my-stock-cases')}
-                className="w-full bg-green-600 hover:bg-green-700"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Skapa Aktiecase
-              </Button>
               <Button 
                 variant="outline" 
                 className="w-full"
