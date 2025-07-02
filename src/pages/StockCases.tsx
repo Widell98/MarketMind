@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useStockCases } from '@/hooks/useStockCases';
 import { useStockCaseOperations } from '@/hooks/useStockCaseOperations';
@@ -16,7 +15,7 @@ import StockCaseListItem from '@/components/StockCaseListItem';
 import StockCasesFilters from '@/components/StockCasesFilters';
 import StockCaseSkeletonCard from '@/components/StockCaseSkeletonCard';
 import CommunityStats from '@/components/CommunityStats';
-import AnalysesSection from '@/components/AnalysesSection';
+import AnalysisSection from '@/components/AnalysisSection';
 
 const StockCases = () => {
   const [viewMode, setViewMode] = useState<'all' | 'trending' | 'followed'>('all');
@@ -297,7 +296,7 @@ const StockCases = () => {
 
           {/* Analyses Section - Takes up 1/3 on large screens, full width on smaller screens */}
           <div className="lg:col-span-1">
-            <AnalysesSection limit={8} showHeader={true} />
+            <AnalysisSection limit={8} showHeader={true} />
           </div>
         </div>
       </div>
