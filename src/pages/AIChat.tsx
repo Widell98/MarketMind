@@ -95,7 +95,7 @@ const AIChatPage = () => {
     return (
       <Layout>
         <div className="min-h-screen">
-          <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8 max-w-[1400px]">
+          <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8 max-w-[1600px]">
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
@@ -113,7 +113,7 @@ const AIChatPage = () => {
     return (
       <Layout>
         <div className="min-h-screen">
-          <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8 max-w-[1400px]">
+          <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8 max-w-[1600px]">
             <Card className="max-w-md mx-auto p-6 text-center">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <AlertCircle className="w-8 h-8 text-primary" />
@@ -141,7 +141,7 @@ const AIChatPage = () => {
       />
       
       <div className="min-h-screen">
-        <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8 max-w-[1400px]">
+        <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8 max-w-[1600px]">
           {/* Header */}
           <div className="mb-4 sm:mb-6">
             <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
@@ -247,7 +247,7 @@ const AIChatPage = () => {
               <div className="lg:col-span-2">
                 <Card className="bg-card border shadow-lg rounded-2xl overflow-hidden">
                   {/* Demo Chat Interface for unauthenticated users */}
-                  <div className="flex flex-col h-[80vh] lg:h-[85vh] xl:h-[90vh]">
+                  <div className="flex flex-col h-[90vh] lg:h-[92vh] xl:h-[95vh]">
                     {/* Chat Header */}
                     <div className="border-b bg-muted/30 p-4">
                       <div className="flex items-center gap-3">
@@ -262,18 +262,18 @@ const AIChatPage = () => {
                     </div>
 
                     {/* Demo Messages */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 max-w-6xl mx-auto w-full">
                       {demoMessages.map((msg, index) => (
                         <div
                           key={index}
                           className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
-                          <div className={`max-w-[80%] ${
+                          <div className={`max-w-[75%] ${
                             msg.role === 'user' 
                               ? 'bg-primary text-primary-foreground' 
                               : 'bg-muted'
                           } rounded-2xl px-4 py-3`}>
-                            <p className="text-sm">{msg.content}</p>
+                            <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{msg.content}</p>
                             <p className="text-xs opacity-70 mt-1">
                               {msg.timestamp.toLocaleTimeString('sv-SE', { 
                                 hour: '2-digit', 
@@ -286,7 +286,7 @@ const AIChatPage = () => {
                     </div>
 
                     {/* Login Prompt Input Area */}
-                    <div className="border-t p-4">
+                    <div className="border-t p-4 max-w-6xl mx-auto w-full">
                       <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4">
                         <div className="flex flex-col sm:flex-row items-center gap-4">
                           <div className="flex items-center gap-3 flex-1">

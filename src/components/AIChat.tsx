@@ -145,7 +145,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
   };
 
   return (
-    <div className="flex flex-col h-[80vh] lg:h-[85vh] xl:h-[90vh] bg-transparent overflow-hidden relative">
+    <div className="flex flex-col h-[90vh] lg:h-[92vh] xl:h-[95vh] bg-transparent overflow-hidden relative">
       <ChatHeader
         showSessions={showSessions}
         setShowSessions={setShowSessions}
@@ -159,7 +159,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
 
       {user && riskProfile && (
         <div className="border-b bg-background p-2 sm:p-3">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-6xl mx-auto">
             <Button
               onClick={handleBackToPortfolio}
               variant="outline"
@@ -198,26 +198,26 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
           <div className="flex-1 overflow-hidden opacity-30 pointer-events-none">
             <div className="h-full flex flex-col">
               {/* Demo chat messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex-1 overflow-y-auto p-4 space-y-6 max-w-6xl mx-auto w-full">
                 <div className="flex justify-start">
-                  <div className="max-w-[80%] bg-muted rounded-2xl px-4 py-3">
-                    <p className="text-sm">Hej! Jag är din AI Portfolio Assistent. Jag hjälper dig med investeringsråd, portföljanalys och marknadsinsikter.</p>
+                  <div className="max-w-[75%] bg-muted rounded-2xl px-4 py-3">
+                    <p className="text-sm leading-relaxed">Hej! Jag är din AI Portfolio Assistent. Jag hjälper dig med investeringsråd, portföljanalys och marknadsinsikter.</p>
                   </div>
                 </div>
                 <div className="flex justify-end">
-                  <div className="max-w-[80%] bg-primary text-primary-foreground rounded-2xl px-4 py-3">
-                    <p className="text-sm">Kan du analysera min portfölj?</p>
+                  <div className="max-w-[75%] bg-primary text-primary-foreground rounded-2xl px-4 py-3">
+                    <p className="text-sm leading-relaxed">Kan du analysera min portfölj?</p>
                   </div>
                 </div>
                 <div className="flex justify-start">
-                  <div className="max-w-[80%] bg-muted rounded-2xl px-4 py-3">
-                    <p className="text-sm">För att ge dig en personlig portföljanalys behöver du logga in så jag kan komma åt din investeringsprofil och aktuella innehav.</p>
+                  <div className="max-w-[75%] bg-muted rounded-2xl px-4 py-3">
+                    <p className="text-sm leading-relaxed">För att ge dig en personlig portföljanalys behöver du logga in så jag kan komma åt din investeringsprofil och aktuella innehav.</p>
                   </div>
                 </div>
               </div>
               
               {/* Demo input area */}
-              <div className="border-t p-4">
+              <div className="border-t p-4 max-w-6xl mx-auto w-full">
                 <div className="flex gap-2">
                   <input 
                     className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm" 
