@@ -7,13 +7,177 @@ import { TrendingUp, TrendingDown, Activity, RefreshCw, LogIn, AlertTriangle } f
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { usePortfolioValue } from '@/hooks/usePortfolioValue';
+import { supabase } from '@/integrations/supabase/client';
+
+interface StockPrice {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  currency: string;
+  priceInSEK: number;
+  changeInSEK: number;
+  hasValidPrice: boolean;
+  errorMessage?: string;
+}
 
 const CurrentHoldingsPrices: React.FC = () => {
   const { actualHoldings, loading: holdingsLoading } = useUserHoldings();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { portfolioSummary, loading, lastUpdated, exchangeRate, refreshPrices } = usePortfolioValue();
+  const [prices, setPrices] = useState<StockPrice[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [exchangeRate, setExchangeRate] = useState<number>(10.5);
+
+  const fetchExchangeRate = async () => {
+    try {
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+      const data = await response.json();
+      if (data.rates && data.rates.SEK) {
+        const newRate = data.rates.SEK;
+        if (Math.abs(newRate - exchangeRate) / exchangeRate > 0.01) {
+          setExchangeRate(newRate);
+          console.log(`Updated exchange rate: ${newRate.toFixed(2)} SEK/USD`);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to fetch exchange rate:', error);
+    }
+  };
+
+  const fetchPrices = async () => {
+    if (!user || actualHoldings.length === 0) return;
+
+    setLoading(true);
+    try {
+      await fetchExchangeRate();
+
+      // Prioritera symbol över name för API-anrop
+      const symbolsToFetch = actualHoldings
+        .filter(holding => holding.symbol || holding.name)
+        .map(holding => ({
+          searchTerm: holding.symbol || holding.name,
+          holding: holding
+        }));
+
+      if (symbolsToFetch.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      console.log('Fetching prices for symbols:', symbolsToFetch.map(s => s.searchTerm));
+
+      const pricePromises = symbolsToFetch.map(async ({ searchTerm, holding }) => {
+        try {
+          console.log(`Making API call for: ${searchTerm}`);
+          
+          const { data, error } = await supabase.functions.invoke('fetch-stock-quote', {
+            body: { symbol: searchTerm }
+          });
+
+          if (error) {
+            console.error(`API error for ${searchTerm}:`, error);
+            return {
+              symbol: searchTerm,
+              name: holding.name || searchTerm,
+              price: 0,
+              change: 0,
+              changePercent: 0,
+              currency: holding.currency || 'SEK',
+              priceInSEK: 0,
+              changeInSEK: 0,
+              hasValidPrice: false,
+              errorMessage: `API-fel: ${error.message}`
+            };
+          }
+
+          console.log(`API response for ${searchTerm}:`, data);
+
+          // Kontrollera om vi fick giltig prisdata
+          const hasValidPrice = data && 
+            typeof data.price === 'number' && 
+            data.price > 0 && 
+            !isNaN(data.price);
+
+          if (!hasValidPrice) {
+            return {
+              symbol: searchTerm,
+              name: holding.name || searchTerm,
+              price: 0,
+              change: 0,
+              changePercent: 0,
+              currency: holding.currency || 'SEK',
+              priceInSEK: 0,
+              changeInSEK: 0,
+              hasValidPrice: false,
+              errorMessage: "Pris saknas - lägg in rätt ticker"
+            };
+          }
+
+          const holdingCurrency = holding.currency || 'SEK';
+          const quoteCurrency = data.currency || 'USD';
+          
+          let priceInSEK = data.price;
+          let changeInSEK = data.change || 0;
+
+          // Konvertera till SEK om nödvändigt
+          if (quoteCurrency === 'USD' && holdingCurrency === 'SEK') {
+            priceInSEK = data.price * exchangeRate;
+            changeInSEK = (data.change || 0) * exchangeRate;
+          }
+
+          return {
+            symbol: data.symbol || searchTerm,
+            name: holding.name || data.name || searchTerm,
+            price: data.price,
+            change: data.change || 0,
+            changePercent: data.changePercent || 0,
+            currency: quoteCurrency,
+            priceInSEK,
+            changeInSEK,
+            hasValidPrice: true
+          };
+        } catch (error) {
+          console.error(`Error fetching price for ${searchTerm}:`, error);
+          
+          return {
+            symbol: searchTerm,
+            name: holding.name || searchTerm,
+            price: 0,
+            change: 0,
+            changePercent: 0,
+            currency: holding.currency || 'SEK',
+            priceInSEK: 0,
+            changeInSEK: 0,
+            hasValidPrice: false,
+            errorMessage: "Pris saknas - lägg in rätt ticker"
+          };
+        }
+      });
+
+      const results = await Promise.all(pricePromises);
+      
+      setPrices(results);
+      setLastUpdated(new Date().toLocaleTimeString('sv-SE', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      }));
+      
+      console.log('Final price results:', results);
+    } catch (error) {
+      console.error('Error fetching stock prices:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user && actualHoldings.length > 0) {
+      fetchPrices();
+    }
+  }, [user, actualHoldings]);
 
   const formatCurrency = (amount: number, currency: string = 'SEK', showCurrency: boolean = true) => {
     const currencyCode = currency === 'SEK' ? 'SEK' : 'USD';
@@ -65,23 +229,20 @@ const CurrentHoldingsPrices: React.FC = () => {
           <div>
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Activity className="w-5 h-5 text-green-600" />
-              Aktuella Priser & Utveckling
+              Aktuella Priser
             </CardTitle>
             <CardDescription>
-              Realtidspriser med vinst/förlust-beräkning (1 USD = {exchangeRate.toFixed(2)} SEK)
+              Realtidspriser för dina innehav (1 USD = {exchangeRate.toFixed(2)} SEK)
               {lastUpdated && (
                 <span className="block text-xs text-muted-foreground mt-1">
-                  Senast uppdaterad: {lastUpdated.toLocaleTimeString('sv-SE', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
+                  Senast uppdaterad: {lastUpdated}
                 </span>
               )}
             </CardDescription>
           </div>
           <Button
             size="sm"
-            onClick={refreshPrices}
+            onClick={fetchPrices}
             disabled={loading || holdingsLoading}
             className="text-xs shrink-0 w-8 h-8 p-0"
             variant="outline"
@@ -103,82 +264,86 @@ const CurrentHoldingsPrices: React.FC = () => {
         ) : actualHoldings.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Activity className="w-12 h-12 mx-auto mb-2 opacity-50" />
-            <p>Lägg till innehav för att se aktuella priser och utveckling</p>
+            <p>Lägg till innehav för att se aktuella priser</p>
           </div>
         ) : loading ? (
           <div className="text-center py-4">
             <RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin text-green-600" />
             <p className="text-sm text-muted-foreground">Hämtar aktuella priser...</p>
           </div>
-        ) : portfolioSummary?.holdingsWithValues.length ? (
+        ) : prices.length > 0 ? (
           <div className="space-y-3">
-            {portfolioSummary.holdingsWithValues.map((holding) => (
-              <div key={holding.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium text-sm flex items-center gap-2">
-                    {holding.name}
-                    {!holding.hasValidPrice && (
-                      <AlertTriangle className="w-4 h-4 text-amber-500" />
-                    )}
+            {prices.map((stock) => {
+              const holding = actualHoldings.find(h => h.symbol === stock.symbol || h.name === stock.symbol);
+              const holdingCurrency = holding?.currency || 'SEK';
+              const displayPrice = holdingCurrency === 'SEK' && stock.currency === 'USD' ? stock.priceInSEK : stock.price;
+              const displayChange = holdingCurrency === 'SEK' && stock.currency === 'USD' ? stock.changeInSEK : stock.change;
+              
+              return (
+                <div key={stock.symbol} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-sm flex items-center gap-2">
+                      {stock.name}
+                      {!stock.hasValidPrice && (
+                        <AlertTriangle className="w-4 h-4 text-amber-500" />
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {stock.symbol} • {stock.currency}
+                      {stock.currency !== holdingCurrency && (
+                        <span className="ml-1 text-blue-600">→ {holdingCurrency}</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {holding.symbol && `${holding.symbol} • `}
-                    {holding.quantity} aktier @ {formatCurrency(holding.purchasePrice)}
-                  </div>
-                </div>
-                <div className="text-right">
-                  {holding.hasValidPrice ? (
-                    <>
-                      <div className="font-medium text-sm mb-1">
-                        {formatCurrency(holding.currentPrice)} per aktie
-                      </div>
-                      <div className="text-xs text-muted-foreground mb-2">
-                        Totalt värde: {formatCurrency(holding.totalValue)}
-                      </div>
-                      <div className="flex items-center gap-1 justify-end">
-                        {holding.profitLoss >= 0 ? (
-                          <TrendingUp className="w-3 h-3 text-green-600" />
-                        ) : (
-                          <TrendingDown className="w-3 h-3 text-red-600" />
-                        )}
-                        <div className="text-right">
-                          <div className={`text-xs font-medium ${
-                            holding.profitLoss >= 0 ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {formatCurrency(holding.profitLoss)}
-                          </div>
+                  <div className="text-right">
+                    {stock.hasValidPrice ? (
+                      <>
+                        <div className="font-medium text-sm">
+                          {formatCurrency(displayPrice || 0, holdingCurrency)}
+                          {stock.currency !== holdingCurrency && (
+                            <div className="text-xs text-muted-foreground">
+                              ({formatCurrency(stock.price, stock.currency)})
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 justify-end">
+                          {stock.changePercent >= 0 ? (
+                            <TrendingUp className="w-3 h-3 text-green-600" />
+                          ) : (
+                            <TrendingDown className="w-3 h-3 text-red-600" />
+                          )}
                           <Badge 
                             variant="outline" 
                             className={`text-xs ${
-                              holding.profitLoss >= 0 
+                              stock.changePercent >= 0 
                                 ? 'bg-green-50 text-green-700 border-green-200' 
                                 : 'bg-red-50 text-red-700 border-red-200'
                             }`}
                           >
-                            {formatPercentage(holding.profitLossPercent)}
+                            {formatPercentage(stock.changePercent)}
                           </Badge>
                         </div>
+                      </>
+                    ) : (
+                      <div className="text-center">
+                        <div className="text-sm text-amber-600 font-medium">
+                          {stock.errorMessage || "Pris saknas - lägg in rätt ticker"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Kontrollera ticker-symbol
+                        </div>
                       </div>
-                    </>
-                  ) : (
-                    <div className="text-center">
-                      <div className="text-sm text-amber-600 font-medium">
-                        {holding.errorMessage || "Pris saknas - lägg in rätt ticker"}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Kostnad: {formatCurrency(holding.totalCost)}
-                      </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <Activity className="w-12 h-12 mx-auto mb-2 opacity-50" />
             <p className="text-sm mb-2">Inga priser att visa</p>
-            <p className="text-xs">Kontrollera att dina innehav har korrekta symboler</p>
+            <p className="text-xs">Kontrollera att dina innehav har korrekta symbolar</p>
           </div>
         )}
       </CardContent>
