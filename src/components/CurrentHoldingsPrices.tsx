@@ -112,13 +112,7 @@ const CurrentHoldingsPrices: React.FC = () => {
           const holdingCurrency = holding.currency || 'SEK';
           const quoteCurrency = data.currency || 'USD';
 
-          let priceInSEK = data.price;
-          let changeInSEK = (data.change || 0);
-
-          if (quoteCurrency === 'USD' && holdingCurrency === 'SEK') {
-            priceInSEK = data.price * exchangeRate;
-            changeInSEK = (data.change || 0) * exchangeRate;
-          }
+          const convertedToSEK = quoteCurrency === 'USD' && holdingCurrency === 'SEK';
 
           return {
             symbol: data.symbol || searchTerm,
@@ -127,8 +121,8 @@ const CurrentHoldingsPrices: React.FC = () => {
             change: data.change || 0,
             changePercent: data.changePercent || 0,
             currency: quoteCurrency,
-            priceInSEK,
-            changeInSEK,
+            priceInSEK: convertedToSEK ? data.price * exchangeRate : data.price,
+            changeInSEK: convertedToSEK ? (data.change || 0) * exchangeRate : (data.change || 0),
             hasValidPrice: true,
           };
         } catch (err) {
@@ -279,7 +273,10 @@ const CurrentHoldingsPrices: React.FC = () => {
                   {stock.hasValidPrice ? (
                     <>
                       <div className="font-medium text-sm">
-                        {formatCurrency(stock.priceInSEK || stock.price, 'SEK')}
+                        {formatCurrency(
+                          stock.currency === 'USD' ? stock.price : stock.priceInSEK,
+                          stock.currency === 'USD' ? 'USD' : 'SEK'
+                        )}
                       </div>
                       <div className="flex items-center gap-1 justify-end">
                         {stock.changePercent >= 0 ? (
