@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Activity, RefreshCw, LogIn } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, RefreshCw, LogIn, AlertTriangle } from 'lucide-react';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -19,6 +19,7 @@ interface StockPrice {
   priceInSEK: number;
   changeInSEK: number;
   hasValidPrice: boolean;
+  errorMessage?: string;
 }
 
 const CurrentHoldingsPrices: React.FC = () => {
@@ -28,23 +29,21 @@ const CurrentHoldingsPrices: React.FC = () => {
   const [prices, setPrices] = useState<StockPrice[]>([]);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const [exchangeRate, setExchangeRate] = useState<number>(10.5); // Default USD/SEK rate
+  const [exchangeRate, setExchangeRate] = useState<number>(10.5);
 
   const fetchExchangeRate = async () => {
     try {
-      // Use a more stable exchange rate API or cache the rate for longer periods
       const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
       const data = await response.json();
       if (data.rates && data.rates.SEK) {
         const newRate = data.rates.SEK;
-        // Only update if the rate has changed significantly (more than 1%) to avoid frequent updates
         if (Math.abs(newRate - exchangeRate) / exchangeRate > 0.01) {
           setExchangeRate(newRate);
-          console.log(`Updated exchange rate from ${exchangeRate.toFixed(2)} to ${newRate.toFixed(2)} SEK/USD`);
+          console.log(`Updated exchange rate: ${newRate.toFixed(2)} SEK/USD`);
         }
       }
     } catch (error) {
-      console.warn('Failed to fetch exchange rate, using current rate:', exchangeRate, error);
+      console.warn('Failed to fetch exchange rate:', error);
     }
   };
 
@@ -53,100 +52,120 @@ const CurrentHoldingsPrices: React.FC = () => {
 
     setLoading(true);
     try {
-      // Fetch exchange rate first but don't wait for it to complete entirely
       await fetchExchangeRate();
 
-      // Get unique symbols from holdings, prioritize symbol over name
-      const symbolsToFetch = [...new Set(actualHoldings
+      // Prioritera symbol över name för API-anrop
+      const symbolsToFetch = actualHoldings
         .filter(holding => holding.symbol || holding.name)
-        .map(holding => holding.symbol || holding.name)
-        .filter(Boolean)
-      )];
+        .map(holding => ({
+          searchTerm: holding.symbol || holding.name,
+          holding: holding
+        }));
 
       if (symbolsToFetch.length === 0) {
         setLoading(false);
         return;
       }
 
-      console.log('Fetching prices for symbols:', symbolsToFetch);
+      console.log('Fetching prices for symbols:', symbolsToFetch.map(s => s.searchTerm));
 
-      // Fetch prices for all symbols
-      const pricePromises = symbolsToFetch.map(async (symbol) => {
+      const pricePromises = symbolsToFetch.map(async ({ searchTerm, holding }) => {
         try {
-          console.log(`Making API call for symbol: ${symbol}`);
+          console.log(`Making API call for: ${searchTerm}`);
           
           const { data, error } = await supabase.functions.invoke('fetch-stock-quote', {
-            body: { symbol: symbol }
+            body: { symbol: searchTerm }
           });
 
           if (error) {
-            console.error(`API error for ${symbol}:`, error);
-            throw error;
+            console.error(`API error for ${searchTerm}:`, error);
+            return {
+              symbol: searchTerm,
+              name: holding.name || searchTerm,
+              price: 0,
+              change: 0,
+              changePercent: 0,
+              currency: holding.currency || 'SEK',
+              priceInSEK: 0,
+              changeInSEK: 0,
+              hasValidPrice: false,
+              errorMessage: `API-fel: ${error.message}`
+            };
           }
 
-          console.log(`API response for ${symbol}:`, data);
+          console.log(`API response for ${searchTerm}:`, data);
 
-          const holding = actualHoldings.find(h => h.symbol === symbol || h.name === symbol);
-          const holdingCurrency = holding?.currency || 'SEK';
+          // Kontrollera om vi fick giltig prisdata
+          const hasValidPrice = data && 
+            typeof data.price === 'number' && 
+            data.price > 0 && 
+            !isNaN(data.price);
+
+          if (!hasValidPrice) {
+            return {
+              symbol: searchTerm,
+              name: holding.name || searchTerm,
+              price: 0,
+              change: 0,
+              changePercent: 0,
+              currency: holding.currency || 'SEK',
+              priceInSEK: 0,
+              changeInSEK: 0,
+              hasValidPrice: false,
+              errorMessage: "Pris saknas - lägg in rätt ticker"
+            };
+          }
+
+          const holdingCurrency = holding.currency || 'SEK';
           const quoteCurrency = data.currency || 'USD';
           
-          // Check if we got valid price data
-          const hasValidPrice = data && typeof data.price === 'number' && data.price > 0;
-          
-          let priceInSEK = data.price || 0;
+          let priceInSEK = data.price;
           let changeInSEK = data.change || 0;
 
-          // Convert to SEK if needed and we have valid data
-          if (hasValidPrice) {
-            if (quoteCurrency === 'USD' && holdingCurrency === 'SEK') {
-              priceInSEK = data.price * exchangeRate;
-              changeInSEK = data.change * exchangeRate;
-            } else if (quoteCurrency === 'SEK' && holdingCurrency === 'USD') {
-              priceInSEK = data.price;
-              changeInSEK = data.change;
-            }
+          // Konvertera till SEK om nödvändigt
+          if (quoteCurrency === 'USD' && holdingCurrency === 'SEK') {
+            priceInSEK = data.price * exchangeRate;
+            changeInSEK = (data.change || 0) * exchangeRate;
           }
 
           return {
-            symbol: data.symbol || symbol,
-            name: data.name || holding?.name || symbol,
-            price: data.price || 0,
+            symbol: data.symbol || searchTerm,
+            name: holding.name || data.name || searchTerm,
+            price: data.price,
             change: data.change || 0,
             changePercent: data.changePercent || 0,
             currency: quoteCurrency,
             priceInSEK,
             changeInSEK,
-            hasValidPrice
+            hasValidPrice: true
           };
         } catch (error) {
-          console.error(`Error fetching price for ${symbol}:`, error);
+          console.error(`Error fetching price for ${searchTerm}:`, error);
           
-          // Return a placeholder with invalid price indicator
-          const holding = actualHoldings.find(h => h.symbol === symbol || h.name === symbol);
           return {
-            symbol: symbol,
-            name: holding?.name || symbol,
+            symbol: searchTerm,
+            name: holding.name || searchTerm,
             price: 0,
             change: 0,
             changePercent: 0,
-            currency: holding?.currency || 'SEK',
+            currency: holding.currency || 'SEK',
             priceInSEK: 0,
             changeInSEK: 0,
-            hasValidPrice: false
+            hasValidPrice: false,
+            errorMessage: "Pris saknas - lägg in rätt ticker"
           };
         }
       });
 
       const results = await Promise.all(pricePromises);
-      const validResults = results.filter((price): price is StockPrice => price !== null);
       
-      setPrices(validResults);
+      setPrices(results);
       setLastUpdated(new Date().toLocaleTimeString('sv-SE', { 
         hour: '2-digit', 
         minute: '2-digit' 
       }));
       
-      console.log('Final price results:', validResults);
+      console.log('Final price results:', results);
     } catch (error) {
       console.error('Error fetching stock prices:', error);
     } finally {
@@ -176,7 +195,6 @@ const CurrentHoldingsPrices: React.FC = () => {
     return `${sign}${percent.toFixed(2)}%`;
   };
 
-  // Show login prompt if user is not authenticated
   if (!user) {
     return (
       <Card>
@@ -264,7 +282,12 @@ const CurrentHoldingsPrices: React.FC = () => {
               return (
                 <div key={stock.symbol} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium text-sm">{stock.name}</div>
+                    <div className="font-medium text-sm flex items-center gap-2">
+                      {stock.name}
+                      {!stock.hasValidPrice && (
+                        <AlertTriangle className="w-4 h-4 text-amber-500" />
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {stock.symbol} • {stock.currency}
                       {stock.currency !== holdingCurrency && (
@@ -303,8 +326,12 @@ const CurrentHoldingsPrices: React.FC = () => {
                       </>
                     ) : (
                       <div className="text-center">
-                        <div className="text-sm text-muted-foreground font-medium">Saknar exakt pris</div>
-                        <div className="text-xs text-muted-foreground">API-data ej tillgänglig</div>
+                        <div className="text-sm text-amber-600 font-medium">
+                          {stock.errorMessage || "Pris saknas - lägg in rätt ticker"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Kontrollera ticker-symbol
+                        </div>
                       </div>
                     )}
                   </div>

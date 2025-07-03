@@ -30,7 +30,12 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('Error fetching stock quote:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      symbol: null,
+      price: null,
+      hasValidPrice: false
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -44,40 +49,132 @@ async function fetchStockQuote(symbol: string) {
   }
 
   try {
+    // Rensa symbol från onödiga tecken
+    const cleanSymbol = symbol.trim().toUpperCase();
+    
     const response = await fetch(
-      `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${alphaVantageKey}`
+      `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${cleanSymbol}&apikey=${alphaVantageKey}`
     );
     
     const data = await response.json();
     
-    if (!data['Global Quote'] || Object.keys(data['Global Quote']).length === 0) {
-      console.log(`No data for ${symbol}, using mock data`);
-      return getMockQuote(symbol);
+    // Kontrollera om vi fick ett felmeddelande från Alpha Vantage
+    if (data['Error Message']) {
+      console.log(`Alpha Vantage error for ${cleanSymbol}: ${data['Error Message']}`);
+      return {
+        symbol: cleanSymbol,
+        price: null,
+        change: null,
+        changePercent: null,
+        volume: null,
+        high: null,
+        low: null,
+        open: null,
+        previousClose: null,
+        lastUpdated: new Date().toISOString(),
+        hasValidPrice: false,
+        error: 'Symbol not found'
+      };
+    }
+
+    // Kontrollera om vi fick rate limit eller API-fel
+    if (data['Note'] && data['Note'].includes('API call frequency')) {
+      console.log(`Rate limit reached for ${cleanSymbol}`);
+      return getMockQuote(cleanSymbol);
     }
     
-    const quote = data['Global Quote'];
+    if (!data['Global Quote'] || Object.keys(data['Global Quote']).length === 0) {
+      console.log(`No data for ${cleanSymbol}, checking if it's a valid symbol`);
+      
+      // Försök med olika varianter av symbolen
+      const variations = [
+        cleanSymbol,
+        cleanSymbol + '.ST', // Stockholm börsen
+        cleanSymbol + '.OL', // Oslo börsen
+        cleanSymbol + '.CO', // Köpenhamn
+      ];
+      
+      for (const variant of variations) {
+        if (variant === cleanSymbol) continue; // Skip original
+        
+        try {
+          const variantResponse = await fetch(
+            `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${variant}&apikey=${alphaVantageKey}`
+          );
+          const variantData = await variantResponse.json();
+          
+          if (variantData['Global Quote'] && Object.keys(variantData['Global Quote']).length > 0) {
+            console.log(`Found data for variant: ${variant}`);
+            return parseQuoteData(variantData['Global Quote'], variant);
+          }
+        } catch (error) {
+          console.log(`Error trying variant ${variant}:`, error);
+        }
+      }
+      
+      return {
+        symbol: cleanSymbol,
+        price: null,
+        change: null,
+        changePercent: null,
+        volume: null,
+        high: null,
+        low: null,
+        open: null,
+        previousClose: null,
+        lastUpdated: new Date().toISOString(),
+        hasValidPrice: false,
+        error: 'No price data available'
+      };
+    }
     
-    return {
-      symbol,
-      price: parseFloat(quote['05. price'] || '0'),
-      change: parseFloat(quote['09. change'] || '0'),
-      changePercent: parseFloat(quote['10. change percent']?.replace('%', '') || '0'),
-      volume: parseInt(quote['06. volume'] || '0'),
-      high: parseFloat(quote['03. high'] || '0'),
-      low: parseFloat(quote['04. low'] || '0'),
-      open: parseFloat(quote['02. open'] || '0'),
-      previousClose: parseFloat(quote['08. previous close'] || '0'),
-      lastUpdated: new Date().toISOString()
-    };
+    return parseQuoteData(data['Global Quote'], cleanSymbol);
   } catch (error) {
     console.error(`Error fetching data for ${symbol}:`, error);
-    return getMockQuote(symbol);
+    return {
+      symbol: symbol,
+      price: null,
+      change: null,
+      changePercent: null,
+      volume: null,
+      high: null,
+      low: null,
+      open: null,
+      previousClose: null,
+      lastUpdated: new Date().toISOString(),
+      hasValidPrice: false,
+      error: 'API error'
+    };
   }
 }
 
+function parseQuoteData(quote: any, symbol: string) {
+  const price = parseFloat(quote['05. price'] || '0');
+  const change = parseFloat(quote['09. change'] || '0');
+  const changePercent = parseFloat(quote['10. change percent']?.replace('%', '') || '0');
+  
+  // Kontrollera om vi har giltig prisdata
+  const hasValidPrice = price > 0 && !isNaN(price);
+  
+  return {
+    symbol,
+    price: hasValidPrice ? price : null,
+    change: hasValidPrice ? change : null,
+    changePercent: hasValidPrice ? changePercent : null,
+    volume: hasValidPrice ? parseInt(quote['06. volume'] || '0') : null,
+    high: hasValidPrice ? parseFloat(quote['03. high'] || '0') : null,
+    low: hasValidPrice ? parseFloat(quote['04. low'] || '0') : null,
+    open: hasValidPrice ? parseFloat(quote['02. open'] || '0') : null,
+    previousClose: hasValidPrice ? parseFloat(quote['08. previous close'] || '0') : null,
+    lastUpdated: new Date().toISOString(),
+    hasValidPrice,
+    currency: 'USD' // Alpha Vantage returnerar oftast USD
+  };
+}
+
 function getMockQuote(symbol: string) {
-  const basePrice = Math.random() * 200 + 50; // Random price between 50-250
-  const change = (Math.random() - 0.5) * 10; // Random change between -5 to +5
+  const basePrice = Math.random() * 200 + 50;
+  const change = (Math.random() - 0.5) * 10;
   
   return {
     symbol,
@@ -89,6 +186,8 @@ function getMockQuote(symbol: string) {
     low: Math.round((basePrice - Math.abs(change)) * 100) / 100,
     open: Math.round((basePrice - change) * 100) / 100,
     previousClose: Math.round((basePrice - change) * 100) / 100,
-    lastUpdated: new Date().toISOString()
+    lastUpdated: new Date().toISOString(),
+    hasValidPrice: true,
+    currency: 'USD'
   };
 }
