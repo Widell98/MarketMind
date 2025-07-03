@@ -14,13 +14,13 @@ import {
   Target,
   Activity
 } from 'lucide-react';
-import { UserPortfolio } from '@/hooks/usePortfolio';
+import { Portfolio } from '@/hooks/usePortfolio';
 import CurrentHoldingsPrices from '@/components/CurrentHoldingsPrices';
 import UserHoldingsManager from '@/components/UserHoldingsManager';
 import PortfolioValueOverview from '@/components/PortfolioValueOverview';
 
 interface PortfolioOverviewProps {
-  portfolio: UserPortfolio | null;
+  portfolio: Portfolio | null;
   onQuickChat: (message: string) => void;
   onActionClick: (action: string) => void;
 }
