@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,14 +38,20 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
     crypto: '#EF4444'
   };
 
-  // Calculate sector exposure from actual holdings
+  // Calculate sector exposure from actual holdings ONLY (excluding AI recommendations)
   const calculateSectorExposure = () => {
     const sectorMap: { [key: string]: number } = {};
-    const totalValue = actualHoldings.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
+    
+    // Filter out AI recommendations and only use actual holdings
+    const actualHoldingsOnly = actualHoldings.filter(holding => 
+      holding.holding_type !== 'recommendation'
+    );
+    
+    const totalValue = actualHoldingsOnly.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
     
     if (totalValue === 0) return {};
     
-    actualHoldings.forEach(holding => {
+    actualHoldingsOnly.forEach(holding => {
       const sector = holding.sector || 'Okänd';
       const value = holding.current_value || 0;
       sectorMap[sector] = (sectorMap[sector] || 0) + value;
@@ -61,14 +66,20 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
     return sectorExposure;
   };
 
-  // Calculate market exposure from actual holdings
+  // Calculate market exposure from actual holdings ONLY (excluding AI recommendations)
   const calculateMarketExposure = () => {
     const marketMap: { [key: string]: number } = {};
-    const totalValue = actualHoldings.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
+    
+    // Filter out AI recommendations and only use actual holdings
+    const actualHoldingsOnly = actualHoldings.filter(holding => 
+      holding.holding_type !== 'recommendation'
+    );
+    
+    const totalValue = actualHoldingsOnly.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
     
     if (totalValue === 0) return {};
     
-    actualHoldings.forEach(holding => {
+    actualHoldingsOnly.forEach(holding => {
       const market = holding.market || 'Okänd marknad';
       const value = holding.current_value || 0;
       marketMap[market] = (marketMap[market] || 0) + value;
@@ -101,7 +112,11 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
     }
   };
 
-  const totalHoldingsValue = actualHoldings.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
+  // Use actual holdings only for total value calculation
+  const actualHoldingsOnly = actualHoldings.filter(holding => 
+    holding.holding_type !== 'recommendation'
+  );
+  const totalHoldingsValue = actualHoldingsOnly.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
   const targetProgress = portfolio.total_value ? (totalHoldingsValue / portfolio.total_value) * 100 : 0;
 
   return (
@@ -197,7 +212,7 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
               <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
               <span className="truncate">Sektorexponering</span>
             </CardTitle>
-            <CardDescription className="text-xs sm:text-sm">Baserat på dina nuvarande innehav</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Endast dina nuvarande innehav</CardDescription>
           </CardHeader>
           <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
             <div className="space-y-3 sm:space-y-4">
@@ -220,7 +235,7 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
               ) : (
                 <div className="text-center py-4">
                   <p className="text-xs sm:text-sm text-muted-foreground">
-                    Inga innehav att visa sektorexponering för
+                    Inga nuvarande innehav att visa sektorexponering för
                   </p>
                 </div>
               )}
@@ -234,7 +249,7 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
               <Target className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
               <span className="truncate">Marknadsexponering</span>
             </CardTitle>
-            <CardDescription className="text-xs sm:text-sm">Baserat på dina nuvarande innehav</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Endast dina nuvarande innehav</CardDescription>
           </CardHeader>
           <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
             <div className="space-y-3 sm:space-y-4">
@@ -257,7 +272,7 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
               ) : (
                 <div className="text-center py-4">
                   <p className="text-xs sm:text-sm text-muted-foreground">
-                    Inga innehav att visa marknadsexponering för
+                    Inga nuvarande innehav att visa marknadsexponering för
                   </p>
                 </div>
               )}
