@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -9,12 +10,15 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, User, PenLine, Plus, TrendingUp } from 'lucide-react';
+import { Loader2, User, PenLine, Plus, TrendingUp, Crown, Settings, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import EditProfileDialog from "@/components/EditProfileDialog";
 import UserAnalysesSection from '@/components/UserAnalysesSection';
 import UserStockCasesSection from '@/components/UserStockCasesSection';
+import MembershipSection from '@/components/MembershipSection';
+import AccountSettings from '@/components/AccountSettings';
+import ActivitySection from '@/components/ActivitySection';
 
 const ProfilePage = () => {
   const { user, loading } = useAuth();
@@ -85,7 +89,7 @@ const ProfilePage = () => {
     <Layout>
       <div className="max-w-6xl mx-auto">
         <h1 className="text-2xl font-bold text-finance-navy dark:text-gray-200 mb-6">
-          Your Profile
+          Din profil
         </h1>
         
         <EditProfileDialog
@@ -126,7 +130,7 @@ const ProfilePage = () => {
                 onClick={() => setEditOpen(true)}
               >
                 <PenLine className="h-4 w-4 mr-2" />
-                Change Name
+                Ändra namn
               </Button>
               {isAdmin && (
                 <Button 
@@ -144,7 +148,7 @@ const ProfilePage = () => {
                 onClick={() => navigate('/stock-cases')}
               >
                 <TrendingUp className="h-4 w-4 mr-2" />
-                View All Stock Cases
+                Visa alla aktiecases
               </Button>
             </CardContent>
           </Card>
@@ -152,27 +156,30 @@ const ProfilePage = () => {
           {/* Main Content */}
           <div className="lg:col-span-3">
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="overview">Översikt</TabsTrigger>
                 <TabsTrigger value="analyses">Analyser</TabsTrigger>
                 <TabsTrigger value="stock-cases">Aktiecases</TabsTrigger>
+                <TabsTrigger value="membership">Medlemskap</TabsTrigger>
+                <TabsTrigger value="settings">Inställningar</TabsTrigger>
+                <TabsTrigger value="activity">Aktivitet</TabsTrigger>
               </TabsList>
               
               <TabsContent value="overview" className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Account Information</CardTitle>
+                    <CardTitle className="text-lg">Kontoinformation</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <div className="text-sm text-muted-foreground">Email</div>
+                      <div className="text-sm text-muted-foreground">E-post</div>
                       <div>{user?.email}</div>
                     </div>
                     
                     <Separator />
                     
                     <div>
-                      <div className="text-sm text-muted-foreground">Created At</div>
+                      <div className="text-sm text-muted-foreground">Skapad</div>
                       <div>
                         {profileData?.created_at
                           ? new Date(profileData.created_at).toLocaleDateString('sv-SE', {
@@ -187,7 +194,7 @@ const ProfilePage = () => {
                     <Separator />
                     
                     <div>
-                      <div className="text-sm text-muted-foreground">Interests</div>
+                      <div className="text-sm text-muted-foreground">Intressen</div>
                       <div className="flex flex-wrap gap-2 mt-1">
                         {Array.isArray(profileData?.interests) && profileData?.interests.length > 0
                           ? profileData.interests.map((interest: string, idx: number) => (
@@ -195,7 +202,7 @@ const ProfilePage = () => {
                                 {interest}
                               </Badge>
                             ))
-                          : 'No interests added yet'}
+                          : 'Inga intressen tillagda än'}
                       </div>
                     </div>
                   </CardContent>
@@ -208,6 +215,18 @@ const ProfilePage = () => {
               
               <TabsContent value="stock-cases">
                 <UserStockCasesSection />
+              </TabsContent>
+
+              <TabsContent value="membership">
+                <MembershipSection />
+              </TabsContent>
+
+              <TabsContent value="settings">
+                <AccountSettings />
+              </TabsContent>
+
+              <TabsContent value="activity">
+                <ActivitySection />
               </TabsContent>
             </Tabs>
           </div>
