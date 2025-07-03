@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -37,7 +38,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     holding_type: initialData?.holding_type === 'recommendation' ? 'stock' : (initialData?.holding_type || 'stock'),
     quantity: '',
     purchase_price: initialData?.purchase_price?.toString() || '',
-    current_value: '',
     purchase_date: '',
     sector: initialData?.sector || '',
     market: initialData?.market || '',
@@ -64,7 +64,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       holding_type: formData.holding_type as UserHolding['holding_type'],
       quantity: formData.quantity ? parseFloat(formData.quantity) : undefined,
       purchase_price: formData.purchase_price ? parseFloat(formData.purchase_price) : undefined,
-      current_value: formData.current_value ? parseFloat(formData.current_value) : undefined,
       purchase_date: formData.purchase_date || undefined,
       sector: formData.sector.trim() || undefined,
       market: formData.market.trim() || undefined,
@@ -81,7 +80,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         holding_type: 'stock',
         quantity: '',
         purchase_price: '',
-        current_value: '',
         purchase_date: '',
         sector: '',
         market: '',
@@ -101,7 +99,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         holding_type: 'stock',
         quantity: '',
         purchase_price: '',
-        current_value: '',
         purchase_date: '',
         sector: '',
         market: '',
@@ -214,17 +211,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="current_value">Nuvarande värde</Label>
-              <Input
-                id="current_value"
-                type="number"
-                step="0.01"
-                value={formData.current_value}
-                onChange={(e) => handleInputChange('current_value', e.target.value)}
-                placeholder="t.ex. 15000"
-              />
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="purchase_date">Köpdatum</Label>
               <Input
                 id="purchase_date"
@@ -233,9 +219,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
                 onChange={(e) => handleInputChange('purchase_date', e.target.value)}
               />
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="sector">Sektor</Label>
               <Input
@@ -245,15 +228,16 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
                 placeholder="t.ex. Bilar"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="market">Marknad</Label>
-              <Input
-                id="market"
-                value={formData.market}
-                onChange={(e) => handleInputChange('market', e.target.value)}
-                placeholder="t.ex. NASDAQ Stockholm"
-              />
-            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="market">Marknad</Label>
+            <Input
+              id="market"
+              value={formData.market}
+              onChange={(e) => handleInputChange('market', e.target.value)}
+              placeholder="t.ex. NASDAQ Stockholm"
+            />
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
