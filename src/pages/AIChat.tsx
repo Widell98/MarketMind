@@ -80,7 +80,7 @@ const AIChatPage = () => {
     },
     {
       role: 'user', 
-      content: 'Kan du analysera Tesla som investering?',
+      content: 'Gör en analys av tesla',
       timestamp: new Date(Date.now() - 240000) // 4 minutes ago
     },
     {
