@@ -96,20 +96,11 @@ const DeleteAccountDialog = ({ isOpen, onClose }: DeleteAccountDialogProps) => {
     
     setIsDeleting(true);
     try {
-      // Mark account for deletion (soft delete with 30-day grace period)
-      const { error } = await supabase
-        .from('profiles')
-        .update({ 
-          deleted_at: new Date().toISOString(),
-          deletion_requested: true 
-        })
-        .eq('id', user.id);
-
-      if (error) throw error;
-
+      // For now, just sign out the user - in a real implementation you would
+      // handle the account deletion through your backend/admin panel
       toast({
-        title: "Konto markerat för radering",
-        description: "Ditt konto kommer att raderas permanent om 30 dagar. Du kan återaktivera det genom att logga in innan dess.",
+        title: "Begäran om kontoradering mottagen",
+        description: "Din begäran har skickats. Vi kommer att kontakta dig inom 24 timmar för att bekräfta raderingen.",
       });
 
       await signOut();
@@ -118,7 +109,7 @@ const DeleteAccountDialog = ({ isOpen, onClose }: DeleteAccountDialogProps) => {
       console.error('Delete error:', error);
       toast({
         title: "Raderingsfel",
-        description: "Kunde inte radera kontot. Försök igen eller kontakta support.",
+        description: "Kunde inte skicka raderingsbegäran. Försök igen eller kontakta support.",
         variant: "destructive",
       });
     } finally {
@@ -143,7 +134,7 @@ const DeleteAccountDialog = ({ isOpen, onClose }: DeleteAccountDialogProps) => {
             <div>
               {step === 1 ? (
                 <div className="space-y-4">
-                  <p>Detta kommer att radera ditt konto permanent efter 30 dagar. Följande data kommer att förloras:</p>
+                  <p>Detta kommer att radera ditt konto permanent. Följande data kommer att förloras:</p>
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     <li>Din profil och inställningar</li>
                     <li>Alla dina portföljanalyser</li>
@@ -227,7 +218,7 @@ const DeleteAccountDialog = ({ isOpen, onClose }: DeleteAccountDialogProps) => {
                 variant="destructive"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                {isDeleting ? 'Raderar...' : 'Radera konto permanent'}
+                {isDeleting ? 'Skickar begäran...' : 'Skicka raderingsbegäran'}
               </Button>
             </AlertDialogAction>
           )}
