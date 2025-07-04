@@ -69,6 +69,10 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
     navigate('/portfolio-implementation');
   };
 
+  const handlePremiumClick = () => {
+    navigate('/profile', { state: { activeTab: 'membership' } });
+  };
+
   useEffect(() => {
     // Auto-scroll when messages change
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -185,12 +189,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
                 <Button
                   variant="outline" 
                   size="sm"
-                  onClick={() => {
-                    const event = new CustomEvent('prefillChatInput', {
-                      detail: { message: 'Berätta mer om Premium-fördelarna' }
-                    });
-                    window.dispatchEvent(event);
-                  }}
+                  onClick={handlePremiumClick}
                   className="text-xs h-6 px-2 ml-1"
                 >
                   <Crown className="w-3 h-3 mr-1" />

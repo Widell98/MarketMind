@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -24,9 +25,15 @@ interface PremiumUpgradeModalProps {
 
 const PremiumUpgradeModal = ({ isOpen, onClose, currentUsage, dailyLimit }: PremiumUpgradeModalProps) => {
   const { createCheckout } = useSubscription();
+  const navigate = useNavigate();
 
   const handleUpgrade = async (tier: 'premium' | 'pro') => {
     await createCheckout(tier);
+  };
+
+  const handlePremiumClick = () => {
+    onClose();
+    navigate('/profile', { state: { activeTab: 'membership' } });
   };
 
   const features = [
@@ -54,18 +61,18 @@ const PremiumUpgradeModal = ({ isOpen, onClose, currentUsage, dailyLimit }: Prem
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden">
-        <div className="bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-6">
+      <DialogContent className="max-w-2xl p-0 overflow-hidden bg-background border">
+        <div className="bg-gradient-to-br from-muted/50 via-background to-muted/30 p-6 border-b">
           <DialogHeader className="text-center space-y-4">
-            <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
-              <Crown className="w-8 h-8 text-white" />
+            <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-sm">
+              <Crown className="w-8 h-8 text-primary-foreground" />
             </div>
-            <DialogTitle className="text-2xl font-bold">
+            <DialogTitle className="text-2xl font-bold text-foreground">
               Daglig gräns nådd!
             </DialogTitle>
             <div className="space-y-2">
               <p className="text-muted-foreground">
-                Du har använt <span className="font-semibold text-primary">{currentUsage}</span> av {dailyLimit} gratis meddelanden idag
+                Du har använt <span className="font-semibold text-foreground">{currentUsage}</span> av {dailyLimit} gratis meddelanden idag
               </p>
               <p className="text-sm text-muted-foreground">
                 Uppgradera till Premium för obegränsad användning
@@ -78,12 +85,12 @@ const PremiumUpgradeModal = ({ isOpen, onClose, currentUsage, dailyLimit }: Prem
           {/* Progress bar */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span>Användning idag</span>
-              <span className="font-medium">{currentUsage}/{dailyLimit}</span>
+              <span className="text-muted-foreground">Användning idag</span>
+              <span className="font-medium text-foreground">{currentUsage}/{dailyLimit}</span>
             </div>
             <div className="w-full bg-muted rounded-full h-2">
               <div 
-                className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-500"
+                className="bg-primary h-2 rounded-full transition-all duration-500"
                 style={{ width: `${Math.min((currentUsage / dailyLimit) * 100, 100)}%` }}
               />
             </div>
@@ -91,15 +98,15 @@ const PremiumUpgradeModal = ({ isOpen, onClose, currentUsage, dailyLimit }: Prem
 
           {/* Features */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-lg">Vad du får med Premium:</h3>
+            <h3 className="font-semibold text-lg text-foreground">Vad du får med Premium:</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {features.map((feature, index) => (
-                <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
+                <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
                     {feature.icon}
                   </div>
                   <div className="space-y-1">
-                    <h4 className="font-medium text-sm">{feature.title}</h4>
+                    <h4 className="font-medium text-sm text-foreground">{feature.title}</h4>
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       {feature.description}
                     </p>
@@ -117,9 +124,9 @@ const PremiumUpgradeModal = ({ isOpen, onClose, currentUsage, dailyLimit }: Prem
                   <Badge className="bg-primary text-primary-foreground mb-2">
                     Mest populär
                   </Badge>
-                  <h4 className="font-bold text-lg">Premium</h4>
+                  <h4 className="font-bold text-lg text-foreground">Premium</h4>
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-2xl font-bold">99</span>
+                    <span className="text-2xl font-bold text-foreground">99</span>
                     <span className="text-muted-foreground">SEK/mån</span>
                   </div>
                 </div>
@@ -132,13 +139,13 @@ const PremiumUpgradeModal = ({ isOpen, onClose, currentUsage, dailyLimit }: Prem
                   ].map((feature, i) => (
                     <div key={i} className="flex items-center gap-2 text-sm">
                       <Check className="w-4 h-4 text-green-600" />
-                      <span>{feature}</span>
+                      <span className="text-foreground">{feature}</span>
                     </div>
                   ))}
                 </div>
                 <Button 
                   onClick={() => handleUpgrade('premium')}
-                  className="w-full bg-primary hover:bg-primary/90"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                   size="lg"
                 >
                   Välj Premium
@@ -149,9 +156,9 @@ const PremiumUpgradeModal = ({ isOpen, onClose, currentUsage, dailyLimit }: Prem
             <Card className="border p-4">
               <div className="space-y-4">
                 <div className="text-center">
-                  <h4 className="font-bold text-lg">Gratis</h4>
+                  <h4 className="font-bold text-lg text-foreground">Gratis</h4>
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-2xl font-bold">0</span>
+                    <span className="text-2xl font-bold text-foreground">0</span>
                     <span className="text-muted-foreground">SEK/mån</span>
                   </div>
                 </div>
@@ -163,7 +170,7 @@ const PremiumUpgradeModal = ({ isOpen, onClose, currentUsage, dailyLimit }: Prem
                   ].map((feature, i) => (
                     <div key={i} className="flex items-center gap-2 text-sm">
                       <Check className="w-4 h-4 text-muted-foreground" />
-                      <span>{feature}</span>
+                      <span className="text-foreground">{feature}</span>
                     </div>
                   ))}
                   {[
@@ -188,9 +195,16 @@ const PremiumUpgradeModal = ({ isOpen, onClose, currentUsage, dailyLimit }: Prem
             </Card>
           </div>
 
-          <div className="text-center text-xs text-muted-foreground">
+          <div className="text-center text-xs text-muted-foreground space-y-1">
             <p>Du kan avsluta prenumerationen när som helst</p>
             <p>Återstående meddelanden återställs imorgon</p>
+            <Button 
+              variant="link" 
+              className="text-xs text-primary h-auto p-0"
+              onClick={handlePremiumClick}
+            >
+              Visa alla medlemsfördelar →
+            </Button>
           </div>
         </div>
       </DialogContent>

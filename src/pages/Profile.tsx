@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -24,15 +24,26 @@ const ProfilePage = () => {
   const { user, loading } = useAuth();
   const { isAdmin, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
+  const location = useLocation();
   const [profileData, setProfileData] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
     }
   }, [user, loading, navigate]);
+
+  // Handle navigation state for setting active tab
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+      // Clear the state to prevent re-triggering
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -155,7 +166,7 @@ const ProfilePage = () => {
           
           {/* Main Content */}
           <div className="lg:col-span-3">
-            <Tabs defaultValue="overview" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="overview">Översikt</TabsTrigger>
                 <TabsTrigger value="analyses">Analyser</TabsTrigger>
