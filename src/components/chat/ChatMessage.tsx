@@ -36,15 +36,35 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     return text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900 dark:text-gray-100">$1</strong>');
   };
 
-  // Extract stock suggestions from AI message
+  // Enhanced stock suggestion extraction with more comprehensive patterns
   const extractStockSuggestions = (content: string): StockSuggestion[] => {
     const suggestions: StockSuggestion[] = [];
     
-    // Look for patterns like "Förslag: [Company] ([TICKER])" or "[Company] ([TICKER])"
+    // Multiple regex patterns to catch different formats
     const patterns = [
-      /(?:Förslag:|Rekommendation:)\s*([^(]+)\s*\(([A-Z]{2,5})\)/gi,
-      /([A-ZÅÄÖ][a-zåäö\s&-]+)\s*\(([A-Z]{2,5})\)/g,
-      /\*\*([^*]+)\*\*\s*\(([A-Z]{2,5})\)/g
+      // Pattern 1: "Förslag: Company Name (TICKER)"
+      /(?:Förslag|Rekommendation|Aktie):\s*([^(]+?)\s*\(([A-Z]{1,6})\)/gi,
+      
+      // Pattern 2: "**Company Name** (TICKER)"
+      /\*\*([^*]+?)\*\*\s*\(([A-Z]{1,6})\)/g,
+      
+      // Pattern 3: "Company Name (TICKER)" - general pattern
+      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6})\)/g,
+      
+      // Pattern 4: "1. Company Name (TICKER)" - numbered lists
+      /\d+\.\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
+      
+      // Pattern 5: "- Company Name (TICKER)" - bullet points
+      /-\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
+      
+      // Pattern 6: "• Company Name (TICKER)" - bullet points with bullet
+      /•\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
+      
+      // Pattern 7: TICKER followed by company name
+      /([A-Z]{2,6}):\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
+      
+      // Pattern 8: Company name with ticker in brackets at end of sentence
+      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{3,})\s+\(([A-Z]{1,6})\)(?=[\s.,!?]|$)/g
     ];
 
     // Get existing holdings symbols to filter out
@@ -54,26 +74,59 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
 
     patterns.forEach(pattern => {
       let match;
-      while ((match = pattern.exec(content)) !== null) {
-        const name = match[1].trim();
-        const symbol = match[2].trim();
+      const regex = new RegExp(pattern.source, pattern.flags);
+      
+      while ((match = regex.exec(content)) !== null) {
+        let name, symbol;
         
-        // Skip if already added, already owned, or if it's not a proper stock suggestion
-        if (!suggestions.find(s => s.symbol === symbol) && 
-            !existingSymbols.has(symbol) &&
-            name.length > 2 && 
-            symbol.length >= 2 && 
-            symbol.length <= 5) {
+        // Handle different capture group orders based on pattern
+        if (patterns.indexOf(pattern) === 6) { // Pattern 7: TICKER: Company
+          symbol = match[1].trim();
+          name = match[2].trim();
+        } else {
+          name = match[1].trim();
+          symbol = match[2].trim();
+        }
+        
+        // Clean up the name - remove common prefixes and suffixes
+        name = name.replace(/^(Aktie|Bolag|AB|Inc|Corp|Ltd)[\s:]/i, '').trim();
+        name = name.replace(/[\s:](AB|Inc|Corp|Ltd)$/i, '').trim();
+        
+        // Validation checks
+        const isValidSuggestion = (
+          name.length >= 2 && 
+          name.length <= 100 &&
+          symbol.length >= 1 &&
+          symbol.length <= 6 &&
+          !existingSymbols.has(symbol.toUpperCase()) &&
+          !suggestions.find(s => s.symbol === symbol.toUpperCase()) &&
+          // Avoid common false positives
+          !name.match(/^(och|eller|samt|med|utan|för|till|från|av|på|i|är|har|kan|ska|måste|borde|skulle)$/i) &&
+          // Ensure it's not just numbers or special characters
+          name.match(/[a-öA-Ö]/) &&
+          symbol.match(/^[A-Z]+$/)
+        );
+
+        if (isValidSuggestion) {
           suggestions.push({
-            name,
-            symbol,
+            name: name,
+            symbol: symbol.toUpperCase(),
             reason: 'AI-rekommendation'
           });
         }
       }
     });
 
-    return suggestions;
+    // Remove duplicates and sort by name
+    const uniqueSuggestions = suggestions.reduce((acc, current) => {
+      const exists = acc.find(item => item.symbol === current.symbol);
+      if (!exists) {
+        acc.push(current);
+      }
+      return acc;
+    }, [] as StockSuggestion[]);
+
+    return uniqueSuggestions.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
   };
 
   const stockSuggestions = message.role === 'assistant' ? extractStockSuggestions(message.content) : [];
@@ -175,12 +228,12 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
                 {formatMessageContent(message.content)}
               </div>
               
-              {/* Stock suggestions */}
+              {/* Stock suggestions - now shows ALL suggestions dynamically */}
               {stockSuggestions.length > 0 && (
                 <div className="mt-5 pt-4 border-t border-border/50">
                   <p className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
                     <TrendingUp className="w-4 h-4" />
-                    Aktieförslag från AI
+                    Aktieförslag från AI ({stockSuggestions.length} st)
                   </p>
                   <div className="flex flex-col gap-3">
                     {stockSuggestions.map((suggestion) => {
