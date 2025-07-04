@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,7 +25,7 @@ interface ChatSession {
 export const useAIChat = (portfolioId?: string) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { checkUsageLimit, subscription } = useSubscription();
+  const { checkUsageLimit, subscription, usage } = useSubscription();
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -356,11 +355,14 @@ export const useAIChat = (portfolioId?: string) => {
     // Check usage limit with better error handling
     const canSendMessage = checkUsageLimit('ai_message');
     const isPremium = subscription?.subscribed;
+    const currentUsage = usage?.ai_messages_count || 0;
+    const dailyLimit = 5;
 
     if (!canSendMessage && !isPremium) {
+      console.log('Usage limit reached:', { currentUsage, dailyLimit, isPremium });
       toast({
         title: "Daglig gräns nådd",
-        description: "Du har använt alla dina 5 gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.",
+        description: `Du har använt alla dina ${dailyLimit} gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.`,
         variant: "destructive",
       });
       return;
@@ -375,7 +377,7 @@ export const useAIChat = (portfolioId?: string) => {
 
     console.log('Sending message to existing session');
     await sendMessageToSession(content);
-  }, [user, currentSessionId, checkUsageLimit, subscription, toast, portfolioId]);
+  }, [user, currentSessionId, checkUsageLimit, subscription, usage, toast, portfolioId]);
 
   const createNewSessionAndSendMessage = useCallback(async (messageContent: string) => {
     console.log('=== CREATE SESSION AND SEND MESSAGE ===');
