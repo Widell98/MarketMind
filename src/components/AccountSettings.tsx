@@ -238,8 +238,8 @@ const AccountSettings = () => {
       </Card>
 
       <DeleteAccountDialog 
-        isOpen={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
       />
     </div>
   );
