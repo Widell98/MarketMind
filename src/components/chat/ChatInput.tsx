@@ -53,35 +53,6 @@ const ChatInput = ({
   return (
     <>
       <div className="border-t bg-background p-3 sm:p-4 lg:p-6">
-        {/* Usage Display for Free Users */}
-        {!isPremium && (
-          <div className="mb-3 sm:mb-4 p-3 bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20 rounded-xl">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium">
-                  Meddelanden idag: {currentUsage}/{dailyLimit}
-                </span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowUpgradeModal(true)}
-                className="text-xs flex items-center gap-1.5 hover:bg-primary/10"
-              >
-                <Crown className="w-3 h-3" />
-                Uppgradera
-              </Button>
-            </div>
-            <div className="mt-2 w-full bg-muted rounded-full h-1.5">
-              <div 
-                className="bg-gradient-to-r from-primary to-primary/80 h-1.5 rounded-full transition-all duration-300"
-                style={{ width: `${Math.min((currentUsage / dailyLimit) * 100, 100)}%` }}
-              />
-            </div>
-          </div>
-        )}
-
         {quotaExceeded && (
           <div className="mb-3 sm:mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
             <div className="flex items-center gap-2 font-medium mb-1 text-destructive text-sm">

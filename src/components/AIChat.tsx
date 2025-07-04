@@ -1,16 +1,17 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
+import { useSubscription } from '@/hooks/useSubscription';
 import ChatHeader from './chat/ChatHeader';
 import ChatMessages from './chat/ChatMessages';
 import ChatInput from './chat/ChatInput';
-import { LogIn, MessageSquare, Brain, ArrowLeft, Lock, Sparkles } from 'lucide-react';
+import { LogIn, MessageSquare, Brain, ArrowLeft, Lock, Sparkles, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface Message {
   id: string;
@@ -33,6 +34,7 @@ interface AIChatProps {
 const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
   const { user } = useAuth();
   const { riskProfile } = useRiskProfile();
+  const { usage, subscription } = useSubscription();
   const navigate = useNavigate();
 
   const { messages,
@@ -58,6 +60,10 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const location = useLocation();
+
+  const dailyLimit = 5;
+  const currentUsage = usage?.ai_messages_count || 0;
+  const isPremium = subscription?.subscribed;
 
   const handleBackToPortfolio = () => {
     navigate('/portfolio-implementation');
@@ -159,7 +165,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
 
       {user && riskProfile && (
         <div className="border-b bg-background p-2 sm:p-3">
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-6xl mx-auto flex items-center justify-between">
             <Button
               onClick={handleBackToPortfolio}
               variant="outline"
@@ -170,6 +176,36 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
               <span className="hidden sm:inline">Tillbaka till Min Portfölj</span>
               <span className="sm:hidden">Min Portfölj</span>
             </Button>
+
+            {/* Compact Usage Display for Free Users */}
+            {!isPremium && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <MessageSquare className="w-3 h-3" />
+                <span>{currentUsage}/{dailyLimit} meddelanden</span>
+                <Button
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    const event = new CustomEvent('prefillChatInput', {
+                      detail: { message: 'Berätta mer om Premium-fördelarna' }
+                    });
+                    window.dispatchEvent(event);
+                  }}
+                  className="text-xs h-6 px-2 ml-1"
+                >
+                  <Crown className="w-3 h-3 mr-1" />
+                  Premium
+                </Button>
+              </div>
+            )}
+
+            {/* Premium Badge */}
+            {isPremium && (
+              <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs px-2 py-1">
+                <Crown className="w-3 h-3 mr-1" />
+                Premium
+              </Badge>
+            )}
           </div>
         </div>
       )}
