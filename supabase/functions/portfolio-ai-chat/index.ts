@@ -194,7 +194,7 @@ serve(async (req) => {
 - Användaren vill ändra eller optimera portföljen
 - Föreslå alltid 2–3 aktier som inte finns i portföljen
 - Ange namn, ticker, marknad och kort motivering
-- Ge en rimlig fördelning i procent (t.ex. 30/40/30)
+- Ge en rimlig fördelning i procent
 - Förklara varför förslaget passar användarens riskprofil, mål och innehav
 - Undvik dubbletter och befintliga innehav
 - Ange gärna sektor och market cap (t.ex. storbolag, tillväxt, defensiv)
