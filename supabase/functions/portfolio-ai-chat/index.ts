@@ -262,7 +262,7 @@ VIKTIGT: ${shouldRecommendStocks ?
 - Svara alltid på svenska
 - Var personlig och anpassa råden till användarens profil
 - ${shouldRecommendStocks ? 
-    'Ge konkreta aktie-rekommendationer med motivering när användaren frågar efter det' : 
+    'Ge konkreta aktie-rekommendationer med motivering när användaren frågar efter det. Inkludera alltid sektor för varje rekommenderad aktie i formatet: Företag (SYMBOL) - Sektor: [sektornamn]' : 
     'Fokusera på att svara på användarens fråga utan att ge onödiga aktieförslag'
   }
 - Förklara risker och möjligheter tydligt

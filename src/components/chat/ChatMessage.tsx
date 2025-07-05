@@ -9,6 +9,7 @@ import { useUserHoldings } from '@/hooks/useUserHoldings';
 interface StockSuggestion {
   symbol: string;
   name: string;
+  sector?: string;
   reason?: string;
 }
 
@@ -64,7 +65,10 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       /([A-Z]{2,6}):\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
       
       // Pattern 8: Company name with ticker in brackets at end of sentence
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{3,})\s+\(([A-Z]{1,6})\)(?=[\s.,!?]|$)/g
+      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{3,})\s+\(([A-Z]{1,6})\)(?=[\s.,!?]|$)/g,
+      
+      // Pattern 9: Company (TICKER) - Sektor: SectorName
+      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6})\)\s*-\s*Sektor:\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g
     ];
 
     // Get existing holdings symbols to filter out
@@ -77,12 +81,16 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       const regex = new RegExp(pattern.source, pattern.flags);
       
       while ((match = regex.exec(content)) !== null) {
-        let name, symbol;
+        let name, symbol, sector;
         
         // Handle different capture group orders based on pattern
         if (patterns.indexOf(pattern) === 6) { // Pattern 7: TICKER: Company
           symbol = match[1].trim();
           name = match[2].trim();
+        } else if (patterns.indexOf(pattern) === 8) { // Pattern 9: Company (TICKER) - Sektor: SectorName
+          name = match[1].trim();
+          symbol = match[2].trim();
+          sector = match[3].trim();
         } else {
           name = match[1].trim();
           symbol = match[2].trim();
@@ -111,6 +119,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
           suggestions.push({
             name: name,
             symbol: symbol.toUpperCase(),
+            sector: sector || undefined,
             reason: 'AI-rekommendation'
           });
         }
@@ -141,7 +150,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         current_value: 0,
         purchase_price: 0,
         currency: 'SEK',
-        sector: 'Okänd',
+        sector: suggestion.sector || 'Okänd',
         market: 'Swedish'
       });
 
