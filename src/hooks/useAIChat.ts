@@ -340,6 +340,53 @@ export const useAIChat = (portfolioId?: string) => {
     }
   }, [user, currentSessionId, sessions, loadSession, toast]);
 
+  const editSessionName = useCallback(async (sessionId: string, newName: string) => {
+    if (!user) {
+      console.error('Cannot edit session name: no authenticated user');
+      return;
+    }
+    
+    console.log('=== EDITING SESSION NAME ===');
+    console.log('Session ID:', sessionId);
+    console.log('New name:', newName);
+    console.log('User ID:', user.id);
+    
+    try {
+      const { error } = await supabase
+        .from('ai_chat_sessions')
+        .update({ session_name: newName })
+        .eq('id', sessionId)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error updating session name:', error);
+        throw error;
+      }
+
+      console.log('Session name updated successfully');
+
+      // Update local state
+      setSessions(prev => prev.map(session => 
+        session.id === sessionId 
+          ? { ...session, session_name: newName }
+          : session
+      ));
+
+      toast({
+        title: "Chattnamn uppdaterat",
+        description: `Chatten har bytt namn till "${newName}".`,
+      });
+
+    } catch (error) {
+      console.error('Error editing session name:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte ändra chattnamnet. Försök igen.",
+        variant: "destructive",
+      });
+    }
+  }, [user, toast]);
+
   const sendMessage = useCallback(async (content: string) => {
     console.log('=== SENDING MESSAGE DEBUG ===');
     console.log('Content:', content);
@@ -652,6 +699,7 @@ export const useAIChat = (portfolioId?: string) => {
     createNewSession,
     loadSession,
     deleteSession,
+    editSessionName,
     clearMessages,
     getQuickAnalysis,
   };

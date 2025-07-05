@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useToast } from '@/hooks/use-toast';
@@ -49,6 +50,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
     createNewSession,
     loadSession,
     deleteSession,
+    editSessionName,
     clearMessages,
     getQuickAnalysis,
   } = useAIChat(portfolioId);
@@ -165,6 +167,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
         onNewSession={handleNewSession}
         onLoadSession={loadSession}
         onDeleteSession={deleteSession}
+        onEditSessionName={editSessionName}
       />
 
       {user && riskProfile && (
