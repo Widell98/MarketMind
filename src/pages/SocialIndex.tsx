@@ -22,7 +22,7 @@ const SocialIndex = () => {
   return (
     <Layout>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-50 dark:from-gray-900 dark:via-blue-950 dark:to-purple-950">
-        {/* Hero Section */}
+        {/* Enhanced Hero Section */}
         <div className="relative overflow-hidden">
           {/* Background Effects */}
           <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10" />
@@ -100,107 +100,76 @@ const SocialIndex = () => {
           </div>
         </div>
 
-        {/* AI Features Showcase */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="text-center mb-16">
-            <Badge className="mb-4 bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 dark:from-blue-900 dark:to-purple-900 dark:text-blue-200 text-lg px-6 py-2">
-              <Sparkles className="w-4 h-4 mr-2" />
-              AI-Powered Features
-            </Badge>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-              Artificiell Intelligens som 
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> Förstår Marknaden</span>
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* AI Chat Feature */}
-            <div className="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border border-blue-100 dark:border-blue-800">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition-transform duration-300">
-                <Brain className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">AI Portfolio Advisor</h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-                Chatta med vår avancerade AI som analyserar din portfölj och ger personliga investeringsråd baserat på din riskprofil.
+        {/* Original Features Section */}
+        <div className="py-24 bg-white dark:bg-gray-900">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">
+                Allt du behöver för att lyckas med dina investeringar
+              </h2>
+              <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">
+                Från nybörjare till expert - vi har verktygen som hjälper dig växa
               </p>
-              <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                <li className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-blue-500" />
-                  Realtids marknadsanalys
-                </li>
-                <li className="flex items-center gap-2">
-                  <Target className="w-4 h-4 text-purple-500" />
-                  Personliga rekommendationer
-                </li>
-              </ul>
             </div>
 
-            {/* Market Insights */}
-            <div className="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border border-purple-100 dark:border-purple-800">
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition-transform duration-300">
-                <TrendingUp className="w-8 h-8 text-white" />
+            <div className="mt-20 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="text-center">
+                <div className="flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white mx-auto">
+                  <TrendingUp className="h-6 w-6" />
+                </div>
+                <div className="mt-5">
+                  <h5 className="text-lg font-medium text-gray-900 dark:text-white">Marknadsanalys</h5>
+                  <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
+                    Djupgående analyser av aktier och marknaden för att hjälpa dig fatta rätt beslut.
+                  </p>
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">AI Market Insights</h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-                Få dagliga AI-genererade insikter om marknaden, trender och möjligheter som passar din investeringsstrategi.
-              </p>
-              <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                <li className="flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-green-500" />
-                  Prediktiv analys
-                </li>
-                <li className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-yellow-500" />
-                  Automatiska varningar
-                </li>
-              </ul>
-            </div>
 
-            {/* Risk Assessment */}
-            <div className="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border border-green-100 dark:border-green-800 md:col-span-2 lg:col-span-1">
-              <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition-transform duration-300">
-                <Shield className="w-8 h-8 text-white" />
+              <div className="text-center">
+                <div className="flex items-center justify-center h-12 w-12 rounded-md bg-green-500 text-white mx-auto">
+                  <Target className="h-6 w-6" />
+                </div>
+                <div className="mt-5">
+                  <h5 className="text-lg font-medium text-gray-900 dark:text-white">Portföljrådgivning</h5>
+                  <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
+                    Personlig rådgivning baserad på din riskprofil och investeringsmål.
+                  </p>
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">AI Risk Assessment</h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-                Låt AI:n analysera din riskprofil och optimera din portfölj för bästa möjliga risk-avkastning balans.
-              </p>
-              <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                <li className="flex items-center gap-2">
-                  <Target className="w-4 h-4 text-red-500" />
-                  Riskoptimering
-                </li>
-                <li className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-blue-500" />
-                  Scenarioanalys
-                </li>
-              </ul>
+
+              <div className="text-center">
+                <div className="flex items-center justify-center h-12 w-12 rounded-md bg-purple-500 text-white mx-auto">
+                  <Zap className="h-6 w-6" />
+                </div>
+                <div className="mt-5">
+                  <h5 className="text-lg font-medium text-gray-900 dark:text-white">Lärande</h5>
+                  <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
+                    Interaktiva kurser och quiz för att utveckla dina investeringskunskaper.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Final CTA */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 py-20">
-          <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6">
-              Redo att revolutionera dina investeringar?
+        {/* CTA Section */}
+        <div className="bg-blue-600">
+          <div className="max-w-2xl mx-auto text-center py-16 px-4 sm:py-20 sm:px-6 lg:px-8">
+            <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
+              <span className="block">Redo att börja?</span>
             </h2>
-            <p className="text-xl text-blue-100 mb-10 leading-relaxed">
-              Gå med i tusentals investerare som redan använder AI för att maximera sin avkastning
+            <p className="mt-4 text-lg leading-6 text-blue-200">
+              Gå med idag och ta kontroll över dina investeringar med hjälp av AI och expertrådgivning.
             </p>
             <Button 
               asChild 
               size="lg"
-              className="bg-white text-blue-600 hover:bg-gray-100 px-12 py-6 text-xl font-bold shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-300"
+              className="mt-8 bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 text-lg font-semibold"
             >
               <Link to="/auth">
-                Kom igång gratis idag
-                <ArrowRight className="w-6 h-6 ml-3" />
+                Kom igång nu
               </Link>
             </Button>
-            <p className="text-blue-200 mt-6 text-sm">
-              Ingen kreditkort krävs • 5 gratis AI-analyser per dag • Avsluta när som helst
-            </p>
           </div>
         </div>
       </div>
