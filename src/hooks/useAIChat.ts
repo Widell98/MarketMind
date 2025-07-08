@@ -154,12 +154,12 @@ export const useAIChat = (portfolioId?: string) => {
     });
   }, [currentSessionId, loadMessages, toast]);
 
-  const createNewSession = useCallback(async (customName?: string, initialMessage?: string) => {
+  const createNewSession = useCallback(async (customName?: string, shouldSendInitialMessage?: string) => {
     console.log('=== CREATE NEW SESSION ===');
     console.log('User:', user?.id);
     console.log('Portfolio ID:', portfolioId);
     console.log('Custom name:', customName);
-    console.log('Initial message:', initialMessage);
+    console.log('Should send initial message:', shouldSendInitialMessage);
     
     if (!user || !portfolioId) {
       console.log('Cannot create session: missing user or portfolio');
@@ -209,18 +209,18 @@ export const useAIChat = (portfolioId?: string) => {
       setSessions(prev => [newSession, ...prev]);
       setCurrentSessionId(newSession.id);
       
-      // If there's an initial message, send it automatically
-      if (initialMessage) {
-        console.log('Sending initial message:', initialMessage);
+      // Only send initial message if explicitly requested and provided
+      if (shouldSendInitialMessage) {
+        console.log('Sending initial message:', shouldSendInitialMessage);
         // Small delay to ensure session is properly set
         setTimeout(() => {
-          sendMessageToSession(initialMessage, newSession.id);
+          sendMessageToSession(shouldSendInitialMessage, newSession.id);
         }, 100);
       }
       
       toast({
         title: customName ? `Chat "${customName}" skapad` : "Ny chat skapad",
-        description: initialMessage ? "Skickar din fråga..." : "Du kan nu börja chatta med din AI-assistent.",
+        description: shouldSendInitialMessage ? "Skickar din fråga..." : "Du kan nu börja chatta med din AI-assistent.",
       });
       
     } catch (error) {

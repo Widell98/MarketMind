@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useToast } from '@/hooks/use-toast';
@@ -57,7 +56,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
 
   const [input, setInput] = useState('');
   const [showSessions, setShowSessions] = useState(false);
-  const [hasInitialized, setHasInitialized] = useState(false);
+  const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -81,36 +80,47 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
   }, [messages]);
 
   useEffect(() => {
-    // Handle initial stock and message from URL parameters
-    if (initialStock && initialMessage && !hasInitialized) {
-      console.log('Creating initial chat session for stock:', initialStock);
+    // Handle initial stock and message from URL parameters - but only once
+    if (initialStock && initialMessage && !hasProcessedInitialMessage) {
+      console.log('Processing initial chat session for stock:', initialStock);
       createNewSession(initialStock, initialMessage);
-      setHasInitialized(true);
+      setHasProcessedInitialMessage(true);
     }
-  }, [initialStock, initialMessage, hasInitialized, createNewSession]);
+  }, [initialStock, initialMessage, hasProcessedInitialMessage, createNewSession]);
 
   useEffect(() => {
-    // Load the most recent session on component mount
-    if (portfolioId) {
-      // loadSessions(); // Ensure sessions are loaded when component mounts
-    }
-  }, [portfolioId]);
-
-  useEffect(() => {
-    // Handle navigation state for creating new sessions
-    if (location.state?.createNewSession) {
+    // Handle navigation state for creating new sessions - but prevent automatic sending
+    if (location.state?.createNewSession && !hasProcessedInitialMessage) {
       const { sessionName, initialMessage } = location.state;
-      createNewSession(sessionName, initialMessage);
+      
+      // Create session but don't send message automatically
+      createNewSession(sessionName);
+      
+      // Pre-fill the input with the initial message instead of sending it
+      if (initialMessage) {
+        setInput(initialMessage);
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
+      }
+      
+      setHasProcessedInitialMessage(true);
       
       // Clear the state to prevent re-triggering
       window.history.replaceState({}, document.title);
     }
-  }, [location.state, createNewSession]);
+  }, [location.state, createNewSession, hasProcessedInitialMessage]);
 
   useEffect(() => {
     const handleCreateStockChat = (event: CustomEvent) => {
       const { sessionName, message } = event.detail;
-      createNewSession(sessionName, message);
+      
+      // Create new session and pre-fill input instead of auto-sending
+      createNewSession(sessionName);
+      setInput(message);
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     };
 
     const handleExamplePrompt = (event: CustomEvent) => {
@@ -154,6 +164,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
     if (!user) return;
     await createNewSession();
     setInput('');
+    setHasProcessedInitialMessage(false); // Reset for new session
   };
 
   return (
