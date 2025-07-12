@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useStockCases } from '@/hooks/useStockCases';
 import { useStockCaseOperations } from '@/hooks/useStockCaseOperations';
@@ -161,39 +160,6 @@ const StockCases = () => {
           </Button>
         </div>
 
-        {/* Stock Cases Filter Section - Only show when displaying stock cases */}
-        {(contentType === 'stock-cases' || contentType === 'both') && (
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 sm:px-0">
-            <Button
-              variant={viewMode === 'all' ? 'default' : 'outline'}
-              onClick={() => setViewMode('all')}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2"
-            >
-              <Filter className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">All Cases</span>
-              <span className="sm:hidden">All</span>
-            </Button>
-            <Button
-              variant={viewMode === 'trending' ? 'default' : 'outline'}
-              onClick={() => setViewMode('trending')}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2"
-            >
-              <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Trending</span>
-              <span className="sm:hidden">Trending</span>
-            </Button>
-            <Button
-              variant={viewMode === 'followed' ? 'default' : 'outline'}
-              onClick={() => setViewMode('followed')}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2"
-            >
-              <Bookmark className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Followed</span>
-              <span className="sm:hidden">Followed</span>
-            </Button>
-          </div>
-        )}
-
         {/* Stats Section - Compact version */}
         <div className="hidden sm:block">
           <CommunityStats />
@@ -229,6 +195,8 @@ const StockCases = () => {
             viewMode="grid"
             onViewModeChange={() => {}}
             categories={[]}
+            stockCasesViewMode={viewMode}
+            onStockCasesViewModeChange={setViewMode}
           />
         )}
 
