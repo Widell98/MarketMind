@@ -206,13 +206,14 @@ const CurrentHoldingsPrices: React.FC = () => {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-              <Activity className="w-5 h-5 text-green-600" /> Aktuella Priser
+              <Activity className="w-5 h-5 text-green-600 flex-shrink-0" /> 
+              <span className="truncate">Aktuella Priser</span>
             </CardTitle>
-            <CardDescription>
-              Realtidspriser för dina innehav (1 USD = {exchangeRate.toFixed(2)} SEK)
+            <CardDescription className="text-xs sm:text-sm">
+              <span className="block">Realtidspriser för dina innehav (1 USD = {exchangeRate.toFixed(2)} SEK)</span>
               {lastUpdated && (
                 <span className="block text-xs text-muted-foreground mt-1">
                   Senast uppdaterad: {lastUpdated}
@@ -256,23 +257,23 @@ const CurrentHoldingsPrices: React.FC = () => {
             {prices.map((stock) => (
               <div
                 key={stock.symbol + stock.name}
-                className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
+                className="flex items-center justify-between p-2 sm:p-3 bg-muted/30 rounded-lg gap-2 min-w-0"
               >
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium text-sm flex items-center gap-2">
-                    {stock.name}
+                <div className="min-w-0 flex-1 overflow-hidden">
+                  <div className="font-medium text-xs sm:text-sm flex items-center gap-2">
+                    <span className="truncate">{stock.name}</span>
                     {!stock.hasValidPrice && (
-                      <AlertTriangle className="w-4 h-4 text-amber-500" />
+                      <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 text-amber-500 flex-shrink-0" />
                     )}
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground truncate">
                     {stock.symbol} • {stock.currency}
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex-shrink-0 min-w-0">
                   {stock.hasValidPrice ? (
                     <>
-                      <div className="font-medium text-sm">
+                      <div className="font-medium text-xs sm:text-sm truncate">
                         {formatCurrency(
                           stock.currency === 'USD' ? stock.price : stock.priceInSEK,
                           stock.currency === 'USD' ? 'USD' : 'SEK'
@@ -280,13 +281,13 @@ const CurrentHoldingsPrices: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-1 justify-end">
                         {stock.changePercent >= 0 ? (
-                          <TrendingUp className="w-3 h-3 text-green-600" />
+                          <TrendingUp className="w-3 h-3 text-green-600 flex-shrink-0" />
                         ) : (
-                          <TrendingDown className="w-3 h-3 text-red-600" />
+                          <TrendingDown className="w-3 h-3 text-red-600 flex-shrink-0" />
                         )}
                         <Badge
                           variant="outline"
-                          className={`text-xs ${
+                          className={`text-xs whitespace-nowrap ${
                             stock.changePercent >= 0
                               ? 'bg-green-50 text-green-700 border-green-200'
                               : 'bg-red-50 text-red-700 border-red-200'
@@ -297,12 +298,12 @@ const CurrentHoldingsPrices: React.FC = () => {
                       </div>
                     </>
                   ) : (
-                    <div className="text-center">
-                      <div className="text-sm text-amber-600 font-medium">
-                        {stock.errorMessage || 'Pris saknas - kontrollera symbol'}
+                    <div className="text-center max-w-[120px] sm:max-w-none">
+                      <div className="text-xs text-amber-600 font-medium truncate">
+                        {stock.errorMessage || 'Pris saknas'}
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        Kontrollera att symbolen är korrekt angiven
+                      <div className="text-xs text-muted-foreground truncate">
+                        Kontrollera symbol
                       </div>
                     </div>
                   )}

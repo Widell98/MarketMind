@@ -169,19 +169,19 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
                     {stock.expected_return && (
                       <Badge 
                         variant={stock.expected_return >= 0 ? "default" : "destructive"} 
-                        className="text-xs whitespace-nowrap"
+                        className="text-xs whitespace-nowrap hidden xs:inline-flex"
                       >
                         {stock.expected_return >= 0 ? '+' : ''}{stock.expected_return}%
                       </Badge>
                     )}
                     
                     {editingHolding === stock.symbol ? (
-                      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                      <div className="flex items-center gap-1 flex-shrink-0">
                         <Input
                           placeholder="AAPL"
                           value={newSymbol}
                           onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
-                          className="w-16 sm:w-20 h-6 sm:h-8 text-xs"
+                          className="w-12 sm:w-16 h-6 sm:h-8 text-xs px-1 sm:px-2"
                           maxLength={10}
                         />
                         <Button
@@ -202,7 +202,7 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
                         </Button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                      <div className="flex items-center gap-1 flex-shrink-0">
                         <Button
                           size="sm"
                           variant="ghost"
