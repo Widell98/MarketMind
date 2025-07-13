@@ -17,7 +17,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { RefreshCw, TrendingUp } from 'lucide-react';
 import { UserHolding } from '@/hooks/useUserHoldings';
+import { useRealTimePricing } from '@/hooks/useRealTimePricing';
 
 interface AddHoldingDialogProps {
   isOpen: boolean;
@@ -44,6 +47,9 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     currency: initialData?.currency || 'SEK'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fetchingPrice, setFetchingPrice] = useState(false);
+  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+  const { validateAndPriceHolding, getCurrentPrice } = useRealTimePricing();
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -52,13 +58,29 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     }));
   };
 
+  const fetchCurrentPrice = async () => {
+    if (!formData.symbol.trim()) return;
+    
+    setFetchingPrice(true);
+    const price = await getCurrentPrice(formData.symbol.trim(), formData.currency);
+    setCurrentPrice(price);
+    
+    if (price && !formData.purchase_price) {
+      setFormData(prev => ({
+        ...prev,
+        purchase_price: price.toString()
+      }));
+    }
+    setFetchingPrice(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
     setIsSubmitting(true);
     
-    const holdingData = {
+    let holdingData = {
       name: formData.name.trim(),
       symbol: formData.symbol.trim() || undefined,
       holding_type: formData.holding_type as UserHolding['holding_type'],
@@ -69,6 +91,10 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       market: formData.market.trim() || undefined,
       currency: formData.currency || 'SEK'
     };
+
+    // Get real-time pricing and calculate current value
+    const pricedData = await validateAndPriceHolding(holdingData);
+    holdingData = { ...holdingData, ...pricedData };
 
     const success = await onAdd(holdingData);
     

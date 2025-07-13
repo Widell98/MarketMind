@@ -420,6 +420,50 @@ export type Database = {
         }
         Relationships: []
       }
+      portfolio_performance_history: {
+        Row: {
+          created_at: string
+          currency: string
+          date: string
+          holding_id: string
+          id: string
+          price_per_unit: number
+          total_value: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          date?: string
+          holding_id: string
+          id?: string
+          price_per_unit: number
+          total_value: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          date?: string
+          holding_id?: string
+          id?: string
+          price_per_unit?: number
+          total_value?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_portfolio_performance_holding"
+            columns: ["holding_id"]
+            isOneToOne: false
+            referencedRelation: "user_holdings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portfolio_recommendations: {
         Row: {
           ai_reasoning: string | null
