@@ -13,8 +13,9 @@ import {
   PieChart,
   BarChart3,
   Zap
-} from 'lucide-react';
+ } from 'lucide-react';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
+import { getNormalizedValue, calculateTotalPortfolioValue, formatCurrency } from '@/utils/currencyUtils';
 
 interface PortfolioKeyMetricsProps {
   portfolio?: any;
@@ -41,7 +42,8 @@ const PortfolioKeyMetrics: React.FC<PortfolioKeyMetricsProps> = ({ portfolio }) 
 
     // Filter actual holdings only
     const realHoldings = actualHoldings.filter(h => h.holding_type !== 'recommendation');
-    const totalValue = realHoldings.reduce((sum, h) => sum + (h.current_value || 0), 0);
+    // Calculate total value in SEK for fair comparison across currencies
+    const totalValue = calculateTotalPortfolioValue(realHoldings);
     
     // Calculate diversification score based on holdings distribution
     const sectorMap = new Map<string, number>();
@@ -49,11 +51,12 @@ const PortfolioKeyMetrics: React.FC<PortfolioKeyMetricsProps> = ({ portfolio }) 
     
     realHoldings.forEach(holding => {
       const sector = holding.sector || 'Unknown';
-      const market = holding.market || 'Unknown';
-      const value = holding.current_value || 0;
+      const market = holding.market || holding.currency || 'Unknown';
+      // Normalize value to SEK for fair comparison
+      const normalizedValue = getNormalizedValue(holding);
       
-      sectorMap.set(sector, (sectorMap.get(sector) || 0) + value);
-      marketMap.set(market, (marketMap.get(market) || 0) + value);
+      sectorMap.set(sector, (sectorMap.get(sector) || 0) + normalizedValue);
+      marketMap.set(market, (marketMap.get(market) || 0) + normalizedValue);
     });
 
     // Diversification score: penalize concentration
@@ -64,13 +67,15 @@ const PortfolioKeyMetrics: React.FC<PortfolioKeyMetricsProps> = ({ portfolio }) 
       (marketMap.size - 1) * 5
     ));
 
-    // Calculate estimated returns and risk
+    // Calculate estimated returns and risk using normalized values
     const estimatedReturns = realHoldings.map(holding => {
-      // Simple estimation based on sector and purchase vs current value
+      // Simple estimation based on sector and purchase vs current value (normalized to SEK)
       const purchaseValue = (holding.purchase_price || 0) * (holding.quantity || 0);
-      const currentValue = holding.current_value || 0;
-      if (purchaseValue > 0) {
-        return ((currentValue - purchaseValue) / purchaseValue) * 100;
+      const normalizedPurchaseValue = purchaseValue > 0 ? getNormalizedValue({...holding, current_value: purchaseValue}) : 0;
+      const currentNormalizedValue = getNormalizedValue(holding);
+      
+      if (normalizedPurchaseValue > 0) {
+        return ((currentNormalizedValue - normalizedPurchaseValue) / normalizedPurchaseValue) * 100;
       }
       return 0;
     });
@@ -156,7 +161,7 @@ const PortfolioKeyMetrics: React.FC<PortfolioKeyMetricsProps> = ({ portfolio }) 
               <span className="text-sm font-medium">Portföljvärde</span>
             </div>
             <div className="text-right">
-              <div className="text-lg font-bold">{metrics.totalValue.toLocaleString()} SEK</div>
+              <div className="text-lg font-bold">{formatCurrency(metrics.totalValue)}</div>
               <div className="text-xs text-muted-foreground">{actualHoldings.filter(h => h.holding_type !== 'recommendation').length} innehav</div>
             </div>
           </div>

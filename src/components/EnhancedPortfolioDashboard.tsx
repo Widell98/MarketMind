@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { TrendingUp, TrendingDown, AlertTriangle, Target, Shield, DollarSign, PieChart } from 'lucide-react';
 import { usePortfolioInsights } from '@/hooks/usePortfolioInsights';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
+import { getNormalizedValue, calculateTotalPortfolioValue, formatCurrency } from '@/utils/currencyUtils';
 
 interface Portfolio {
   id: string;
@@ -47,14 +48,16 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
       holding.holding_type !== 'recommendation'
     );
     
-    const totalValue = actualHoldingsOnly.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
+    // Calculate total value in SEK for fair comparison across currencies
+    const totalValue = calculateTotalPortfolioValue(actualHoldingsOnly);
     
     if (totalValue === 0) return {};
     
     actualHoldingsOnly.forEach(holding => {
       const sector = holding.sector || 'Okänd';
-      const value = holding.current_value || 0;
-      sectorMap[sector] = (sectorMap[sector] || 0) + value;
+      // Normalize value to SEK for fair comparison
+      const normalizedValue = getNormalizedValue(holding);
+      sectorMap[sector] = (sectorMap[sector] || 0) + normalizedValue;
     });
 
     // Convert to percentages
@@ -75,14 +78,16 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
       holding.holding_type !== 'recommendation'
     );
     
-    const totalValue = actualHoldingsOnly.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
+    // Calculate total value in SEK for fair comparison across currencies
+    const totalValue = calculateTotalPortfolioValue(actualHoldingsOnly);
     
     if (totalValue === 0) return {};
     
     actualHoldingsOnly.forEach(holding => {
-      const market = holding.market || 'Okänd marknad';
-      const value = holding.current_value || 0;
-      marketMap[market] = (marketMap[market] || 0) + value;
+      const market = holding.market || holding.currency || 'Okänd marknad';
+      // Normalize value to SEK for fair comparison
+      const normalizedValue = getNormalizedValue(holding);
+      marketMap[market] = (marketMap[market] || 0) + normalizedValue;
     });
 
     // Convert to percentages
@@ -112,11 +117,11 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
     }
   };
 
-  // Use actual holdings only for total value calculation
+  // Use actual holdings only for total value calculation with currency normalization
   const actualHoldingsOnly = actualHoldings.filter(holding => 
     holding.holding_type !== 'recommendation'
   );
-  const totalHoldingsValue = actualHoldingsOnly.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
+  const totalHoldingsValue = calculateTotalPortfolioValue(actualHoldingsOnly);
   const targetProgress = portfolio.total_value ? (totalHoldingsValue / portfolio.total_value) * 100 : 0;
 
   return (
@@ -128,7 +133,7 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
               <div className="min-w-0 flex-1">
                 <p className="text-xs sm:text-sm text-muted-foreground truncate">Portföljvärde</p>
-                <p className="text-sm sm:text-lg md:text-2xl font-bold truncate">{totalHoldingsValue.toLocaleString()} SEK</p>
+                <p className="text-sm sm:text-lg md:text-2xl font-bold truncate">{formatCurrency(totalHoldingsValue)}</p>
               </div>
               <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-green-600 flex-shrink-0 self-end sm:self-auto" />
             </div>
