@@ -71,6 +71,7 @@ import { useNavigate } from 'react-router-dom';
 import AddHoldingDialog from './AddHoldingDialog';
 import EditHoldingDialog from './EditHoldingDialog';
 import CurrentHoldingsPrices from './CurrentHoldingsPrices';
+import PortfolioKeyMetrics from './PortfolioKeyMetrics';
 
 interface PortfolioOverviewProps {
   portfolio: any;
@@ -676,47 +677,8 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Riskjusterad avkastning</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">1.34</div>
-            <p className="text-xs text-muted-foreground">
-              Sharpe ratio (bra balans)
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Diversifiering</CardTitle>
-            <PieChart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">85%</div>
-            <p className="text-xs text-muted-foreground">
-              Välspridd över sektorer
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Riskpoäng</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{portfolio?.risk_score || 6}/10</div>
-            <p className="text-xs text-muted-foreground">
-              Måttlig risk
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Portfolio Key Metrics */}
+      <PortfolioKeyMetrics portfolio={portfolio} />
 
       {/* Market Exposure and Current Prices Side by Side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
