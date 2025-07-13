@@ -117,12 +117,76 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
     }
   };
 
-  // Use actual holdings only for total value calculation with currency normalization
+  // Calculate real metrics based on actual holdings
   const actualHoldingsOnly = actualHoldings.filter(holding => 
     holding.holding_type !== 'recommendation'
   );
   const totalHoldingsValue = calculateTotalPortfolioValue(actualHoldingsOnly);
-  const targetProgress = portfolio.total_value ? (totalHoldingsValue / portfolio.total_value) * 100 : 0;
+  
+  // Calculate real portfolio metrics
+  const calculateRealMetrics = () => {
+    if (actualHoldingsOnly.length === 0) {
+      return {
+        expectedReturn: 0,
+        riskScore: 0,
+        diversificationScore: 0,
+        sectorCount: 0,
+        marketCount: 0
+      };
+    }
+
+    // Calculate diversification metrics
+    const sectorMap = new Map<string, number>();
+    const marketMap = new Map<string, number>();
+    
+    actualHoldingsOnly.forEach(holding => {
+      const sector = holding.sector || 'Unknown';
+      const market = holding.market || holding.currency || 'Unknown';
+      const normalizedValue = getNormalizedValue(holding);
+      
+      sectorMap.set(sector, (sectorMap.get(sector) || 0) + normalizedValue);
+      marketMap.set(market, (marketMap.get(market) || 0) + normalizedValue);
+    });
+
+    // Calculate estimated returns
+    const estimatedReturns = actualHoldingsOnly.map(holding => {
+      const purchaseValue = (holding.purchase_price || 0) * (holding.quantity || 0);
+      const normalizedPurchaseValue = purchaseValue > 0 ? getNormalizedValue({...holding, current_value: purchaseValue}) : 0;
+      const currentNormalizedValue = getNormalizedValue(holding);
+      
+      if (normalizedPurchaseValue > 0) {
+        return ((currentNormalizedValue - normalizedPurchaseValue) / normalizedPurchaseValue) * 100;
+      }
+      return 0;
+    });
+
+    const averageReturn = estimatedReturns.length > 0 
+      ? estimatedReturns.reduce((a, b) => a + b, 0) / estimatedReturns.length 
+      : 0;
+
+    // Diversification score
+    const sectorConcentration = Math.max(...Array.from(sectorMap.values())) / totalHoldingsValue;
+    const diversificationScore = Math.min(100, Math.max(0, 
+      (1 - sectorConcentration) * 100 + 
+      (sectorMap.size - 1) * 10 + 
+      (marketMap.size - 1) * 5
+    ));
+
+    // Risk score
+    const riskScore = Math.min(10, Math.max(1,
+      5 + (sectorConcentration * 3) - (sectorMap.size * 0.5) + (Math.abs(averageReturn) * 0.1)
+    ));
+
+    return {
+      expectedReturn: Math.round(averageReturn * 100) / 100,
+      riskScore: Math.round(riskScore * 10) / 10,
+      diversificationScore: Math.round(diversificationScore),
+      sectorCount: sectorMap.size,
+      marketCount: marketMap.size
+    };
+  };
+
+  const realMetrics = calculateRealMetrics();
 
   return (
     <div className="w-full space-y-3 sm:space-y-4 md:space-y-6">
@@ -144,10 +208,10 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
           <CardContent className="p-2 sm:p-3 md:p-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
               <div className="min-w-0 flex-1">
-                <p className="text-xs sm:text-sm text-muted-foreground truncate">Förväntad avkastning</p>
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">Genomsnittlig avkastning</p>
                 <div className="flex items-center gap-1">
-                  <p className="text-sm sm:text-lg md:text-2xl font-bold">{portfolio.expected_return || 0}%</p>
-                  {getTrendIcon(portfolio.expected_return || 0)}
+                  <p className="text-sm sm:text-lg md:text-2xl font-bold">{realMetrics.expectedReturn > 0 ? '+' : ''}{realMetrics.expectedReturn}%</p>
+                  {getTrendIcon(realMetrics.expectedReturn)}
                 </div>
               </div>
               <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-blue-600 flex-shrink-0 self-end sm:self-auto" />
@@ -160,7 +224,7 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
               <div className="min-w-0 flex-1">
                 <p className="text-xs sm:text-sm text-muted-foreground truncate">Riskpoäng</p>
-                <p className="text-sm sm:text-lg md:text-2xl font-bold">{portfolio.risk_score || 0}/10</p>
+                <p className="text-sm sm:text-lg md:text-2xl font-bold">{realMetrics.riskScore}/10</p>
               </div>
               <Shield className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-orange-600 flex-shrink-0 self-end sm:self-auto" />
             </div>
