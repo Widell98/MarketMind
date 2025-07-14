@@ -6,8 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
-import AddHoldingDialog from '@/components/AddHoldingDialog';
-import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -17,8 +15,7 @@ import {
   MessageCircle,
   ArrowRightLeft,
   Target,
-  Lightbulb,
-  ShoppingCart
+  Lightbulb
 } from 'lucide-react';
 
 interface InteractivePortfolioProps {
@@ -32,10 +29,7 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
 }) => {
   const [editingHolding, setEditingHolding] = useState<string | null>(null);
   const [newSymbol, setNewSymbol] = useState('');
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [selectedStock, setSelectedStock] = useState<any>(null);
   const navigate = useNavigate();
-  const { addHolding } = useUserHoldings();
 
   const holdings = portfolio?.recommended_stocks || [];
 
@@ -47,32 +41,6 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
   const handleCancelEdit = () => {
     setEditingHolding(null);
     setNewSymbol('');
-  };
-
-  const handleBuyStock = (stock: any) => {
-    setSelectedStock({
-      name: stock.name || stock.symbol || `Aktie ${holdings.indexOf(stock) + 1}`,
-      symbol: stock.symbol,
-      sector: stock.sector,
-      market: stock.market || 'NASDAQ Stockholm',
-      currency: 'SEK',
-      holding_type: 'stock'
-    });
-    setShowAddDialog(true);
-  };
-
-  const handleAddHolding = async (holdingData: any) => {
-    const success = await addHolding(holdingData);
-    if (success) {
-      setShowAddDialog(false);
-      setSelectedStock(null);
-    }
-    return success;
-  };
-
-  const handleCloseDialog = () => {
-    setShowAddDialog(false);
-    setSelectedStock(null);
   };
 
   const handleReplaceStock = (oldSymbol: string, newSymbol: string) => {
@@ -176,7 +144,7 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
               </Badge>
             </CardTitle>
             <CardDescription className="text-xs sm:text-sm">
-              Klicka på köp för att lägga till aktien i dina riktiga innehav
+              Klicka på en aktie för att ersätta den eller prata med AI:n
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0 p-3 sm:p-4 md:p-6">
@@ -189,11 +157,9 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
                   <div className="flex-1 min-w-0 overflow-hidden">
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       <div className="min-w-0 flex-1 overflow-hidden">
-                        <h4 className="font-medium text-xs sm:text-sm truncate">
-                          {stock.name || stock.symbol || `Aktie ${index + 1}`}
-                        </h4>
+                        <h4 className="font-medium text-xs sm:text-sm truncate">{stock.symbol || `Aktie ${index + 1}`}</h4>
                         <p className="text-xs text-muted-foreground truncate">
-                          {stock.symbol && `${stock.symbol} • `}{stock.allocation}% av portföljen
+                          {stock.allocation}% av portföljen
                         </p>
                       </div>
                     </div>
@@ -239,13 +205,6 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <Button
                           size="sm"
-                          onClick={() => handleBuyStock(stock)}
-                          className="h-6 w-6 sm:h-8 sm:w-8 p-0 flex-shrink-0 bg-green-600 hover:bg-green-700"
-                        >
-                          <ShoppingCart className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          size="sm"
                           variant="ghost"
                           onClick={() => handleEditClick(stock.symbol)}
                           className="h-6 w-6 sm:h-8 sm:w-8 p-0 flex-shrink-0"
@@ -255,7 +214,7 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleQuickAction(`Berätta mer om ${stock.name || stock.symbol} och varför den är med i min portfölj. Vad är riskerna och möjligheterna?`)}
+                          onClick={() => handleQuickAction(`Berätta mer om ${stock.symbol} och varför den är med i min portfölj. Vad är riskerna och möjligheterna?`)}
                           className="h-6 w-6 sm:h-8 sm:w-8 p-0 flex-shrink-0"
                         >
                           <MessageCircle className="w-3 h-3" />
@@ -274,17 +233,10 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
       <Alert className="w-full">
         <MessageCircle className="h-4 w-4 flex-shrink-0" />
         <AlertDescription className="text-xs sm:text-sm">
-          <strong>Tips:</strong> Klicka på köp-ikonen för att lägga till en aktie i dina riktiga innehav, 
-          eller använd AI-chatten för att säga "Köp AAPL" eller "Lägg till mer tech-aktier".
+          <strong>Tips:</strong> Du kan säga till AI:n "Ersätt AAPL med MSFT" eller "Lägg till mer tech-aktier" 
+          för att göra ändringar i din portfölj.
         </AlertDescription>
       </Alert>
-
-      <AddHoldingDialog
-        isOpen={showAddDialog}
-        onClose={handleCloseDialog}
-        onAdd={handleAddHolding}
-        initialData={selectedStock}
-      />
     </div>
   );
 };
