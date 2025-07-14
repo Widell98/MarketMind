@@ -79,33 +79,50 @@ export const useRealTimePricing = () => {
     purchase_price?: number;
     currency: string;
   }) => {
-    // If no symbol, return original data
+    // If no symbol or quantity, return original data
     if (!holdingData.symbol || !holdingData.quantity) {
       return holdingData;
     }
 
     try {
-      // Get current market price
-      const currentPrice = await getCurrentPrice(holdingData.symbol, holdingData.currency);
+      console.log(`Validating and pricing holding: ${holdingData.symbol}, quantity: ${holdingData.quantity}, currency: ${holdingData.currency}`);
       
-      if (currentPrice) {
-        // Calculate current value based on market price
+      // Get current market price with retry logic
+      let currentPrice = null;
+      let retryCount = 0;
+      const maxRetries = 2;
+      
+      while (retryCount < maxRetries && !currentPrice) {
+        currentPrice = await getCurrentPrice(holdingData.symbol, holdingData.currency);
+        if (!currentPrice) {
+          retryCount++;
+          console.log(`Retry ${retryCount} for ${holdingData.symbol}`);
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+        }
+      }
+      
+      if (currentPrice && currentPrice > 0) {
+        // Calculate current value: antal aktier × aktuellt pris
         const currentValue = currentPrice * holdingData.quantity;
+        
+        console.log(`Successfully priced ${holdingData.symbol}: ${currentPrice} × ${holdingData.quantity} = ${currentValue}`);
         
         return {
           ...holdingData,
           current_value: Math.round(currentValue * 100) / 100,
-          purchase_price: holdingData.purchase_price || currentPrice // Use market price as purchase price if not provided
+          purchase_price: holdingData.purchase_price || currentPrice // Use market price as fallback
         };
       } else {
-        // If we can't get real price, use purchase price as current value
+        // If we can't get real price, calculate fallback value: antal aktier × inköpspris  
         const fallbackValue = holdingData.purchase_price && holdingData.quantity 
           ? holdingData.purchase_price * holdingData.quantity
           : 0;
+        
+        console.warn(`No market price for ${holdingData.symbol}, using fallback: ${holdingData.purchase_price} × ${holdingData.quantity} = ${fallbackValue}`);
           
         toast({
           title: "Prisuppdatering misslyckades",
-          description: `Kunde inte hämta aktuellt pris för ${holdingData.symbol}. Använder inmatat pris.`,
+          description: `Kunde inte hämta aktuellt pris för ${holdingData.symbol}. Använder inköpspris.`,
           variant: "default",
         });
         
@@ -117,10 +134,12 @@ export const useRealTimePricing = () => {
     } catch (error) {
       console.error('Error validating and pricing holding:', error);
       
-      // Fallback to purchase price
+      // Fallback calculation: antal aktier × inköpspris
       const fallbackValue = holdingData.purchase_price && holdingData.quantity 
         ? holdingData.purchase_price * holdingData.quantity
         : 0;
+      
+      console.warn(`Error pricing ${holdingData.symbol}, using fallback: ${holdingData.purchase_price} × ${holdingData.quantity} = ${fallbackValue}`);
         
       return {
         ...holdingData,
