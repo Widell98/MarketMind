@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -55,7 +56,23 @@ export const usePortfolioPerformance = () => {
             table: 'user_holdings',
             filter: `user_id=eq.${user.id}`
           },
-          () => calculatePerformance()
+          () => {
+            console.log('Holdings updated, recalculating performance...');
+            calculatePerformance();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'portfolio_performance_history',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            console.log('Performance history updated, recalculating performance...');
+            calculatePerformance();
+          }
         )
         .subscribe();
 

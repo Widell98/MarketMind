@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,9 +13,11 @@ import {
   CheckCircle,
   PieChart,
   BarChart3,
-  Zap
+  DollarSign,
+  Percent
  } from 'lucide-react';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
+import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { getNormalizedValue, calculateTotalPortfolioValue, formatCurrency } from '@/utils/currencyUtils';
 
 interface PortfolioKeyMetricsProps {
@@ -23,27 +26,40 @@ interface PortfolioKeyMetricsProps {
 
 const PortfolioKeyMetrics: React.FC<PortfolioKeyMetricsProps> = ({ portfolio }) => {
   const { actualHoldings } = useUserHoldings();
+  const { performance, loading: performanceLoading } = usePortfolioPerformance();
 
   // Calculate real portfolio metrics based on actual holdings
   const calculatePortfolioMetrics = () => {
     if (!actualHoldings || actualHoldings.length === 0) {
       return {
         totalValue: 0,
+        totalInvested: 0,
+        totalReturn: 0,
+        totalReturnPercentage: 0,
         diversificationScore: 0,
         riskScore: 0,
-        riskAdjustedReturn: 0,
         volatilityRating: 'Låg',
         sectorCount: 0,
         marketCount: 0,
-        averageReturn: 0,
-        sharpeRatio: 0
+        holdingsCount: 0
       };
     }
 
     // Filter actual holdings only
     const realHoldings = actualHoldings.filter(h => h.holding_type !== 'recommendation');
-    // Calculate total value in SEK for fair comparison across currencies
     const totalValue = calculateTotalPortfolioValue(realHoldings);
+    
+    // Calculate total invested amount
+    let totalInvested = 0;
+    realHoldings.forEach(holding => {
+      const purchaseValue = (holding.purchase_price || 0) * (holding.quantity || 0);
+      const normalizedPurchaseValue = purchaseValue > 0 ? getNormalizedValue({...holding, current_value: purchaseValue}) : 0;
+      totalInvested += normalizedPurchaseValue;
+    });
+
+    // Calculate total return
+    const totalReturn = totalValue - totalInvested;
+    const totalReturnPercentage = totalInvested > 0 ? (totalReturn / totalInvested) * 100 : 0;
     
     // Calculate diversification score based on holdings distribution
     const sectorMap = new Map<string, number>();
@@ -52,7 +68,6 @@ const PortfolioKeyMetrics: React.FC<PortfolioKeyMetricsProps> = ({ portfolio }) 
     realHoldings.forEach(holding => {
       const sector = holding.sector || 'Unknown';
       const market = holding.market || holding.currency || 'Unknown';
-      // Normalize value to SEK for fair comparison
       const normalizedValue = getNormalizedValue(holding);
       
       sectorMap.set(sector, (sectorMap.get(sector) || 0) + normalizedValue);
@@ -60,57 +75,31 @@ const PortfolioKeyMetrics: React.FC<PortfolioKeyMetricsProps> = ({ portfolio }) 
     });
 
     // Diversification score: penalize concentration
-    const sectorConcentration = Math.max(...Array.from(sectorMap.values())) / totalValue;
+    const sectorConcentration = totalValue > 0 ? Math.max(...Array.from(sectorMap.values())) / totalValue : 0;
     const diversificationScore = Math.min(100, Math.max(0, 
       (1 - sectorConcentration) * 100 + 
       (sectorMap.size - 1) * 10 + 
       (marketMap.size - 1) * 5
     ));
 
-    // Calculate estimated returns and risk using normalized values
-    const estimatedReturns = realHoldings.map(holding => {
-      // Simple estimation based on sector and purchase vs current value (normalized to SEK)
-      const purchaseValue = (holding.purchase_price || 0) * (holding.quantity || 0);
-      const normalizedPurchaseValue = purchaseValue > 0 ? getNormalizedValue({...holding, current_value: purchaseValue}) : 0;
-      const currentNormalizedValue = getNormalizedValue(holding);
-      
-      if (normalizedPurchaseValue > 0) {
-        return ((currentNormalizedValue - normalizedPurchaseValue) / normalizedPurchaseValue) * 100;
-      }
-      return 0;
-    });
-
-    const averageReturn = estimatedReturns.length > 0 
-      ? estimatedReturns.reduce((a, b) => a + b, 0) / estimatedReturns.length 
-      : 0;
-
-    // Risk score based on sector diversity and volatility estimates
+    // Risk score based on sector diversity and concentration
     const riskScore = Math.min(10, Math.max(1,
-      5 + (sectorConcentration * 3) - (sectorMap.size * 0.5) + (Math.abs(averageReturn) * 0.1)
+      5 + (sectorConcentration * 3) - (sectorMap.size * 0.5)
     ));
 
-    // Risk-adjusted return (simplified Sharpe-like ratio)
-    const riskAdjustedReturn = riskScore > 0 ? averageReturn / riskScore : 0;
-
-    // Sharpe ratio estimation
-    const returnVariance = estimatedReturns.length > 1 
-      ? estimatedReturns.reduce((sum, ret) => sum + Math.pow(ret - averageReturn, 2), 0) / (estimatedReturns.length - 1)
-      : 0;
-    const volatility = Math.sqrt(returnVariance);
-    const sharpeRatio = volatility > 0 ? (averageReturn - 2) / volatility : 0; // Assuming 2% risk-free rate
-
-    const volatilityRating = volatility < 5 ? 'Låg' : volatility < 15 ? 'Medel' : 'Hög';
+    const volatilityRating = sectorConcentration > 0.6 ? 'Hög' : sectorConcentration > 0.4 ? 'Medel' : 'Låg';
 
     return {
       totalValue: Math.round(totalValue),
+      totalInvested: Math.round(totalInvested),
+      totalReturn: Math.round(totalReturn),
+      totalReturnPercentage: Math.round(totalReturnPercentage * 100) / 100,
       diversificationScore: Math.round(diversificationScore),
       riskScore: Math.round(riskScore * 10) / 10,
-      riskAdjustedReturn: Math.round(riskAdjustedReturn * 100) / 100,
       volatilityRating,
       sectorCount: sectorMap.size,
       marketCount: marketMap.size,
-      averageReturn: Math.round(averageReturn * 100) / 100,
-      sharpeRatio: Math.round(sharpeRatio * 100) / 100
+      holdingsCount: realHoldings.length
     };
   };
 
@@ -142,6 +131,17 @@ const PortfolioKeyMetrics: React.FC<PortfolioKeyMetricsProps> = ({ portfolio }) 
     return <Activity className="w-4 h-4 text-gray-600" />;
   };
 
+  // Use performance data from the hook when available
+  const displayMetrics = !performanceLoading && performance ? {
+    totalValue: performance.totalValue,
+    totalInvested: performance.totalInvested,
+    totalReturn: performance.totalReturn,
+    totalReturnPercentage: performance.totalReturnPercentage,
+    dayChange: performance.dayChange,
+    dayChangePercentage: performance.dayChangePercentage,
+    ...metrics
+  } : metrics;
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* Key Performance Indicators */}
@@ -149,66 +149,70 @@ const PortfolioKeyMetrics: React.FC<PortfolioKeyMetricsProps> = ({ portfolio }) 
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             <BarChart3 className="w-5 h-5 text-primary" />
-            Nyckeltal
+            Portföljvärden
           </CardTitle>
-          <CardDescription>Realtidsberäknade värden från dina innehav</CardDescription>
+          <CardDescription>Aktuella värden baserat på dina innehav</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Total Portfolio Value */}
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium">Portföljvärde</span>
+              <DollarSign className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium">Totalt portföljvärde</span>
             </div>
             <div className="text-right">
-              <div className="text-lg font-bold">{formatCurrency(metrics.totalValue)}</div>
-              <div className="text-xs text-muted-foreground">{actualHoldings.filter(h => h.holding_type !== 'recommendation').length} innehav</div>
+              <div className="text-lg font-bold">{formatCurrency(displayMetrics.totalValue)}</div>
+              <div className="text-xs text-muted-foreground">{displayMetrics.holdingsCount} innehav</div>
             </div>
           </div>
 
-          {/* Risk-Adjusted Return */}
+          {/* Total Invested */}
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-orange-600" />
-              <span className="text-sm font-medium">Riskjusterad avkastning</span>
+              <Target className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-medium">Totalt investerat</span>
             </div>
             <div className="text-right">
-              <div className={`text-lg font-bold flex items-center gap-1 ${getScoreColor(Math.abs(metrics.riskAdjustedReturn), 5)}`}>
-                {metrics.riskAdjustedReturn}%
-                {getReturnIcon(metrics.riskAdjustedReturn)}
-              </div>
-              <div className="text-xs text-muted-foreground">Avkastning per riskenhet</div>
+              <div className="text-lg font-bold">{formatCurrency(displayMetrics.totalInvested)}</div>
+              <div className="text-xs text-muted-foreground">Inköpsvärde</div>
             </div>
           </div>
 
-          {/* Sharpe Ratio */}
+          {/* Total Return */}
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-blue-600" />
-              <span className="text-sm font-medium">Sharpe-kvot</span>
+              <Percent className="w-4 h-4 text-green-600" />
+              <span className="text-sm font-medium">Total avkastning</span>
             </div>
             <div className="text-right">
-              <div className={`text-lg font-bold ${getScoreColor(Math.abs(metrics.sharpeRatio), 2)}`}>
-                {metrics.sharpeRatio}
+              <div className={`text-lg font-bold flex items-center gap-1 ${getScoreColor(Math.abs(displayMetrics.totalReturnPercentage), 10)}`}>
+                {displayMetrics.totalReturnPercentage > 0 ? '+' : ''}{displayMetrics.totalReturnPercentage}%
+                {getReturnIcon(displayMetrics.totalReturnPercentage)}
               </div>
-              <div className="text-xs text-muted-foreground">Risk/avkastning-förhållande</div>
+              <div className="text-xs text-muted-foreground">
+                {displayMetrics.totalReturn > 0 ? '+' : ''}{formatCurrency(displayMetrics.totalReturn)}
+              </div>
             </div>
           </div>
 
-          {/* Average Return */}
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-green-600" />
-              <span className="text-sm font-medium">Genomsnittlig avkastning</span>
-            </div>
-            <div className="text-right">
-              <div className={`text-lg font-bold flex items-center gap-1 ${getScoreColor(Math.abs(metrics.averageReturn), 10)}`}>
-                {metrics.averageReturn > 0 ? '+' : ''}{metrics.averageReturn}%
-                {getReturnIcon(metrics.averageReturn)}
+          {/* Day Change (if available from performance data) */}
+          {!performanceLoading && performance && (
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-orange-600" />
+                <span className="text-sm font-medium">Dagens förändring</span>
               </div>
-              <div className="text-xs text-muted-foreground">Estimerad årlig avkastning</div>
+              <div className="text-right">
+                <div className={`text-lg font-bold flex items-center gap-1 ${getScoreColor(Math.abs(performance.dayChangePercentage), 5)}`}>
+                  {performance.dayChangePercentage > 0 ? '+' : ''}{performance.dayChangePercentage}%
+                  {getReturnIcon(performance.dayChangePercentage)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {performance.dayChange > 0 ? '+' : ''}{formatCurrency(performance.dayChange)}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -230,15 +234,15 @@ const PortfolioKeyMetrics: React.FC<PortfolioKeyMetricsProps> = ({ portfolio }) 
                 <span className="text-sm font-medium">Diversifieringspoäng</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`text-lg font-bold ${getScoreColor(metrics.diversificationScore)}`}>
-                  {metrics.diversificationScore}/100
+                <span className={`text-lg font-bold ${getScoreColor(displayMetrics.diversificationScore)}`}>
+                  {displayMetrics.diversificationScore}/100
                 </span>
-                {getScoreIcon(metrics.diversificationScore)}
+                {getScoreIcon(displayMetrics.diversificationScore)}
               </div>
             </div>
-            <Progress value={metrics.diversificationScore} className="h-2" />
+            <Progress value={displayMetrics.diversificationScore} className="h-2" />
             <div className="text-xs text-muted-foreground">
-              {metrics.sectorCount} sektorer, {metrics.marketCount} marknader
+              {displayMetrics.sectorCount} sektorer, {displayMetrics.marketCount} marknader
             </div>
           </div>
 
@@ -250,13 +254,13 @@ const PortfolioKeyMetrics: React.FC<PortfolioKeyMetricsProps> = ({ portfolio }) 
                 <span className="text-sm font-medium">Riskpoäng</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`text-lg font-bold ${getRiskColor(metrics.riskScore)}`}>
-                  {metrics.riskScore}/10
+                <span className={`text-lg font-bold ${getRiskColor(displayMetrics.riskScore)}`}>
+                  {displayMetrics.riskScore}/10
                 </span>
-                {getScoreIcon(10 - metrics.riskScore, 10)}
+                {getScoreIcon(10 - displayMetrics.riskScore, 10)}
               </div>
             </div>
-            <Progress value={(10 - metrics.riskScore) * 10} className="h-2" />
+            <Progress value={(10 - displayMetrics.riskScore) * 10} className="h-2" />
             <div className="text-xs text-muted-foreground">
               Lägre värde = lägre risk
             </div>
@@ -270,12 +274,12 @@ const PortfolioKeyMetrics: React.FC<PortfolioKeyMetricsProps> = ({ portfolio }) 
             </div>
             <div className="text-right">
               <Badge variant={
-                metrics.volatilityRating === 'Låg' ? 'default' : 
-                metrics.volatilityRating === 'Medel' ? 'secondary' : 'destructive'
+                displayMetrics.volatilityRating === 'Låg' ? 'default' : 
+                displayMetrics.volatilityRating === 'Medel' ? 'secondary' : 'destructive'
               }>
-                {metrics.volatilityRating}
+                {displayMetrics.volatilityRating}
               </Badge>
-              <div className="text-xs text-muted-foreground mt-1">Prisfluktuationer</div>
+              <div className="text-xs text-muted-foreground mt-1">Koncentrationsrisk</div>
             </div>
           </div>
 
@@ -283,7 +287,7 @@ const PortfolioKeyMetrics: React.FC<PortfolioKeyMetricsProps> = ({ portfolio }) 
           <div className="p-3 border rounded-lg">
             <div className="text-sm font-medium mb-2">Portföljhälsa</div>
             <div className="text-xs text-muted-foreground space-y-1">
-              {metrics.diversificationScore >= 70 ? (
+              {displayMetrics.diversificationScore >= 70 ? (
                 <div className="flex items-center gap-1 text-green-600">
                   <CheckCircle className="w-3 h-3" />
                   Bra diversifiering
@@ -295,7 +299,7 @@ const PortfolioKeyMetrics: React.FC<PortfolioKeyMetricsProps> = ({ portfolio }) 
                 </div>
               )}
               
-              {metrics.riskScore <= 6 ? (
+              {displayMetrics.riskScore <= 6 ? (
                 <div className="flex items-center gap-1 text-green-600">
                   <CheckCircle className="w-3 h-3" />
                   Kontrollerad risk
@@ -307,15 +311,20 @@ const PortfolioKeyMetrics: React.FC<PortfolioKeyMetricsProps> = ({ portfolio }) 
                 </div>
               )}
               
-              {metrics.sharpeRatio > 0.5 ? (
+              {displayMetrics.totalReturnPercentage > 0 ? (
                 <div className="flex items-center gap-1 text-green-600">
                   <CheckCircle className="w-3 h-3" />
-                  Bra risk/avkastning-förhållande
+                  Positiv avkastning
+                </div>
+              ) : displayMetrics.totalReturnPercentage < -10 ? (
+                <div className="flex items-center gap-1 text-red-600">
+                  <AlertTriangle className="w-3 h-3" />
+                  Stor förlust - överväg strategi
                 </div>
               ) : (
                 <div className="flex items-center gap-1 text-yellow-600">
                   <Activity className="w-3 h-3" />
-                  Kan optimera risk/avkastning
+                  Neutral utveckling
                 </div>
               )}
             </div>
