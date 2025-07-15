@@ -155,7 +155,7 @@ serve(async (req) => {
         context_data: {
           contextType: contextType || 'advisory',
           timestamp: timestamp,
-          model: 'gpt-4o-mini',
+          model: 'gpt-4o',
           recommendationsProvided: isRequestingRecommendations
         }
       }
