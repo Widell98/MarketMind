@@ -192,7 +192,7 @@ const PortfolioImplementation = () => {
                 className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 rounded-lg py-2 sm:py-2.5 px-2 sm:px-3 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs sm:text-sm min-w-0"
               >
                 <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                <span className="hidden xs:inline truncate">Min Analys</span>
+                <span className="hidden xs:inline truncate">Risk profil</span>
                 <span className="xs:hidden truncate">Analys</span>
               </TabsTrigger>
               <TabsTrigger 
