@@ -826,29 +826,26 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => handleEditHolding(holding)}
-                            className="h-8 px-2 text-xs font-medium bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300 transition-colors"
+                            className="h-7 px-2 text-xs bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
                           >
-                            <Edit className="w-3 h-3 mr-1" />
-                            Redigera
+                            <Edit className="w-3 h-3" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleStockChat(holding.name, holding.symbol)}
-                            className="h-8 px-2 text-xs font-medium bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300 transition-colors"
+                            className="h-7 px-2 text-xs bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
                           >
-                            <MessageCircle className="w-3 h-3 mr-1" />
-                            Diskutera
+                            <MessageCircle className="w-3 h-3" />
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 px-2 text-xs font-medium bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 transition-colors"
+                                className="h-7 px-2 text-xs bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
                               >
-                                <Trash2 className="w-3 h-3 mr-1" />
-                                Radera
+                                <Trash2 className="w-3 h-3" />
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
@@ -999,29 +996,26 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => handleAddFromRecommendation(recommendation)}
-                            className="h-8 px-2 text-xs font-medium bg-white hover:bg-green-50 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300 transition-colors"
+                            className="h-7 px-2 text-xs bg-white hover:bg-green-50 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300"
                           >
-                            <ShoppingCart className="w-3 h-3 mr-1" />
-                            Köp
+                            <ShoppingCart className="w-3 h-3" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleStockChat(recommendation.name, recommendation.symbol)}
-                            className="h-8 px-2 text-xs font-medium bg-white hover:bg-purple-50 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300 transition-colors"
+                            className="h-7 px-2 text-xs bg-white hover:bg-purple-50 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300"
                           >
-                            <MessageCircle className="w-3 h-3 mr-1" />
-                            Diskutera
+                            <MessageCircle className="w-3 h-3" />
                           </Button>
                           {recommendation.id && recommendation.id.startsWith('portfolio-rec-') === false && (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => deleteHolding(recommendation.id)}
-                              className="h-8 px-2 text-xs font-medium bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 transition-colors"
+                              className="h-7 px-2 text-xs bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
                             >
-                              <X className="w-3 h-3 mr-1" />
-                              Radera
+                              <X className="w-3 h-3" />
                             </Button>
                           )}
                         </div>
