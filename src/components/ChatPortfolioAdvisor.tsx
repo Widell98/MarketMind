@@ -89,7 +89,7 @@ const ChatPortfolioAdvisor = () => {
   const questions = [
     {
       id: 'intro',
-      question: 'Hej! Jag är din AI-portföljrådgivare. Är du ny inom investeringar eller har du erfarenhet?',
+      question: 'Hej! Jag är din AI-portföljrådgivare, för att kunna göra en riskprofil behöver du svara på ett par frågor. Är du ny inom investeringar eller har du erfarenhet?',
       key: 'isBeginnerInvestor',
       hasOptions: true,
       options: [
@@ -100,7 +100,7 @@ const ChatPortfolioAdvisor = () => {
     },
     {
       id: 'hasPortfolio',
-      question: 'Har du redan några investeringar som du vill optimera?',
+      question: 'Har du några investeringar från innan eller vill du börja på nytt?',
       key: 'hasCurrentPortfolio',
       hasOptions: true,
       options: [
@@ -121,14 +121,8 @@ const ChatPortfolioAdvisor = () => {
       id: 'monthlyIncome',
       question: 'Vad har du ungefär för månadsinkomst? Detta hjälper mig förstå din investeringskapacitet.',
       key: 'monthlyIncome',
-      hasOptions: true,
+      hasOptions: false,
       showIf: () => conversationData.isBeginnerInvestor === true,
-      options: [
-        { value: '20000-30000', label: '20 000 - 30 000 kr' },
-        { value: '30000-45000', label: '30 000 - 45 000 kr' },
-        { value: '45000-60000', label: '45 000 - 60 000 kr' },
-        { value: '60000+', label: 'Över 60 000 kr' }
-      ]
     },
     {
       id: 'availableCapital',
@@ -177,6 +171,7 @@ const ChatPortfolioAdvisor = () => {
         { value: 'sweden_only', label: 'Mest svenska företag' },
         { value: 'nordics', label: 'Svenska och nordiska företag' },
         { value: 'europe', label: 'Europiska marknader' },
+        { value: 'usa', label: 'Amerikanska marknaden' },
         { value: 'global', label: 'Global spridning' }
       ]
     },
