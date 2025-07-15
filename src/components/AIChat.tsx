@@ -89,11 +89,13 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
   }, [initialStock, initialMessage, hasProcessedInitialMessage, createNewSession]);
 
   useEffect(() => {
-    // Handle navigation state for creating new sessions - but prevent automatic sending
-    if (location.state?.createNewSession && !hasProcessedInitialMessage) {
+    // Handle navigation state for creating new sessions - always create new session when requested
+    if (location.state?.createNewSession) {
       const { sessionName, initialMessage } = location.state;
       
-      // Create session but don't send message automatically
+      console.log('Navigation state detected - creating new session:', { sessionName, initialMessage });
+      
+      // Always create a new session when explicitly requested
       createNewSession(sessionName);
       
       // Pre-fill the input with the initial message instead of sending it
@@ -104,12 +106,10 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
         }, 100);
       }
       
-      setHasProcessedInitialMessage(true);
-      
       // Clear the state to prevent re-triggering
       window.history.replaceState({}, document.title);
     }
-  }, [location.state, createNewSession, hasProcessedInitialMessage]);
+  }, [location.state, createNewSession]);
 
   useEffect(() => {
     const handleCreateStockChat = (event: CustomEvent) => {
