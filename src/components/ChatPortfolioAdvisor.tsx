@@ -342,7 +342,7 @@ const ChatPortfolioAdvisor = () => {
     },
 {
   id: 'portfolioHelp',
-  question: 'Vad vill du fokusera på när vi sätter ihop din portfölj?',
+  question: 'Vad vill du fokusera på när vi skapar din portfölj?',
   key: 'portfolioHelp',
   hasOptions: true,
   showIf: () => conversationData.hasCurrentPortfolio === false && conversationData.isBeginnerInvestor === true,
