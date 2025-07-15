@@ -178,23 +178,6 @@ const PortfolioKeyMetrics: React.FC<PortfolioKeyMetricsProps> = ({ portfolio }) 
             </div>
           </div>
 
-          {/* Total Return */}
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-            <div className="flex items-center gap-2">
-              <Percent className="w-4 h-4 text-green-600" />
-              <span className="text-sm font-medium">Total avkastning</span>
-            </div>
-            <div className="text-right">
-              <div className={`text-lg font-bold flex items-center gap-1 ${getScoreColor(Math.abs(displayMetrics.totalReturnPercentage), 10)}`}>
-                {displayMetrics.totalReturnPercentage > 0 ? '+' : ''}{displayMetrics.totalReturnPercentage}%
-                {getReturnIcon(displayMetrics.totalReturnPercentage)}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {displayMetrics.totalReturn > 0 ? '+' : ''}{formatCurrency(displayMetrics.totalReturn)}
-              </div>
-            </div>
-          </div>
-
           {/* Day Change (if available from performance data) */}
           {!performanceLoading && performance && (
             <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
