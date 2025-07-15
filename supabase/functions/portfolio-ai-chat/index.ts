@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
@@ -30,7 +29,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Get user's risk profile and portfolio data
     const [riskProfileResult, portfolioResult] = await Promise.all([
       supabaseClient
         .from('user_risk_profiles')
@@ -56,24 +54,13 @@ serve(async (req) => {
         .single() : Promise.resolve({ data: null, error: null })
     ]);
 
-    if (riskProfileResult.error) {
-      console.error('Error fetching risk profile:', riskProfileResult.error);
-    }
-
-    if (portfolioResult.error && portfolioId) {
-      console.error('Error fetching portfolio:', portfolioResult.error);
-    }
-
     const riskProfile = riskProfileResult.data;
     const portfolio = portfolioResult.data;
 
-    // Detect if the user is asking for stock recommendations
     const isRequestingRecommendations = detectRecommendationIntent(message);
-    
-    // Build context-aware system prompt
-    const systemPrompt = buildSystemPrompt(riskProfile, portfolio, isRequestingRecommendations);
 
-    // Get recent conversation history for context
+    const systemPrompt = buildSystemPrompt(riskProfile, portfolio, isRequestingRecommendations, contextType);
+
     const historyResult = await supabaseClient
       .from('portfolio_chat_history')
       .select('message, message_type, created_at')
@@ -84,7 +71,6 @@ serve(async (req) => {
 
     const conversationHistory: ChatMessage[] = [];
     if (historyResult.data) {
-      // Reverse to get chronological order and convert to chat format
       const recentHistory = historyResult.data.reverse();
       for (const hist of recentHistory) {
         conversationHistory.push({
@@ -94,14 +80,12 @@ serve(async (req) => {
       }
     }
 
-    // Prepare messages for OpenAI
     const messages: ChatMessage[] = [
       { role: 'system', content: systemPrompt },
       ...conversationHistory,
       { role: 'user', content: message }
     ];
 
-    // Call OpenAI API
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -116,22 +100,11 @@ serve(async (req) => {
       }),
     });
 
-    if (!openAIResponse.ok) {
-      const errorText = await openAIResponse.text();
-      console.error('OpenAI API error:', errorText);
-      throw new Error(`OpenAI API error: ${openAIResponse.status}`);
-    }
-
     const aiData = await openAIResponse.json();
     const aiResponse = aiData.choices[0]?.message?.content;
 
-    if (!aiResponse) {
-      throw new Error('No response from AI');
-    }
-
-    // Save both user message and AI response to chat history
     const timestamp = new Date().toISOString();
-    
+
     const chatHistoryInserts = [
       {
         user_id: userId,
@@ -161,13 +134,7 @@ serve(async (req) => {
       }
     ];
 
-    const { error: historyError } = await supabaseClient
-      .from('portfolio_chat_history')
-      .insert(chatHistoryInserts);
-
-    if (historyError) {
-      console.error('Error saving chat history:', historyError);
-    }
+    await supabaseClient.from('portfolio_chat_history').insert(chatHistoryInserts);
 
     return new Response(JSON.stringify({
       response: aiResponse,
@@ -182,8 +149,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Error in portfolio-ai-chat function:', error);
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       error: error.message,
       details: 'Failed to process AI chat request'
     }), {
@@ -195,80 +161,49 @@ serve(async (req) => {
 
 function detectRecommendationIntent(message: string): boolean {
   const lowerMessage = message.toLowerCase();
-  
-  // Keywords that indicate user wants stock recommendations
-  const recommendationKeywords = [
-    'rekommendera', 'rekommendation', 'föreslå', 'förslag',
-    'vad ska jag köpa', 'vilka aktier', 'vilket bolag',
-    'bra investering', 'köpa aktier', 'investera i',
-    'tips på aktier', 'aktietips', 'bästa aktier',
-    'borde jag köpa', 'ska jag satsa på', 'vart investera',
-    'vilken aktie', 'vilket företag', 'bra köp',
-    'undervärderad', 'tillväxtaktier', 'dividendaktier',
-    'teknologiaktier', 'hållbara aktier', 'gröna aktier'
-  ];
-
-  // Question patterns that indicate recommendation requests
-  const recommendationPatterns = [
-    /vad.*köp/,
-    /vilka.*aktier.*bra/,
-    /föreslå.*aktier/,
-    /rekommendera.*aktier/,
-    /bra.*investering/,
-    /ska.*investera.*i/
-  ];
-
-  // Check for direct keyword matches
-  const hasRecommendationKeyword = recommendationKeywords.some(keyword => 
-    lowerMessage.includes(keyword)
-  );
-
-  // Check for pattern matches
-  const hasRecommendationPattern = recommendationPatterns.some(pattern =>
-    pattern.test(lowerMessage)
-  );
-
-  return hasRecommendationKeyword || hasRecommendationPattern;
+  const keywords = ['rekommendera', 'föreslå', 'aktietips', 'investera i', 'köpa aktier'];
+  return keywords.some(kw => lowerMessage.includes(kw));
 }
 
-function buildSystemPrompt(riskProfile: any, portfolio: any, shouldRecommendStocks: boolean): string {
-  let basePrompt = `Du är en erfaren investeringsrådgivare som hjälper svenska investerare. Du svarar alltid på svenska och ger personliga råd baserat på användarens riskprofil och portfölj.
+function buildSystemPrompt(riskProfile: any, portfolio: any, shouldRecommend: boolean, contextType: string): string {
+  if (contextType === 'initial_strategy') {
+    return `Du är FinLyze, en AI-driven finansiell strateg som kommunicerar på svenska. Ditt jobb är att ta användarens investeringsinformation och returnera en personlig investeringsstrategi och portföljplan.
 
-VIKTIGT: ${shouldRecommendStocks ? 
-  'Användaren efterfrågar specifikt aktie- eller investeringsrekommendationer. Ge konkreta förslag på aktier eller tillgångar som passar deras profil.' : 
-  'Användaren ställer en allmän fråga och efterfrågar INTE specifika aktie-rekommendationer. Fokusera på att svara på deras fråga utan att ge onödiga aktieförslag. Ge bara allmän vägledning och utbildande information.'
-}`;
+Användarens information:
+- Investeringsmål: ${riskProfile?.investment_goals || 'Ej angivet'}
+- Risktolerans: ${riskProfile?.risk_tolerance || 'Ej angivet'}
+- Investeringshorisont: ${riskProfile?.investment_horizon || 'Ej angivet'}
+- Nuvarande portfölj: ${portfolio?.portfolio_holdings?.map(h => `${h.stock_name} (${h.stock_symbol})`).join(', ') || 'Ingen'}
 
-  if (riskProfile) {
-    basePrompt += `\n\nAnvändarens riskprofil:
-- Risktolerans: ${riskProfile.risk_tolerance || 'okänd'}
-- Investeringshorisont: ${riskProfile.investment_horizon || 'okänd'}
-- Investeringskunskap: ${riskProfile.investment_experience || 'okänd'}
-- Ekonomisk situation: ${riskProfile.financial_situation || 'okänd'}`;
-
-    if (riskProfile.investment_goals) {
-      basePrompt += `\n- Investeringsmål: ${riskProfile.investment_goals}`;
-    }
+Instruktioner:
+1. Sammanfatta kort användarens profil
+2. Rekommendera en strategi (t.ex. Tillväxt, Värde, Utdelning, Balanserad, Index, Sektor, Defensiv, Aggressiv)
+3. Föreslå en tillgångsallokering (aktier, obligationer, fonder, kassa etc.)
+4. Nämn 3–5 lämpliga aktietyper eller sektorer (inte tickers)
+5. Avsluta med att tydligt påminna att detta är modellbaserad vägledning, inte licensierad rådgivning.`;
   }
 
-  if (portfolio && portfolio.portfolio_holdings && portfolio.portfolio_holdings.length > 0) {
-    basePrompt += `\n\nNuvarande portfölj:`;
-    portfolio.portfolio_holdings.forEach((holding: any) => {
-      basePrompt += `\n- ${holding.stock_name} (${holding.stock_symbol}): ${holding.quantity} aktier, ${holding.percentage_of_portfolio?.toFixed(1) || 'N/A'}% av portföljen`;
-    });
-  }
+  return `Du är FinCoach, en GPT-4o-baserad AI-rådgivare. Du kommunicerar alltid på svenska. Användaren har skapat en initial portfölj. Din uppgift är att förbättra och optimera den i pågående dialog.
 
-  basePrompt += `\n\nRiktlinjer:
-- Svara alltid på svenska
-- Var personlig och anpassa råden till användarens profil
-- ${shouldRecommendStocks ? 
-    'Ge konkreta aktie-rekommendationer med motivering när användaren frågar efter det. Inkludera alltid sektor för varje rekommenderad aktie i formatet: Företag (SYMBOL) - Sektor: [sektornamn]' : 
-    'Fokusera på att svara på användarens fråga utan att ge onödiga aktieförslag'
-  }
-- Förklara risker och möjligheter tydligt
-- Ge alltid utbildande information
-- Vara uppmuntrande men realistisk
-- Aldrig garantera framtida avkastning`;
+Beteende:
+- Ställ frågor innan du ger råd
+- Analysera diversifiering och risk
+- Anpassa råd till användarens profil
+- Beskriv för- och nackdelar med olika val
 
-  return basePrompt;
+Portfölj:
+${portfolio?.portfolio_holdings?.map(h => `- ${h.stock_name} (${h.stock_symbol}): ${h.quantity} st`).join('\n') || 'Ingen'}
+
+Profil:
+- Mål: ${riskProfile?.investment_goals || 'Ej angivet'}
+- Risk: ${riskProfile?.risk_tolerance || 'Ej angivet'}
+- Horisont: ${riskProfile?.investment_horizon || 'Ej angivet'}
+
+Exempel på vad du kan hjälpa till med:
+- Optimera tillgångsallokering
+- Föreslå sektorförändringar
+- Simulera konservativa vs. aggressiva strategier
+- Analysera obalanser i portföljen
+
+VIKTIGT: Detta är modellbaserad vägledning. Du får aldrig ge personlig finansiell rådgivning.`;
 }
