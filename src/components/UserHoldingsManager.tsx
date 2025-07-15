@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,17 +35,19 @@ const UserHoldingsManager: React.FC = () => {
   };
 
   const handleDiscussHolding = (holdingName: string, symbol?: string) => {
-    const sessionName = `Diskussion: ${holdingName}`;
+    const sessionName = `${holdingName} Analys`;
     const message = `Berätta mer om ${holdingName}${symbol ? ` (${symbol})` : ''}. Vad gör företaget, vilka är deras huvudsakliga affärsområden, och varför skulle det vara en bra investering för min portfölj? Analysera också eventuella risker och möjligheter.`;
     
-    // Navigate to AI chat with state to create new session
-    navigate('/ai-chat', {
-      state: {
-        createNewSession: true,
-        sessionName: sessionName,
-        initialMessage: message
-      }
-    });
+    // Navigate to AI chat with custom event for creating new session
+    navigate('/ai-chat');
+    
+    // Small delay to ensure navigation is complete before dispatching event
+    setTimeout(() => {
+      const event = new CustomEvent('createStockChat', {
+        detail: { sessionName, message }
+      });
+      window.dispatchEvent(event);
+    }, 100);
   };
 
   const formatCurrency = (amount: number) => {

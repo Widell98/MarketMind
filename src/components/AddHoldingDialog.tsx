@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -17,10 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { RefreshCw, TrendingUp } from 'lucide-react';
 import { UserHolding } from '@/hooks/useUserHoldings';
-import { useRealTimePricing } from '@/hooks/useRealTimePricing';
 
 interface AddHoldingDialogProps {
   isOpen: boolean;
@@ -41,15 +37,13 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     holding_type: initialData?.holding_type === 'recommendation' ? 'stock' : (initialData?.holding_type || 'stock'),
     quantity: '',
     purchase_price: initialData?.purchase_price?.toString() || '',
+    current_value: '',
     purchase_date: '',
     sector: initialData?.sector || '',
     market: initialData?.market || '',
     currency: initialData?.currency || 'SEK'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [fetchingPrice, setFetchingPrice] = useState(false);
-  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
-  const { validateAndPriceHolding, getCurrentPrice } = useRealTimePricing();
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -58,43 +52,24 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     }));
   };
 
-  const fetchCurrentPrice = async () => {
-    if (!formData.symbol.trim()) return;
-    
-    setFetchingPrice(true);
-    const price = await getCurrentPrice(formData.symbol.trim(), formData.currency);
-    setCurrentPrice(price);
-    
-    if (price && !formData.purchase_price) {
-      setFormData(prev => ({
-        ...prev,
-        purchase_price: price.toString()
-      }));
-    }
-    setFetchingPrice(false);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
     setIsSubmitting(true);
     
-    let holdingData = {
+    const holdingData = {
       name: formData.name.trim(),
       symbol: formData.symbol.trim() || undefined,
       holding_type: formData.holding_type as UserHolding['holding_type'],
       quantity: formData.quantity ? parseFloat(formData.quantity) : undefined,
       purchase_price: formData.purchase_price ? parseFloat(formData.purchase_price) : undefined,
+      current_value: formData.current_value ? parseFloat(formData.current_value) : undefined,
       purchase_date: formData.purchase_date || undefined,
       sector: formData.sector.trim() || undefined,
       market: formData.market.trim() || undefined,
       currency: formData.currency || 'SEK'
     };
-
-    // Get real-time pricing and calculate current value
-    const pricedData = await validateAndPriceHolding(holdingData);
-    holdingData = { ...holdingData, ...pricedData };
 
     const success = await onAdd(holdingData);
     
@@ -106,6 +81,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         holding_type: 'stock',
         quantity: '',
         purchase_price: '',
+        current_value: '',
         purchase_date: '',
         sector: '',
         market: '',
@@ -125,6 +101,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         holding_type: 'stock',
         quantity: '',
         purchase_price: '',
+        current_value: '',
         purchase_date: '',
         sector: '',
         market: '',
@@ -237,6 +214,17 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
+              <Label htmlFor="current_value">Nuvarande värde</Label>
+              <Input
+                id="current_value"
+                type="number"
+                step="0.01"
+                value={formData.current_value}
+                onChange={(e) => handleInputChange('current_value', e.target.value)}
+                placeholder="t.ex. 15000"
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="purchase_date">Köpdatum</Label>
               <Input
                 id="purchase_date"
@@ -245,6 +233,9 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
                 onChange={(e) => handleInputChange('purchase_date', e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="sector">Sektor</Label>
               <Input
@@ -254,16 +245,15 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
                 placeholder="t.ex. Bilar"
               />
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="market">Marknad</Label>
-            <Input
-              id="market"
-              value={formData.market}
-              onChange={(e) => handleInputChange('market', e.target.value)}
-              placeholder="t.ex. NASDAQ Stockholm"
-            />
+            <div className="space-y-2">
+              <Label htmlFor="market">Marknad</Label>
+              <Input
+                id="market"
+                value={formData.market}
+                onChange={(e) => handleInputChange('market', e.target.value)}
+                placeholder="t.ex. NASDAQ Stockholm"
+              />
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">

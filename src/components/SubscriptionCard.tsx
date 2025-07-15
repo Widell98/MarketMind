@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,27 +35,12 @@ const SubscriptionCard: React.FC = () => {
 
   const handleOpenPortal = async () => {
     try {
-      console.log('Attempting to open customer portal...');
       await openCustomerPortal();
     } catch (error) {
       console.error('Portal error:', error);
-      
-      // Mer specifik felhantering
-      let errorMessage = "Kunde inte öppna kundportalen.";
-      
-      if (error instanceof Error) {
-        if (error.message.includes('authentication') || error.message.includes('inloggad')) {
-          errorMessage = "Du måste vara inloggad för att hantera din prenumeration.";
-        } else if (error.message.includes('customer') || error.message.includes('kund')) {
-          errorMessage = "Kunde inte hitta din kundprofil. Försök uppgradera först.";
-        } else if (error.message.includes('Stripe')) {
-          errorMessage = "Problem med betalningssystemet. Kontakta support.";
-        }
-      }
-      
       toast({
         title: "Fel",
-        description: errorMessage + " Försök igen eller kontakta support om problemet kvarstår.",
+        description: "Kunde inte öppna kundportalen. Du kanske behöver ha en aktiv prenumeration först. Kontakta support om problemet kvarstår.",
         variant: "destructive",
       });
     }

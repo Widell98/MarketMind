@@ -312,6 +312,12 @@ const ChatPortfolioAdvisor = () => {
       ]
     },
     {
+      id: 'specificGoalAmount',
+      question: 'Har du ett specifikt målbelopp eller tidpunkt? (t.ex. 2 miljoner kr till pension år 2045)',
+      key: 'specificGoalAmount',
+      hasOptions: false
+    },
+    {
       id: 'timeHorizon',
       question: 'Hur lång tid tänker du investera pengarna?',
       key: 'timeHorizon',
@@ -340,20 +346,19 @@ const ChatPortfolioAdvisor = () => {
       key: 'monthlyAmount',
       hasOptions: false
     },
-{
-  id: 'portfolioHelp',
-  question: 'Vad vill du fokusera på när vi skapar din portfölj?',
-  key: 'portfolioHelp',
-  hasOptions: true,
-  showIf: () => conversationData.hasCurrentPortfolio === false && conversationData.isBeginnerInvestor === true,
-  options: [
-    { value: 'simple_start', label: 'Kom igång enkelt – jag vill ha en trygg och lättstartad portfölj' },
-    { value: 'diverse_portfolio', label: 'Bred exponering – hjälp mig sprida riskerna över flera sektorer' },
-    { value: 'growth_focused', label: 'Tillväxt – jag vill satsa på bolag med hög framtidspotential' },
-    { value: 'dividend_income', label: 'Utdelning – jag föredrar stabila bolag som ger regelbunden avkastning' }
-  ]
-},
-
+    {
+      id: 'portfolioHelp',
+      question: 'Hur vill du att jag hjälper dig?',
+      key: 'portfolioHelp',
+      hasOptions: true,
+      showIf: () => conversationData.hasCurrentPortfolio === false && conversationData.isBeginnerInvestor === true,
+      options: [
+        { value: 'simple_start', label: 'Hjälp mig börja enkelt' },
+        { value: 'diverse_portfolio', label: 'Skapa diversifierad portfölj' },
+        { value: 'growth_focused', label: 'Fokusera på tillväxt' },
+        { value: 'dividend_income', label: 'Prioritera utdelning' }
+      ]
+    },
     {
       id: 'rebalancing',
       question: 'Hur ofta vill du justera din portfölj?',
@@ -1014,76 +1019,62 @@ const ChatPortfolioAdvisor = () => {
                       )}
 
                       {/* Holdings Input Form */}
-{message.hasHoldingsInput && showHoldingsInput && (
-  <div className="mt-4 space-y-4">
-    <div className="text-sm text-muted-foreground mb-3">
-      <p className="flex items-center gap-2">
-        <Check className="w-4 h-4 text-green-600" />
-        Fyll i dina innehav nedan. Symbol/ticker är valfritt men rekommenderat för bättre analys.
-      </p>
-    </div>
-
-    <div className="max-h-60 overflow-y-auto space-y-3">
-      {holdings.map((holding, index) => (
-        <div key={holding.id} className="grid grid-cols-1 sm:grid-cols-6 gap-2 p-3 bg-background/50 rounded-lg border">
-          <Input
-            placeholder="Företagsnamn *"
-            value={holding.name}
-            onChange={(e) => updateHolding(holding.id, 'name', e.target.value)}
-            className="text-xs sm:text-sm"
-            required
-          />
-          <Input
-            placeholder="Symbol (t.ex. AAPL)"
-            value={holding.symbol}
-            onChange={(e) => updateHolding(holding.id, 'symbol', e.target.value.toUpperCase())}
-            className="text-xs sm:text-sm"
-          />
-          <Input
-            type="number"
-            placeholder="Antal *"
-            value={holding.quantity || ''}
-            onChange={(e) => updateHolding(holding.id, 'quantity', parseInt(e.target.value) || 0)}
-            className="text-xs sm:text-sm"
-            required
-            min="1"
-          />
-          <Input
-            type="number"
-            placeholder={`Köppris (${holding.currency || 'SEK'}) *`}
-            value={holding.purchasePrice || ''}
-            onChange={(e) =>
-              updateHolding(holding.id, 'purchasePrice', parseFloat(e.target.value) || 0)
-            }
-            className="text-xs sm:text-sm"
-            required
-            min="0"
-            step="0.01"
-          />
-          <select
-            value={holding.currency || 'SEK'}
-            onChange={(e) => updateHolding(holding.id, 'currency', e.target.value)}
-            className="text-xs sm:text-sm rounded-md border border-input bg-background px-2 py-1"
-          >
-            <option value="SEK">SEK</option>
-            <option value="EUR">EUR</option>
-            <option value="USD">USD</option>
-          </select>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => removeHolding(holding.id)}
-            className="h-8 sm:h-9 px-2 text-red-600 hover:text-red-700"
-            disabled={holdings.length === 1}
-          >
-            <Trash2 className="w-3 h-3" />
-          </Button>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
-
+                      {message.hasHoldingsInput && showHoldingsInput && (
+                        <div className="mt-4 space-y-4">
+                          <div className="text-sm text-muted-foreground mb-3">
+                            <p className="flex items-center gap-2">
+                              <Check className="w-4 h-4 text-green-600" />
+                              Fyll i dina innehav nedan. Symbol/ticker är valfritt men rekommenderat för bättre analys.
+                            </p>
+                          </div>
+                          
+                          <div className="max-h-60 overflow-y-auto space-y-3">
+                            {holdings.map((holding, index) => (
+                              <div key={holding.id} className="grid grid-cols-1 sm:grid-cols-5 gap-2 p-3 bg-background/50 rounded-lg border">
+                                <Input
+                                  placeholder="Företagsnamn *"
+                                  value={holding.name}
+                                  onChange={(e) => updateHolding(holding.id, 'name', e.target.value)}
+                                  className="text-xs sm:text-sm"
+                                  required
+                                />
+                                <Input
+                                  placeholder="Symbol (t.ex. AAPL)"
+                                  value={holding.symbol}
+                                  onChange={(e) => updateHolding(holding.id, 'symbol', e.target.value.toUpperCase())}
+                                  className="text-xs sm:text-sm"
+                                />
+                                <Input
+                                  type="number"
+                                  placeholder="Antal *"
+                                  value={holding.quantity || ''}
+                                  onChange={(e) => updateHolding(holding.id, 'quantity', parseInt(e.target.value) || 0)}
+                                  className="text-xs sm:text-sm"
+                                  required
+                                  min="1"
+                                />
+                                <Input
+                                  type="number"
+                                  placeholder="Köppris (SEK) *"
+                                  value={holding.purchasePrice || ''}
+                                  onChange={(e) => updateHolding(holding.id, 'purchasePrice', parseFloat(e.target.value) || 0)}
+                                  className="text-xs sm:text-sm"
+                                  required
+                                  min="0"
+                                  step="0.01"
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => removeHolding(holding.id)}
+                                  className="h-8 sm:h-9 px-2 text-red-600 hover:text-red-700"
+                                  disabled={holdings.length === 1}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
                           
                           {/* Holdings Summary */}
                           {holdings.some(h => h.name && h.quantity > 0 && h.purchasePrice > 0) && (
@@ -1135,8 +1126,8 @@ const ChatPortfolioAdvisor = () => {
                     <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
                   </div>
                 </div>
-            </div>
               )}
+            </div>
           ))}
 
           {/* Show AI response when complete */}

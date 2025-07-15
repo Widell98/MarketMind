@@ -113,24 +113,6 @@ export const useUserHoldings = () => {
           holding_type: data.holding_type as UserHolding['holding_type']
         };
         
-        // Record initial performance entry for actual holdings
-        if (typedData.holding_type !== 'recommendation' && typedData.current_value && typedData.purchase_price && typedData.quantity) {
-          try {
-            await supabase
-              .from('portfolio_performance_history')
-              .insert({
-                user_id: user.id,
-                holding_id: typedData.id,
-                date: new Date().toISOString().split('T')[0],
-                price_per_unit: typedData.purchase_price,
-                total_value: typedData.current_value,
-                currency: typedData.currency
-              });
-          } catch (error) {
-            console.error('Error recording initial performance:', error);
-          }
-        }
-        
         setHoldings(prev => [typedData, ...prev]);
         
         if (typedData.holding_type === 'recommendation') {

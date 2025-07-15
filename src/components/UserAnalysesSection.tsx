@@ -8,11 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Edit, Trash2, Eye, Heart, Calendar, FileText, Plus } from 'lucide-react';
+import { Edit, Trash2, Eye, Heart, Calendar, FileText } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
-import CreateAnalysisDialog from '@/components/CreateAnalysisDialog';
 
 const UserAnalysesSection = () => {
   const { user } = useAuth();
@@ -86,11 +85,9 @@ const UserAnalysesSection = () => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center">
-              <FileText className="w-5 h-5 mr-2" />
-              Mina Analyser
-            </div>
+          <CardTitle className="flex items-center">
+            <FileText className="w-5 h-5 mr-2" />
+            Mina Analyser
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -106,20 +103,16 @@ const UserAnalysesSection = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center">
-            <FileText className="w-5 h-5 mr-2" />
-            Mina Analyser ({analyses?.length || 0})
-          </div>
-          <CreateAnalysisDialog />
+        <CardTitle className="flex items-center">
+          <FileText className="w-5 h-5 mr-2" />
+          Mina Analyser ({analyses?.length || 0})
         </CardTitle>
       </CardHeader>
       <CardContent>
         {!analyses || analyses.length === 0 ? (
           <div className="text-center py-8">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500 mb-4">Du har inte skapat några analyser än.</p>
-            <CreateAnalysisDialog />
+            <p className="text-gray-500">Du har inte skapat några analyser än.</p>
           </div>
         ) : (
           <div className="space-y-4">
