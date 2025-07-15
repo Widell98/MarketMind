@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ChevronLeft, ChevronRight, Clock, CheckCircle, Eye } from 'lucide-react';
 import { StockCaseImageHistory } from '@/hooks/useStockCaseImageHistory';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ImageHistoryNavigationProps {
   images: StockCaseImageHistory[];
@@ -12,6 +13,7 @@ interface ImageHistoryNavigationProps {
   onIndexChange: (index: number) => void;
   onSetCurrent?: (imageId: string) => void;
   canEdit?: boolean;
+  caseOwnerId?: string; // Add this prop to identify the case owner
 }
 
 const ImageHistoryNavigation: React.FC<ImageHistoryNavigationProps> = ({
@@ -19,11 +21,17 @@ const ImageHistoryNavigation: React.FC<ImageHistoryNavigationProps> = ({
   currentIndex,
   onIndexChange,
   onSetCurrent,
-  canEdit = false
+  canEdit = false,
+  caseOwnerId
 }) => {
+  const { user } = useAuth();
+  
   if (images.length <= 1) return null;
 
   const currentImage = images[currentIndex];
+  
+  // Check if current user is the case owner
+  const isOwner = user && caseOwnerId && user.id === caseOwnerId;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -144,7 +152,8 @@ const ImageHistoryNavigation: React.FC<ImageHistoryNavigationProps> = ({
         </Button>
       </div>
 
-      {canEdit && onSetCurrent && !currentImage?.is_current && (
+      {/* Only show "Mark as current" button if user is the case owner */}
+      {isOwner && onSetCurrent && !currentImage?.is_current && (
         <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-600">
           <Button
             variant="outline"

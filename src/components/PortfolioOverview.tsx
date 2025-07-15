@@ -71,6 +71,7 @@ import { useNavigate } from 'react-router-dom';
 import AddHoldingDialog from './AddHoldingDialog';
 import EditHoldingDialog from './EditHoldingDialog';
 import CurrentHoldingsPrices from './CurrentHoldingsPrices';
+import PortfolioKeyMetrics from './PortfolioKeyMetrics';
 
 interface PortfolioOverviewProps {
   portfolio: any;
@@ -526,35 +527,32 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
           </Card>
         </div>
 
-        {/* Market Exposure and Current Prices Side by Side */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* Sector Exposure */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Building2 className="w-5 h-5 text-orange-600" />
-                Sektorexponering
-              </CardTitle>
-              <CardDescription>Fördelning över olika industrisektorer</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <LogIn className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
-                <h3 className="text-lg font-medium mb-2 text-foreground">Inloggning krävs</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Logga in för att se din sektorfördelning och portföljanalys
-                </p>
-                <Button onClick={() => navigate('/auth')}>
-                  <LogIn className="w-4 h-4 mr-2" />
-                  Logga in
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Sector Exposure - Moved higher for logged out users */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Building2 className="w-5 h-5 text-orange-600" />
+              Sektorexponering
+            </CardTitle>
+            <CardDescription>Fördelning över olika industrisektorer</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <LogIn className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+              <h3 className="text-lg font-medium mb-2 text-foreground">Inloggning krävs</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Logga in för att se din sektorfördelning och portföljanalys
+              </p>
+              <Button onClick={() => navigate('/auth')}>
+                <LogIn className="w-4 h-4 mr-2" />
+                Logga in
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Current Holdings Prices */}
-          <CurrentHoldingsPrices />
-        </div>
+        {/* Current Holdings Prices */}
+        <CurrentHoldingsPrices />
 
         {/* User's Current Holdings - Login Required */}
         <Card>
@@ -676,117 +674,75 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Riskjusterad avkastning</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">1.34</div>
-            <p className="text-xs text-muted-foreground">
-              Sharpe ratio (bra balans)
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Diversifiering</CardTitle>
-            <PieChart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">85%</div>
-            <p className="text-xs text-muted-foreground">
-              Välspridd över sektorer
-            </p>
-          </CardContent>
-        </Card>
+      {/* Portfolio Key Metrics */}
+      <PortfolioKeyMetrics portfolio={portfolio} />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Riskpoäng</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{portfolio?.risk_score || 6}/10</div>
-            <p className="text-xs text-muted-foreground">
-              Måttlig risk
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Market Exposure and Current Prices Side by Side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        {/* Sector Exposure */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-              <Building2 className="w-5 h-5 text-orange-600" />
-              Sektorexponering
-            </CardTitle>
-            <CardDescription>Fördelning över olika industrisektorer</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {exposureData.sectorData.length > 0 ? (
-              <div className="space-y-4">
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPieChart>
-                      <Pie
-                        data={exposureData.sectorData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={40}
-                        outerRadius={80}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        {exposureData.sectorData.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={sectorColors[index % sectorColors.length]} 
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        formatter={(value: number, name: string) => [
-                          `${formatCurrency(value)} (${exposureData.sectorData.find(d => d.name === name)?.percentage}%)`,
-                          'Värde'
-                        ]}
-                      />
-                    </RechartsPieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="space-y-2">
-                  {exposureData.sectorData.map((sector, index) => (
-                    <div key={sector.name} className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: sectorColors[index % sectorColors.length] }}
+      {/* Sector Exposure - Moved higher in hierarchy */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Building2 className="w-5 h-5 text-orange-600" />
+            Sektorexponering
+          </CardTitle>
+          <CardDescription>Fördelning över olika industrisektorer</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {exposureData.sectorData.length > 0 ? (
+            <div className="space-y-4">
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <Pie
+                      data={exposureData.sectorData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={80}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {exposureData.sectorData.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={sectorColors[index % sectorColors.length]} 
                         />
-                        <span>{sector.name}</span>
-                      </div>
-                      <span className="font-medium">{sector.percentage}%</span>
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value: number, name: string) => [
+                        `${formatCurrency(value)} (${exposureData.sectorData.find(d => d.name === name)?.percentage}%)`,
+                        'Värde'
+                      ]}
+                    />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="space-y-2">
+                {exposureData.sectorData.map((sector, index) => (
+                  <div key={sector.name} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: sectorColors[index % sectorColors.length] }}
+                      />
+                      <span>{sector.name}</span>
                     </div>
-                  ))}
-                </div>
+                    <span className="font-medium">{sector.percentage}%</span>
+                  </div>
+                ))}
               </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Building2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p>Lägg till innehav för att se sektorfördelning</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Building2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p>Lägg till innehav för att se sektorfördelning</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Current Holdings Prices */}
-        <CurrentHoldingsPrices />
-      </div>
+      {/* Current Holdings Prices */}
+      <CurrentHoldingsPrices />
 
       {/* User's Current Holdings */}
       <Card>
@@ -870,29 +826,26 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => handleEditHolding(holding)}
-                            className="h-8 px-2 text-xs font-medium bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300 transition-colors"
+                            className="h-7 px-2 text-xs bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
                           >
-                            <Edit className="w-3 h-3 mr-1" />
-                            Redigera
+                            <Edit className="w-3 h-3" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleStockChat(holding.name, holding.symbol)}
-                            className="h-8 px-2 text-xs font-medium bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300 transition-colors"
+                            className="h-7 px-2 text-xs bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
                           >
-                            <MessageCircle className="w-3 h-3 mr-1" />
-                            Diskutera
+                            <MessageCircle className="w-3 h-3" />
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 px-2 text-xs font-medium bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 transition-colors"
+                                className="h-7 px-2 text-xs bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
                               >
-                                <Trash2 className="w-3 h-3 mr-1" />
-                                Radera
+                                <Trash2 className="w-3 h-3" />
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
@@ -1043,29 +996,26 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => handleAddFromRecommendation(recommendation)}
-                            className="h-8 px-2 text-xs font-medium bg-white hover:bg-green-50 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300 transition-colors"
+                            className="h-7 px-2 text-xs bg-white hover:bg-green-50 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300"
                           >
-                            <ShoppingCart className="w-3 h-3 mr-1" />
-                            Köp
+                            <ShoppingCart className="w-3 h-3" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleStockChat(recommendation.name, recommendation.symbol)}
-                            className="h-8 px-2 text-xs font-medium bg-white hover:bg-purple-50 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300 transition-colors"
+                            className="h-7 px-2 text-xs bg-white hover:bg-purple-50 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300"
                           >
-                            <MessageCircle className="w-3 h-3 mr-1" />
-                            Diskutera
+                            <MessageCircle className="w-3 h-3" />
                           </Button>
                           {recommendation.id && recommendation.id.startsWith('portfolio-rec-') === false && (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => deleteHolding(recommendation.id)}
-                              className="h-8 px-2 text-xs font-medium bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 transition-colors"
+                              className="h-7 px-2 text-xs bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
                             >
-                              <X className="w-3 h-3 mr-1" />
-                              Radera
+                              <X className="w-3 h-3" />
                             </Button>
                           )}
                         </div>
