@@ -312,12 +312,6 @@ const ChatPortfolioAdvisor = () => {
       ]
     },
     {
-      id: 'specificGoalAmount',
-      question: 'Har du ett specifikt målbelopp eller tidpunkt? (t.ex. 2 miljoner kr till pension år 2045)',
-      key: 'specificGoalAmount',
-      hasOptions: false
-    },
-    {
       id: 'timeHorizon',
       question: 'Hur lång tid tänker du investera pengarna?',
       key: 'timeHorizon',
@@ -346,19 +340,20 @@ const ChatPortfolioAdvisor = () => {
       key: 'monthlyAmount',
       hasOptions: false
     },
-    {
-      id: 'portfolioHelp',
-      question: 'Hur vill du att jag hjälper dig?',
-      key: 'portfolioHelp',
-      hasOptions: true,
-      showIf: () => conversationData.hasCurrentPortfolio === false && conversationData.isBeginnerInvestor === true,
-      options: [
-        { value: 'simple_start', label: 'Hjälp mig börja enkelt' },
-        { value: 'diverse_portfolio', label: 'Skapa diversifierad portfölj' },
-        { value: 'growth_focused', label: 'Fokusera på tillväxt' },
-        { value: 'dividend_income', label: 'Prioritera utdelning' }
-      ]
-    },
+{
+  id: 'portfolioHelp',
+  question: 'Vad vill du fokusera på när vi sätter ihop din portfölj?',
+  key: 'portfolioHelp',
+  hasOptions: true,
+  showIf: () => conversationData.hasCurrentPortfolio === false && conversationData.isBeginnerInvestor === true,
+  options: [
+    { value: 'simple_start', label: 'Kom igång enkelt – jag vill ha en trygg och lättstartad portfölj' },
+    { value: 'diverse_portfolio', label: 'Bred exponering – hjälp mig sprida riskerna över flera sektorer' },
+    { value: 'growth_focused', label: 'Tillväxt – jag vill satsa på bolag med hög framtidspotential' },
+    { value: 'dividend_income', label: 'Utdelning – jag föredrar stabila bolag som ger regelbunden avkastning' }
+  ]
+},
+
     {
       id: 'rebalancing',
       question: 'Hur ofta vill du justera din portfölj?',
