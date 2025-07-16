@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,8 @@ import {
   Trash2,
   Package,
   MessageSquare,
-  Plus
+  Plus,
+  Banknote
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -21,11 +23,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
+import AddCashDialog from '@/components/AddCashDialog';
 
 const UserHoldingsManager: React.FC = () => {
   const { actualHoldings, loading, deleteHolding } = useUserHoldings();
   const { performance } = usePortfolioPerformance();
   const navigate = useNavigate();
+  const [showAddCashDialog, setShowAddCashDialog] = useState(false);
 
   const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
     console.log(`Deleting holding: ${holdingName} (${holdingId})`);
@@ -59,152 +63,178 @@ const UserHoldingsManager: React.FC = () => {
   };
 
   return (
-    <Card className="h-fit">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Package className="w-5 h-5 text-blue-600" />
-          Dina Nuvarande Innehav
-        </CardTitle>
-        <CardDescription>
-          {loading 
-            ? "Laddar dina innehav..."
-            : actualHoldings.length > 0 
-              ? `Hantera dina aktieinnehav (${actualHoldings.length} st)`
-              : "Lägg till dina befintliga aktier och fonder för bättre portföljanalys"
-          }
-        </CardDescription>
-        {performance.totalPortfolioValue > 0 && (
-          <div className="mt-2 p-3 bg-muted rounded-lg">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Investerat värde:</span>
-                <div className="font-semibold text-foreground">
-                  {formatCurrency(performance.totalValue)}
+    <>
+      <Card className="h-fit">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="w-5 h-5 text-blue-600" />
+            Dina Nuvarande Innehav
+          </CardTitle>
+          <CardDescription>
+            {loading 
+              ? "Laddar dina innehav..."
+              : actualHoldings.length > 0 
+                ? `Hantera dina aktieinnehav (${actualHoldings.length} st)`
+                : "Lägg till dina befintliga aktier och fonder för bättre portföljanalys"
+            }
+          </CardDescription>
+          {performance.totalPortfolioValue > 0 && (
+            <div className="mt-2 p-3 bg-muted rounded-lg">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Investerat värde:</span>
+                  <div className="font-semibold text-foreground">
+                    {formatCurrency(performance.totalValue)}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Kassa:</span>
-                <div className="font-semibold text-green-600">
-                  {formatCurrency(performance.totalCash)}
+                <div>
+                  <span className="text-muted-foreground">Kassa:</span>
+                  <div className="font-semibold text-green-600">
+                    {formatCurrency(performance.totalCash)}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Total portfölj:</span>
-                <div className="font-semibold text-foreground">
-                  {formatCurrency(performance.totalPortfolioValue)}
+                <div>
+                  <span className="text-muted-foreground">Total portfölj:</span>
+                  <div className="font-semibold text-foreground">
+                    {formatCurrency(performance.totalPortfolioValue)}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Kassaandel:</span>
-                <div className="font-semibold text-muted-foreground">
-                  {performance.cashPercentage.toFixed(1)}%
+                <div>
+                  <span className="text-muted-foreground">Kassaandel:</span>
+                  <div className="font-semibold text-muted-foreground">
+                    {performance.cashPercentage.toFixed(1)}%
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {loading ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <div className="flex items-center justify-center gap-2">
-              <Package className="w-4 h-4 animate-pulse" />
-              <span>Laddar innehav...</span>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <div className="flex items-center justify-center gap-2">
+                <Package className="w-4 h-4 animate-pulse" />
+                <span>Laddar innehav...</span>
+              </div>
             </div>
-          </div>
-        ) : actualHoldings.length === 0 ? (
-          <div className="text-center py-8">
-            <Package className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
-            <h3 className="text-lg font-medium mb-2 text-foreground">Inga innehav registrerade</h3>
-            <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
-              Lägg till dina nuvarande aktier och fonder för att få en komplett bild av din portfölj och bättre AI-rekommendationer.
-            </p>
-            <Button className="flex items-center gap-2" onClick={() => navigate('/ai-chat')}>
-              <Plus className="w-4 h-4" />
-              Lägg till innehav
-            </Button>
-          </div>
-        ) : (
-          actualHoldings.map(holding => (
-            <div key={holding.id} className="relative bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-sm">
-              <div className="flex items-center justify-between p-4">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-gray-900">{holding.name}</h3>
-                    {holding.symbol && (
-                      <span className="font-mono bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-medium">
-                        {holding.symbol}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-sm text-gray-600 flex items-center gap-3">
-                    {holding.quantity && (
-                      <span className="flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
-                        {holding.quantity} aktier
-                      </span>
-                    )}
-                    {holding.purchase_price && (
-                      <span className="flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
-                        Köpt för {formatCurrency(holding.purchase_price)}
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
-                      {holding.holding_type}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="flex-shrink-0 ml-4 flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-200 hover:border-blue-300"
-                    onClick={() => handleDiscussHolding(holding.name, holding.symbol)}
-                  >
-                    <MessageSquare className="w-4 h-4 mr-1" />
-                    Diskutera
-                  </Button>
-                  
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
+          ) : actualHoldings.length === 0 ? (
+            <div className="text-center py-8">
+              <Package className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+              <h3 className="text-lg font-medium mb-2 text-foreground">Inga innehav registrerade</h3>
+              <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+                Lägg till dina nuvarande aktier och fonder för att få en komplett bild av din portfölj och bättre AI-rekommendationer.
+              </p>
+              <div className="flex gap-2 justify-center">
+                <Button className="flex items-center gap-2" onClick={() => navigate('/ai-chat')}>
+                  <Plus className="w-4 h-4" />
+                  Lägg till innehav
+                </Button>
+                <Button variant="outline" className="flex items-center gap-2" onClick={() => setShowAddCashDialog(true)}>
+                  <Banknote className="w-4 h-4" />
+                  Lägg till kassa
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex gap-2 mb-4">
+                <Button size="sm" className="flex items-center gap-2" onClick={() => navigate('/ai-chat')}>
+                  <Plus className="w-4 h-4" />
+                  Lägg till innehav
+                </Button>
+                <Button size="sm" variant="outline" className="flex items-center gap-2" onClick={() => setShowAddCashDialog(true)}>
+                  <Banknote className="w-4 h-4" />
+                  Lägg till kassa
+                </Button>
+              </div>
+              
+              {actualHoldings.map(holding => (
+                <div key={holding.id} className="relative bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-sm">
+                  <div className="flex items-center justify-between p-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-gray-900">{holding.name}</h3>
+                        {holding.symbol && (
+                          <span className="font-mono bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-medium">
+                            {holding.symbol}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-600 flex items-center gap-3">
+                        {holding.quantity && (
+                          <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                            {holding.quantity} aktier
+                          </span>
+                        )}
+                        {holding.purchase_price && (
+                          <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                            Köpt för {formatCurrency(holding.purchase_price)}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                          {holding.holding_type}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex-shrink-0 ml-4 flex gap-2">
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 hover:border-red-300"
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-200 hover:border-blue-300"
+                        onClick={() => handleDiscussHolding(holding.name, holding.symbol)}
                       >
-                        <Trash2 className="w-4 h-4 mr-1" />
-                        Radera
+                        <MessageSquare className="w-4 h-4 mr-1" />
+                        Diskutera
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Radera innehav</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Är du säker på att du vill radera <strong>{holding.name}</strong> från dina innehav? 
-                          Denna åtgärd kan inte ångras.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleDeleteHolding(holding.id, holding.name)}
-                          className="bg-red-600 hover:bg-red-700"
-                        >
-                          Radera
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 hover:border-red-300"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Radera
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Radera innehav</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Är du säker på att du vill radera <strong>{holding.name}</strong> från dina innehav? 
+                              Denna åtgärd kan inte ångras.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteHolding(holding.id, holding.name)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              Radera
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))
-        )}
-      </CardContent>
-    </Card>
+              ))}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <AddCashDialog 
+        isOpen={showAddCashDialog}
+        onClose={() => setShowAddCashDialog(false)}
+      />
+    </>
   );
 };
 
