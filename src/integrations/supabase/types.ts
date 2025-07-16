@@ -1071,6 +1071,7 @@ export type Database = {
           current_value: number | null
           holding_type: string
           id: string
+          is_cash: boolean | null
           market: string | null
           name: string
           purchase_date: string | null
@@ -1087,6 +1088,7 @@ export type Database = {
           current_value?: number | null
           holding_type: string
           id?: string
+          is_cash?: boolean | null
           market?: string | null
           name: string
           purchase_date?: string | null
@@ -1103,6 +1105,7 @@ export type Database = {
           current_value?: number | null
           holding_type?: string
           id?: string
+          is_cash?: boolean | null
           market?: string | null
           name?: string
           purchase_date?: string | null
@@ -1139,6 +1142,8 @@ export type Database = {
       user_portfolios: {
         Row: {
           asset_allocation: Json
+          cash_balance: number | null
+          cash_currency: string | null
           created_at: string
           expected_return: number | null
           id: string
@@ -1155,6 +1160,8 @@ export type Database = {
         }
         Insert: {
           asset_allocation: Json
+          cash_balance?: number | null
+          cash_currency?: string | null
           created_at?: string
           expected_return?: number | null
           id?: string
@@ -1171,6 +1178,8 @@ export type Database = {
         }
         Update: {
           asset_allocation?: Json
+          cash_balance?: number | null
+          cash_currency?: string | null
           created_at?: string
           expected_return?: number | null
           id?: string

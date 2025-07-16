@@ -20,9 +20,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useUserHoldings } from '@/hooks/useUserHoldings';
+import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 
 const UserHoldingsManager: React.FC = () => {
   const { actualHoldings, loading, deleteHolding } = useUserHoldings();
+  const { performance } = usePortfolioPerformance();
   const navigate = useNavigate();
 
   const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
@@ -71,6 +73,36 @@ const UserHoldingsManager: React.FC = () => {
               : "Lägg till dina befintliga aktier och fonder för bättre portföljanalys"
           }
         </CardDescription>
+        {performance.totalPortfolioValue > 0 && (
+          <div className="mt-2 p-3 bg-muted rounded-lg">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">Investerat värde:</span>
+                <div className="font-semibold text-foreground">
+                  {formatCurrency(performance.totalValue)}
+                </div>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Kassa:</span>
+                <div className="font-semibold text-green-600">
+                  {formatCurrency(performance.totalCash)}
+                </div>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Total portfölj:</span>
+                <div className="font-semibold text-foreground">
+                  {formatCurrency(performance.totalPortfolioValue)}
+                </div>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Kassaandel:</span>
+                <div className="font-semibold text-muted-foreground">
+                  {performance.cashPercentage.toFixed(1)}%
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         {loading ? (
