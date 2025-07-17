@@ -18,7 +18,7 @@ export interface UserHolding {
   currency: string;
   created_at: string;
   updated_at: string;
-  allocation?: number; // Added allocation property
+  allocation?: number;
 }
 
 export const useUserHoldings = () => {
@@ -106,22 +106,31 @@ export const useUserHoldings = () => {
           'riskhantering',
           'portföljstrategi',
           'allokeringsstrategi',
-          'investeringsstrategi'
+          'investeringsstrategi',
+          'strategi',
+          'optimering',
+          'sparande',
+          'plan',
+          'metod',
+          'teknik',
+          'approach',
+          'strategy'
         ];
         
         const lowerName = name.toLowerCase();
         
         // Check if it matches any invalid pattern
         if (invalidPatterns.some(pattern => lowerName.includes(pattern))) {
+          console.log(`Filtering out strategy/concept item: ${name}`);
           return false;
         }
         
         // Must have reasonable length (not too short, not too long)
-        if (name.length < 2 || name.length > 50) {
+        if (name.length < 2 || name.length > 60) {
+          console.log(`Filtering out item with invalid length: ${name}`);
           return false;
         }
         
-        // Should have a symbol if it's a real stock/fund, or be a known fund name
         return true;
       };
 
@@ -132,7 +141,6 @@ export const useUserHoldings = () => {
         .filter(recommendation => {
           // Skip invalid recommendations (strategy names, not actual stocks/funds)
           if (!isValidStockOrFund(recommendation.name)) {
-            console.log(`Filtering out non-stock/fund item: ${recommendation.name}`);
             return false;
           }
           
@@ -208,7 +216,8 @@ export const useUserHoldings = () => {
       if (data) {
         const typedData: UserHolding = {
           ...data,
-          holding_type: data.holding_type as UserHolding['holding_type']
+          holding_type: data.holding_type as UserHolding['holding_type'],
+          allocation: data.allocation ? Number(data.allocation) : undefined
         };
         
         // Record initial performance entry for actual holdings
@@ -277,7 +286,8 @@ export const useUserHoldings = () => {
       if (data) {
         const typedData: UserHolding = {
           ...data,
-          holding_type: data.holding_type as UserHolding['holding_type']
+          holding_type: data.holding_type as UserHolding['holding_type'],
+          allocation: data.allocation ? Number(data.allocation) : undefined
         };
         
         setHoldings(prev => prev.map(h => h.id === id ? typedData : h));

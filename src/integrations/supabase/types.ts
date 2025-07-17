@@ -1066,6 +1066,7 @@ export type Database = {
       }
       user_holdings: {
         Row: {
+          allocation: number | null
           created_at: string
           currency: string | null
           current_value: number | null
@@ -1083,6 +1084,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          allocation?: number | null
           created_at?: string
           currency?: string | null
           current_value?: number | null
@@ -1100,6 +1102,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          allocation?: number | null
           created_at?: string
           currency?: string | null
           current_value?: number | null
