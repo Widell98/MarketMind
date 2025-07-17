@@ -50,6 +50,85 @@ export const useConversationalPortfolio = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  // Extract stock recommendations from AI response text
+  const extractStockRecommendations = (aiResponse: string) => {
+    const recommendations: Array<{
+      name: string;
+      symbol?: string;
+      sector?: string;
+      reasoning?: string;
+    }> = [];
+
+    // Common patterns for stock mentions in Swedish
+    const stockPatterns = [
+      // Pattern: "Castellum (CAST)" or "Evolution Gaming (EVO)"
+      /([A-ZÅÄÖ][a-zåäö\s]+)\s*\(([A-Z]+)\)/g,
+      // Pattern: "Avanza Global" followed by ISIN
+      /([A-ZÅÄÖ][a-zåäö\s]+)(?:\s*(?:ISIN:\s*)?([A-Z0-9]+))?/g
+    ];
+
+    // Known Swedish companies and their symbols
+    const knownStocks: Record<string, { symbol: string; sector: string }> = {
+      'Castellum': { symbol: 'CAST', sector: 'Fastighet' },
+      'Evolution Gaming': { symbol: 'EVO', sector: 'Teknologi' },
+      'Avanza Global': { symbol: 'AVZ', sector: 'Fond' },
+      'Investor': { symbol: 'INVE-B', sector: 'Investmentbolag' },
+      'Swedbank': { symbol: 'SWED-A', sector: 'Bank' },
+      'Handelsbanken': { symbol: 'SHB-A', sector: 'Bank' },
+      'Volvo': { symbol: 'VOLV-B', sector: 'Fordon' },
+      'Ericsson': { symbol: 'ERIC-B', sector: 'Telekom' },
+      'H&M': { symbol: 'HM-B', sector: 'Detaljhandel' },
+      'Atlas Copco': { symbol: 'ATCO-A', sector: 'Industri' },
+      'Kinnevik': { symbol: 'KINV-B', sector: 'Investmentbolag' },
+      'Hexagon': { symbol: 'HEXA-B', sector: 'Teknologi' }
+    };
+
+    // Extract explicit mentions with symbols
+    stockPatterns.forEach(pattern => {
+      let match;
+      while ((match = pattern.exec(aiResponse)) !== null) {
+        const name = match[1]?.trim();
+        const symbolOrISIN = match[2]?.trim();
+        
+        if (name && name.length > 2) {
+          // Check if it's a known stock
+          const knownStock = knownStocks[name];
+          if (knownStock) {
+            recommendations.push({
+              name,
+              symbol: knownStock.symbol,
+              sector: knownStock.sector,
+              reasoning: `Rekommenderad av AI för din portfölj`
+            });
+          } else if (symbolOrISIN && symbolOrISIN.length <= 10) {
+            // Likely a stock symbol
+            recommendations.push({
+              name,
+              symbol: symbolOrISIN,
+              sector: 'Okänd',
+              reasoning: `Rekommenderad av AI för din portfölj`
+            });
+          }
+        }
+      }
+    });
+
+    // Also check for known company names without parentheses
+    Object.entries(knownStocks).forEach(([companyName, details]) => {
+      if (aiResponse.includes(companyName) && !recommendations.some(r => r.name === companyName)) {
+        recommendations.push({
+          name: companyName,
+          symbol: details.symbol,
+          sector: details.sector,
+          reasoning: `Rekommenderad av AI för din portfölj`
+        });
+      }
+    });
+
+    console.log('Extracted stock recommendations:', recommendations);
+    return recommendations;
+  };
+
   const buildEnhancedAIPrompt = (conversationData: ConversationData) => {
     let prompt = `Skapa en detaljerad och personlig portföljstrategi baserat på följande omfattande konsultation:
 
@@ -351,11 +430,46 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
         return null;
       }
 
+      console.log('AI Response received:', aiResponse.response);
+
+      // Extract stock recommendations from AI response
+      const stockRecommendations = extractStockRecommendations(aiResponse.response || '');
+      console.log('Extracted stock recommendations:', stockRecommendations);
+
+      // Save stock recommendations to user_holdings table
+      if (stockRecommendations.length > 0) {
+        const holdingsToInsert = stockRecommendations.map(stock => ({
+          user_id: user.id,
+          holding_type: 'recommendation',
+          name: stock.name,
+          symbol: stock.symbol || null,
+          quantity: 0,
+          current_value: 0,
+          purchase_price: 0,
+          purchase_date: new Date().toISOString().split('T')[0],
+          sector: stock.sector || null,
+          market: 'Swedish',
+          currency: 'SEK',
+          is_cash: false
+        }));
+
+        const { error: holdingsError } = await supabase
+          .from('user_holdings')
+          .insert(holdingsToInsert);
+
+        if (holdingsError) {
+          console.error('Error saving stock recommendations:', holdingsError);
+        } else {
+          console.log('Successfully saved stock recommendations to user_holdings');
+        }
+      }
+
       // Create enhanced asset allocation with all conversation data and AI analysis
       const assetAllocation = {
         conversation_data: JSON.parse(JSON.stringify(conversationData)),
         ai_strategy: aiResponse.response,
         ai_prompt_used: enhancedPrompt,
+        stock_recommendations: stockRecommendations,
         risk_profile_summary: {
           experience_level: conversationData.isBeginnerInvestor ? 'beginner' : 'advanced',
           risk_comfort: conversationData.volatilityComfort || 5,
@@ -379,7 +493,7 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
         risk_profile_id: riskProfile.id,
         portfolio_name: 'AI-Genererad Personlig Portfölj',
         asset_allocation: assetAllocation,
-        recommended_stocks: [],
+        recommended_stocks: stockRecommendations,
         total_value: 0,
         expected_return: conversationData.isBeginnerInvestor ? 0.08 : 0.10,
         risk_score: conversationData.volatilityComfort || (conversationData.isBeginnerInvestor ? 3 : 5),
@@ -411,7 +525,8 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
         aiResponse: aiResponse.response,
         portfolio,
         riskProfile,
-        enhancedPrompt
+        enhancedPrompt,
+        stockRecommendations
       };
 
     } catch (error: any) {
