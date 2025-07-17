@@ -19,18 +19,20 @@ import { Brain, TrendingUp, Target, BarChart3, Activity, Crown, AlertCircle, Use
 
 const PortfolioImplementation = () => {
   const { activePortfolio, loading } = usePortfolio();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { riskProfile, loading: riskProfileLoading } = useRiskProfile();
   const navigate = useNavigate();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
-    if (!user && !loading) {
-      // Show login modal for unauthenticated users
+    // Only show login modal if auth has finished loading and user is not authenticated
+    if (!authLoading && !user) {
       setShowLoginModal(true);
+    } else if (user) {
+      setShowLoginModal(false);
     }
-  }, [user, loading]);
+  }, [user, authLoading]);
 
   useEffect(() => {
     if (!user || loading) return;
