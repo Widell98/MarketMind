@@ -19,6 +19,7 @@ export interface UserHolding {
   currency: string;
   created_at: string;
   updated_at: string;
+  allocation?: number; // Added allocation property
 }
 
 export const useUserHoldings = () => {
@@ -62,7 +63,8 @@ export const useUserHoldings = () => {
       // Type cast the data properly
       const typedData: UserHolding[] = (data || []).map(item => ({
         ...item,
-        holding_type: item.holding_type as UserHolding['holding_type']
+        holding_type: item.holding_type as UserHolding['holding_type'],
+        allocation: item.allocation as number // Handle allocation if it exists in the database
       }));
 
       console.log('All holdings fetched:', typedData);

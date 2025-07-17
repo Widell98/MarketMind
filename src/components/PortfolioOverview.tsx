@@ -627,7 +627,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                           <div className="min-w-0">
                             <div className="font-medium text-sm">{recommendation.name}</div>
                             {recommendation.symbol && <div className="text-xs text-muted-foreground">{recommendation.symbol}</div>}
-                            {recommendation.allocation && <div className="text-xs text-purple-600 font-medium">{recommendation.allocation}% allokering</div>}
+                            {recommendation.allocation !== undefined && <div className="text-xs text-purple-600 font-medium">{recommendation.allocation}% allokering</div>}
                           </div>
                         </div>
                       </TableCell>
