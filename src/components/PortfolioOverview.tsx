@@ -1025,7 +1025,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                               onClick={() => deleteHolding(recommendation.id)}
                               className="bg-red-600 hover:bg-red-700"
                             >
- <Trash2 className="w-3 h-3" />
+                              <X className="w-3 h-3" />
                             </Button>
                           )}
                         </div>
