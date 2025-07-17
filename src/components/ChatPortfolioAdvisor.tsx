@@ -89,7 +89,7 @@ const ChatPortfolioAdvisor = () => {
   const questions = [
     {
       id: 'intro',
-      question: 'Hej! Jag är din AI-portföljrådgivare. Är du ny inom investeringar eller har du erfarenhet?',
+      question: 'Hej! Jag är din AI-portföljrådgivare för att göra en bedömning av din riskprofil behöver du först svara på ett par frågor. Har du investerat tidigare eller är det nytt för dig?',
       key: 'isBeginnerInvestor',
       hasOptions: true,
       options: [
