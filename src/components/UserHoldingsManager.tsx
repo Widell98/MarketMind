@@ -136,7 +136,7 @@ const UserHoldingsManager: React.FC = () => {
     ...actualHoldings,
     ...cashHoldings.map(cash => ({
       ...cash,
-      holding_type: 'cash' as const,
+      is_cash: true,
       symbol: undefined,
       quantity: undefined,
       purchase_price: cash.current_value
@@ -168,7 +168,7 @@ const UserHoldingsManager: React.FC = () => {
               )}
             </div>
             
-            {actualHoldings.some(h => h.symbol && h.holding_type !== 'cash') && (
+            {actualHoldings.some(h => h.symbol && !h.is_cash) && (
               <Button
                 size="sm"
                 onClick={refetchPrices}
@@ -272,7 +272,7 @@ const UserHoldingsManager: React.FC = () => {
                     <tbody className="bg-white divide-y divide-gray-200">
                       {allHoldings.map(holding => {
                         const priceData = holding.symbol ? prices[holding.symbol] : null;
-                        const isCash = holding.holding_type === 'cash';
+                        const isCash = holding.is_cash;
                         
                         return (
                           <tr key={holding.id} className="hover:bg-gray-50">
@@ -454,7 +454,7 @@ const UserHoldingsManager: React.FC = () => {
               <div className="md:hidden space-y-3">
                 {allHoldings.map(holding => {
                   const priceData = holding.symbol ? prices[holding.symbol] : null;
-                  const isCash = holding.holding_type === 'cash';
+                  const isCash = holding.is_cash;
                   
                   return (
                     <div key={holding.id} className="bg-white rounded-lg border border-gray-200 p-4">
