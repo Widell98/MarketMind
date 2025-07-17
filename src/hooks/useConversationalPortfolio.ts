@@ -351,20 +351,6 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
         return null;
       }
 
-      // Now generate actual stock recommendations using the generate-portfolio edge function
-      console.log('Calling generate-portfolio with risk profile:', riskProfile.id);
-      const { data: portfolioData, error: portfolioError } = await supabase.functions.invoke('generate-portfolio', {
-        body: {
-          riskProfileId: riskProfile.id,
-          userId: user.id
-        }
-      });
-
-      if (portfolioError) {
-        console.error('Error generating portfolio recommendations:', portfolioError);
-        // Continue with empty recommendations if portfolio generation fails
-      }
-
       // Create enhanced asset allocation with all conversation data and AI analysis
       const assetAllocation = {
         conversation_data: JSON.parse(JSON.stringify(conversationData)),
@@ -387,30 +373,27 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
         }
       };
 
-      // Use the recommended stocks from the portfolio generation or empty array
-      const recommendedStocks = portfolioData?.recommended_stocks || [];
-
-      // Create a portfolio in the database with the AI response and generated recommendations
-      const portfolioCreateData = {
+      // Create a portfolio in the database with the AI response
+      const portfolioData = {
         user_id: user.id,
         risk_profile_id: riskProfile.id,
         portfolio_name: 'AI-Genererad Personlig Portfölj',
         asset_allocation: assetAllocation,
-        recommended_stocks: recommendedStocks,
+        recommended_stocks: [],
         total_value: 0,
-        expected_return: portfolioData?.expected_return || (conversationData.isBeginnerInvestor ? 0.08 : 0.10),
+        expected_return: conversationData.isBeginnerInvestor ? 0.08 : 0.10,
         risk_score: conversationData.volatilityComfort || (conversationData.isBeginnerInvestor ? 3 : 5),
         is_active: true
       };
 
-      const { data: portfolio, error: portfolioCreateError } = await supabase
+      const { data: portfolio, error: portfolioError } = await supabase
         .from('user_portfolios')
-        .insert(portfolioCreateData)
+        .insert(portfolioData)
         .select()
         .single();
 
-      if (portfolioCreateError) {
-        console.error('Error creating portfolio:', portfolioCreateError);
+      if (portfolioError) {
+        console.error('Error creating portfolio:', portfolioError);
         toast({
           title: "Error",
           description: "Kunde inte spara portföljen",
@@ -421,15 +404,14 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
 
       toast({
         title: "Framgång!",
-        description: "Din personliga portföljstrategi har skapats med AI-rekommendationer",
+        description: "Din personliga portföljstrategi har skapats med förbättrad riskanalys",
       });
 
       return {
         aiResponse: aiResponse.response,
         portfolio,
         riskProfile,
-        enhancedPrompt,
-        recommendedStocks
+        enhancedPrompt
       };
 
     } catch (error: any) {
