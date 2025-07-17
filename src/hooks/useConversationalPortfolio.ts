@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -110,12 +111,14 @@ export const useConversationalPortfolio = () => {
         
         if (patternIndex === 0) {
           // Pattern: 1. **Company Name (SYMBOL)**: Description... Allokering: XX%
-          [, name, symbol, reasoning, allocation] = match;
-          allocation = allocation ? parseInt(allocation) : 12;
+          [, name, symbol, reasoning] = match;
+          const allocationMatch = match[4];
+          allocation = allocationMatch ? parseInt(allocationMatch) : 12;
         } else if (patternIndex === 1) {
           // Pattern: **Company Name**: Description (for funds)
-          [, name, reasoning, allocation] = match;
-          allocation = allocation ? parseInt(allocation) : 15;
+          [, name, reasoning] = match;
+          const allocationMatch = match[3];
+          allocation = allocationMatch ? parseInt(allocationMatch) : 15;
           // Try to find symbol from known investments
           const known = knownInvestments[name.trim()];
           if (known) {
@@ -126,8 +129,9 @@ export const useConversationalPortfolio = () => {
           [, name, symbol, reasoning] = match;
         } else if (patternIndex === 3) {
           // Pattern for funds: **Fund Name**: Description
-          [, name, reasoning, allocation] = match;
-          allocation = allocation ? parseInt(allocation) : 20;
+          [, name, reasoning] = match;
+          const allocationMatch = match[3];
+          allocation = allocationMatch ? parseInt(allocationMatch) : 20;
         }
 
         if (name && name.trim().length > 2) {
