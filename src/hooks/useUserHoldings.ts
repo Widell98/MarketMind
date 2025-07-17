@@ -64,7 +64,7 @@ export const useUserHoldings = () => {
       const typedData: UserHolding[] = (data || []).map(item => ({
         ...item,
         holding_type: item.holding_type as UserHolding['holding_type'],
-        allocation: item.allocation as number // Handle allocation if it exists in the database
+        allocation: item.allocation as number | undefined // Use optional chaining since allocation may not exist
       }));
 
       console.log('All holdings fetched:', typedData);
