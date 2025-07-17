@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { 
   Trash2,
   Package,
@@ -12,7 +13,12 @@ import {
   Plus,
   Banknote,
   Edit2,
-  Wallet
+  Wallet,
+  Activity,
+  RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle
 } from 'lucide-react';
 import {
   Dialog,
@@ -34,10 +40,24 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Badge } from '@/components/ui/badge';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+
+interface StockPrice {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  currency: string;
+  priceInSEK: number;
+  changeInSEK: number;
+  hasValidPrice: boolean;
+  errorMessage?: string;
+}
 
 const UserHoldingsManager: React.FC = () => {
   const { actualHoldings, loading, deleteHolding } = useUserHoldings();
@@ -50,6 +70,7 @@ const UserHoldingsManager: React.FC = () => {
     updateCashHolding, 
     deleteCashHolding 
   } = useCashHoldings();
+  const { user } = useAuth();
   const navigate = useNavigate();
   
   const [showAddCashDialog, setShowAddCashDialog] = useState(false);
@@ -58,6 +79,12 @@ const UserHoldingsManager: React.FC = () => {
     name: '',
     amount: ''
   });
+  
+  // Price data state
+  const [prices, setPrices] = useState<StockPrice[]>([]);
+  const [pricesLoading, setPricesLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [exchangeRate, setExchangeRate] = useState<number>(10.5);
 
   const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
     console.log(`Deleting holding: ${holdingName} (${holdingId})`);
@@ -107,14 +134,148 @@ const UserHoldingsManager: React.FC = () => {
     await deleteCashHolding(id);
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('sv-SE', {
-      style: 'currency',
-      currency: 'SEK',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
+  const formatCurrency = (amount: number, currency = 'SEK', showCurrency = true) => {
+    const currencyCode = currency === 'SEK' ? 'SEK' : 'USD';
+    const formatter = new Intl.NumberFormat('sv-SE', {
+      style: showCurrency ? 'currency' : 'decimal',
+      currency: currencyCode,
+      minimumFractionDigits: currency === 'SEK' ? 0 : 2,
+      maximumFractionDigits: currency === 'SEK' ? 2 : 2,
+    });
+    return formatter.format(amount);
   };
+
+  const formatPercentage = (percent: number) => {
+    const sign = percent >= 0 ? '+' : '';
+    return `${sign}${percent.toFixed(2)}%`;
+  };
+
+  const fetchExchangeRate = async () => {
+    try {
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+      const data = await response.json();
+      if (data.rates && data.rates.SEK) {
+        const newRate = data.rates.SEK;
+        if (Math.abs(newRate - exchangeRate) / exchangeRate > 0.01) {
+          setExchangeRate(newRate);
+          console.log(`Updated exchange rate: ${newRate.toFixed(2)} SEK/USD`);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to fetch exchange rate:', error);
+    }
+  };
+
+  const fetchPrices = async () => {
+    if (!user || actualHoldings.length === 0) return;
+
+    setPricesLoading(true);
+    try {
+      await fetchExchangeRate();
+
+      const symbolsToFetch = actualHoldings.map((holding) => {
+        return {
+          searchTerm: holding.symbol || holding.name,
+          holding,
+        };
+      });
+
+      const pricePromises = symbolsToFetch.map(async ({ searchTerm, holding }) => {
+        try {
+          if (!searchTerm) {
+            return {
+              symbol: 'N/A',
+              name: holding.name || 'Okänt innehav',
+              price: 0,
+              change: 0,
+              changePercent: 0,
+              currency: 'SEK',
+              priceInSEK: 0,
+              changeInSEK: 0,
+              hasValidPrice: false,
+              errorMessage: 'Ingen giltig ticker-symbol angiven',
+            };
+          }
+
+          const { data, error } = await supabase.functions.invoke('fetch-stock-quote', {
+            body: { symbol: searchTerm },
+          });
+
+          if (error || !data || typeof data.price !== 'number') {
+            return {
+              symbol: searchTerm,
+              name: holding.name || searchTerm,
+              price: 0,
+              change: 0,
+              changePercent: 0,
+              currency: holding.currency || 'SEK',
+              priceInSEK: 0,
+              changeInSEK: 0,
+              hasValidPrice: false,
+              errorMessage: 'Pris kunde inte hämtas',
+            };
+          }
+
+          const holdingCurrency = holding.currency || 'SEK';
+          const quoteCurrency = data.currency || 'USD';
+
+          const convertedToSEK = quoteCurrency === 'USD' && holdingCurrency === 'SEK';
+
+          return {
+            symbol: data.symbol || searchTerm,
+            name: holding.name || data.name || searchTerm,
+            price: data.price,
+            change: data.change || 0,
+            changePercent: data.changePercent || 0,
+            currency: quoteCurrency,
+            priceInSEK: convertedToSEK ? data.price * exchangeRate : data.price,
+            changeInSEK: convertedToSEK ? (data.change || 0) * exchangeRate : (data.change || 0),
+            hasValidPrice: true,
+          };
+        } catch (err) {
+          return {
+            symbol: searchTerm,
+            name: holding.name || searchTerm,
+            price: 0,
+            change: 0,
+            changePercent: 0,
+            currency: holding.currency || 'SEK',
+            priceInSEK: 0,
+            changeInSEK: 0,
+            hasValidPrice: false,
+            errorMessage: 'Tekniskt fel vid prisinhämtning',
+          };
+        }
+      });
+
+      const results = await Promise.all(pricePromises);
+      setPrices(results);
+      setLastUpdated(
+        new Date().toLocaleTimeString('sv-SE', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      );
+    } catch (err) {
+      console.error('Fel vid hämtning av priser:', err);
+    } finally {
+      setPricesLoading(false);
+    }
+  };
+
+  const getPriceForHolding = (holding: any) => {
+    if (holding.holding_type === 'cash') return null;
+    return prices.find(p => 
+      p.symbol === holding.symbol || 
+      p.name === holding.name
+    );
+  };
+
+  useEffect(() => {
+    if (user && actualHoldings.length > 0) {
+      fetchPrices();
+    }
+  }, [user, actualHoldings]);
 
   // Combine actual holdings and cash holdings for display
   const allHoldings = [
@@ -203,7 +364,7 @@ const UserHoldingsManager: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="flex gap-2 mb-4">
+              <div className="flex gap-2 mb-4 flex-wrap">
                 <Button size="sm" className="flex items-center gap-2" onClick={() => navigate('/ai-chat')}>
                   <Plus className="w-4 h-4" />
                   Lägg till innehav
@@ -212,57 +373,129 @@ const UserHoldingsManager: React.FC = () => {
                   <Banknote className="w-4 h-4" />
                   Lägg till kassa
                 </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="flex items-center gap-2" 
+                  onClick={fetchPrices}
+                  disabled={pricesLoading || loading}
+                >
+                  {pricesLoading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Activity className="w-4 h-4" />
+                  )}
+                  Uppdatera priser
+                </Button>
               </div>
               
-              {allHoldings.map(holding => (
-                <div key={holding.id} className="relative bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-sm">
-                  <div className="flex items-center justify-between p-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        {holding.holding_type === 'cash' ? (
-                          <Wallet className="w-4 h-4 text-green-600" />
-                        ) : null}
-                        <h3 className="font-semibold text-gray-900">{holding.name}</h3>
-                        {holding.symbol && (
-                          <span className="font-mono bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-medium">
-                            {holding.symbol}
-                          </span>
-                        )}
-                        {holding.holding_type === 'cash' && (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                            Kassa
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-sm text-gray-600 flex items-center gap-3">
-                        {holding.holding_type === 'cash' ? (
-                          <span className="font-medium text-green-600">
-                            {formatCurrency(holding.current_value)}
-                          </span>
-                        ) : (
-                          <>
-                            {holding.quantity && (
-                              <span className="flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
-                                {holding.quantity} aktier
-                              </span>
-                            )}
-                            {holding.purchase_price && (
-                              <span className="flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
-                                Köpt för {formatCurrency(holding.purchase_price)}
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
-                              {holding.holding_type}
+              {lastUpdated && (
+                <div className="text-xs text-muted-foreground mb-3 px-2">
+                  Priser uppdaterade: {lastUpdated} | 1 USD = {exchangeRate.toFixed(2)} SEK
+                </div>
+              )}
+              
+              {allHoldings.map(holding => {
+                const currentPrice = getPriceForHolding(holding);
+                
+                return (
+                  <div key={holding.id} className="relative bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-sm">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4">
+                      {/* Innehav info */}
+                      <div className="min-w-0 flex-1 lg:col-span-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          {holding.holding_type === 'cash' ? (
+                            <Wallet className="w-4 h-4 text-green-600" />
+                          ) : null}
+                          <h3 className="font-semibold text-gray-900 truncate">{holding.name}</h3>
+                          {holding.symbol && (
+                            <span className="font-mono bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-medium flex-shrink-0">
+                              {holding.symbol}
                             </span>
-                          </>
+                          )}
+                          {holding.holding_type === 'cash' && (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 flex-shrink-0">
+                              Kassa
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-600 flex flex-wrap items-center gap-3">
+                          {holding.holding_type === 'cash' ? (
+                            <span className="font-medium text-green-600">
+                              {formatCurrency(holding.current_value)}
+                            </span>
+                          ) : (
+                            <>
+                              {holding.quantity && (
+                                <span className="flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                                  {holding.quantity} aktier
+                                </span>
+                              )}
+                              {holding.purchase_price && (
+                                <span className="flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                                  Köpt för {formatCurrency(holding.purchase_price)}
+                                </span>
+                              )}
+                              <span className="flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                                {holding.holding_type}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Aktuellt pris kolumn */}
+                      <div className="min-w-0 flex-1 lg:col-span-1">
+                        {holding.holding_type === 'cash' ? (
+                          <div className="text-center py-2">
+                            <span className="text-sm text-muted-foreground">-</span>
+                          </div>
+                        ) : currentPrice ? (
+                          <div className="text-center">
+                            <div className="font-medium text-sm">
+                              {formatCurrency(
+                                currentPrice.currency === 'USD' ? currentPrice.price : currentPrice.priceInSEK,
+                                currentPrice.currency === 'USD' ? 'USD' : 'SEK'
+                              )}
+                            </div>
+                            <div className="flex items-center justify-center gap-1 mt-1">
+                              {currentPrice.changePercent >= 0 ? (
+                                <TrendingUp className="w-3 h-3 text-green-600" />
+                              ) : (
+                                <TrendingDown className="w-3 h-3 text-red-600" />
+                              )}
+                              <Badge
+                                variant="outline"
+                                className={`text-xs ${
+                                  currentPrice.changePercent >= 0
+                                    ? 'bg-green-50 text-green-700 border-green-200'
+                                    : 'bg-red-50 text-red-700 border-red-200'
+                                }`}
+                              >
+                                {formatPercentage(currentPrice.changePercent)}
+                              </Badge>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center py-2">
+                            <div className="flex items-center justify-center gap-1">
+                              <AlertTriangle className="w-3 h-3 text-amber-500" />
+                              <span className="text-xs text-amber-600">
+                                {pricesLoading ? 'Hämtar...' : 'Pris saknas'}
+                              </span>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Kontrollera symbol
+                            </div>
+                          </div>
                         )}
                       </div>
-                    </div>
-                    
-                    <div className="flex-shrink-0 ml-4 flex gap-2">
+
+                      {/* Åtgärder */}
+                      <div className="flex lg:justify-end gap-2 lg:col-span-1">
                       {holding.holding_type === 'cash' ? (
                         <>
                           <Dialog open={editingCash?.id === holding.id} onOpenChange={(open) => !open && setEditingCash(null)}>
@@ -381,10 +614,11 @@ const UserHoldingsManager: React.FC = () => {
                           </AlertDialog>
                         </>
                       )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </>
           )}
         </CardContent>
