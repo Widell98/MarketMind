@@ -388,7 +388,7 @@ const UserHoldingsManager: React.FC = () => {
               
               {lastUpdated && (
                 <div className="text-xs text-muted-foreground mb-3 px-2">
-                  Priser uppdaterade: {lastUpdated} | 1 USD = {exchangeRate.toFixed(2)} SEK | Uppdateras automatiskt var 30:e minut
+                  Priser uppdaterade: {lastUpdated} | Uppdateras automatiskt var 30:e minut
                 </div>
               )}
               
