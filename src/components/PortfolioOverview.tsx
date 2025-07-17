@@ -482,27 +482,29 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   // Show login prompt if user is not authenticated
   if (!user) {
     return (
-      <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-6">
         {/* User's Current Holdings with integrated prices and cash management */}
         <UserHoldingsManager />
 
         {/* Sector Exposure - Login Required */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-lg font-semibold">
               <Building2 className="w-5 h-5 text-orange-600" />
               Sektorexponering
             </CardTitle>
-            <CardDescription>Fördelning över olika industrisektorer</CardDescription>
+            <CardDescription className="text-sm text-muted-foreground">
+              Fördelning över olika industrisektorer
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8">
-              <LogIn className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+            <div className="text-center py-12">
+              <LogIn className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted-foreground" />
               <h3 className="text-lg font-medium mb-2 text-foreground">Inloggning krävs</h3>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
                 Logga in för att se din sektorfördelning och portföljanalys
               </p>
-              <Button onClick={() => navigate('/auth')}>
+              <Button onClick={() => navigate('/auth')} className="bg-primary hover:bg-primary/90">
                 <LogIn className="w-4 h-4 mr-2" />
                 Logga in
               </Button>
@@ -511,26 +513,28 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </Card>
 
         {/* AI-Recommended Holdings - Login Required */}
-        <Card>
-          <CardHeader>
+        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
+          <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
                   <Brain className="w-5 h-5 text-purple-600" />
                   AI-Rekommenderade Innehav
                 </CardTitle>
-                <CardDescription>Aktier som AI-advisorn rekommenderar för din portfölj</CardDescription>
+                <CardDescription className="text-sm text-muted-foreground mt-1">
+                  Aktier som AI-advisorn rekommenderar för din portfölj
+                </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8">
-              <LogIn className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+            <div className="text-center py-12">
+              <LogIn className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted-foreground" />
               <h3 className="text-lg font-medium mb-2 text-foreground">Inloggning krävs</h3>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
                 Logga in för att få personliga AI-rekommendationer för din portfölj
               </p>
-              <Button onClick={() => navigate('/auth')}>
+              <Button onClick={() => navigate('/auth')} className="bg-primary hover:bg-primary/90">
                 <LogIn className="w-4 h-4 mr-2" />
                 Logga in
               </Button>
@@ -539,28 +543,28 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </Card>
 
         {/* AI Insights - Login Required */}
-        <Card>
-          <CardHeader>
+        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
+          <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <CardTitle className="flex items-center gap-2 text-lg font-semibold">
                   <Brain className="w-5 h-5 text-purple-600" />
                   AI-insikter och rekommendationer
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-sm text-muted-foreground mt-1">
                   Personaliserade förslag baserat på din portfölj och marknadstrender
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8">
-              <LogIn className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+            <div className="text-center py-12">
+              <LogIn className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted-foreground" />
               <h3 className="text-lg font-medium mb-2 text-foreground">Inloggning krävs</h3>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
                 Logga in för att få personliga AI-insikter och investeringsförslag
               </p>
-              <Button onClick={() => navigate('/auth')}>
+              <Button onClick={() => navigate('/auth')} className="bg-primary hover:bg-primary/90">
                 <LogIn className="w-4 h-4 mr-2" />
                 Logga in
               </Button>
@@ -569,24 +573,24 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </Card>
 
         {/* Quick Actions - Login Required */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-lg font-semibold">
               <Zap className="w-5 h-5 text-blue-600" />
               Snabbåtgärder för portfölj
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-sm text-muted-foreground mt-1">
               AI-assisterade funktioner för att optimera din portfölj
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8">
-              <LogIn className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+            <div className="text-center py-12">
+              <LogIn className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted-foreground" />
               <h3 className="text-lg font-medium mb-2 text-foreground">Inloggning krävs</h3>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
                 Logga in för att få tillgång till AI-assisterade portföljfunktioner
               </p>
-              <Button onClick={() => navigate('/auth')}>
+              <Button onClick={() => navigate('/auth')} className="bg-primary hover:bg-primary/90">
                 <LogIn className="w-4 h-4 mr-2" />
                 Logga in
               </Button>
@@ -598,25 +602,27 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-6">
       {/* User's Current Holdings with integrated prices and cash management - NOW FIRST */}
       <UserHoldingsManager />
 
-      {/* AI-Recommended Holdings - NOW SECOND */}
-      <Card>
-        <CardHeader>
+      {/* AI-Recommended Holdings - NOW SECOND with consistent styling */}
+      <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
+        <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
                 <Brain className="w-5 h-5 text-purple-600" />
                 AI-Rekommenderade Innehav
                 {allRecommendations.length > 0 && (
-                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 ml-2">
                     {allRecommendations.length} rekommendationer
                   </Badge>
                 )}
               </CardTitle>
-              <CardDescription>Aktier som AI-advisorn rekommenderar för din portfölj</CardDescription>
+              <CardDescription className="text-sm text-muted-foreground mt-1">
+                Aktier som AI-advisorn rekommenderar för din portfölj
+              </CardDescription>
             </div>
             <div className="flex gap-2">
               {allRecommendations.length > 0 && (
@@ -626,7 +632,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                       variant="outline"
                       size="sm"
                       disabled={isDeletingRecommendations}
-                      className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
                     >
                       <X className="w-4 h-4" />
                       <span className="hidden sm:inline">Rensa alla</span>
@@ -660,21 +666,21 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
               <p className="text-sm text-muted-foreground">Laddar rekommendationer...</p>
             </div>
           ) : allRecommendations.length === 0 ? (
-            <div className="text-center py-8">
-              <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <div className="text-center py-12">
+              <Brain className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">Inga AI-rekommendationer ännu</h3>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
                 Få personliga aktieförslag från AI-advisorn baserat på din riskprofil
               </p>
               <div className="flex flex-col sm:flex-row gap-2 justify-center">
                 <Button
                   onClick={handleGetAIRecommendations}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 bg-primary hover:bg-primary/90"
                 >
                   <MessageCircle className="w-4 h-4" />
                   Få AI-rekommendationer
@@ -686,33 +692,33 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Rekommenderad Aktie</TableHead>
-                    <TableHead>Typ</TableHead>
-                    <TableHead>Sektor</TableHead>
-                    <TableHead className="text-right">Åtgärder</TableHead>
+                    <TableHead className="font-medium">Rekommenderad Aktie</TableHead>
+                    <TableHead className="font-medium">Typ</TableHead>
+                    <TableHead className="font-medium">Sektor</TableHead>
+                    <TableHead className="text-right font-medium">Åtgärder</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {allRecommendations.map((recommendation, index) => (
-                    <TableRow key={recommendation.id || index}>
+                    <TableRow key={recommendation.id || index} className="hover:bg-muted/50">
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Star className="w-4 h-4 text-purple-600" />
-                          <div>
-                            <div className="font-medium">{recommendation.name}</div>
+                          <Star className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <div className="font-medium text-sm">{recommendation.name}</div>
                             {recommendation.symbol && (
-                              <div className="text-sm text-muted-foreground">{recommendation.symbol}</div>
+                              <div className="text-xs text-muted-foreground">{recommendation.symbol}</div>
                             )}
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={getHoldingTypeColor(recommendation.holding_type)}>
+                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
                           AI-Rekommendation
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm">
+                        <div className="text-sm text-muted-foreground">
                           {recommendation.sector || 'Okänd sektor'}
                         </div>
                       </TableCell>
@@ -722,7 +728,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => handleAddFromRecommendation(recommendation)}
-                            className="h-7 px-2 text-xs bg-white hover:bg-green-50 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300"
+                            className="h-8 px-2 text-xs bg-white hover:bg-green-50 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300"
                           >
                             <ShoppingCart className="w-3 h-3" />
                           </Button>
@@ -730,7 +736,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => handleStockChat(recommendation.name, recommendation.symbol)}
-                            className="h-7 px-2 text-xs bg-white hover:bg-purple-50 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300"
+                            className="h-8 px-2 text-xs bg-white hover:bg-purple-50 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300"
                           >
                             <MessageCircle className="w-3 h-3" />
                           </Button>
@@ -739,7 +745,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                               variant="outline"
                               size="sm"
                               onClick={() => deleteHolding(recommendation.id)}
-                              className="h-7 px-2 text-xs bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+                              className="h-8 px-2 text-xs bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
                             >
                                <Trash2 className="w-3 h-3" />
                             </Button>
@@ -755,27 +761,29 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </CardContent>
       </Card>
 
-      {/* Sector Exposure */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+      {/* Sector Exposure with consistent styling */}
+      <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
             <Building2 className="w-5 h-5 text-orange-600" />
             Sektorexponering
           </CardTitle>
-          <CardDescription>Fördelning över olika industrisektorer</CardDescription>
+          <CardDescription className="text-sm text-muted-foreground mt-1">
+            Fördelning över olika industrisektorer
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {exposureData.sectorData.length > 0 ? (
-            <div className="space-y-4">
-              <div className="h-48">
+            <div className="space-y-6">
+              <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <RechartsPieChart>
                     <Pie
                       data={exposureData.sectorData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={40}
-                      outerRadius={80}
+                      innerRadius={50}
+                      outerRadius={100}
                       paddingAngle={2}
                       dataKey="value"
                     >
@@ -795,51 +803,52 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                   </RechartsPieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {exposureData.sectorData.map((sector, index) => (
-                  <div key={sector.name} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
+                  <div key={sector.name} className="flex items-center justify-between text-sm p-2 rounded-lg bg-muted/30">
+                    <div className="flex items-center gap-3">
                       <div 
-                        className="w-3 h-3 rounded-full"
+                        className="w-4 h-4 rounded-full flex-shrink-0"
                         style={{ backgroundColor: sectorColors[index % sectorColors.length] }}
                       />
-                      <span>{sector.name}</span>
+                      <span className="font-medium">{sector.name}</span>
                     </div>
-                    <span className="font-medium">{sector.percentage}%</span>
+                    <span className="font-semibold text-foreground">{sector.percentage}%</span>
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Building2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>Lägg till innehav för att se sektorfördelning</p>
+            <div className="text-center py-12 text-muted-foreground">
+              <Building2 className="w-16 h-16 mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-medium mb-2">Ingen sektordata ännu</h3>
+              <p className="text-sm">Lägg till innehav för att se sektorfördelning</p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* AI Insights from Database */}
+      {/* AI Insights from Database with consistent styling */}
       {insights.length > 0 && (
-        <Card>
-          <CardHeader>
+        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
+          <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <CardTitle className="flex items-center gap-2 text-lg font-semibold">
                   <Brain className="w-5 h-5 text-purple-600" />
                   AI-insikter och rekommendationer
-                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 ml-2">
                     {insights.filter(i => !i.is_read).length} nya
                   </Badge>
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-sm text-muted-foreground mt-1">
                   Personaliserade förslag baserat på din portfölj och marknadstrender
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {insights.slice(0, 5).map((insight) => (
                 <div 
                   key={insight.id} 
@@ -881,75 +890,75 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </Card>
       )}
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+      {/* Quick Actions with consistent styling */}
+      <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
             <Zap className="w-5 h-5 text-blue-600" />
             Snabbåtgärder för portfölj
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm text-muted-foreground mt-1">
             AI-assisterade funktioner för att optimera din portfölj
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <Button
               variant="outline"
-              className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
+              className="h-auto p-4 flex flex-col items-start gap-3 text-left border-gray-200 hover:bg-muted/50"
               onClick={() => handleQuickAction("Jämför AI-rekommendationerna med mina nuvarande innehav. Vad borde jag sälja?")}
             >
-              <BarChart3 className="w-4 h-4 text-blue-600" />
+              <BarChart3 className="w-5 h-5 text-blue-600" />
               <div>
-                <div className="font-medium text-sm">Portföljjämförelse</div>
+                <div className="font-medium text-sm mb-1">Portföljjämförelse</div>
                 <div className="text-xs text-muted-foreground">Nuvarande vs. rekommenderat</div>
               </div>
             </Button>
             
             <Button
               variant="outline"
-              className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
+              className="h-auto p-4 flex flex-col items-start gap-3 text-left border-gray-200 hover:bg-muted/50"
               onClick={() => handleQuickAction("Vilka aktier borde jag köpa först baserat på AI-rekommendationerna och min budget?")}
             >
-              <TrendingUp className="w-4 h-4 text-green-600" />
+              <TrendingUp className="w-5 h-5 text-green-600" />
               <div>
-                <div className="font-medium text-sm">Köpordning</div>
+                <div className="font-medium text-sm mb-1">Köpordning</div>
                 <div className="text-xs text-muted-foreground">Prioritera investeringar</div>
               </div>
             </Button>
             
             <Button
               variant="outline"
-              className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
+              className="h-auto p-4 flex flex-col items-start gap-3 text-left border-gray-200 hover:bg-muted/50"
               onClick={() => handleQuickAction("Berätta vilka risker som finns i de AI-rekommenderade aktierna")}
             >
-              <Shield className="w-4 h-4 text-red-600" />
+              <Shield className="w-5 h-5 text-red-600" />
               <div>
-                <div className="font-medium text-sm">Riskanalys</div>
+                <div className="font-medium text-sm mb-1">Riskanalys</div>
                 <div className="text-xs text-muted-foreground">Identifiera risker</div>
               </div>
             </Button>
 
             <Button
               variant="outline"
-              className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
+              className="h-auto p-4 flex flex-col items-start gap-3 text-left border-gray-200 hover:bg-muted/50"
               onClick={() => handleQuickAction("Föreslå alternativa aktier som inte finns i AI-rekommendationerna men som skulle passa min profil")}
             >
-              <Plus className="w-4 h-4 text-orange-600" />
+              <Plus className="w-5 h-5 text-orange-600" />
               <div>
-                <div className="font-medium text-sm">Alternativa val</div>
+                <div className="font-medium text-sm mb-1">Alternativa val</div>
                 <div className="text-xs text-muted-foreground">Utforska andra möjligheter</div>
               </div>
             </Button>
             
             <Button
               variant="outline"
-              className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left"
+              className="h-auto p-4 flex flex-col items-start gap-3 text-left border-gray-200 hover:bg-muted/50 sm:col-span-2 lg:col-span-1"
               onClick={() => handleQuickAction("Analysera min nuvarande portfölj och föreslå en rebalanseringsstrategi. Visa vilka aktier jag borde köpa mer av, sälja eller behålla för att optimera min riskjusterade avkastning.")}
             >
-              <Target className="w-4 h-4 text-green-600" />
+              <Target className="w-5 h-5 text-green-600" />
               <div>
-                <div className="font-medium text-sm">Rebalansering</div>
+                <div className="font-medium text-sm mb-1">Rebalansering</div>
                 <div className="text-xs text-muted-foreground">Optimera fördelningen</div>
               </div>
             </Button>
