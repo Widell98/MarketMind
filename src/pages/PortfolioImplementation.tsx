@@ -1,8 +1,7 @@
 
 import React from 'react';
-import { Layout } from '@/components/Layout';
-import { UserHoldingsManager } from '@/components/UserHoldingsManager';
-import { CashHoldingsManager } from '@/components/CashHoldingsManager';
+import Layout from '@/components/Layout';
+import UserHoldingsManager from '@/components/UserHoldingsManager';
 
 const PortfolioImplementation: React.FC = () => {
   return (
@@ -21,7 +20,7 @@ const PortfolioImplementation: React.FC = () => {
           </div>
           
           <div className="space-y-6">
-            <CashHoldingsManager />
+            {/* Additional components can be added here later */}
           </div>
         </div>
       </div>

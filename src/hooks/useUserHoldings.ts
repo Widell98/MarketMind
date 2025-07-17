@@ -17,6 +17,7 @@ export interface UserHolding {
   sector?: string;
   market?: string;
   currency: string;
+  is_cash?: boolean;
   created_at: string;
   updated_at: string;
 }

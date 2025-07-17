@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -167,7 +168,7 @@ const UserHoldingsManager: React.FC = () => {
               )}
             </div>
             
-            {actualHoldings.some(h => h.symbol && !h.is_cash) && (
+            {actualHoldings.some(h => h.symbol && h.holding_type !== 'cash') && (
               <Button
                 size="sm"
                 onClick={refetchPrices}
