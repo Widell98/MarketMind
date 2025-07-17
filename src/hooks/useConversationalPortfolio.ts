@@ -373,7 +373,7 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
         }
       };
 
-      // First create a basic portfolio in the database with the AI response
+      // Create a portfolio in the database with the AI response
       const portfolioData = {
         user_id: user.id,
         risk_profile_id: riskProfile.id,
@@ -400,23 +400,6 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
           variant: "destructive",
         });
         return null;
-      }
-
-      // Now generate specific stock recommendations using the generate-portfolio edge function
-      const { data: portfolioGenResponse, error: portfolioGenError } = await supabase.functions.invoke('generate-portfolio', {
-        body: { 
-          riskProfileId: riskProfile.id,
-          userId: user.id
-        }
-      });
-
-      if (portfolioGenError) {
-        console.error('Error generating specific stock recommendations:', portfolioGenError);
-        // Don't fail the whole operation, just log the error
-      } else if (portfolioGenResponse && portfolioGenResponse.success) {
-        console.log('Successfully generated specific stock recommendations');
-        // The generate-portfolio function will create a new portfolio or update the existing one
-        // We'll use the updated portfolio with stock recommendations
       }
 
       toast({
