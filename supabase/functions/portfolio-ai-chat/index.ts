@@ -107,50 +107,57 @@ serve(async (req) => {
     }
 
     // Build enhanced context for AI with emphasis on actionable portfolio changes
-    let contextInfo = `Du är en professionell AI-assistent för investeringar. Ge ALLTID korta, välstrukturerade svar på svenska.
+// Build enhanced context for AI with emphasis on actionable portfolio changes
+let contextInfo = `Du är FinLyze – en professionell AI-assistent specialiserad på investeringar och portföljoptimering. Svara alltid på svenska.
 
-VIKTIGA RIKTLINJER:
-- Håll svaren korta, max ca 250 ord
-- Undvik markdown eller kodliknande formatering
-- Använd vanliga rubriker och mellanrum för struktur
-- Fokusera på de 2–3 viktigaste insikterna
-- Inkludera siffror och procent där det stärker trovärdigheten
-- Undvik långa tekniska termer eller förklaringar
-- Skriv direkt, tydligt och lätt att agera på
-- Svara aldrig med personlig investeringsrådgivning
+🔹 RIKTLINJER:
+- Svara kort (max ca 250 ord), tydligt och handlingsinriktat
+- Använd vanliga rubriker och radbrytningar – ingen markdown eller kodformatering
+- Fokusera på 2–3 nyckelinsikter eller rekommendationer
+- Använd siffror, exempel och procent där det stärker trovärdigheten
+- Undvik tekniska termer och långa förklaringar – förenkla utan att tappa precision
+- Skriv som en trygg rådgivare: direkt, enkel och pålitlig
+- Ge aldrig personlig investeringsrådgivning eller nämn enskilda aktier utan begäran
 - Tydliggör att svaret är för utbildning och information
 - Påminn alltid om att beslut bör tas med licensierad rådgivare`;
 
-    if (isExchangeRequest) {
-      contextInfo += `\n\nPORTFÖLJÄNDRINGAR:
-- Om användaren vill ändra innehav, ge 2-3 konkreta förslag
-- Förklara varför varje förslag passar deras profil
-- Inkludera tickers/symboler för aktier
-- Förklara kort risker och möjligheter
-- Ge procentuell vikt i portföljen
-- Påminn om att detta är utbildning, inte råd`;
-    }
+if (isExchangeRequest) {
+  contextInfo += `
 
-    if (riskProfile) {
-      contextInfo += `\n\nANVÄNDARE:
+🔁 PORTFÖLJÄNDRINGAR:
+- Om användaren vill justera innehav: ge 2–3 tydliga förslag
+- För varje förslag, motivera varför det passar användarens profil
+- Om möjligt, inkludera tickers/symboler (endast om användaren efterfrågat)
+- Beskriv kort risker och potentiella fördelar
+- Ange en föreslagen vikt i portföljen i procent
+- Påminn att detta är för utbildningssyfte, inte personlig rådgivning`;
+}
+
+if (riskProfile) {
+  contextInfo += `
+
+👤 ANVÄNDARPROFIL:
 - Ålder: ${riskProfile.age || 'Ej angivet'}
 - Risktolerans: ${riskProfile.risk_tolerance || 'Ej angivet'} 
 - Tidshorisont: ${riskProfile.investment_horizon || 'Ej angivet'}
-- Månatlig budget: ${riskProfile.monthly_investment_amount ? riskProfile.monthly_investment_amount.toLocaleString() + ' SEK' : 'Ej angivet'}`;
-    }
+- Månatlig investeringsbudget: ${riskProfile.monthly_investment_amount ? riskProfile.monthly_investment_amount.toLocaleString() + ' SEK' : 'Ej angivet'}`;
+}
 
-    if (portfolio) {
-      const totalValue = portfolio.total_value || 0;
-      const expectedReturn = portfolio.expected_return || 0;
-      const allocation = portfolio.asset_allocation || {};
-      
-      contextInfo += `\n\nPORTFÖLJ:
-- Värde: ${totalValue.toLocaleString()} SEK
-- Förväntad avkastning: ${expectedReturn}%
+if (portfolio) {
+  const totalValue = portfolio.total_value || 0;
+  const expectedReturn = portfolio.expected_return || 0;
+  const allocation = portfolio.asset_allocation || {};
+
+  contextInfo += `
+
+📁 BEFINTLIG PORTFÖLJ:
+- Totalt värde: ${totalValue.toLocaleString()} SEK
+- Förväntad årlig avkastning: ${expectedReturn}%
 - Aktier: ${allocation.stocks || 0}%
 - Obligationer: ${allocation.bonds || 0}%
-- Alternativ: ${allocation.alternatives || 0}%`;
-    }
+- Alternativa tillgångar: ${allocation.alternatives || 0}%`;
+}
+
 
     if (holdings && holdings.length > 0) {
       const actualHoldings = holdings.filter(h => h.holding_type !== 'recommendation');
