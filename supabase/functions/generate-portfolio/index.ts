@@ -101,7 +101,7 @@ serve(async (req) => {
     console.log('[GENERATE-PORTFOLIO] Found risk profile:', riskProfile.id);
 
     // Generate portfolio recommendations based on risk profile
-    const portfolioData = generatePortfolioRecommendations(riskProfile);
+    const portfolioData = await generatePortfolioRecommendations(riskProfile);
     console.log('[GENERATE-PORTFOLIO] Generated portfolio data:', portfolioData);
 
     // Deactivate other portfolios for this user first
@@ -162,7 +162,7 @@ serve(async (req) => {
             title: rec.title,
             description: rec.description,
             ai_reasoning: rec.reasoning,
-            recommendation_type: 'investment_advice' // Add the required field
+            recommendation_type: 'investment_advice'
           }))
         );
 
@@ -200,12 +200,13 @@ serve(async (req) => {
   }
 });
 
-function generatePortfolioRecommendations(riskProfile: any) {
+async function generatePortfolioRecommendations(riskProfile: any) {
   const age = riskProfile.age || 35;
   const riskTolerance = riskProfile.risk_tolerance || 'moderate';
   const investmentHorizon = riskProfile.investment_horizon || 'medium';
   const monthlyAmount = riskProfile.monthly_investment_amount || 5000;
   const preferredStockCount = riskProfile.preferred_stock_count || 8;
+  const sectorInterests = riskProfile.sector_interests || [];
   
   // Calculate target portfolio value (12 months of investment)
   const targetValue = monthlyAmount * 12;
@@ -260,77 +261,183 @@ function generatePortfolioRecommendations(riskProfile: any) {
     riskScore = Math.max(riskScore - 1, 1);
   }
   
-  // Generate stock recommendations based on preferred count and risk tolerance
-  const allStocks = {
+  // Generate AI-based stock recommendations
+  const aiStocks = await generateAIStockRecommendations(riskProfile, preferredStockCount);
+  console.log('[GENERATE-PORTFOLIO] AI generated stocks:', aiStocks.length);
+  
+  // Calculate allocation per stock
+  const baseAllocation = Math.floor(allocation.stocks / aiStocks.length);
+  const remainder = allocation.stocks % aiStocks.length;
+  
+  const stocksWithAllocation = aiStocks.map((stock, index) => ({
+    ...stock,
+    allocation: baseAllocation + (index < remainder ? 1 : 0)
+  }));
+  
+  return {
+    allocation,
+    stocks: stocksWithAllocation,
+    targetValue,
+    expectedReturn,
+    riskScore
+  };
+}
+
+async function generateAIStockRecommendations(riskProfile: any, stockCount: number) {
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  
+  if (!openAIApiKey) {
+    console.error('[GENERATE-PORTFOLIO] OpenAI API key not found, using fallback');
+    return getFallbackStocks(riskProfile.risk_tolerance || 'moderate', stockCount);
+  }
+  
+  const prompt = `Som svensk investeringsrådgivare, rekommendera ${stockCount} svenska aktier/fonder för en investerare med följande profil:
+
+Riskprofil: ${riskProfile.risk_tolerance || 'moderate'}
+Ålder: ${riskProfile.age || 35}
+Investeringshorisont: ${riskProfile.investment_horizon || 'medium'}
+Månatlig investering: ${riskProfile.monthly_investment_amount || 5000} SEK
+Sektorintressen: ${riskProfile.sector_interests?.join(', ') || 'Diversifierad'}
+
+Ge rekommendationer som JSON-array med följande format:
+[
+  {
+    "name": "Företagsnamn",
+    "symbol": "SYMBOL",
+    "sector": "Sektor",
+    "reasoning": "Kort förklaring varför denna aktie passar profilen"
+  }
+]
+
+Fokusera på:
+- Svenska aktier och svenska fonder
+- Aktier listade på Stockholmsbörsen
+- Välkända företag som Investor AB, Volvo, H&M, Evolution Gaming etc.
+- Balansera risk enligt användarens profil
+- Inkludera olika sektorer för diversifiering
+- Endast faktiska aktier/fonder, inga strategier eller koncept
+
+Svara ENDAST med JSON-arrayen, ingen annan text.`;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'Du är en erfaren svensk investeringsrådgivare som specialiserar sig på svenska aktiemarknaden. Ge alltid specifika, välgrundade rekommendationer.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const aiResponse = data.choices[0].message.content;
+    
+    console.log('[GENERATE-PORTFOLIO] AI Response:', aiResponse);
+    
+    // Parse the JSON response
+    const stockRecommendations = JSON.parse(aiResponse);
+    
+    // Validate and filter the recommendations
+    const validStocks = stockRecommendations
+      .filter((stock: any) => 
+        stock.name && 
+        stock.symbol && 
+        stock.sector && 
+        stock.name.length > 2 && 
+        stock.name.length < 60 &&
+        !isStrategyOrConcept(stock.name)
+      )
+      .slice(0, stockCount);
+    
+    console.log('[GENERATE-PORTFOLIO] Valid AI stocks:', validStocks.length);
+    
+    if (validStocks.length === 0) {
+      console.log('[GENERATE-PORTFOLIO] No valid AI stocks, using fallback');
+      return getFallbackStocks(riskProfile.risk_tolerance || 'moderate', stockCount);
+    }
+    
+    return validStocks;
+    
+  } catch (error) {
+    console.error('[GENERATE-PORTFOLIO] OpenAI API error:', error);
+    return getFallbackStocks(riskProfile.risk_tolerance || 'moderate', stockCount);
+  }
+}
+
+function isStrategyOrConcept(name: string): boolean {
+  const invalidPatterns = [
+    'skatteoptimering',
+    'månadssparande',
+    'rebalanseringsstrategi',
+    'total allokering',
+    'investera',
+    'diversifiering',
+    'riskhantering',
+    'portföljstrategi',
+    'allokeringsstrategi',
+    'investeringsstrategi',
+    'strategi',
+    'optimering',
+    'sparande',
+    'plan',
+    'metod',
+    'teknik',
+    'approach',
+    'strategy'
+  ];
+  
+  const lowerName = name.toLowerCase();
+  return invalidPatterns.some(pattern => lowerName.includes(pattern));
+}
+
+function getFallbackStocks(riskTolerance: string, stockCount: number) {
+  const fallbackStocks = {
     conservative: [
       { name: 'Investor AB', symbol: 'INVE-B.ST', sector: 'Financial Services', reasoning: 'Stabil investmentbolag med diversifierad portfölj' },
       { name: 'Volvo AB', symbol: 'VOLV-B.ST', sector: 'Automotive', reasoning: 'Välkänt svenskt industriföretag med stark position' },
-      { name: 'Ericsson', symbol: 'ERIC-B.ST', sector: 'Technology', reasoning: 'Ledande telekomteknologi med 5G-potential' },
-      { name: 'Sandvik', symbol: 'SAND.ST', sector: 'Industrial', reasoning: 'Stark industriell teknik och verktyg' },
-      { name: 'SKF', symbol: 'SKF-B.ST', sector: 'Industrial', reasoning: 'Ledande inom lager och tätningar' },
       { name: 'Telia', symbol: 'TELIA.ST', sector: 'Telecommunications', reasoning: 'Stabil telekomoperatör med utdelning' },
       { name: 'Essity', symbol: 'ESSITY-B.ST', sector: 'Consumer Goods', reasoning: 'Hygien- och hälsoprodukter' },
-      { name: 'Getinge', symbol: 'GETI-B.ST', sector: 'Healthcare', reasoning: 'Medicinsk teknik och utrustning' }
+      { name: 'Sandvik', symbol: 'SAND.ST', sector: 'Industrial', reasoning: 'Stark industriell teknik och verktyg' },
+      { name: 'SKF', symbol: 'SKF-B.ST', sector: 'Industrial', reasoning: 'Ledande inom lager och tätningar' },
+      { name: 'Getinge', symbol: 'GETI-B.ST', sector: 'Healthcare', reasoning: 'Medicinsk teknik och utrustning' },
+      { name: 'SEB', symbol: 'SEB-A.ST', sector: 'Financial Services', reasoning: 'Stark nordisk bank' }
     ],
     moderate: [
       { name: 'Investor AB', symbol: 'INVE-B.ST', sector: 'Financial Services', reasoning: 'Stabil investmentbolag med diversifierad portfölj' },
       { name: 'Atlas Copco', symbol: 'ATCO-A.ST', sector: 'Industrial', reasoning: 'Stark industriell tillväxt och innovation' },
       { name: 'H&M', symbol: 'HM-B.ST', sector: 'Consumer Goods', reasoning: 'Global detaljhandel med omställning till hållbarhet' },
-      { name: 'Spotify', symbol: 'SPOT', sector: 'Technology', reasoning: 'Växande musikstreaming-marknad' },
       { name: 'Electrolux', symbol: 'ELUX-B.ST', sector: 'Consumer Goods', reasoning: 'Hushållsapparater och professionella produkter' },
       { name: 'Alfa Laval', symbol: 'ALFA.ST', sector: 'Industrial', reasoning: 'Värmeväxlare och separationsteknik' },
-      { name: 'SEB', symbol: 'SEB-A.ST', sector: 'Financial Services', reasoning: 'Stark nordisk bank med företagsfokus' },
       { name: 'Hexagon', symbol: 'HEXA-B.ST', sector: 'Technology', reasoning: 'Mätteknologi och digitala lösningar' },
       { name: 'Assa Abloy', symbol: 'ASSA-B.ST', sector: 'Industrial', reasoning: 'Ledande inom lås- och säkerhetslösningar' },
       { name: 'ICA Gruppen', symbol: 'ICA.ST', sector: 'Consumer Goods', reasoning: 'Stabil dagligvaruhandel i Norden' }
     ],
     aggressive: [
-      { name: 'Spotify', symbol: 'SPOT', sector: 'Technology', reasoning: 'Hög tillväxtpotential inom streaming' },
       { name: 'Evolution Gaming', symbol: 'EVO.ST', sector: 'Technology', reasoning: 'Ledande inom online-gaming med stark tillväxt' },
-      { name: 'Klarna Bank', symbol: 'Private', sector: 'Financial Technology', reasoning: 'Fintech-innovation med global expansion' },
-      { name: 'Northvolt', symbol: 'Private', sector: 'Clean Energy', reasoning: 'Batteriteknologi för den gröna omställningen' },
       { name: 'Embracer Group', symbol: 'EMBRAC-B.ST', sector: 'Technology', reasoning: 'Spelstudio med global expansion' },
       { name: 'Sinch', symbol: 'SINCH.ST', sector: 'Technology', reasoning: 'Molnkommunikation och messaging' },
       { name: 'Paradox Interactive', symbol: 'PDX.ST', sector: 'Technology', reasoning: 'Strategispel och digital distribution' },
       { name: 'Tobii', symbol: 'TOBII.ST', sector: 'Technology', reasoning: 'Ögonspårningsteknologi och AI' },
       { name: 'Nibe', symbol: 'NIBE-B.ST', sector: 'Clean Energy', reasoning: 'Värmepumpar och hållbar energi' },
       { name: 'BioGaia', symbol: 'BIOG-B.ST', sector: 'Healthcare', reasoning: 'Probiotika och hälsoprodukter' },
-      { name: 'Addtech', symbol: 'ADDT-B.ST', sector: 'Technology', reasoning: 'Industriell teknik och komponenter' },
-      { name: 'Epiroc', symbol: 'EPI-A.ST', sector: 'Industrial', reasoning: 'Gruv- och infrastrukturutrustning' }
+      { name: 'Addtech', symbol: 'ADDT-B.ST', sector: 'Technology', reasoning: 'Industriell teknik och komponenter' }
     ]
   };
   
-  const stockPool = allStocks[riskTolerance as keyof typeof allStocks] || allStocks.moderate;
-  
-  // Select stocks based on preferred count
-  let selectedStocks = [];
-  const baseAllocation = Math.floor(allocation.stocks / preferredStockCount);
-  
-  // Shuffle and select the desired number of stocks
-  const shuffledStocks = [...stockPool].sort(() => Math.random() - 0.5);
-  
-  for (let i = 0; i < Math.min(preferredStockCount, shuffledStocks.length); i++) {
-    const stock = shuffledStocks[i];
-    let stockAllocation = baseAllocation;
-    
-    // Distribute remaining allocation to first few stocks
-    if (i < allocation.stocks % preferredStockCount) {
-      stockAllocation += 1;
-    }
-    
-    selectedStocks.push({
-      ...stock,
-      allocation: stockAllocation
-    });
-  }
-  
-  return {
-    allocation,
-    stocks: selectedStocks,
-    targetValue,
-    expectedReturn,
-    riskScore
-  };
+  const stocks = fallbackStocks[riskTolerance as keyof typeof fallbackStocks] || fallbackStocks.moderate;
+  return stocks.slice(0, stockCount);
 }
 
 function generateInitialRecommendations(riskProfile: any, portfolioData: any) {
