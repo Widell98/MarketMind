@@ -1023,7 +1023,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                               variant="outline"
                               size="sm"
                               onClick={() => deleteHolding(recommendation.id)}
-                              className="h-7 px-2 text-xs bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+                              className="bg-red-600 hover:bg-red-700"
                             >
                               <X className="w-3 h-3" />
                             </Button>
