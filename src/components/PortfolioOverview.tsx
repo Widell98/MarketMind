@@ -19,11 +19,13 @@ import { useNavigate } from 'react-router-dom';
 import AddHoldingDialog from './AddHoldingDialog';
 import EditHoldingDialog from './EditHoldingDialog';
 import UserHoldingsManager from './UserHoldingsManager';
+
 interface PortfolioOverviewProps {
   portfolio: any;
   onQuickChat?: (message: string) => void;
   onActionClick?: (action: string) => void;
 }
+
 const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   portfolio,
   onQuickChat,
@@ -66,22 +68,9 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   console.log('AI recommendations from portfolio:', aiRecommendations);
   console.log('Database recommendations:', recommendations);
 
-  // Combine database recommendations with portfolio recommendations
-  // Filter out recommendations that match existing actual holdings (by name or symbol)
-  const allRecommendations = [
-    ...recommendations, 
-    ...aiRecommendations.map((stock: any, index: number) => ({
-      id: `portfolio-rec-${index}`,
-      name: stock.name || stock.symbol || 'Okänd aktie',
-      symbol: stock.symbol || stock.name?.substring(0, 4).toUpperCase(),
-      holding_type: 'recommendation',
-      purchase_price: stock.targetPrice || stock.price || 0,
-      sector: stock.sector || 'Allmän',
-      currency: 'SEK',
-      allocation: stock.allocation || 10,
-      reasoning: stock.reasoning || 'AI-rekommendation'
-    }))
-  ].filter(recommendation => {
+  // Only use database recommendations - don't combine with portfolio recommendations
+  // The database recommendations already include the AI-generated ones with proper allocation
+  const allRecommendations = recommendations.filter(recommendation => {
     // Filter out recommendations that already exist as actual holdings
     return !actualHoldings.some(holding => 
       holding.name.toLowerCase().includes(recommendation.name.toLowerCase()) || 
@@ -90,7 +79,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     );
   });
 
-  console.log('All combined recommendations:', allRecommendations);
+  console.log('Filtered database recommendations:', allRecommendations);
 
   // Calculate portfolio exposure data
   const calculateExposureData = () => {
@@ -172,6 +161,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         return 'border-gray-200 bg-gray-50';
     }
   };
+
   const formatCurrency = (amount: number | null | undefined, currency: string = 'SEK') => {
     if (!amount) return '0 kr';
     return new Intl.NumberFormat('sv-SE', {
@@ -181,6 +171,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       maximumFractionDigits: 0
     }).format(amount);
   };
+
   const getHoldingTypeColor = (type: string) => {
     const colors = {
       stock: 'bg-blue-100 text-blue-800',
@@ -193,6 +184,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     };
     return colors[type as keyof typeof colors] || colors.other;
   };
+
   const getHoldingTypeLabel = (type: string) => {
     const labels = {
       stock: 'Aktie',
@@ -205,6 +197,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     };
     return labels[type as keyof typeof labels] || 'Övrigt';
   };
+
   const handleStockChat = (stockName: string, stockSymbol?: string) => {
     // Create a detailed message about the stock
     const stockInfo = stockSymbol ? `${stockName} (${stockSymbol})` : stockName;
@@ -217,6 +210,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     });
     navigate(`/ai-chat?${params.toString()}`);
   };
+
   const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
     console.log(`Deleting holding: ${holdingName} (${holdingId})`);
     const success = await deleteHolding(holdingId);
@@ -229,6 +223,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       refetch();
     }
   };
+
   const toggleStockExpansion = (index: number) => {
     const newExpanded = new Set(expandedStocks);
     if (newExpanded.has(index)) {
@@ -238,6 +233,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     }
     setExpandedStocks(newExpanded);
   };
+
   const handleExamplePrompt = (prompt: string) => {
     const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
     if (chatTab) {
@@ -252,6 +248,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       window.dispatchEvent(event);
     }, 100);
   };
+
   const handleQuickAction = (message: string) => {
     // Navigate to AI chat and trigger the pre-filled message
     navigate('/ai-chat');
@@ -266,9 +263,11 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       window.dispatchEvent(event);
     }, 100);
   };
+
   const handleRebalanceAction = () => {
     handleExamplePrompt('Analysera min nuvarande portfölj och föreslå en rebalanseringsstrategi. Visa vilka aktier jag borde köpa mer av, sälja eller behålla för att optimera min riskjusterade avkastning.');
   };
+
   const handleInsightAction = (insight: any) => {
     const message = `Berätta mer om denna insikt: ${insight.title}. ${insight.description}`;
     handleExamplePrompt(message);
@@ -278,6 +277,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       markAsRead(insight.id);
     }
   };
+
   const clearAIRecommendations = async () => {
     if (!user) {
       toast({
@@ -320,6 +320,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       setIsDeletingRecommendations(false);
     }
   };
+
   const handleResetProfile = async () => {
     if (!user) {
       toast({
@@ -379,14 +380,17 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       setIsResetting(false);
     }
   };
+
   const handleAddFromRecommendation = (recommendation: any) => {
     setSelectedRecommendation(recommendation);
     setAddHoldingDialogOpen(true);
   };
+
   const handleEditHolding = (holding: any) => {
     setSelectedHolding(holding);
     setEditHoldingDialogOpen(true);
   };
+
   const handleAddHolding = async (holdingData: any) => {
     const success = await addHolding(holdingData);
     if (success) {
@@ -399,6 +403,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     }
     return success;
   };
+
   const handleUpdateHolding = async (holdingData: any) => {
     if (!selectedHolding) return;
     const success = await updateHolding(selectedHolding.id, holdingData);
@@ -410,6 +415,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       refetch();
     }
   };
+
   const handleGetAIRecommendations = () => {
     navigate('/ai-chat', {
       state: {
@@ -537,6 +543,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </Card>
       </div>;
   }
+
   return <div className="space-y-6">
       {/* User's Current Holdings with integrated prices and cash management - NOW FIRST */}
       <UserHoldingsManager />
@@ -560,7 +567,10 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             <div className="flex gap-2">
               {allRecommendations.length > 0 && <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    
+                    <Button variant="outline" size="sm" disabled={isDeletingRecommendations} className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300">
+                      <X className="w-4 h-4 mr-1" />
+                      {isDeletingRecommendations ? "Rensar..." : "Rensa alla"}
+                    </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
@@ -639,9 +649,9 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                           <Button variant="outline" size="sm" onClick={() => handleStockChat(recommendation.name, recommendation.symbol)} className="h-8 px-2 text-xs bg-white hover:bg-purple-50 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300">
                             <MessageCircle className="w-3 h-3" />
                           </Button>
-                          {recommendation.id && recommendation.id.startsWith('portfolio-rec-') === false && <Button variant="outline" size="sm" onClick={() => deleteHolding(recommendation.id)} className="h-8 px-2 text-xs bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300">
-                               <Trash2 className="w-3 h-3" />
-                            </Button>}
+                          <Button variant="outline" size="sm" onClick={() => handleDeleteHolding(recommendation.id, recommendation.name)} className="h-8 px-2 text-xs bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300">
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>)}
@@ -804,4 +814,5 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       <EditHoldingDialog isOpen={editHoldingDialogOpen} onClose={() => setEditHoldingDialogOpen(false)} onSave={handleUpdateHolding} holding={selectedHolding} />
     </div>;
 };
+
 export default PortfolioOverview;
