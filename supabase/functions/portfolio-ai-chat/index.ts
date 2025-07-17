@@ -279,7 +279,7 @@ Detta är en komplett portföljanalys. Ge en omfattande strategi med:
     ];
 
     console.log('=== CALLING OPENAI API ===');
-    console.log('Model: gpt-4.1-2025-04-14');
+    console.log('Model: gpt-4.o');
     console.log('Messages count:', messages.length);
     console.log('User message:', message);
     console.log('Analysis type:', analysisType);
