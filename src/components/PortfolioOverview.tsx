@@ -69,14 +69,22 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   console.log('Database recommendations:', recommendations);
 
   // Only use database recommendations - don't combine with portfolio recommendations
-  // The database recommendations already include the AI-generated ones with proper allocation
+  // Filter out duplicates and invalid entries
   const allRecommendations = recommendations.filter(recommendation => {
     // Filter out recommendations that already exist as actual holdings
-    return !actualHoldings.some(holding => 
+    const alreadyOwned = actualHoldings.some(holding => 
       holding.name.toLowerCase().includes(recommendation.name.toLowerCase()) || 
       (holding.symbol && recommendation.symbol && 
        holding.symbol.toLowerCase() === recommendation.symbol.toLowerCase())
     );
+    
+    // Filter out invalid or duplicate entries
+    const isValid = recommendation.name && 
+                   recommendation.name.length > 2 && 
+                   !recommendation.name.includes('Total allokering') &&
+                   !recommendation.name.includes('Investera');
+    
+    return !alreadyOwned && isValid;
   });
 
   console.log('Filtered database recommendations:', allRecommendations);

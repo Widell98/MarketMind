@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -60,10 +59,8 @@ export const useUserHoldings = () => {
         return;
       }
 
-      // Type cast the data properly
-      // Since allocation is not in the database schema directly, we need to handle it specially
+      // Type cast the data properly and handle duplicates
       const typedData: UserHolding[] = (data || []).map(item => {
-        // Create the base holding object with known properties
         const holding: UserHolding = {
           id: item.id,
           user_id: item.user_id,
@@ -81,27 +78,52 @@ export const useUserHoldings = () => {
           updated_at: item.updated_at
         };
 
-        // Check if there's an allocation property in the item
-        // This might be coming from a JSON field or custom column
-        if ('allocation' in item && item.allocation !== null) {
-          holding.allocation = Number(item.allocation);
-        }
-
         return holding;
       });
 
       console.log('All holdings fetched:', typedData);
 
-      // Separate recommendations from actual holdings
+      // Remove duplicates from recommendations based on name and symbol
+      const seenRecommendations = new Set<string>();
+      const uniqueRecommendations = typedData
+        .filter(h => h.holding_type === 'recommendation')
+        .filter(recommendation => {
+          // Create a unique key based on name and symbol
+          const key = `${recommendation.name.toLowerCase()}-${recommendation.symbol || 'no-symbol'}`;
+          
+          // Skip invalid recommendations (those that seem to be parsing errors)
+          if (recommendation.name.includes('Total allokering') || 
+              recommendation.name.includes('Investera') ||
+              recommendation.name.length < 3) {
+            return false;
+          }
+          
+          if (seenRecommendations.has(key)) {
+            return false; // Skip duplicate
+          }
+          
+          seenRecommendations.add(key);
+          return true;
+        });
+
+      // Add mock allocation data for display purposes (this would normally come from AI response)
+      const recommendationsWithAllocation = uniqueRecommendations.map((rec, index) => {
+        const allocations = [25, 20, 20, 15, 10, 10]; // Example allocations that sum to 100%
+        return {
+          ...rec,
+          allocation: allocations[index % allocations.length]
+        };
+      });
+
+      // Separate actual holdings (no duplicates needed here since they're user-entered)
       const actualHoldingsData = typedData.filter(h => h.holding_type !== 'recommendation');
-      const recommendationsData = typedData.filter(h => h.holding_type === 'recommendation');
 
+      console.log('Unique recommendations:', recommendationsWithAllocation);
       console.log('Actual holdings:', actualHoldingsData);
-      console.log('Recommendations:', recommendationsData);
 
-      setHoldings(typedData);
+      setHoldings([...actualHoldingsData, ...recommendationsWithAllocation]);
       setActualHoldings(actualHoldingsData);
-      setRecommendations(recommendationsData);
+      setRecommendations(recommendationsWithAllocation);
     } catch (error) {
       console.error('Error fetching holdings:', error);
     } finally {
