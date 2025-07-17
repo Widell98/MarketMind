@@ -61,11 +61,34 @@ export const useUserHoldings = () => {
       }
 
       // Type cast the data properly
-      const typedData: UserHolding[] = (data || []).map(item => ({
-        ...item,
-        holding_type: item.holding_type as UserHolding['holding_type'],
-        allocation: item.allocation as number | undefined // Use optional chaining since allocation may not exist
-      }));
+      // Since allocation is not in the database schema directly, we need to handle it specially
+      const typedData: UserHolding[] = (data || []).map(item => {
+        // Create the base holding object with known properties
+        const holding: UserHolding = {
+          id: item.id,
+          user_id: item.user_id,
+          holding_type: item.holding_type as UserHolding['holding_type'],
+          name: item.name,
+          symbol: item.symbol,
+          quantity: item.quantity,
+          current_value: item.current_value,
+          purchase_price: item.purchase_price,
+          purchase_date: item.purchase_date,
+          sector: item.sector,
+          market: item.market,
+          currency: item.currency,
+          created_at: item.created_at,
+          updated_at: item.updated_at
+        };
+
+        // Check if there's an allocation property in the item
+        // This might be coming from a JSON field or custom column
+        if ('allocation' in item && item.allocation !== null) {
+          holding.allocation = Number(item.allocation);
+        }
+
+        return holding;
+      });
 
       console.log('All holdings fetched:', typedData);
 
