@@ -963,14 +963,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                   <MessageCircle className="w-4 h-4" />
                   Få AI-rekommendationer
                 </Button>
-                <Button
-                  onClick={() => navigate('/portfolio-advisor')}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                >
-                  <Brain className="w-4 h-4" />
-                  Skapa investeringsstrategi
-                </Button>
               </div>
             </div>
           ) : (
