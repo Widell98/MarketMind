@@ -1000,60 +1000,36 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                           {recommendation.sector || 'Okänd sektor'}
                         </div>
                       </TableCell>
-                <TableCell className="text-right">
-  <div className="flex items-center gap-1 justify-end">
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={() => handleEditHolding(recommendation)}
-      className="h-7 px-2 text-xs bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
-    >
-      <Edit className="w-3 h-3" />
-    </Button>
-
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={() => handleStockChat(recommendation.name, recommendation.symbol)}
-      className="h-7 px-2 text-xs bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
-    >
-      <MessageCircle className="w-3 h-3" />
-    </Button>
-
-    {recommendation.id && !recommendation.id.startsWith('portfolio-rec-') && (
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 px-2 text-xs bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
-          >
-            <Trash2 className="w-3 h-3" />
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Radera innehav</AlertDialogTitle>
-            <AlertDialogDescription>
-              Är du säker på att du vill radera <strong>{recommendation.name}</strong> från dina innehav?
-              Denna åtgärd kan inte ångras.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteHolding(recommendation.id)}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Radera
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    )}
-  </div>
-</TableCell>
-
+                      <TableCell className="text-right">
+                        <div className="flex items-center gap-1 justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleAddFromRecommendation(recommendation)}
+                            className="h-7 px-2 text-xs bg-white hover:bg-green-50 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300"
+                          >
+                            <ShoppingCart className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleStockChat(recommendation.name, recommendation.symbol)}
+                            className="h-7 px-2 text-xs bg-white hover:bg-purple-50 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300"
+                          >
+                            <MessageCircle className="w-3 h-3" />
+                          </Button>
+                          {recommendation.id && recommendation.id.startsWith('portfolio-rec-') === false && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => deleteHolding(recommendation.id)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
