@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -74,7 +73,7 @@ const UserHoldingsManager: React.FC = () => {
   const [showAddCashDialog, setShowAddCashDialog] = useState(false);
   const [editingCash, setEditingCash] = useState<{id: string, amount: number} | null>(null);
   const [newCashData, setNewCashData] = useState({
-    name: '',
+    name: 'Kassa',
     amount: ''
   });
   
@@ -114,7 +113,7 @@ const UserHoldingsManager: React.FC = () => {
 
     const success = await addCashHolding(newCashData.name, amount);
     if (success) {
-      setNewCashData({ name: '', amount: '' });
+      setNewCashData({ name: 'Kassa', amount: '' });
       setShowAddCashDialog(false);
     }
   };
@@ -635,7 +634,7 @@ const UserHoldingsManager: React.FC = () => {
               <Label htmlFor="cash-name">Benämning</Label>
               <Input
                 id="cash-name"
-                placeholder="t.ex. Sparkonto, ISK kassa, etc."
+                placeholder="Kassa"
                 value={newCashData.name}
                 onChange={(e) => setNewCashData(prev => ({ ...prev, name: e.target.value }))}
               />
