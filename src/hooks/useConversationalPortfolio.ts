@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -64,60 +63,86 @@ export const useConversationalPortfolio = () => {
 
     console.log('Extracting recommendations from AI response:', aiResponse);
 
-    // Enhanced patterns for Swedish stock recommendations
+    // Enhanced patterns for parsing AI recommendations with numbered lists
     const patterns = [
-      // Pattern: **Company Name (SYMBOL)**: Description
-      /\*\*([^*]+?)\s*\(([A-Z]{2,8})\)\*\*:?\s*([^.\n]+)/gi,
-      // Pattern: Company Name (SYMBOL): Description  
-      /([A-ZÅÄÖ][a-zåäö\s&.-]+)\s*\(([A-Z]{2,8})\)\s*:?\s*([^.\n]+)/g,
-      // Pattern: **Company Name**: Description (with ISIN)
-      /\*\*([^*]+?)\*\*:?\s*([^.]+?)(?:ISIN:\s*([A-Z]{2}\d{10}))?/gi,
-      // Pattern: - Company Name (SYMBOL)
-      /[-•]\s*([A-ZÅÄÖ][a-zåäö\s&.-]+)\s*\(([A-Z]{2,8})\)/g,
-      // Pattern: Company Name med beskrivning
-      /(Castellum|Evolution Gaming|Avanza Global|Investor|Swedbank|Handelsbanken|Volvo|Ericsson|H&M|Atlas Copco|Kinnevik|Hexagon)\s*\(([A-Z-]+)\)?:?\s*([^.\n]+)/gi
+      // Pattern: 1. **Company Name (SYMBOL)**: Description... Allokering: XX%
+      /(?:\d+\.\s*)?\*\*([^*\(\)]+?)\s*\(([A-Z\s-]+?)\)\*\*:\s*([^.]+(?:\.[^.]*)*?)(?:Allokering:\s*(\d+)%)?/gi,
+      // Pattern: **Company Name**: Description (for funds without symbols)
+      /(?:\d+\.\s*)?\*\*([^*\(\)]+?)\*\*:\s*([^.]+(?:\.[^.]*)*?)(?:Allokering:\s*(\d+)%)?/gi,
+      // Pattern: Company Name (SYMBOL): Description
+      /(?:\d+\.\s*)?([A-ZÅÄÖ][a-zåäö\s&.-]+)\s*\(([A-Z\s-]+)\):\s*([^.\n]+)/g,
+      // Pattern for funds without parentheses: **Fund Name**: Description
+      /(?:\d+\.\s*)?\*\*([^*]+?(?:fond|Fond|INDEX|Index|Global|ETF)[^*]*?)\*\*:\s*([^.]+(?:\.[^.]*)*?)(?:Allokering:\s*(\d+)%)?/gi
     ];
 
-    // Known Swedish stocks mapping
-    const knownStocks: Record<string, { symbol: string; sector: string }> = {
-      'Castellum': { symbol: 'CAST', sector: 'Fastighet' },
-      'Evolution Gaming': { symbol: 'EVO', sector: 'Teknologi' },
-      'Avanza Global': { symbol: 'AVZ-GLOBAL', sector: 'Fond' },
-      'Investor': { symbol: 'INVE-B', sector: 'Investmentbolag' },
-      'Swedbank': { symbol: 'SWED-A', sector: 'Bank' },
-      'Handelsbanken': { symbol: 'SHB-A', sector: 'Bank' },
-      'Volvo': { symbol: 'VOLV-B', sector: 'Fordon' },
-      'Ericsson': { symbol: 'ERIC-B', sector: 'Telekom' },
-      'H&M': { symbol: 'HM-B', sector: 'Detaljhandel' },
-      'Atlas Copco': { symbol: 'ATCO-A', sector: 'Industri' },
-      'Kinnevik': { symbol: 'KINV-B', sector: 'Investmentbolag' },
-      'Hexagon': { symbol: 'HEXA-B', sector: 'Teknologi' }
+    // Known Swedish stocks and funds mapping
+    const knownInvestments: Record<string, { symbol: string; sector: string; type: 'stock' | 'fund' }> = {
+      'Evolution Gaming Group AB': { symbol: 'EVO', sector: 'Teknologi', type: 'stock' },
+      'Evolution Gaming': { symbol: 'EVO', sector: 'Teknologi', type: 'stock' },
+      'Hexagon AB': { symbol: 'HEXA-B', sector: 'Teknologi', type: 'stock' },
+      'Hexagon': { symbol: 'HEXA-B', sector: 'Teknologi', type: 'stock' },
+      'SBB Norden': { symbol: 'SBB-B', sector: 'Fastighet', type: 'stock' },
+      'Volvo AB': { symbol: 'VOLV-B', sector: 'Industri', type: 'stock' },
+      'Volvo': { symbol: 'VOLV-B', sector: 'Industri', type: 'stock' },
+      'Castellum': { symbol: 'CAST', sector: 'Fastighet', type: 'stock' },
+      'Investor': { symbol: 'INVE-B', sector: 'Investmentbolag', type: 'stock' },
+      'Swedbank': { symbol: 'SWED-A', sector: 'Bank', type: 'stock' },
+      'Handelsbanken': { symbol: 'SHB-A', sector: 'Bank', type: 'stock' },
+      'Ericsson': { symbol: 'ERIC-B', sector: 'Telekom', type: 'stock' },
+      'H&M': { symbol: 'HM-B', sector: 'Detaljhandel', type: 'stock' },
+      'Atlas Copco': { symbol: 'ATCO-A', sector: 'Industri', type: 'stock' },
+      'Kinnevik': { symbol: 'KINV-B', sector: 'Investmentbolag', type: 'stock' },
+      'Avanza Global': { symbol: 'AVZ-GLOBAL', sector: 'Fond', type: 'fund' },
+      'Nordnet Indexfond Teknologi': { symbol: 'NORDNET-TECH', sector: 'Teknologi', type: 'fund' },
+      'SPP Aktiefond USA': { symbol: 'SPP-USA', sector: 'USA', type: 'fund' }
     };
 
-    // Extract using patterns
-    patterns.forEach(pattern => {
+    // Extract using enhanced patterns
+    patterns.forEach((pattern, patternIndex) => {
       let match;
-      while ((match = pattern.exec(aiResponse)) !== null) {
-        const [, name, symbolOrDesc, descOrSymbol, isin] = match;
+      const regex = new RegExp(pattern.source, pattern.flags);
+      
+      while ((match = regex.exec(aiResponse)) !== null) {
+        let name = '';
+        let symbol = '';
+        let reasoning = '';
+        let allocation = 10; // Default allocation
         
-        if (name && name.length > 2) {
+        if (patternIndex === 0) {
+          // Pattern: 1. **Company Name (SYMBOL)**: Description... Allokering: XX%
+          [, name, symbol, reasoning, allocation] = match;
+          allocation = allocation ? parseInt(allocation) : 12;
+        } else if (patternIndex === 1) {
+          // Pattern: **Company Name**: Description (for funds)
+          [, name, reasoning, allocation] = match;
+          allocation = allocation ? parseInt(allocation) : 15;
+          // Try to find symbol from known investments
+          const known = knownInvestments[name.trim()];
+          if (known) {
+            symbol = known.symbol;
+          }
+        } else if (patternIndex === 2) {
+          // Pattern: Company Name (SYMBOL): Description
+          [, name, symbol, reasoning] = match;
+        } else if (patternIndex === 3) {
+          // Pattern for funds: **Fund Name**: Description
+          [, name, reasoning, allocation] = match;
+          allocation = allocation ? parseInt(allocation) : 20;
+        }
+
+        if (name && name.trim().length > 2) {
           const cleanName = name.trim();
-          const knownStock = knownStocks[cleanName];
+          const cleanSymbol = symbol ? symbol.trim() : '';
           
-          let finalSymbol = '';
-          let finalSector = 'Allmän';
-          let finalReasoning = '';
+          // Get additional info from known investments
+          const knownInfo = knownInvestments[cleanName] || knownInvestments[cleanName.replace(/\s*(AB|Group|Norden)\s*/gi, '')];
           
-          if (knownStock) {
-            finalSymbol = knownStock.symbol;
-            finalSector = knownStock.sector;
-            finalReasoning = descOrSymbol || symbolOrDesc || 'AI-rekommenderad aktie';
-          } else if (symbolOrDesc && symbolOrDesc.match(/^[A-Z]{2,8}$/)) {
-            finalSymbol = symbolOrDesc;
-            finalReasoning = descOrSymbol || 'AI-rekommenderad aktie';
-          } else {
-            finalSymbol = extractSymbolFromName(cleanName);
-            finalReasoning = symbolOrDesc || 'AI-rekommenderad aktie';
+          let finalSymbol = cleanSymbol || (knownInfo ? knownInfo.symbol : '');
+          let finalSector = knownInfo ? knownInfo.sector : 'Allmän';
+          
+          // Clean up symbol (remove extra spaces, fix common issues)
+          if (finalSymbol) {
+            finalSymbol = finalSymbol.replace(/\s+/g, '').replace(/^([A-Z]+)\s*([A-Z])$/, '$1-$2');
           }
 
           // Avoid duplicates
@@ -127,54 +152,18 @@ export const useConversationalPortfolio = () => {
           )) {
             recommendations.push({
               name: cleanName,
-              symbol: finalSymbol,
+              symbol: finalSymbol || undefined,
               sector: finalSector,
-              reasoning: finalReasoning,
-              allocation: 10, // Default allocation
-              isin: isin || undefined
+              reasoning: reasoning ? reasoning.trim() : 'AI-rekommenderad investering',
+              allocation: allocation || 10
             });
           }
         }
       }
     });
 
-    // Also extract from known company mentions without symbols
-    Object.entries(knownStocks).forEach(([companyName, details]) => {
-      if (aiResponse.toLowerCase().includes(companyName.toLowerCase()) && 
-          !recommendations.some(r => r.name.toLowerCase() === companyName.toLowerCase())) {
-        recommendations.push({
-          name: companyName,
-          symbol: details.symbol,
-          sector: details.sector,
-          reasoning: 'Rekommenderad av AI för din portfölj',
-          allocation: 10
-        });
-      }
-    });
-
     console.log('Final extracted recommendations:', recommendations);
-    return recommendations.slice(0, 8); // Limit to 8 recommendations
-  };
-
-  const extractSymbolFromName = (name: string): string => {
-    const symbolMap: { [key: string]: string } = {
-      'proethos fond': 'PROETHOS',
-      'spiltan aktiefond investmentbolag': 'SPILTAN',
-      'nvidia': 'NVDA',
-      'embracer group': 'EMBRAC-B',
-      'essity': 'ESSITY-B',
-      'orkla': 'ORK',
-      'abb': 'ABB'
-    };
-    
-    const lowerName = name.toLowerCase();
-    for (const [key, symbol] of Object.entries(symbolMap)) {
-      if (lowerName.includes(key)) {
-        return symbol;
-      }
-    }
-    
-    return name.toUpperCase().replace(/[^A-Z]/g, '').substring(0, 5);
+    return recommendations.slice(0, 10); // Limit to 10 recommendations
   };
 
   const buildEnhancedAIPrompt = (conversationData: ConversationData) => {
@@ -280,10 +269,9 @@ UPPDRAG FÖR NYBÖRJARE:
 9. Förklara risker på ett förståeligt sätt kopplat till deras komfortnivå
 10. Föreslå en detaljerad månadsplan baserad på deras inkomst och tillgängliga kapital
 
-VIKTIGT: Använd detta exakta format för aktie-/fondrekommendationer:
-**Castellum (CAST)**: Beskrivning av varför denna fastighetsaktie passar din profil.
-**Avanza Global**: Global indexfond för bred diversifiering.
-**Evolution Gaming (EVO)**: Teknologibolag inom spelindustrin.`;
+VIKTIGT: Använd EXAKT detta format för varje rekommendation:
+1. **Företagsnamn (SYMBOL)**: Beskrivning av varför denna investering passar din profil. Allokering: XX%
+2. **Fondnamn**: Beskrivning av fonden och varför den passar. Allokering: XX%`;
 
     } else {
       prompt += `
@@ -364,10 +352,9 @@ UPPDRAG FÖR ERFAREN INVESTERARE:
 9. Ge konkreta exit-strategier och optimeringsregler
 10. Inkludera avancerade metriker och uppföljning
 
-VIKTIGT: Använd detta exakta format för aktie-/fondrekommendationer:
-**Castellum (CAST)**: Beskrivning av varför denna fastighetsaktie passar din profil.
-**Avanza Global**: Global indexfond för bred diversifiering.
-**Evolution Gaming (EVO)**: Teknologibolag inom spelindustrin.`;
+VIKTIGT: Använd EXAKT detta format för varje rekommendation:
+1. **Företagsnamn (SYMBOL)**: Beskrivning av varför denna investering passar din profil. Allokering: XX%
+2. **Fondnamn**: Beskrivning av fonden och varför den passar. Allokering: XX%`;
     }
 
     // Add common goals and specifications
@@ -392,6 +379,13 @@ GEMENSAMMA KRAV FÖR BÅDA PROFILER:
 - Anpassa komplexiteten till användarens erfarenhetsnivå
 
 VIKTIGT: Skapa en MYCKET personlig och specifik strategi som verkligen skiljer sig åt baserat på användarens unika profil. Undvik generiska råd.
+
+**ANVÄND NUMRERADE LISTA FÖR INVESTERINGSREKOMMENDATIONER:**
+
+**Investeringsrekommendationer:**
+
+1. **Företagsnamn (SYMBOL)**: Detaljerad beskrivning. Allokering: XX%
+2. **Fondnamn**: Detaljerad beskrivning. Allokering: XX%
 
 Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska som är perfekt anpassad för användarens specifika situation, erfarenhetsnivå och psykologiska profil.`;
 
