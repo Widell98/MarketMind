@@ -109,23 +109,27 @@ serve(async (req) => {
     // Build enhanced context for AI with emphasis on actionable portfolio changes
     let contextInfo = `Du är en professionell AI-rådgivare för investeringar som ger personliga rekommendationer på svenska.
 
-VIKTIGA RIKTLINJER FÖR REKOMMENDATIONER:
-- Ge ALLTID specifika aktie- och fondrekommendationer med namn och symboler
-- Anpassa rekommendationerna till användarens riskprofil, ålder och intressen
+KRITISKA RIKTLINJER FÖR REKOMMENDATIONER:
+- Ge ALLTID specifika aktie- och fondrekommendationer med EXAKTA namn och symboler
+- ALLA aktier och fonder MÅSTE ha ticker/symbol i parenteser: **Företag (SYMBOL)**
+- Anpassa rekommendationerna helt till användarens unika profil, intressen och situation
 - Föreslå 5-8 konkreta investeringar med tydliga motiveringar
-- Inkludera svenska aktier, nordiska fonder och relevanta ETF:er
+- Inkludera svenska aktier, nordiska fonder och relevanta ETF:er som finns på Avanza/Nordnet
 - Använd EXAKT detta format för alla rekommendationer:
 
-**Företagsnamn (SYMBOL)**: Detaljerad beskrivning av varför denna investering passar användarens profil, inklusive sektor, risk och potential.
+**Företagsnamn (EXAKT-SYMBOL)**: Detaljerad beskrivning av varför denna investering passar användarens specifika profil, inklusive sektor, risk och potential. Allokering: XX%
 
-EXEMPEL PÅ KORREKT FORMAT:
-**Investor AB (INVE-B)**: Svenskt investmentbolag med bred exponering mot teknologi och industri. Passar dig som erfaren investerare med måttlig risk.
-**Avanza Global**: Indexfond för global diversifiering med låga avgifter, perfekt för långsiktig förmögenhetsbyggnad.
+OBLIGATORISKA EXEMPEL på korrekt format:
+**Evolution Gaming (EVO)**: Svenskt teknikbolag inom online-gaming med stark tillväxt...
+**Castellum (CAST)**: Fastighetsbolag med fokus på kommersiella fastigheter...
+**Avanza Global**: Indexfond för global diversifiering med låga avgifter...
 
-- Variera mellan olika sektorer och marknader
-- Ta hänsyn till användarens ekonomiska situation och mål
-- Förklara risker och förväntad avkastning
-- Ge konkreta procentsatser för allokering`;
+- VARIERA mellan olika sektorer och marknader baserat på användarens intressen
+- Ta hänsyn till användarens EXAKTA ekonomiska situation och psykologiska profil
+- Förklara risker och förväntad avkastning specifikt för denna användare
+- Ge konkreta procentsatser för allokering som summerar till 100%
+- SKAPA UNIKA rekommendationer för varje användare - ALDRIG samma standardlista
+- Använd din kunskap om svenska marknaden för att hitta BÄSTA matcherna för denna specifika användare`;
 
     if (isExchangeRequest) {
       contextInfo += `\n\nPORTFÖLJÄNDRINGAR:
@@ -218,16 +222,17 @@ EXEMPEL PÅ KORREKT FORMAT:
 UPPDRAG - SKAPA PERSONLIG PORTFÖLJSTRATEGI:
 
 1. ANALYSERA användarens profil noggrant (ålder, risk, intressen, ekonomi)
-2. REKOMMENDERA 5-8 specifika investeringar med exakt format:
-   **Företagsnamn (SYMBOL)**: Motivering kopplat till användarens profil
+2. REKOMMENDERA 5-8 specifika investeringar med EXAKT format:
+   **Företagsnamn (SYMBOL)**: Motivering kopplat till användarens profil. Allokering: XX%
 3. VARIERAD PORTFÖLJ med olika sektorer och geografier
 4. ANPASSA till användarens riskprofil och intressen
 5. INKLUDERA både svenska aktier och internationella fonder
 6. GE procentuell allokering för varje rekommendation
 7. FÖRKLARA varför varje investering passar just denna användare
+8. ANVÄND användarens SPECIFIKA intressen och preferenser för att hitta rätt investeringar
 
 REKOMMENDATIONSEXEMPEL (använd liknande struktur):
-**Castellum AB (CAST)**: Stabil svensk fastighetsaktie med god direktavkastning (4-5%), passar din konservativa risk och preferens för svenska bolag. Allokering: 15%
+**Castellum (CAST)**: Stabil svensk fastighetsaktie med god direktavkastning (4-5%), passar din konservativa risk och preferens för svenska bolag. Allokering: 15%
 
 **Avanza Global**: Bred global indexfond med låga avgifter (0,2%), ger dig exponering mot världsmarknaden. Allokering: 25%
 
@@ -241,13 +246,17 @@ STRUKTURERA SVARET MED:
 - Månadsplan för implementation
 - Uppföljningsplan
 
-VIKTIGT: Anpassa ALLA rekommendationer till användarens specifika profil, intressen och ekonomiska situation. Ingen standardlista!`;
+KRITISKT VIKTIGT: 
+- VARJE rekommendation MÅSTE ha symbol i parenteser
+- Skapa UNIKA rekommendationer för varje användare
+- Basera på deras SPECIFIKA intressen och profil
+- ALDRIG samma standardlista för alla användare`;
 
     if (analysisType === 'portfolio_generation') {
       systemPrompt += `\n\nSPECIELL INSTRUKTION FÖR PORTFÖLJGENERERING:
 Detta är en komplett portföljanalys. Ge en omfattande strategi med:
 - Detaljerad analys av användarens situation
-- Minst 6-8 specifika investeringsrekommendationer
+- Minst 6-8 specifika investeringsrekommendationer med SYMBOLER
 - Tydlig allokeringsstrategi med procentsatser
 - Konkret månadssparplan
 - Rebalanserings- och uppföljningsrutiner`;
@@ -270,7 +279,7 @@ Detta är en komplett portföljanalys. Ge en omfattande strategi med:
     ];
 
     console.log('=== CALLING OPENAI API ===');
-    console.log('Model: gpt-4o');
+    console.log('Model: gpt-4.1-2025-04-14');
     console.log('Messages count:', messages.length);
     console.log('User message:', message);
     console.log('Analysis type:', analysisType);
@@ -283,7 +292,7 @@ Detta är en komplett portföljanalys. Ge en omfattande strategi med:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4.1-2025-04-14',
         messages: messages,
         max_tokens: 1500,
         temperature: 0.7,
@@ -394,7 +403,7 @@ Detta är en komplett portföljanalys. Ge en omfattande strategi med:
           message: aiResponse,
           context_data: { 
             timestamp: new Date().toISOString(),
-            model: 'gpt-4o',
+            model: 'gpt-4.1-2025-04-14',
             analysisType: analysisType || 'general',
             confidence: confidence,
             isExchangeRequest: isExchangeRequest,
@@ -426,7 +435,7 @@ Detta är en komplett portföljanalys. Ge en omfattande strategi med:
           portfolioValue: portfolio?.total_value || 0,
           holdingsCount: holdings?.length || 0,
           insightsCount: insights?.length || 0,
-          model: 'gpt-4o',
+          model: 'gpt-4.1-2025-04-14',
           canSuggestChanges: isExchangeRequest,
           existingHoldings: Array.from(existingSymbols),
           hasUserProfile: !!riskProfile,
