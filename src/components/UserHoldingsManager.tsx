@@ -14,8 +14,6 @@ import {
   Banknote,
   Edit2,
   Wallet,
-  Activity,
-  RefreshCw,
   TrendingUp,
   TrendingDown,
   AlertTriangle
@@ -271,16 +269,29 @@ const UserHoldingsManager: React.FC = () => {
     );
   };
 
+  // Auto-update prices every 30 minutes
   useEffect(() => {
     if (user && actualHoldings.length > 0) {
       fetchPrices();
+      
+      // Set up interval for 30 minutes (1800000 ms)
+      const interval = setInterval(() => {
+        fetchPrices();
+      }, 1800000);
+
+      return () => clearInterval(interval);
     }
   }, [user, actualHoldings]);
 
-  // Combine actual holdings and cash holdings for display
+  // Filter out duplicate cash holdings by checking both cashHoldings and actualHoldings
+  const uniqueCashHoldings = cashHoldings.filter(cash => 
+    !actualHoldings.some(holding => holding.id === cash.id)
+  );
+
+  // Combine actual holdings and unique cash holdings for display
   const allHoldings = [
     ...actualHoldings,
-    ...cashHoldings.map(cash => ({
+    ...uniqueCashHoldings.map(cash => ({
       ...cash,
       holding_type: 'cash' as const,
       symbol: undefined,
@@ -373,25 +384,11 @@ const UserHoldingsManager: React.FC = () => {
                   <Banknote className="w-4 h-4" />
                   Lägg till kassa
                 </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="flex items-center gap-2" 
-                  onClick={fetchPrices}
-                  disabled={pricesLoading || loading}
-                >
-                  {pricesLoading ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Activity className="w-4 h-4" />
-                  )}
-                  Uppdatera priser
-                </Button>
               </div>
               
               {lastUpdated && (
                 <div className="text-xs text-muted-foreground mb-3 px-2">
-                  Priser uppdaterade: {lastUpdated} | 1 USD = {exchangeRate.toFixed(2)} SEK
+                  Priser uppdaterade: {lastUpdated} | 1 USD = {exchangeRate.toFixed(2)} SEK | Uppdateras automatiskt var 30:e minut
                 </div>
               )}
               
