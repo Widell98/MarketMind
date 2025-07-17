@@ -132,16 +132,15 @@ const ChatPortfolioAdvisor = () => {
     },
     {
       id: 'availableCapital',
-      question: 'Hur mycket sparkapital har du tillgängligt för investeringar just nu?',
+      question: 'Hur mycket sparkapital har du tillgängligt för investeringar just nu? (ange belopp i kronor)',
       key: 'availableCapital',
-      hasOptions: true,
+      hasOptions: false,
       showIf: () => conversationData.isBeginnerInvestor === true,
-      options: [
-        { value: '10000-50000', label: '10 000 - 50 000 kr' },
-        { value: '50000-100000', label: '50 000 - 100 000 kr' },
-        { value: '100000-250000', label: '100 000 - 250 000 kr' },
-        { value: '250000+', label: 'Över 250 000 kr' }
-      ]
+      processAnswer: (answer: string) => {
+        const amount = parseFloat(answer.replace(/[^\d.,]/g, '').replace(',', '.'));
+        return amount || 0;
+      },
+      saveCashAmount: true // Special flag to indicate this should be saved as cash
     },
     {
       id: 'emergencyFund',
@@ -494,7 +493,45 @@ const ChatPortfolioAdvisor = () => {
     return null;
   };
 
-  const handleAnswer = (answer: string) => {
+  const saveCashHolding = async (amount: number) => {
+    if (!user || amount <= 0) return;
+
+    try {
+      console.log('Saving cash holding with amount:', amount);
+      
+      const { error } = await supabase
+        .from('user_holdings')
+        .insert({
+          user_id: user.id,
+          name: 'Kassa',
+          holding_type: 'cash',
+          current_value: amount,
+          currency: 'SEK',
+          is_cash: true
+        });
+
+      if (error) {
+        console.error('Error saving cash holding:', error);
+        throw error;
+      }
+
+      console.log('Successfully saved cash holding');
+      
+      toast({
+        title: "Sparkapital registrerat",
+        description: `${amount.toLocaleString('sv-SE')} kr har lagts till som kassa i din portfölj`,
+      });
+    } catch (error) {
+      console.error('Failed to save cash holding:', error);
+      toast({
+        title: "Varning",
+        description: "Kunde inte spara ditt sparkapital. Det kommer fortfarande att analyseras av AI:n.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAnswer = async (answer: string) => {
     if (!waitingForAnswer || isComplete) return;
 
     const currentQuestion = getCurrentQuestion();
@@ -554,6 +591,11 @@ const ChatPortfolioAdvisor = () => {
     let processedAnswer: any = answer;
     if (currentQuestion.processAnswer) {
       processedAnswer = currentQuestion.processAnswer(answer);
+    }
+
+    // Save cash holding if this question should save cash amount
+    if (currentQuestion.saveCashAmount && typeof processedAnswer === 'number' && processedAnswer > 0) {
+      await saveCashHolding(processedAnswer);
     }
 
     // Update conversation data
