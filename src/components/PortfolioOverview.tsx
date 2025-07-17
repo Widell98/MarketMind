@@ -60,7 +60,13 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   const [selectedHolding, setSelectedHolding] = useState<any>(null);
 
   // Get AI recommendations from portfolio data
+  // Handle both types of portfolio generation:
+  // 1. From generate-portfolio edge function (recommended_stocks array)
+  // 2. From conversational flow (asset_allocation with AI strategy)
   const aiRecommendations = portfolio?.recommended_stocks || [];
+  
+  console.log('Portfolio data:', portfolio);
+  console.log('AI recommendations from portfolio:', aiRecommendations);
 
   // Combine database recommendations with portfolio recommendations
   // Filter out recommendations that match existing actual holdings (by name or symbol)
