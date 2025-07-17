@@ -137,6 +137,7 @@ const UserHoldingsManager: React.FC = () => {
     ...cashHoldings.map(cash => ({
       ...cash,
       is_cash: true,
+      holding_type: 'other' as const,
       symbol: undefined,
       quantity: undefined,
       purchase_price: cash.current_value
