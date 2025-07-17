@@ -472,6 +472,14 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     }
   };
 
+  const handleGetAIRecommendations = () => {
+    navigate('/ai-chat', {
+      state: { 
+        initialMessage: 'Jag behöver AI-rekommendationer för min portfölj. Kan du analysera mina nuvarande innehav och föreslå nya investeringar som passar min riskprofil?' 
+      }
+    });
+  };
+
   // Show login prompt if user is not authenticated
   if (!user) {
     return (
@@ -945,15 +953,25 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">Inga AI-rekommendationer ännu</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Implementera din riskprofil för att få personliga aktieförslag från AI-advisorn
+                Få personliga aktieförslag från AI-advisorn baserat på din riskprofil
               </p>
-              <Button
-                onClick={() => navigate('/portfolio-advisor')}
-                className="flex items-center gap-2"
-              >
-                <Brain className="w-4 h-4" />
-                Skapa investeringsstrategi
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <Button
+                  onClick={handleGetAIRecommendations}
+                  className="flex items-center gap-2"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Få AI-rekommendationer
+                </Button>
+                <Button
+                  onClick={() => navigate('/portfolio-advisor')}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <Brain className="w-4 h-4" />
+                  Skapa investeringsstrategi
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">
