@@ -15,7 +15,8 @@ import {
   Wallet,
   TrendingUp,
   TrendingDown,
-  AlertTriangle
+  AlertTriangle,
+  Building2
 } from 'lucide-react';
 import {
   Dialog,
@@ -299,6 +300,32 @@ const UserHoldingsManager: React.FC = () => {
     }))
   ];
 
+  const getHoldingIcon = (holdingType: string) => {
+    switch (holdingType) {
+      case 'cash':
+        return <Wallet className="w-5 h-5 text-green-600" />;
+      case 'stock':
+        return <Building2 className="w-5 h-5 text-blue-600" />;
+      case 'fund':
+        return <Package className="w-5 h-5 text-purple-600" />;
+      default:
+        return <Package className="w-5 h-5 text-gray-600" />;
+    }
+  };
+
+  const getHoldingBadgeStyle = (holdingType: string) => {
+    switch (holdingType) {
+      case 'cash':
+        return "bg-green-50 text-green-700 border-green-200";
+      case 'stock':
+        return "bg-blue-50 text-blue-700 border-blue-200";
+      case 'fund':
+        return "bg-purple-50 text-purple-700 border-purple-200";
+      default:
+        return "bg-gray-50 text-gray-700 border-gray-200";
+    }
+  };
+
   return (
     <>
       <Card className="h-fit">
@@ -393,49 +420,69 @@ const UserHoldingsManager: React.FC = () => {
               
               {allHoldings.map(holding => {
                 const currentPrice = getPriceForHolding(holding);
+                const isStock = holding.holding_type === 'stock';
+                const isCash = holding.holding_type === 'cash';
                 
                 return (
-                  <div key={holding.id} className="relative bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-sm">
+                  <div key={holding.id} className={`relative rounded-lg border transition-all duration-200 hover:shadow-sm ${
+                    isCash ? 'bg-green-50 border-green-200 hover:border-green-300' : 
+                    isStock ? 'bg-blue-50 border-blue-200 hover:border-blue-300' :
+                    'bg-white border-gray-200 hover:border-gray-300'
+                  }`}>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4">
                       {/* Innehav info */}
                       <div className="min-w-0 flex-1 lg:col-span-1">
                         <div className="flex items-center gap-2 mb-1">
-                          {holding.holding_type === 'cash' ? (
-                            <Wallet className="w-4 h-4 text-green-600" />
-                          ) : null}
-                          <h3 className="font-semibold text-gray-900 truncate">{holding.name}</h3>
+                          {getHoldingIcon(holding.holding_type)}
+                          <h3 className={`font-semibold truncate ${
+                            isCash ? 'text-green-900' :
+                            isStock ? 'text-blue-900' :
+                            'text-gray-900'
+                          }`}>{holding.name}</h3>
                           {holding.symbol && (
-                            <span className="font-mono bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-medium flex-shrink-0">
+                            <span className={`font-mono px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
+                              isStock ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                            }`}>
                               {holding.symbol}
                             </span>
                           )}
-                          {holding.holding_type === 'cash' && (
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 flex-shrink-0">
-                              Kassa
-                            </Badge>
-                          )}
+                          <Badge variant="outline" className={`flex-shrink-0 ${getHoldingBadgeStyle(holding.holding_type)}`}>
+                            {holding.holding_type === 'cash' ? 'Kassa' : 
+                             holding.holding_type === 'stock' ? 'Aktie' :
+                             holding.holding_type === 'fund' ? 'Fond' : holding.holding_type}
+                          </Badge>
                         </div>
-                        <div className="text-sm text-gray-600 flex flex-wrap items-center gap-3">
+                        <div className={`text-sm flex flex-wrap items-center gap-3 ${
+                          isCash ? 'text-green-700' :
+                          isStock ? 'text-blue-700' :
+                          'text-gray-600'
+                        }`}>
                           {holding.holding_type === 'cash' ? (
-                            <span className="font-medium text-green-600">
+                            <span className="font-medium">
                               {formatCurrency(holding.current_value)}
                             </span>
                           ) : (
                             <>
                               {holding.quantity && (
                                 <span className="flex items-center gap-1">
-                                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${
+                                    isStock ? 'bg-blue-400' : 'bg-gray-400'
+                                  }`}></span>
                                   {holding.quantity} aktier
                                 </span>
                               )}
                               {holding.purchase_price && (
                                 <span className="flex items-center gap-1">
-                                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${
+                                    isStock ? 'bg-blue-400' : 'bg-gray-400'
+                                  }`}></span>
                                   Köpt för {formatCurrency(holding.purchase_price)}
                                 </span>
                               )}
                               <span className="flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                  isStock ? 'bg-blue-400' : 'bg-gray-400'
+                                }`}></span>
                                 {holding.holding_type}
                               </span>
                             </>
@@ -499,7 +546,7 @@ const UserHoldingsManager: React.FC = () => {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="text-blue-600 hover:text-blue-700"
+                                className="text-green-600 hover:text-green-700 border-green-200 hover:border-green-300 hover:bg-green-50"
                                 onClick={() => setEditingCash({ id: holding.id, amount: holding.current_value })}
                               >
                                 <Edit2 className="w-4 h-4 mr-1" />
@@ -540,7 +587,7 @@ const UserHoldingsManager: React.FC = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 hover:border-red-300"
                               >
                                 <Trash2 className="w-4 h-4 mr-1" />
                                 Radera
@@ -571,7 +618,11 @@ const UserHoldingsManager: React.FC = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-200 hover:border-blue-300"
+                            className={`${
+                              isStock 
+                                ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200 hover:border-blue-300' 
+                                : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-200 hover:border-blue-300'
+                            }`}
                             onClick={() => handleDiscussHolding(holding.name, holding.symbol)}
                           >
                             <MessageSquare className="w-4 h-4 mr-1" />
