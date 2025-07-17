@@ -75,7 +75,8 @@ export const useUserHoldings = () => {
           market: item.market,
           currency: item.currency,
           created_at: item.created_at,
-          updated_at: item.updated_at
+          updated_at: item.updated_at,
+          allocation: item.allocation ? Number(item.allocation) : undefined
         };
 
         return holding;
@@ -83,31 +84,81 @@ export const useUserHoldings = () => {
 
       console.log('All holdings fetched:', typedData);
 
-      // Remove duplicates from recommendations based on name and symbol
+      // Helper function to normalize company names for comparison
+      const normalizeCompanyName = (name: string): string => {
+        return name
+          .toLowerCase()
+          .replace(/\s+(inc|ab|corp|ltd|etf|gaming)$/i, '') // Remove common suffixes
+          .replace(/\s+/g, ' ') // Normalize spaces
+          .trim();
+      };
+
+      // Helper function to check if a name is a valid stock/fund name
+      const isValidStockOrFund = (name: string): boolean => {
+        // Filter out strategy/concept names that are not actual stocks/funds
+        const invalidPatterns = [
+          'skatteoptimering',
+          'månadssparande',
+          'rebalanseringsstrategi',
+          'total allokering',
+          'investera',
+          'diversifiering',
+          'riskhantering',
+          'portföljstrategi',
+          'allokeringsstrategi',
+          'investeringsstrategi'
+        ];
+        
+        const lowerName = name.toLowerCase();
+        
+        // Check if it matches any invalid pattern
+        if (invalidPatterns.some(pattern => lowerName.includes(pattern))) {
+          return false;
+        }
+        
+        // Must have reasonable length (not too short, not too long)
+        if (name.length < 2 || name.length > 50) {
+          return false;
+        }
+        
+        // Should have a symbol if it's a real stock/fund, or be a known fund name
+        return true;
+      };
+
+      // Remove duplicates from recommendations based on normalized name
       const seenRecommendations = new Set<string>();
       const uniqueRecommendations = typedData
         .filter(h => h.holding_type === 'recommendation')
         .filter(recommendation => {
-          // Create a unique key based on name and symbol
-          const key = `${recommendation.name.toLowerCase()}-${recommendation.symbol || 'no-symbol'}`;
-          
-          // Skip invalid recommendations (those that seem to be parsing errors)
-          if (recommendation.name.includes('Total allokering') || 
-              recommendation.name.includes('Investera') ||
-              recommendation.name.length < 3) {
+          // Skip invalid recommendations (strategy names, not actual stocks/funds)
+          if (!isValidStockOrFund(recommendation.name)) {
+            console.log(`Filtering out non-stock/fund item: ${recommendation.name}`);
             return false;
           }
           
-          if (seenRecommendations.has(key)) {
+          // Create a unique key based on normalized name
+          const normalizedName = normalizeCompanyName(recommendation.name);
+          
+          if (seenRecommendations.has(normalizedName)) {
+            console.log(`Filtering out duplicate: ${recommendation.name} (normalized: ${normalizedName})`);
             return false; // Skip duplicate
           }
           
-          seenRecommendations.add(key);
+          seenRecommendations.add(normalizedName);
           return true;
-        });
+        })
+        // Sort by created_at to keep the most recent version
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-      // Add mock allocation data for display purposes (this would normally come from AI response)
+      console.log('Unique recommendations after deduplication:', uniqueRecommendations);
+
+      // Use actual allocation data if available, otherwise add mock allocation data for display purposes
       const recommendationsWithAllocation = uniqueRecommendations.map((rec, index) => {
+        // If allocation is already set, use it, otherwise provide default allocations
+        if (rec.allocation) {
+          return rec;
+        }
+        
         const allocations = [25, 20, 20, 15, 10, 10]; // Example allocations that sum to 100%
         return {
           ...rec,
@@ -118,7 +169,7 @@ export const useUserHoldings = () => {
       // Separate actual holdings (no duplicates needed here since they're user-entered)
       const actualHoldingsData = typedData.filter(h => h.holding_type !== 'recommendation');
 
-      console.log('Unique recommendations:', recommendationsWithAllocation);
+      console.log('Final unique recommendations:', recommendationsWithAllocation);
       console.log('Actual holdings:', actualHoldingsData);
 
       setHoldings([...actualHoldingsData, ...recommendationsWithAllocation]);
