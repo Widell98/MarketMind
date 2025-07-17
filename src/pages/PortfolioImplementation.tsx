@@ -16,7 +16,6 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Brain, TrendingUp, Target, BarChart3, Activity, Crown, AlertCircle, User, MessageSquare } from 'lucide-react';
-import CashHoldingsManager from '@/components/CashHoldingsManager';
 
 const PortfolioImplementation = () => {
   const { activePortfolio, loading } = usePortfolio();
@@ -217,7 +216,6 @@ const PortfolioImplementation = () => {
                 </div>
                 <div className="xl:col-span-1 min-w-0 space-y-4">
                   <UserInsightsPanel />
-                  <CashHoldingsManager />
                 </div>
               </div>
             </TabsContent>
