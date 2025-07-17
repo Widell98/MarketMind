@@ -83,14 +83,20 @@ export const useUserHoldings = () => {
 
       console.log('All holdings fetched:', typedData);
 
-      // Remove duplicates from recommendations based on name and symbol
+      // Helper function to normalize company names for comparison
+      const normalizeCompanyName = (name: string): string => {
+        return name
+          .toLowerCase()
+          .replace(/\s+(inc|ab|corp|ltd|etf|gaming)$/i, '') // Remove common suffixes
+          .replace(/\s+/g, ' ') // Normalize spaces
+          .trim();
+      };
+
+      // Remove duplicates from recommendations based on normalized name
       const seenRecommendations = new Set<string>();
       const uniqueRecommendations = typedData
         .filter(h => h.holding_type === 'recommendation')
         .filter(recommendation => {
-          // Create a unique key based on name and symbol
-          const key = `${recommendation.name.toLowerCase()}-${recommendation.symbol || 'no-symbol'}`;
-          
           // Skip invalid recommendations (those that seem to be parsing errors)
           if (recommendation.name.includes('Total allokering') || 
               recommendation.name.includes('Investera') ||
@@ -98,13 +104,21 @@ export const useUserHoldings = () => {
             return false;
           }
           
-          if (seenRecommendations.has(key)) {
+          // Create a unique key based on normalized name
+          const normalizedName = normalizeCompanyName(recommendation.name);
+          
+          if (seenRecommendations.has(normalizedName)) {
+            console.log(`Filtering out duplicate: ${recommendation.name} (normalized: ${normalizedName})`);
             return false; // Skip duplicate
           }
           
-          seenRecommendations.add(key);
+          seenRecommendations.add(normalizedName);
           return true;
-        });
+        })
+        // Sort by created_at to keep the most recent version
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      console.log('Unique recommendations after deduplication:', uniqueRecommendations);
 
       // Add mock allocation data for display purposes (this would normally come from AI response)
       const recommendationsWithAllocation = uniqueRecommendations.map((rec, index) => {
@@ -118,7 +132,7 @@ export const useUserHoldings = () => {
       // Separate actual holdings (no duplicates needed here since they're user-entered)
       const actualHoldingsData = typedData.filter(h => h.holding_type !== 'recommendation');
 
-      console.log('Unique recommendations:', recommendationsWithAllocation);
+      console.log('Final unique recommendations:', recommendationsWithAllocation);
       console.log('Actual holdings:', actualHoldingsData);
 
       setHoldings([...actualHoldingsData, ...recommendationsWithAllocation]);
