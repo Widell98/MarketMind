@@ -75,7 +75,8 @@ export const useUserHoldings = () => {
           market: item.market,
           currency: item.currency,
           created_at: item.created_at,
-          updated_at: item.updated_at
+          updated_at: item.updated_at,
+          allocation: item.allocation ? Number(item.allocation) : undefined
         };
 
         return holding;
@@ -92,15 +93,46 @@ export const useUserHoldings = () => {
           .trim();
       };
 
+      // Helper function to check if a name is a valid stock/fund name
+      const isValidStockOrFund = (name: string): boolean => {
+        // Filter out strategy/concept names that are not actual stocks/funds
+        const invalidPatterns = [
+          'skatteoptimering',
+          'månadssparande',
+          'rebalanseringsstrategi',
+          'total allokering',
+          'investera',
+          'diversifiering',
+          'riskhantering',
+          'portföljstrategi',
+          'allokeringsstrategi',
+          'investeringsstrategi'
+        ];
+        
+        const lowerName = name.toLowerCase();
+        
+        // Check if it matches any invalid pattern
+        if (invalidPatterns.some(pattern => lowerName.includes(pattern))) {
+          return false;
+        }
+        
+        // Must have reasonable length (not too short, not too long)
+        if (name.length < 2 || name.length > 50) {
+          return false;
+        }
+        
+        // Should have a symbol if it's a real stock/fund, or be a known fund name
+        return true;
+      };
+
       // Remove duplicates from recommendations based on normalized name
       const seenRecommendations = new Set<string>();
       const uniqueRecommendations = typedData
         .filter(h => h.holding_type === 'recommendation')
         .filter(recommendation => {
-          // Skip invalid recommendations (those that seem to be parsing errors)
-          if (recommendation.name.includes('Total allokering') || 
-              recommendation.name.includes('Investera') ||
-              recommendation.name.length < 3) {
+          // Skip invalid recommendations (strategy names, not actual stocks/funds)
+          if (!isValidStockOrFund(recommendation.name)) {
+            console.log(`Filtering out non-stock/fund item: ${recommendation.name}`);
             return false;
           }
           
@@ -120,8 +152,13 @@ export const useUserHoldings = () => {
 
       console.log('Unique recommendations after deduplication:', uniqueRecommendations);
 
-      // Add mock allocation data for display purposes (this would normally come from AI response)
+      // Use actual allocation data if available, otherwise add mock allocation data for display purposes
       const recommendationsWithAllocation = uniqueRecommendations.map((rec, index) => {
+        // If allocation is already set, use it, otherwise provide default allocations
+        if (rec.allocation) {
+          return rec;
+        }
+        
         const allocations = [25, 20, 20, 15, 10, 10]; // Example allocations that sum to 100%
         return {
           ...rec,
