@@ -540,7 +540,7 @@ const UserHoldingsManager: React.FC = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="ext-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 hover:border-red-300"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
                               >
                                 <Trash2 className="w-4 h-4 mr-1" />
                                 Radera
