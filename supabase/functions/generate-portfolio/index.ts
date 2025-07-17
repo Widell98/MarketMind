@@ -291,35 +291,47 @@ async function generateAIStockRecommendations(riskProfile: any, stockCount: numb
     return getFallbackStocks(riskProfile.risk_tolerance || 'moderate', stockCount);
   }
   
-  const prompt = `Som svensk investeringsrådgivare, rekommendera ${stockCount} svenska aktier/fonder för en investerare med följande profil:
+  // Build enhanced context similar to portfolio-ai-chat
+  const contextInfo = `Du är en professionell AI-rådgivare för investeringar som ger personliga rekommendationer på svenska.
 
-Riskprofil: ${riskProfile.risk_tolerance || 'moderate'}
-Ålder: ${riskProfile.age || 35}
-Investeringshorisont: ${riskProfile.investment_horizon || 'medium'}
-Månatlig investering: ${riskProfile.monthly_investment_amount || 5000} SEK
-Sektorintressen: ${riskProfile.sector_interests?.join(', ') || 'Diversifierad'}
+ANVÄNDARENS RISKPROFIL:
+- Ålder: ${riskProfile.age || 35} år
+- Risktolerans: ${riskProfile.risk_tolerance === 'conservative' ? 'Konservativ' : riskProfile.risk_tolerance === 'moderate' ? 'Måttlig' : 'Aggressiv'}
+- Investeringshorisont: ${riskProfile.investment_horizon === 'short' ? 'Kort (1-3 år)' : riskProfile.investment_horizon === 'medium' ? 'Medel (3-7 år)' : 'Lång (7+ år)'}
+- Månatlig investering: ${riskProfile.monthly_investment_amount || 5000} SEK
+- Sektorintressen: ${riskProfile.sector_interests ? riskProfile.sector_interests.join(', ') : 'Allmänna'}
+- Erfarenhetsnivå: ${riskProfile.investment_experience === 'beginner' ? 'Nybörjare' : riskProfile.investment_experience === 'intermediate' ? 'Mellannivå' : 'Erfaren'}`;
 
-Ge rekommendationer som JSON-array med följande format:
+  const systemPrompt = `${contextInfo}
+
+UPPDRAG: Skapa en personlig portfölj med ${stockCount} svenska aktier/fonder som passar användarens profil.
+
+REKOMMENDATIONSFORMAT (JSON):
+Ge exakt ${stockCount} rekommendationer som JSON-array med följande struktur:
 [
   {
     "name": "Företagsnamn",
     "symbol": "SYMBOL",
     "sector": "Sektor",
-    "reasoning": "Kort förklaring varför denna aktie passar profilen"
+    "reasoning": "Förklaring varför denna aktie passar användarens profil (ålder, risk, investering)"
   }
 ]
 
-Fokusera på:
-- Svenska aktier och svenska fonder
-- Aktier listade på Stockholmsbörsen
-- Välkända företag som Investor AB, Volvo, H&M, Evolution Gaming etc.
+KRAV:
+- Endast svenska aktier och fonder tillgängliga på Avanza/Nordnet
+- Välkända företag som Investor AB, Volvo, H&M, Evolution Gaming, etc.
 - Balansera risk enligt användarens profil
 - Inkludera olika sektorer för diversifiering
+- Anpassa till användarens ålder och riskprofil
 - Endast faktiska aktier/fonder, inga strategier eller koncept
 
-Svara ENDAST med JSON-arrayen, ingen annan text.`;
+VIKTIGT: Svara ENDAST med JSON-arrayen, ingen annan text.`;
+
+  const userPrompt = `Generera ${stockCount} svenska aktier/fonder för användaren baserat på deras riskprofil och preferenser.`;
 
   try {
+    console.log('[GENERATE-PORTFOLIO] Calling OpenAI API for stock recommendations');
+    
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -329,8 +341,8 @@ Svara ENDAST med JSON-arrayen, ingen annan text.`;
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: 'Du är en erfaren svensk investeringsrådgivare som specialiserar sig på svenska aktiemarknaden. Ge alltid specifika, välgrundade rekommendationer.' },
-          { role: 'user', content: prompt }
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
         ],
         temperature: 0.7,
         max_tokens: 2000,
@@ -338,13 +350,15 @@ Svara ENDAST med JSON-arrayen, ingen annan text.`;
     });
 
     if (!response.ok) {
+      console.error('[GENERATE-PORTFOLIO] OpenAI API error:', response.status);
       throw new Error(`OpenAI API error: ${response.status}`);
     }
 
     const data = await response.json();
     const aiResponse = data.choices[0].message.content;
     
-    console.log('[GENERATE-PORTFOLIO] AI Response:', aiResponse);
+    console.log('[GENERATE-PORTFOLIO] OpenAI API response received');
+    console.log('[GENERATE-PORTFOLIO] AI Response preview:', aiResponse.substring(0, 200));
     
     // Parse the JSON response
     const stockRecommendations = JSON.parse(aiResponse);
@@ -355,13 +369,14 @@ Svara ENDAST med JSON-arrayen, ingen annan text.`;
         stock.name && 
         stock.symbol && 
         stock.sector && 
+        stock.reasoning &&
         stock.name.length > 2 && 
         stock.name.length < 60 &&
         !isStrategyOrConcept(stock.name)
       )
       .slice(0, stockCount);
     
-    console.log('[GENERATE-PORTFOLIO] Valid AI stocks:', validStocks.length);
+    console.log('[GENERATE-PORTFOLIO] Valid AI stocks filtered:', validStocks.length);
     
     if (validStocks.length === 0) {
       console.log('[GENERATE-PORTFOLIO] No valid AI stocks, using fallback');
