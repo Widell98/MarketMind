@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +28,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useConversationalPortfolio } from '@/hooks/useConversationalPortfolio';
 
 interface ConversationalRiskAssessmentProps {
   onComplete: () => void;
@@ -68,6 +68,7 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { generatePortfolioFromConversation, loading: portfolioLoading } = useConversationalPortfolio();
 
   useEffect(() => {
     if (!user) {
@@ -317,134 +318,51 @@ ${response}`;
       return;
     }
 
+    if (!aiResponse || aiRecommendations.length === 0) {
+      toast({
+        title: "Fel",
+        description: "Du måste först få AI-rekommendationer innan du kan slutföra",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsResetting(true);
 
     try {
-      // Save risk profile to database
-      const { data, error } = await supabase
-        .from('user_risk_profiles')
-        .upsert([
-          {
-            user_id: user.id,
-            age: riskProfile.age,
-            risk_tolerance: riskProfile.risk_tolerance,
-            investment_horizon: riskProfile.investment_horizon,
-            monthly_investment_amount: riskProfile.monthly_investment_amount,
+      // Build conversation data from the current assessment
+      const conversationData = {
+        isBeginnerInvestor: false,
+        hasCurrentPortfolio: false,
+        age: riskProfile.age || 25,
+        investmentGoal: 'wealth',
+        timeHorizon: riskProfile.investment_horizon || 'medium',
+        riskTolerance: riskProfile.risk_tolerance || 'balanced',
+        monthlyAmount: riskProfile.monthly_investment_amount?.toString() || '5000',
+        interests: [],
+        companies: aiRecommendations.map(r => r.name)
+      };
+
+      // Use the enhanced conversational portfolio hook
+      const result = await generatePortfolioFromConversation(conversationData);
+
+      if (result) {
+        toast({
+          title: "Profil skapad",
+          description: "Din riskprofil och AI-rekommendationer har sparats.",
+        });
+
+        onComplete();
+        
+        // Navigate to portfolio implementation with the generated data
+        navigate('/portfolio-implementation', { 
+          state: { 
+            portfolio: result.portfolio,
+            aiResponse: result.aiResponse,
+            recommendations: result.stockRecommendations
           }
-        ], { onConflict: 'user_id' });
-
-      if (error) {
-        console.error('Error saving risk profile:', error);
-        toast({
-          title: "Fel",
-          description: "Kunde inte spara din riskprofil. Försök igen senare.",
-          variant: "destructive",
         });
-        return;
       }
-
-      // Get risk profile ID
-      const { data: riskProfileData } = await supabase
-        .from('user_risk_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!riskProfileData) {
-        throw new Error('Could not retrieve risk profile ID');
-      }
-
-      // Convert recommendations to proper JSON format
-      const recommendationsAsJson = aiRecommendations.map(rec => ({
-        name: rec.name,
-        symbol: rec.symbol,
-        allocation: rec.allocation,
-        sector: rec.sector,
-        reasoning: rec.reasoning,
-        isin: rec.isin,
-        fee: rec.fee
-      }));
-
-      // Save portfolio to database with required fields
-      const { error: portfolioError } = await supabase
-        .from('user_portfolios')
-        .upsert({
-          user_id: user.id,
-          risk_profile_id: riskProfileData.id,
-          portfolio_name: 'AI-Generated Portfolio',
-          asset_allocation: {
-            stocks: 70,
-            bonds: 20,
-            alternatives: 10
-          },
-          recommended_stocks: recommendationsAsJson,
-          is_active: true,
-        }, { onConflict: 'user_id' });
-
-      if (portfolioError) {
-        console.error('Error saving portfolio:', portfolioError);
-        toast({
-          title: "Fel",
-          description: "Kunde inte spara portföljen. Försök igen senare.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Get portfolio ID for recommendations
-      const { data: portfolioData } = await supabase
-        .from('user_portfolios')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .single();
-
-      if (portfolioData && aiRecommendations.length > 0) {
-        // Save recommendations to portfolio_recommendations table
-        const { error: recommendationsError } = await supabase
-          .from('portfolio_recommendations')
-          .upsert(
-            aiRecommendations.map(stock => ({
-              user_id: user.id,
-              portfolio_id: portfolioData.id,
-              recommendation_type: 'stock_recommendation',
-              title: stock.name,
-              description: `${stock.allocation || 0}% allocation in ${stock.sector}`,
-              ai_reasoning: stock.reasoning,
-            })), { onConflict: 'user_id, portfolio_id, title' }
-          );
-
-        if (recommendationsError) {
-          console.error('Error saving recommendations:', recommendationsError);
-        }
-
-        // Save to AI market insights instead of cache
-        const insightsData = aiRecommendations.map((rec, index) => ({
-          user_id: user.id,
-          insight_type: 'recommendation',
-          title: `${rec.name} (${rec.symbol})`,
-          content: `${rec.allocation}% allokering i ${rec.sector}. ${rec.reasoning || 'AI-rekommendation baserad på din riskprofil.'}`,
-          confidence_score: 0.85,
-          is_personalized: true,
-          expires_at: new Date(Date.now() + 3.5 * 24 * 60 * 60 * 1000).toISOString()
-        }));
-
-        // Save insights to ai_market_insights table
-        const { error: insightsError } = await supabase
-          .from('ai_market_insights')
-          .insert(insightsData);
-
-        if (insightsError) {
-          console.error('Error saving AI insights:', insightsError);
-        }
-      }
-
-      toast({
-        title: "Profil skapad",
-        description: "Din riskprofil och AI-rekommendationer har sparats.",
-      });
-
-      onComplete();
     } catch (error) {
       console.error('Error during completion:', error);
       toast({
@@ -749,10 +667,10 @@ ${response}`;
         </Button>
         <Button
           onClick={handleComplete}
-          disabled={!aiResponse || isResetting}
+          disabled={!aiResponse || isResetting || portfolioLoading}
           className="bg-blue-600 text-blue-50 hover:bg-blue-700"
         >
-          {isResetting ? (
+          {isResetting || portfolioLoading ? (
             <>
               <RotateCcw className="mr-2 h-4 w-4 animate-spin" />
               Sparar...

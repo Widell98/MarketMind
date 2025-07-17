@@ -59,23 +59,38 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   const [selectedRecommendation, setSelectedRecommendation] = useState<any>(null);
   const [selectedHolding, setSelectedHolding] = useState<any>(null);
 
-  // Get AI recommendations from portfolio data
+  // Get AI recommendations from portfolio data with better extraction
   const aiRecommendations = portfolio?.recommended_stocks || [];
+
+  console.log('Portfolio data:', portfolio);
+  console.log('AI recommendations from portfolio:', aiRecommendations);
+  console.log('Database recommendations:', recommendations);
 
   // Combine database recommendations with portfolio recommendations
   // Filter out recommendations that match existing actual holdings (by name or symbol)
-  const allRecommendations = [...recommendations, ...aiRecommendations.map((stock: any, index: number) => ({
-    id: `portfolio-rec-${index}`,
-    name: stock.name || stock.symbol,
-    symbol: stock.symbol,
-    holding_type: 'recommendation',
-    purchase_price: stock.targetPrice || stock.price,
-    sector: stock.sector,
-    currency: 'SEK'
-  }))].filter(recommendation => {
+  const allRecommendations = [
+    ...recommendations, 
+    ...aiRecommendations.map((stock: any, index: number) => ({
+      id: `portfolio-rec-${index}`,
+      name: stock.name || stock.symbol || 'Okänd aktie',
+      symbol: stock.symbol || stock.name?.substring(0, 4).toUpperCase(),
+      holding_type: 'recommendation',
+      purchase_price: stock.targetPrice || stock.price || 0,
+      sector: stock.sector || 'Allmän',
+      currency: 'SEK',
+      allocation: stock.allocation || 10,
+      reasoning: stock.reasoning || 'AI-rekommendation'
+    }))
+  ].filter(recommendation => {
     // Filter out recommendations that already exist as actual holdings
-    return !actualHoldings.some(holding => holding.name.toLowerCase() === recommendation.name.toLowerCase() || holding.symbol && recommendation.symbol && holding.symbol.toLowerCase() === recommendation.symbol.toLowerCase());
+    return !actualHoldings.some(holding => 
+      holding.name.toLowerCase().includes(recommendation.name.toLowerCase()) || 
+      (holding.symbol && recommendation.symbol && 
+       holding.symbol.toLowerCase() === recommendation.symbol.toLowerCase())
+    );
   });
+
+  console.log('All combined recommendations:', allRecommendations);
 
   // Calculate portfolio exposure data
   const calculateExposureData = () => {
@@ -602,6 +617,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                           <div className="min-w-0">
                             <div className="font-medium text-sm">{recommendation.name}</div>
                             {recommendation.symbol && <div className="text-xs text-muted-foreground">{recommendation.symbol}</div>}
+                            {recommendation.allocation && <div className="text-xs text-purple-600 font-medium">{recommendation.allocation}% allokering</div>}
                           </div>
                         </div>
                       </TableCell>
