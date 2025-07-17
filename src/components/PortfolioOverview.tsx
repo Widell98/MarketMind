@@ -70,7 +70,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import AddHoldingDialog from './AddHoldingDialog';
 import EditHoldingDialog from './EditHoldingDialog';
-import CurrentHoldingsPrices from './CurrentHoldingsPrices';
+import UserHoldingsManager from './UserHoldingsManager';
 import PortfolioKeyMetrics from './PortfolioKeyMetrics';
 
 interface PortfolioOverviewProps {
@@ -559,39 +559,8 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
           </CardContent>
         </Card>
 
-        {/* Current Holdings Prices */}
-        <CurrentHoldingsPrices />
-
-        {/* User's Current Holdings - Login Required */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-                  <User className="w-5 h-5 text-blue-600" />
-                  Dina Nuvarande Innehav
-                </CardTitle>
-                <CardDescription>Aktier och fonder du redan äger</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8">
-              <LogIn className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2 text-foreground">Inga innehav registrerade</h3>
-              <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
-                Lägg till dina nuvarande aktier och fonder för att få en komplett bild av din portfölj och bättre AI-rekommendationer.
-              </p>
-              <Button 
-                className="flex items-center gap-2" 
-                onClick={() => setAddHoldingDialogOpen(true)}
-              >
-                <Plus className="w-4 h-4" />
-                Lägg till innehav
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* User's Current Holdings with integrated prices and cash management */}
+        <UserHoldingsManager />
 
         {/* AI-Recommended Holdings - Login Required */}
         <Card>
@@ -749,142 +718,8 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </CardContent>
       </Card>
 
-      {/* Current Holdings Prices */}
-      <CurrentHoldingsPrices />
-
-      {/* User's Current Holdings */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-                <User className="w-5 h-5 text-blue-600" />
-                Dina Nuvarande Innehav
-                {actualHoldings.length > 0 && (
-                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                    {actualHoldings.length} innehav
-                  </Badge>
-                )}
-              </CardTitle>
-              <CardDescription>Aktier och fonder du redan äger</CardDescription>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={() => setAddHoldingDialogOpen(true)}
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Lägg till innehav</span>
-                <span className="sm:hidden">Lägg till</span>
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {actualHoldings.length === 0 ? (
-            <div className="text-center py-8">
-              <User className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2 text-foreground">Inga innehav registrerade</h3>
-              <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
-                Lägg till dina nuvarande aktier och fonder för att få en komplett bild av din portfölj och bättre AI-rekommendationer.
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Innehav</TableHead>
-                    <TableHead>Typ</TableHead>
-                    <TableHead>Antal</TableHead>
-                    <TableHead>Värde</TableHead>
-                    <TableHead className="text-right">Åtgärder</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {actualHoldings.map((holding) => (
-                    <TableRow key={holding.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{holding.name}</div>
-                          {holding.symbol && (
-                            <div className="text-sm text-muted-foreground">{holding.symbol}</div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={getHoldingTypeColor(holding.holding_type)}>
-                          {getHoldingTypeLabel(holding.holding_type)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {holding.quantity && (
-                          <div className="font-medium">{holding.quantity} st</div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">
-                          {formatCurrency(holding.current_value || holding.purchase_price, holding.currency)}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center gap-1 justify-end">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditHolding(holding)}
-                            className="h-7 px-2 text-xs bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
-                          >
-                            <Edit className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleStockChat(holding.name, holding.symbol)}
-                            className="h-7 px-2 text-xs bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
-                          >
-                            <MessageCircle className="w-3 h-3" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 px-2 text-xs bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Radera innehav</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Är du säker på att du vill radera <strong>{holding.name}</strong> från dina innehav? 
-                                  Denna åtgärd kan inte ångras.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteHolding(holding.id, holding.name)}
-                                  className="bg-red-600 hover:bg-red-700"
-                                >
-                                  Radera
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* User's Current Holdings with integrated prices and cash management */}
+      <UserHoldingsManager />
 
       {/* AI-Recommended Holdings */}
       <Card>
