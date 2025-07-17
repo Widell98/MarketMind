@@ -292,7 +292,7 @@ Detta är en komplett portföljanalys. Ge en omfattande strategi med:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-4o',
         messages: messages,
         max_tokens: 1500,
         temperature: 0.7,
@@ -403,7 +403,7 @@ Detta är en komplett portföljanalys. Ge en omfattande strategi med:
           message: aiResponse,
           context_data: { 
             timestamp: new Date().toISOString(),
-            model: 'gpt-4.1-2025-04-14',
+            model: 'gpt-4o',
             analysisType: analysisType || 'general',
             confidence: confidence,
             isExchangeRequest: isExchangeRequest,
@@ -435,7 +435,7 @@ Detta är en komplett portföljanalys. Ge en omfattande strategi med:
           portfolioValue: portfolio?.total_value || 0,
           holdingsCount: holdings?.length || 0,
           insightsCount: insights?.length || 0,
-          model: 'gpt-4.1-2025-04-14',
+          model: 'gpt-4o',
           canSuggestChanges: isExchangeRequest,
           existingHoldings: Array.from(existingSymbols),
           hasUserProfile: !!riskProfile,
