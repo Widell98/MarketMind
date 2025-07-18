@@ -41,36 +41,132 @@ serve(async (req) => {
 
     console.log('Risk profile found:', riskProfile);
 
+    // Get existing holdings to avoid duplicates
+    const { data: holdings } = await supabase
+      .from('user_holdings')
+      .select('*')
+      .eq('user_id', userId);
+
+    // Filter out existing holdings
+    const existingSymbols = new Set();
+    const existingCompanies = new Set();
+    
+    if (holdings && holdings.length > 0) {
+      holdings.forEach(holding => {
+        if (holding.symbol && holding.holding_type !== 'recommendation') {
+          existingSymbols.add(holding.symbol.toUpperCase());
+        }
+        if (holding.name && holding.holding_type !== 'recommendation') {
+          existingCompanies.add(holding.name.toLowerCase());
+        }
+      });
+    }
+
     // Call OpenAI API for personalized recommendations
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
       throw new Error('OpenAI API key not configured');
     }
 
-    const systemPrompt = `Du är en expertinvesteringsrådgivare som skapar portföljer för svenska investerare. 
+    // Build enhanced context for AI with emphasis on actionable portfolio creation
+    let contextInfo = `Du är en professionell AI-rådgivare för investeringar som skapar personliga portföljer på svenska.
 
-KRITISKT VIKTIGT: Du ska ENDAST rekommendera RIKTIGA aktier, fonder och ETF:er som handlas på svenska marknader (Nasdaq Stockholm, Spotlight, etc.). 
+KRITISKA RIKTLINJER FÖR PORTFÖLJSKAPANDE:
+- Skapa en KOMPLETT portfölj med 6-8 specifika aktie- och fondrekommendationer
+- ALLA aktier och fonder MÅSTE ha ticker/symbol i parenteser: **Företag (SYMBOL)**
+- Anpassa rekommendationerna helt till användarens unika profil, intressen och situation
+- Inkludera svenska aktier, nordiska fonder och relevanta ETF:er som finns på Avanza/Nordnet
+- Använd EXAKT detta format för alla rekommendationer:
 
-FÖRBJUDET: Inkludera ALDRIG följande som investeringsrekommendationer:
-- Riskprofildata (ålder, erfarenhet: risktolerans, tidshorisont, etc.)
-- Strategier eller koncept (diversifiering, rebalansering, etc.)
-- Personlig information
-- Investeringsfilosofi eller metoder
+**Företagsnamn (EXAKT-SYMBOL)**: Detaljerad beskrivning av varför denna investering passar användarens specifika profil, inklusive sektor, risk och potential. Allokering: XX%
 
-INSTRUKTIONER:
-1. Analysera användarens riskprofil noggrant
-2. Rekommendera ENDAST riktiga finansiella instrument
-3. Använd EXAKT detta format för varje rekommendation:
-   **Företagsnamn (SYMBOL)**: Beskrivning. Allokering: XX%
+OBLIGATORISKA EXEMPEL på korrekt format:
+**Evolution Gaming (EVO)**: Svenskt teknikbolag inom online-gaming med stark tillväxt...
+**Castellum (CAST)**: Fastighetsbolag med fokus på kommersiella fastigheter...
+**Avanza Global**: Indexfond för global diversifiering med låga avgifter...
 
-EXEMPEL PÅ KORREKTA REKOMMENDATIONER:
-- **Investor AB (INVE-B)**: Beskrivning. Allokering: 25%
-- **Handelsbanken A (SHB-A)**: Beskrivning. Allokering: 20%
-- **XACT Utdelning (XACTUTD)**: Beskrivning. Allokering: 15%
+- VARIERA mellan olika sektorer och marknader baserat på användarens intressen
+- Ta hänsyn till användarens EXAKTA ekonomiska situation och psykologiska profil
+- Förklara risker och förväntad avkastning specifikt för denna användare
+- Ge konkreta procentsatser för allokering som summerar till 100%
+- SKAPA UNIKA rekommendationer för varje användare - ALDRIG samma standardlista
+- Använd din kunskap om svenska marknaden för att hitta BÄSTA matcherna för denna specifika användare`;
 
-Skapa en portfölj med 5-8 riktiga investeringar som summerar till 100% allokering.`;
+    // Add detailed user profile information
+    if (riskProfile) {
+      contextInfo += `\n\nANVÄNDARPROFIL:
+- Ålder: ${riskProfile.age || 'Ej angivet'} år
+- Erfarenhetsnivå: ${riskProfile.investment_experience === 'beginner' ? 'Nybörjare' : riskProfile.investment_experience === 'intermediate' ? 'Mellannivå' : 'Erfaren'}
+- Risktolerans: ${riskProfile.risk_tolerance === 'conservative' ? 'Konservativ' : riskProfile.risk_tolerance === 'moderate' ? 'Måttlig' : 'Aggressiv'}
+- Tidshorisont: ${riskProfile.investment_horizon === 'short' ? 'Kort (1-3 år)' : riskProfile.investment_horizon === 'medium' ? 'Medel (3-7 år)' : 'Lång (7+ år)'}
+- Månatlig budget: ${riskProfile.monthly_investment_amount ? riskProfile.monthly_investment_amount.toLocaleString() + ' SEK' : 'Ej angivet'}
+- Riskkomfort: ${riskProfile.risk_comfort_level || 5}/10
+- Sektorintressen: ${riskProfile.sector_interests ? riskProfile.sector_interests.join(', ') : 'Allmänna'}`;
+      
+      if (riskProfile.annual_income) {
+        contextInfo += `\n- Årsinkomst: ${riskProfile.annual_income.toLocaleString()} SEK`;
+      }
+      
+      if (riskProfile.liquid_capital) {
+        contextInfo += `\n- Tillgängligt kapital: ${riskProfile.liquid_capital.toLocaleString()} SEK`;
+      }
 
-    const userMessage = `Skapa en portfölj baserat på denna riskprofil:
+      if (riskProfile.investment_goal) {
+        contextInfo += `\n- Investeringsmål: ${riskProfile.investment_goal}`;
+      }
+
+      if (riskProfile.market_crash_reaction) {
+        contextInfo += `\n- Reaktion på börskrasch: ${riskProfile.market_crash_reaction}`;
+      }
+    }
+
+    if (existingSymbols.size > 0) {
+      contextInfo += `\n\nNUVARANDE INNEHAV (UNDVIK DESSA I REKOMMENDATIONER):`;
+      Array.from(existingSymbols).forEach(symbol => {
+        contextInfo += `\n- ${symbol}`;
+      });
+      
+      contextInfo += `\n\nVIKTIGT: Föreslå ALDRIG aktier som användaren redan äger.`;
+    }
+
+    // Enhanced system prompt for portfolio generation
+    const systemPrompt = `${contextInfo}
+
+UPPDRAG - SKAPA PERSONLIG PORTFÖLJSTRATEGI:
+
+1. ANALYSERA användarens profil noggrant (ålder, risk, intressen, ekonomi)
+2. REKOMMENDERA 6-8 specifika investeringar med EXAKT format:
+   **Företagsnamn (SYMBOL)**: Motivering kopplat till användarens profil. Allokering: XX%
+3. VARIERAD PORTFÖLJ med olika sektorer och geografier
+4. ANPASSA till användarens riskprofil och intressen
+5. INKLUDERA både svenska aktier och internationella fonder
+6. GE procentuell allokering för varje rekommendation
+7. FÖRKLARA varför varje investering passar just denna användare
+8. ANVÄND användarens SPECIFIKA intressen och preferenser för att hitta rätt investeringar
+
+REKOMMENDATIONSEXEMPEL (använd liknande struktur):
+**Castellum (CAST)**: Stabil svensk fastighetsaktie med god direktavkastning (4-5%), passar din konservativa risk och preferens för svenska bolag. Allokering: 15%
+
+**Avanza Global**: Bred global indexfond med låga avgifter (0,2%), ger dig exponering mot världsmarknaden. Allokering: 25%
+
+**Evolution Gaming (EVO)**: Ledande inom online-gaming med stark tillväxt, passar din riskprofil och teknikintresse. Allokering: 10%
+
+STRUKTURERA SVARET MED:
+- Personlig analys av användarens situation
+- 6-8 konkreta investeringsrekommendationer med format ovan
+- Allokeringsstrategi (procent för varje)
+- Risker och möjligheter
+- Månadsplan för implementation
+- Uppföljningsplan
+
+KRITISKT VIKTIGT: 
+- VARJE rekommendation MÅSTE ha symbol i parenteser
+- Skapa UNIKA rekommendationer för varje användare
+- Basera på deras SPECIFIKA intressen och profil
+- ALDRIG samma standardlista för alla användare
+- Summera allokeringarna till exakt 100%`;
+
+    const userMessage = `Skapa en komplett portfölj baserat på denna riskprofil:
 
 Ålder: ${riskProfile.age || 'Ej angiven'}
 Årsinkomst: ${riskProfile.annual_income || 'Ej angiven'} SEK
@@ -81,10 +177,11 @@ Tidshorisont: ${riskProfile.investment_horizon || 'Lång'}
 Erfarenhet: ${riskProfile.investment_experience || 'Medel'}
 Sektorintressen: ${JSON.stringify(riskProfile.sector_interests || [])}
 Nuvarande portföljvärde: ${riskProfile.current_portfolio_value || 0} SEK
+Riskkomfort: ${riskProfile.risk_comfort_level || 5}/10
 
-Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga på svenska marknader.`;
+Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga på svenska marknader. Fokusera på att ge konkreta rekommendationer med symboler.`;
 
-    console.log('Calling OpenAI API...');
+    console.log('Calling OpenAI API with gpt-4o...');
     
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -93,7 +190,7 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage }
@@ -106,6 +203,19 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
     if (!openAIResponse.ok) {
       const errorText = await openAIResponse.text();
       console.error('OpenAI API error:', errorText);
+      
+      // Handle specific quota exceeded error
+      if (openAIResponse.status === 429) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'quota_exceeded',
+          message: 'Du har nått din dagliga gräns för OpenAI API-användning. Vänligen kontrollera din fakturering eller försök igen senare.'
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
       throw new Error(`OpenAI API error: ${openAIResponse.status}`);
     }
 
@@ -119,20 +229,22 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
     
     console.log('Parsed recommended stocks:', recommendedStocks);
 
+    // Validate that we have actual recommendations
+    if (recommendedStocks.length === 0) {
+      console.error('No valid recommendations parsed from AI response');
+      throw new Error('Failed to generate valid portfolio recommendations');
+    }
+
     // Create portfolio record
     const portfolioData = {
       user_id: userId,
       risk_profile_id: riskProfileId,
       portfolio_name: 'AI-Genererad Portfölj',
-      asset_allocation: {
-        stocks: 70,
-        bonds: 20,
-        cash: 10
-      },
+      asset_allocation: calculateAssetAllocation(recommendedStocks),
       recommended_stocks: recommendedStocks,
       total_value: riskProfile.current_portfolio_value || 0,
       expected_return: calculateExpectedReturn(recommendedStocks),
-      risk_score: calculateRiskScore(riskProfile.risk_tolerance),
+      risk_score: calculateRiskScore(riskProfile.risk_tolerance, riskProfile.risk_comfort_level),
       is_active: true
     };
 
@@ -186,13 +298,27 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
     return new Response(JSON.stringify({
       success: true,
       portfolio: portfolio,
-      aiRecommendations: aiRecommendations
+      aiRecommendations: aiRecommendations,
+      confidence: calculateConfidence(recommendedStocks, riskProfile)
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
     console.error('Error in generate-portfolio function:', error);
+    
+    // Check if it's a quota-related error
+    if (error.message.includes('quota') || error.message.includes('insufficient_quota')) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'quota_exceeded',
+        message: 'Du har nått din dagliga gräns för OpenAI API-användning. Vänligen kontrollera din fakturering eller försök igen senare.'
+      }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
     return new Response(JSON.stringify({
       success: false,
       error: error.message
@@ -212,7 +338,8 @@ function parseAIRecommendations(text: string): Array<{name: string, symbol?: str
     /^(erfarenhet|ålder|investeringsstil|risktolerans|tidshorisont|månatligt)/i,
     /^(diversifiering|rebalansering|skatteoptimering|strategi|optimering)/i,
     /^(riskprofil|investeringsmål|portföljstrategi|allokeringsstrategi)/i,
-    /^(metod|teknik|approach|filosofi|princip)/i
+    /^(metod|teknik|approach|filosofi|princip|analys|situation)/i,
+    /^(månadsplan|uppföljning|implementation|risker|möjligheter)/i
   ];
   
   for (const line of lines) {
@@ -230,14 +357,24 @@ function parseAIRecommendations(text: string): Array<{name: string, symbol?: str
         continue;
       }
       
+      // Skip if allocation is unrealistic
+      if (allocation < 1 || allocation > 40) {
+        console.log(`Filtering out unrealistic allocation: ${name} (${allocation}%)`);
+        continue;
+      }
+      
       // Determine sector based on name or symbol
       let sector = 'Allmän';
       if (name.toLowerCase().includes('bank') || symbol.includes('SHB')) {
         sector = 'Bank';
       } else if (name.toLowerCase().includes('fastighet') || symbol.includes('CAST')) {
         sector = 'Fastighet';
-      } else if (name.toLowerCase().includes('industri') || symbol.includes('INDU')) {
+      } else if (name.toLowerCase().includes('industri') || name.toLowerCase().includes('investor')) {
         sector = 'Investmentbolag';
+      } else if (name.toLowerCase().includes('gaming') || name.toLowerCase().includes('evolution')) {
+        sector = 'Teknik';
+      } else if (name.toLowerCase().includes('global') || name.toLowerCase().includes('world') || name.toLowerCase().includes('index')) {
+        sector = 'Indexfond';
       }
       
       stocks.push({
@@ -249,31 +386,91 @@ function parseAIRecommendations(text: string): Array<{name: string, symbol?: str
     }
   }
   
-  // If no valid stocks found, provide fallback recommendations
-  if (stocks.length === 0) {
-    console.log('No valid stocks parsed, using fallback recommendations');
-    return [
-      { name: 'Investor AB', symbol: 'INVE-B', allocation: 25, sector: 'Investmentbolag' },
-      { name: 'Handelsbanken A', symbol: 'SHB-A', allocation: 20, sector: 'Bank' },
-      { name: 'Volvo B', symbol: 'VOLV-B', allocation: 20, sector: 'Industri' },
-      { name: 'XACT OMXS30', symbol: 'XACT', allocation: 20, sector: 'Allmän' },
-      { name: 'Castellum', symbol: 'CAST', allocation: 15, sector: 'Fastighet' }
-    ];
-  }
-  
+  console.log(`Parsed ${stocks.length} valid recommendations from AI response`);
   return stocks;
 }
 
-function calculateExpectedReturn(stocks: Array<{allocation: number}>): number {
-  // Simple calculation based on stock allocation
-  return stocks.reduce((sum, stock) => sum + (stock.allocation * 0.08), 0) / 100;
+function calculateAssetAllocation(stocks: Array<{allocation: number, sector?: string}>): any {
+  let stocksTotal = 0;
+  let bondsTotal = 0;
+  let cashTotal = 0;
+  
+  stocks.forEach(stock => {
+    if (stock.sector === 'Bank' || stock.sector === 'Fastighet') {
+      bondsTotal += stock.allocation;
+    } else {
+      stocksTotal += stock.allocation;
+    }
+  });
+  
+  // Ensure total is 100%, adjust cash accordingly
+  const total = stocksTotal + bondsTotal;
+  if (total < 100) {
+    cashTotal = 100 - total;
+  }
+  
+  return {
+    stocks: stocksTotal,
+    bonds: bondsTotal,
+    cash: cashTotal
+  };
 }
 
-function calculateRiskScore(riskTolerance: string): number {
-  const riskMap: {[key: string]: number} = {
+function calculateExpectedReturn(stocks: Array<{allocation: number, sector?: string}>): number {
+  // More sophisticated calculation based on sectors
+  let totalReturn = 0;
+  
+  stocks.forEach(stock => {
+    let sectorReturn = 0.08; // Default 8%
+    
+    switch (stock.sector) {
+      case 'Teknik':
+        sectorReturn = 0.12; // 12% for tech
+        break;
+      case 'Bank':
+        sectorReturn = 0.06; // 6% for banks
+        break;
+      case 'Fastighet':
+        sectorReturn = 0.07; // 7% for real estate
+        break;
+      case 'Indexfond':
+        sectorReturn = 0.08; // 8% for index funds
+        break;
+      case 'Investmentbolag':
+        sectorReturn = 0.09; // 9% for investment companies
+        break;
+    }
+    
+    totalReturn += (stock.allocation / 100) * sectorReturn;
+  });
+  
+  return totalReturn;
+}
+
+function calculateRiskScore(riskTolerance: string, riskComfort?: number): number {
+  const baseRiskMap: {[key: string]: number} = {
     'conservative': 3,
     'moderate': 5,
     'aggressive': 8
   };
-  return riskMap[riskTolerance] || 5;
+  
+  let baseScore = baseRiskMap[riskTolerance] || 5;
+  
+  // Adjust based on risk comfort level if available
+  if (riskComfort) {
+    baseScore = (baseScore + riskComfort) / 2;
+  }
+  
+  return Math.round(baseScore);
+}
+
+function calculateConfidence(stocks: Array<any>, riskProfile: any): number {
+  let confidence = 0.5; // Base confidence
+  
+  if (stocks.length >= 5) confidence += 0.2; // Good diversification
+  if (riskProfile.sector_interests && riskProfile.sector_interests.length > 0) confidence += 0.1; // Has preferences
+  if (riskProfile.investment_experience) confidence += 0.1; // Has experience data
+  if (riskProfile.risk_comfort_level) confidence += 0.1; // Has risk comfort data
+  
+  return Math.min(confidence, 1.0);
 }
