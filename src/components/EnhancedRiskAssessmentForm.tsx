@@ -10,6 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { ArrowLeft, ArrowRight, CheckCircle, AlertCircle, TrendingUp, Shield, Target, Brain, PiggyBank, RotateCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface EnhancedRiskAssessmentFormProps {
   onComplete: (riskProfileId: string) => void;
@@ -20,6 +21,7 @@ const STORAGE_STEP_KEY = 'enhanced_risk_assessment_current_step';
 
 const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({ onComplete }) => {
   const { saveRiskProfile, loading } = useRiskProfile();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -60,7 +62,8 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
     // Nuvarande innehav
     current_portfolio_value: '',
     overexposure_awareness: '',
-    sector_interests: [] as string[]
+    sector_interests: [] as string[],
+    display_name: user?.user_metadata?.display_name || ''
   });
 
   // Load saved data on component mount
@@ -71,13 +74,22 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
       
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        setFormData(parsedData);
+        setFormData({
+          ...parsedData,
+          display_name: user?.user_metadata?.display_name || parsedData.display_name || ''
+        });
         console.log('Loaded saved form data from localStorage');
         
         toast({
           title: "Formulärdata återställt",
           description: "Din tidigare ifyllda information har återställts",
         });
+      } else {
+        // Initialize display name from user metadata
+        setFormData(prev => ({
+          ...prev,
+          display_name: user?.user_metadata?.display_name || ''
+        }));
       }
       
       if (savedStep) {
@@ -87,7 +99,7 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
     } catch (error) {
       console.error('Error loading saved form data:', error);
     }
-  }, [toast]);
+  }, [toast, user]);
 
   // Save data to localStorage whenever formData or currentStep changes
   useEffect(() => {
@@ -132,7 +144,8 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
         investment_experience: '',
         current_portfolio_value: '',
         overexposure_awareness: '',
-        sector_interests: [] as string[]
+        sector_interests: [] as string[],
+        display_name: user?.user_metadata?.display_name || ''
       });
       
       setCurrentStep(0);
@@ -219,6 +232,7 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
         if (!formData.age) errors.age = 'Ålder krävs';
         if (!formData.annual_income) errors.annual_income = 'Årsinkomst krävs';
         if (!formData.housing_situation) errors.housing_situation = 'Bostadssituation krävs';
+        if (!formData.display_name.trim()) errors.display_name = 'Namn krävs';
         break;
       case 1:
         if (formData.investment_purpose.length === 0) errors.investment_purpose = 'Välj minst ett sparmål';
@@ -293,6 +307,17 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
         current_allocation: {}
       };
 
+      // Update display name if it has changed
+      if (formData.display_name && formData.display_name !== user?.user_metadata?.display_name) {
+        try {
+          await supabase.auth.updateUser({
+            data: { display_name: formData.display_name }
+          });
+        } catch (error) {
+          console.error('Error updating user metadata:', error);
+        }
+      }
+
       const result = await saveRiskProfile(profileData);
       if (result) {
         // Clear saved data on successful submission
@@ -313,6 +338,23 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
       case 0:
         return (
           <div className="space-y-6">
+            <div>
+              <Label htmlFor="display_name">Ditt namn *</Label>
+              <Input
+                id="display_name"
+                type="text"
+                placeholder="Skriv ditt namn"
+                value={formData.display_name}
+                onChange={(e) => handleInputChange('display_name', e.target.value)}
+              />
+              {validationErrors.display_name && (
+                <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
+                  <AlertCircle className="w-4 h-4" />
+                  {validationErrors.display_name}
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="age">Ålder *</Label>
@@ -768,7 +810,7 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {steps[currentStep].icon}
-            <CardTitle>Förbättrad Riskbedömning</CardTitle>
+            <CardTitle>Skapa din investeringsprofil</CardTitle>
           </div>
           <Button
             variant="outline"
