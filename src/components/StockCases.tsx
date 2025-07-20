@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useStockCases } from '@/hooks/useStockCases';
 import { useStockCaseOperations } from '@/hooks/useStockCaseOperations';
@@ -6,7 +5,7 @@ import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
 import { useStockCasesFilters } from '@/hooks/useStockCasesFilters';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, Users, Activity, Clock, Filter, Bookmark, ArrowLeft } from 'lucide-react';
+import { TrendingUp, Users, Activity, Clock, Filter, Bookmark } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -90,24 +89,14 @@ const StockCases = () => {
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6 lg:space-y-8">
-          {/* Back Button */}
-          <Button 
-            variant="ghost" 
-            onClick={() => navigate('/')}
-            className="mb-4 hover:bg-primary/10 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Tillbaka till startsidan
-          </Button>
-
-          {/* Header Section */}
+          {/* Header Section - More compact */}
           <div className="space-y-2 sm:space-y-3">
             <div className="text-center space-y-1">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">
                 Stock Cases
               </h1>
               <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 max-w-2xl mx-auto px-4">
-                Utforska handplockade aktiefall och investeringsmöjligheter
+                Explore hand-picked stock cases and investment opportunities
               </p>
             </div>
           </div>
@@ -126,29 +115,19 @@ const StockCases = () => {
   return (
     <Layout>
       <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-        {/* Back Button */}
-        <Button 
-          variant="ghost" 
-          onClick={() => navigate('/')}
-          className="mb-4 hover:bg-primary/10 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Tillbaka till startsidan
-        </Button>
-
-        {/* Header Section */}
+        {/* Header Section - More compact */}
         <div className="space-y-2 sm:space-y-3">
           <div className="text-center space-y-1">
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">
               Stock Cases
             </h1>
             <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 max-w-2xl mx-auto px-4">
-              Utforska handplockade aktiefall och investeringsmöjligheter
+              Explore hand-picked stock cases and investment opportunities
             </p>
           </div>
         </div>
 
-        {/* Filter Section */}
+        {/* Filter Section - More compact on mobile */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 sm:px-0">
           <Button
             variant={viewMode === 'all' ? 'default' : 'outline'}
@@ -156,8 +135,8 @@ const StockCases = () => {
             className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2"
           >
             <Filter className="w-3 h-3 sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline">Alla Cases</span>
-            <span className="sm:hidden">Alla</span>
+            <span className="hidden sm:inline">All Cases</span>
+            <span className="sm:hidden">All</span>
           </Button>
           <Button
             variant={viewMode === 'trending' ? 'default' : 'outline'}
@@ -174,26 +153,26 @@ const StockCases = () => {
             className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2"
           >
             <Bookmark className="w-3 h-3 sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline">Följda</span>
-            <span className="sm:hidden">Följda</span>
+            <span className="hidden sm:inline">Followed</span>
+            <span className="sm:hidden">Followed</span>
           </Button>
         </div>
 
-        {/* Stats Section */}
+        {/* Stats Section - Compact version */}
         <div className="hidden sm:block">
           <CommunityStats />
         </div>
         
-        {/* Mobile stats */}
+        {/* Mobile stats - Using real data instead of hardcoded */}
         <div className="sm:hidden px-2">
           <div className="flex justify-center gap-4 text-xs text-gray-600 dark:text-gray-400">
             <span className="flex items-center gap-1">
               <TrendingUp className="w-3 h-3" />
-              {activeCases || 0} Aktiva
+              {activeCases || 0} Active
             </span>
             <span className="flex items-center gap-1">
               <Users className="w-3 h-3" />
-              {memberCount ? `${memberCount > 1000 ? `${(memberCount / 1000).toFixed(1)}K` : memberCount}` : '0'} Medlemmar
+              {memberCount ? `${memberCount > 1000 ? `${(memberCount / 1000).toFixed(1)}K` : memberCount}` : '0'} Members
             </span>
           </div>
         </div>
@@ -218,10 +197,10 @@ const StockCases = () => {
         {/* Results Count */}
         <div className="flex items-center justify-between px-2 sm:px-0">
           <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-            <span className="hidden sm:inline">Visar </span>
-            {filteredAndSortedCases.length} av {displayCases.length} cases
+            <span className="hidden sm:inline">Showing </span>
+            {filteredAndSortedCases.length} of {displayCases.length} cases
             {searchTerm && (
-              <span className="hidden sm:inline"> för "{searchTerm}"</span>
+              <span className="hidden sm:inline"> for "{searchTerm}"</span>
             )}
           </p>
         </div>
@@ -244,13 +223,13 @@ const StockCases = () => {
                 </>
               ) : viewMode === 'followed' ? (
                 <>
-                  <span className="hidden sm:inline">Följda Stock Cases</span>
-                  <span className="sm:hidden">Följda</span>
+                  <span className="hidden sm:inline">Followed Stock Cases</span>
+                  <span className="sm:hidden">Followed</span>
                 </>
               ) : (
                 <>
-                  <span className="hidden sm:inline">Alla Stock Cases</span>
-                  <span className="sm:hidden">Alla Cases</span>
+                  <span className="hidden sm:inline">All Stock Cases</span>
+                  <span className="sm:hidden">All Cases</span>
                 </>
               )}
             </h2>
@@ -266,22 +245,22 @@ const StockCases = () => {
                 )}
                 <CardTitle className="text-base sm:text-lg mb-2 text-gray-900 dark:text-gray-100">
                   {searchTerm
-                    ? 'Inga cases matchar din sökning'
+                    ? 'No cases match your search'
                     : viewMode === 'trending' 
-                    ? 'Inga trending cases ännu'
+                    ? 'No trending cases yet'
                     : viewMode === 'followed'
-                    ? 'Inga följda cases ännu'
-                    : 'Inga stock cases ännu'
+                    ? 'No followed cases yet'
+                    : 'No stock cases yet'
                   }
                 </CardTitle>
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 px-4">
                   {searchTerm
-                    ? 'Prova att justera dina sökkriterier.'
+                    ? 'Try adjusting your search criteria.'
                     : viewMode === 'trending' 
-                    ? 'Cases kommer att visas här när de börjar få likes från communityn.'
+                    ? 'Cases will appear here when they start getting likes from the community.'
                     : viewMode === 'followed'
-                    ? 'Börja följa några cases för att se dem här. Du behöver vara inloggad för att följa cases.'
-                    : 'Stock cases kommer att visas här när de läggs till av våra experter.'
+                    ? 'Start following some cases to see them here. You need to be logged in to follow cases.'
+                    : 'Stock cases will be displayed here when they are added by our experts.'
                   }
                 </p>
                 {searchTerm && (
@@ -291,7 +270,7 @@ const StockCases = () => {
                     size="sm"
                     className="text-xs sm:text-sm"
                   >
-                    Rensa sökning
+                    Clear Search
                   </Button>
                 )}
               </CardContent>
