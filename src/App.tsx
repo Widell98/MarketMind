@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import ConversationMemoryProvider from "@/components/AIConversationMemory";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -39,25 +40,27 @@ function App() {
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/auth/reset-password" element={<ResetPassword />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/stock-cases" element={<StockCases />} />
-              <Route path="/stock-cases/:id" element={<StockCaseDetail />} />
-              <Route path="/analyses/:id" element={<AnalysisDetail />} />
-              <Route path="/analysis/:id" element={<AnalysisDetail />} />
-              <Route path="/learning" element={<Learning />} />
-              <Route path="/portfolio-advisor" element={<PortfolioAdvisor />} />
-              <Route path="/portfolio-implementation" element={<PortfolioImplementation />} />
-              <Route path="/watchlist" element={<Watchlist />} />
-              <Route path="/social" element={<SocialIndex />} />
-              <Route path="/admin/stock-cases" element={<AdminStockCases />} />
-              <Route path="/my-stock-cases" element={<MyStockCases />} />
-              <Route path="/ai-chat" element={<AIChat />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <ConversationMemoryProvider>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/auth/reset-password" element={<ResetPassword />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/stock-cases" element={<StockCases />} />
+                <Route path="/stock-cases/:id" element={<StockCaseDetail />} />
+                <Route path="/analyses/:id" element={<AnalysisDetail />} />
+                <Route path="/analysis/:id" element={<AnalysisDetail />} />
+                <Route path="/learning" element={<Learning />} />
+                <Route path="/portfolio-advisor" element={<PortfolioAdvisor />} />
+                <Route path="/portfolio-implementation" element={<PortfolioImplementation />} />
+                <Route path="/watchlist" element={<Watchlist />} />
+                <Route path="/social" element={<SocialIndex />} />
+                <Route path="/admin/stock-cases" element={<AdminStockCases />} />
+                <Route path="/my-stock-cases" element={<MyStockCases />} />
+                <Route path="/ai-chat" element={<AIChat />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </ConversationMemoryProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
