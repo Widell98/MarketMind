@@ -1,369 +1,268 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
-import IntelligentRouting from '@/components/IntelligentRouting';
-import {
-  Brain,
-  Lightbulb,
-  TrendingUp,
-  PieChart,
-  MessageSquare,
-  UserPlus,
-  BarChart3,
-  LineChart,
-  BadgePercent,
-  Rocket,
-  ShieldCheck,
-  Headphones,
-  TrendingDown,
-  ArrowUpRight,
-  ArrowDownLeft
-} from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRiskProfile } from '@/hooks/useRiskProfile';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Brain, 
+  Sparkles, 
+  TrendingUp, 
+  BarChart3, 
+  MessageSquare,
+  ArrowRight,
+  Zap,
+  Target,
+  Activity
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Index = () => {
+  const { user } = useAuth();
+  const { riskProfile } = useRiskProfile();
+
+  const aiFeatures = [
+    {
+      icon: <Brain className="w-8 h-8" />,
+      title: "Intelligent Portfolio Analys",
+      description: "AI analyserar din portfölj i realtid och föreslår optimeringar baserat på marknadsdata",
+      action: "Analysera nu",
+      href: "/ai-chat?message=Analysera min portfölj",
+      gradient: "from-blue-500 to-purple-600"
+    },
+    {
+      icon: <MessageSquare className="w-8 h-8" />,
+      title: "Smart Investment Chat",
+      description: "Chatta med vår AI-rådgivare för personliga investeringsråd och marknadsinsikter",
+      action: "Starta chat",
+      href: "/ai-chat",
+      gradient: "from-green-500 to-teal-600"
+    },
+    {
+      icon: <TrendingUp className="w-8 h-8" />,
+      title: "Prediktiv Marknadsanalys",
+      description: "AI identifierar trender och möjligheter innan de blir mainstream",
+      action: "Se insikter",
+      href: "/ai-chat?message=Vad händer på marknaden?",
+      gradient: "from-orange-500 to-red-600"
+    }
+  ];
+
+  const quickActions = [
+    { 
+      title: "Skapa Riskprofil", 
+      description: "Låt AI hjälpa dig skapa en personlig investeringsstrategi",
+      href: "/portfolio-advisor",
+      icon: <Target className="w-5 h-5" />,
+      available: !riskProfile
+    },
+    { 
+      title: "AI Portfolio Chat", 
+      description: "Få intelligent rådgivning om dina investeringar",
+      href: "/ai-chat",
+      icon: <Brain className="w-5 h-5" />,
+      available: true
+    },
+    { 
+      title: "Portföljöversikt", 
+      description: "Se din portfölj med AI-drivna insights",
+      href: "/portfolio-implementation",
+      icon: <BarChart3 className="w-5 h-5" />,
+      available: !!user
+    },
+    { 
+      title: "Marknadsanalys", 
+      description: "Upptäck nya investeringsmöjligheter",
+      href: "/stock-cases",
+      icon: <Activity className="w-5 h-5" />,
+      available: true
+    }
+  ];
+
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-        <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8 max-w-[1600px]">
-          {/* Hero Section */}
-          <div className="text-center mb-8 sm:mb-12 lg:mb-16">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4 sm:mb-6">
-              Investera smartare med AI
-            </h1>
-            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed mb-6 sm:mb-8 lg:mb-10">
-              Få personliga investeringsråd, portföljanalys och marknadsinsikter med vår AI-drivna plattform.
-            </p>
-            <div className="flex items-center justify-center space-x-4">
-              <Button asChild size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200">
-                <Link to="/portfolio-advisor">
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Skapa din portfölj
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200">
-                <Link to="/ai-chat">
-                  <Brain className="w-4 h-4 mr-2" />
-                  Fråga AI-assistenten
-                </Link>
-              </Button>
+      <div className="min-h-screen">
+        {/* Hero Section */}
+        <section className="relative overflow-hidden py-12 lg:py-20">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-blue-50/50 to-purple-50/30 dark:from-primary/10 dark:via-blue-950/20 dark:to-purple-950/10"></div>
+          
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center space-y-8">
+              <div className="space-y-4">
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <Badge className="bg-gradient-to-r from-primary to-blue-600 text-white border-0 shadow-lg">
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    AI-Driven Investment Platform
+                  </Badge>
+                </div>
+                
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
+                  <span className="bg-gradient-to-r from-primary via-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Intelligent Investing
+                  </span>
+                  <br />
+                  <span className="text-foreground">Med AI som Guide</span>
+                </h1>
+                
+                <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+                  Upptäck framtidens investeringsplattform där artificiell intelligens hjälper dig 
+                  att fatta smartare finansiella beslut och bygga en robust portfölj.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <Button 
+                  asChild
+                  size="lg" 
+                  className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                >
+                  <Link to="/ai-chat" className="flex items-center gap-2">
+                    <Brain className="w-5 h-5" />
+                    Starta AI-Chat
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </Button>
+                
+                {!user && (
+                  <Button 
+                    asChild
+                    variant="outline" 
+                    size="lg"
+                    className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                  >
+                    <Link to="/auth">
+                      Skapa Konto Gratis
+                    </Link>
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
+        </section>
 
-          {/* Smart Navigation - New AI-first feature */}
-          <div className="mb-8 sm:mb-12">
-            <IntelligentRouting />
-          </div>
+        {/* AI Features Grid */}
+        <section className="py-16 lg:py-24">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                AI-Drivna <span className="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">Investeringsverktyg</span>
+              </h2>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                Upplev nästa generation av investeringsrådgivning med våra intelligenta AI-verktyg
+              </p>
+            </div>
 
-          {/* AI Features Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-8 sm:mb-12 lg:mb-16">
-            {/* AI Portfolio Analysis */}
-            <Card className="bg-card border shadow-md hover:shadow-lg transition-all duration-200">
-              <div className="p-4 sm:p-6 lg:p-8">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                    <BarChart3 className="w-6 h-6 text-blue-500" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-foreground">Portföljanalys</h3>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  Få en djupgående analys av din portföljs prestanda, risk och diversifiering.
-                </p>
-                <Button asChild variant="link" className="text-sm font-medium hover:underline underline-offset-2">
-                  <Link to="/portfolio-implementation">
-                    Analysera min portfölj
-                    <ArrowUpRight className="w-3 h-3 ml-1" />
-                  </Link>
-                </Button>
-              </div>
-            </Card>
-
-            {/* AI Market Insights */}
-            <Card className="bg-card border shadow-md hover:shadow-lg transition-all duration-200">
-              <div className="p-4 sm:p-6 lg:p-8">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
-                    <LineChart className="w-6 h-6 text-green-500" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-foreground">Marknadsinsikter</h3>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  Håll dig uppdaterad med de senaste marknadstrenderna och investeringsmöjligheterna.
-                </p>
-                <Button asChild variant="link" className="text-sm font-medium hover:underline underline-offset-2">
-                  <Link to="/stock-cases">
-                    Utforska marknaden
-                    <ArrowUpRight className="w-3 h-3 ml-1" />
-                  </Link>
-                </Button>
-              </div>
-            </Card>
-
-            {/* AI Risk Management */}
-            <Card className="bg-card border shadow-md hover:shadow-lg transition-all duration-200">
-              <div className="p-4 sm:p-6 lg:p-8">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center">
-                    <ShieldCheck className="w-6 h-6 text-red-500" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-foreground">Riskhantering</h3>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  Minimera riskerna i din portfölj med AI-drivna strategier för diversifiering och skydd.
-                </p>
-                <Button asChild variant="link" className="text-sm font-medium hover:underline underline-offset-2">
-                  <Link to="/portfolio-advisor">
-                    Optimera min risk
-                    <ArrowUpRight className="w-3 h-3 ml-1" />
-                  </Link>
-                </Button>
-              </div>
-            </Card>
-
-            {/* AI Investment Recommendations */}
-            <Card className="bg-card border shadow-md hover:shadow-lg transition-all duration-200">
-              <div className="p-4 sm:p-6 lg:p-8">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-yellow-500/10 flex items-center justify-center">
-                    <Rocket className="w-6 h-6 text-yellow-500" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-foreground">Investeringsförslag</h3>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  Upptäck nya investeringsmöjligheter baserat på din riskprofil och mål.
-                </p>
-                <Button asChild variant="link" className="text-sm font-medium hover:underline underline-offset-2">
-                  <Link to="/ai-chat">
-                    Få rekommendationer
-                    <ArrowUpRight className="w-3 h-3 ml-1" />
-                  </Link>
-                </Button>
-              </div>
-            </Card>
-
-            {/* AI-Powered Education */}
-            <Card className="bg-card border shadow-md hover:shadow-lg transition-all duration-200">
-              <div className="p-4 sm:p-6 lg:p-8">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                    <Headphones className="w-6 h-6 text-purple-500" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-foreground">AI-Utbildning</h3>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  Lär dig mer om investeringar med AI-genererade kurser och resurser.
-                </p>
-                <Button asChild variant="link" className="text-sm font-medium hover:underline underline-offset-2">
-                  <Link to="/ai-chat">
-                    Lär mig investera
-                    <ArrowUpRight className="w-3 h-3 ml-1" />
-                  </Link>
-                </Button>
-              </div>
-            </Card>
-
-            {/* AI Market Sentiment Analysis */}
-            <Card className="bg-card border shadow-md hover:shadow-lg transition-all duration-200">
-              <div className="p-4 sm:p-6 lg:p-8">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center">
-                    <TrendingDown className="w-6 h-6 text-orange-500" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-foreground">Marknadssentiment</h3>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  Få en överblick över marknadens förväntningar och stämningar med AI-analys.
-                </p>
-                <Button asChild variant="link" className="text-sm font-medium hover:underline underline-offset-2">
-                  <Link to="/stock-cases">
-                    Se sentimentanalys
-                    <ArrowUpRight className="w-3 h-3 ml-1" />
-                  </Link>
-                </Button>
-              </div>
-            </Card>
-          </div>
-
-          {/* Market Data Section */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-8 sm:mb-12 lg:mb-16">
-            {/* Top Movers */}
-            <Card className="bg-card border shadow-md hover:shadow-lg transition-all duration-200">
-              <div className="p-4 sm:p-6 lg:p-8">
-                <h3 className="text-lg font-semibold text-foreground mb-3">
-                  Topp 5 stigande aktier
-                </h3>
-                <ul className="space-y-2">
-                  <li className="flex items-center justify-between">
-                    <span>Tesla (TSLA)</span>
-                    <span className="text-green-500">+3.5%</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>Apple (AAPL)</span>
-                    <span className="text-green-500">+2.8%</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>Microsoft (MSFT)</span>
-                    <span className="text-green-500">+2.1%</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>Amazon (AMZN)</span>
-                    <span className="text-green-500">+1.9%</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>NVIDIA (NVDA)</span>
-                    <span className="text-green-500">+1.5%</span>
-                  </li>
-                </ul>
-              </div>
-            </Card>
-
-            {/* Top Losers */}
-            <Card className="bg-card border shadow-md hover:shadow-lg transition-all duration-200">
-              <div className="p-4 sm:p-6 lg:p-8">
-                <h3 className="text-lg font-semibold text-foreground mb-3">
-                  Topp 5 fallande aktier
-                </h3>
-                <ul className="space-y-2">
-                  <li className="flex items-center justify-between">
-                    <span>AMC Entertainment (AMC)</span>
-                    <span className="text-red-500">-4.2%</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>GameStop (GME)</span>
-                    <span className="text-red-500">-3.8%</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>Bed Bath & Beyond (BBBY)</span>
-                    <span className="text-red-500">-3.5%</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>Virgin Galactic (SPCE)</span>
-                    <span className="text-red-500">-3.1%</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>BlackBerry (BB)</span>
-                    <span className="text-red-500">-2.9%</span>
-                  </li>
-                </ul>
-              </div>
-            </Card>
-
-            {/* Key Market Indicators */}
-            <Card className="bg-card border shadow-md hover:shadow-lg transition-all duration-200">
-              <div className="p-4 sm:p-6 lg:p-8">
-                <h3 className="text-lg font-semibold text-foreground mb-3">
-                  Marknadsindikatorer
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span>S&P 500</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">4,500</span>
-                      <ArrowUpRight className="w-4 h-4 text-green-500" />
+            <div className="grid md:grid-cols-3 gap-8">
+              {aiFeatures.map((feature, index) => (
+                <Card key={index} className="group relative overflow-hidden border-2 border-transparent hover:border-primary/20 transition-all duration-300 hover:shadow-xl">
+                  <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}></div>
+                  
+                  <CardHeader className="text-center space-y-4">
+                    <div className={`w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center text-white shadow-lg transform group-hover:scale-110 transition-transform duration-300`}>
+                      {feature.icon}
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>NASDAQ</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">14,000</span>
-                      <ArrowDownLeft className="w-4 h-4 text-red-500" />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Guld (per uns)</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">$1,950</span>
-                      <ArrowUpRight className="w-4 h-4 text-green-500" />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Olja (per fat)</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">$75</span>
-                      <ArrowDownLeft className="w-4 h-4 text-red-500" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          {/* Latest Stock Cases */}
-          <div className="mb-8 sm:mb-12 lg:mb-16">
-            <h2 className="text-2xl font-bold text-foreground mb-4">
-              Senaste Aktiefall
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              <Card className="bg-card border shadow-md hover:shadow-lg transition-all duration-200">
-                <div className="p-4 sm:p-6">
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
-                    Tesla (TSLA)
-                  </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-                    En analys av Teslas senaste kvartalsrapport och framtidsutsikter.
-                  </p>
-                  <Button asChild variant="link" className="text-sm font-medium hover:underline underline-offset-2">
-                    <Link to="/stock-cases">
-                      Läs mer
-                      <ArrowUpRight className="w-3 h-3 ml-1" />
-                    </Link>
-                  </Button>
-                </div>
-              </Card>
-
-              <Card className="bg-card border shadow-md hover:shadow-lg transition-all duration-200">
-                <div className="p-4 sm:p-6">
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
-                    Apple (AAPL)
-                  </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-                    En djupdykning i Apples nya produktlanseringar och marknadsstrategi.
-                  </p>
-                  <Button asChild variant="link" className="text-sm font-medium hover:underline underline-offset-2">
-                    <Link to="/stock-cases">
-                      Läs mer
-                      <ArrowUpRight className="w-3 h-3 ml-1" />
-                    </Link>
-                  </Button>
-                </div>
-              </Card>
-
-              <Card className="bg-card border shadow-md hover:shadow-lg transition-all duration-200">
-                <div className="p-4 sm:p-6">
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
-                    Microsoft (MSFT)
-                  </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-                    En genomgång av Microsofts molnverksamhet och AI-satsningar.
-                  </p>
-                  <Button asChild variant="link" className="text-sm font-medium hover:underline underline-offset-2">
-                    <Link to="/stock-cases">
-                      Läs mer
-                      <ArrowUpRight className="w-3 h-3 ml-1" />
-                    </Link>
-                  </Button>
-                </div>
-              </Card>
+                    <CardTitle className="text-xl font-bold">{feature.title}</CardTitle>
+                  </CardHeader>
+                  
+                  <CardContent className="text-center space-y-6">
+                    <p className="text-muted-foreground leading-relaxed">
+                      {feature.description}
+                    </p>
+                    <Button 
+                      asChild
+                      className="w-full group-hover:shadow-lg transition-all duration-300"
+                      variant="outline"
+                    >
+                      <Link to={feature.href} className="flex items-center justify-center gap-2">
+                        {feature.action}
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </div>
+        </section>
 
-          {/* CTA Section */}
-          <div className="text-center bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-3xl p-6 sm:p-8 lg:p-12 border border-primary/20">
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
-              Redo att ta din investering till nästa nivå?
-            </h2>
-            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-6">
-              Skapa en portfölj idag och upplev kraften i AI-drivna investeringar.
-            </p>
-            <Button asChild size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200">
-              <Link to="/portfolio-advisor">
-                Kom igång gratis
-                <Rocket className="w-4 h-4 ml-2" />
-              </Link>
-            </Button>
+        {/* Quick Actions */}
+        <section className="py-16 bg-muted/30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold mb-4">Kom igång direkt</h2>
+              <p className="text-xl text-muted-foreground">Välj vad du vill göra härnäst</p>
+            </div>
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {quickActions.filter(action => action.available).map((action, index) => (
+                <Card key={index} className="group hover:shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer">
+                  <CardContent className="p-6 text-center space-y-4">
+                    <div className="w-12 h-12 mx-auto rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
+                      {action.icon}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-2">{action.title}</h3>
+                      <p className="text-sm text-muted-foreground">{action.description}</p>
+                    </div>
+                    <Button asChild variant="ghost" size="sm" className="w-full">
+                      <Link to={action.href}>
+                        Börja här
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
-        </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="py-16 lg:py-24">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div className="bg-gradient-to-br from-primary/5 to-blue-50/50 dark:from-primary/10 dark:to-blue-950/20 rounded-3xl p-8 lg:p-12 space-y-8">
+              <div className="space-y-4">
+                <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-xl">
+                  <Zap className="w-10 h-10 text-white" />
+                </div>
+                <h2 className="text-3xl md:text-4xl font-bold">
+                  Redo att börja investera <span className="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">smartare?</span>
+                </h2>
+                <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                  Låt vår AI-assistent guida dig genom investeringsresan och hjälpa dig bygga en framgångsrik portfölj.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button 
+                  asChild
+                  size="lg" 
+                  className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  <Link to="/ai-chat" className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5" />
+                    Chatta med AI nu
+                  </Link>
+                </Button>
+                
+                {!riskProfile && user && (
+                  <Button 
+                    asChild
+                    variant="outline" 
+                    size="lg"
+                    className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                  >
+                    <Link to="/portfolio-advisor">
+                      Skapa din profil
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     </Layout>
   );
