@@ -23,14 +23,12 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 
 const AppSidebar = () => {
   const location = useLocation();
   const { user } = useAuth();
-  const { collapsed } = useSidebar();
   
   const aiNavigation = [
     { name: 'AI-Assistent', href: '/ai-chat', icon: Brain, priority: true },
@@ -80,16 +78,12 @@ const AppSidebar = () => {
             ) : (
               <Icon className="w-4 h-4" />
             )}
-            {!collapsed && (
-              <>
-                <span>{item.name}</span>
-                {isPriority && (
-                  <Badge className="ml-auto bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs">
-                    <Sparkles className="w-3 h-3 mr-1" />
-                    AI
-                  </Badge>
-                )}
-              </>
+            <span>{item.name}</span>
+            {isPriority && (
+              <Badge className="ml-auto bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs">
+                <Sparkles className="w-3 h-3 mr-1" />
+                AI
+              </Badge>
             )}
           </Link>
         </SidebarMenuButton>
@@ -98,16 +92,13 @@ const AppSidebar = () => {
   };
 
   return (
-    <Sidebar className={cn(
-      "border-r transition-all duration-300",
-      collapsed ? "w-16" : "w-64"
-    )}>
+    <Sidebar className="border-r transition-all duration-300">
       <SidebarContent className="px-3 py-4">
         {/* AI-First Section */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-primary">
-            {!collapsed && "AI-Verktyg"}
-            {collapsed && <Brain className="w-4 h-4" />}
+          <SidebarGroupLabel className="text-xs font-semibold text-primary flex items-center gap-2">
+            <Brain className="w-4 h-4" />
+            AI-Verktyg
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -118,9 +109,9 @@ const AppSidebar = () => {
 
         {/* Main Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground">
-            {!collapsed && "Huvudmeny"}
-            {collapsed && <Home className="w-4 h-4" />}
+          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+            <Home className="w-4 h-4" />
+            Huvudmeny
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -132,9 +123,9 @@ const AppSidebar = () => {
         {/* User Section */}
         {user && (
           <SidebarGroup className="mt-auto">
-            <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground">
-              {!collapsed && "Konto"}
-              {collapsed && <User className="w-4 h-4" />}
+            <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+              <User className="w-4 h-4" />
+              Konto
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
