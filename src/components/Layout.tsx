@@ -1,10 +1,10 @@
 
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { AppSidebar } from '@/components/AppSidebar';
+import AppSidebar from '@/components/AppSidebar';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
-import { ContextualAISuggestions } from '@/components/ContextualAISuggestions';
-import { IntelligentRouting } from '@/components/IntelligentRouting';
+import ContextualAISuggestions from '@/components/ContextualAISuggestions';
+import IntelligentRouting from '@/components/IntelligentRouting';
 
 interface LayoutProps {
   children: React.ReactNode;
