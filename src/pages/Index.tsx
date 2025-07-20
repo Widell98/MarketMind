@@ -8,7 +8,7 @@ import {
   PieChart,
   MessageSquare,
   UserPlus,
-  FileBarGraph,
+  BarChart3,
   LineChart,
   BadgePercent,
   Rocket,
@@ -63,7 +63,7 @@ const Index = () => {
               <div className="p-4 sm:p-6 lg:p-8">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                    <FileBarGraph className="w-6 h-6 text-blue-500" />
+                    <BarChart3 className="w-6 h-6 text-blue-500" />
                   </div>
                   <h3 className="text-lg font-semibold text-foreground">Portföljanalys</h3>
                 </div>
