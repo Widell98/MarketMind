@@ -182,13 +182,13 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
       />
 
       {user && riskProfile && (
-        <div className="border-b border-white/10 dark:border-gray-700/10 bg-gradient-to-r from-primary/5 to-blue-600/5 p-2 sm:p-3 backdrop-blur-sm">
+        <div className="border-b bg-background p-2 sm:p-3">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             <Button
               onClick={handleBackToPortfolio}
               variant="outline"
               size="sm"
-              className="flex items-center gap-2 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm border border-white/20 dark:border-gray-700/20 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200 shadow-lg"
+              className="flex items-center gap-2 hover:bg-muted/50 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               <span className="hidden sm:inline">Tillbaka till Min Portfölj</span>
@@ -204,7 +204,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
                   variant="outline" 
                   size="sm"
                   onClick={handlePremiumClick}
-                  className="text-xs h-6 px-2 ml-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 hover:from-amber-600 hover:to-orange-600 shadow-lg"
+                  className="text-xs h-6 px-2 ml-1"
                 >
                   <Crown className="w-3 h-3 mr-1" />
                   Premium
@@ -214,7 +214,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
 
             {/* Premium Badge */}
             {isPremium && (
-              <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs px-3 py-1 shadow-lg">
+              <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs px-2 py-1">
                 <Crown className="w-3 h-3 mr-1" />
                 Premium
               </Badge>
@@ -247,49 +247,47 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
           <div className="flex-1 overflow-hidden opacity-30 pointer-events-none">
             <div className="h-full flex flex-col">
               {/* Demo chat messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-6 max-w-6xl mx-auto w-full bg-gradient-to-br from-blue-50/30 to-purple-50/30 dark:from-gray-900/30 dark:to-gray-800/30">
+              <div className="flex-1 overflow-y-auto p-4 space-y-6 max-w-6xl mx-auto w-full">
                 <div className="flex justify-start">
-                  <div className="max-w-[75%] bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-2xl px-4 py-3 shadow-lg border border-gray-200/50 dark:border-gray-700/50">
+                  <div className="max-w-[75%] bg-muted rounded-2xl px-4 py-3">
                     <p className="text-sm leading-relaxed">Hej! Jag är din AI Portfolio Assistent. Jag hjälper dig med investeringsråd, portföljanalys och marknadsinsikter.</p>
                   </div>
                 </div>
                 <div className="flex justify-end">
-                  <div className="max-w-[75%] bg-gradient-to-br from-primary to-blue-600 text-white rounded-2xl px-4 py-3 shadow-lg">
+                  <div className="max-w-[75%] bg-primary text-primary-foreground rounded-2xl px-4 py-3">
                     <p className="text-sm leading-relaxed">Kan du analysera min portfölj?</p>
                   </div>
                 </div>
                 <div className="flex justify-start">
-                  <div className="max-w-[75%] bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-2xl px-4 py-3 shadow-lg border border-gray-200/50 dark:border-gray-700/50">
+                  <div className="max-w-[75%] bg-muted rounded-2xl px-4 py-3">
                     <p className="text-sm leading-relaxed">För att ge dig en personlig portföljanalys behöver du logga in så jag kan komma åt din investeringsprofil och aktuella innehav.</p>
                   </div>
                 </div>
               </div>
               
               {/* Demo input area */}
-              <div className="border-t border-white/10 dark:border-gray-700/10 p-4 max-w-6xl mx-auto w-full">
+              <div className="border-t p-4 max-w-6xl mx-auto w-full">
                 <div className="flex gap-2">
                   <input 
-                    className="flex-1 rounded-2xl border border-white/20 dark:border-gray-700/20 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm px-4 py-3 text-sm shadow-lg" 
+                    className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm" 
                     placeholder="Skriv ditt meddelande här..."
                     disabled
                   />
-                  <Button disabled className="rounded-2xl bg-gradient-to-r from-primary to-blue-600 px-6 shadow-lg">
-                    Skicka
-                  </Button>
+                  <Button disabled>Skicka</Button>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Login overlay */}
-          <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm">
-            <Card className="max-w-md mx-4 p-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-white/20 dark:border-gray-700/20 shadow-2xl rounded-3xl">
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+            <Card className="max-w-md mx-4 p-6 shadow-xl border-2 border-primary/20">
               <div className="text-center space-y-6">
                 <div className="relative">
-                  <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center mx-auto shadow-2xl">
-                    <Lock className="w-10 h-10 text-white" />
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center mx-auto shadow-lg">
+                    <Lock className="w-10 h-10 text-primary-foreground" />
                   </div>
-                  <div className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
+                  <div className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                     <Sparkles className="w-4 h-4 text-white" />
                   </div>
                 </div>
@@ -302,23 +300,23 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
                 </div>
 
                 <div className="space-y-3 text-left">
-                  <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-primary/5 to-blue-600/5 rounded-2xl border border-primary/20">
+                  <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg">
                     <Brain className="w-5 h-5 text-primary flex-shrink-0" />
                     <span className="text-sm text-foreground">Personlig AI-rådgivning baserat på din riskprofil</span>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-500/5 to-emerald-600/5 rounded-2xl border border-green-500/20">
+                  <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
                     <MessageSquare className="w-5 h-5 text-green-600 flex-shrink-0" />
                     <span className="text-sm text-foreground">Realtidsanalys av din portfölj</span>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-purple-500/5 to-pink-600/5 rounded-2xl border border-purple-500/20">
-                    <Sparkles className="w-5 h-5 text-purple-600 flex-shrink-0" />
+                  <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                    <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0" />
                     <span className="text-sm text-foreground">Smarta investeringsrekommendationer</span>
                   </div>
                 </div>
 
                 <Button 
                   onClick={() => window.location.href = '/auth'} 
-                  className="w-full bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-lg"
+                  className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white font-medium"
                   size="lg"
                 >
                   <LogIn className="w-4 h-4 mr-2" />

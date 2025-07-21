@@ -5,14 +5,13 @@ import Layout from '@/components/Layout';
 import AIChat from '@/components/AIChat';
 import LoginPromptModal from '@/components/LoginPromptModal';
 import AIMarketingPanel from '@/components/AIMarketingPanel';
-import ModernExamplePrompts from '@/components/chat/ModernExamplePrompts';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Brain, MessageSquare, Activity, Target, AlertCircle, User, LogIn, Sparkles } from 'lucide-react';
+import { Brain, MessageSquare, Activity, Target, Lightbulb, Zap, PieChart, TrendingUp, AlertCircle, User, LogIn } from 'lucide-react';
 
 const AIChatPage = () => {
   const [searchParams] = useSearchParams();
@@ -45,6 +44,33 @@ const AIChatPage = () => {
     }, 100);
   };
 
+  const examplePrompts = [
+    {
+      title: "Portföljanalys",
+      prompt: "Ge mig en komplett analys av min portfölj med rekommendationer för optimering",
+      icon: <PieChart className="w-4 h-4 sm:w-5 sm:h-5" />,
+      description: "Få en genomgång av din portföljs prestanda och struktur"
+    },
+    {
+      title: "Riskhantering", 
+      prompt: "Analysera riskerna i min portfölj och föreslå strategier för bättre diversifiering",
+      icon: <Activity className="w-4 h-4 sm:w-5 sm:h-5" />,
+      description: "Identifiera och minimera risker för en mer balanserad portfölj"
+    },
+    {
+      title: "Investeringsförslag",
+      prompt: "Vilka aktier och tillgångar borde jag överväga nästa baserat på min profil?",
+      icon: <Zap className="w-4 h-4 sm:w-5 sm:h-5" />,
+      description: "Få personliga rekommendationer baserade på din riskprofil"
+    },
+    {
+      title: "Marknadsinsikter",
+      prompt: "Vad händer på marknaden just nu och hur påverkar det min investeringsstrategi?",
+      icon: <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />,
+      description: "Håll dig uppdaterad med aktuella marknadstrender"
+    }
+  ];
+
   // Mock chat messages for demo
   const demoMessages = [
     {
@@ -68,13 +94,11 @@ const AIChatPage = () => {
   if (user && riskProfileLoading) {
     return (
       <Layout>
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
+        <div className="min-h-screen">
           <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8 max-w-[1600px]">
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
-                <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center mx-auto mb-4 shadow-2xl">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                </div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                 <p className="text-muted-foreground">Laddar...</p>
               </div>
             </div>
@@ -88,17 +112,17 @@ const AIChatPage = () => {
   if (user && !riskProfile) {
     return (
       <Layout>
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
+        <div className="min-h-screen">
           <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8 max-w-[1600px]">
-            <Card className="max-w-md mx-auto p-6 text-center bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/20 dark:border-gray-700/20 shadow-2xl rounded-3xl">
-              <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center mx-auto mb-4 shadow-2xl">
-                <AlertCircle className="w-8 h-8 text-white" />
+            <Card className="max-w-md mx-auto p-6 text-center">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-8 h-8 text-primary" />
               </div>
               <h3 className="text-lg font-semibold mb-2">Riskprofil krävs</h3>
               <p className="text-muted-foreground mb-4">
                 Du behöver skapa en riskprofil för att använda AI-assistenten
               </p>
-              <Button onClick={() => navigate('/portfolio-advisor')} className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90">
+              <Button onClick={() => navigate('/portfolio-advisor')}>
                 <User className="w-4 h-4 mr-2" />
                 Skapa riskprofil
               </Button>
@@ -116,38 +140,38 @@ const AIChatPage = () => {
         onClose={() => setShowLoginModal(false)} 
       />
       
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
+      <div className="min-h-screen">
         <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8 max-w-[1600px]">
           {/* Header */}
           <div className="mb-4 sm:mb-6">
             <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
               <div className="space-y-2 sm:space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-2xl">
-                    <MessageSquare className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-primary shadow-lg">
+                    <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-0.5 sm:mb-1 bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-0.5 sm:mb-1 text-foreground">
                       AI Portfolio Assistent
                     </h1>
-                    <p className="text-xs sm:text-sm lg:text-base text-gray-600 dark:text-gray-400">
+                    <p className="text-xs sm:text-sm lg:text-base text-muted-foreground">
                       {stockName ? `Diskutera ${stockName}` : 'Din intelligenta investeringsrådgivare'}
                     </p>
                   </div>
                 </div>
                 
-                <div className="flex flex-wrap gap-2">
-                  <Badge className="px-3 py-1 text-xs font-medium bg-gradient-to-r from-primary to-blue-600 text-white border-0 shadow-lg">
-                    <Brain className="w-3 h-3 mr-1.5" />
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                  <Badge className="px-2 sm:px-3 py-0.5 sm:py-1 text-xs font-medium bg-primary text-primary-foreground border-0 shadow-sm">
+                    <Brain className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1 sm:mr-1.5" />
                     AI-Optimerad
                   </Badge>
-                  <Badge className="px-3 py-1 text-xs font-medium bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 shadow-lg">
-                    <Activity className="w-3 h-3 mr-1.5" />
+                  <Badge className="px-2 sm:px-3 py-0.5 sm:py-1 text-xs font-medium bg-secondary text-secondary-foreground border-0 shadow-sm">
+                    <Activity className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1 sm:mr-1.5" />
                     Realtidsanalys
                   </Badge>
                   {user && activePortfolio && (
-                    <Badge className="px-3 py-1 text-xs font-medium bg-gradient-to-r from-purple-500 to-pink-600 text-white border-0 shadow-lg">
-                      <Target className="w-3 h-3 mr-1.5" />
+                    <Badge className="px-2 sm:px-3 py-0.5 sm:py-1 text-xs font-medium bg-accent text-accent-foreground border-0 shadow-sm">
+                      <Target className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1 sm:mr-1.5" />
                       <span className="hidden sm:inline">Aktiv sedan {new Date(activePortfolio.created_at).toLocaleDateString('sv-SE')}</span>
                       <span className="sm:hidden">Aktiv</span>
                     </Badge>
@@ -162,13 +186,53 @@ const AIChatPage = () => {
             <>
               {/* Example Prompts - Only show if not coming from stock discussion and user is authenticated */}
               {!stockName && !message && (
-                <div className="mb-4 sm:mb-6">
-                  <ModernExamplePrompts onExampleClick={handleExamplePrompt} />
-                </div>
+                <Card className="bg-card border shadow-lg rounded-2xl overflow-hidden mb-4 sm:mb-6">
+                  <div className="border-b bg-muted/30 pb-3 sm:pb-4 p-4 sm:p-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-primary shadow-sm">
+                        <Lightbulb className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h2 className="text-base sm:text-lg font-bold">
+                          Kom igång med AI-assistenten
+                        </h2>
+                        <p className="text-xs sm:text-sm mt-0.5 text-muted-foreground">
+                          Välj ett förslag nedan eller skriv din egen fråga
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-3 sm:p-4 lg:p-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 lg:gap-4">
+                      {examplePrompts.map((example, index) => (
+                        <Button
+                          key={index}
+                          variant="outline"
+                          className="h-auto p-3 sm:p-4 lg:p-5 text-left justify-start transition-all duration-200 group rounded-xl bg-background border shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 overflow-hidden"
+                          onClick={() => handleExamplePrompt(example.prompt)}
+                        >
+                          <div className="flex items-start gap-2.5 sm:gap-3 w-full min-w-0">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary shadow-sm group-hover:shadow-md transition-all duration-200 text-primary-foreground">
+                              {example.icon}
+                            </div>
+                            <div className="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
+                              <div className="font-semibold text-xs sm:text-sm leading-tight">
+                                {example.title}
+                              </div>
+                              <div className="text-xs leading-relaxed text-muted-foreground break-words">
+                                {example.description}
+                              </div>
+                            </div>
+                          </div>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
               )}
 
               {/* Chat Container */}
-              <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/20 dark:border-gray-700/20 shadow-2xl rounded-3xl overflow-hidden">
+              <Card className="bg-card border shadow-lg rounded-2xl overflow-hidden">
                 <AIChat 
                   portfolioId={activePortfolio?.id} 
                   initialStock={stockName} 
@@ -181,39 +245,34 @@ const AIChatPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left side - Demo Chat */}
               <div className="lg:col-span-2">
-                <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/20 dark:border-gray-700/20 shadow-2xl rounded-3xl overflow-hidden">
+                <Card className="bg-card border shadow-lg rounded-2xl overflow-hidden">
                   {/* Demo Chat Interface for unauthenticated users */}
                   <div className="flex flex-col h-[90vh] lg:h-[92vh] xl:h-[95vh]">
                     {/* Chat Header */}
-                    <div className="border-b border-white/10 dark:border-gray-700/10 bg-gradient-to-r from-primary/5 to-blue-600/5 p-4">
+                    <div className="border-b bg-muted/30 p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg">
-                          <Brain className="w-4 h-4 text-white" />
+                        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                          <Brain className="w-4 h-4 text-primary-foreground" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-gray-900 dark:text-white">Demo Konversation</h3>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">Se hur AI-assistenten fungerar</p>
+                          <h3 className="font-semibold">Demo Konversation</h3>
+                          <p className="text-xs text-muted-foreground">Se hur AI-assistenten fungerar</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Demo Messages */}
-                    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 max-w-6xl mx-auto w-full bg-gradient-to-br from-blue-50/30 to-purple-50/30 dark:from-gray-900/30 dark:to-gray-800/30">
+                    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 max-w-6xl mx-auto w-full">
                       {demoMessages.map((msg, index) => (
                         <div
                           key={index}
-                          className={`flex gap-3 items-start animate-fade-in ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
-                          {msg.role === 'assistant' && (
-                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center flex-shrink-0 shadow-lg">
-                              <div className="w-4 h-4 border-2 border-white rounded-full"></div>
-                            </div>
-                          )}
-                          <div className={`max-w-[75%] rounded-2xl px-4 py-3 shadow-lg backdrop-blur-sm border ${
+                          <div className={`max-w-[75%] ${
                             msg.role === 'user' 
-                              ? 'bg-gradient-to-br from-primary to-blue-600 text-white border-primary/20 rounded-br-lg' 
-                              : 'bg-white/80 dark:bg-gray-900/80 border-gray-200/50 dark:border-gray-700/50 rounded-tl-lg'
-                          }`}>
+                              ? 'bg-primary text-primary-foreground' 
+                              : 'bg-muted'
+                          } rounded-2xl px-4 py-3`}>
                             <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{msg.content}</p>
                             <p className="text-xs opacity-70 mt-1">
                               {msg.timestamp.toLocaleTimeString('sv-SE', { 
@@ -222,32 +281,24 @@ const AIChatPage = () => {
                               })}
                             </p>
                           </div>
-                          {msg.role === 'user' && (
-                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center flex-shrink-0 shadow-lg">
-                              <div className="w-4 h-4 text-gray-600 dark:text-gray-300">👤</div>
-                            </div>
-                          )}
                         </div>
                       ))}
                     </div>
 
                     {/* Login Prompt Input Area */}
-                    <div className="border-t border-white/10 dark:border-gray-700/10 p-4 max-w-6xl mx-auto w-full">
-                      <div className="bg-gradient-to-r from-primary/5 to-blue-600/5 border border-primary/20 rounded-2xl p-4 backdrop-blur-sm">
+                    <div className="border-t p-4 max-w-6xl mx-auto w-full">
+                      <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4">
                         <div className="flex flex-col sm:flex-row items-center gap-4">
                           <div className="flex items-center gap-3 flex-1">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg">
-                              <LogIn className="w-6 h-6 text-white" />
+                            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
+                              <LogIn className="w-6 h-6 text-primary-foreground" />
                             </div>
                             <div className="text-center sm:text-left">
                               <h4 className="font-semibold text-foreground">Fortsätt konversationen</h4>
                               <p className="text-sm text-muted-foreground">Skapa ett konto för att få personliga AI-råd och portföljanalys</p>
                             </div>
                           </div>
-                          <Button 
-                            onClick={() => window.location.href = '/auth'} 
-                            className="flex-shrink-0 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 shadow-lg"
-                          >
+                          <Button onClick={() => window.location.href = '/auth'} className="flex-shrink-0">
                             <LogIn className="w-4 h-4 mr-2" />
                             Logga in / Skapa konto
                           </Button>
@@ -260,9 +311,7 @@ const AIChatPage = () => {
 
               {/* Right side - AI Marketing Panel */}
               <div className="lg:col-span-1">
-                <div className="sticky top-4">
-                  <AIMarketingPanel />
-                </div>
+                <AIMarketingPanel />
               </div>
             </div>
           )}
