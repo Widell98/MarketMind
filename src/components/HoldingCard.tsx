@@ -13,6 +13,7 @@ import {
   Building2,
   AlertTriangle
 } from 'lucide-react';
+import SmartHoldingSuggestions from './SmartHoldingSuggestions';
 
 interface HoldingCardProps {
   holding: {
@@ -37,6 +38,7 @@ interface HoldingCardProps {
   onDiscuss: (name: string, symbol?: string) => void;
   onEdit?: (id: string) => void;
   onDelete: (id: string, name: string) => void;
+  showAISuggestions?: boolean;
 }
 
 const HoldingCard: React.FC<HoldingCardProps> = ({
@@ -45,7 +47,8 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   currentPrice,
   onDiscuss,
   onEdit,
-  onDelete
+  onDelete,
+  showAISuggestions = true
 }) => {
   const formatCurrency = (amount: number, currency = 'SEK') => {
     return new Intl.NumberFormat('sv-SE', {
@@ -63,8 +66,18 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   };
 
   const Icon = getHoldingIcon();
-
   const isCash = holding.holding_type === 'cash';
+
+  const handleSuggestionAction = (suggestionId: string, action: string) => {
+    console.log(`Suggestion ${suggestionId} ${action}`);
+    // Handle suggestion actions here
+    if (action === 'accept') {
+      // Navigate to relevant action (buy more, sell, etc.)
+      if (suggestionId.includes('_opportunity')) {
+        onDiscuss(holding.name, holding.symbol);
+      }
+    }
+  };
 
   return (
     <Card className="hover:shadow-md transition-all duration-200 border-l-4 border-l-primary/20">
@@ -211,6 +224,18 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
               <Trash2 className="w-4 h-4" />
             </Button>
           </div>
+
+          {/* AI Suggestions */}
+          {showAISuggestions && (
+            <SmartHoldingSuggestions
+              holdingId={holding.id}
+              holdingName={holding.name}
+              holdingType={holding.holding_type}
+              currentValue={holding.current_value}
+              portfolioPercentage={portfolioPercentage}
+              onSuggestionAction={handleSuggestionAction}
+            />
+          )}
         </div>
       </CardContent>
     </Card>

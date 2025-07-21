@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import HoldingCard from './HoldingCard';
+import SwipeableHoldingCard from './SwipeableHoldingCard';
 
 interface Holding {
   id: string;
@@ -52,6 +53,9 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
       maximumFractionDigits: 0,
     }).format(amount);
   };
+
+  // Detect if we're on mobile
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   return (
     <Card className="mb-4">
@@ -103,6 +107,23 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {holdings.map((holding) => {
               const holdingPercentage = totalValue > 0 ? (holding.current_value / totalValue) * groupPercentage : 0;
+              
+              // Use swipeable cards on mobile, regular cards on desktop
+              if (isMobile) {
+                return (
+                  <SwipeableHoldingCard
+                    key={holding.id}
+                    holding={holding}
+                    portfolioPercentage={holdingPercentage}
+                    currentPrice={getPriceForHolding(holding)}
+                    onDiscuss={onDiscuss}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    isMobile={true}
+                  />
+                );
+              }
+              
               return (
                 <HoldingCard
                   key={holding.id}

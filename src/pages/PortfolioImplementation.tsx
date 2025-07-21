@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -19,8 +18,11 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Brain, TrendingUp, Target, BarChart3, Activity, Crown, AlertCircle, User, MessageSquare, Clock } from 'lucide-react';
+import PortfolioHealthScore from '@/components/PortfolioHealthScore';
+import FloatingActionButton from '@/components/FloatingActionButton';
 
 const PortfolioImplementation = () => {
+  const { actualHoldings } = usePortfolio();
   const { activePortfolio, loading } = usePortfolio();
   const { user, loading: authLoading } = useAuth();
   const { riskProfile, loading: riskProfileLoading } = useRiskProfile();
@@ -120,6 +122,21 @@ const PortfolioImplementation = () => {
   const totalPortfolioValue = performance.totalPortfolioValue + totalCash;
   const investedValue = performance.totalValue;
 
+  // Calculate portfolio health metrics
+  const calculateHealthMetrics = () => {
+    const totalHoldings = actualHoldings.length;
+    const uniqueSectors = new Set(actualHoldings.filter(h => h.sector).map(h => h.sector)).size;
+    
+    return {
+      diversificationScore: Math.min(100, (uniqueSectors / Math.max(1, totalHoldings)) * 100 + 20),
+      riskScore: Math.max(20, 100 - (totalCash / Math.max(1, totalPortfolioValue)) * 200),
+      performanceScore: 75, // Mock performance score
+      cashPercentage: totalPortfolioValue > 0 ? (totalCash / totalPortfolioValue) * 100 : 0
+    };
+  };
+
+  const healthMetrics = calculateHealthMetrics();
+
   // Always show portfolio implementation page with tabs
   return (
     <Layout>
@@ -174,6 +191,19 @@ const PortfolioImplementation = () => {
               </div>
             </div>
           </div>
+
+          {/* Portfolio Health Score */}
+          {user && totalPortfolioValue > 0 && (
+            <div className="mb-6">
+              <PortfolioHealthScore
+                totalValue={totalPortfolioValue}
+                diversificationScore={healthMetrics.diversificationScore}
+                riskScore={healthMetrics.riskScore}
+                performanceScore={healthMetrics.performanceScore}
+                cashPercentage={healthMetrics.cashPercentage}
+              />
+            </div>
+          )}
 
           {/* Portfolio Value Cards */}
           <PortfolioValueCards
@@ -265,6 +295,9 @@ const PortfolioImplementation = () => {
           </Tabs>
         </div>
       </div>
+
+      {/* Floating Action Button */}
+      <FloatingActionButton />
     </Layout>
   );
 };

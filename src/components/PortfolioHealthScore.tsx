@@ -1,184 +1,154 @@
 
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { 
-  TrendingUp, 
-  TrendingDown, 
+  Heart, 
   Shield, 
-  Target, 
-  Activity,
+  TrendingUp, 
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Info
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface PortfolioHealthScoreProps {
-  portfolio: any;
+  totalValue: number;
+  diversificationScore: number;
+  riskScore: number;
+  performanceScore: number;
+  cashPercentage: number;
 }
 
-const PortfolioHealthScore: React.FC<PortfolioHealthScoreProps> = ({ portfolio }) => {
-  // Calculate health metrics
+const PortfolioHealthScore: React.FC<PortfolioHealthScoreProps> = ({
+  totalValue,
+  diversificationScore,
+  riskScore,
+  performanceScore,
+  cashPercentage
+}) => {
+  // Calculate overall health score
   const calculateHealthScore = () => {
-    let score = 0;
-    const checks = [];
+    const scores = {
+      diversification: diversificationScore,
+      risk: riskScore,
+      performance: performanceScore,
+      cash: cashPercentage > 20 ? 60 : cashPercentage < 5 ? 80 : 100
+    };
 
-    // Diversification check (based on number of holdings)
-    const holdingCount = portfolio?.recommended_stocks?.length || 0;
-    if (holdingCount >= 8) {
-      score += 20;
-      checks.push({ name: 'Diversifiering', status: 'good', value: `${holdingCount} innehav` });
-    } else {
-      checks.push({ name: 'Diversifiering', status: 'warning', value: `${holdingCount} innehav` });
-    }
+    const weights = {
+      diversification: 0.3,
+      risk: 0.25,
+      performance: 0.25,
+      cash: 0.2
+    };
 
-    // Risk assessment
-    const riskScore = portfolio?.risk_score || 0;
-    if (riskScore <= 6) {
-      score += 25;
-      checks.push({ name: 'Riskkontroll', status: 'good', value: `${riskScore}/10` });
-    } else if (riskScore <= 8) {
-      score += 15;
-      checks.push({ name: 'Riskkontroll', status: 'warning', value: `${riskScore}/10` });
-    } else {
-      checks.push({ name: 'Riskkontroll', status: 'danger', value: `${riskScore}/10` });
-    }
-
-    // Expected return check
-    const expectedReturn = portfolio?.expected_return || 0;
-    if (expectedReturn >= 8) {
-      score += 25;
-      checks.push({ name: 'Förväntad avkastning', status: 'good', value: `${expectedReturn}%` });
-    } else if (expectedReturn >= 5) {
-      score += 15;
-      checks.push({ name: 'Förväntad avkastning', status: 'warning', value: `${expectedReturn}%` });
-    } else {
-      checks.push({ name: 'Förväntad avkastning', status: 'danger', value: `${expectedReturn}%` });
-    }
-
-    // Asset allocation balance
-    const allocation = portfolio?.asset_allocation || {};
-    const hasBalancedAllocation = Object.keys(allocation).length >= 3;
-    if (hasBalancedAllocation) {
-      score += 15;
-      checks.push({ name: 'Balanserad allokering', status: 'good', value: 'Ja' });
-    } else {
-      checks.push({ name: 'Balanserad allokering', status: 'warning', value: 'Nej' });
-    }
-
-    // Recent rebalancing
-    const lastRebalanced = portfolio?.last_rebalanced_at;
-    const isRecentlyRebalanced = lastRebalanced && 
-      new Date(lastRebalanced) > new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-    
-    if (isRecentlyRebalanced) {
-      score += 15;
-      checks.push({ name: 'Senaste ombalansering', status: 'good', value: 'Inom 3 månader' });
-    } else {
-      checks.push({ name: 'Senaste ombalansering', status: 'warning', value: 'Över 3 månader' });
-    }
-
-    return { score: Math.min(score, 100), checks };
+    return Math.round(
+      scores.diversification * weights.diversification +
+      scores.risk * weights.risk +
+      scores.performance * weights.performance +
+      scores.cash * weights.cash
+    );
   };
 
-  const { score, checks } = calculateHealthScore();
+  const healthScore = calculateHealthScore();
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
+  const getHealthStatus = (score: number) => {
+    if (score >= 80) return { label: 'Utmärkt', color: 'text-green-600', bg: 'bg-green-100 dark:bg-green-950/20' };
+    if (score >= 60) return { label: 'Bra', color: 'text-blue-600', bg: 'bg-blue-100 dark:bg-blue-950/20' };
+    if (score >= 40) return { label: 'Okej', color: 'text-yellow-600', bg: 'bg-yellow-100 dark:bg-yellow-950/20' };
+    return { label: 'Behöver förbättras', color: 'text-red-600', bg: 'bg-red-100 dark:bg-red-950/20' };
   };
+
+  const status = getHealthStatus(healthScore);
 
   const getScoreIcon = (score: number) => {
-    if (score >= 80) return <CheckCircle className="w-5 h-5 text-green-600" />;
-    if (score >= 60) return <Activity className="w-5 h-5 text-yellow-600" />;
-    return <AlertTriangle className="w-5 h-5 text-red-600" />;
+    if (score >= 80) return CheckCircle;
+    if (score >= 60) return TrendingUp;
+    if (score >= 40) return Info;
+    return AlertTriangle;
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'good': return <CheckCircle className="w-4 h-4 text-green-600" />;
-      case 'warning': return <Activity className="w-4 h-4 text-yellow-600" />;
-      case 'danger': return <AlertTriangle className="w-4 h-4 text-red-600" />;
-      default: return null;
-    }
-  };
+  const ScoreIcon = getScoreIcon(healthScore);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'good': return 'border-green-200 bg-green-50';
-      case 'warning': return 'border-yellow-200 bg-yellow-50';
-      case 'danger': return 'border-red-200 bg-red-50';
-      default: return 'border-gray-200 bg-gray-50';
+  const metrics = [
+    {
+      label: 'Diversifiering',
+      score: diversificationScore,
+      icon: Shield,
+      description: 'Spridning av investeringar'
+    },
+    {
+      label: 'Riskbalans',
+      score: riskScore,
+      icon: Heart,
+      description: 'Risk vs avkastning'
+    },
+    {
+      label: 'Utveckling',
+      score: performanceScore,
+      icon: TrendingUp,
+      description: 'Senaste månadens utveckling'
     }
-  };
+  ];
 
   return (
-    <Card>
-      <CardHeader className="p-3 sm:p-4 md:p-6">
-        <CardTitle className="flex items-center gap-2 text-sm sm:text-base md:text-lg">
-          {getScoreIcon(score)}
-          <span>Portfolio Health Score</span>
-        </CardTitle>
-        <CardDescription className="text-xs sm:text-sm">
-          Omfattande analys av din portföljs hälsa och prestanda
-        </CardDescription>
-      </CardHeader>
-      
-      <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
-        <div className="space-y-4 sm:space-y-6">
-          {/* Overall Score */}
-          <div className="text-center space-y-2 sm:space-y-3">
-            <div className={`text-2xl sm:text-3xl md:text-4xl font-bold ${getScoreColor(score)}`}>
-              {score}/100
+    <Card className="bg-gradient-to-r from-primary/5 to-blue-600/5 border-primary/20">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-4">
+          {/* Main Health Score */}
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "w-12 h-12 rounded-xl flex items-center justify-center",
+              status.bg
+            )}>
+              <ScoreIcon className={cn("w-6 h-6", status.color)} />
             </div>
-            <div className="space-y-1 sm:space-y-2">
-              <Progress value={score} className="h-2 sm:h-3" />
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                {score >= 80 ? 'Utmärkt portföljhälsa' : 
-                 score >= 60 ? 'God portföljhälsa med förbättringsmöjligheter' : 
-                 'Portföljen behöver uppmärksamhet'}
+            
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-lg font-bold text-foreground">
+                  {healthScore}/100
+                </span>
+                <Badge className={cn("text-xs", status.bg, status.color)}>
+                  {status.label}
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Portfolio Hälsa
               </p>
             </div>
           </div>
 
-          {/* Health Checks */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-            {checks.map((check, index) => (
-              <div
-                key={index}
-                className={`p-2 sm:p-3 rounded-lg border ${getStatusColor(check.status)}`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs sm:text-sm font-medium">{check.name}</span>
-                  {getStatusIcon(check.status)}
-                </div>
-                <span className="text-xs text-muted-foreground">{check.value}</span>
-              </div>
-            ))}
+          {/* Progress Bar */}
+          <div className="flex-1 max-w-xs">
+            <Progress 
+              value={healthScore} 
+              className="h-2"
+            />
           </div>
 
-          {/* Recommendations */}
-          <div className="space-y-2 sm:space-y-3">
-            <h4 className="font-medium text-xs sm:text-sm">Förbättringsförslag</h4>
-            <div className="space-y-1 sm:space-y-2">
-              {score < 80 && (
-                <div className="flex items-start gap-2 text-xs sm:text-sm text-muted-foreground">
-                  <Target className="w-3 h-3 sm:w-4 sm:h-4 mt-0.5 flex-shrink-0" />
-                  <span>Överväg att ombalansera portföljen för bättre diversifiering</span>
+          {/* Mini Metrics */}
+          <div className="hidden lg:flex items-center gap-4">
+            {metrics.map((metric) => {
+              const MetricIcon = metric.icon;
+              const metricStatus = getHealthStatus(metric.score);
+              
+              return (
+                <div key={metric.label} className="text-center">
+                  <div className="flex items-center gap-1 mb-1">
+                    <MetricIcon className="w-3 h-3 text-muted-foreground" />
+                    <span className={cn("text-sm font-medium", metricStatus.color)}>
+                      {metric.score}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {metric.label}
+                  </p>
                 </div>
-              )}
-              {checks.find(c => c.name === 'Riskkontroll' && c.status !== 'good') && (
-                <div className="flex items-start gap-2 text-xs sm:text-sm text-muted-foreground">
-                  <Shield className="w-3 h-3 sm:w-4 sm:h-4 mt-0.5 flex-shrink-0" />
-                  <span>Minska risken genom att diversifiera mellan sektorer</span>
-                </div>
-              )}
-              <div className="flex items-start gap-2 text-xs sm:text-sm text-muted-foreground">
-                <Activity className="w-3 h-3 sm:w-4 sm:h-4 mt-0.5 flex-shrink-0" />
-                <span>Använd AI-chatten för personliga rekommendationer</span>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
       </CardContent>
