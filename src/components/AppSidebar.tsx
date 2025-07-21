@@ -30,7 +30,8 @@ import { Badge } from '@/components/ui/badge';
 const AppSidebar = () => {
   const location = useLocation();
   const { user } = useAuth();
-  const { collapsed } = useSidebar();
+  const { state } = useSidebar();
+  const collapsed = state === 'collapsed';
   
   const aiNavigation = [
     { name: 'AI-Assistent', href: '/ai-chat', icon: Brain, priority: true },
