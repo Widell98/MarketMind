@@ -1,7 +1,7 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import IntelligentRouting from '@/components/IntelligentRouting';
+import LatestCases from '@/components/LatestCases';
 import {
   Brain,
   Lightbulb,
@@ -290,63 +290,9 @@ const Index = () => {
             </Card>
           </div>
 
-          {/* Latest Stock Cases */}
+          {/* Latest Stock Cases - Using Real Data */}
           <div className="mb-8 sm:mb-12 lg:mb-16">
-            <h2 className="text-2xl font-bold text-foreground mb-4">
-              Senaste Aktiefall
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              <Card className="bg-card border shadow-md hover:shadow-lg transition-all duration-200">
-                <div className="p-4 sm:p-6">
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
-                    Tesla (TSLA)
-                  </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-                    En analys av Teslas senaste kvartalsrapport och framtidsutsikter.
-                  </p>
-                  <Button asChild variant="link" className="text-sm font-medium hover:underline underline-offset-2">
-                    <Link to="/stock-cases">
-                      Läs mer
-                      <ArrowUpRight className="w-3 h-3 ml-1" />
-                    </Link>
-                  </Button>
-                </div>
-              </Card>
-
-              <Card className="bg-card border shadow-md hover:shadow-lg transition-all duration-200">
-                <div className="p-4 sm:p-6">
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
-                    Apple (AAPL)
-                  </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-                    En djupdykning i Apples nya produktlanseringar och marknadsstrategi.
-                  </p>
-                  <Button asChild variant="link" className="text-sm font-medium hover:underline underline-offset-2">
-                    <Link to="/stock-cases">
-                      Läs mer
-                      <ArrowUpRight className="w-3 h-3 ml-1" />
-                    </Link>
-                  </Button>
-                </div>
-              </Card>
-
-              <Card className="bg-card border shadow-md hover:shadow-lg transition-all duration-200">
-                <div className="p-4 sm:p-6">
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
-                    Microsoft (MSFT)
-                  </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-                    En genomgång av Microsofts molnverksamhet och AI-satsningar.
-                  </p>
-                  <Button asChild variant="link" className="text-sm font-medium hover:underline underline-offset-2">
-                    <Link to="/stock-cases">
-                      Läs mer
-                      <ArrowUpRight className="w-3 h-3 ml-1" />
-                    </Link>
-                  </Button>
-                </div>
-              </Card>
-            </div>
+            <LatestCases />
           </div>
 
           {/* CTA Section */}
