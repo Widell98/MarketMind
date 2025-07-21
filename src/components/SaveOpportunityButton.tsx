@@ -12,6 +12,7 @@ interface SaveOpportunityButtonProps {
   variant?: 'default' | 'ghost' | 'outline';
   size?: 'sm' | 'default' | 'lg';
   className?: string;
+  showText?: boolean;
 }
 
 const SaveOpportunityButton = ({ 
@@ -19,7 +20,8 @@ const SaveOpportunityButton = ({
   itemId, 
   variant = 'ghost', 
   size = 'sm',
-  className = ''
+  className = '',
+  showText = true
 }: SaveOpportunityButtonProps) => {
   const { user } = useAuth();
   const { isItemSaved, saveOpportunity, removeOpportunity, savedItems } = useSavedOpportunities();
@@ -78,12 +80,12 @@ const SaveOpportunityButton = ({
       {isSaved ? (
         <>
           <BookmarkCheck className="w-4 h-4 mr-1" />
-          <span className="hidden sm:inline">Sparad</span>
+          {showText && <span className="hidden sm:inline">Sparad</span>}
         </>
       ) : (
         <>
           <Bookmark className="w-4 h-4 mr-1" />
-          <span className="hidden sm:inline">Spara</span>
+          {showText && <span className="hidden sm:inline">Spara</span>}
         </>
       )}
     </Button>

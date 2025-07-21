@@ -3,12 +3,11 @@ import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Heart, MessageCircle, TrendingUp, UserCheck, UserPlus, Plus } from 'lucide-react';
+import { Eye, Heart, MessageCircle, TrendingUp, Plus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
-import { useStockCaseFollows } from '@/hooks/useStockCaseFollows';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
 
 interface EnhancedStockCaseCardProps {
@@ -25,7 +24,6 @@ const EnhancedStockCaseCard = ({
   showAIActions = true 
 }: EnhancedStockCaseCardProps) => {
   const { likeCount, isLiked, toggleLike } = useStockCaseLikes(stockCase.id);
-  const { isFollowing, toggleFollow } = useStockCaseFollows(stockCase.id);
   const navigate = useNavigate();
 
   const handleCardClick = () => {
@@ -238,32 +236,6 @@ const EnhancedStockCaseCard = ({
               variant="ghost"
               size="sm"
             />
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleFollow();
-              }}
-              className={`text-xs px-2 py-1 h-7 ${
-                isFollowing 
-                  ? 'text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300' 
-                  : 'text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300'
-              }`}
-            >
-              {isFollowing ? (
-                <>
-                  <UserCheck className="w-3 h-3 mr-1" />
-                  Följer
-                </>
-              ) : (
-                <>
-                  <UserPlus className="w-3 h-3 mr-1" />
-                  Följ
-                </>
-              )}
-            </Button>
           </div>
         </div>
       </CardContent>

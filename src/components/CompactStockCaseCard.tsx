@@ -4,11 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
-import { useStockCaseFollows } from '@/hooks/useStockCaseFollows';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import LoginPromptModal from '@/components/LoginPromptModal';
+import SaveOpportunityButton from '@/components/SaveOpportunityButton';
 
 interface CompactStockCaseCardProps {
   stockCase: any;
@@ -16,7 +16,6 @@ interface CompactStockCaseCardProps {
 
 const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
   const { likeCount, isLiked, toggleLike } = useStockCaseLikes(stockCase.id);
-  const { isFollowing, toggleFollow } = useStockCaseFollows(stockCase.id);
   const navigate = useNavigate();
   const { user } = useAuth();
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
@@ -124,6 +123,14 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
                 <Heart className={`w-3 h-3 ${isLiked ? 'fill-current' : ''}`} />
                 <span>{likeCount}</span>
               </button>
+              
+              <SaveOpportunityButton 
+                itemType="stock_case" 
+                itemId={stockCase.id}
+                variant="ghost"
+                size="sm"
+                showText={false}
+              />
             </div>
           </div>
           
