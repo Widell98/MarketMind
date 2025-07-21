@@ -48,10 +48,12 @@ const ContextualAISuggestions = () => {
   const { actualHoldings } = useUserHoldings();
   
   const [suggestions, setSuggestions] = useState<AISuggestion[]>([]);
-  const [isVisible, setIsVisible] = useState(true);
+  const [isVisible, setIsVisible] = useState(false); // Changed from true to false
   const [isMinimized, setIsMinimized] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [isUpdating, setIsUpdating] = useState(false);
+  const [dismissedPermanently, setDismissedPermanently] = useState(false);
+  const [lastShownTime, setLastShownTime] = useState<number>(0);
   
   // Dragging state
   const [dragState, setDragState] = useState<DragState>({
@@ -65,17 +67,66 @@ const ContextualAISuggestions = () => {
   const cardRef = useRef<HTMLDivElement>(null);
   const dragHandleRef = useRef<HTMLDivElement>(null);
 
-  // Auto-refresh suggestions every 2 minutes
+  // Check localStorage for dismissed state
+  useEffect(() => {
+    const dismissed = localStorage.getItem('ai-suggestions-dismissed');
+    const lastShown = localStorage.getItem('ai-suggestions-last-shown');
+    
+    if (dismissed === 'true') {
+      setDismissedPermanently(true);
+    }
+    
+    if (lastShown) {
+      setLastShownTime(parseInt(lastShown));
+    }
+  }, []);
+
+  // Only auto-refresh suggestions every 10 minutes (increased from 2 minutes)
   useEffect(() => {
     const interval = setInterval(() => {
-      generateSuggestions();
-      setLastUpdate(new Date());
-    }, 120000); // 2 minutes
+      if (isVisible && !dismissedPermanently) {
+        generateSuggestions();
+        setLastUpdate(new Date());
+      }
+    }, 600000); // 10 minutes
 
     return () => clearInterval(interval);
-  }, [location.pathname, performance, actualHoldings]);
+  }, [location.pathname, performance, actualHoldings, isVisible, dismissedPermanently]);
+
+  const shouldShowSuggestions = () => {
+    if (dismissedPermanently || !user) return false;
+    
+    const now = Date.now();
+    const timeSinceLastShown = now - lastShownTime;
+    const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
+    
+    // Only show if it's been at least 1 hour since last shown
+    if (timeSinceLastShown < oneHour) return false;
+    
+    const path = location.pathname;
+    
+    // Only show on specific conditions
+    if (path === '/' && (!actualHoldings || actualHoldings.length === 0)) {
+      return true; // Show for new users
+    }
+    
+    // Show if there are performance issues
+    if (path === '/portfolio-implementation' && performance && (
+      (performance.totalReturn || 0) < -10 || 
+      (performance.dayChangePercentage || 0) < -15
+    )) {
+      return true; // Show for significant performance issues
+    }
+    
+    return false;
+  };
 
   const generateSuggestions = () => {
+    if (!shouldShowSuggestions()) {
+      setIsVisible(false);
+      return;
+    }
+    
     setIsUpdating(true);
     
     setTimeout(() => {
@@ -83,140 +134,57 @@ const ContextualAISuggestions = () => {
       let contextSuggestions: AISuggestion[] = [];
       const timestamp = Date.now();
 
-      if (path === '/') {
-        if (!actualHoldings || actualHoldings.length === 0) {
-          contextSuggestions = [
-            {
-              id: '1',
-              title: 'Skapa din första portfölj',
-              description: 'Låt AI:n analysera din riskprofil och skapa en personlig investeringsstrategi',
-              action: 'Starta AI-rådgivning',
-              icon: Brain,
-              priority: 'high',
-              category: 'action',
-              timestamp
-            },
-            {
-              id: '2',
-              title: 'Lägg till befintliga innehav',
-              description: 'Registrera dina nuvarande investeringar för bättre portföljanalys',
-              action: 'Lägg till innehav',
-              icon: PieChart,
-              priority: 'high',
-              category: 'action',
-              timestamp
-            }
-          ];
-        } else {
-          contextSuggestions = [
-            {
-              id: '3',
-              title: 'Portföljoptimering tillgänglig',
-              description: 'AI:n har upptäckt förbättringsmöjligheter baserat på dina senaste innehav',
-              action: 'Optimera portfölj',
-              icon: Sparkles,
-              priority: 'high',
-              category: 'insight',
-              timestamp
-            },
-            {
-              id: '4',
-              title: 'Marknadstrender just nu',
-              description: 'Få AI-baserade insights om dagens marknadsrörelser och möjligheter',
-              action: 'Visa marknadsanalys',
-              icon: TrendingUp,
-              priority: 'medium',
-              category: 'insight',
-              timestamp
-            }
-          ];
-        }
-      } else if (path === '/stock-cases') {
+      if (path === '/' && (!actualHoldings || actualHoldings.length === 0)) {
         contextSuggestions = [
           {
-            id: '5',
-            title: 'AI-analys av intressanta aktier',
-            description: 'Låt AI:n djupdyka i aktier som matchar din investeringsprofil',
-            action: 'Analysera aktier med AI',
-            icon: PieChart,
+            id: '1',
+            title: 'Välkommen! Skapa din första portfölj',
+            description: 'Låt AI:n analysera din riskprofil och skapa en personlig investeringsstrategi',
+            action: 'Starta AI-rådgivning',
+            icon: Brain,
             priority: 'high',
-            category: 'analysis',
-            timestamp
-          },
-          {
-            id: '6',
-            title: 'Diskutera denna aktie',
-            description: 'Starta en djup konversation om en specifik aktie med AI-assistenten',
-            action: 'Öppna AI-chat',
-            icon: MessageSquare,
-            priority: 'medium',
             category: 'action',
             timestamp
           }
         ];
       } else if (path === '/portfolio-implementation') {
-        const hasPerformanceIssues = performance && (
-          (performance.totalReturn || 0) < -5 || 
-          (performance.dayChangePercentage || 0) < -10
+        const hasSignificantIssues = performance && (
+          (performance.totalReturn || 0) < -10 || 
+          (performance.dayChangePercentage || 0) < -15
         );
 
-        contextSuggestions = [
-          {
-            id: '7',
-            title: hasPerformanceIssues ? 'Portföljproblem upptäckta' : 'Optimera din portfölj',
-            description: hasPerformanceIssues 
-              ? 'AI:n har upptäckt prestandaproblem som behöver åtgärdas omedelbart'
-              : 'AI:n har upptäckt förbättringsmöjligheter i din nuvarande allokering',
-            action: 'Visa optimeringar',
-            icon: hasPerformanceIssues ? AlertTriangle : Sparkles,
-            priority: hasPerformanceIssues ? 'high' : 'medium',
-            category: 'insight',
-            timestamp
-          },
-          {
-            id: '8',
-            title: 'Riskanalys och rebalansering',
-            description: 'Få AI-driven riskbedömning och förslag på rebalansering',
-            action: 'Starta riskanalys',
-            icon: Brain,
-            priority: 'medium',
-            category: 'analysis',
-            timestamp
-          }
-        ];
-      } else if (path === '/ai-chat') {
-        contextSuggestions = [
-          {
-            id: '9',
-            title: 'Portföljgranskning',
-            description: 'Be AI:n göra en fullständig analys av din nuvarande portfölj',
-            action: 'Granska portfölj',
-            icon: PieChart,
-            priority: 'medium',
-            category: 'analysis',
-            timestamp
-          },
-          {
-            id: '10',
-            title: 'Lärande möjligheter',
-            description: 'Utforska investeringsutbildning anpassad för din kunskapsnivå',
-            action: 'Starta lärande',
-            icon: Lightbulb,
-            priority: 'low',
-            category: 'learning',
-            timestamp
-          }
-        ];
+        if (hasSignificantIssues) {
+          contextSuggestions = [
+            {
+              id: '7',
+              title: 'Viktiga portföljproblem upptäckta',
+              description: 'AI:n har upptäckt betydande prestandaproblem som behöver omedelbar uppmärksamhet',
+              action: 'Visa akuta optimeringar',
+              icon: AlertTriangle,
+              priority: 'high',
+              category: 'insight',
+              timestamp
+            }
+          ];
+        }
       }
 
       setSuggestions(contextSuggestions);
       setIsUpdating(false);
+      
+      if (contextSuggestions.length > 0) {
+        setIsVisible(true);
+        setLastShownTime(Date.now());
+        localStorage.setItem('ai-suggestions-last-shown', Date.now().toString());
+      }
     }, 500);
   };
 
   useEffect(() => {
-    generateSuggestions();
-  }, [location.pathname, performance, actualHoldings]);
+    if (!dismissedPermanently) {
+      generateSuggestions();
+    }
+  }, [location.pathname, performance, actualHoldings, dismissedPermanently]);
 
   const handleSuggestionClick = (suggestion: AISuggestion) => {
     const event = new CustomEvent('createStockChat', {
@@ -227,11 +195,26 @@ const ContextualAISuggestions = () => {
     });
     window.dispatchEvent(event);
     window.location.href = '/ai-chat';
+    
+    // Hide after interaction
+    setIsVisible(false);
   };
 
   const handleManualRefresh = () => {
     generateSuggestions();
     setLastUpdate(new Date());
+  };
+
+  const handleDismissPermanently = () => {
+    setDismissedPermanently(true);
+    setIsVisible(false);
+    localStorage.setItem('ai-suggestions-dismissed', 'true');
+  };
+
+  const handleTemporaryDismiss = () => {
+    setIsVisible(false);
+    setLastShownTime(Date.now());
+    localStorage.setItem('ai-suggestions-last-shown', Date.now().toString());
   };
 
   // Drag handlers
@@ -295,7 +278,16 @@ const ContextualAISuggestions = () => {
     }
   };
 
-  if (!isVisible || suggestions.length === 0 || !user) return null;
+  // Add reset function for development/testing
+  const resetDismissedState = () => {
+    localStorage.removeItem('ai-suggestions-dismissed');
+    localStorage.removeItem('ai-suggestions-last-shown');
+    setDismissedPermanently(false);
+    setLastShownTime(0);
+    generateSuggestions();
+  };
+
+  if (!isVisible || suggestions.length === 0 || !user || dismissedPermanently) return null;
 
   return (
     <Card 
@@ -329,25 +321,24 @@ const ContextualAISuggestions = () => {
             <div>
               <h3 className="font-semibold text-sm">Smart Förslag</h3>
               <p className="text-xs opacity-80">
-                Uppdaterat {lastUpdate.toLocaleTimeString('sv-SE', { 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
-                })}
+                Visas bara vid viktiga tillfällen
               </p>
             </div>
           )}
           <Move className="w-3 h-3 opacity-60 ml-1" />
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            onClick={handleManualRefresh}
-            variant="ghost"
-            size="sm"
-            className="w-8 h-8 p-0 text-white hover:bg-white/20"
-            disabled={isUpdating}
-          >
-            <RefreshCw className={cn("w-4 h-4", isUpdating && "animate-spin")} />
-          </Button>
+          {process.env.NODE_ENV === 'development' && (
+            <Button
+              onClick={resetDismissedState}
+              variant="ghost"
+              size="sm"
+              className="w-8 h-8 p-0 text-white hover:bg-white/20"
+              title="Reset (dev only)"
+            >
+              ↻
+            </Button>
+          )}
           <Button
             onClick={() => setIsMinimized(!isMinimized)}
             variant="ghost"
@@ -357,10 +348,11 @@ const ContextualAISuggestions = () => {
             {isMinimized ? '↑' : '↓'}
           </Button>
           <Button
-            onClick={() => setIsVisible(false)}
+            onClick={handleTemporaryDismiss}
             variant="ghost"
             size="sm"
             className="w-8 h-8 p-0 text-white hover:bg-white/20"
+            title="Dölj tills vidare"
           >
             <X className="w-4 h-4" />
           </Button>
@@ -404,6 +396,17 @@ const ContextualAISuggestions = () => {
               </div>
             );
           })}
+          
+          <div className="pt-2 border-t border-border">
+            <Button
+              onClick={handleDismissPermanently}
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs text-muted-foreground hover:text-foreground"
+            >
+              Visa aldrig smart förslag igen
+            </Button>
+          </div>
         </div>
       )}
     </Card>
