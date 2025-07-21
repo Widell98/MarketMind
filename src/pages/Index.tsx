@@ -74,11 +74,6 @@ const Index = () => {
             </div>
           )}
 
-          {/* Latest Stock Cases - Using Real Data */}
-          <div className="mb-8 sm:mb-12 lg:mb-16">
-            <CompactLatestCases />
-          </div>
-
           {/* AI Features Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-8 sm:mb-12 lg:mb-16">
             {/* AI Portfolio Analysis */}
@@ -206,6 +201,11 @@ const Index = () => {
                 </Button>
               </div>
             </Card>
+          </div>
+
+          {/* Latest Stock Cases - Moved from top to before CTA */}
+          <div className="mb-8 sm:mb-12 lg:mb-16">
+            <CompactLatestCases />
           </div>
 
           {/* CTA Section */}
