@@ -67,44 +67,6 @@ const Index = () => {
             )}
           </div>
 
-                    {/* CTA Section */}
-          <div className="text-center bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-3xl p-6 sm:p-8 lg:p-12 border border-primary/20">
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
-              {user 
-                ? "Redo att ta din investering till nästa nivå?"
-                : "Redo att börja din investeringsresa?"
-              }
-            </h2>
-            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-6 max-w-2xl mx-auto">
-              {user 
-                ? "Fortsätt utveckla din portfölj och upplev kraften i AI-drivna investeringar."
-                : "Gå med i tusentals investerare som redan använder AI för att fatta smartare investeringsbeslut. Helt gratis att komma igång."
-              }
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Button asChild size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 w-full sm:w-auto">
-                <Link to={user ? "/portfolio-advisor" : "/auth"}>
-                  {user ? "Optimera min portfölj" : "Kom igång gratis"}
-                  <Rocket className="w-4 h-4 ml-2" />
-                </Link>
-              </Button>
-              {!user && (
-                <Button asChild variant="outline" size="lg" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground w-full sm:w-auto">
-                  <Link to="/stock-cases">
-                    Utforska community
-                    <ArrowUpRight className="w-4 h-4 ml-2" />
-                  </Link>
-                </Button>
-              )}
-            </div>
-            
-            {!user && (
-              <div className="mt-6 text-xs text-muted-foreground">
-                Ingen kreditkort krävs • Avsluta när som helst • 1000+ nöjda användare
-              </div>
-            )}
-          </div>
-
           {/* Smart Navigation - New AI-first feature */}
           {user && (
             <div className="mb-8 sm:mb-12">
@@ -244,6 +206,44 @@ const Index = () => {
                 </Button>
               </div>
             </Card>
+          </div>
+
+          {/* CTA Section */}
+          <div className="text-center bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-3xl p-6 sm:p-8 lg:p-12 border border-primary/20">
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
+              {user 
+                ? "Redo att ta din investering till nästa nivå?"
+                : "Redo att börja din investeringsresa?"
+              }
+            </h2>
+            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-6 max-w-2xl mx-auto">
+              {user 
+                ? "Fortsätt utveckla din portfölj och upplev kraften i AI-drivna investeringar."
+                : "Gå med i tusentals investerare som redan använder AI för att fatta smartare investeringsbeslut. Helt gratis att komma igång."
+              }
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Button asChild size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 w-full sm:w-auto">
+                <Link to={user ? "/portfolio-advisor" : "/auth"}>
+                  {user ? "Optimera min portfölj" : "Kom igång gratis"}
+                  <Rocket className="w-4 h-4 ml-2" />
+                </Link>
+              </Button>
+              {!user && (
+                <Button asChild variant="outline" size="lg" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground w-full sm:w-auto">
+                  <Link to="/stock-cases">
+                    Utforska community
+                    <ArrowUpRight className="w-4 h-4 ml-2" />
+                  </Link>
+                </Button>
+              )}
+            </div>
+            
+            {!user && (
+              <div className="mt-6 text-xs text-muted-foreground">
+                Ingen kreditkort krävs • Avsluta när som helst • 1000+ nöjda användare
+              </div>
+            )}
           </div>
         </div>
       </div>
