@@ -326,8 +326,10 @@ const UserHoldingsManager: React.FC = () => {
     return Object.entries(groups)
       .filter(([, holdings]) => holdings.length > 0)
       .map(([type, holdings]) => {
-        const totalValue = holdings.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
-        const totalPortfolioValue = performance.totalPortfolioValue + totalCash;
+        const totalValue = holdings.reduce((sum, holding) => {
+          return sum + (holding.current_value || 0);
+        }, 0);
+        const totalPortfolioValue = (performance?.totalPortfolioValue || 0) + (totalCash || 0);
         const percentage = totalPortfolioValue > 0 ? (totalValue / totalPortfolioValue) * 100 : 0;
 
         const typeNames = {
