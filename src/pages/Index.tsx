@@ -15,7 +15,7 @@ const Index = () => {
   const { activePortfolio, loading } = usePortfolio();
 
   // Check if user has completed the main onboarding steps
-  const hasPortfolio = !loading && activePortfolio;
+  const hasPortfolio = !loading && !!activePortfolio;
   const shouldShowHero = !user || !hasPortfolio;
 
   return (
