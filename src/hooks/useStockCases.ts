@@ -2,41 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-
-export type StockCase = {
-  id: string;
-  title: string;
-  company_name: string;
-  image_url: string | null;
-  sector: string | null;
-  market_cap: string | null;
-  pe_ratio: string | null;
-  dividend_yield: string | null;
-  description: string | null;
-  admin_comment: string | null;
-  user_id: string | null;
-  status: 'active' | 'winner' | 'loser';
-  entry_price: number | null;
-  current_price: number | null;
-  target_price: number | null;
-  stop_loss: number | null;
-  performance_percentage: number | null;
-  closed_at: string | null;
-  is_public: boolean;
-  category_id: string | null;
-  created_at: string;
-  updated_at: string;
-  case_categories?: {
-    id: string;
-    name: string;
-    color: string;
-  };
-  profiles?: {
-    id: string;
-    display_name: string | null;
-    username: string;
-  };
-};
+import type { StockCase } from '@/types/stockCase';
 
 export const useStockCases = (followedOnly: boolean = false) => {
   const { user } = useAuth();
@@ -158,8 +124,14 @@ const enrichStockCases = async (stockCases: any[]): Promise<StockCase[]> => {
       ...stockCase,
       status: (stockCase.status || 'active') as 'active' | 'winner' | 'loser',
       is_public: stockCase.is_public ?? true,
-      profiles: profile || null,
-      case_categories: category || null
+      profiles: profile ? {
+        username: profile.username,
+        display_name: profile.display_name
+      } : null,
+      case_categories: category ? {
+        name: category.name,
+        color: category.color
+      } : null
     };
   });
 };

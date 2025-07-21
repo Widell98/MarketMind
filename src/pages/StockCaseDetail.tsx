@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
@@ -33,6 +32,7 @@ import { sv } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
 import StockCaseAIChat from '@/components/StockCaseAIChat';
 import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
+import type { StockCase } from '@/types/stockCase';
 
 const StockCaseDetail = () => {
   const { id } = useParams<{ id: string }>();
