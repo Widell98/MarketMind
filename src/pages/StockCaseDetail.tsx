@@ -120,6 +120,14 @@ const StockCaseDetail = () => {
     }
   };
 
+  const handleLikeClick = () => {
+    toggleLike();
+  };
+
+  const handleFollowClick = () => {
+    toggleFollow();
+  };
+
   return (
     <Layout>
       <div className="max-w-6xl mx-auto space-y-6">
@@ -209,7 +217,7 @@ const StockCaseDetail = () => {
                   <div className="flex items-center gap-2">
                     <Button
                       variant={isLiked ? "default" : "outline"}
-                      onClick={toggleLike}
+                      onClick={handleLikeClick}
                       disabled={likesLoading || !user}
                       className="flex items-center gap-2"
                     >
@@ -219,7 +227,7 @@ const StockCaseDetail = () => {
 
                     <Button
                       variant={isFollowing ? "default" : "outline"}
-                      onClick={toggleFollow}
+                      onClick={handleFollowClick}
                       disabled={followsLoading || !user}
                       className="flex items-center gap-2"
                     >
