@@ -8,6 +8,8 @@ import { Sparkles, TrendingUp, Target, Bookmark, Filter, BarChart3, MessageCircl
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import PersonalizedRecommendations from '@/components/PersonalizedRecommendations';
+import PersonalizedAIRecommendations from '@/components/PersonalizedAIRecommendations';
+import AIWeeklyPicks from '@/components/AIWeeklyPicks';
 import SavedOpportunitiesSection from '@/components/SavedOpportunitiesSection';
 import StockCaseCard from '@/components/StockCaseCard';
 import AnalysisSection from '@/components/AnalysisSection';
@@ -36,7 +38,6 @@ const DiscoverOpportunities = () => {
     if (categoryFilter === 'trending') return trendingCases;
     if (categoryFilter === 'all') return allStockCases;
     
-    // Här kan vi lägga till mer avancerad filtrering baserat på kategorier
     return allStockCases.filter(stockCase => {
       switch (categoryFilter) {
         case 'growth':
@@ -81,7 +82,7 @@ const DiscoverOpportunities = () => {
             </h1>
           </div>
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-            Personaliserade investeringsmöjligheter baserat på din portfölj och preferenser
+            AI-driven investeringsmöjligheter baserat på din portfölj och marknadstrender
           </p>
         </div>
 
@@ -106,7 +107,13 @@ const DiscoverOpportunities = () => {
           <TabsContent value="discover" className="space-y-8">
             {user ? (
               <>
-                {/* Personaliserade rekommendationer */}
+                {/* AI Weekly Picks - New Section */}
+                <AIWeeklyPicks />
+
+                {/* Personalized AI Recommendations */}
+                <PersonalizedAIRecommendations />
+
+                {/* Original Personalized Recommendations */}
                 <PersonalizedRecommendations />
 
                 {/* Trending sektion */}
@@ -165,12 +172,12 @@ const DiscoverOpportunities = () => {
               <Card className="text-center py-8 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
                 <CardContent className="pt-4">
                   <Sparkles className="w-12 h-12 text-purple-600 mx-auto mb-3" />
-                  <CardTitle className="text-xl mb-2">Få Personaliserade Rekommendationer</CardTitle>
+                  <CardTitle className="text-xl mb-2">Få AI-Powered Rekommendationer</CardTitle>
                   <p className="text-muted-foreground mb-4 max-w-md mx-auto">
-                    Logga in för att få skräddarsydda investeringsmöjligheter baserat på din portfölj och riskprofil.
+                    Logga in för att få skräddarsydda investeringsmöjligheter med AI-analys baserat på din portfölj och marknadstrender.
                   </p>
                   <Button onClick={() => navigate('/auth')} className="bg-purple-600 hover:bg-purple-700">
-                    Logga in för personliga förslag
+                    Logga in för AI-rekommendationer
                   </Button>
                 </CardContent>
               </Card>
