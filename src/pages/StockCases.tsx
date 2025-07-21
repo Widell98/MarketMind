@@ -35,6 +35,14 @@ const StockCases = () => {
   const [isCreateAnalysisOpen, setIsCreateAnalysisOpen] = useState(false);
   const { stockCases, loading, error, refetch } = useStockCases();
 
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [performanceFilter, setPerformanceFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
   const handleViewDetails = (id: string) => {
     navigate(`/stock-cases/${id}`);
   };
@@ -42,6 +50,11 @@ const StockCases = () => {
   const handleDeleteStockCase = async (id: string) => {
     // Implementation for delete functionality
     console.log('Delete stock case:', id);
+    refetch();
+  };
+
+  const handleCreateStockCaseSuccess = () => {
+    setIsCreateStockCaseOpen(false);
     refetch();
   };
 
@@ -94,7 +107,7 @@ const StockCases = () => {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8 space-y-8">
-        {/* Header with improved messaging */}
+        {/* Header with workflow explanation */}
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center gap-2 mb-2">
             <TrendingUp className="w-8 h-8 text-blue-600" />
@@ -103,8 +116,40 @@ const StockCases = () => {
             </h1>
           </div>
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-            Upptäck investeringsidéer från communityn. Spara intressanta cases och analyser för att bygga din portfölj.
+            Din inspirationskälla för investeringsidéer. Upptäck cases från communityn, spara det du gillar och implementera i din portfölj.
           </p>
+          
+          {/* Workflow steps */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center max-w-4xl mx-auto mt-6">
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="text-sm font-medium">1. Upptäck</div>
+              <div className="text-xs text-muted-foreground">Utforska cases och analyser</div>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-green-600" />
+              </div>
+              <div className="text-sm font-medium">2. Spara</div>
+              <div className="text-xs text-muted-foreground">Markera intressant innehåll</div>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
+                <MessageCircle className="w-5 h-5 text-purple-600" />
+              </div>
+              <div className="text-sm font-medium">3. Diskutera</div>
+              <div className="text-xs text-muted-foreground">Prata med AI om idéerna</div>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                <Target className="w-5 h-5 text-orange-600" />
+              </div>
+              <div className="text-sm font-medium">4. Implementera</div>
+              <div className="text-xs text-muted-foreground">Använd i din portfölj</div>
+            </div>
+          </div>
           
           {/* Enhanced CTA section */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-6">
@@ -147,50 +192,22 @@ const StockCases = () => {
           </div>
         </div>
 
-        {/* Workflow explanation */}
-        <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <Sparkles className="w-5 h-5 text-purple-600" />
-              <h3 className="text-lg font-semibold text-purple-700 dark:text-purple-300">
-                Så här fungerar det
-              </h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
-              <div className="flex flex-col items-center gap-2">
-                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-blue-600" />
-                </div>
-                <div className="text-sm font-medium">Upptäck</div>
-                <div className="text-xs text-muted-foreground">Utforska cases och analyser</div>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                  <BookOpen className="w-5 h-5 text-green-600" />
-                </div>
-                <div className="text-sm font-medium">Spara</div>
-                <div className="text-xs text-muted-foreground">Markera intressant innehåll</div>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
-                  <MessageCircle className="w-5 h-5 text-purple-600" />
-                </div>
-                <div className="text-sm font-medium">Diskutera</div>
-                <div className="text-xs text-muted-foreground">Prata med AI om idéerna</div>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
-                  <Target className="w-5 h-5 text-orange-600" />
-                </div>
-                <div className="text-sm font-medium">Implementera</div>
-                <div className="text-xs text-muted-foreground">Använd i din portfölj</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Filters */}
-        <StockCasesFilters />
+        <StockCasesFilters
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          selectedCategory={selectedCategory}
+          onCategoryChange={setSelectedCategory}
+          performanceFilter={performanceFilter}
+          onPerformanceFilterChange={setPerformanceFilter}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          sortOrder={sortOrder}
+          onSortOrderChange={setSortOrder}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          categories={[]}
+        />
 
         {/* Stock Cases Grid */}
         {stockCases.length > 0 ? (
@@ -255,10 +272,6 @@ const StockCases = () => {
         <CreateStockCaseDialog
           isOpen={isCreateStockCaseOpen}
           onClose={() => setIsCreateStockCaseOpen(false)}
-          onSuccess={() => {
-            setIsCreateStockCaseOpen(false);
-            refetch();
-          }}
         />
         
         <CreateAnalysisDialog

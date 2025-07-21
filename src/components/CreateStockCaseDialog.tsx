@@ -99,6 +99,9 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({ isOpen, o
       });
 
       onClose();
+      
+      // Trigger a page reload to refresh the stock cases
+      window.location.reload();
     } catch (error) {
       console.error('Error creating stock case:', error);
       toast({
