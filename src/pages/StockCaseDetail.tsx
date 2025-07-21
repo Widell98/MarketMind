@@ -25,13 +25,15 @@ import {
   AlertTriangle,
   Target,
   StopCircle,
-  Brain
+  Brain,
+  ShoppingCart
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
 import StockCaseAIChat from '@/components/StockCaseAIChat';
 import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
+import SaveOpportunityButton from '@/components/SaveOpportunityButton';
 import type { StockCase } from '@/types/stockCase';
 
 const StockCaseDetail = () => {
@@ -128,6 +130,17 @@ const StockCaseDetail = () => {
     toggleFollow();
   };
 
+  const handleSaveSuccess = () => {
+    toast({
+      title: "Sparad till portfölj!",
+      description: "Detta stock case har sparats och är nu tillgängligt i dina Community-rekommenderade Innehav.",
+      action: {
+        label: "Gå till portfölj",
+        onClick: () => navigate('/portfolio-implementation')
+      }
+    });
+  };
+
   return (
     <Layout>
       <div className="max-w-6xl mx-auto space-y-6">
@@ -214,7 +227,7 @@ const StockCaseDetail = () => {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
                       variant={isLiked ? "default" : "outline"}
                       onClick={handleLikeClick}
@@ -243,7 +256,38 @@ const StockCaseDetail = () => {
                       <Share2 className="w-4 h-4" />
                       Dela
                     </Button>
+
+                    {/* Save to Portfolio Button */}
+                    {user && (
+                      <SaveOpportunityButton
+                        itemType="stock_case"
+                        itemId={stockCase.id}
+                        itemTitle={stockCase.company_name}
+                        variant="default"
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                        showText={true}
+                        onSaveSuccess={handleSaveSuccess}
+                      />
+                    )}
+
+                    {/* Portfolio Implementation Button */}
+                    {user && (
+                      <Button
+                        onClick={() => navigate('/portfolio-implementation')}
+                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <ShoppingCart className="w-4 h-4" />
+                        Gå till portfölj
+                      </Button>
+                    )}
                   </div>
+
+                  {/* Help text for non-authenticated users */}
+                  {!user && (
+                    <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                      <p>Logga in för att spara detta stock case till din portfölj och diskutera det med AI.</p>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
             </Card>

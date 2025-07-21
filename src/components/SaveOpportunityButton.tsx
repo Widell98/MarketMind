@@ -32,6 +32,8 @@ interface SaveOpportunityButtonProps {
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
   size?: 'default' | 'sm' | 'lg' | 'icon';
   showText?: boolean;
+  className?: string;
+  onSaveSuccess?: () => void;
 }
 
 const SaveOpportunityButton: React.FC<SaveOpportunityButtonProps> = ({
@@ -41,7 +43,9 @@ const SaveOpportunityButton: React.FC<SaveOpportunityButtonProps> = ({
   compact = false,
   variant = 'outline',
   size = 'default',
-  showText = true
+  showText = true,
+  className = '',
+  onSaveSuccess
 }) => {
   const { savedItems, saveOpportunity, removeOpportunity, isItemSaved } = useSavedOpportunities();
   const { toast } = useToast();
@@ -99,6 +103,11 @@ const SaveOpportunityButton: React.FC<SaveOpportunityButtonProps> = ({
       setTags([]);
       setNewTag('');
       setNotes('');
+      
+      // Call the success callback if provided
+      if (onSaveSuccess) {
+        onSaveSuccess();
+      }
     } catch (error) {
       toast({
         title: "Fel",
@@ -134,7 +143,7 @@ const SaveOpportunityButton: React.FC<SaveOpportunityButtonProps> = ({
         variant={isSaved ? "default" : variant}
         size={size}
         onClick={handleSave}
-        className={`flex items-center gap-2 ${compact ? 'h-8 px-3' : ''}`}
+        className={`flex items-center gap-2 ${compact ? 'h-8 px-3' : ''} ${className}`}
       >
         {isSaved ? (
           <>
