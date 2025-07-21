@@ -233,8 +233,10 @@ const EnhancedStockCaseCard = ({
             <SaveOpportunityButton 
               itemType="stock_case" 
               itemId={stockCase.id}
+              itemTitle={stockCase.title}
               variant="ghost"
               size="sm"
+              showText={false}
             />
           </div>
         </div>

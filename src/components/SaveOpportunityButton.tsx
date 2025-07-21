@@ -27,17 +27,23 @@ import { useToast } from '@/hooks/use-toast';
 interface SaveOpportunityButtonProps {
   itemType: 'stock_case' | 'analysis';
   itemId: string;
-  itemTitle: string;
+  itemTitle?: string;
   compact?: boolean;
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+  size?: 'default' | 'sm' | 'lg' | 'icon';
+  showText?: boolean;
 }
 
 const SaveOpportunityButton: React.FC<SaveOpportunityButtonProps> = ({
   itemType,
   itemId,
-  itemTitle,
-  compact = false
+  itemTitle = '',
+  compact = false,
+  variant = 'outline',
+  size = 'default',
+  showText = true
 }) => {
-  const { savedOpportunities, saveOpportunity, removeSavedOpportunity } = useSavedOpportunities();
+  const { savedItems, saveOpportunity, removeOpportunity, isItemSaved } = useSavedOpportunities();
   const { toast } = useToast();
   const [showDialog, setShowDialog] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
@@ -45,9 +51,7 @@ const SaveOpportunityButton: React.FC<SaveOpportunityButtonProps> = ({
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const isSaved = savedOpportunities.some(
-    item => item.item_id === itemId && item.item_type === itemType
-  );
+  const isSaved = isItemSaved(itemType, itemId);
 
   const predefinedTags = [
     'Hög potential', 
@@ -65,11 +69,11 @@ const SaveOpportunityButton: React.FC<SaveOpportunityButtonProps> = ({
   const handleSave = async () => {
     if (isSaved) {
       // Remove from saved
-      const savedItem = savedOpportunities.find(
+      const savedItem = savedItems.find(
         item => item.item_id === itemId && item.item_type === itemType
       );
       if (savedItem) {
-        await removeSavedOpportunity(savedItem.id);
+        await removeOpportunity(savedItem.id);
         toast({
           title: "Borttagen från sparade",
           description: `${itemTitle} har tagits bort från dina sparade ${itemType === 'stock_case' ? 'stock cases' : 'analyser'}.`,
@@ -127,20 +131,20 @@ const SaveOpportunityButton: React.FC<SaveOpportunityButtonProps> = ({
   return (
     <>
       <Button
-        variant={isSaved ? "default" : "outline"}
-        size={compact ? "sm" : "default"}
+        variant={isSaved ? "default" : variant}
+        size={size}
         onClick={handleSave}
         className={`flex items-center gap-2 ${compact ? 'h-8 px-3' : ''}`}
       >
         {isSaved ? (
           <>
             <BookmarkCheck className="w-4 h-4" />
-            {!compact && "Sparad"}
+            {showText && !compact && "Sparad"}
           </>
         ) : (
           <>
             <Bookmark className="w-4 h-4" />
-            {!compact && "Spara"}
+            {showText && !compact && "Spara"}
           </>
         )}
       </Button>

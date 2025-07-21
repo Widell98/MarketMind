@@ -127,9 +127,11 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
               <SaveOpportunityButton 
                 itemType="stock_case" 
                 itemId={stockCase.id}
+                itemTitle={stockCase.title}
                 variant="ghost"
                 size="sm"
                 showText={false}
+                compact={true}
               />
             </div>
           </div>
