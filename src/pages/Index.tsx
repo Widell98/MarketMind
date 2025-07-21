@@ -2,30 +2,12 @@ import React from 'react';
 import Layout from '@/components/Layout';
 import IntelligentRouting from '@/components/IntelligentRouting';
 import CompactLatestCases from '@/components/CompactLatestCases';
-import {
-  Brain,
-  Lightbulb,
-  TrendingUp,
-  PieChart,
-  MessageSquare,
-  UserPlus,
-  BarChart3,
-  LineChart,
-  BadgePercent,
-  Rocket,
-  ShieldCheck,
-  Headphones,
-  TrendingDown,
-  ArrowUpRight,
-  ArrowDownLeft
-} from 'lucide-react';
+import { Brain, Lightbulb, TrendingUp, PieChart, MessageSquare, UserPlus, BarChart3, LineChart, BadgePercent, Rocket, ShieldCheck, Headphones, TrendingDown, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-
 const Index = () => {
-  return (
-    <Layout>
+  return <Layout>
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
         <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8 max-w-[1600px]">
           {/* Hero Section */}
@@ -187,108 +169,7 @@ const Index = () => {
           </div>
 
           {/* Market Data Section */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-8 sm:mb-12 lg:mb-16">
-            {/* Top Movers */}
-            <Card className="bg-card border shadow-md hover:shadow-lg transition-all duration-200">
-              <div className="p-4 sm:p-6 lg:p-8">
-                <h3 className="text-lg font-semibold text-foreground mb-3">
-                  Topp 5 stigande aktier
-                </h3>
-                <ul className="space-y-2">
-                  <li className="flex items-center justify-between">
-                    <span>Tesla (TSLA)</span>
-                    <span className="text-green-500">+3.5%</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>Apple (AAPL)</span>
-                    <span className="text-green-500">+2.8%</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>Microsoft (MSFT)</span>
-                    <span className="text-green-500">+2.1%</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>Amazon (AMZN)</span>
-                    <span className="text-green-500">+1.9%</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>NVIDIA (NVDA)</span>
-                    <span className="text-green-500">+1.5%</span>
-                  </li>
-                </ul>
-              </div>
-            </Card>
-
-            {/* Top Losers */}
-            <Card className="bg-card border shadow-md hover:shadow-lg transition-all duration-200">
-              <div className="p-4 sm:p-6 lg:p-8">
-                <h3 className="text-lg font-semibold text-foreground mb-3">
-                  Topp 5 fallande aktier
-                </h3>
-                <ul className="space-y-2">
-                  <li className="flex items-center justify-between">
-                    <span>AMC Entertainment (AMC)</span>
-                    <span className="text-red-500">-4.2%</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>GameStop (GME)</span>
-                    <span className="text-red-500">-3.8%</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>Bed Bath & Beyond (BBBY)</span>
-                    <span className="text-red-500">-3.5%</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>Virgin Galactic (SPCE)</span>
-                    <span className="text-red-500">-3.1%</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>BlackBerry (BB)</span>
-                    <span className="text-red-500">-2.9%</span>
-                  </li>
-                </ul>
-              </div>
-            </Card>
-
-            {/* Key Market Indicators */}
-            <Card className="bg-card border shadow-md hover:shadow-lg transition-all duration-200">
-              <div className="p-4 sm:p-6 lg:p-8">
-                <h3 className="text-lg font-semibold text-foreground mb-3">
-                  Marknadsindikatorer
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span>S&P 500</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">4,500</span>
-                      <ArrowUpRight className="w-4 h-4 text-green-500" />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>NASDAQ</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">14,000</span>
-                      <ArrowDownLeft className="w-4 h-4 text-red-500" />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Guld (per uns)</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">$1,950</span>
-                      <ArrowUpRight className="w-4 h-4 text-green-500" />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Olja (per fat)</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">$75</span>
-                      <ArrowDownLeft className="w-4 h-4 text-red-500" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </div>
+          
 
           {/* Latest Stock Cases - Using Real Data */}
           <div className="mb-8 sm:mb-12 lg:mb-16">
@@ -312,8 +193,6 @@ const Index = () => {
           </div>
         </div>
       </div>
-    </Layout>
-  );
+    </Layout>;
 };
-
 export default Index;
