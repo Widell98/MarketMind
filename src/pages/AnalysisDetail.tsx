@@ -33,8 +33,8 @@ const AnalysisDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const { analysis, loading, error } = useAnalysisDetail(id || '');
-  const { comments, loading: commentsLoading } = useAnalysisComments(id || '');
+  const { data: analysis, isLoading: loading, error } = useAnalysisDetail(id || '');
+  const { data: comments, isLoading: commentsLoading } = useAnalysisComments(id || '');
 
   if (loading) {
     return (
@@ -242,11 +242,7 @@ const AnalysisDetail = () => {
             <AnalysisAIChat analysis={analysis} />
 
             {/* Comments Section */}
-            <AnalysisComments 
-              analysisId={analysis.id} 
-              comments={comments} 
-              loading={commentsLoading} 
-            />
+            <AnalysisComments analysisId={analysis.id} />
           </div>
 
           {/* Right Column - Sidebar */}

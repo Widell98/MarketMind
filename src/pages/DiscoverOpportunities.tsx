@@ -70,6 +70,42 @@ const DiscoverOpportunities = () => {
     navigate('/ai-chat', { state: { contextData } });
   };
 
+  // Mock data for saved opportunities
+  const mockSavedOpportunities = [
+    {
+      id: '1',
+      type: 'stock_case' as const,
+      title: 'Tesla Long-term Growth Case',
+      company_name: 'Tesla Inc.',
+      description: 'Electric vehicle market leader with strong fundamentals',
+      sector: 'Technology',
+      performance_percentage: 15.2,
+      created_at: '2024-01-15T10:00:00Z',
+      ai_generated: false,
+    },
+    {
+      id: '2',
+      type: 'analysis' as const,
+      title: 'Renewable Energy Sector Analysis',
+      description: 'Deep dive into renewable energy investment opportunities',
+      sector: 'Energy',
+      created_at: '2024-01-10T14:30:00Z',
+      ai_generated: true,
+    },
+  ];
+
+  const handleRemoveOpportunity = (id: string) => {
+    console.log('Removing opportunity:', id);
+  };
+
+  const handleViewOpportunity = (opportunity: any) => {
+    if (opportunity.type === 'stock_case') {
+      navigate(`/stock-cases/${opportunity.id}`);
+    } else if (opportunity.type === 'analysis') {
+      navigate(`/analysis/${opportunity.id}`);
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -187,7 +223,12 @@ const DiscoverOpportunities = () => {
           {/* Sparade Tab */}
           <TabsContent value="saved" className="space-y-6">
             {user ? (
-              <SavedOpportunitiesSection />
+              <SavedOpportunitiesSection 
+                opportunities={mockSavedOpportunities}
+                onRemove={handleRemoveOpportunity}
+                onView={handleViewOpportunity}
+                loading={false}
+              />
             ) : (
               <Card className="text-center py-8 bg-gray-50 dark:bg-gray-800">
                 <CardContent className="pt-4">

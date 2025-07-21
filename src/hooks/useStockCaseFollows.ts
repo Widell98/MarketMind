@@ -1,149 +1,87 @@
 
-import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 export const useStockCaseFollows = (stockCaseId: string) => {
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
   const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const fetchFollowStatus = async () => {
-    if (!user) {
-      setIsFollowing(false);
-      return;
-    }
-
-    if (!stockCaseId || stockCaseId.trim() === '') {
-      setIsFollowing(false);
-      return;
-    }
-
-    try {
-      // Check if current user follows this case
-      const { data: followData, error: followError } = await supabase
-        .from('stock_case_follows')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('stock_case_id', stockCaseId)
-        .maybeSingle();
-
-      if (followError) {
-        console.error('Error checking follow status:', followError);
-        setIsFollowing(false);
-      } else {
-        setIsFollowing(!!followData);
-      }
-    } catch (error: any) {
-      console.error('Error fetching follow status:', error);
-      setIsFollowing(false);
-    }
-  };
-
-  const toggleFollow = async () => {
-    if (!user) {
-      toast({
-        title: "Inloggning krävs",
-        description: "Du måste vara inloggad för att följa aktiecases",
-        variant: "destructive",
+  // Get follow count
+  const { data: followCountData } = useQuery({
+    queryKey: ['stock-case-follow-count', stockCaseId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_stock_case_follow_count', {
+        case_id: stockCaseId,
       });
-      return;
-    }
+      if (error) throw error;
+      return data;
+    },
+  });
 
-    if (!stockCaseId || stockCaseId.trim() === '') {
-      toast({
-        title: "Fel",
-        description: "Ogiltigt aktiecase ID",
-        variant: "destructive",
+  // Check if current user follows this case
+  const { data: isFollowingData } = useQuery({
+    queryKey: ['stock-case-user-follows', stockCaseId, user?.id],
+    queryFn: async () => {
+      if (!user) return false;
+      const { data, error } = await supabase.rpc('user_follows_case', {
+        case_id: stockCaseId,
+        user_id: user.id,
       });
-      return;
-    }
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
 
-    setLoading(true);
+  // Toggle follow mutation
+  const followMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('User must be authenticated');
 
-    try {
-      if (isFollowing) {
-        // Unfollow - remove the follow
+      if (isFollowingData) {
+        // Unfollow
         const { error } = await supabase
           .from('stock_case_follows')
           .delete()
           .eq('stock_case_id', stockCaseId)
           .eq('user_id', user.id);
-
-        if (error) {
-          throw error;
-        }
-
-        setIsFollowing(false);
-        
-        toast({
-          title: "Slutade följa",
-          description: "Du följer inte längre detta aktiecase",
-        });
+        if (error) throw error;
       } else {
-        // Follow - add the follow
+        // Follow
         const { error } = await supabase
           .from('stock_case_follows')
           .insert({
             stock_case_id: stockCaseId,
-            user_id: user.id
+            user_id: user.id,
           });
-
-        if (error) {
-          if (error.code === '23505') {
-            // Duplicate entry - user already follows this case
-            setIsFollowing(true);
-            return;
-          }
-          throw error;
-        }
-
-        setIsFollowing(true);
-        
-        toast({
-          title: "Följer nu",
-          description: "Du följer nu detta aktiecase",
-        });
+        if (error) throw error;
       }
-    } catch (error: any) {
-      console.error('Error toggling follow:', error);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stock-case-follow-count', stockCaseId] });
+      queryClient.invalidateQueries({ queryKey: ['stock-case-user-follows', stockCaseId, user?.id] });
       
       toast({
+        title: isFollowingData ? "Slutat följa" : "Följer nu",
+        description: isFollowingData ? "Du följer inte längre detta stock case" : "Du följer nu detta stock case",
+      });
+    },
+    onError: (error) => {
+      toast({
         title: "Fel",
-        description: "Kunde inte uppdatera följning. Försök igen.",
+        description: error.message,
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (stockCaseId && stockCaseId.trim() !== '') {
-      fetchFollowStatus();
-    } else {
-      setIsFollowing(false);
-    }
-  }, [stockCaseId, user?.id]);
-
-  // Reset state when user changes
-  useEffect(() => {
-    if (!user) {
-      setIsFollowing(false);
-      setLoading(false);
-    } else {
-      // Refetch when user changes
-      if (stockCaseId && stockCaseId.trim() !== '') {
-        fetchFollowStatus();
-      }
-    }
-  }, [user?.id]);
+    },
+  });
 
   return {
-    isFollowing,
-    loading,
-    toggleFollow
+    followCount: followCountData || 0,
+    isFollowing: isFollowingData || false,
+    toggleFollow: followMutation.mutate,
+    loading: followMutation.isPending,
   };
 };

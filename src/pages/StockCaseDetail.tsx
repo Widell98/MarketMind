@@ -25,7 +25,8 @@ import {
   Users,
   AlertTriangle,
   Target,
-  StopCircle
+  StopCircle,
+  Brain
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -149,6 +150,7 @@ const StockCaseDetail = () => {
                         </h1>
                         {stockCase.ai_generated && (
                           <Badge variant="outline" className="bg-purple-50 text-purple-700">
+                            <Brain className="w-3 h-3 mr-1" />
                             AI
                           </Badge>
                         )}
