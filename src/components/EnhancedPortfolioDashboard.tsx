@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +20,7 @@ interface Portfolio {
 }
 
 interface EnhancedPortfolioDashboardProps {
-  portfolio: Portfolio;
+  portfolio: Portfolio | null;
   recommendations: any[];
 }
 
@@ -29,6 +30,20 @@ const EnhancedPortfolioDashboard: React.FC<EnhancedPortfolioDashboardProps> = ({
 }) => {
   const { insights, unreadCount, criticalInsights } = usePortfolioInsights();
   const { actualHoldings } = useUserHoldings();
+
+  // Return early if portfolio is null
+  if (!portfolio) {
+    return (
+      <div className="w-full space-y-4">
+        <Card className="p-6">
+          <div className="text-center">
+            <div className="text-lg font-semibold mb-2">Ingen aktiv portfölj</div>
+            <p className="text-muted-foreground">Du behöver skapa en portfölj först för att se denna dashboard.</p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   const allocationColors = {
     stocks: '#3B82F6',
