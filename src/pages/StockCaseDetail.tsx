@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
@@ -237,7 +238,6 @@ const StockCaseDetail = () => {
                       onIndexChange={setCurrentImageIndex}
                       onSetCurrent={setCurrentImage}
                       canEdit={canEdit}
-                      caseOwnerId={stockCase.user_id}
                     />
                   </div>
                 )}

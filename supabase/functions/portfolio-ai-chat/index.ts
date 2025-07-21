@@ -22,7 +22,7 @@ serve(async (req) => {
     const requestBody = await req.json();
     console.log('Request body received:', JSON.stringify(requestBody, null, 2));
     
-    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData } = requestBody;
+    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe } = requestBody;
 
     console.log('Portfolio AI Chat function called with:', { 
       message: message?.substring(0, 50) + '...', 
@@ -107,29 +107,19 @@ serve(async (req) => {
     }
 
     // Build enhanced context for AI with emphasis on actionable portfolio changes
-    let contextInfo = `Du är en professionell AI-rådgivare för investeringar som ger personliga rekommendationer på svenska.
+    let contextInfo = `Du är en professionell AI-assistent för investeringar. Ge ALLTID korta, välstrukturerade svar på svenska.
 
-KRITISKA RIKTLINJER FÖR REKOMMENDATIONER:
-- Ge ALLTID specifika aktie- och fondrekommendationer med EXAKTA namn och symboler
-- ALLA aktier och fonder MÅSTE ha ticker/symbol i parenteser: **Företag (SYMBOL)**
-- Anpassa rekommendationerna helt till användarens unika profil, intressen och situation
-- Föreslå 5-8 konkreta investeringar med tydliga motiveringar
-- Inkludera svenska aktier, nordiska fonder och relevanta ETF:er som finns på Avanza/Nordnet
-- Använd EXAKT detta format för alla rekommendationer:
-
-**Företagsnamn (EXAKT-SYMBOL)**: Detaljerad beskrivning av varför denna investering passar användarens specifika profil, inklusive sektor, risk och potential. Allokering: XX%
-
-OBLIGATORISKA EXEMPEL på korrekt format:
-**Evolution Gaming (EVO)**: Svenskt teknikbolag inom online-gaming med stark tillväxt...
-**Castellum (CAST)**: Fastighetsbolag med fokus på kommersiella fastigheter...
-**Avanza Global**: Indexfond för global diversifiering med låga avgifter...
-
-- VARIERA mellan olika sektorer och marknader baserat på användarens intressen
-- Ta hänsyn till användarens EXAKTA ekonomiska situation och psykologiska profil
-- Förklara risker och förväntad avkastning specifikt för denna användare
-- Ge konkreta procentsatser för allokering som summerar till 100%
-- SKAPA UNIKA rekommendationer för varje användare - ALDRIG samma standardlista
-- Använd din kunskap om svenska marknaden för att hitta BÄSTA matcherna för denna specifika användare`;
+VIKTIGA RIKTLINJER:
+- Håll svaren korta, max ca 250 ord
+- Undvik markdown eller kodliknande formatering
+- Använd vanliga rubriker och mellanrum för struktur
+- Fokusera på de 2–3 viktigaste insikterna
+- Inkludera siffror och procent där det stärker trovärdigheten
+- Undvik långa tekniska termer eller förklaringar
+- Skriv direkt, tydligt och lätt att agera på
+- Svara aldrig med personlig investeringsrådgivning
+- Tydliggör att svaret är för utbildning och information
+- Påminn alltid om att beslut bör tas med licensierad rådgivare`;
 
     if (isExchangeRequest) {
       contextInfo += `\n\nPORTFÖLJÄNDRINGAR:
@@ -137,56 +127,16 @@ OBLIGATORISKA EXEMPEL på korrekt format:
 - Förklara varför varje förslag passar deras profil
 - Inkludera tickers/symboler för aktier
 - Förklara kort risker och möjligheter
-- Ge procentuell vikt i portföljen`;
+- Ge procentuell vikt i portföljen
+- Påminn om att detta är utbildning, inte råd`;
     }
 
-    // Add detailed user profile information
     if (riskProfile) {
-      contextInfo += `\n\nANVÄNDARPROFIL:
-- Ålder: ${riskProfile.age || 'Ej angivet'} år
-- Erfarenhetsnivå: ${riskProfile.investment_experience === 'beginner' ? 'Nybörjare' : riskProfile.investment_experience === 'intermediate' ? 'Mellannivå' : 'Erfaren'}
-- Risktolerans: ${riskProfile.risk_tolerance === 'conservative' ? 'Konservativ' : riskProfile.risk_tolerance === 'moderate' ? 'Måttlig' : 'Aggressiv'}
-- Tidshorisont: ${riskProfile.investment_horizon === 'short' ? 'Kort (1-3 år)' : riskProfile.investment_horizon === 'medium' ? 'Medel (3-7 år)' : 'Lång (7+ år)'}
-- Månatlig budget: ${riskProfile.monthly_investment_amount ? riskProfile.monthly_investment_amount.toLocaleString() + ' SEK' : 'Ej angivet'}
-- Riskkomfort: ${riskProfile.risk_comfort_level || 5}/10
-- Sektorintressen: ${riskProfile.sector_interests ? riskProfile.sector_interests.join(', ') : 'Allmänna'}`;
-      
-      if (riskProfile.annual_income) {
-        contextInfo += `\n- Årsinkomst: ${riskProfile.annual_income.toLocaleString()} SEK`;
-      }
-      
-      if (riskProfile.liquid_capital) {
-        contextInfo += `\n- Tillgängligt kapital: ${riskProfile.liquid_capital.toLocaleString()} SEK`;
-      }
-    }
-
-    // Add conversation data if available
-    if (conversationData) {
-      contextInfo += `\n\nKONVERSATIONSDATA:`;
-      
-      if (conversationData.interests && conversationData.interests.length > 0) {
-        contextInfo += `\n- Personliga intressen: ${conversationData.interests.join(', ')}`;
-      }
-      
-      if (conversationData.companies && conversationData.companies.length > 0) {
-        contextInfo += `\n- Företag de gillar: ${conversationData.companies.join(', ')}`;
-      }
-      
-      if (conversationData.sustainabilityPreference) {
-        contextInfo += `\n- Hållbarhetspreferens: ${conversationData.sustainabilityPreference}`;
-      }
-      
-      if (conversationData.geographicPreference) {
-        contextInfo += `\n- Geografisk preferens: ${conversationData.geographicPreference}`;
-      }
-      
-      if (conversationData.investmentStyle) {
-        contextInfo += `\n- Investeringsstil: ${conversationData.investmentStyle}`;
-      }
-      
-      if (conversationData.marketCrashReaction) {
-        contextInfo += `\n- Reaktion på börskrasch: ${conversationData.marketCrashReaction}`;
-      }
+      contextInfo += `\n\nANVÄNDARE:
+- Ålder: ${riskProfile.age || 'Ej angivet'}
+- Risktolerans: ${riskProfile.risk_tolerance || 'Ej angivet'} 
+- Tidshorisont: ${riskProfile.investment_horizon || 'Ej angivet'}
+- Månatlig budget: ${riskProfile.monthly_investment_amount ? riskProfile.monthly_investment_amount.toLocaleString() + ' SEK' : 'Ej angivet'}`;
     }
 
     if (portfolio) {
@@ -194,72 +144,65 @@ OBLIGATORISKA EXEMPEL på korrekt format:
       const expectedReturn = portfolio.expected_return || 0;
       const allocation = portfolio.asset_allocation || {};
       
-      contextInfo += `\n\nNUVARANDE PORTFÖLJ:
-- Totalt värde: ${totalValue.toLocaleString()} SEK
-- Förväntad avkastning: ${(expectedReturn * 100).toFixed(1)}%
-- Skapad: ${new Date(portfolio.created_at).toLocaleDateString('sv-SE')}`;
-      
-      if (allocation.stocks) contextInfo += `\n- Aktieallokering: ${allocation.stocks}%`;
-      if (allocation.bonds) contextInfo += `\n- Obligationsallokering: ${allocation.bonds}%`;
+      contextInfo += `\n\nPORTFÖLJ:
+- Värde: ${totalValue.toLocaleString()} SEK
+- Förväntad avkastning: ${expectedReturn}%
+- Aktier: ${allocation.stocks || 0}%
+- Obligationer: ${allocation.bonds || 0}%
+- Alternativ: ${allocation.alternatives || 0}%`;
     }
 
     if (holdings && holdings.length > 0) {
       const actualHoldings = holdings.filter(h => h.holding_type !== 'recommendation');
+      const totalHoldingsValue = actualHoldings.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
       
       if (actualHoldings.length > 0) {
-        contextInfo += `\n\nNUVARANDE INNEHAV (UNDVIK DESSA I REKOMMENDATIONER):`;
+        contextInfo += `\n\nNUVARANDE INNEHAV (ÄGS REDAN - REKOMMENDERA EJ):`;
         actualHoldings.forEach(holding => {
-          contextInfo += `\n- ${holding.name} (${holding.symbol || 'N/A'})`;
+          const value = holding.current_value || 0;
+          const percentage = totalHoldingsValue > 0 ? ((value / totalHoldingsValue) * 100).toFixed(1) : '0';
+          const market = holding.market || 'Okänd marknad';
+          contextInfo += `\n- ${holding.name} (${holding.symbol || 'N/A'}): ${percentage}%, ${market}, ${holding.sector || 'Okänd sektor'}`;
         });
         
-        contextInfo += `\n\nVIKTIGT: Föreslå ALDRIG aktier som användaren redan äger.`;
+        contextInfo += `\n\nVIKTIGT: Rekommendera ALDRIG aktier som användaren redan äger. Kontrollera alltid mot listan ovan.`;
       }
     }
 
-    // Enhanced system prompt for portfolio generation
-    let systemPrompt = `${contextInfo}
+    // Enhanced system prompt for portfolio change discussions
+    let systemPrompt = contextInfo;
+    
+    if (isExchangeRequest) {
+      systemPrompt += `\n\nVID PORTFÖLJÄNDRINGSFÖRFRÅGNINGAR:
+- Analysera nuvarande innehav först
+- Föreslå ENDAST aktier som INTE finns i nuvarande innehav
+- Föreslå 2-3 konkreta alternativ med tickers
+- Förklara kort varför varje förslag passar
+- Inkludera fördelning i procent
+- Nämn market cap och sektor
+- Påminn om risker och att detta är utbildning
+- Format: "Förslag: [Aktie] ([Ticker]) - [Kort beskrivning]"`;
+    }
+    
+systemPrompt += `
 
-UPPDRAG - SKAPA PERSONLIG PORTFÖLJSTRATEGI:
+SVARSFORMAT:
+- Max 200–250 ord
+- Undvik markdown eller kodliknande formatering
+- Använd tydliga rubriker med tom rad före/efter
+- Strukturera med punktlistor eller korta stycken
+- Ge konkret information med siffror och procent där det är relevant
+- Fokusera på de 2–3 viktigaste insikterna
+- Vid aktieförslag: ange aktiens namn, ticker och en kortfattad motivering
+- Undvik spekulationer och överdrivet tekniskt språk
+- Påminn tydligt om att detta är utbildning, inte personlig investeringsråd
+- VIKTIGT: Föreslå ALDRIG aktier som användaren redan äger`;
 
-1. ANALYSERA användarens profil noggrant (ålder, risk, intressen, ekonomi)
-2. REKOMMENDERA 5-8 specifika investeringar med EXAKT format:
-   **Företagsnamn (SYMBOL)**: Motivering kopplat till användarens profil. Allokering: XX%
-3. VARIERAD PORTFÖLJ med olika sektorer och geografier
-4. ANPASSA till användarens riskprofil och intressen
-5. INKLUDERA både svenska aktier och internationella fonder
-6. GE procentuell allokering för varje rekommendation
-7. FÖRKLARA varför varje investering passar just denna användare
-8. ANVÄND användarens SPECIFIKA intressen och preferenser för att hitta rätt investeringar
-
-REKOMMENDATIONSEXEMPEL (använd liknande struktur):
-**Castellum (CAST)**: Stabil svensk fastighetsaktie med god direktavkastning (4-5%), passar din konservativa risk och preferens för svenska bolag. Allokering: 15%
-
-**Avanza Global**: Bred global indexfond med låga avgifter (0,2%), ger dig exponering mot världsmarknaden. Allokering: 25%
-
-**Evolution Gaming (EVO)**: Ledande inom online-gaming med stark tillväxt, passar din riskprofil och teknikintresse. Allokering: 10%
-
-STRUKTURERA SVARET MED:
-- Personlig analys av användarens situation
-- 5-8 konkreta investeringsrekommendationer med format ovan
-- Allokeringsstrategi (procent för varje)
-- Risker och möjligheter
-- Månadsplan för implementation
-- Uppföljningsplan
-
-KRITISKT VIKTIGT: 
-- VARJE rekommendation MÅSTE ha symbol i parenteser
-- Skapa UNIKA rekommendationer för varje användare
-- Basera på deras SPECIFIKA intressen och profil
-- ALDRIG samma standardlista för alla användare`;
-
-    if (analysisType === 'portfolio_generation') {
-      systemPrompt += `\n\nSPECIELL INSTRUKTION FÖR PORTFÖLJGENERERING:
-Detta är en komplett portföljanalys. Ge en omfattande strategi med:
-- Detaljerad analys av användarens situation
-- Minst 6-8 specifika investeringsrekommendationer med SYMBOLER
-- Tydlig allokeringsstrategi med procentsatser
-- Konkret månadssparplan
-- Rebalanserings- och uppföljningsrutiner`;
+    if (analysisType === 'insight_generation') {
+      systemPrompt += `\n\nGENERERA KORT INSIKT för ${insightType}:
+- Identifiera 1-2 huvudpunkter
+- Ge konkret information
+- Inkludera sannolikheter`;
     }
 
     // Prepare messages for OpenAI
@@ -279,11 +222,11 @@ Detta är en komplett portföljanalys. Ge en omfattande strategi med:
     ];
 
     console.log('=== CALLING OPENAI API ===');
-    console.log('Model: gpt-4.o');
+    console.log('gpt-4o');
     console.log('Messages count:', messages.length);
     console.log('User message:', message);
-    console.log('Analysis type:', analysisType);
-    console.log('Has conversation data:', !!conversationData);
+    console.log('Is exchange request:', isExchangeRequest);
+    console.log('Existing holdings to avoid:', Array.from(existingSymbols));
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -294,8 +237,8 @@ Detta är en komplett portföljanalys. Ge en omfattande strategi med:
       body: JSON.stringify({
         model: 'gpt-4o',
         messages: messages,
-        max_tokens: 1500,
-        temperature: 0.7,
+        max_tokens: isExchangeRequest ? 600 : 900,
+        temperature: 0.6,
       }),
     });
 
@@ -346,7 +289,7 @@ Detta är en komplett portföljanalys. Ge en omfattande strategi med:
     
     const aiResponse = data.choices[0].message.content;
     console.log('AI response length:', aiResponse?.length);
-    console.log('AI response preview:', aiResponse?.substring(0, 200));
+    console.log('AI response preview:', aiResponse?.substring(0, 100));
 
     // Calculate confidence score based on available data
     let confidence = 0.5; // Base confidence
@@ -408,12 +351,7 @@ Detta är en komplett portföljanalys. Ge en omfattande strategi med:
             confidence: confidence,
             isExchangeRequest: isExchangeRequest,
             suggestedChanges: isExchangeRequest,
-            existingHoldings: Array.from(existingSymbols),
-            userProfile: {
-              age: riskProfile?.age,
-              experience: riskProfile?.investment_experience,
-              riskTolerance: riskProfile?.risk_tolerance
-            }
+            existingHoldings: Array.from(existingSymbols)
           }
         }
       ]);
@@ -437,9 +375,7 @@ Detta är en komplett portföljanalys. Ge en omfattande strategi med:
           insightsCount: insights?.length || 0,
           model: 'gpt-4o',
           canSuggestChanges: isExchangeRequest,
-          existingHoldings: Array.from(existingSymbols),
-          hasUserProfile: !!riskProfile,
-          hasConversationData: !!conversationData
+          existingHoldings: Array.from(existingSymbols)
         }
       }),
       { 

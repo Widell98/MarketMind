@@ -1,4 +1,3 @@
-
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -119,47 +118,19 @@ export const useToggleAnalysisLike = () => {
 
   return useMutation({
     mutationFn: async ({ analysisId, isLiked }: { analysisId: string; isLiked: boolean }) => {
-      if (!user) {
-        throw new Error('Du måste vara inloggad för att gilla analyser');
-      }
-
-      console.log('Toggling like for analysis:', analysisId, 'Currently liked:', isLiked, 'User:', user.id);
+      if (!user) throw new Error('User must be authenticated');
 
       if (isLiked) {
         // Remove like
-        console.log('Removing like...');
         const { error } = await supabase
           .from('analysis_likes')
           .delete()
           .eq('analysis_id', analysisId)
           .eq('user_id', user.id);
         
-        if (error) {
-          console.error('Error removing like:', error);
-          throw error;
-        }
-        console.log('Like removed successfully');
+        if (error) throw error;
       } else {
-        // Add like - first check if it already exists to prevent duplicate key error
-        console.log('Checking for existing like...');
-        const { data: existingLike, error: checkError } = await supabase
-          .from('analysis_likes')
-          .select('id')
-          .eq('analysis_id', analysisId)
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (checkError) {
-          console.error('Error checking existing like:', checkError);
-          throw checkError;
-        }
-
-        if (existingLike) {
-          console.log('Like already exists, no action needed');
-          return;
-        }
-
-        console.log('Adding new like...');
+        // Add like
         const { error } = await supabase
           .from('analysis_likes')
           .insert({
@@ -167,34 +138,18 @@ export const useToggleAnalysisLike = () => {
             user_id: user.id,
           });
         
-        if (error) {
-          console.error('Error adding like:', error);
-          // If it's a duplicate key error, just ignore it
-          if (error.code === '23505') {
-            console.log('Duplicate like detected, ignoring error');
-            return;
-          }
-          throw error;
-        }
-        console.log('Like added successfully');
+        if (error) throw error;
       }
     },
-    onSuccess: (_, variables) => {
-      console.log('Like toggle successful, invalidating queries');
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['analyses'] });
       queryClient.invalidateQueries({ queryKey: ['stock-case-analyses'] });
-      queryClient.invalidateQueries({ queryKey: ['analysis', variables.analysisId] });
-      
-      toast({
-        title: variables.isLiked ? "Gillning borttagen" : "Analys gillad!",
-        description: variables.isLiked ? "Du gillar inte längre denna analys" : "Du gillar nu denna analys",
-      });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       console.error('Like toggle error:', error);
       toast({
         title: "Fel vid uppdatering av gilla",
-        description: error.message || "Kunde inte uppdatera gillning. Försök igen.",
+        description: error.message,
         variant: "destructive",
       });
     },

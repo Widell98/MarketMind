@@ -1,7 +1,7 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,467 +10,380 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { riskProfileId, userId } = await req.json();
-    
-    console.log('Generate portfolio request:', { riskProfileId, userId });
+    console.log('[GENERATE-PORTFOLIO] Function started - PUBLIC MODE');
+    console.log('[GENERATE-PORTFOLIO] Request method:', req.method);
 
-    if (!riskProfileId || !userId) {
-      throw new Error('Missing required parameters: riskProfileId and userId');
+    // Initialize Supabase client with service role key for admin operations
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    console.log('[GENERATE-PORTFOLIO] Supabase admin client initialized');
+
+    // Parse request body
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log('[GENERATE-PORTFOLIO] Request body:', requestBody);
+    } catch (parseError) {
+      console.error('[GENERATE-PORTFOLIO] Failed to parse request body:', parseError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid request body format',
+          success: false 
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const { riskProfileId, userId } = requestBody;
 
-    // Get risk profile data
-    const { data: riskProfile, error: riskError } = await supabase
+    if (!riskProfileId || !userId) {
+      console.error('[GENERATE-PORTFOLIO] Missing required parameters:', { riskProfileId, userId });
+      return new Response(
+        JSON.stringify({ 
+          error: 'Risk profile ID and user ID are required',
+          success: false 
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    console.log('[GENERATE-PORTFOLIO] Fetching risk profile:', riskProfileId, 'for user:', userId);
+
+    // Fetch risk profile using admin client
+    const { data: riskProfile, error: profileError } = await supabaseAdmin
       .from('user_risk_profiles')
       .select('*')
       .eq('id', riskProfileId)
+      .eq('user_id', userId)
       .single();
 
-    if (riskError || !riskProfile) {
-      console.error('Error fetching risk profile:', riskError);
-      throw new Error('Risk profile not found');
+    if (profileError) {
+      console.error('[GENERATE-PORTFOLIO] Risk profile error:', profileError);
+      return new Response(
+        JSON.stringify({ 
+          error: `Risk profile not found: ${profileError.message}`,
+          success: false 
+        }),
+        { 
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
-    console.log('Risk profile found:', riskProfile);
+    if (!riskProfile) {
+      console.error('[GENERATE-PORTFOLIO] Risk profile not found for ID:', riskProfileId);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Risk profile not found',
+          success: false 
+        }),
+        { 
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
 
-    // Get existing holdings to avoid duplicates
-    const { data: holdings } = await supabase
-      .from('user_holdings')
-      .select('*')
+    console.log('[GENERATE-PORTFOLIO] Found risk profile:', riskProfile.id);
+
+    // Generate portfolio recommendations based on risk profile
+    const portfolioData = generatePortfolioRecommendations(riskProfile);
+    console.log('[GENERATE-PORTFOLIO] Generated portfolio data:', portfolioData);
+
+    // Deactivate other portfolios for this user first
+    const { error: deactivateError } = await supabaseAdmin
+      .from('user_portfolios')
+      .update({ is_active: false })
       .eq('user_id', userId);
 
-    // Filter out existing holdings
-    const existingSymbols = new Set();
-    const existingCompanies = new Set();
-    
-    if (holdings && holdings.length > 0) {
-      holdings.forEach(holding => {
-        if (holding.symbol && holding.holding_type !== 'recommendation') {
-          existingSymbols.add(holding.symbol.toUpperCase());
-        }
-        if (holding.name && holding.holding_type !== 'recommendation') {
-          existingCompanies.add(holding.name.toLowerCase());
-        }
-      });
+    if (deactivateError) {
+      console.error('[GENERATE-PORTFOLIO] Error deactivating old portfolios:', deactivateError);
+      // Continue anyway, this is not a critical error
     }
 
-    // Call OpenAI API for personalized recommendations
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
-    }
-
-    // Build enhanced context for AI with emphasis on actionable portfolio creation
-    let contextInfo = `Du är en professionell AI-rådgivare för investeringar som skapar personliga portföljer på svenska.
-
-KRITISKA RIKTLINJER FÖR PORTFÖLJSKAPANDE:
-- Skapa en KOMPLETT portfölj med 6-8 specifika aktie- och fondrekommendationer
-- ALLA aktier och fonder MÅSTE ha ticker/symbol i parenteser: **Företag (SYMBOL)**
-- Anpassa rekommendationerna helt till användarens unika profil, intressen och situation
-- Inkludera svenska aktier, nordiska fonder och relevanta ETF:er som finns på Avanza/Nordnet
-- Använd EXAKT detta format för alla rekommendationer:
-
-**Företagsnamn (EXAKT-SYMBOL)**: Detaljerad beskrivning av varför denna investering passar användarens specifika profil, inklusive sektor, risk och potential. Allokering: XX%
-
-OBLIGATORISKA EXEMPEL på korrekt format:
-**Evolution Gaming (EVO)**: Svenskt teknikbolag inom online-gaming med stark tillväxt...
-**Castellum (CAST)**: Fastighetsbolag med fokus på kommersiella fastigheter...
-**Avanza Global**: Indexfond för global diversifiering med låga avgifter...
-
-- VARIERA mellan olika sektorer och marknader baserat på användarens intressen
-- Ta hänsyn till användarens EXAKTA ekonomiska situation och psykologiska profil
-- Förklara risker och förväntad avkastning specifikt för denna användare
-- Ge konkreta procentsatser för allokering som summerar till 100%
-- SKAPA UNIKA rekommendationer för varje användare - ALDRIG samma standardlista
-- Använd din kunskap om svenska marknaden för att hitta BÄSTA matcherna för denna specifika användare`;
-
-    // Add detailed user profile information
-    if (riskProfile) {
-      contextInfo += `\n\nANVÄNDARPROFIL:
-- Ålder: ${riskProfile.age || 'Ej angivet'} år
-- Erfarenhetsnivå: ${riskProfile.investment_experience === 'beginner' ? 'Nybörjare' : riskProfile.investment_experience === 'intermediate' ? 'Mellannivå' : 'Erfaren'}
-- Risktolerans: ${riskProfile.risk_tolerance === 'conservative' ? 'Konservativ' : riskProfile.risk_tolerance === 'moderate' ? 'Måttlig' : 'Aggressiv'}
-- Tidshorisont: ${riskProfile.investment_horizon === 'short' ? 'Kort (1-3 år)' : riskProfile.investment_horizon === 'medium' ? 'Medel (3-7 år)' : 'Lång (7+ år)'}
-- Månatlig budget: ${riskProfile.monthly_investment_amount ? riskProfile.monthly_investment_amount.toLocaleString() + ' SEK' : 'Ej angivet'}
-- Riskkomfort: ${riskProfile.risk_comfort_level || 5}/10
-- Sektorintressen: ${riskProfile.sector_interests ? riskProfile.sector_interests.join(', ') : 'Allmänna'}`;
-      
-      if (riskProfile.annual_income) {
-        contextInfo += `\n- Årsinkomst: ${riskProfile.annual_income.toLocaleString()} SEK`;
-      }
-      
-      if (riskProfile.liquid_capital) {
-        contextInfo += `\n- Tillgängligt kapital: ${riskProfile.liquid_capital.toLocaleString()} SEK`;
-      }
-
-      if (riskProfile.investment_goal) {
-        contextInfo += `\n- Investeringsmål: ${riskProfile.investment_goal}`;
-      }
-
-      if (riskProfile.market_crash_reaction) {
-        contextInfo += `\n- Reaktion på börskrasch: ${riskProfile.market_crash_reaction}`;
-      }
-    }
-
-    if (existingSymbols.size > 0) {
-      contextInfo += `\n\nNUVARANDE INNEHAV (UNDVIK DESSA I REKOMMENDATIONER):`;
-      Array.from(existingSymbols).forEach(symbol => {
-        contextInfo += `\n- ${symbol}`;
-      });
-      
-      contextInfo += `\n\nVIKTIGT: Föreslå ALDRIG aktier som användaren redan äger.`;
-    }
-
-    // Enhanced system prompt for portfolio generation
-    const systemPrompt = `${contextInfo}
-
-UPPDRAG - SKAPA PERSONLIG PORTFÖLJSTRATEGI:
-
-1. ANALYSERA användarens profil noggrant (ålder, risk, intressen, ekonomi)
-2. REKOMMENDERA 6-8 specifika investeringar med EXAKT format:
-   **Företagsnamn (SYMBOL)**: Motivering kopplat till användarens profil. Allokering: XX%
-3. VARIERAD PORTFÖLJ med olika sektorer och geografier
-4. ANPASSA till användarens riskprofil och intressen
-5. INKLUDERA både svenska aktier och internationella fonder
-6. GE procentuell allokering för varje rekommendation
-7. FÖRKLARA varför varje investering passar just denna användare
-8. ANVÄND användarens SPECIFIKA intressen och preferenser för att hitta rätt investeringar
-
-REKOMMENDATIONSEXEMPEL (använd liknande struktur):
-**Castellum (CAST)**: Stabil svensk fastighetsaktie med god direktavkastning (4-5%), passar din konservativa risk och preferens för svenska bolag. Allokering: 15%
-
-**Avanza Global**: Bred global indexfond med låga avgifter (0,2%), ger dig exponering mot världsmarknaden. Allokering: 25%
-
-**Evolution Gaming (EVO)**: Ledande inom online-gaming med stark tillväxt, passar din riskprofil och teknikintresse. Allokering: 10%
-
-STRUKTURERA SVARET MED:
-- Personlig analys av användarens situation
-- 6-8 konkreta investeringsrekommendationer med format ovan
-- Allokeringsstrategi (procent för varje)
-- Risker och möjligheter
-- Månadsplan för implementation
-- Uppföljningsplan
-
-KRITISKT VIKTIGT: 
-- VARJE rekommendation MÅSTE ha symbol i parenteser
-- Skapa UNIKA rekommendationer för varje användare
-- Basera på deras SPECIFIKA intressen och profil
-- ALDRIG samma standardlista för alla användare
-- Summera allokeringarna till exakt 100%`;
-
-    const userMessage = `Skapa en komplett portfölj baserat på denna riskprofil:
-
-Ålder: ${riskProfile.age || 'Ej angiven'}
-Årsinkomst: ${riskProfile.annual_income || 'Ej angiven'} SEK
-Månatligt investeringsbelopp: ${riskProfile.monthly_investment_amount || 'Ej angiven'} SEK
-Risktolerans: ${riskProfile.risk_tolerance || 'Medel'}
-Investeringsmål: ${riskProfile.investment_goal || 'Långsiktig tillväxt'}
-Tidshorisont: ${riskProfile.investment_horizon || 'Lång'}
-Erfarenhet: ${riskProfile.investment_experience || 'Medel'}
-Sektorintressen: ${JSON.stringify(riskProfile.sector_interests || [])}
-Nuvarande portföljvärde: ${riskProfile.current_portfolio_value || 0} SEK
-Riskkomfort: ${riskProfile.risk_comfort_level || 5}/10
-
-Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga på svenska marknader. Fokusera på att ge konkreta rekommendationer med symboler.`;
-
-    console.log('Calling OpenAI API with gpt-4o...');
-    
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage }
-        ],
-        temperature: 0.7,
-        max_tokens: 2000,
-      }),
-    });
-
-    if (!openAIResponse.ok) {
-      const errorText = await openAIResponse.text();
-      console.error('OpenAI API error:', errorText);
-      
-      // Handle specific quota exceeded error
-      if (openAIResponse.status === 429) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'quota_exceeded',
-          message: 'Du har nått din dagliga gräns för OpenAI API-användning. Vänligen kontrollera din fakturering eller försök igen senare.'
-        }), {
-          status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      
-      throw new Error(`OpenAI API error: ${openAIResponse.status}`);
-    }
-
-    const openAIData = await openAIResponse.json();
-    const aiRecommendations = openAIData.choices[0].message.content;
-    
-    console.log('AI recommendations received:', aiRecommendations);
-
-    // Parse AI recommendations into structured format
-    const recommendedStocks = parseAIRecommendations(aiRecommendations);
-    
-    console.log('Parsed recommended stocks:', recommendedStocks);
-
-    // Validate that we have actual recommendations
-    if (recommendedStocks.length === 0) {
-      console.error('No valid recommendations parsed from AI response');
-      throw new Error('Failed to generate valid portfolio recommendations');
-    }
-
-    // Create portfolio record
-    const portfolioData = {
-      user_id: userId,
-      risk_profile_id: riskProfileId,
-      portfolio_name: 'AI-Genererad Portfölj',
-      asset_allocation: calculateAssetAllocation(recommendedStocks),
-      recommended_stocks: recommendedStocks,
-      total_value: riskProfile.current_portfolio_value || 0,
-      expected_return: calculateExpectedReturn(recommendedStocks),
-      risk_score: calculateRiskScore(riskProfile.risk_tolerance, riskProfile.risk_comfort_level),
-      is_active: true
-    };
-
-    console.log('Creating portfolio with data:', portfolioData);
-
-    // Insert portfolio
-    const { data: portfolio, error: portfolioError } = await supabase
+    // Store the generated portfolio using admin client
+    const { data: portfolio, error: portfolioError } = await supabaseAdmin
       .from('user_portfolios')
-      .insert(portfolioData)
+      .insert({
+        user_id: userId,
+        risk_profile_id: riskProfileId,
+        portfolio_name: `${riskProfile.risk_tolerance || 'Balanced'} Portfolio`,
+        asset_allocation: portfolioData.allocation,
+        recommended_stocks: portfolioData.stocks,
+        total_value: portfolioData.targetValue,
+        expected_return: portfolioData.expectedReturn,
+        risk_score: portfolioData.riskScore,
+        is_active: true
+      })
       .select()
       .single();
 
     if (portfolioError) {
-      console.error('Error creating portfolio:', portfolioError);
-      throw new Error('Failed to create portfolio');
+      console.error('[GENERATE-PORTFOLIO] Portfolio creation error:', portfolioError);
+      return new Response(
+        JSON.stringify({ 
+          error: `Failed to create portfolio: ${portfolioError.message}`,
+          success: false 
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
-    console.log('Portfolio created successfully:', portfolio.id);
+    console.log('[GENERATE-PORTFOLIO] Portfolio created successfully:', portfolio.id);
 
-    // Add recommended stocks to user_holdings as recommendations
-    if (recommendedStocks.length > 0) {
-      const holdingsData = recommendedStocks.map(stock => ({
-        user_id: userId,
-        holding_type: 'recommendation',
-        name: stock.name,
-        symbol: stock.symbol,
-        sector: stock.sector || 'Allmän',
-        market: 'Swedish',
-        currency: 'SEK',
-        allocation: stock.allocation,
-        quantity: 0,
-        current_value: 0,
-        purchase_price: 0,
-        purchase_date: new Date().toISOString().split('T')[0]
-      }));
+    // Generate initial recommendations using admin client
+    const recommendations = generateInitialRecommendations(riskProfile, portfolioData);
+    console.log('[GENERATE-PORTFOLIO] Generated recommendations:', recommendations.length);
+    
+    if (recommendations.length > 0) {
+      const { error: recError } = await supabaseAdmin
+        .from('portfolio_recommendations')
+        .insert(
+          recommendations.map(rec => ({
+            user_id: userId,
+            portfolio_id: portfolio.id,
+            title: rec.title,
+            description: rec.description,
+            ai_reasoning: rec.reasoning,
+            recommendation_type: 'investment_advice' // Add the required field
+          }))
+        );
 
-      console.log('Inserting holdings data:', holdingsData);
-
-      const { error: holdingsError } = await supabase
-        .from('user_holdings')
-        .insert(holdingsData);
-
-      if (holdingsError) {
-        console.error('Error inserting holdings:', holdingsError);
-        // Don't throw error here as portfolio is already created
-      } else {
-        console.log('Holdings inserted successfully');
+      if (recError) {
+        console.error('[GENERATE-PORTFOLIO] Error creating recommendations:', recError);
+        // Don't fail the whole operation for this
       }
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      portfolio: portfolio,
-      aiRecommendations: aiRecommendations,
-      confidence: calculateConfidence(recommendedStocks, riskProfile)
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    console.log('[GENERATE-PORTFOLIO] Portfolio generation completed successfully');
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        portfolio,
+        message: 'Portfolio generated successfully'
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
 
   } catch (error) {
-    console.error('Error in generate-portfolio function:', error);
-    
-    // Check if it's a quota-related error
-    if (error.message.includes('quota') || error.message.includes('insufficient_quota')) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'quota_exceeded',
-        message: 'Du har nått din dagliga gräns för OpenAI API-användning. Vänligen kontrollera din fakturering eller försök igen senare.'
-      }), {
-        status: 429,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
-    return new Response(JSON.stringify({
-      success: false,
-      error: error.message
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    console.error('[GENERATE-PORTFOLIO] Unexpected error:', error);
+    return new Response(
+      JSON.stringify({ 
+        error: `An unexpected error occurred: ${error.message}`,
+        success: false 
+      }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
   }
 });
 
-function parseAIRecommendations(text: string): Array<{name: string, symbol?: string, allocation: number, sector?: string}> {
-  const stocks: Array<{name: string, symbol?: string, allocation: number, sector?: string}> = [];
-  const lines = text.split('\n');
+function generatePortfolioRecommendations(riskProfile: any) {
+  const age = riskProfile.age || 35;
+  const riskTolerance = riskProfile.risk_tolerance || 'moderate';
+  const investmentHorizon = riskProfile.investment_horizon || 'medium';
+  const monthlyAmount = riskProfile.monthly_investment_amount || 5000;
+  const preferredStockCount = riskProfile.preferred_stock_count || 8;
   
-  // Define invalid patterns that should be filtered out
-  const invalidPatterns = [
-    /^(erfarenhet|ålder|investeringsstil|risktolerans|tidshorisont|månatligt)/i,
-    /^(diversifiering|rebalansering|skatteoptimering|strategi|optimering)/i,
-    /^(riskprofil|investeringsmål|portföljstrategi|allokeringsstrategi)/i,
-    /^(metod|teknik|approach|filosofi|princip|analys|situation)/i,
-    /^(månadsplan|uppföljning|implementation|risker|möjligheter)/i
-  ];
+  // Calculate target portfolio value (12 months of investment)
+  const targetValue = monthlyAmount * 12;
   
-  for (const line of lines) {
-    // Look for pattern: **Name (SYMBOL)**: Description. Allokering: XX%
-    const match = line.match(/\*\*([^(]+)\s*\(([^)]+)\)\*\*:.*?Allokering:\s*(\d+)%/i);
-    if (match) {
-      const name = match[1].trim();
-      const symbol = match[2].trim();
-      const allocation = parseInt(match[3]);
-      
-      // Skip if it matches invalid patterns
-      const isInvalid = invalidPatterns.some(pattern => pattern.test(name));
-      if (isInvalid) {
-        console.log(`Filtering out invalid recommendation: ${name}`);
-        continue;
-      }
-      
-      // Skip if allocation is unrealistic
-      if (allocation < 1 || allocation > 40) {
-        console.log(`Filtering out unrealistic allocation: ${name} (${allocation}%)`);
-        continue;
-      }
-      
-      // Determine sector based on name or symbol
-      let sector = 'Allmän';
-      if (name.toLowerCase().includes('bank') || symbol.includes('SHB')) {
-        sector = 'Bank';
-      } else if (name.toLowerCase().includes('fastighet') || symbol.includes('CAST')) {
-        sector = 'Fastighet';
-      } else if (name.toLowerCase().includes('industri') || name.toLowerCase().includes('investor')) {
-        sector = 'Investmentbolag';
-      } else if (name.toLowerCase().includes('gaming') || name.toLowerCase().includes('evolution')) {
-        sector = 'Teknik';
-      } else if (name.toLowerCase().includes('global') || name.toLowerCase().includes('world') || name.toLowerCase().includes('index')) {
-        sector = 'Indexfond';
-      }
-      
-      stocks.push({
-        name,
-        symbol,
-        allocation,
-        sector
-      });
-    }
+  // Asset allocation based on risk profile
+  let allocation: any = {};
+  let expectedReturn = 0;
+  let riskScore = 5;
+  
+  switch (riskTolerance) {
+    case 'conservative':
+      allocation = {
+        stocks: 30,
+        bonds: 50,
+        real_estate: 15,
+        cash: 5
+      };
+      expectedReturn = 4.5;
+      riskScore = 3;
+      break;
+    case 'aggressive':
+      allocation = {
+        stocks: 80,
+        bonds: 10,
+        real_estate: 5,
+        commodities: 5
+      };
+      expectedReturn = 9.2;
+      riskScore = 8;
+      break;
+    default: // moderate
+      allocation = {
+        stocks: 60,
+        bonds: 25,
+        real_estate: 10,
+        cash: 5
+      };
+      expectedReturn = 6.8;
+      riskScore = 5;
   }
   
-  console.log(`Parsed ${stocks.length} valid recommendations from AI response`);
-  return stocks;
-}
-
-function calculateAssetAllocation(stocks: Array<{allocation: number, sector?: string}>): any {
-  let stocksTotal = 0;
-  let bondsTotal = 0;
-  let cashTotal = 0;
+  // Adjust for age (younger = more aggressive)
+  if (age < 30) {
+    allocation.stocks = Math.min(allocation.stocks + 10, 85);
+    allocation.bonds = Math.max(allocation.bonds - 5, 10);
+    expectedReturn += 0.5;
+    riskScore = Math.min(riskScore + 1, 10);
+  } else if (age > 50) {
+    allocation.stocks = Math.max(allocation.stocks - 10, 20);
+    allocation.bonds = Math.min(allocation.bonds + 10, 60);
+    expectedReturn -= 0.5;
+    riskScore = Math.max(riskScore - 1, 1);
+  }
   
-  stocks.forEach(stock => {
-    if (stock.sector === 'Bank' || stock.sector === 'Fastighet') {
-      bondsTotal += stock.allocation;
-    } else {
-      stocksTotal += stock.allocation;
+  // Generate stock recommendations based on preferred count and risk tolerance
+  const allStocks = {
+    conservative: [
+      { name: 'Investor AB', symbol: 'INVE-B.ST', sector: 'Financial Services', reasoning: 'Stabil investmentbolag med diversifierad portfölj' },
+      { name: 'Volvo AB', symbol: 'VOLV-B.ST', sector: 'Automotive', reasoning: 'Välkänt svenskt industriföretag med stark position' },
+      { name: 'Ericsson', symbol: 'ERIC-B.ST', sector: 'Technology', reasoning: 'Ledande telekomteknologi med 5G-potential' },
+      { name: 'Sandvik', symbol: 'SAND.ST', sector: 'Industrial', reasoning: 'Stark industriell teknik och verktyg' },
+      { name: 'SKF', symbol: 'SKF-B.ST', sector: 'Industrial', reasoning: 'Ledande inom lager och tätningar' },
+      { name: 'Telia', symbol: 'TELIA.ST', sector: 'Telecommunications', reasoning: 'Stabil telekomoperatör med utdelning' },
+      { name: 'Essity', symbol: 'ESSITY-B.ST', sector: 'Consumer Goods', reasoning: 'Hygien- och hälsoprodukter' },
+      { name: 'Getinge', symbol: 'GETI-B.ST', sector: 'Healthcare', reasoning: 'Medicinsk teknik och utrustning' }
+    ],
+    moderate: [
+      { name: 'Investor AB', symbol: 'INVE-B.ST', sector: 'Financial Services', reasoning: 'Stabil investmentbolag med diversifierad portfölj' },
+      { name: 'Atlas Copco', symbol: 'ATCO-A.ST', sector: 'Industrial', reasoning: 'Stark industriell tillväxt och innovation' },
+      { name: 'H&M', symbol: 'HM-B.ST', sector: 'Consumer Goods', reasoning: 'Global detaljhandel med omställning till hållbarhet' },
+      { name: 'Spotify', symbol: 'SPOT', sector: 'Technology', reasoning: 'Växande musikstreaming-marknad' },
+      { name: 'Electrolux', symbol: 'ELUX-B.ST', sector: 'Consumer Goods', reasoning: 'Hushållsapparater och professionella produkter' },
+      { name: 'Alfa Laval', symbol: 'ALFA.ST', sector: 'Industrial', reasoning: 'Värmeväxlare och separationsteknik' },
+      { name: 'SEB', symbol: 'SEB-A.ST', sector: 'Financial Services', reasoning: 'Stark nordisk bank med företagsfokus' },
+      { name: 'Hexagon', symbol: 'HEXA-B.ST', sector: 'Technology', reasoning: 'Mätteknologi och digitala lösningar' },
+      { name: 'Assa Abloy', symbol: 'ASSA-B.ST', sector: 'Industrial', reasoning: 'Ledande inom lås- och säkerhetslösningar' },
+      { name: 'ICA Gruppen', symbol: 'ICA.ST', sector: 'Consumer Goods', reasoning: 'Stabil dagligvaruhandel i Norden' }
+    ],
+    aggressive: [
+      { name: 'Spotify', symbol: 'SPOT', sector: 'Technology', reasoning: 'Hög tillväxtpotential inom streaming' },
+      { name: 'Evolution Gaming', symbol: 'EVO.ST', sector: 'Technology', reasoning: 'Ledande inom online-gaming med stark tillväxt' },
+      { name: 'Klarna Bank', symbol: 'Private', sector: 'Financial Technology', reasoning: 'Fintech-innovation med global expansion' },
+      { name: 'Northvolt', symbol: 'Private', sector: 'Clean Energy', reasoning: 'Batteriteknologi för den gröna omställningen' },
+      { name: 'Embracer Group', symbol: 'EMBRAC-B.ST', sector: 'Technology', reasoning: 'Spelstudio med global expansion' },
+      { name: 'Sinch', symbol: 'SINCH.ST', sector: 'Technology', reasoning: 'Molnkommunikation och messaging' },
+      { name: 'Paradox Interactive', symbol: 'PDX.ST', sector: 'Technology', reasoning: 'Strategispel och digital distribution' },
+      { name: 'Tobii', symbol: 'TOBII.ST', sector: 'Technology', reasoning: 'Ögonspårningsteknologi och AI' },
+      { name: 'Nibe', symbol: 'NIBE-B.ST', sector: 'Clean Energy', reasoning: 'Värmepumpar och hållbar energi' },
+      { name: 'BioGaia', symbol: 'BIOG-B.ST', sector: 'Healthcare', reasoning: 'Probiotika och hälsoprodukter' },
+      { name: 'Addtech', symbol: 'ADDT-B.ST', sector: 'Technology', reasoning: 'Industriell teknik och komponenter' },
+      { name: 'Epiroc', symbol: 'EPI-A.ST', sector: 'Industrial', reasoning: 'Gruv- och infrastrukturutrustning' }
+    ]
+  };
+  
+  const stockPool = allStocks[riskTolerance as keyof typeof allStocks] || allStocks.moderate;
+  
+  // Select stocks based on preferred count
+  let selectedStocks = [];
+  const baseAllocation = Math.floor(allocation.stocks / preferredStockCount);
+  
+  // Shuffle and select the desired number of stocks
+  const shuffledStocks = [...stockPool].sort(() => Math.random() - 0.5);
+  
+  for (let i = 0; i < Math.min(preferredStockCount, shuffledStocks.length); i++) {
+    const stock = shuffledStocks[i];
+    let stockAllocation = baseAllocation;
+    
+    // Distribute remaining allocation to first few stocks
+    if (i < allocation.stocks % preferredStockCount) {
+      stockAllocation += 1;
     }
-  });
-  
-  // Ensure total is 100%, adjust cash accordingly
-  const total = stocksTotal + bondsTotal;
-  if (total < 100) {
-    cashTotal = 100 - total;
+    
+    selectedStocks.push({
+      ...stock,
+      allocation: stockAllocation
+    });
   }
   
   return {
-    stocks: stocksTotal,
-    bonds: bondsTotal,
-    cash: cashTotal
+    allocation,
+    stocks: selectedStocks,
+    targetValue,
+    expectedReturn,
+    riskScore
   };
 }
 
-function calculateExpectedReturn(stocks: Array<{allocation: number, sector?: string}>): number {
-  // More sophisticated calculation based on sectors
-  let totalReturn = 0;
+function generateInitialRecommendations(riskProfile: any, portfolioData: any) {
+  const recommendations = [];
   
-  stocks.forEach(stock => {
-    let sectorReturn = 0.08; // Default 8%
-    
-    switch (stock.sector) {
-      case 'Teknik':
-        sectorReturn = 0.12; // 12% for tech
-        break;
-      case 'Bank':
-        sectorReturn = 0.06; // 6% for banks
-        break;
-      case 'Fastighet':
-        sectorReturn = 0.07; // 7% for real estate
-        break;
-      case 'Indexfond':
-        sectorReturn = 0.08; // 8% for index funds
-        break;
-      case 'Investmentbolag':
-        sectorReturn = 0.09; // 9% for investment companies
-        break;
-    }
-    
-    totalReturn += (stock.allocation / 100) * sectorReturn;
-  });
-  
-  return totalReturn;
-}
-
-function calculateRiskScore(riskTolerance: string, riskComfort?: number): number {
-  const baseRiskMap: {[key: string]: number} = {
-    'conservative': 3,
-    'moderate': 5,
-    'aggressive': 8
-  };
-  
-  let baseScore = baseRiskMap[riskTolerance] || 5;
-  
-  // Adjust based on risk comfort level if available
-  if (riskComfort) {
-    baseScore = (baseScore + riskComfort) / 2;
+  // Stock count specific recommendation
+  const stockCount = riskProfile.preferred_stock_count || 8;
+  if (stockCount <= 5) {
+    recommendations.push({
+      title: 'Koncentrerad Portföljstrategi',
+      description: `Du har valt en koncentrerad portfölj med ${stockCount} aktier. Detta ger högre potential men också högre risk.`,
+      reasoning: 'Färre aktier kräver noggrann analys men kan ge bättre avkastning vid rätt val'
+    });
+  } else if (stockCount >= 20) {
+    recommendations.push({
+      title: 'Bred Diversifiering',
+      description: `Din portfölj med ${stockCount} aktier ger bra riskspridning och stabilitet.`,
+      reasoning: 'Många aktier minskar portföljens volatilitet och ger mer stabil utveckling'
+    });
   }
   
-  return Math.round(baseScore);
-}
-
-function calculateConfidence(stocks: Array<any>, riskProfile: any): number {
-  let confidence = 0.5; // Base confidence
+  // Age-based recommendation
+  if (riskProfile.age && riskProfile.age < 30) {
+    recommendations.push({
+      title: 'Ung Investerare - Maximal Tillväxt',
+      description: 'Som ung investerare kan du ta högre risk för potentiellt högre avkastning. Överväg att öka aktieandelen.',
+      reasoning: 'Lång tidshorisont ger möjlighet att återhämta sig från marknadsfluktuationer'
+    });
+  }
   
-  if (stocks.length >= 5) confidence += 0.2; // Good diversification
-  if (riskProfile.sector_interests && riskProfile.sector_interests.length > 0) confidence += 0.1; // Has preferences
-  if (riskProfile.investment_experience) confidence += 0.1; // Has experience data
-  if (riskProfile.risk_comfort_level) confidence += 0.1; // Has risk comfort data
+  // Monthly investment recommendation
+  if (riskProfile.monthly_investment_amount) {
+    recommendations.push({
+      title: 'Månadssparande Strategi',
+      description: `Med ${riskProfile.monthly_investment_amount} SEK/månad kan du bygga en solid portfölj genom dollar-cost averaging.`,
+      reasoning: 'Regelbundet sparande minskar volatilitetsrisken över tid'
+    });
+  }
   
-  return Math.min(confidence, 1.0);
+  // Risk-specific recommendation
+  if (riskProfile.risk_tolerance === 'conservative') {
+    recommendations.push({
+      title: 'Stabil Inkomstgenerering',
+      description: 'Din konservativa profil passar dividendbetalande aktier och obligationer för stabil inkomst.',
+      reasoning: 'Fokus på kapitalbevarande med måttlig tillväxt'
+    });
+  } else if (riskProfile.risk_tolerance === 'aggressive') {
+    recommendations.push({
+      title: 'Tillväxtfokuserad Strategi',
+      description: 'Din aggressiva profil möjliggör investering i tillväxtaktier och innovativa sektorer.',
+      reasoning: 'Högre risk för potentiellt högre långsiktig avkastning'
+    });
+  }
+  
+  return recommendations;
 }

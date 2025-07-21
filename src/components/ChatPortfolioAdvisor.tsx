@@ -77,7 +77,6 @@ const ChatPortfolioAdvisor = () => {
   const [waitingForAnswer, setWaitingForAnswer] = useState(false);
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [showHoldingsInput, setShowHoldingsInput] = useState(false);
-  const [localLoading, setLoading] = useState(false);
   
   const { generatePortfolioFromConversation, loading } = useConversationalPortfolio();
   const { refetch } = usePortfolio();
@@ -90,7 +89,7 @@ const ChatPortfolioAdvisor = () => {
   const questions = [
     {
       id: 'intro',
-      question: 'Hej! Jag är din AI-portföljrådgivare för att göra en bedömning av din riskprofil behöver du först svara på ett par frågor. Har du investerat tidigare eller är det nytt för dig?',
+      question: 'Hej! Jag är din AI-portföljrådgivare. Är du ny inom investeringar eller har du erfarenhet?',
       key: 'isBeginnerInvestor',
       hasOptions: true,
       options: [
@@ -176,14 +175,14 @@ const ChatPortfolioAdvisor = () => {
       showIf: () => conversationData.isBeginnerInvestor === true,
       options: [
         { value: 'sweden_only', label: 'Mest svenska företag' },
+        { value: 'nordics', label: 'Svenska och nordiska företag' },
         { value: 'europe', label: 'Europiska marknader' },
-        { value: 'usa', label: 'Amerikanska marknaden' },
         { value: 'global', label: 'Global spridning' }
       ]
     },
     {
       id: 'marketCrashReaction',
-      question: 'Om börsen föll 20% på en månad, hur skulle du reagera då?',
+      question: 'Om börsen föll 20% på en månad, vad skulle du göra?',
       key: 'marketCrashReaction',
       hasOptions: true,
       showIf: () => conversationData.isBeginnerInvestor === true,
@@ -207,6 +206,13 @@ const ChatPortfolioAdvisor = () => {
         { value: '10-20', label: '10-20 år' },
         { value: '20+', label: 'Över 20 år' }
       ]
+    },
+    {
+      id: 'currentAllocation',
+      question: 'Hur ser din nuvarande tillgångsallokering ut? (skriv t.ex. 70% aktier, 20% obligationer, 10% fastigheter)',
+      key: 'currentAllocation',
+      hasOptions: false,
+      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio === true
     },
     {
       id: 'previousPerformance',
@@ -262,10 +268,22 @@ const ChatPortfolioAdvisor = () => {
         { value: 'none', label: 'Ingen - vill att företag återinvesterar' }
       ]
     },
+    {
+      id: 'taxConsideration',
+      question: 'Hur viktigt är skatteoptimering för dig?',
+      key: 'taxConsideration',
+      hasOptions: true,
+      showIf: () => conversationData.isBeginnerInvestor === false,
+      options: [
+        { value: 'very_important', label: 'Mycket viktigt - ISK/KF optimering' },
+        { value: 'somewhat', label: 'Ganska viktigt - tar hänsyn till det' },
+        { value: 'not_important', label: 'Mindre viktigt - fokuserar på totalavkastning' }
+      ]
+    },
     // Common enhanced questions
     {
       id: 'interests',
-      question: 'Vilka branscher intresserar dig mest? Detta hjälper mig föreslå relevanta investeringar. (t.ex. teknik, hälsa, miljö, bank, spel, fastigheter)',
+      question: 'Vad intresserar dig mest? Detta hjälper mig föreslå relevanta investeringar. (t.ex. teknik, hälsa, miljö, bank, spel, fastigheter)',
       key: 'interests',
       hasOptions: false,
       showIf: () => conversationData.isBeginnerInvestor === true,
@@ -281,16 +299,23 @@ const ChatPortfolioAdvisor = () => {
     },
     {
       id: 'goal',
-      question: 'Vad är ditt huvudsakliga mål med investeringarna? (du kan skriva valfritt)',
+      question: 'Vad är ditt huvudsakliga mål med investeringarna?',
       key: 'investmentGoal',
       hasOptions: true,
       options: [
         { value: 'pension', label: 'Pensionssparande' },
         { value: 'wealth', label: 'Förmögenhetsuppbyggnad' },
         { value: 'income', label: 'Regelbunden inkomst' },
+        { value: 'growth', label: 'Kapital tillväxt' },
         { value: 'house', label: 'Bostadsköp' },
         { value: 'education', label: 'Utbildning/Barn' }
       ]
+    },
+    {
+      id: 'specificGoalAmount',
+      question: 'Har du ett specifikt målbelopp eller tidpunkt? (t.ex. 2 miljoner kr till pension år 2045)',
+      key: 'specificGoalAmount',
+      hasOptions: false
     },
     {
       id: 'timeHorizon',

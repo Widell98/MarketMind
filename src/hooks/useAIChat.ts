@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,7 +26,7 @@ interface ChatSession {
 export const useAIChat = (portfolioId?: string) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { checkUsageLimit, subscription, usage } = useSubscription();
+  const { checkUsageLimit, subscription } = useSubscription();
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -154,12 +155,12 @@ export const useAIChat = (portfolioId?: string) => {
     });
   }, [currentSessionId, loadMessages, toast]);
 
-  const createNewSession = useCallback(async (customName?: string, shouldSendInitialMessage?: string) => {
+  const createNewSession = useCallback(async (customName?: string, initialMessage?: string) => {
     console.log('=== CREATE NEW SESSION ===');
     console.log('User:', user?.id);
     console.log('Portfolio ID:', portfolioId);
     console.log('Custom name:', customName);
-    console.log('Should send initial message:', shouldSendInitialMessage);
+    console.log('Initial message:', initialMessage);
     
     if (!user || !portfolioId) {
       console.log('Cannot create session: missing user or portfolio');
@@ -209,18 +210,18 @@ export const useAIChat = (portfolioId?: string) => {
       setSessions(prev => [newSession, ...prev]);
       setCurrentSessionId(newSession.id);
       
-      // Only send initial message if explicitly requested and provided
-      if (shouldSendInitialMessage) {
-        console.log('Sending initial message:', shouldSendInitialMessage);
+      // If there's an initial message, send it automatically
+      if (initialMessage) {
+        console.log('Sending initial message:', initialMessage);
         // Small delay to ensure session is properly set
         setTimeout(() => {
-          sendMessageToSession(shouldSendInitialMessage, newSession.id);
+          sendMessageToSession(initialMessage, newSession.id);
         }, 100);
       }
       
       toast({
         title: customName ? `Chat "${customName}" skapad` : "Ny chat skapad",
-        description: shouldSendInitialMessage ? "Skickar din fråga..." : "Du kan nu börja chatta med din AI-assistent.",
+        description: initialMessage ? "Skickar din fråga..." : "Du kan nu börja chatta med din AI-assistent.",
       });
       
     } catch (error) {
@@ -340,53 +341,6 @@ export const useAIChat = (portfolioId?: string) => {
     }
   }, [user, currentSessionId, sessions, loadSession, toast]);
 
-  const editSessionName = useCallback(async (sessionId: string, newName: string) => {
-    if (!user) {
-      console.error('Cannot edit session name: no authenticated user');
-      return;
-    }
-    
-    console.log('=== EDITING SESSION NAME ===');
-    console.log('Session ID:', sessionId);
-    console.log('New name:', newName);
-    console.log('User ID:', user.id);
-    
-    try {
-      const { error } = await supabase
-        .from('ai_chat_sessions')
-        .update({ session_name: newName })
-        .eq('id', sessionId)
-        .eq('user_id', user.id);
-
-      if (error) {
-        console.error('Error updating session name:', error);
-        throw error;
-      }
-
-      console.log('Session name updated successfully');
-
-      // Update local state
-      setSessions(prev => prev.map(session => 
-        session.id === sessionId 
-          ? { ...session, session_name: newName }
-          : session
-      ));
-
-      toast({
-        title: "Chattnamn uppdaterat",
-        description: `Chatten har bytt namn till "${newName}".`,
-      });
-
-    } catch (error) {
-      console.error('Error editing session name:', error);
-      toast({
-        title: "Fel",
-        description: "Kunde inte ändra chattnamnet. Försök igen.",
-        variant: "destructive",
-      });
-    }
-  }, [user, toast]);
-
   const sendMessage = useCallback(async (content: string) => {
     console.log('=== SENDING MESSAGE DEBUG ===');
     console.log('Content:', content);
@@ -402,14 +356,11 @@ export const useAIChat = (portfolioId?: string) => {
     // Check usage limit with better error handling
     const canSendMessage = checkUsageLimit('ai_message');
     const isPremium = subscription?.subscribed;
-    const currentUsage = usage?.ai_messages_count || 0;
-    const dailyLimit = 5;
 
     if (!canSendMessage && !isPremium) {
-      console.log('Usage limit reached:', { currentUsage, dailyLimit, isPremium });
       toast({
         title: "Daglig gräns nådd",
-        description: `Du har använt alla dina ${dailyLimit} gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.`,
+        description: "Du har använt alla dina 5 gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.",
         variant: "destructive",
       });
       return;
@@ -424,7 +375,7 @@ export const useAIChat = (portfolioId?: string) => {
 
     console.log('Sending message to existing session');
     await sendMessageToSession(content);
-  }, [user, currentSessionId, checkUsageLimit, subscription, usage, toast, portfolioId]);
+  }, [user, currentSessionId, checkUsageLimit, subscription, toast, portfolioId]);
 
   const createNewSessionAndSendMessage = useCallback(async (messageContent: string) => {
     console.log('=== CREATE SESSION AND SEND MESSAGE ===');
@@ -699,7 +650,6 @@ export const useAIChat = (portfolioId?: string) => {
     createNewSession,
     loadSession,
     deleteSession,
-    editSessionName,
     clearMessages,
     getQuickAnalysis,
   };
