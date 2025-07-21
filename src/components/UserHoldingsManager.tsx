@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -284,20 +285,33 @@ const UserHoldingsManager: React.FC = () => {
     }
   }, [user, actualHoldings]);
 
-  // Prepare holdings data for grouping
+  // Prepare holdings data for grouping - fix type issues
   const uniqueCashHoldings = cashHoldings.filter(cash => 
     !actualHoldings.some(holding => holding.id === cash.id)
   );
 
+  // Transform all holdings to match the Holding interface expected by HoldingsGroupSection
+  const transformedActualHoldings = actualHoldings.map(holding => ({
+    ...holding,
+    current_value: holding.current_value || 0,
+    holding_type: holding.holding_type || 'stock'
+  }));
+
+  const transformedCashHoldings = uniqueCashHoldings.map(cash => ({
+    id: cash.id,
+    name: cash.name,
+    holding_type: 'cash' as const,
+    current_value: cash.current_value,
+    currency: 'SEK',
+    symbol: undefined,
+    quantity: undefined,
+    purchase_price: undefined,
+    sector: undefined
+  }));
+
   const allHoldings = [
-    ...actualHoldings,
-    ...uniqueCashHoldings.map(cash => ({
-      ...cash,
-      holding_type: 'cash' as const,
-      symbol: undefined,
-      quantity: undefined,
-      purchase_price: cash.current_value
-    }))
+    ...transformedActualHoldings,
+    ...transformedCashHoldings
   ];
 
   // Group holdings by type
@@ -312,7 +326,7 @@ const UserHoldingsManager: React.FC = () => {
     return Object.entries(groups)
       .filter(([, holdings]) => holdings.length > 0)
       .map(([type, holdings]) => {
-        const totalValue = holdings.reduce((sum, h) => sum + (h.current_value || 0), 0);
+        const totalValue = holdings.reduce((sum, h) => sum + h.current_value, 0);
         const totalPortfolioValue = performance.totalPortfolioValue + totalCash;
         const percentage = totalPortfolioValue > 0 ? (totalValue / totalPortfolioValue) * 100 : 0;
 
