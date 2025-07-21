@@ -14,11 +14,15 @@ import QuickActionPanel from '@/components/portfolio/QuickActionPanel';
 import InteractiveChart from '@/components/portfolio/InteractiveChart';
 import PortfolioWheel from '@/components/portfolio/PortfolioWheel';
 import PerformanceCompare from '@/components/portfolio/PerformanceCompare';
+import ScenarioSimulator from '@/components/portfolio/ScenarioSimulator';
+import GoalTracker from '@/components/portfolio/GoalTracker';
+import RiskMeter from '@/components/portfolio/RiskMeter';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
+import { usePortfolioContext } from '@/hooks/usePortfolioContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -35,7 +39,9 @@ import {
   User, 
   MessageSquare,
   PieChart,
-  LineChart
+  LineChart,
+  Calculator,
+  Shield
 } from 'lucide-react';
 
 const PortfolioImplementation = () => {
@@ -44,6 +50,7 @@ const PortfolioImplementation = () => {
   const { riskProfile, loading: riskProfileLoading } = useRiskProfile();
   const { actualHoldings } = useUserHoldings();
   const { performance } = usePortfolioPerformance();
+  const { portfolioContext, loading: contextLoading } = usePortfolioContext();
   const navigate = useNavigate();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -99,7 +106,7 @@ const PortfolioImplementation = () => {
   };
 
   // Show loading while portfolio is loading
-  if (loading || riskProfileLoading) {
+  if (loading || riskProfileLoading || contextLoading) {
     return (
       <Layout>
         <div className="min-h-screen bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5">
@@ -143,10 +150,11 @@ const PortfolioImplementation = () => {
     );
   }
 
-  const sectorData = actualHoldings.map((holding, index) => ({
-    name: holding.sector || 'Okänd',
-    value: holding.current_value || 0
-  }));
+  // Get dynamic data for charts
+  const sectorData = portfolioContext?.sectorExposure.map(sector => ({
+    name: sector.sector,
+    value: sector.value
+  })) || [];
 
   const allocationData = activePortfolio?.asset_allocation 
     ? Object.entries(activePortfolio.asset_allocation).map(([key, value]) => ({
@@ -154,6 +162,12 @@ const PortfolioImplementation = () => {
         value: value as number
       }))
     : [];
+
+  // Get user's investment parameters from risk profile
+  const monthlyContribution = riskProfile?.monthly_investment_amount || 5000;
+  const expectedReturn = activePortfolio?.expected_return || 7;
+  const timeHorizon = riskProfile?.investment_horizon === 'long' ? 25 : 
+                     riskProfile?.investment_horizon === 'medium' ? 10 : 5;
 
   // Main portfolio implementation page
   return (
@@ -192,7 +206,7 @@ const PortfolioImplementation = () => {
           )}
 
           <Tabs defaultValue="dashboard" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 max-w-2xl mx-auto mb-8 bg-white/80 backdrop-blur-md p-1 rounded-2xl h-auto shadow-lg">
+            <TabsList className="grid w-full grid-cols-6 max-w-3xl mx-auto mb-8 bg-white/80 backdrop-blur-md p-1 rounded-2xl h-auto shadow-lg">
               <TabsTrigger 
                 value="dashboard" 
                 className="flex items-center gap-2 rounded-xl py-3 px-4 font-medium transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md text-sm"
@@ -213,6 +227,20 @@ const PortfolioImplementation = () => {
               >
                 <LineChart className="w-4 h-4" />
                 <span className="hidden xs:inline">Prestanda</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="planning" 
+                className="flex items-center gap-2 rounded-xl py-3 px-4 font-medium transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md text-sm"
+              >
+                <Target className="w-4 h-4" />
+                <span className="hidden xs:inline">Planering</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="risk" 
+                className="flex items-center gap-2 rounded-xl py-3 px-4 font-medium transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md text-sm"
+              >
+                <Shield className="w-4 h-4" />
+                <span className="hidden xs:inline">Risk</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="membership" 
@@ -276,6 +304,59 @@ const PortfolioImplementation = () => {
                   </div>
                   <div className="xl:col-span-1">
                     <UserInsightsPanel />
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="planning" className="mt-0">
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <ScenarioSimulator
+                    currentValue={performance.totalPortfolioValue}
+                    monthlyContribution={monthlyContribution}
+                    expectedReturn={expectedReturn}
+                    timeHorizon={timeHorizon}
+                  />
+                  <GoalTracker
+                    currentPortfolioValue={performance.totalPortfolioValue}
+                    monthlyContribution={monthlyContribution}
+                  />
+                </div>
+                <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                  <div className="xl:col-span-3">
+                    <InteractiveChart 
+                      data={sectorData}
+                      title="Framtida allokering"
+                      type="pie"
+                    />
+                  </div>
+                  <div className="xl:col-span-1">
+                    <QuickActionPanel onAction={handleQuickAction} />
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="risk" className="mt-0">
+              <div className="space-y-6">
+                {portfolioContext && (
+                  <RiskMeter
+                    sectorExposure={portfolioContext.sectorExposure}
+                    holdings={portfolioContext.holdings}
+                    totalValue={portfolioContext.totalPortfolioValue}
+                  />
+                )}
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                  <div className="xl:col-span-2">
+                    <InteractiveChart 
+                      data={sectorData}
+                      title="Riskexponering per sektor"
+                      type="bar"
+                    />
+                  </div>
+                  <div className="xl:col-span-1">
+                    <QuickActionPanel onAction={handleQuickAction} />
                   </div>
                 </div>
               </div>
