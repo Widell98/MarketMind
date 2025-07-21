@@ -62,19 +62,23 @@ const AIFloatingWidget = () => {
     setInput('');
     setIsLoading(true);
 
-    // Simulate AI response with contextual responses
+    // Generate short, focused responses with single recommendations
     setTimeout(() => {
       let responseContent = "";
       const userInput = input.trim().toLowerCase();
       
       if (userInput.includes('portfölj') || userInput.includes('portfolio')) {
-        responseContent = "Jag kan se att du är intresserad av portföljanalys! För en fullständig genomgång rekommenderar jag att vi fortsätter i den stora chatten. Vill du att jag öppnar den åt dig?";
+        responseContent = "Din portfölj skulle kunna förbättras genom diversifiering. En snabb rekommendation: överväg att lägga till en bred indexfond som XACT OMXS30.\n\nFör en fullständig portföljanalys med flera förslag, fortsätt i huvudchatten →";
       } else if (userInput.includes('marknad') || userInput.includes('market')) {
-        responseContent = "Marknaden rör sig hela tiden! För aktuella marknadsanalyser och djupare diskussioner, låt oss fortsätta i huvudchatten där jag kan ge dig mer detaljerad information.";
-      } else if (userInput.includes('aktie') || userInput.includes('stock')) {
-        responseContent = "Intressant fråga om aktier! Jag kan hjälpa dig mer ingående med aktieanalys i huvudchatten. Ska vi fortsätta där?";
+        responseContent = "Marknaden visar blandade signaler just nu. Kortfattat: teknologisektorn ser stark ut.\n\nFör djup marknadsanalys och fler insikter, låt oss fortsätta i huvudchatten →";
+      } else if (userInput.includes('aktie') || userInput.includes('stock') || userInput.includes('köp')) {
+        responseContent = "Baserat på din profil skulle jag föreslå Investor B - stabilt investmentbolag med god utdelning.\n\nFör fler aktieförslag och detaljerad analys, fortsätt diskussionen i huvudchatten →";
+      } else if (userInput.includes('risk')) {
+        responseContent = "Din riskprofil visar konservativ inställning. En snabb tips: håll max 20% i enskilda aktier.\n\nFör komplett riskanalys och strategier, gå till huvudchatten →";
+      } else if (userInput.includes('utdelning') || userInput.includes('dividend')) {
+        responseContent = "För utdelningsfokus rekommenderar jag Telia - stark direktavkastning på ca 4%.\n\nFler utdelningsaktier och strategier finns i huvudchatten →";
       } else {
-        responseContent = `Tack för din fråga! Jag är din snabba AI-assistent för korta frågor. För djupare analyser och längre konversationer, besök huvudchatten där jag kan hjälpa dig bättre.`;
+        responseContent = `Kort svar: Det beror på din specifika situation och mål.\n\nFör en genomgående diskussion där jag kan ge dig detaljerade råd och flera alternativ, fortsätt i huvudchatten →`;
       }
       
       const aiResponse: Message = {
@@ -85,7 +89,7 @@ const AIFloatingWidget = () => {
       };
       setMessages(prev => [...prev, aiResponse]);
       setIsLoading(false);
-    }, 1500);
+    }, 1200);
   };
 
   const handleQuickAction = (action: string) => {
@@ -136,7 +140,7 @@ const AIFloatingWidget = () => {
               <Brain className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-semibold text-sm">AI-Assistent</h3>
+              <h3 className="font-semibold text-sm">Snabb AI-Assistent</h3>
               {!isMinimized && (
                 <p className="text-xs opacity-80">
                   {user ? `Hej ${user.email?.split('@')[0]}!` : 'Logga in för personlig hjälp'}
@@ -174,9 +178,9 @@ const AIFloatingWidget = () => {
                     <Brain className="w-8 h-8 text-primary" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-sm mb-2">Hej! Hur kan jag hjälpa dig?</h4>
+                    <h4 className="font-semibold text-sm mb-2">Snabba svar & råd!</h4>
                     <p className="text-xs text-muted-foreground mb-3">
-                      Klicka på frågorna nedan för djupare analys i huvudchatten:
+                      Ställ enkla frågor här. För djupare analyser:
                     </p>
                     <div className="grid grid-cols-1 gap-2">
                       {quickActions.map((action, index) => (
@@ -198,7 +202,7 @@ const AIFloatingWidget = () => {
                       size="sm"
                       className="w-full mt-3 text-xs text-primary hover:bg-primary/10"
                     >
-                      Öppna huvudchatt →
+                      Öppna huvudchatt för djupare analys →
                     </Button>
                   </div>
                 </div>
@@ -213,12 +217,12 @@ const AIFloatingWidget = () => {
                       )}
                     >
                       <div className={cn(
-                        "max-w-[80%] rounded-lg px-3 py-2 text-sm",
+                        "max-w-[85%] rounded-lg px-3 py-2 text-sm",
                         message.role === 'user'
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-muted'
                       )}>
-                        {message.content}
+                        <div className="whitespace-pre-line">{message.content}</div>
                         {message.role === 'assistant' && (
                           <div className="mt-2 pt-2 border-t border-muted-foreground/20">
                             <Button
@@ -266,7 +270,7 @@ const AIFloatingWidget = () => {
                     <Textarea
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
-                      placeholder="Skriv ditt meddelande..."
+                      placeholder="Ställ en snabb fråga..."
                       className="resize-none h-10 pr-12 text-sm"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
