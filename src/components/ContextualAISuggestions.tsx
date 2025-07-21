@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -156,7 +157,7 @@ const ContextualAISuggestions = () => {
       } else if (path === '/portfolio-implementation') {
         const hasPerformanceIssues = performance && (
           (performance.totalReturn || 0) < -5 || 
-          (performance.volatility || 0) > 20
+          (performance.dayChangePercentage || 0) < -10
         );
 
         contextSuggestions = [
