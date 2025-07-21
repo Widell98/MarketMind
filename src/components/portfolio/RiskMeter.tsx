@@ -23,6 +23,8 @@ interface RiskMeterProps {
   totalValue: number;
 }
 
+type RiskLevel = 'low' | 'medium' | 'high';
+
 const RiskMeter: React.FC<RiskMeterProps> = ({
   sectorExposure,
   holdings,
@@ -34,12 +36,12 @@ const RiskMeter: React.FC<RiskMeterProps> = ({
   const calculateRiskMetrics = () => {
     // Concentration risk (based on single holding percentage)
     const maxHoldingPercentage = Math.max(...holdings.map(h => h.percentage));
-    const concentrationRisk = maxHoldingPercentage > 20 ? 'high' : 
+    const concentrationRisk: RiskLevel = maxHoldingPercentage > 20 ? 'high' : 
                             maxHoldingPercentage > 10 ? 'medium' : 'low';
 
     // Sector concentration risk
     const maxSectorPercentage = Math.max(...sectorExposure.map(s => s.percentage));
-    const sectorConcentrationRisk = maxSectorPercentage > 40 ? 'high' : 
+    const sectorConcentrationRisk: RiskLevel = maxSectorPercentage > 40 ? 'high' : 
                                    maxSectorPercentage > 25 ? 'medium' : 'low';
 
     // Diversification score (based on number of holdings and sectors)
@@ -68,13 +70,13 @@ const RiskMeter: React.FC<RiskMeterProps> = ({
 
   const metrics = calculateRiskMetrics();
 
-  const getRiskColor = (risk: 'low' | 'medium' | 'high') => {
+  const getRiskColor = (risk: RiskLevel) => {
     return risk === 'high' ? 'text-red-600 bg-red-50 border-red-200' :
            risk === 'medium' ? 'text-yellow-600 bg-yellow-50 border-yellow-200' :
            'text-green-600 bg-green-50 border-green-200';
   };
 
-  const getRiskLevel = (score: number) => {
+  const getRiskLevel = (score: number): RiskLevel => {
     return score > 70 ? 'high' : score > 40 ? 'medium' : 'low';
   };
 
