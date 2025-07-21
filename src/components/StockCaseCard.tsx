@@ -155,17 +155,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
         
         <div className="space-y-3 mt-auto">
           {/* Performance and Target */}
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              {performance >= 0 ? <TrendingUp className="w-4 h-4 text-green-500 flex-shrink-0" /> : <TrendingDown className="w-4 h-4 text-red-500 flex-shrink-0" />}
-              <span className={`font-semibold text-sm ${getPerformanceColor(performance)}`}>
-                {performance > 0 ? '+' : ''}{performance.toFixed(1)}%
-              </span>
-            </div>
-            <div className="text-xs sm:text-sm text-gray-500 truncate ml-2">
-              Target: {stockCase.target_price ? `${stockCase.target_price} kr` : 'N/A'}
-            </div>
-          </div>
+          
 
           {/* Meta information */}
           <div className="flex justify-between items-center text-xs text-gray-500">
