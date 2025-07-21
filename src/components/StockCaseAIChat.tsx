@@ -50,14 +50,23 @@ const StockCaseAIChat: React.FC<StockCaseAIChatProps> = ({ stockCase }) => {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('ai-market-insights', {
+      // Skapa kontext med aktiespecifik information
+      const stockContext = `
+Aktieinformation:
+- Företag: ${stockCase.company_name}
+- Titel: ${stockCase.title}
+${stockCase.sector ? `- Sektor: ${stockCase.sector}` : ''}
+${stockCase.current_price ? `- Nuvarande pris: ${stockCase.current_price} SEK` : ''}
+${stockCase.target_price ? `- Målkurs: ${stockCase.target_price} SEK` : ''}
+${stockCase.description ? `- Beskrivning: ${stockCase.description}` : ''}
+
+Användarfråga: ${inputMessage}
+      `.trim();
+
+      const { data, error } = await supabase.functions.invoke('quick-ai-assistant', {
         body: {
-          type: 'stock_case_analysis',
-          context: {
-            stockCase,
-            userQuestion: inputMessage,
-            chatHistory: messages.slice(-5) // Send last 5 messages for context
-          }
+          message: stockContext,
+          context: 'stock_analysis'
         }
       });
 
@@ -115,7 +124,7 @@ const StockCaseAIChat: React.FC<StockCaseAIChatProps> = ({ stockCase }) => {
           <div className="flex items-center gap-2">
             <MessageCircle className="w-5 h-5" />
             AI-assistent
-            <Badge variant="secondary">Beta</Badge>
+            <Badge variant="secondary">Snabb</Badge>
           </div>
           <Button variant="ghost" size="sm">
             {isExpanded ? 'Minimera' : 'Expandera'}
@@ -131,8 +140,8 @@ const StockCaseAIChat: React.FC<StockCaseAIChatProps> = ({ stockCase }) => {
               {messages.length === 0 ? (
                 <div className="text-center text-gray-500 py-8">
                   <Bot className="w-8 h-8 mx-auto mb-2" />
-                  <p>Ställ frågor om {stockCase.company_name}</p>
-                  <p className="text-xs">AI kan hjälpa med analys, risker och möjligheter</p>
+                  <p>Ställ korta frågor om {stockCase.company_name}</p>
+                  <p className="text-xs">AI kan snabbt svara på frågor om denna aktie</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -146,7 +155,7 @@ const StockCaseAIChat: React.FC<StockCaseAIChatProps> = ({ stockCase }) => {
                           {message.type === 'user' ? (
                             <User className="w-6 h-6 p-1 bg-blue-100 text-blue-600 rounded-full" />
                           ) : (
-                            <Bot className="w-6 h-6 p-1 bg-purple-100 text-purple-600 rounded-full" />
+                            <Bot className="w-6 h-6 p-1 bg-green-100 text-green-600 rounded-full" />
                           )}
                         </div>
                         <div
@@ -164,7 +173,7 @@ const StockCaseAIChat: React.FC<StockCaseAIChatProps> = ({ stockCase }) => {
                   {isLoading && (
                     <div className="flex gap-2 justify-start">
                       <div className="flex gap-2">
-                        <Bot className="w-6 h-6 p-1 bg-purple-100 text-purple-600 rounded-full" />
+                        <Bot className="w-6 h-6 p-1 bg-green-100 text-green-600 rounded-full" />
                         <div className="bg-white dark:bg-gray-800 border rounded-lg p-3 text-sm">
                           <Loader2 className="w-4 h-4 animate-spin" />
                         </div>
@@ -181,7 +190,7 @@ const StockCaseAIChat: React.FC<StockCaseAIChatProps> = ({ stockCase }) => {
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Fråga AI om detta stock case..."
+                placeholder={`Ställ en snabb fråga om ${stockCase.company_name}...`}
                 disabled={isLoading}
                 className="flex-1"
               />
@@ -199,7 +208,7 @@ const StockCaseAIChat: React.FC<StockCaseAIChatProps> = ({ stockCase }) => {
             </div>
 
             <div className="text-xs text-gray-500 text-center">
-              AI-assistenten använder information om {stockCase.company_name} för att svara på dina frågor
+              Snabb AI-assistent med information om {stockCase.company_name}
             </div>
           </div>
         </CardContent>
