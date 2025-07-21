@@ -683,6 +683,39 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_opportunities: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          item_type: string
+          notes: string | null
+          tags: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          item_type: string
+          notes?: string | null
+          tags?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_type?: string
+          notes?: string | null
+          tags?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       shared_portfolio_analyses: {
         Row: {
           analysis_id: string

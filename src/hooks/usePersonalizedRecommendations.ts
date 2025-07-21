@@ -16,29 +16,30 @@ export type PersonalizedRecommendation = {
 
 export const usePersonalizedRecommendations = () => {
   const { user } = useAuth();
-  const { portfolioData } = usePortfolio();
+  const { activePortfolio } = usePortfolio(); // Fixed: changed from portfolioData to activePortfolio
   const { stockCases } = useStockCases();
   const { data: analyses } = useAnalyses(20);
   const [recommendations, setRecommendations] = useState<PersonalizedRecommendation[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user || !portfolioData) {
+    if (!user || !activePortfolio) {
       setLoading(false);
       return;
     }
 
     generateRecommendations();
-  }, [user, portfolioData, stockCases, analyses]);
+  }, [user, activePortfolio, stockCases, analyses]);
 
   const generateRecommendations = () => {
     const recs: PersonalizedRecommendation[] = [];
 
     // Portföljkomplement baserat på sektorer
-    if (portfolioData?.holdings) {
-      const userSectors = portfolioData.holdings.map(h => h.sector).filter(Boolean);
+    if (activePortfolio?.asset_allocation) {
+      // Use activePortfolio instead of portfolioData
+      const currentSectors = Object.keys(activePortfolio.asset_allocation || {});
       const underrepresentedSectors = ['Technology', 'Healthcare', 'Renewable Energy', 'Finance']
-        .filter(sector => !userSectors.includes(sector));
+        .filter(sector => !currentSectors.includes(sector));
 
       stockCases.forEach(stockCase => {
         if (stockCase.sector && underrepresentedSectors.includes(stockCase.sector)) {
@@ -55,11 +56,11 @@ export const usePersonalizedRecommendations = () => {
     }
 
     // Sektormatchning
-    if (portfolioData?.holdings) {
-      const userSectors = portfolioData.holdings.map(h => h.sector).filter(Boolean);
+    if (activePortfolio?.asset_allocation) {
+      const currentSectors = Object.keys(activePortfolio.asset_allocation || {});
       
       stockCases.forEach(stockCase => {
-        if (stockCase.sector && userSectors.includes(stockCase.sector)) {
+        if (stockCase.sector && currentSectors.includes(stockCase.sector)) {
           recs.push({
             id: `sector_${stockCase.id}`,
             type: 'stock_case',

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Bookmark, BookmarkCheck, Plus } from 'lucide-react';
+import { Bookmark, BookmarkCheck } from 'lucide-react';
 import { useSavedOpportunities } from '@/hooks/useSavedOpportunities';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -22,7 +22,7 @@ const SaveOpportunityButton = ({
   className = ''
 }: SaveOpportunityButtonProps) => {
   const { user } = useAuth();
-  const { isItemSaved, saveOpportunity, removeOpportunity } = useSavedOpportunities();
+  const { isItemSaved, saveOpportunity, removeOpportunity, savedItems } = useSavedOpportunities();
   const [loading, setLoading] = useState(false);
 
   const isSaved = isItemSaved(itemType, itemId);
@@ -39,8 +39,7 @@ const SaveOpportunityButton = ({
     
     try {
       if (isSaved) {
-        // Hitta och ta bort sparad möjlighet
-        const { savedItems } = useSavedOpportunities();
+        // Find and remove saved opportunity
         const savedItem = savedItems.find(item => 
           item.item_type === itemType && item.item_id === itemId
         );

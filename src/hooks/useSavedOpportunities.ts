@@ -28,18 +28,44 @@ export const useSavedOpportunities = () => {
     }
 
     try {
-      const { data, error } = await supabase
+      // First get the saved opportunities
+      const { data: savedOpportunities, error } = await supabase
         .from('saved_opportunities')
-        .select(`
-          *,
-          stock_cases(*),
-          analyses(*)
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setSavedItems(data || []);
+
+      // Then fetch related stock cases and analyses
+      const itemsWithDetails = await Promise.all(
+        (savedOpportunities || []).map(async (item) => {
+          let relatedData = null;
+          
+          if (item.item_type === 'stock_case') {
+            const { data } = await supabase
+              .from('stock_cases')
+              .select('*')
+              .eq('id', item.item_id)
+              .single();
+            relatedData = { stock_cases: data };
+          } else if (item.item_type === 'analysis') {
+            const { data } = await supabase
+              .from('analyses')
+              .select('*')
+              .eq('id', item.item_id)
+              .single();
+            relatedData = { analyses: data };
+          }
+
+          return {
+            ...item,
+            ...relatedData
+          };
+        })
+      );
+
+      setSavedItems(itemsWithDetails);
     } catch (error) {
       console.error('Error fetching saved opportunities:', error);
     } finally {
