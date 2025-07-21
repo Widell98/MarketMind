@@ -14,7 +14,10 @@ import {
   Home,
   TrendingUp,
   PieChart,
-  User
+  User,
+  BarChart3,
+  Target,
+  LineChart
 } from 'lucide-react';
 
 interface SmartRoute {
@@ -26,7 +29,11 @@ interface SmartRoute {
   confidence: number;
 }
 
-const IntelligentRouting = () => {
+interface IntelligentRoutingProps {
+  hasPortfolio?: boolean;
+}
+
+const IntelligentRouting = ({ hasPortfolio = false }: IntelligentRoutingProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -38,46 +45,126 @@ const IntelligentRouting = () => {
 
     // AI-driven route suggestions based on user context and current location
     if (currentPath === '/') {
-      routes.push({
-        path: '/ai-chat',
-        title: 'Starta AI-rådgivning',
-        description: 'Få personliga investeringsråd baserat på din profil',
-        icon: Brain,
-        reason: 'Baserat på din nya användarprofil',
-        confidence: 0.9
-      });
-      
-      if (user) {
+      if (hasPortfolio) {
+        // User has portfolio - suggest analysis and optimization
         routes.push({
           path: '/portfolio-implementation',
+          title: 'Analysera din portfölj',
+          description: 'Se djupgående analys av dina innehav och prestanda',
+          icon: BarChart3,
+          reason: 'Din portfölj behöver regelbunden analys',
+          confidence: 0.95
+        });
+        
+        routes.push({
+          path: '/ai-chat',
+          title: 'Få AI-optimering',
+          description: 'Diskutera portföljoptimering med AI-assistenten',
+          icon: Brain,
+          reason: 'Optimera baserat på nuvarande innehav',
+          confidence: 0.9
+        });
+
+        routes.push({
+          path: '/stock-cases',
+          title: 'Upptäck nya möjligheter',
+          description: 'Utforska nya investeringsidéer från communityn',
+          icon: TrendingUp,
+          reason: 'Diversifiera med nya investeringar',
+          confidence: 0.8
+        });
+      } else {
+        // User without portfolio - focus on getting started
+        routes.push({
+          path: '/ai-chat',
+          title: 'Starta AI-rådgivning',
+          description: 'Få personliga investeringsråd baserat på din profil',
+          icon: Brain,
+          reason: 'Perfekt första steg för nya användare',
+          confidence: 0.9
+        });
+        
+        routes.push({
+          path: '/portfolio-advisor',
           title: 'Bygg din portfölj',
           description: 'Skapa en diversifierad investeringsportfölj',
           icon: PieChart,
           reason: 'Nästa naturliga steg för dig',
-          confidence: 0.8
+          confidence: 0.85
         });
       }
     }
 
     if (currentPath === '/stock-cases') {
-      routes.push({
-        path: '/ai-chat',
-        title: 'Diskutera aktier med AI',
-        description: 'Djupanalys av intressanta aktier med AI-assistenten',
-        icon: Brain,
-        reason: 'För att få mer djup i din analys',
-        confidence: 0.85
-      });
+      if (hasPortfolio) {
+        routes.push({
+          path: '/ai-chat',
+          title: 'Diskutera med AI',
+          description: 'Analysera intressanta aktier med AI-assistenten',
+          icon: Brain,
+          reason: 'Få djupare analys av upptäckta aktier',
+          confidence: 0.9
+        });
+
+        routes.push({
+          path: '/portfolio-implementation',
+          title: 'Jämför med portfölj',
+          description: 'Se hur nya idéer passar din nuvarande portfölj',
+          icon: Target,
+          reason: 'Utvärdera nya investeringar',
+          confidence: 0.85
+        });
+      } else {
+        routes.push({
+          path: '/ai-chat',
+          title: 'Diskutera aktier med AI',
+          description: 'Djupanalys av intressanta aktier med AI-assistenten',
+          icon: Brain,
+          reason: 'För att få mer djup i din analys',
+          confidence: 0.85
+        });
+      }
     }
 
-    if (currentPath === '/ai-chat' && user) {
+    if (currentPath === '/ai-chat') {
+      if (hasPortfolio) {
+        routes.push({
+          path: '/portfolio-implementation',
+          title: 'Implementera råden',
+          description: 'Omsätt AI-råden till konkreta portföljförändringar',
+          icon: PieChart,
+          reason: 'Praktisera AI-insights i din portfölj',
+          confidence: 0.9
+        });
+      } else {
+        routes.push({
+          path: '/portfolio-advisor',
+          title: 'Skapa portfölj',
+          description: 'Bygg din första portfölj baserat på AI-råd',
+          icon: PieChart,
+          reason: 'Nästa steg efter AI-rådgivning',
+          confidence: 0.9
+        });
+      }
+    }
+
+    if (currentPath === '/portfolio-implementation' && hasPortfolio) {
       routes.push({
-        path: '/portfolio-implementation',
-        title: 'Implementera råden',
-        description: 'Omsätt AI-råden till konkreta investeringar',
-        icon: PieChart,
-        reason: 'Nästa steg efter AI-rådgivning',
-        confidence: 0.9
+        path: '/ai-chat',
+        title: 'Optimera med AI',
+        description: 'Få förslag på förbättringar av din portfölj',
+        icon: Brain,
+        reason: 'Kontinuerlig optimering rekommenderas',
+        confidence: 0.85
+      });
+
+      routes.push({
+        path: '/stock-cases',
+        title: 'Hitta nya investeringar',
+        description: 'Upptäck nya möjligheter att diversifiera med',
+        icon: LineChart,
+        reason: 'Utöka din portfölj med nya idéer',
+        confidence: 0.8
       });
     }
 
@@ -100,9 +187,13 @@ const IntelligentRouting = () => {
 
     // Add context to AI when navigating
     if (route.path === '/ai-chat') {
+      const contextMessage = hasPortfolio 
+        ? `Hej! Jag har redan en portfölj och kommer från ${location.pathname}. Jag är intresserad av: ${route.description}`
+        : `Hej! Jag kommer från ${location.pathname} och är intresserad av: ${route.description}`;
+        
       const event = new CustomEvent('prefillChatInput', {
         detail: { 
-          message: `Hej! Jag kommer från ${location.pathname} och är intresserad av: ${route.description}`
+          message: contextMessage
         }
       });
       window.dispatchEvent(event);
@@ -129,7 +220,9 @@ const IntelligentRouting = () => {
           </div>
           <div>
             <h3 className="font-bold text-lg text-foreground">Smart Navigation</h3>
-            <p className="text-sm text-muted-foreground">AI-föreslagna nästa steg för dig</p>
+            <p className="text-sm text-muted-foreground">
+              {hasPortfolio ? "AI-föreslagna nästa steg för din portfölj" : "AI-föreslagna nästa steg för dig"}
+            </p>
           </div>
         </div>
 

@@ -8,69 +8,89 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePortfolio } from '@/hooks/usePortfolio';
 
 const Index = () => {
   const { user } = useAuth();
+  const { activePortfolio, loading } = usePortfolio();
+
+  // Check if user has completed the main onboarding steps
+  const hasPortfolio = !loading && activePortfolio;
+  const shouldShowHero = !user || !hasPortfolio;
 
   return (
     <Layout>
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
         <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8 max-w-[1600px]">
-          {/* Hero Section */}
-          <div className="text-center mb-8 sm:mb-12 lg:mb-16">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4 sm:mb-6">
-              Investera smartare med AI
-            </h1>
-            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed mb-6 sm:mb-8 lg:mb-10 max-w-3xl mx-auto">
-              {user 
-                ? "Välkommen tillbaka! Få personliga investeringsråd, portföljanalys och marknadsinsikter med vår AI-drivna plattform."
-                : "Få personliga investeringsråd, portföljanalys och marknadsinsikter med vår AI-drivna plattform. Börja idag och ta kontroll över dina investeringar."
-              }
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-              <Button asChild size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 w-full sm:w-auto">
-                <Link to={user ? "/portfolio-advisor" : "/auth"}>
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  {user ? "Skapa din portfölj" : "Kom igång gratis"}
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200 w-full sm:w-auto">
-                <Link to="/ai-chat">
-                  <Brain className="w-4 h-4 mr-2" />
-                  Fråga AI-assistenten
-                </Link>
-              </Button>
-            </div>
-            
-            {/* Social proof for non-logged in users */}
-            {!user && (
-              <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <div className="flex -space-x-2">
-                    {[...Array(4)].map((_, i) => (
-                      <div key={i} className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-blue-600/20 border-2 border-background flex items-center justify-center">
-                        <Star className="w-3 h-3 text-primary" />
-                      </div>
-                    ))}
-                  </div>
-                  <span>1000+ aktiva investerare</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Target className="w-4 h-4 text-green-500" />
-                  <span>AI-driven analys</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-yellow-500" />
-                  <span>Gratis att komma igång</span>
-                </div>
+          {/* Hero Section - Only show if user doesn't have portfolio */}
+          {shouldShowHero && (
+            <div className="text-center mb-8 sm:mb-12 lg:mb-16">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4 sm:mb-6">
+                Investera smartare med AI
+              </h1>
+              <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed mb-6 sm:mb-8 lg:mb-10 max-w-3xl mx-auto">
+                {user 
+                  ? "Välkommen tillbaka! Få personliga investeringsråd, portföljanalys och marknadsinsikter med vår AI-drivna plattform."
+                  : "Få personliga investeringsråd, portföljanalys och marknadsinsikter med vår AI-drivna plattform. Börja idag och ta kontroll över dina investeringar."
+                }
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+                <Button asChild size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 w-full sm:w-auto">
+                  <Link to={user ? "/portfolio-advisor" : "/auth"}>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    {user ? "Skapa din portfölj" : "Kom igång gratis"}
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200 w-full sm:w-auto">
+                  <Link to="/ai-chat">
+                    <Brain className="w-4 h-4 mr-2" />
+                    Fråga AI-assistenten
+                  </Link>
+                </Button>
               </div>
-            )}
-          </div>
+              
+              {/* Social proof for non-logged in users */}
+              {!user && (
+                <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <div className="flex -space-x-2">
+                      {[...Array(4)].map((_, i) => (
+                        <div key={i} className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-blue-600/20 border-2 border-background flex items-center justify-center">
+                          <Star className="w-3 h-3 text-primary" />
+                        </div>
+                      ))}
+                    </div>
+                    <span>1000+ aktiva investerare</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Target className="w-4 h-4 text-green-500" />
+                    <span>AI-driven analys</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-yellow-500" />
+                    <span>Gratis att komma igång</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* Smart Navigation - New AI-first feature */}
+          {/* Welcome back section for users with portfolio */}
+          {user && hasPortfolio && (
+            <div className="text-center mb-8 sm:mb-12">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-3 sm:mb-4">
+                Välkommen tillbaka!
+              </h1>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-6 max-w-2xl mx-auto">
+                Din portfölj är aktiv och redo för analys. Utforska marknadsinsikter och optimera dina investeringar.
+              </p>
+            </div>
+          )}
+
+          {/* Smart Navigation - Enhanced with portfolio context */}
           {user && (
             <div className="mb-8 sm:mb-12">
-              <IntelligentRouting />
+              <IntelligentRouting hasPortfolio={hasPortfolio} />
             </div>
           )}
 
@@ -90,7 +110,7 @@ const Index = () => {
                 </p>
                 <Button asChild variant="link" className="text-sm font-medium hover:underline underline-offset-2 p-0">
                   <Link to={user ? "/portfolio-implementation" : "/auth"}>
-                    {user ? "Analysera min portfölj" : "Kom igång nu"}
+                    {user && hasPortfolio ? "Analysera min portfölj" : user ? "Skapa portfölj" : "Kom igång nu"}
                     <ArrowUpRight className="w-3 h-3 ml-1" />
                   </Link>
                 </Button>
@@ -132,7 +152,7 @@ const Index = () => {
                 </p>
                 <Button asChild variant="link" className="text-sm font-medium hover:underline underline-offset-2 p-0">
                   <Link to={user ? "/portfolio-advisor" : "/auth"}>
-                    {user ? "Optimera min risk" : "Börja nu"}
+                    {user && hasPortfolio ? "Optimera min risk" : user ? "Skapa riskprofil" : "Börja nu"}
                     <ArrowUpRight className="w-3 h-3 ml-1" />
                   </Link>
                 </Button>
@@ -208,28 +228,32 @@ const Index = () => {
             <CompactLatestCases />
           </div>
 
-          {/* CTA Section */}
+          {/* CTA Section - Updated based on user status */}
           <div className="text-center bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-3xl p-6 sm:p-8 lg:p-12 border border-primary/20">
             <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
-              {user 
+              {user && hasPortfolio
+                ? "Fortsätt optimera din portfölj"
+                : user 
                 ? "Redo att ta din investering till nästa nivå?"
                 : "Redo att börja din investeringsresa?"
               }
             </h2>
             <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-6 max-w-2xl mx-auto">
-              {user 
+              {user && hasPortfolio
+                ? "Din portfölj är uppsatt! Använd AI-verktygen för att få djupare insikter och optimera dina investeringar ytterligare."
+                : user 
                 ? "Fortsätt utveckla din portfölj och upplev kraften i AI-drivna investeringar."
                 : "Gå med i tusentals investerare som redan använder AI för att fatta smartare investeringsbeslut. Helt gratis att komma igång."
               }
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button asChild size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 w-full sm:w-auto">
-                <Link to={user ? "/portfolio-advisor" : "/auth"}>
-                  {user ? "Optimera min portfölj" : "Kom igång gratis"}
+                <Link to={user && hasPortfolio ? "/portfolio-implementation" : user ? "/portfolio-advisor" : "/auth"}>
+                  {user && hasPortfolio ? "Analysera portfölj" : user ? "Skapa portfölj" : "Kom igång gratis"}
                   <Rocket className="w-4 h-4 ml-2" />
                 </Link>
               </Button>
-              {!user && (
+              {!hasPortfolio && (
                 <Button asChild variant="outline" size="lg" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground w-full sm:w-auto">
                   <Link to="/stock-cases">
                     Utforska community
