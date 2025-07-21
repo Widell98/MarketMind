@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
@@ -95,22 +94,25 @@ Användarens riskprofil: ${riskProfile ? `${riskProfile.risk_tolerance} risk` : 
 
 Ge ett kortfattat, snabbt svar på investeringsfrågan.`;
 
-      const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
+      console.log('Calling quick-ai-assistant function...');
+
+      const { data, error } = await supabase.functions.invoke('quick-ai-assistant', {
         body: {
           message: input.trim(),
           userId: user.id,
           systemPrompt,
           model: 'gpt-4o-mini',
-          maxTokens: 50, // Much shorter limit
-          portfolioId: null,
-          temperature: 0.3 // Lower temperature for more focused responses
+          maxTokens: 50,
+          temperature: 0.3
         }
       });
 
       if (error) {
-        console.error('AI Chat Error:', error);
+        console.error('Quick AI Assistant Error:', error);
         throw new Error(error.message || 'Fel vid AI-anrop');
       }
+
+      console.log('Quick AI Assistant response:', data);
 
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
