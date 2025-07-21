@@ -1,188 +1,233 @@
+
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { PlusCircle, X, TrendingUp } from 'lucide-react';
-import { useCreateAnalysis } from '@/hooks/useAnalysisMutations';
-import { usePortfolio } from '@/hooks/usePortfolio';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import AnalysisStockCaseSelect from './AnalysisStockCaseSelect';
-const CreateAnalysisDialog = () => {
-  const {
-    user
-  } = useAuth();
-  const {
-    activePortfolio
-  } = usePortfolio();
-  const [open, setOpen] = useState(false);
+import { Loader2, Plus, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+interface CreateAnalysisDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  preselectedStockCase?: string;
+}
+
+const CreateAnalysisDialog: React.FC<CreateAnalysisDialogProps> = ({
+  isOpen,
+  onClose,
+  preselectedStockCase
+}) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [analysisType, setAnalysisType] = useState<'market_insight' | 'technical_analysis' | 'fundamental_analysis' | 'sector_analysis' | 'portfolio_analysis' | 'position_analysis' | 'sector_deep_dive'>('market_insight');
-  const [stockCaseId, setStockCaseId] = useState<string>('no-case');
-  const [includePortfolio, setIncludePortfolio] = useState(false);
-  const [selectedHoldings, setSelectedHoldings] = useState<string[]>([]);
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState('');
-  const createAnalysis = useCreateAnalysis();
-  const portfolioHoldings = activePortfolio?.recommended_stocks || [];
+  const [stockSymbol, setStockSymbol] = useState('');
+  const [targetPrice, setTargetPrice] = useState('');
+  const [timeHorizon, setTimeHorizon] = useState('');
+  const [riskLevel, setRiskLevel] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!user) {
-      console.error('No user found');
+      toast({
+        title: "Fel",
+        description: "Du måste vara inloggad för att skapa en analys",
+        variant: "destructive"
+      });
       return;
     }
-    const relatedHoldings = includePortfolio ? portfolioHoldings.filter(stock => selectedHoldings.includes(stock.symbol || stock.name)) : [];
-    try {
-      console.log('Creating analysis with data:', {
-        title,
-        content,
-        analysis_type: analysisType,
-        stock_case_id: stockCaseId !== 'no-case' ? stockCaseId : undefined,
-        portfolio_id: includePortfolio ? activePortfolio?.id : undefined,
-        tags,
-        related_holdings: relatedHoldings,
-        is_public: true
+
+    if (!title.trim() || !content.trim() || !stockSymbol.trim()) {
+      toast({
+        title: "Fel",
+        description: "Vänligen fyll i alla obligatoriska fält",
+        variant: "destructive"
       });
-      await createAnalysis.mutateAsync({
-        title,
-        content,
-        analysis_type: analysisType,
-        stock_case_id: stockCaseId !== 'no-case' ? stockCaseId : undefined,
-        portfolio_id: includePortfolio ? activePortfolio?.id : undefined,
-        tags,
-        related_holdings: relatedHoldings,
-        is_public: true
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const { data, error } = await supabase
+        .from('analyses')
+        .insert([
+          {
+            title: title.trim(),
+            content: content.trim(),
+            stock_symbol: stockSymbol.trim().toUpperCase(),
+            target_price: targetPrice ? parseFloat(targetPrice) : null,
+            time_horizon: timeHorizon || null,
+            risk_level: riskLevel || null,
+            user_id: user.id,
+            stock_case_id: preselectedStockCase || null
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: "Framgång!",
+        description: "Din analys har skapats framgångsrikt",
+        variant: "default"
       });
 
       // Reset form
       setTitle('');
       setContent('');
-      setAnalysisType('market_insight');
-      setStockCaseId('no-case');
-      setIncludePortfolio(false);
-      setSelectedHoldings([]);
-      setTags([]);
-      setTagInput('');
-      setOpen(false);
+      setStockSymbol('');
+      setTargetPrice('');
+      setTimeHorizon('');
+      setRiskLevel('');
+      
+      onClose();
+      
+      // Navigate to the created analysis
+      if (data?.id) {
+        navigate(`/analysis/${data.id}`);
+      }
     } catch (error) {
       console.error('Error creating analysis:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte skapa analysen. Försök igen.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
-  const addTag = () => {
-    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      setTags([...tags, tagInput.trim()]);
-      setTagInput('');
-    }
-  };
-  const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
-  };
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      addTag();
-    }
-  };
-  const toggleHolding = (holding: string) => {
-    if (selectedHoldings.includes(holding)) {
-      setSelectedHoldings(selectedHoldings.filter(h => h !== holding));
-    } else {
-      setSelectedHoldings([...selectedHoldings, holding]);
-    }
-  };
-  if (!user) {
-    return <Button variant="outline" disabled>
-        <PlusCircle className="w-4 h-4 mr-2" />
-        Logga in för att skapa analys
-      </Button>;
-  }
-  return <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="bg-purple-600 hover:bg-purple-700 text-white">
-          <PlusCircle className="w-4 h-4 mr-2" />
-          Skapa ny analys
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Skapa ny analys</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Plus className="w-5 h-5" />
+            Skapa ny analys
+          </DialogTitle>
         </DialogHeader>
+        
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="title">Titel</Label>
-            <Input id="title" value={title} onChange={e => setTitle(e.target.value)} placeholder="Ange titel för din analys..." required />
+            <Label htmlFor="title">Titel *</Label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="t.ex. Teknisk analys av Tesla Q4 2024"
+              required
+            />
           </div>
 
           <div>
-            <Label htmlFor="analysisType">Typ av analys</Label>
-            <Select value={analysisType} onValueChange={(value: any) => setAnalysisType(value)}>
+            <Label htmlFor="stock-symbol">Aktiesymbol *</Label>
+            <Input
+              id="stock-symbol"
+              value={stockSymbol}
+              onChange={(e) => setStockSymbol(e.target.value)}
+              placeholder="t.ex. TSLA, AAPL, MSFT"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="target-price">Målpris (valfritt)</Label>
+              <Input
+                id="target-price"
+                type="number"
+                step="0.01"
+                value={targetPrice}
+                onChange={(e) => setTargetPrice(e.target.value)}
+                placeholder="t.ex. 250.00"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="time-horizon">Tidshorisont</Label>
+              <Select value={timeHorizon} onValueChange={setTimeHorizon}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Välj tidshorisont" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="kort">Kort (1-6 månader)</SelectItem>
+                  <SelectItem value="medellang">Medellång (6-18 månader)</SelectItem>
+                  <SelectItem value="lang">Lång (18+ månader)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="risk-level">Risknivå</Label>
+            <Select value={riskLevel} onValueChange={setRiskLevel}>
               <SelectTrigger>
-                <SelectValue placeholder="Välj typ av analys" />
+                <SelectValue placeholder="Välj risknivå" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="market_insight">Marknadsinsikt</SelectItem>
-                <SelectItem value="technical_analysis">Teknisk analys</SelectItem>
-                <SelectItem value="fundamental_analysis">Fundamental analys</SelectItem>
-                <SelectItem value="sector_analysis">Sektoranalys</SelectItem>
-                <SelectItem value="portfolio_analysis">Portföljanalys</SelectItem>
-                <SelectItem value="position_analysis">Positionsanalys</SelectItem>
-                <SelectItem value="sector_deep_dive">Djup sektoranalys</SelectItem>
+                <SelectItem value="lag">Låg</SelectItem>
+                <SelectItem value="medel">Medel</SelectItem>
+                <SelectItem value="hog">Hög</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <AnalysisStockCaseSelect value={stockCaseId} onValueChange={setStockCaseId} disabled={createAnalysis.isPending} />
-
-          {activePortfolio}
-
           <div>
-            <Label htmlFor="content">Innehåll</Label>
-            <Textarea id="content" value={content} onChange={e => setContent(e.target.value)} placeholder="Skriv din analys här..." rows={8} required />
+            <Label htmlFor="content">Analysinnehåll *</Label>
+            <Textarea
+              id="content"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Skriv din analys här... Inkludera teknisk analys, fundamental analys, marknadsförhållanden, etc."
+              rows={8}
+              required
+            />
           </div>
 
-          {includePortfolio && portfolioHoldings.length > 0 && <div>
-              <Label>Relaterade innehav från portfölj</Label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 max-h-40 overflow-y-auto p-2 border rounded">
-                {portfolioHoldings.map((stock, index) => <div key={index} className="flex items-center space-x-2">
-                    <Checkbox id={`stock-${index}`} checked={selectedHoldings.includes(stock.symbol || stock.name)} onCheckedChange={() => toggleHolding(stock.symbol || stock.name)} />
-                    <label htmlFor={`stock-${index}`} className="text-sm cursor-pointer">
-                      {stock.name}
-                    </label>
-                  </div>)}
-              </div>
-            </div>}
-
-          <div>
-            <Label htmlFor="tags">Taggar</Label>
-            <div className="flex gap-2 mb-2">
-              <Input id="tags" value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyPress={handleKeyPress} placeholder="Lägg till taggar..." />
-              <Button type="button" onClick={addTag} variant="outline">
-                Lägg till
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {tags.map(tag => <Badge key={tag} variant="secondary" className="flex items-center gap-1">
-                  {tag}
-                  <X className="w-3 h-3 cursor-pointer" onClick={() => removeTag(tag)} />
-                </Badge>)}
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
               Avbryt
             </Button>
-            <Button type="submit" disabled={createAnalysis.isPending}>
-              {createAnalysis.isPending ? 'Skapar...' : 'Publicera analys'}
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Skapar...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Skapa analys
+                </>
+              )}
             </Button>
           </div>
         </form>
       </DialogContent>
-    </Dialog>;
+    </Dialog>
+  );
 };
+
 export default CreateAnalysisDialog;

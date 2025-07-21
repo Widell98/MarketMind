@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useStockCases } from '@/hooks/useStockCases';
 import { useStockCaseOperations } from '@/hooks/useStockCaseOperations';
@@ -5,7 +6,7 @@ import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
 import { useStockCasesFilters } from '@/hooks/useStockCasesFilters';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, Users, Activity, Clock, Filter, Bookmark, BarChart3, Plus, Bot, UserCircle } from 'lucide-react';
+import { TrendingUp, Users, Activity, Clock, Filter, Bookmark, BarChart3, Plus, Bot, UserCircle, PenTool } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -120,6 +121,14 @@ const StockCases = () => {
     setShowCreateDialog(true);
   };
 
+  const handleCreateAnalysis = () => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    navigate('/my-stock-cases');
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -150,7 +159,7 @@ const StockCases = () => {
   return (
     <Layout>
       <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-        {/* Header Section with Create Button */}
+        {/* Header Section with Create Buttons */}
         <div className="space-y-2 sm:space-y-3">
           <div className="text-center space-y-1">
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">
@@ -161,8 +170,8 @@ const StockCases = () => {
             </p>
           </div>
           
-          {/* Create Case Button */}
-          <div className="flex justify-center">
+          {/* Create Buttons */}
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center px-4 sm:px-0">
             <Button
               onClick={handleCreateCase}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
@@ -170,6 +179,15 @@ const StockCases = () => {
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Skapa nytt aktiecase</span>
               <span className="sm:hidden">Skapa case</span>
+            </Button>
+            <Button
+              onClick={handleCreateAnalysis}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <PenTool className="w-4 h-4" />
+              <span className="hidden sm:inline">Skapa egen analys</span>
+              <span className="sm:hidden">Skapa analys</span>
             </Button>
           </div>
         </div>
