@@ -236,7 +236,7 @@ const ConversationExporter: React.FC<ConversationExporterProps> = ({
               <Checkbox 
                 id="metadata" 
                 checked={includeMetadata}
-                onCheckedChange={setIncludeMetadata}
+                onCheckedChange={(checked) => setIncludeMetadata(checked === true)}
               />
               <label htmlFor="metadata" className="text-xs sm:text-sm">Metadata (tidsstämplar, användarinfo)</label>
             </div>
@@ -244,7 +244,7 @@ const ConversationExporter: React.FC<ConversationExporterProps> = ({
               <Checkbox 
                 id="analysis" 
                 checked={includeAnalysis}
-                onCheckedChange={setIncludeAnalysis}
+                onCheckedChange={(checked) => setIncludeAnalysis(checked === true)}
               />
               <label htmlFor="analysis" className="text-xs sm:text-sm">AI-analysdata och konfidenspoäng</label>
             </div>

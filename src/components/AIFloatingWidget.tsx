@@ -62,12 +62,25 @@ const AIFloatingWidget = () => {
     setInput('');
     setIsLoading(true);
 
-    // Simulate AI response (replace with actual AI call)
+    // Simulate AI response with contextual responses
     setTimeout(() => {
+      let responseContent = "";
+      const userInput = input.trim().toLowerCase();
+      
+      if (userInput.includes('portfölj') || userInput.includes('portfolio')) {
+        responseContent = "Jag kan se att du är intresserad av portföljanalys! För en fullständig genomgång rekommenderar jag att vi fortsätter i den stora chatten. Vill du att jag öppnar den åt dig?";
+      } else if (userInput.includes('marknad') || userInput.includes('market')) {
+        responseContent = "Marknaden rör sig hela tiden! För aktuella marknadsanalyser och djupare diskussioner, låt oss fortsätta i huvudchatten där jag kan ge dig mer detaljerad information.";
+      } else if (userInput.includes('aktie') || userInput.includes('stock')) {
+        responseContent = "Intressant fråga om aktier! Jag kan hjälpa dig mer ingående med aktieanalys i huvudchatten. Ska vi fortsätta där?";
+      } else {
+        responseContent = `Tack för din fråga! Jag är din snabba AI-assistent för korta frågor. För djupare analyser och längre konversationer, besök huvudchatten där jag kan hjälpa dig bättre.`;
+      }
+      
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "Tack för din fråga! För att ge dig en detaljerad analys behöver jag titta närmare på din portfölj. Gå till AI-Assistenten för en fullständig konversation.",
+        content: responseContent,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, aiResponse]);
@@ -162,6 +175,9 @@ const AIFloatingWidget = () => {
                   </div>
                   <div>
                     <h4 className="font-semibold text-sm mb-2">Hej! Hur kan jag hjälpa dig?</h4>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Klicka på frågorna nedan för djupare analys i huvudchatten:
+                    </p>
                     <div className="grid grid-cols-1 gap-2">
                       {quickActions.map((action, index) => (
                         <Button
@@ -169,12 +185,21 @@ const AIFloatingWidget = () => {
                           onClick={() => handleQuickAction(action)}
                           variant="outline"
                           size="sm"
-                          className="text-xs h-8 justify-start"
+                          className="text-xs h-8 justify-start group hover:bg-primary hover:text-primary-foreground"
                         >
+                          <MessageSquare className="w-3 h-3 mr-2 group-hover:animate-pulse" />
                           {action}
                         </Button>
                       ))}
                     </div>
+                    <Button
+                      onClick={() => window.location.href = '/ai-chat'}
+                      variant="ghost"
+                      size="sm"
+                      className="w-full mt-3 text-xs text-primary hover:bg-primary/10"
+                    >
+                      Öppna huvudchatt →
+                    </Button>
                   </div>
                 </div>
               ) : (
@@ -194,6 +219,18 @@ const AIFloatingWidget = () => {
                           : 'bg-muted'
                       )}>
                         {message.content}
+                        {message.role === 'assistant' && (
+                          <div className="mt-2 pt-2 border-t border-muted-foreground/20">
+                            <Button
+                              onClick={() => window.location.href = '/ai-chat'}
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-xs text-primary hover:bg-primary/20 p-1"
+                            >
+                              Fortsätt i huvudchatt →
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
