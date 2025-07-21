@@ -1,83 +1,58 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye, Heart, MessageCircle, TrendingUp, Sparkles, PieChart } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { sv } from 'date-fns/locale';
 import { useAnalysisDetail } from '@/hooks/useAnalysisDetail';
-import { useToggleAnalysisLike } from '@/hooks/useAnalysisMutations';
+import { useAnalysisComments } from '@/hooks/useAnalysisComments';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { 
+  ArrowLeft, 
+  Heart, 
+  MessageCircle, 
+  Share2, 
+  Eye,
+  Calendar,
+  Users,
+  Tag,
+  BarChart3,
+  Brain
+} from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { sv } from 'date-fns/locale';
+import { toast } from '@/hooks/use-toast';
 import AnalysisComments from '@/components/AnalysisComments';
-import RelatedStockCase from '@/components/RelatedStockCase';
-import RelatedStockCasesFromAnalysis from '@/components/RelatedStockCasesFromAnalysis';
+import AnalysisAIChat from '@/components/AnalysisAIChat';
+import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
 
 const AnalysisDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: analysis, isLoading, error } = useAnalysisDetail(id!);
-  const toggleLike = useToggleAnalysisLike();
 
-  const handleLike = () => {
-    if (!user || !analysis) return;
-    toggleLike.mutate({ analysisId: analysis.id, isLiked: analysis.isLiked });
-  };
+  const { analysis, loading, error } = useAnalysisDetail(id || '');
+  const { comments, loading: commentsLoading } = useAnalysisComments(id || '');
 
-  const getAnalysisTypeLabel = (type: string) => {
-    const types = {
-      'market_insight': 'Marknadsinsikt',
-      'technical_analysis': 'Teknisk analys',
-      'fundamental_analysis': 'Fundamental analys',
-      'sector_analysis': 'Sektoranalys',
-      'portfolio_analysis': 'Portföljanalys',
-      'position_analysis': 'Positionsanalys',
-      'sector_deep_dive': 'Djup sektoranalys'
-    };
-    return types[type as keyof typeof types] || type;
-  };
-
-  const getAnalysisTypeColor = (type: string) => {
-    const colors = {
-      'market_insight': 'bg-blue-500',
-      'technical_analysis': 'bg-green-500',
-      'fundamental_analysis': 'bg-purple-500',
-      'sector_analysis': 'bg-orange-500',
-      'portfolio_analysis': 'bg-gradient-to-r from-purple-500 to-blue-500',
-      'position_analysis': 'bg-gradient-to-r from-green-500 to-blue-500',
-      'sector_deep_dive': 'bg-gradient-to-r from-orange-500 to-red-500'
-    };
-    return colors[type as keyof typeof colors] || 'bg-gray-500';
-  };
-
-  const getAnalysisIcon = (type: string, aiGenerated?: boolean) => {
-    if (aiGenerated) return <Sparkles className="w-4 h-4" />;
-    if (type.includes('portfolio') || type.includes('position')) return <PieChart className="w-4 h-4" />;
-    return <TrendingUp className="w-4 h-4" />;
-  };
-
-  console.log('Analysis data:', analysis);
-  console.log('Stock case ID:', analysis?.stock_case_id);
-
-  if (isLoading) {
+  if (loading) {
     return (
       <Layout>
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
-            <Card>
-              <CardHeader className="space-y-4">
-                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
-              </CardContent>
-            </Card>
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-1/2 mb-4"></div>
+            <div className="h-4 bg-gray-200 rounded w-3/4 mb-6"></div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-4">
+                <div className="h-64 bg-gray-200 rounded"></div>
+                <div className="h-32 bg-gray-200 rounded"></div>
+              </div>
+              <div className="space-y-4">
+                <div className="h-48 bg-gray-200 rounded"></div>
+                <div className="h-32 bg-gray-200 rounded"></div>
+              </div>
+            </div>
           </div>
         </div>
       </Layout>
@@ -87,152 +62,252 @@ const AnalysisDetail = () => {
   if (error || !analysis) {
     return (
       <Layout>
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <Button 
-            variant="ghost" 
-            onClick={() => navigate(-1)}
-            className="mb-4"
-          >
+        <div className="max-w-4xl mx-auto text-center py-8">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+            Analys hittades inte
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Den analys du letar efter finns inte eller har tagits bort.
+          </p>
+          <Button onClick={() => navigate(-1)}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Tillbaka
           </Button>
-          <Card className="text-center py-8 bg-red-50 dark:bg-red-900/20">
-            <CardContent className="pt-4">
-              <p className="text-red-600 dark:text-red-400">
-                Analysen kunde inte laddas. Den kanske inte finns eller är privat.
-              </p>
-            </CardContent>
-          </Card>
         </div>
       </Layout>
     );
   }
 
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: analysis.title,
+          text: `Kolla in denna analys: ${analysis.title}`,
+          url: window.location.href,
+        });
+      } catch (error) {
+        console.log('Sharing failed:', error);
+      }
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      toast({
+        title: "Länk kopierad",
+        description: "Analyslänken har kopierats till urklipp",
+      });
+    }
+  };
+
+  const getAnalysisTypeLabel = (type: string) => {
+    switch (type) {
+      case 'market_insight':
+        return 'Marknadsinsikt';
+      case 'stock_analysis':
+        return 'Aktieanalys';
+      case 'sector_analysis':
+        return 'Sektoranalys';
+      case 'portfolio_review':
+        return 'Portföljgranskning';
+      default:
+        return 'Analys';
+    }
+  };
+
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        <Button 
-          variant="ghost" 
-          onClick={() => navigate(-1)}
-          className="mb-4"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Tillbaka
-        </Button>
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Tillbaka
+          </Button>
+        </div>
 
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-4">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className={`w-2 h-2 rounded-full ${getAnalysisTypeColor(analysis.analysis_type)}`}></div>
-                  <Badge variant="outline" className="text-sm font-medium flex items-center gap-1">
-                    {getAnalysisIcon(analysis.analysis_type, analysis.ai_generated)}
-                    {getAnalysisTypeLabel(analysis.analysis_type)}
-                  </Badge>
-                  {analysis.ai_generated && (
-                    <Badge variant="outline" className="text-sm bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                      <Sparkles className="w-3 h-3 mr-1" />
-                      AI-genererad
-                    </Badge>
-                  )}
-                  {analysis.user_portfolios && (
-                    <Badge variant="outline" className="text-sm bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                      <PieChart className="w-3 h-3 mr-1" />
-                      {analysis.user_portfolios.portfolio_name}
-                    </Badge>
-                  )}
-                  {analysis.stock_cases && (
-                    <Badge variant="outline" className="text-sm bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-                      {analysis.stock_cases.company_name}
-                    </Badge>
-                  )}
-                </div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
-                  {analysis.title}
-                </h1>
-                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                  <span className="font-medium">
-                    {analysis.profiles?.display_name || analysis.profiles?.username || 'Anonym'}
-                  </span>
-                  <span>•</span>
-                  <span>
-                    {formatDistanceToNow(new Date(analysis.created_at), { addSuffix: true, locale: sv })}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          
-          <CardContent className="pt-0">
-            <div className="prose prose-lg max-w-none mb-6 text-gray-700 dark:text-gray-300">
-              <div className="whitespace-pre-wrap">{analysis.content}</div>
-            </div>
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Title and Meta Info */}
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                          {analysis.title}
+                        </h1>
+                        {analysis.ai_generated && (
+                          <Badge variant="outline" className="bg-purple-50 text-purple-700">
+                            <Brain className="w-3 h-3 mr-1" />
+                            AI
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {/* Analysis Type and Tags */}
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        <Badge variant="outline">
+                          {getAnalysisTypeLabel(analysis.analysis_type)}
+                        </Badge>
+                        
+                        {analysis.tags && analysis.tags.map((tag, index) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            <Tag className="w-3 h-3 mr-1" />
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
 
+                      {/* Meta Information */}
+                      <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          <span>
+                            {formatDistanceToNow(new Date(analysis.created_at), { 
+                              addSuffix: true, 
+                              locale: sv 
+                            })}
+                          </span>
+                        </div>
+                        
+                        {analysis.profiles && (
+                          <div className="flex items-center gap-1">
+                            <Users className="w-4 h-4" />
+                            <span>{analysis.profiles.display_name || analysis.profiles.username}</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-1">
+                          <Eye className="w-4 h-4" />
+                          <span>{analysis.views_count} visningar</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      <Heart className="w-4 h-4" />
+                      {analysis.likes_count}
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      {analysis.comments_count}
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      onClick={handleShare}
+                      className="flex items-center gap-2"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Dela
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+
+            {/* Analysis Content */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5" />
+                  Analys
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="prose dark:prose-invert max-w-none">
+                  <div className="whitespace-pre-wrap">
+                    {analysis.content}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* AI Chat Integration */}
+            <AnalysisAIChat analysis={analysis} />
+
+            {/* Comments Section */}
+            <AnalysisComments 
+              analysisId={analysis.id} 
+              comments={comments} 
+              loading={commentsLoading} 
+            />
+          </div>
+
+          {/* Right Column - Sidebar */}
+          <div className="space-y-6">
+            {/* Market Sentiment Analysis */}
+            <MarketSentimentAnalysis />
+
+            {/* Related Holdings */}
             {analysis.related_holdings && analysis.related_holdings.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Relaterade innehav:</h3>
-                <div className="flex flex-wrap gap-2">
-                  {analysis.related_holdings.map((holding, index) => (
-                    <Badge key={index} variant="secondary" className="text-sm">
-                      {holding.name || holding.symbol}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Relaterade innehav</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {analysis.related_holdings.map((holding: any, index: number) => (
+                      <div key={index} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                        <span className="font-medium">{holding.name || holding.symbol}</span>
+                        {holding.allocation && (
+                          <Badge variant="outline">{holding.allocation}%</Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
-            {analysis.tags && analysis.tags.length > 0 && (
-              <div className="mb-6">
-                <div className="flex flex-wrap gap-2">
-                  {analysis.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="text-sm">
-                      #{tag}
-                    </Badge>
-                  ))}
+            {/* Analysis Stats */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Statistik</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 dark:text-gray-400">Visningar:</span>
+                  <span className="font-medium">{analysis.views_count}</span>
                 </div>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
-              <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
-                <div className="flex items-center gap-2">
-                  <Eye className="w-4 h-4" />
-                  <span>{analysis.views_count}</span>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 dark:text-gray-400">Gillningar:</span>
+                  <span className="font-medium">{analysis.likes_count}</span>
                 </div>
-                <button
-                  onClick={handleLike}
-                  className={`flex items-center gap-2 transition-colors ${
-                    analysis.isLiked 
-                      ? 'text-red-500 hover:text-red-600' 
-                      : 'hover:text-red-500'
-                  }`}
-                  disabled={!user}
-                >
-                  <Heart className={`w-4 h-4 ${analysis.isLiked ? 'fill-current' : ''}`} />
-                  <span>{analysis.likes_count}</span>
-                </button>
-                <div className="flex items-center gap-2">
-                  <MessageCircle className="w-4 h-4" />
-                  <span>{analysis.comments_count}</span>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 dark:text-gray-400">Kommentarer:</span>
+                  <span className="font-medium">{analysis.comments_count}</span>
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Show RelatedStockCase component when analysis is linked to a specific stock case */}
-        {analysis.stock_case_id && (
-          <RelatedStockCase stockCaseId={analysis.stock_case_id} />
-        )}
+                <Separator />
 
-        {/* Show RelatedStockCasesFromAnalysis component to find related cases by company name */}
-        <RelatedStockCasesFromAnalysis 
-          analysisId={analysis.id} 
-          companyName={analysis.stock_cases?.company_name}
-        />
-
-        <AnalysisComments analysisId={analysis.id} />
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 dark:text-gray-400">Synlighet:</span>
+                  <Badge variant={analysis.is_public ? "default" : "secondary"}>
+                    {analysis.is_public ? "Publik" : "Privat"}
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </Layout>
   );

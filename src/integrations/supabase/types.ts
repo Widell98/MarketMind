@@ -852,6 +852,7 @@ export type Database = {
       stock_cases: {
         Row: {
           admin_comment: string | null
+          ai_generated: boolean | null
           category_id: string | null
           closed_at: string | null
           company_name: string
@@ -876,6 +877,7 @@ export type Database = {
         }
         Insert: {
           admin_comment?: string | null
+          ai_generated?: boolean | null
           category_id?: string | null
           closed_at?: string | null
           company_name: string
@@ -900,6 +902,7 @@ export type Database = {
         }
         Update: {
           admin_comment?: string | null
+          ai_generated?: boolean | null
           category_id?: string | null
           closed_at?: string | null
           company_name?: string
