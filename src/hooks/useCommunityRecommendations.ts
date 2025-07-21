@@ -74,7 +74,7 @@ export const useCommunityRecommendations = () => {
         .filter(item => item.item_type === 'analysis')
         .map(item => item.item_id);
 
-      // Fetch stock cases with user profiles
+      // Fetch stock cases without user profiles first
       let stockCases: any[] = [];
       if (stockCaseIds.length > 0) {
         const { data: stockCasesData, error: stockCasesError } = await supabase
@@ -87,8 +87,7 @@ export const useCommunityRecommendations = () => {
             sector,
             description,
             ai_generated,
-            user_id,
-            profiles!user_id(username, display_name)
+            user_id
           `)
           .in('id', stockCaseIds);
 
@@ -96,7 +95,7 @@ export const useCommunityRecommendations = () => {
         stockCases = stockCasesData || [];
       }
 
-      // Fetch analyses with user profiles
+      // Fetch analyses without user profiles first
       let analyses: any[] = [];
       if (analysisIds.length > 0) {
         const { data: analysesData, error: analysesError } = await supabase
@@ -107,14 +106,37 @@ export const useCommunityRecommendations = () => {
             content,
             analysis_type,
             ai_generated,
-            user_id,
-            profiles!user_id(username, display_name)
+            user_id
           `)
           .in('id', analysisIds);
 
         if (analysesError) throw analysesError;
         analyses = analysesData || [];
       }
+
+      // Get all unique user IDs from both stock cases and analyses
+      const userIds = [
+        ...stockCases.map(sc => sc.user_id),
+        ...analyses.map(a => a.user_id)
+      ].filter(id => id); // Remove null/undefined values
+
+      // Fetch user profiles separately
+      let userProfiles: any[] = [];
+      if (userIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, username, display_name')
+          .in('id', userIds);
+
+        if (profilesError) throw profilesError;
+        userProfiles = profilesData || [];
+      }
+
+      // Create a lookup map for profiles
+      const profilesMap = userProfiles.reduce((acc, profile) => {
+        acc[profile.id] = profile;
+        return acc;
+      }, {});
 
       // Combine the data
       const combinedRecommendations: CommunityRecommendation[] = [];
@@ -125,6 +147,7 @@ export const useCommunityRecommendations = () => {
         .forEach(savedItem => {
           const stockCase = stockCases.find(sc => sc.id === savedItem.item_id);
           if (stockCase) {
+            const profile = stockCase.user_id ? profilesMap[stockCase.user_id] : null;
             combinedRecommendations.push({
               id: savedItem.id,
               stock_case: {
@@ -135,7 +158,10 @@ export const useCommunityRecommendations = () => {
                 sector: stockCase.sector,
                 description: stockCase.description,
                 ai_generated: stockCase.ai_generated,
-                profiles: stockCase.profiles
+                profiles: profile ? {
+                  username: profile.username,
+                  display_name: profile.display_name
+                } : null
               },
               tags: savedItem.tags,
               notes: savedItem.notes,
@@ -150,6 +176,7 @@ export const useCommunityRecommendations = () => {
         .forEach(savedItem => {
           const analysis = analyses.find(a => a.id === savedItem.item_id);
           if (analysis) {
+            const profile = analysis.user_id ? profilesMap[analysis.user_id] : null;
             combinedRecommendations.push({
               id: savedItem.id,
               analysis: {
@@ -158,7 +185,10 @@ export const useCommunityRecommendations = () => {
                 content: analysis.content,
                 analysis_type: analysis.analysis_type,
                 ai_generated: analysis.ai_generated,
-                profiles: analysis.profiles
+                profiles: profile ? {
+                  username: profile.username,
+                  display_name: profile.display_name
+                } : null
               },
               tags: savedItem.tags,
               notes: savedItem.notes,
