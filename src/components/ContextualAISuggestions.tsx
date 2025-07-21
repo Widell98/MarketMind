@@ -1,7 +1,8 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
+import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +14,10 @@ import {
   MessageSquare,
   Sparkles,
   ArrowRight,
-  X
+  X,
+  Move,
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -25,94 +29,195 @@ interface AISuggestion {
   icon: any;
   priority: 'high' | 'medium' | 'low';
   category: 'analysis' | 'insight' | 'action' | 'learning';
+  timestamp?: number;
+}
+
+interface DragState {
+  isDragging: boolean;
+  startX: number;
+  startY: number;
+  currentX: number;
+  currentY: number;
 }
 
 const ContextualAISuggestions = () => {
   const location = useLocation();
   const { user } = useAuth();
+  const { performance } = usePortfolioPerformance();
+  const { actualHoldings } = useUserHoldings();
+  
   const [suggestions, setSuggestions] = useState<AISuggestion[]>([]);
   const [isVisible, setIsVisible] = useState(true);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [isUpdating, setIsUpdating] = useState(false);
+  
+  // Dragging state
+  const [dragState, setDragState] = useState<DragState>({
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+    currentX: 0,
+    currentY: 0
+  });
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const cardRef = useRef<HTMLDivElement>(null);
+  const dragHandleRef = useRef<HTMLDivElement>(null);
 
+  // Auto-refresh suggestions every 2 minutes
   useEffect(() => {
-    // Generate contextual suggestions based on current route
-    const generateSuggestions = () => {
+    const interval = setInterval(() => {
+      generateSuggestions();
+      setLastUpdate(new Date());
+    }, 120000); // 2 minutes
+
+    return () => clearInterval(interval);
+  }, [location.pathname, performance, actualHoldings]);
+
+  const generateSuggestions = () => {
+    setIsUpdating(true);
+    
+    setTimeout(() => {
       const path = location.pathname;
       let contextSuggestions: AISuggestion[] = [];
+      const timestamp = Date.now();
 
       if (path === '/') {
-        contextSuggestions = [
-          {
-            id: '1',
-            title: 'Skapa din första portfölj',
-            description: 'Låt AI:n analysera din riskprofil och skapa en personlig investeringsstrategi',
-            action: 'Starta AI-rådgivning',
-            icon: Brain,
-            priority: 'high',
-            category: 'action'
-          },
-          {
-            id: '2',
-            title: 'Marknadstrender just nu',
-            description: 'Få AI-baserade insights om dagens marknadsrörelser och möjligheter',
-            action: 'Visa marknadsanalys',
-            icon: TrendingUp,
-            priority: 'medium',
-            category: 'insight'
-          }
-        ];
+        if (!actualHoldings || actualHoldings.length === 0) {
+          contextSuggestions = [
+            {
+              id: '1',
+              title: 'Skapa din första portfölj',
+              description: 'Låt AI:n analysera din riskprofil och skapa en personlig investeringsstrategi',
+              action: 'Starta AI-rådgivning',
+              icon: Brain,
+              priority: 'high',
+              category: 'action',
+              timestamp
+            },
+            {
+              id: '2',
+              title: 'Lägg till befintliga innehav',
+              description: 'Registrera dina nuvarande investeringar för bättre portföljanalys',
+              action: 'Lägg till innehav',
+              icon: PieChart,
+              priority: 'high',
+              category: 'action',
+              timestamp
+            }
+          ];
+        } else {
+          contextSuggestions = [
+            {
+              id: '3',
+              title: 'Portföljoptimering tillgänglig',
+              description: 'AI:n har upptäckt förbättringsmöjligheter baserat på dina senaste innehav',
+              action: 'Optimera portfölj',
+              icon: Sparkles,
+              priority: 'high',
+              category: 'insight',
+              timestamp
+            },
+            {
+              id: '4',
+              title: 'Marknadstrender just nu',
+              description: 'Få AI-baserade insights om dagens marknadsrörelser och möjligheter',
+              action: 'Visa marknadsanalys',
+              icon: TrendingUp,
+              priority: 'medium',
+              category: 'insight',
+              timestamp
+            }
+          ];
+        }
       } else if (path === '/stock-cases') {
         contextSuggestions = [
           {
-            id: '3',
+            id: '5',
             title: 'AI-analys av intressanta aktier',
             description: 'Låt AI:n djupdyka i aktier som matchar din investeringsprofil',
             action: 'Analysera aktier med AI',
             icon: PieChart,
             priority: 'high',
-            category: 'analysis'
+            category: 'analysis',
+            timestamp
           },
           {
-            id: '4',
+            id: '6',
             title: 'Diskutera denna aktie',
             description: 'Starta en djup konversation om en specifik aktie med AI-assistenten',
             action: 'Öppna AI-chat',
             icon: MessageSquare,
             priority: 'medium',
-            category: 'action'
+            category: 'action',
+            timestamp
           }
         ];
       } else if (path === '/portfolio-implementation') {
+        const hasPerformanceIssues = performance && (
+          (performance.totalReturn || 0) < -5 || 
+          (performance.volatility || 0) > 20
+        );
+
         contextSuggestions = [
           {
-            id: '5',
-            title: 'Optimera din portfölj',
-            description: 'AI:n har upptäckt förbättringsmöjligheter i din nuvarande allokering',
+            id: '7',
+            title: hasPerformanceIssues ? 'Portföljproblem upptäckta' : 'Optimera din portfölj',
+            description: hasPerformanceIssues 
+              ? 'AI:n har upptäckt prestandaproblem som behöver åtgärdas omedelbart'
+              : 'AI:n har upptäckt förbättringsmöjligheter i din nuvarande allokering',
             action: 'Visa optimeringar',
-            icon: Sparkles,
-            priority: 'high',
-            category: 'insight'
+            icon: hasPerformanceIssues ? AlertTriangle : Sparkles,
+            priority: hasPerformanceIssues ? 'high' : 'medium',
+            category: 'insight',
+            timestamp
           },
           {
-            id: '6',
+            id: '8',
             title: 'Riskanalys och rebalansering',
             description: 'Få AI-driven riskbedömning och förslag på rebalansering',
             action: 'Starta riskanalys',
             icon: Brain,
             priority: 'medium',
-            category: 'analysis'
+            category: 'analysis',
+            timestamp
+          }
+        ];
+      } else if (path === '/ai-chat') {
+        contextSuggestions = [
+          {
+            id: '9',
+            title: 'Portföljgranskning',
+            description: 'Be AI:n göra en fullständig analys av din nuvarande portfölj',
+            action: 'Granska portfölj',
+            icon: PieChart,
+            priority: 'medium',
+            category: 'analysis',
+            timestamp
+          },
+          {
+            id: '10',
+            title: 'Lärande möjligheter',
+            description: 'Utforska investeringsutbildning anpassad för din kunskapsnivå',
+            action: 'Starta lärande',
+            icon: Lightbulb,
+            priority: 'low',
+            category: 'learning',
+            timestamp
           }
         ];
       }
 
       setSuggestions(contextSuggestions);
-    };
+      setIsUpdating(false);
+    }, 500);
+  };
 
+  useEffect(() => {
     generateSuggestions();
-  }, [location.pathname]);
+  }, [location.pathname, performance, actualHoldings]);
 
   const handleSuggestionClick = (suggestion: AISuggestion) => {
-    // Navigate to AI chat with context
     const event = new CustomEvent('createStockChat', {
       detail: { 
         sessionName: suggestion.title,
@@ -122,6 +227,63 @@ const ContextualAISuggestions = () => {
     window.dispatchEvent(event);
     window.location.href = '/ai-chat';
   };
+
+  const handleManualRefresh = () => {
+    generateSuggestions();
+    setLastUpdate(new Date());
+  };
+
+  // Drag handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!dragHandleRef.current?.contains(e.target as Node)) return;
+    
+    e.preventDefault();
+    setDragState({
+      isDragging: true,
+      startX: e.clientX - position.x,
+      startY: e.clientY - position.y,
+      currentX: e.clientX,
+      currentY: e.clientY
+    });
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!dragState.isDragging) return;
+    
+    e.preventDefault();
+    const newX = e.clientX - dragState.startX;
+    const newY = e.clientY - dragState.startY;
+    
+    // Keep within viewport bounds
+    const rect = cardRef.current?.getBoundingClientRect();
+    if (rect) {
+      const maxX = window.innerWidth - rect.width;
+      const maxY = window.innerHeight - rect.height;
+      
+      setPosition({
+        x: Math.max(0, Math.min(newX, maxX)),
+        y: Math.max(0, Math.min(newY, maxY))
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setDragState(prev => ({ ...prev, isDragging: false }));
+  };
+
+  useEffect(() => {
+    if (dragState.isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'grabbing';
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = '';
+      };
+    }
+  }, [dragState.isDragging]);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -135,24 +297,56 @@ const ContextualAISuggestions = () => {
   if (!isVisible || suggestions.length === 0 || !user) return null;
 
   return (
-    <Card className={cn(
-      "fixed top-20 right-6 z-40 shadow-2xl border-2 border-primary/20 bg-background/95 backdrop-blur-sm transition-all duration-300",
-      isMinimized ? "w-80 h-16" : "w-96 max-h-[500px]"
-    )}>
+    <Card 
+      ref={cardRef}
+      className={cn(
+        "fixed z-40 shadow-2xl border-2 border-primary/20 bg-background/95 backdrop-blur-sm transition-all duration-300 select-none",
+        isMinimized ? "w-80 h-16" : "w-96 max-h-[500px]",
+        dragState.isDragging ? "cursor-grabbing" : "cursor-default"
+      )}
+      style={{
+        top: `${80 + position.y}px`,
+        right: `${24 + position.x}px`,
+        transform: dragState.isDragging ? 'scale(1.02)' : 'scale(1)',
+      }}
+      onMouseDown={handleMouseDown}
+    >
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary to-blue-600 text-white p-3 flex items-center justify-between rounded-t-lg">
+      <div 
+        ref={dragHandleRef}
+        className="bg-gradient-to-r from-primary to-blue-600 text-white p-3 flex items-center justify-between rounded-t-lg cursor-grab active:cursor-grabbing"
+      >
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-            <Brain className="w-4 h-4" />
+            {isUpdating ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Brain className="w-4 h-4" />
+            )}
           </div>
           {!isMinimized && (
             <div>
               <h3 className="font-semibold text-sm">Smart Förslag</h3>
-              <p className="text-xs opacity-80">AI-baserade rekommendationer</p>
+              <p className="text-xs opacity-80">
+                Uppdaterat {lastUpdate.toLocaleTimeString('sv-SE', { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })}
+              </p>
             </div>
           )}
+          <Move className="w-3 h-3 opacity-60 ml-1" />
         </div>
         <div className="flex items-center gap-1">
+          <Button
+            onClick={handleManualRefresh}
+            variant="ghost"
+            size="sm"
+            className="w-8 h-8 p-0 text-white hover:bg-white/20"
+            disabled={isUpdating}
+          >
+            <RefreshCw className={cn("w-4 h-4", isUpdating && "animate-spin")} />
+          </Button>
           <Button
             onClick={() => setIsMinimized(!isMinimized)}
             variant="ghost"
