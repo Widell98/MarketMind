@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -325,7 +326,7 @@ const UserHoldingsManager: React.FC = () => {
     return Object.entries(groups)
       .filter(([, holdings]) => holdings.length > 0)
       .map(([type, holdings]) => {
-        const totalValue = holdings.reduce((sum, holding) => sum + holding.current_value, 0);
+        const totalValue = holdings.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
         const totalPortfolioValue = performance.totalPortfolioValue + totalCash;
         const percentage = totalPortfolioValue > 0 ? (totalValue / totalPortfolioValue) * 100 : 0;
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -9,6 +10,7 @@ import SubscriptionCard from '@/components/SubscriptionCard';
 import LoginPromptModal from '@/components/LoginPromptModal';
 import PortfolioValueCards from '@/components/PortfolioValueCards';
 import { usePortfolio } from '@/hooks/usePortfolio';
+import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
@@ -22,7 +24,7 @@ import PortfolioHealthScore from '@/components/PortfolioHealthScore';
 import FloatingActionButton from '@/components/FloatingActionButton';
 
 const PortfolioImplementation = () => {
-  const { actualHoldings } = usePortfolio();
+  const { actualHoldings } = useUserHoldings();
   const { activePortfolio, loading } = usePortfolio();
   const { user, loading: authLoading } = useAuth();
   const { riskProfile, loading: riskProfileLoading } = useRiskProfile();
@@ -122,10 +124,12 @@ const PortfolioImplementation = () => {
   const totalPortfolioValue = performance.totalPortfolioValue + totalCash;
   const investedValue = performance.totalValue;
 
-  // Calculate portfolio health metrics
+  // Calculate portfolio health metrics - fix the actualHoldings check
   const calculateHealthMetrics = () => {
-    const totalHoldings = actualHoldings.length;
-    const uniqueSectors = new Set(actualHoldings.filter(h => h.sector).map(h => h.sector)).size;
+    const totalHoldings = actualHoldings ? actualHoldings.length : 0;
+    const uniqueSectors = actualHoldings && actualHoldings.length > 0 
+      ? new Set(actualHoldings.filter(h => h.sector).map(h => h.sector)).size 
+      : 0;
     
     return {
       diversificationScore: Math.min(100, (uniqueSectors / Math.max(1, totalHoldings)) * 100 + 20),
