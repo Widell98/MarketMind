@@ -1,7 +1,7 @@
 import React from 'react';
 import Layout from '@/components/Layout';
 import IntelligentRouting from '@/components/IntelligentRouting';
-import LatestCases from '@/components/LatestCases';
+import CompactLatestCases from '@/components/CompactLatestCases';
 import {
   Brain,
   Lightbulb,
@@ -292,7 +292,7 @@ const Index = () => {
 
           {/* Latest Stock Cases - Using Real Data */}
           <div className="mb-8 sm:mb-12 lg:mb-16">
-            <LatestCases />
+            <CompactLatestCases />
           </div>
 
           {/* CTA Section */}
