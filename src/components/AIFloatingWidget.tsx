@@ -1,15 +1,14 @@
-
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  MessageSquare, 
-  X, 
-  Minimize2, 
-  Maximize2, 
+import {
+  MessageSquare,
+  X,
+  Minimize2,
+  Maximize2,
   Brain,
   Sparkles,
   Send,
@@ -38,17 +37,17 @@ const AIFloatingWidget = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const quickActions = [
-    "Analysera min portfölj",
-    "Vad händer på marknaden?",
-    "Föreslå investeringar",
-    "Visa min risk"
+    'Analysera min portfölj',
+    'Vad händer på marknaden?',
+    'Föreslå investeringar',
+    'Visa min risk'
   ];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = useCallback(async () => {
     if (!input.trim() || !user || isLoading) return;
 
     const userMessage: Message = {
@@ -62,25 +61,12 @@ const AIFloatingWidget = () => {
     setInput('');
     setIsLoading(true);
 
-    // Generate short, focused responses with single recommendations
-    setTimeout(() => {
-      let responseContent = "";
-      const userInput = input.trim().toLowerCase();
-      
-      if (userInput.includes('portfölj') || userInput.includes('portfolio')) {
-        responseContent = "Din portfölj skulle kunna förbättras genom diversifiering. En snabb rekommendation: överväg att lägga till en bred indexfond som XACT OMXS30.\n\nFör en fullständig portföljanalys med flera förslag, fortsätt i huvudchatten →";
-      } else if (userInput.includes('marknad') || userInput.includes('market')) {
-        responseContent = "Marknaden visar blandade signaler just nu. Kortfattat: teknologisektorn ser stark ut.\n\nFör djup marknadsanalys och fler insikter, låt oss fortsätta i huvudchatten →";
-      } else if (userInput.includes('aktie') || userInput.includes('stock') || userInput.includes('köp')) {
-        responseContent = "Baserat på din profil skulle jag föreslå Investor B - stabilt investmentbolag med god utdelning.\n\nFör fler aktieförslag och detaljerad analys, fortsätt diskussionen i huvudchatten →";
-      } else if (userInput.includes('risk')) {
-        responseContent = "Din riskprofil visar konservativ inställning. En snabb tips: håll max 20% i enskilda aktier.\n\nFör komplett riskanalys och strategier, gå till huvudchatten →";
-      } else if (userInput.includes('utdelning') || userInput.includes('dividend')) {
-        responseContent = "För utdelningsfokus rekommenderar jag Telia - stark direktavkastning på ca 4%.\n\nFler utdelningsaktier och strategier finns i huvudchatten →";
-      } else {
-        responseContent = `Kort svar: Det beror på din specifika situation och mål.\n\nFör en genomgående diskussion där jag kan ge dig detaljerade råd och flera alternativ, fortsätt i huvudchatten →`;
-      }
-      
+    const prompt = `Användarfråga: ${input.trim()}\n\nGe ett kort och tydligt investeringsrelaterat svar på svenska (max 2 meningar).`; // Exempel på framtida OpenAI-anrop
+
+    try {
+      // Här kan du ersätta med ett faktiskt OpenAI API-anrop
+      const responseContent = mockResponse(userMessage.content);
+
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -88,8 +74,20 @@ const AIFloatingWidget = () => {
         timestamp: new Date()
       };
       setMessages(prev => [...prev, aiResponse]);
+    } catch (err) {
+      console.error('AI error', err);
+    } finally {
       setIsLoading(false);
-    }, 1200);
+    }
+  }, [input, user, isLoading]);
+
+  const mockResponse = (input: string): string => {
+    const lowerInput = input.toLowerCase();
+    if (lowerInput.includes('portfölj')) return 'Överväg att diversifiera din portfölj med breda indexfonder.';
+    if (lowerInput.includes('marknad')) return 'Marknaden är volatil just nu, håll koll på räntebesked och techsektorn.';
+    if (lowerInput.includes('aktie')) return 'Investor B är ett stabilt val med god utdelningshistorik.';
+    if (lowerInput.includes('risk')) return 'Med en konservativ profil, begränsa högriskinvesteringar till max 20%.';
+    return 'Behöver mer kontext – klicka på huvudchatt för djupare analys →';
   };
 
   const handleQuickAction = (action: string) => {
@@ -97,8 +95,6 @@ const AIFloatingWidget = () => {
       window.location.href = '/auth';
       return;
     }
-    
-    // Navigate to full AI chat with pre-filled message
     const event = new CustomEvent('prefillChatInput', {
       detail: { message: action }
     });
@@ -106,21 +102,18 @@ const AIFloatingWidget = () => {
     window.location.href = '/ai-chat';
   };
 
-  const toggleVoice = () => {
-    setIsListening(!isListening);
-    // Voice functionality would be implemented here
-  };
+  const toggleVoice = () => setIsListening(prev => !prev);
 
   if (!isOpen) {
     return (
       <div className="fixed bottom-6 right-6 z-50">
         <Button
           onClick={() => setIsOpen(true)}
-          className="w-14 h-14 rounded-full bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+          className="w-14 h-14 rounded-full bg-gradient-to-r from-primary to-blue-600 hover:scale-105 shadow-lg"
         >
           <Brain className="w-6 h-6 text-white" />
         </Button>
-        <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-r from-green-400 to-green-500 rounded-full flex items-center justify-center">
+        <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
           <Sparkles className="w-3 h-3 text-white" />
         </div>
       </div>
@@ -129,11 +122,7 @@ const AIFloatingWidget = () => {
 
   return (
     <div className="fixed bottom-6 right-6 z-50">
-      <Card className={cn(
-        "shadow-2xl border-2 border-primary/20 transition-all duration-300 overflow-hidden",
-        isMinimized ? "w-80 h-16" : "w-96 h-[500px]"
-      )}>
-        {/* Header */}
+      <Card className={cn('shadow-2xl border-2 border-primary/20 transition-all duration-300', isMinimized ? 'w-80 h-16' : 'w-96 h-[500px]')}>
         <div className="bg-gradient-to-r from-primary to-blue-600 text-white p-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
@@ -141,28 +130,14 @@ const AIFloatingWidget = () => {
             </div>
             <div>
               <h3 className="font-semibold text-sm">Snabb AI-Assistent</h3>
-              {!isMinimized && (
-                <p className="text-xs opacity-80">
-                  {user ? `Hej ${user.email?.split('@')[0]}!` : 'Logga in för personlig hjälp'}
-                </p>
-              )}
+              {!isMinimized && <p className="text-xs opacity-80">{user ? `Hej ${user.email?.split('@')[0]}!` : 'Logga in för personlig hjälp'}</p>}
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Button
-              onClick={() => setIsMinimized(!isMinimized)}
-              variant="ghost"
-              size="sm"
-              className="w-8 h-8 p-0 text-white hover:bg-white/20"
-            >
+            <Button onClick={() => setIsMinimized(!isMinimized)} variant="ghost" size="sm" className="w-8 h-8 p-0 text-white hover:bg-white/20">
               {isMinimized ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
             </Button>
-            <Button
-              onClick={() => setIsOpen(false)}
-              variant="ghost"
-              size="sm"
-              className="w-8 h-8 p-0 text-white hover:bg-white/20"
-            >
+            <Button onClick={() => setIsOpen(false)} variant="ghost" size="sm" className="w-8 h-8 p-0 text-white hover:bg-white/20">
               <X className="w-4 h-4" />
             </Button>
           </div>
@@ -170,7 +145,6 @@ const AIFloatingWidget = () => {
 
         {!isMinimized && (
           <>
-            {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3 h-80">
               {messages.length === 0 ? (
                 <div className="text-center space-y-4">
@@ -179,72 +153,30 @@ const AIFloatingWidget = () => {
                   </div>
                   <div>
                     <h4 className="font-semibold text-sm mb-2">Snabba svar & råd!</h4>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Ställ enkla frågor här. För djupare analyser:
-                    </p>
+                    <p className="text-xs text-muted-foreground mb-3">Ställ enkla frågor här. För djupare analyser:</p>
                     <div className="grid grid-cols-1 gap-2">
-                      {quickActions.map((action, index) => (
-                        <Button
-                          key={index}
-                          onClick={() => handleQuickAction(action)}
-                          variant="outline"
-                          size="sm"
-                          className="text-xs h-8 justify-start group hover:bg-primary hover:text-primary-foreground"
-                        >
-                          <MessageSquare className="w-3 h-3 mr-2 group-hover:animate-pulse" />
-                          {action}
+                      {quickActions.map((action, i) => (
+                        <Button key={i} onClick={() => handleQuickAction(action)} variant="outline" size="sm" className="text-xs h-8 justify-start">
+                          <MessageSquare className="w-3 h-3 mr-2" />{action}
                         </Button>
                       ))}
                     </div>
-                    <Button
-                      onClick={() => window.location.href = '/ai-chat'}
-                      variant="ghost"
-                      size="sm"
-                      className="w-full mt-3 text-xs text-primary hover:bg-primary/10"
-                    >
-                      Öppna huvudchatt för djupare analys →
-                    </Button>
                   </div>
                 </div>
               ) : (
                 <>
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={cn(
-                        "flex",
-                        message.role === 'user' ? 'justify-end' : 'justify-start'
-                      )}
-                    >
-                      <div className={cn(
-                        "max-w-[85%] rounded-lg px-3 py-2 text-sm",
-                        message.role === 'user'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted'
-                      )}>
-                        <div className="whitespace-pre-line">{message.content}</div>
-                        {message.role === 'assistant' && (
-                          <div className="mt-2 pt-2 border-t border-muted-foreground/20">
-                            <Button
-                              onClick={() => window.location.href = '/ai-chat'}
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 text-xs text-primary hover:bg-primary/20 p-1"
-                            >
-                              Fortsätt i huvudchatt →
-                            </Button>
-                          </div>
-                        )}
-                      </div>
+                  {messages.map(msg => (
+                    <div key={msg.id} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+                      <div className={cn('max-w-[85%] rounded-lg px-3 py-2 text-sm', msg.role === 'user' ? 'bg-primary text-white' : 'bg-muted')}>{msg.content}</div>
                     </div>
                   ))}
                   {isLoading && (
                     <div className="flex justify-start">
                       <div className="bg-muted rounded-lg px-3 py-2">
                         <div className="flex space-x-1">
-                          <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                          <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
                         </div>
                       </div>
                     </div>
@@ -254,14 +186,9 @@ const AIFloatingWidget = () => {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input */}
             <div className="p-3 border-t bg-background">
               {!user ? (
-                <Button
-                  onClick={() => window.location.href = '/auth'}
-                  className="w-full bg-gradient-to-r from-primary to-blue-600 text-white"
-                  size="sm"
-                >
+                <Button onClick={() => window.location.href = '/auth'} className="w-full bg-gradient-to-r from-primary to-blue-600 text-white" size="sm">
                   Logga in för att chatta
                 </Button>
               ) : (
@@ -269,31 +196,21 @@ const AIFloatingWidget = () => {
                   <div className="flex-1 relative">
                     <Textarea
                       value={input}
-                      onChange={(e) => setInput(e.target.value)}
+                      onChange={e => setInput(e.target.value)}
                       placeholder="Ställ en snabb fråga..."
                       className="resize-none h-10 pr-12 text-sm"
-                      onKeyDown={(e) => {
+                      onKeyDown={e => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
                           handleSendMessage();
                         }
                       }}
                     />
-                    <Button
-                      onClick={toggleVoice}
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-1 top-1 w-8 h-8 p-0"
-                    >
+                    <Button onClick={toggleVoice} variant="ghost" size="sm" className="absolute right-1 top-1 w-8 h-8 p-0">
                       {isListening ? <MicOff className="w-4 h-4 text-red-500" /> : <Mic className="w-4 h-4" />}
                     </Button>
                   </div>
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={!input.trim() || isLoading}
-                    size="sm"
-                    className="w-10 h-10 p-0"
-                  >
+                  <Button onClick={handleSendMessage} disabled={!input.trim() || isLoading} size="sm" className="w-10 h-10 p-0">
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>
