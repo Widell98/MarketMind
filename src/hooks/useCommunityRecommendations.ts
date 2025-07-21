@@ -88,7 +88,7 @@ export const useCommunityRecommendations = () => {
             description,
             ai_generated,
             user_id,
-            profiles:user_id(username, display_name)
+            profiles!user_id(username, display_name)
           `)
           .in('id', stockCaseIds);
 
@@ -108,7 +108,7 @@ export const useCommunityRecommendations = () => {
             analysis_type,
             ai_generated,
             user_id,
-            profiles:user_id(username, display_name)
+            profiles!user_id(username, display_name)
           `)
           .in('id', analysisIds);
 
