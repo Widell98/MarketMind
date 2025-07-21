@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
@@ -155,7 +156,7 @@ const StockCaseDetail = () => {
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                           {stockCase.title}
                         </h1>
-                        {stockCase.ai_generated && (
+                        {stockCase.ai_generated === true && (
                           <Badge variant="outline" className="bg-purple-50 text-purple-700">
                             <Brain className="w-3 h-3 mr-1" />
                             AI
