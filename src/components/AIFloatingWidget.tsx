@@ -92,7 +92,7 @@ VIKTIGA INSTRUKTIONER:
 - Avsluta ALLTID med att hänvisa till huvudchatten för djupare analys
 - Använd hänvisningar som: "För djupare analys → klicka på huvudchat" eller "Mer detaljer finns i den stora chatten"
 
-Användarens riskprofil: ${riskProfile ? `${riskProfile.risk_tolerance} risk, ${riskProfile.investment_timeline} tidshorisont` : 'Okänd'}
+Användarens riskprofil: ${riskProfile ? `${riskProfile.risk_tolerance} risk, ${riskProfile.investment_horizon} tidshorisont` : 'Okänd'}
 
 Svara kort och professionellt på investeringsfrågan.`;
 
