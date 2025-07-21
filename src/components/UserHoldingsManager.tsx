@@ -4,18 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { 
-  Trash2,
   Package,
-  MessageSquare,
   Plus,
   Banknote,
-  Edit2,
-  Wallet,
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle
+  Search,
+  Filter
 } from 'lucide-react';
 import {
   Dialog,
@@ -37,11 +31,21 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import HoldingsGroupSection from '@/components/HoldingsGroupSection';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { 
+  Trash2,
+  MessageSquare,
+  Edit2,
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle
+} from 'lucide-react';
 
 interface StockPrice {
   symbol: string;
@@ -76,6 +80,7 @@ const UserHoldingsManager: React.FC = () => {
     name: 'Kassa',
     amount: ''
   });
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Price data state
   const [prices, setPrices] = useState<StockPrice[]>([]);
@@ -95,7 +100,6 @@ const UserHoldingsManager: React.FC = () => {
     const sessionName = `Diskussion: ${holdingName}`;
     const message = `Berätta mer om ${holdingName}${symbol ? ` (${symbol})` : ''}. Vad gör företaget, vilka är deras huvudsakliga affärsområden, och varför skulle det vara en bra investering för min portfölj? Analysera också eventuella risker och möjligheter.`;
     
-    // Navigate to AI chat with state to create new session
     navigate('/ai-chat', {
       state: {
         createNewSession: true,
@@ -268,12 +272,10 @@ const UserHoldingsManager: React.FC = () => {
     );
   };
 
-  // Auto-update prices every 30 minutes
   useEffect(() => {
     if (user && actualHoldings.length > 0) {
       fetchPrices();
       
-      // Set up interval for 30 minutes (1800000 ms)
       const interval = setInterval(() => {
         fetchPrices();
       }, 1800000);
@@ -282,12 +284,11 @@ const UserHoldingsManager: React.FC = () => {
     }
   }, [user, actualHoldings]);
 
-  // Filter out duplicate cash holdings by checking both cashHoldings and actualHoldings
+  // Prepare holdings data for grouping
   const uniqueCashHoldings = cashHoldings.filter(cash => 
     !actualHoldings.some(holding => holding.id === cash.id)
   );
 
-  // Combine actual holdings and unique cash holdings for display
   const allHoldings = [
     ...actualHoldings,
     ...uniqueCashHoldings.map(cash => ({
@@ -299,54 +300,65 @@ const UserHoldingsManager: React.FC = () => {
     }))
   ];
 
+  // Group holdings by type
+  const groupHoldings = () => {
+    const groups = {
+      stocks: allHoldings.filter(h => h.holding_type === 'stock'),
+      funds: allHoldings.filter(h => h.holding_type === 'fund'),
+      cash: allHoldings.filter(h => h.holding_type === 'cash'),
+      other: allHoldings.filter(h => !['stock', 'fund', 'cash'].includes(h.holding_type))
+    };
+
+    return Object.entries(groups)
+      .filter(([, holdings]) => holdings.length > 0)
+      .map(([type, holdings]) => {
+        const totalValue = holdings.reduce((sum, h) => sum + (h.current_value || 0), 0);
+        const totalPortfolioValue = performance.totalPortfolioValue + totalCash;
+        const percentage = totalPortfolioValue > 0 ? (totalValue / totalPortfolioValue) * 100 : 0;
+
+        const typeNames = {
+          stocks: 'Aktier',
+          funds: 'Fonder',
+          cash: 'Kassa',
+          other: 'Övrigt'
+        };
+
+        return {
+          key: type,
+          title: typeNames[type as keyof typeof typeNames] || 'Övrigt',
+          holdings,
+          totalValue,
+          percentage
+        };
+      });
+  };
+
+  const filteredGroups = groupHoldings().map(group => ({
+    ...group,
+    holdings: group.holdings.filter(holding =>
+      holding.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (holding.symbol && holding.symbol.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
+  })).filter(group => group.holdings.length > 0);
+
   return (
     <>
       <Card className="h-fit">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Package className="w-5 h-5 text-blue-600" />
-            Dina Nuvarande Innehav
+            Dina Innehav
           </CardTitle>
           <CardDescription>
             {loading || cashLoading
               ? "Laddar dina innehav..."
               : allHoldings.length > 0 
-                ? `Hantera dina aktieinnehav och kassapositioner (${allHoldings.length} st)`
+                ? `Analysera dina investeringar och kassapositioner (${allHoldings.length} st)`
                 : "Lägg till dina befintliga aktier, fonder och kassapositioner för bättre portföljanalys"
             }
           </CardDescription>
-          {performance.totalPortfolioValue > 0 && (
-            <div className="mt-2 p-3 bg-muted rounded-lg">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Investerat värde:</span>
-                  <div className="font-semibold text-foreground">
-                    {formatCurrency(performance.totalValue)}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Kassa:</span>
-                  <div className="font-semibold text-green-600">
-                    {formatCurrency(totalCash)}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Total portfölj:</span>
-                  <div className="font-semibold text-foreground">
-                    {formatCurrency(performance.totalPortfolioValue + totalCash)}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Kassaandel:</span>
-                  <div className="font-semibold text-muted-foreground">
-                    {((totalCash / (performance.totalPortfolioValue + totalCash)) * 100).toFixed(1)}%
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
           {loading || cashLoading ? (
             <div className="text-center py-8 text-muted-foreground">
               <div className="flex items-center justify-center gap-2">
@@ -374,247 +386,59 @@ const UserHoldingsManager: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="flex gap-2 mb-4 flex-wrap">
-                <Button size="sm" className="flex items-center gap-2" onClick={() => navigate('/ai-chat')}>
-                  <Plus className="w-4 h-4" />
-                  Lägg till innehav
-                </Button>
-                <Button size="sm" variant="outline" className="flex items-center gap-2" onClick={() => setShowAddCashDialog(true)}>
-                  <Banknote className="w-4 h-4" />
-                  Lägg till kassa
-                </Button>
+              {/* Action Bar */}
+              <div className="flex flex-col sm:flex-row gap-4 pb-4 border-b border-border">
+                <div className="flex gap-2">
+                  <Button size="sm" className="flex items-center gap-2" onClick={() => navigate('/ai-chat')}>
+                    <Plus className="w-4 h-4" />
+                    Lägg till innehav
+                  </Button>
+                  <Button size="sm" variant="outline" className="flex items-center gap-2" onClick={() => setShowAddCashDialog(true)}>
+                    <Banknote className="w-4 h-4" />
+                    Lägg till kassa
+                  </Button>
+                </div>
+                
+                <div className="flex gap-2 flex-1 max-w-md">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Sök innehav..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
               </div>
-              
+
+              {/* Holdings Groups */}
+              <div className="space-y-4">
+                {filteredGroups.map((group) => (
+                  <HoldingsGroupSection
+                    key={group.key}
+                    title={group.title}
+                    holdings={group.holdings}
+                    totalValue={group.totalValue}
+                    groupPercentage={group.percentage}
+                    getPriceForHolding={getPriceForHolding}
+                    onDiscuss={handleDiscussHolding}
+                    onEdit={group.key === 'cash' ? (id: string) => {
+                      const cash = group.holdings.find(h => h.id === id);
+                      if (cash) {
+                        setEditingCash({ id: cash.id, amount: cash.current_value });
+                      }
+                    } : undefined}
+                    onDelete={group.key === 'cash' ? handleDeleteCash : handleDeleteHolding}
+                  />
+                ))}
+              </div>
+
               {lastUpdated && (
-                <div className="text-xs text-muted-foreground mb-3 px-2">
+                <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
                   Priser uppdaterade: {lastUpdated} | Uppdateras automatiskt var 30:e minut
                 </div>
               )}
-              
-              {allHoldings.map(holding => {
-                const currentPrice = getPriceForHolding(holding);
-                
-                return (
-                  <div key={holding.id} className="relative bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-sm">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4">
-                      {/* Innehav info */}
-                      <div className="min-w-0 flex-1 lg:col-span-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          {holding.holding_type === 'cash' ? (
-                            <Wallet className="w-4 h-4 text-green-600" />
-                          ) : null}
-                          <h3 className="font-semibold text-gray-900 truncate">{holding.name}</h3>
-                          {holding.symbol && (
-                            <span className="font-mono bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-medium flex-shrink-0">
-                              {holding.symbol}
-                            </span>
-                          )}
-                          {holding.holding_type === 'cash' && (
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 flex-shrink-0">
-                              Kassa
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-sm text-gray-600 flex flex-wrap items-center gap-3">
-                          {holding.holding_type === 'cash' ? (
-                            <span className="font-medium text-green-600">
-                              {formatCurrency(holding.current_value)}
-                            </span>
-                          ) : (
-                            <>
-                              {holding.quantity && (
-                                <span className="flex items-center gap-1">
-                                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
-                                  {holding.quantity} aktier
-                                </span>
-                              )}
-                              {holding.purchase_price && (
-                                <span className="flex items-center gap-1">
-                                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
-                                  Köpt för {formatCurrency(holding.purchase_price)}
-                                </span>
-                              )}
-                              <span className="flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
-                                {holding.holding_type}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Aktuellt pris kolumn */}
-                      <div className="min-w-0 flex-1 lg:col-span-1">
-                        {holding.holding_type === 'cash' ? (
-                          <div className="text-center py-2">
-                            <span className="text-sm text-muted-foreground">-</span>
-                          </div>
-                        ) : currentPrice ? (
-                          <div className="text-center">
-                            <div className="font-medium text-sm">
-                              {formatCurrency(
-                                currentPrice.currency === 'USD' ? currentPrice.price : currentPrice.priceInSEK,
-                                currentPrice.currency === 'USD' ? 'USD' : 'SEK'
-                              )}
-                            </div>
-                            <div className="flex items-center justify-center gap-1 mt-1">
-                              {currentPrice.changePercent >= 0 ? (
-                                <TrendingUp className="w-3 h-3 text-green-600" />
-                              ) : (
-                                <TrendingDown className="w-3 h-3 text-red-600" />
-                              )}
-                              <Badge
-                                variant="outline"
-                                className={`text-xs ${
-                                  currentPrice.changePercent >= 0
-                                    ? 'bg-green-50 text-green-700 border-green-200'
-                                    : 'bg-red-50 text-red-700 border-red-200'
-                                }`}
-                              >
-                                {formatPercentage(currentPrice.changePercent)}
-                              </Badge>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-center py-2">
-                            <div className="flex items-center justify-center gap-1">
-                              <AlertTriangle className="w-3 h-3 text-amber-500" />
-                              <span className="text-xs text-amber-600">
-                                {pricesLoading ? 'Hämtar...' : 'Pris saknas'}
-                              </span>
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              Kontrollera symbol
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Åtgärder */}
-                      <div className="flex lg:justify-end gap-2 lg:col-span-1">
-                      {holding.holding_type === 'cash' ? (
-                        <>
-                          <Dialog open={editingCash?.id === holding.id} onOpenChange={(open) => !open && setEditingCash(null)}>
-                            <DialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-blue-600 hover:text-blue-700"
-                                onClick={() => setEditingCash({ id: holding.id, amount: holding.current_value })}
-                              >
-                                <Edit2 className="w-4 h-4 mr-1" />
-                                Redigera
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Redigera kassainnehav</DialogTitle>
-                                <DialogDescription>
-                                  Uppdatera beloppet för {holding.name}
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div>
-                                <Label htmlFor="edit-amount">Belopp (SEK)</Label>
-                                <Input
-                                  id="edit-amount"
-                                  type="number"
-                                  value={editingCash?.amount || 0}
-                                  onChange={(e) => setEditingCash(prev => 
-                                    prev ? { ...prev, amount: parseFloat(e.target.value) || 0 } : null
-                                  )}
-                                />
-                              </div>
-                              <DialogFooter>
-                                <Button variant="outline" onClick={() => setEditingCash(null)}>
-                                  Avbryt
-                                </Button>
-                                <Button onClick={handleUpdateCash}>
-                                  Uppdatera
-                                </Button>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
-                          
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              >
-                                <Trash2 className="w-4 h-4 mr-1" />
-                                Radera
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Radera kassainnehav</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Är du säker på att du vill radera <strong>{holding.name}</strong>? 
-                                  Denna åtgärd kan inte ångras.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteCash(holding.id)}
-                                  className="bg-red-600 hover:bg-red-700"
-                                >
-                                  Radera
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </>
-                      ) : (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-200 hover:border-blue-300"
-                            onClick={() => handleDiscussHolding(holding.name, holding.symbol)}
-                          >
-                            <MessageSquare className="w-4 h-4 mr-1" />
-                            Diskutera
-                          </Button>
-                          
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 hover:border-red-300"
-                              >
-                                <Trash2 className="w-4 h-4 mr-1" />
-                                Radera
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Radera innehav</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Är du säker på att du vill radera <strong>{holding.name}</strong> från dina innehav? 
-                                  Denna åtgärd kan inte ångras.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteHolding(holding.id, holding.name)}
-                                  className="bg-red-600 hover:bg-red-700"
-                                >
-                                  Radera
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </>
-                      )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
             </>
           )}
         </CardContent>
@@ -656,6 +480,37 @@ const UserHoldingsManager: React.FC = () => {
             </Button>
             <Button onClick={handleAddCash}>
               Lägg till
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Cash Dialog */}
+      <Dialog open={editingCash !== null} onOpenChange={(open) => !open && setEditingCash(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Redigera kassainnehav</DialogTitle>
+            <DialogDescription>
+              Uppdatera beloppet för kassainnehavet
+            </DialogDescription>
+          </DialogHeader>
+          <div>
+            <Label htmlFor="edit-amount">Belopp (SEK)</Label>
+            <Input
+              id="edit-amount"
+              type="number"
+              value={editingCash?.amount || 0}
+              onChange={(e) => setEditingCash(prev => 
+                prev ? { ...prev, amount: parseFloat(e.target.value) || 0 } : null
+              )}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingCash(null)}>
+              Avbryt
+            </Button>
+            <Button onClick={handleUpdateCash}>
+              Uppdatera
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -7,23 +8,28 @@ import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolio
 import UserInvestmentAnalysis from '@/components/UserInvestmentAnalysis';
 import SubscriptionCard from '@/components/SubscriptionCard';
 import LoginPromptModal from '@/components/LoginPromptModal';
+import PortfolioValueCards from '@/components/PortfolioValueCards';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
+import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Brain, TrendingUp, Target, BarChart3, Activity, Crown, AlertCircle, User, MessageSquare } from 'lucide-react';
+import { Brain, TrendingUp, Target, BarChart3, Activity, Crown, AlertCircle, User, MessageSquare, Clock } from 'lucide-react';
 
 const PortfolioImplementation = () => {
   const { activePortfolio, loading } = usePortfolio();
   const { user, loading: authLoading } = useAuth();
   const { riskProfile, loading: riskProfileLoading } = useRiskProfile();
+  const { performance } = usePortfolioPerformance();
+  const { totalCash } = useCashHoldings();
   const navigate = useNavigate();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   useEffect(() => {
     // Only show login modal if auth has finished loading and user is not authenticated
@@ -36,15 +42,19 @@ const PortfolioImplementation = () => {
 
   useEffect(() => {
     if (!user || loading) return;
-
-    // Only show onboarding if there's no active portfolio AND user wants to create one
-    // For now, we'll always show the main page layout
     setShowOnboarding(false);
   }, [user, activePortfolio, loading]);
 
+  useEffect(() => {
+    // Set last updated time
+    setLastUpdated(new Date().toLocaleTimeString('sv-SE', {
+      hour: '2-digit',
+      minute: '2-digit'
+    }));
+  }, [performance, totalCash]);
+
   const handleQuickChat = (message: string) => {
     if (!riskProfile) {
-      // Don't navigate to chat if no risk profile
       return;
     }
     
@@ -107,7 +117,10 @@ const PortfolioImplementation = () => {
     );
   }
 
-  // Always show portfolio implementation page with tabs - Always show PortfolioOverview
+  const totalPortfolioValue = performance.totalPortfolioValue + totalCash;
+  const investedValue = performance.totalValue;
+
+  // Always show portfolio implementation page with tabs
   return (
     <Layout>
       <LoginPromptModal 
@@ -117,7 +130,7 @@ const PortfolioImplementation = () => {
       
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-6 max-w-[1400px]">
-          {/* Modern Header - Fully Responsive */}
+          {/* Modern Header */}
           <div className="mb-6">
             <div className="flex flex-col gap-4 mb-6">
               <div className="space-y-3">
@@ -127,22 +140,28 @@ const PortfolioImplementation = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <h1 className="text-2xl md:text-3xl font-bold mb-1 text-foreground">
-                      AI Portfolio Hub
+                      Portfolio Analys
                     </h1>
                     <p className="text-sm md:text-base text-muted-foreground">
-                      Intelligenta investeringsinsikter för din framgång
+                      Analysera och förstå din investeringsportfölj
                     </p>
                   </div>
+                  {lastUpdated && (
+                    <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground bg-muted px-3 py-2 rounded-lg">
+                      <Clock className="w-4 h-4" />
+                      <span>Uppdaterad {lastUpdated}</span>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex flex-wrap gap-2">
                   <Badge className="px-3 py-1 text-xs font-medium bg-primary text-primary-foreground border-0 shadow-sm">
                     <Brain className="w-3 h-3 mr-1" />
-                    AI-Optimerad
+                    AI-Analys
                   </Badge>
                   <Badge className="px-3 py-1 text-xs font-medium bg-secondary text-secondary-foreground border-0 shadow-sm">
                     <Activity className="w-3 h-3 mr-1" />
-                    Realtidsanalys
+                    Realtidsdata
                   </Badge>
                   {activePortfolio && (
                     <Badge className="px-3 py-1 text-xs font-medium bg-accent text-accent-foreground border-0 shadow-sm">
@@ -156,6 +175,14 @@ const PortfolioImplementation = () => {
             </div>
           </div>
 
+          {/* Portfolio Value Cards */}
+          <PortfolioValueCards
+            totalPortfolioValue={totalPortfolioValue}
+            totalInvestedValue={investedValue}
+            totalCashValue={totalCash}
+            loading={loading}
+          />
+
           {/* Risk Profile Required Alert */}
           {user && !riskProfile && (
             <Alert className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20">
@@ -164,7 +191,7 @@ const PortfolioImplementation = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     <MessageSquare className="w-4 h-4 flex-shrink-0" />
-                    <span className="font-medium text-sm">Skapa en riskprofil för att få tillgång till AI-chatten och personliga rekommendationer</span>
+                    <span className="font-medium text-sm">Skapa en riskprofil för AI-analys och personliga rekommendationer</span>
                   </div>
                   <Button
                     onClick={() => navigate('/portfolio-advisor')}
@@ -194,7 +221,7 @@ const PortfolioImplementation = () => {
                 className="flex items-center gap-2 rounded-lg py-3 px-4 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-sm"
               >
                 <Brain className="w-4 h-4" />
-                <span className="hidden xs:inline">Risk profil</span>
+                <span className="hidden xs:inline">Riskprofil</span>
                 <span className="xs:hidden">Analys</span>
               </TabsTrigger>
               <TabsTrigger 

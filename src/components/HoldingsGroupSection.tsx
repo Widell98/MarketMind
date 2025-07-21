@@ -1,0 +1,125 @@
+
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import HoldingCard from './HoldingCard';
+
+interface Holding {
+  id: string;
+  name: string;
+  symbol?: string;
+  holding_type: string;
+  current_value: number;
+  quantity?: number;
+  purchase_price?: number;
+  sector?: string;
+  currency: string;
+}
+
+interface HoldingsGroupSectionProps {
+  title: string;
+  holdings: Holding[];
+  totalValue: number;
+  groupPercentage: number;
+  isCollapsible?: boolean;
+  defaultExpanded?: boolean;
+  getPriceForHolding: (holding: Holding) => any;
+  onDiscuss: (name: string, symbol?: string) => void;
+  onEdit?: (id: string) => void;
+  onDelete: (id: string, name: string) => void;
+}
+
+const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
+  title,
+  holdings,
+  totalValue,
+  groupPercentage,
+  isCollapsible = true,
+  defaultExpanded = true,
+  getPriceForHolding,
+  onDiscuss,
+  onEdit,
+  onDelete
+}) => {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('sv-SE', {
+      style: 'currency',
+      currency: 'SEK',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  return (
+    <Card className="mb-4">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {isCollapsible && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="p-1"
+              >
+                {isExpanded ? (
+                  <ChevronDown className="w-4 h-4" />
+                ) : (
+                  <ChevronRight className="w-4 h-4" />
+                )}
+              </Button>
+            )}
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+              <p className="text-sm text-muted-foreground">
+                {holdings.length} innehav • {formatCurrency(totalValue)}
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-lg font-bold text-foreground">
+              {groupPercentage.toFixed(1)}%
+            </div>
+            <div className="text-sm text-muted-foreground">
+              av portfölj
+            </div>
+          </div>
+        </div>
+        
+        {/* Progress bar for group */}
+        <div className="w-full bg-muted rounded-full h-2 mt-2">
+          <div 
+            className="bg-primary rounded-full h-2 transition-all duration-300"
+            style={{ width: `${Math.min(groupPercentage, 100)}%` }}
+          />
+        </div>
+      </CardHeader>
+
+      {isExpanded && (
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {holdings.map((holding) => {
+              const holdingPercentage = totalValue > 0 ? (holding.current_value / totalValue) * groupPercentage : 0;
+              return (
+                <HoldingCard
+                  key={holding.id}
+                  holding={holding}
+                  portfolioPercentage={holdingPercentage}
+                  currentPrice={getPriceForHolding(holding)}
+                  onDiscuss={onDiscuss}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                />
+              );
+            })}
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  );
+};
+
+export default HoldingsGroupSection;
