@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -345,7 +346,7 @@ const UserHoldingsManager: React.FC = () => {
       .map(([type, holdings]) => {
         // Fix: Properly sum the current_value of each holding
         const totalValue = holdings.reduce((sum, holding) => {
-          return sum + (holding.current_value || 0);
+          return sum + (Number(holding.current_value) || 0);
         }, 0);
         
         const totalPortfolioValue = (performance?.totalPortfolioValue || 0) + (totalCash || 0);
@@ -375,103 +376,6 @@ const UserHoldingsManager: React.FC = () => {
       (holding.symbol && holding.symbol.toLowerCase().includes(searchTerm.toLowerCase()))
     )
   })).filter(group => group.holdings.length > 0);
-
-  const fetchPrices = async () => {
-    if (!user || actualHoldings.length === 0) return;
-
-    setPricesLoading(true);
-    try {
-      await fetchExchangeRate();
-
-      const symbolsToFetch = actualHoldings.map((holding) => {
-        return {
-          searchTerm: holding.symbol || holding.name,
-          holding,
-        };
-      });
-
-      const pricePromises = symbolsToFetch.map(async ({ searchTerm, holding }) => {
-        try {
-          if (!searchTerm) {
-            return {
-              symbol: 'N/A',
-              name: holding.name || 'Okänt innehav',
-              price: 0,
-              change: 0,
-              changePercent: 0,
-              currency: 'SEK',
-              priceInSEK: 0,
-              changeInSEK: 0,
-              hasValidPrice: false,
-              errorMessage: 'Ingen giltig ticker-symbol angiven',
-            };
-          }
-
-          const { data, error } = await supabase.functions.invoke('fetch-stock-quote', {
-            body: { symbol: searchTerm },
-          });
-
-          if (error || !data || typeof data.price !== 'number') {
-            return {
-              symbol: searchTerm,
-              name: holding.name || searchTerm,
-              price: 0,
-              change: 0,
-              changePercent: 0,
-              currency: holding.currency || 'SEK',
-              priceInSEK: 0,
-              changeInSEK: 0,
-              hasValidPrice: false,
-              errorMessage: 'Pris kunde inte hämtas',
-            };
-          }
-
-          const holdingCurrency = holding.currency || 'SEK';
-          const quoteCurrency = data.currency || 'USD';
-
-          const convertedToSEK = quoteCurrency === 'USD' && holdingCurrency === 'SEK';
-
-          return {
-            symbol: data.symbol || searchTerm,
-            name: holding.name || data.name || searchTerm,
-            price: data.price,
-            change: data.change || 0,
-            changePercent: data.changePercent || 0,
-            currency: quoteCurrency,
-            priceInSEK: convertedToSEK ? data.price * exchangeRate : data.price,
-            changeInSEK: convertedToSEK ? (data.change || 0) * exchangeRate : (data.change || 0),
-            hasValidPrice: true,
-          };
-        } catch (err) {
-          return {
-            symbol: searchTerm,
-            name: holding.name || searchTerm,
-            price: 0,
-            change: 0,
-            changePercent: 0,
-            currency: holding.currency || 'SEK',
-            priceInSEK: 0,
-            changeInSEK: 0,
-            hasValidPrice: false,
-            errorMessage: 'Tekniskt fel vid prisinhämtning',
-          };
-        }
-      });
-
-      const results = await Promise.all(pricePromises);
-      setPrices(results);
-      setLastUpdated(
-        new Date().toLocaleTimeString('sv-SE', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-      );
-    } catch (err) {
-      console.error('Fel vid hämtning av priser:', err);
-    } finally {
-      setPricesLoading(false);
-    }
-  };
 
   return (
     <>
