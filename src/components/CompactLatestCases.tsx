@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Clock, ArrowRight, TrendingUp, Heart, UserCheck, UserPlus, Eye, MessageCircle, Filter, Bookmark } from 'lucide-react';
+import { Clock, ArrowRight, TrendingUp, Heart, Eye, Filter, Plus } from 'lucide-react';
 import { useLatestStockCases } from '@/hooks/useLatestStockCases';
 import { useStockCases } from '@/hooks/useStockCases';
 import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
@@ -12,16 +12,20 @@ import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useStockCaseFollows } from '@/hooks/useStockCaseFollows';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
+import { useAuth } from '@/contexts/AuthContext';
+import LoginPromptModal from '@/components/LoginPromptModal';
 
 const CompactLatestCases = () => {
   const [viewMode, setViewMode] = useState<'all' | 'trending' | 'followed'>('all');
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // Fetch data based on view mode
+  // Fetch data based on view mode - limit to 3 for compact display
   const { stockCases: allStockCases, loading: allLoading } = useStockCases(false);
   const { stockCases: followedStockCases, loading: followedLoading } = useStockCases(true);
-  const { trendingCases, loading: trendingLoading } = useTrendingStockCases(6);
-  const { latestCases: latestStockCases, loading: latestLoading } = useLatestStockCases(6);
+  const { trendingCases, loading: trendingLoading } = useTrendingStockCases(3);
+  const { latestCases: latestStockCases, loading: latestLoading } = useLatestStockCases(3);
 
   const getDisplayData = () => {
     switch (viewMode) {
@@ -30,7 +34,7 @@ const CompactLatestCases = () => {
       case 'trending':
         return { cases: trendingCases, loading: trendingLoading };
       case 'followed':
-        return { cases: followedStockCases.slice(0, 6), loading: followedLoading };
+        return { cases: followedStockCases.slice(0, 3), loading: followedLoading };
       default:
         return { cases: latestStockCases, loading: latestLoading };
     }
@@ -38,24 +42,38 @@ const CompactLatestCases = () => {
 
   const { cases: displayCases, loading } = getDisplayData();
 
+  const handleCreateCase = () => {
+    if (!user) {
+      setShowLoginPrompt(true);
+      return;
+    }
+    navigate('/stock-cases');
+  };
+
+  const handleViewAll = () => {
+    if (!user) {
+      setShowLoginPrompt(true);
+      return;
+    }
+    navigate('/stock-cases');
+  };
+
   if (loading) {
     return (
       <Card className="shadow-md hover:shadow-lg transition-all duration-200">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Clock className="w-5 h-5 text-blue-500" />
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Clock className="w-6 h-6 text-blue-500" />
             Senaste Aktiefall
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="animate-pulse flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="w-16 h-12 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                <div className="flex-1">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-                </div>
+              <div key={i} className="animate-pulse">
+                <div className="aspect-[4/3] bg-gray-200 dark:bg-gray-700 rounded-lg mb-3"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
               </div>
             ))}
           </div>
@@ -67,16 +85,16 @@ const CompactLatestCases = () => {
   if (displayCases.length === 0) {
     return (
       <Card className="shadow-md hover:shadow-lg transition-all duration-200">
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Clock className="w-5 h-5 text-blue-500" />
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <Clock className="w-6 h-6 text-blue-500" />
               Senaste Aktiefall
             </CardTitle>
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => navigate('/stock-cases')}
+              onClick={handleViewAll}
               className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
             >
               Visa alla
@@ -85,122 +103,169 @@ const CompactLatestCases = () => {
           </div>
           
           {/* Filter Tabs */}
-          <div className="flex items-center gap-1 mt-3">
-            <Button
-              variant={viewMode === 'all' ? 'default' : 'outline'}
-              onClick={() => setViewMode('all')}
-              size="sm"
-              className="text-xs px-2 py-1 h-7"
-            >
-              Alla
-            </Button>
-            <Button
-              variant={viewMode === 'trending' ? 'default' : 'outline'}
-              onClick={() => setViewMode('trending')}
-              size="sm"
-              className="text-xs px-2 py-1 h-7"
-            >
-              Trending
-            </Button>
-            <Button
-              variant={viewMode === 'followed' ? 'default' : 'outline'}
-              onClick={() => setViewMode('followed')}
-              size="sm"
-              className="text-xs px-2 py-1 h-7"
-            >
-              Följda
-            </Button>
-          </div>
+          {user && (
+            <div className="flex items-center gap-1 mt-3">
+              <Button
+                variant={viewMode === 'all' ? 'default' : 'outline'}
+                onClick={() => setViewMode('all')}
+                size="sm"
+                className="text-xs px-3 py-1 h-8"
+              >
+                Alla
+              </Button>
+              <Button
+                variant={viewMode === 'trending' ? 'default' : 'outline'}
+                onClick={() => setViewMode('trending')}
+                size="sm"
+                className="text-xs px-3 py-1 h-8"
+              >
+                Trending
+              </Button>
+              <Button
+                variant={viewMode === 'followed' ? 'default' : 'outline'}
+                onClick={() => setViewMode('followed')}
+                size="sm"
+                className="text-xs px-3 py-1 h-8"
+              >
+                Följda
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
-          <p className="text-gray-600 dark:text-gray-400 text-center py-4 text-sm">
-            {viewMode === 'trending' 
-              ? 'Inga trending cases ännu.'
-              : viewMode === 'followed'
-              ? 'Du följer inga cases ännu.'
-              : 'Inga cases tillgängliga ännu.'
-            }
-          </p>
-          <div className="text-center">
-            <Button 
-              onClick={() => navigate('/stock-cases')}
-              variant="outline"
-              size="sm"
-              className="text-xs"
-            >
-              Skapa ditt första case
+          <div className="text-center py-8">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+              <TrendingUp className="w-8 h-8 text-blue-500" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">
+              {viewMode === 'trending' 
+                ? 'Inga trending cases ännu'
+                : viewMode === 'followed'
+                ? 'Du följer inga cases ännu'
+                : 'Bli först att skapa ett case!'
+              }
+            </h3>
+            <p className="text-muted-foreground mb-4 text-sm">
+              {!user 
+                ? 'Skapa ett konto för att börja dela dina investeringsinsikter och följa andra.'
+                : 'Dela dina investeringsanalyser och få feedback från communityn.'
+              }
+            </p>
+            <Button onClick={handleCreateCase} className="gap-2">
+              <Plus className="w-4 h-4" />
+              {!user ? 'Kom igång' : 'Skapa ditt första case'}
             </Button>
           </div>
         </CardContent>
+        <LoginPromptModal 
+          isOpen={showLoginPrompt} 
+          onClose={() => setShowLoginPrompt(false)} 
+        />
       </Card>
     );
   }
 
   return (
-    <Card className="shadow-md hover:shadow-lg transition-all duration-200">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Clock className="w-5 h-5 text-blue-500" />
-            Senaste Aktiefall
-          </CardTitle>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={() => navigate('/stock-cases')}
-            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-          >
-            Visa alla
-            <ArrowRight className="w-4 h-4 ml-1" />
-          </Button>
-        </div>
-        
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-1 mt-3">
-          <Button
-            variant={viewMode === 'all' ? 'default' : 'outline'}
-            onClick={() => setViewMode('all')}
-            size="sm"
-            className="text-xs px-2 py-1 h-7"
-          >
-            Alla
-          </Button>
-          <Button
-            variant={viewMode === 'trending' ? 'default' : 'outline'}
-            onClick={() => setViewMode('trending')}
-            size="sm"
-            className="text-xs px-2 py-1 h-7"
-          >
-            Trending
-          </Button>
-          <Button
-            variant={viewMode === 'followed' ? 'default' : 'outline'}
-            onClick={() => setViewMode('followed')}
-            size="sm"
-            className="text-xs px-2 py-1 h-7"
-          >
-            Följda
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          {displayCases.map((stockCase) => (
-            <CompactStockCaseItem key={stockCase.id} stockCase={stockCase} />
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+    <>
+      <Card className="shadow-md hover:shadow-lg transition-all duration-200">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <Clock className="w-6 h-6 text-blue-500" />
+              Senaste Aktiefall
+            </CardTitle>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={handleViewAll}
+              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            >
+              Visa alla
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+          
+          {/* Filter Tabs - only show for logged in users */}
+          {user && (
+            <div className="flex items-center gap-1 mt-3">
+              <Button
+                variant={viewMode === 'all' ? 'default' : 'outline'}
+                onClick={() => setViewMode('all')}
+                size="sm"
+                className="text-xs px-3 py-1 h-8"
+              >
+                Alla
+              </Button>
+              <Button
+                variant={viewMode === 'trending' ? 'default' : 'outline'}
+                onClick={() => setViewMode('trending')}
+                size="sm"
+                className="text-xs px-3 py-1 h-8"
+              >
+                Trending
+              </Button>
+              <Button
+                variant={viewMode === 'followed' ? 'default' : 'outline'}
+                onClick={() => setViewMode('followed')}
+                size="sm"
+                className="text-xs px-3 py-1 h-8"
+              >
+                Följda
+              </Button>
+            </div>
+          )}
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {displayCases.map((stockCase) => (
+              <CompactStockCaseCard key={stockCase.id} stockCase={stockCase} />
+            ))}
+          </div>
+          
+          {/* Call to action for non-logged in users */}
+          {!user && (
+            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
+              <p className="text-sm text-muted-foreground mb-3">
+                Vill du skapa egna aktiefall och få tillgång till alla funktioner?
+              </p>
+              <Button onClick={handleCreateCase} variant="outline" size="sm">
+                Skapa konto gratis
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      <LoginPromptModal 
+        isOpen={showLoginPrompt} 
+        onClose={() => setShowLoginPrompt(false)} 
+      />
+    </>
   );
 };
 
-const CompactStockCaseItem = ({ stockCase }: { stockCase: any }) => {
+const CompactStockCaseCard = ({ stockCase }: { stockCase: any }) => {
   const { likeCount, isLiked, toggleLike } = useStockCaseLikes(stockCase.id);
   const { isFollowing, toggleFollow } = useStockCaseFollows(stockCase.id);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   const handleClick = () => {
+    if (!user) {
+      setShowLoginPrompt(true);
+      return;
+    }
     navigate(`/stock-cases/${stockCase.id}`);
+  };
+
+  const handleLike = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) {
+      setShowLoginPrompt(true);
+      return;
+    }
+    toggleLike();
   };
 
   const getCategoryColor = (category: string) => {
@@ -237,63 +302,72 @@ const CompactStockCaseItem = ({ stockCase }: { stockCase: any }) => {
   };
 
   return (
-    <div 
-      className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
-      onClick={handleClick}
-    >
-      {/* Category indicator and image placeholder */}
-      <div className="relative w-16 h-12 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center flex-shrink-0">
-        <div className={`w-2 h-2 rounded-full ${getCategoryColor(stockCase.case_categories?.name || 'Tech')}`}></div>
-        {stockCase.image_url && (
-          <img 
-            src={stockCase.image_url} 
-            alt={stockCase.title}
-            className="absolute inset-0 w-full h-full object-cover rounded"
-          />
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-1 mb-1">
-              {stockCase.title}
-            </h3>
-            <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-1 mb-1">
-              {stockCase.company_name}
-            </p>
-            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-              <span>av {stockCase.profiles?.display_name || stockCase.profiles?.username || 'Anonym'}</span>
-              <span>•</span>
-              <span>
-                {formatDistanceToNow(new Date(stockCase.created_at), { addSuffix: true, locale: sv })}
-              </span>
+    <>
+      <div 
+        className="group cursor-pointer"
+        onClick={handleClick}
+      >
+        {/* Image/Visual */}
+        <div className="relative aspect-[4/3] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden mb-3">
+          {stockCase.image_url ? (
+            <img 
+              src={stockCase.image_url} 
+              alt={stockCase.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <div className={`w-8 h-8 rounded-full ${getCategoryColor(stockCase.case_categories?.name || 'Tech')}`}></div>
             </div>
-          </div>
+          )}
           
-          {/* Status and Actions */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Status badge overlay */}
+          <div className="absolute top-2 right-2">
             {getStatusBadge(stockCase.status, stockCase.performance_percentage)}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="space-y-2">
+          <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
+            {stockCase.title}
+          </h3>
+          
+          <p className="text-xs text-muted-foreground line-clamp-1">
+            {stockCase.company_name}
+          </p>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>av {stockCase.profiles?.display_name || stockCase.profiles?.username || 'Anonym'}</span>
+            </div>
             
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleLike();
-                }}
-                className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors ${
-                  isLiked ? 'text-red-500' : 'text-gray-400'
+                onClick={handleLike}
+                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full transition-colors ${
+                  isLiked 
+                    ? 'text-red-500 bg-red-50 dark:bg-red-900/20' 
+                    : 'text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
                 }`}
               >
                 <Heart className={`w-3 h-3 ${isLiked ? 'fill-current' : ''}`} />
+                <span>{likeCount}</span>
               </button>
-              <span className="text-xs text-gray-500">{likeCount}</span>
             </div>
+          </div>
+          
+          <div className="text-xs text-muted-foreground">
+            {formatDistanceToNow(new Date(stockCase.created_at), { addSuffix: true, locale: sv })}
           </div>
         </div>
       </div>
-    </div>
+      
+      <LoginPromptModal 
+        isOpen={showLoginPrompt} 
+        onClose={() => setShowLoginPrompt(false)} 
+      />
+    </>
   );
 };
 
