@@ -37,53 +37,35 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     return text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900 dark:text-gray-100">$1</strong>');
   };
 
-  // Enhanced stock suggestion extraction with more comprehensive patterns
+  // Enhanced stock suggestion extraction focusing on numbered lists and proper validation
   const extractStockSuggestions = (content: string): StockSuggestion[] => {
     const suggestions: StockSuggestion[] = [];
     
-    // Multiple regex patterns to catch different formats - enhanced version
+    // Prioritized patterns - most specific first
     const patterns = [
-      // Pattern 1: "Förslag: Company Name (TICKER)" - case insensitive
-      /(?:Förslag|Rekommendation|Aktie|Köp|Investera|Överväg):\s*([^(]+?)\s*\(([A-Z]{1,6})\)/gi,
+      // Pattern 1: "1. Company Name (TICKER)" - numbered lists (highest priority)
+      /^\d+\.\s*([^(]+?)\s*\(([A-Z]{1,6})\)/gm,
       
-      // Pattern 2: "**Company Name** (TICKER)"
+      // Pattern 2: "**Company Name (TICKER)**" - bold format
       /\*\*([^*]+?)\*\*\s*\(([A-Z]{1,6})\)/g,
       
-      // Pattern 3: "Company Name (TICKER)" - general pattern
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+?)\s*\(([A-Z]{1,6})\)/g,
+      // Pattern 3: "- Company Name (TICKER)" - bullet points
+      /^[-•·▪▫]\s*([^(]+?)\s*\(([A-Z]{1,6})\)/gm,
       
-      // Pattern 4: "1. Company Name (TICKER)" - numbered lists
-      /\d+\.\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
+      // Pattern 4: "Company Name (TICKER):" - with colon
+      /([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+?)\s*\(([A-Z]{1,6})\):/g,
       
-      // Pattern 5: "- Company Name (TICKER)" - bullet points
-      /-\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
+      // Pattern 5: "Company Name (TICKER)" - general pattern at sentence start
+      /^([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+?)\s*\(([A-Z]{1,6})\)/gm,
       
-      // Pattern 6: "• Company Name (TICKER)" - bullet points with bullet
-      /[•·▪▫]\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
+      // Pattern 6: ETF/Fund patterns
+      /([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+?)\s+(?:ETF|Fond|Index)\s*\(([A-Z]{1,6})\)/gi,
       
-      // Pattern 7: TICKER followed by company name
-      /([A-Z]{2,6}):\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+)/g,
-      
-      // Pattern 8: Company name with ticker in brackets at end of sentence
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]{3,})\s+\(([A-Z]{1,6})\)(?=[\s.,!?:]|$)/g,
-      
-      // Pattern 9: Company (TICKER) - Sektor: SectorName
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+?)\s*\(([A-Z]{1,6})\)\s*-\s*Sektor:\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+)/g,
-      
-      // Pattern 10: "Ticker: Company Name" or "TICKER - Company Name"
-      /([A-Z]{2,6})\s*[-:]\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+?)(?=\s*[-\n]|$)/g,
-      
-      // Pattern 11: Within tables or structured formats
-      /\|\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+?)\s*\|\s*([A-Z]{1,6})\s*\|/g,
-      
-      // Pattern 12: ETF patterns "Company Name ETF (TICKER)"
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+?)\s+(?:ETF|Fond)\s*\(([A-Z]{1,6})\)/gi,
-      
-      // Pattern 13: Swedish specific patterns with "aktie" or "bolag"
+      // Pattern 7: Swedish specific patterns
       /([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+?)\s+(?:aktie|bolag|AB)\s*\(([A-Z]{1,6})\)/gi,
       
-      // Pattern 14: Colon separated without spaces
-      /([A-Z]{2,6}):([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+?)(?=\s|$)/g
+      // Pattern 8: "TICKER: Company Name" format
+      /([A-Z]{2,6}):\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+?)(?=\s*[-\n.,]|$)/g
     ];
 
     // Get existing holdings symbols to filter out
@@ -91,7 +73,17 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       actualHoldings.map(holding => holding.symbol?.toUpperCase()).filter(Boolean)
     );
 
-    patterns.forEach(pattern => {
+    // Common Swedish words and phrases to exclude
+    const excludeWords = new Set([
+      'och', 'eller', 'samt', 'med', 'utan', 'för', 'till', 'från', 'av', 'på', 'i', 
+      'är', 'har', 'kan', 'ska', 'måste', 'borde', 'skulle', 'denna', 'detta', 'den',
+      'det', 'att', 'som', 'vid', 'under', 'över', 'genom', 'inom', 'mot', 'enligt',
+      'allokering', 'procent', 'investering', 'portfölj', 'aktie', 'fond', 'bolag',
+      'företag', 'marknad', 'sektor', 'risk', 'avkastning', 'tillväxt', 'stabilt',
+      'stark', 'god', 'hög', 'låg', 'mellan', 'cirka', 'runt', 'ungefär'
+    ]);
+
+    patterns.forEach((pattern, patternIndex) => {
       let match;
       const regex = new RegExp(pattern.source, pattern.flags);
       
@@ -99,32 +91,25 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         let name, symbol, sector;
         
         // Handle different capture group orders based on pattern
-        const patternIndex = patterns.indexOf(pattern);
-        
-        if (patternIndex === 6 || patternIndex === 9 || patternIndex === 13) { 
-          // Pattern 7, 10, 14: TICKER: Company or TICKER - Company or TICKER:Company
+        if (patternIndex === 7) { 
+          // Pattern 8: TICKER: Company Name
           symbol = match[1].trim();
           name = match[2].trim();
-        } else if (patternIndex === 8) { 
-          // Pattern 9: Company (TICKER) - Sektor: SectorName
-          name = match[1].trim();
-          symbol = match[2].trim();
-          sector = match[3].trim();
-        } else if (patternIndex === 10) { 
-          // Pattern 11: Table format |Company|TICKER|
-          name = match[1].trim();
-          symbol = match[2].trim();
         } else {
-          // Most common patterns: Company (TICKER) format
+          // Most patterns: Company Name (TICKER) format
           name = match[1].trim();
           symbol = match[2].trim();
         }
         
-        // Clean up the name - remove common prefixes and suffixes
+        // Clean up the name - remove numbers, colons, and common prefixes
+        name = name.replace(/^\d+\.\s*/, '').trim(); // Remove leading numbers
+        name = name.replace(/^[-•·▪▫]\s*/, '').trim(); // Remove bullet points
+        name = name.replace(/:\s*$/, '').trim(); // Remove trailing colons
         name = name.replace(/^(Aktie|Bolag|AB|Inc|Corp|Ltd)[\s:]/i, '').trim();
         name = name.replace(/[\s:](AB|Inc|Corp|Ltd)$/i, '').trim();
+        name = name.replace(/\s+/g, ' '); // Normalize spaces
         
-        // Validation checks
+        // Enhanced validation checks
         const isValidSuggestion = (
           name.length >= 2 && 
           name.length <= 100 &&
@@ -132,11 +117,18 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
           symbol.length <= 6 &&
           !existingSymbols.has(symbol.toUpperCase()) &&
           !suggestions.find(s => s.symbol === symbol.toUpperCase()) &&
-          // Avoid common false positives
-          !name.match(/^(och|eller|samt|med|utan|för|till|från|av|på|i|är|har|kan|ska|måste|borde|skulle)$/i) &&
-          // Ensure it's not just numbers or special characters
-          name.match(/[a-öA-Ö]/) &&
-          symbol.match(/^[A-Z]+$/)
+          // Check if name contains actual letters (not just numbers/symbols)
+          /[a-öA-Ö]/.test(name) &&
+          // Check if symbol is all caps
+          /^[A-Z]+$/.test(symbol) &&
+          // Exclude common Swedish words
+          !excludeWords.has(name.toLowerCase()) &&
+          // Exclude very short names that are likely words
+          !(name.length <= 3 && !/^[A-Z]/.test(name)) &&
+          // Exclude names that are just numbers or percentages
+          !/^\d+%?$/.test(name.trim()) &&
+          // Exclude names that contain only common words
+          !name.toLowerCase().split(/\s+/).every(word => excludeWords.has(word))
         );
 
         if (isValidSuggestion) {
@@ -159,6 +151,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       return acc;
     }, [] as StockSuggestion[]);
 
+    console.log('Extracted stock suggestions:', uniqueSuggestions);
     return uniqueSuggestions.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
   };
 
