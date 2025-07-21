@@ -33,11 +33,12 @@ const AppSidebar = () => {
   const aiNavigation = [
     { name: 'AI-Assistent', href: '/ai-chat', icon: Brain, priority: true },
     { name: 'Smart Portfolio', href: '/portfolio-implementation', icon: BarChart3, requiresAuth: true },
+    { name: 'Smart advanced-features', href: '/advanced-features', icon: BarChart3, requiresAuth: true },
   ];
 
   const mainNavigation = [
-    { name: 'Hem', href: '/', icon: Home },
-    { name: 'Aktiefall', href: '/stock-cases', icon: TrendingUp },
+    { name: 'Home', href: '/', icon: Home },
+    { name: 'Discover Opportunities', href: '/stock-cases', icon: TrendingUp },
   ];
 
   const userNavigation = [
