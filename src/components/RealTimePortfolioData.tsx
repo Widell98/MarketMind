@@ -1,295 +1,216 @@
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { 
+  RefreshCw, 
   TrendingUp, 
   TrendingDown, 
+  DollarSign, 
+  Calendar,
   Activity,
-  RefreshCw,
-  DollarSign,
-  BarChart3,
-  Clock
+  Target,
+  Loader2
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, AreaChart, Area } from 'recharts';
-import { useRealTimeMarketData } from '@/hooks/useRealTimeMarketData';
-import { useUserHoldings } from '@/hooks/useUserHoldings';
+import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
+import { formatCurrency } from '@/utils/currencyUtils';
 
 const RealTimePortfolioData: React.FC = () => {
-  const { actualHoldings, loading: holdingsLoading } = useUserHoldings();
-  const { quotes, portfolioPerformance, loading, error, refreshData } = useRealTimeMarketData();
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-  const [exchangeRate, setExchangeRate] = useState<number>(10.5);
+  const { 
+    performance, 
+    holdingsPerformance, 
+    loading, 
+    updating, 
+    updatePrices 
+  } = usePortfolioPerformance();
 
-  const fetchExchangeRate = async () => {
-    try {
-      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-      const data = await response.json();
-      if (data.rates && data.rates.SEK) {
-        setExchangeRate(data.rates.SEK);
-      }
-    } catch (error) {
-      console.warn('Failed to fetch exchange rate, using default:', error);
-    }
+  const getChangeIcon = (change: number) => {
+    if (change > 0) return <TrendingUp className="w-4 h-4 text-green-600" />;
+    if (change < 0) return <TrendingDown className="w-4 h-4 text-red-600" />;
+    return <Activity className="w-4 h-4 text-gray-600" />;
   };
 
-  useEffect(() => {
-    if (actualHoldings.length > 0 && !holdingsLoading) {
-      fetchExchangeRate();
-      refreshData(actualHoldings);
-      setLastRefresh(new Date());
-    }
-  }, [actualHoldings, holdingsLoading, refreshData]);
-
-  // Auto-refresh every 5 minutes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (actualHoldings.length > 0) {
-        fetchExchangeRate();
-        refreshData(actualHoldings);
-        setLastRefresh(new Date());
-      }
-    }, 5 * 60 * 1000);
-
-    return () => clearInterval(interval);
-  }, [actualHoldings, refreshData]);
-
-  const handleManualRefresh = () => {
-    if (actualHoldings.length > 0) {
-      fetchExchangeRate();
-      refreshData(actualHoldings);
-      setLastRefresh(new Date());
-    }
+  const getChangeColor = (change: number) => {
+    if (change > 0) return 'text-green-600';
+    if (change < 0) return 'text-red-600';
+    return 'text-gray-600';
   };
 
-  const convertToSEK = (amount: number, fromCurrency: string): number => {
-    if (fromCurrency === 'USD') {
-      return amount * exchangeRate;
-    }
-    return amount; // Assume SEK if not USD
-  };
-
-  const formatCurrency = (amount: number, currency: string = 'SEK') => {
-    const currencyCode = currency === 'SEK' ? 'SEK' : 'USD';
-    return new Intl.NumberFormat('sv-SE', {
-      style: 'currency',
-      currency: currencyCode,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: currency === 'SEK' ? 0 : 2
-    }).format(amount);
-  };
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('sv-SE', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-  };
-
-  if (holdingsLoading || actualHoldings.length === 0) {
+  if (loading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="w-5 h-5 text-blue-600" />
-            Realtids Portföljdata
-          </CardTitle>
-          <CardDescription>Aktuella värden på dina innehav</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            {holdingsLoading ? (
-              <div className="flex items-center justify-center gap-2">
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Laddar innehav...</span>
-              </div>
-            ) : (
-              <div>
-                <Activity className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p>Lägg till aktier i dina innehav för att se realtidsdata</p>
-              </div>
-            )}
-          </div>
+        <CardContent className="flex items-center justify-center p-8">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span className="ml-2">Beräknar portföljdata...</span>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Portfolio Summary */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-blue-600" />
-                Realtids Portföljdata
-              </CardTitle>
-              <CardDescription>
-                Senast uppdaterad: {formatTime(lastRefresh)} • 1 USD = {exchangeRate.toFixed(2)} SEK
-              </CardDescription>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleManualRefresh}
-              disabled={loading}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Uppdatera
-            </Button>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="w-5 h-5 text-primary" />
+              Portföljöversikt
+            </CardTitle>
+            <CardDescription>
+              Senast uppdaterad: {new Date(performance.lastUpdated).toLocaleString('sv-SE')}
+            </CardDescription>
           </div>
+          <Button 
+            onClick={updatePrices} 
+            disabled={updating}
+            variant="outline"
+            size="sm"
+          >
+            {updating ? (
+              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            ) : (
+              <RefreshCw className="w-4 h-4 mr-2" />
+            )}
+            Uppdatera priser
+          </Button>
         </CardHeader>
         <CardContent>
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-              {error}
-            </div>
-          )}
-          
-          {portfolioPerformance ? (
-            <div className="space-y-4">
-              {/* Key Metrics */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-muted/30 p-4 rounded-lg">
-                  <div className="flex items-center gap-2 mb-1">
-                    <DollarSign className="w-4 h-4 text-green-600" />
-                    <span className="text-sm font-medium">Totalt Värde</span>
-                  </div>
-                  <div className="text-2xl font-bold">
-                    {formatCurrency(portfolioPerformance.totalValue, 'SEK')}
-                  </div>
-                </div>
-                
-                <div className="bg-muted/30 p-4 rounded-lg">
-                  <div className="flex items-center gap-2 mb-1">
-                    <TrendingUp className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-medium">Total Avkastning</span>
-                  </div>
-                  <div className="text-2xl font-bold flex items-center gap-2">
-                    {formatCurrency(portfolioPerformance.totalChange, 'SEK')}
-                    <Badge variant={portfolioPerformance.totalChangePercent >= 0 ? "default" : "destructive"}>
-                      {portfolioPerformance.totalChangePercent >= 0 ? '+' : ''}
-                      {portfolioPerformance.totalChangePercent.toFixed(2)}%
-                    </Badge>
-                  </div>
-                </div>
-                
-                <div className="bg-muted/30 p-4 rounded-lg">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Activity className="w-4 h-4 text-purple-600" />
-                    <span className="text-sm font-medium">Dagens Förändring</span>
-                  </div>
-                  <div className="text-2xl font-bold flex items-center gap-2">
-                    {formatCurrency(portfolioPerformance.dailyChange, 'SEK')}
-                    <Badge variant={portfolioPerformance.dailyChangePercent >= 0 ? "default" : "destructive"}>
-                      {portfolioPerformance.dailyChangePercent >= 0 ? '+' : ''}
-                      {portfolioPerformance.dailyChangePercent.toFixed(2)}%
-                    </Badge>
-                  </div>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Total Value */}
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium">Totalt värde</span>
               </div>
-              
-              {/* Historical Performance Chart */}
-              {portfolioPerformance.historicalData.length > 0 && (
-                <div className="bg-muted/20 p-4 rounded-lg">
-                  <h4 className="font-medium mb-4 flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4" />
-                    Historisk Prestanda (30 dagar)
-                  </h4>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={portfolioPerformance.historicalData}>
-                        <XAxis 
-                          dataKey="date" 
-                          tick={{ fontSize: 12 }}
-                          tickFormatter={(value) => new Date(value).toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' })}
-                        />
-                        <YAxis tick={{ fontSize: 12 }} />
-                        <Tooltip
-                          labelFormatter={(value) => new Date(value).toLocaleDateString('sv-SE')}
-                          formatter={(value: number) => [formatCurrency(value, 'SEK'), 'Stängningskurs']}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="close"
-                          stroke="#3B82F6"
-                          fill="#3B82F6"
-                          fillOpacity={0.1}
-                          strokeWidth={2}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              )}
+              <div className="text-2xl font-bold">{formatCurrency(performance.totalValue)}</div>
             </div>
-          ) : (
-            <div className="text-center py-8">
-              <div className="animate-pulse">
-                <div className="h-4 bg-muted rounded w-3/4 mb-4 mx-auto"></div>
-                <div className="h-8 bg-muted rounded w-1/2 mx-auto"></div>
+
+            {/* Total Return */}
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Activity className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium">Total avkastning</span>
+              </div>
+              <div className={`text-2xl font-bold flex items-center gap-2 ${getChangeColor(performance.totalReturn)}`}>
+                {performance.totalReturn > 0 ? '+' : ''}{formatCurrency(performance.totalReturn)}
+                {getChangeIcon(performance.totalReturn)}
+              </div>
+              <div className={`text-sm ${getChangeColor(performance.totalReturnPercentage)}`}>
+                {performance.totalReturnPercentage > 0 ? '+' : ''}{performance.totalReturnPercentage}%
               </div>
             </div>
-          )}
+
+            {/* Day Change */}
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium">Idag</span>
+              </div>
+              <div className={`text-2xl font-bold flex items-center gap-2 ${getChangeColor(performance.dayChange)}`}>
+                {performance.dayChange > 0 ? '+' : ''}{formatCurrency(performance.dayChange)}
+                {getChangeIcon(performance.dayChange)}
+              </div>
+              <div className={`text-sm ${getChangeColor(performance.dayChangePercentage)}`}>
+                {performance.dayChangePercentage > 0 ? '+' : ''}{performance.dayChangePercentage}%
+              </div>
+            </div>
+
+            {/* Invested Amount */}
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Target className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium">Investerat</span>
+              </div>
+              <div className="text-2xl font-bold">{formatCurrency(performance.totalInvested)}</div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Individual Stock Performance */}
-      {Object.keys(quotes).length > 0 && (
+      {/* Holdings Performance */}
+      {holdingsPerformance.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-green-600" />
-              Innehav Prestanda
-            </CardTitle>
-            <CardDescription>Realtidskurser för dina aktier (konverterat till SEK)</CardDescription>
+            <CardTitle>Innehav avkastning</CardTitle>
+            <CardDescription>
+              Detaljerad avkastning per innehav
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {actualHoldings
-                .filter(holding => quotes[holding.symbol])
-                .map(holding => {
-                  const quote = quotes[holding.symbol];
-                  const holdingCurrency = holding.currency || 'SEK';
-                  
-                  // Convert prices to SEK for consistent display
-                  const priceInSEK = holdingCurrency === 'USD' ? convertToSEK(quote.price, 'USD') : quote.price;
-                  const changeInSEK = holdingCurrency === 'USD' ? convertToSEK(quote.change, 'USD') : quote.change;
-                  
-                  const totalValue = priceInSEK * (holding.quantity || 1);
-                  const totalChange = changeInSEK * (holding.quantity || 1);
-                  
-                  return (
-                    <div key={holding.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium">{holding.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {holding.quantity} aktier × {formatCurrency(priceInSEK, 'SEK')}
-                          {holdingCurrency !== 'SEK' && (
-                            <span className="ml-2 text-xs text-blue-600">
-                              (Original: {formatCurrency(quote.price, holdingCurrency)})
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-medium">{formatCurrency(totalValue, 'SEK')}</div>
-                        <div className={`text-sm flex items-center gap-1 ${quote.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {quote.change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                          {formatCurrency(Math.abs(totalChange), 'SEK')} ({Math.abs(quote.changePercent).toFixed(2)}%)
-                        </div>
-                      </div>
+              {holdingsPerformance.map((holding) => (
+                <div key={holding.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-medium">{holding.name}</h4>
+                      {holding.symbol && (
+                        <Badge variant="outline" className="text-xs">
+                          {holding.symbol}
+                        </Badge>
+                      )}
                     </div>
-                  );
-                })}
+                    <div className="text-sm text-muted-foreground">
+                      {formatCurrency(holding.currentValue)} / {formatCurrency(holding.investedValue)}
+                    </div>
+                  </div>
+                  
+                  <div className="text-right">
+                    {/* Total Performance */}
+                    <div className={`flex items-center gap-1 ${getChangeColor(holding.profit)}`}>
+                      <span className="font-medium">
+                        {holding.profit > 0 ? '+' : ''}{formatCurrency(holding.profit)}
+                      </span>
+                      {getChangeIcon(holding.profit)}
+                    </div>
+                    <div className={`text-sm ${getChangeColor(holding.profitPercentage)}`}>
+                      {holding.profitPercentage > 0 ? '+' : ''}{holding.profitPercentage.toFixed(2)}%
+                    </div>
+                    
+                    {/* Day Change */}
+                    <div className={`text-xs ${getChangeColor(holding.dayChange)}`}>
+                      Idag: {holding.dayChange > 0 ? '+' : ''}{formatCurrency(holding.dayChange)}
+                      ({holding.dayChangePercentage > 0 ? '+' : ''}{holding.dayChangePercentage.toFixed(2)}%)
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Performance Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Portföljsammanfattning</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+            <div className="p-4 border rounded-lg">
+              <div className="text-2xl font-bold text-green-600">
+                {holdingsPerformance.filter(h => h.profit > 0).length}
+              </div>
+              <div className="text-sm text-muted-foreground">Vinnande innehav</div>
+            </div>
+            
+            <div className="p-4 border rounded-lg">
+              <div className="text-2xl font-bold text-red-600">
+                {holdingsPerformance.filter(h => h.profit < 0).length}
+              </div>
+              <div className="text-sm text-muted-foreground">Förlorande innehav</div>
+            </div>
+            
+            <div className="p-4 border rounded-lg">
+              <div className="text-2xl font-bold text-blue-600">
+                {holdingsPerformance.length}
+              </div>
+              <div className="text-sm text-muted-foreground">Totalt antal innehav</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

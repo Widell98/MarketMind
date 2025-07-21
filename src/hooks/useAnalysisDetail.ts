@@ -8,8 +8,10 @@ export const useAnalysisDetail = (id: string) => {
   const { user } = useAuth();
   
   return useQuery({
-    queryKey: ['analysis', id],
+    queryKey: ['analysis', id, user?.id],
     queryFn: async () => {
+      console.log('Fetching analysis detail for ID:', id, 'User:', user?.id);
+      
       const { data: analysisData, error: analysisError } = await supabase
         .from('analyses')
         .select(`
@@ -29,12 +31,23 @@ export const useAnalysisDetail = (id: string) => {
         throw analysisError;
       }
 
+      console.log('Analysis fetched:', analysisData);
+
       // Get like count and user's like status
       const [likeCountResult, userLikeResult, commentCountResult] = await Promise.all([
         supabase.rpc('get_analysis_like_count', { analysis_id: id }),
-        user ? supabase.rpc('user_has_liked_analysis', { analysis_id: id, user_id: user.id }) : null,
+        user ? supabase
+          .from('analysis_likes')
+          .select('id')
+          .eq('analysis_id', id)
+          .eq('user_id', user.id)
+          .maybeSingle() : null,
         supabase.rpc('get_analysis_comment_count', { analysis_id: id })
       ]);
+
+      console.log('Like count result:', likeCountResult);
+      console.log('User like result:', userLikeResult);
+      console.log('Comment count result:', commentCountResult);
 
       // Safely handle related_holdings
       let relatedHoldings: any[] = [];
@@ -51,11 +64,12 @@ export const useAnalysisDetail = (id: string) => {
         analysis_type: analysisData.analysis_type as 'market_insight' | 'technical_analysis' | 'fundamental_analysis' | 'sector_analysis' | 'portfolio_analysis' | 'position_analysis' | 'sector_deep_dive',
         likes_count: likeCountResult.data || 0,
         comments_count: commentCountResult.data || 0,
-        isLiked: userLikeResult?.data || false,
+        isLiked: !!userLikeResult?.data,
         related_holdings: relatedHoldings,
         profiles: Array.isArray(analysisData.profiles) ? analysisData.profiles[0] || null : analysisData.profiles
       };
 
+      console.log('Transformed analysis:', transformedAnalysis);
       return transformedAnalysis;
     },
   });

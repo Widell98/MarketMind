@@ -47,18 +47,29 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
     if (!newSymbol.trim()) return;
     
     const message = `Jag vill ersätta ${oldSymbol} med ${newSymbol.toUpperCase()} i min portfölj. Kan du analysera om det är en bra idé och genomföra bytet om det passar min riskprofil?`;
-    onQuickChat(message);
+    
+    // Navigate to AI chat and pre-fill the input (without sending)
+    navigate('/ai-chat');
+    
+    // Small delay to ensure navigation is complete before dispatching event
+    setTimeout(() => {
+      const event = new CustomEvent('prefillChatInput', {
+        detail: { message }
+      });
+      window.dispatchEvent(event);
+    }, 100);
+    
     setEditingHolding(null);
     setNewSymbol('');
   };
 
   const handleQuickAction = (message: string) => {
-    // Navigate to AI chat and trigger the pre-filled message
+    // Navigate to AI chat and pre-fill the input (without sending)
     navigate('/ai-chat');
     
     // Small delay to ensure navigation is complete before dispatching event
     setTimeout(() => {
-      const event = new CustomEvent('sendExamplePrompt', {
+      const event = new CustomEvent('prefillChatInput', {
         detail: { message }
       });
       window.dispatchEvent(event);
@@ -90,16 +101,16 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
   ];
 
   return (
-    <div className="w-full max-w-full space-y-4 sm:space-y-6">
+    <div className="w-full max-w-full space-y-4 sm:space-y-6 overflow-hidden">
       {/* Portfolio Actions */}
       <Card className="w-full">
-        <CardHeader className="pb-3 p-3 sm:p-6">
+        <CardHeader className="pb-3 p-3 sm:p-4 md:p-6">
           <CardTitle className="text-sm sm:text-base">Portföljhantering</CardTitle>
           <CardDescription className="text-xs sm:text-sm">
             Hantera dina innehav genom att prata med AI:n
           </CardDescription>
         </CardHeader>
-        <CardContent className="pt-0 p-3 sm:p-6">
+        <CardContent className="pt-0 p-3 sm:p-4 md:p-6">
           <div className="grid grid-cols-1 gap-2 sm:gap-3">
             {quickPortfolioActions.map((action, index) => {
               const Icon = action.icon;
@@ -107,13 +118,13 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
                 <Button
                   key={index}
                   variant="outline"
-                  className="justify-start h-auto p-3 sm:p-4 text-left w-full"
+                  className="justify-start h-auto p-3 sm:p-4 text-left w-full min-w-0"
                   onClick={() => handleQuickAction(action.message)}
                 >
                   <Icon className={`w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 flex-shrink-0 ${action.color}`} />
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 overflow-hidden">
                     <div className="font-medium text-xs sm:text-sm truncate">{action.title}</div>
-                    <div className="text-xs text-muted-foreground mt-1 truncate sm:whitespace-normal">{action.description}</div>
+                    <div className="text-xs text-muted-foreground mt-1 line-clamp-2 sm:line-clamp-1">{action.description}</div>
                   </div>
                 </Button>
               );
@@ -125,9 +136,9 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
       {/* Current Holdings */}
       {holdings.length > 0 && (
         <Card className="w-full">
-          <CardHeader className="pb-3 p-3 sm:p-6">
-            <CardTitle className="text-sm sm:text-base flex items-center gap-2">
-              <span className="truncate">Dina AI-rekommendationer</span>
+          <CardHeader className="pb-3 p-3 sm:p-4 md:p-6">
+            <CardTitle className="text-sm sm:text-base flex items-center gap-2 min-w-0">
+              <span className="truncate flex-1">Dina AI-rekommendationer</span>
               <Badge variant="secondary" className="text-xs flex-shrink-0">
                 {holdings.length} aktier
               </Badge>
@@ -136,18 +147,18 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
               Klicka på en aktie för att ersätta den eller prata med AI:n
             </CardDescription>
           </CardHeader>
-          <CardContent className="pt-0 p-3 sm:p-6">
+          <CardContent className="pt-0 p-3 sm:p-4 md:p-6">
             <div className="space-y-2 sm:space-y-3">
               {holdings.map((stock: any, index: number) => (
                 <div 
                   key={index}
-                  className="flex items-center justify-between p-2 sm:p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                  className="flex items-center justify-between p-2 sm:p-3 bg-gray-50 dark:bg-gray-800 rounded-lg gap-2 min-w-0"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="min-w-0 flex-1">
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                      <div className="min-w-0 flex-1 overflow-hidden">
                         <h4 className="font-medium text-xs sm:text-sm truncate">{stock.symbol || `Aktie ${index + 1}`}</h4>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground truncate">
                           {stock.allocation}% av portföljen
                         </p>
                       </div>
@@ -158,26 +169,26 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
                     {stock.expected_return && (
                       <Badge 
                         variant={stock.expected_return >= 0 ? "default" : "destructive"} 
-                        className="text-xs"
+                        className="text-xs whitespace-nowrap hidden xs:inline-flex"
                       >
                         {stock.expected_return >= 0 ? '+' : ''}{stock.expected_return}%
                       </Badge>
                     )}
                     
                     {editingHolding === stock.symbol ? (
-                      <div className="flex items-center gap-1 sm:gap-2">
+                      <div className="flex items-center gap-1 flex-shrink-0">
                         <Input
                           placeholder="AAPL"
                           value={newSymbol}
                           onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
-                          className="w-16 sm:w-20 h-6 sm:h-8 text-xs"
+                          className="w-12 sm:w-16 h-6 sm:h-8 text-xs px-1 sm:px-2"
                           maxLength={10}
                         />
                         <Button
                           size="sm"
                           onClick={() => handleReplaceStock(stock.symbol, newSymbol)}
                           disabled={!newSymbol.trim()}
-                          className="h-6 w-6 sm:h-8 sm:w-8 p-0"
+                          className="h-6 w-6 sm:h-8 sm:w-8 p-0 flex-shrink-0"
                         >
                           <Check className="w-3 h-3" />
                         </Button>
@@ -185,18 +196,18 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
                           size="sm"
                           variant="outline"
                           onClick={handleCancelEdit}
-                          className="h-6 w-6 sm:h-8 sm:w-8 p-0"
+                          className="h-6 w-6 sm:h-8 sm:w-8 p-0 flex-shrink-0"
                         >
                           <X className="w-3 h-3" />
                         </Button>
                       </div>
                     ) : (
-                      <>
+                      <div className="flex items-center gap-1 flex-shrink-0">
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => handleEditClick(stock.symbol)}
-                          className="h-6 w-6 sm:h-8 sm:w-8 p-0"
+                          className="h-6 w-6 sm:h-8 sm:w-8 p-0 flex-shrink-0"
                         >
                           <Edit3 className="w-3 h-3" />
                         </Button>
@@ -204,11 +215,11 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
                           size="sm"
                           variant="outline"
                           onClick={() => handleQuickAction(`Berätta mer om ${stock.symbol} och varför den är med i min portfölj. Vad är riskerna och möjligheterna?`)}
-                          className="h-6 w-6 sm:h-8 sm:w-8 p-0"
+                          className="h-6 w-6 sm:h-8 sm:w-8 p-0 flex-shrink-0"
                         >
                           <MessageCircle className="w-3 h-3" />
                         </Button>
-                      </>
+                      </div>
                     )}
                   </div>
                 </div>

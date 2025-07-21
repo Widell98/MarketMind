@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -8,9 +8,11 @@ import {
   ChevronDown, 
   ChevronUp, 
   History,
-  Zap
+  Zap,
+  Edit2
 } from 'lucide-react';
 import ChatSessionList from './ChatSessionList';
+import EditSessionNameDialog from './EditSessionNameDialog';
 
 interface ChatSession {
   id: string;
@@ -28,6 +30,7 @@ interface ChatHeaderProps {
   onNewSession: () => void;
   onLoadSession: (sessionId: string) => void;
   onDeleteSession: (sessionId: string) => void;
+  onEditSessionName: (sessionId: string, newName: string) => void;
 }
 
 const ChatHeader = ({
@@ -38,8 +41,20 @@ const ChatHeader = ({
   isLoading,
   onNewSession,
   onLoadSession,
-  onDeleteSession
+  onDeleteSession,
+  onEditSessionName
 }: ChatHeaderProps) => {
+  const [editingSession, setEditingSession] = useState<ChatSession | null>(null);
+
+  const currentSession = sessions.find(session => session.id === currentSessionId);
+
+  const handleEditSessionName = (newName: string) => {
+    if (editingSession) {
+      onEditSessionName(editingSession.id, newName);
+      setEditingSession(null);
+    }
+  };
+
   return (
     <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700 p-4 sm:p-6 lg:p-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -49,7 +64,21 @@ const ChatHeader = ({
           </div>
           <div>
             <h2 className="text-xl sm:text-2xl xl:text-3xl font-bold text-slate-800 dark:text-slate-100">AI Portfolio Assistent</h2>
-            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300">Din intelligenta investeringsrådgivare</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300">
+                {currentSession ? currentSession.session_name : 'Din intelligenta investeringsrådgivare'}
+              </p>
+              {currentSession && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEditingSession(currentSession)}
+                  className="h-6 w-6 p-0 opacity-50 hover:opacity-100 transition-opacity"
+                >
+                  <Edit2 className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
         
@@ -91,11 +120,19 @@ const ChatHeader = ({
                 currentSessionId={currentSessionId}
                 onLoadSession={onLoadSession}
                 onDeleteSession={onDeleteSession}
+                onEditSession={setEditingSession}
               />
             </ScrollArea>
           </div>
         </CollapsibleContent>
       </Collapsible>
+
+      <EditSessionNameDialog
+        isOpen={!!editingSession}
+        onClose={() => setEditingSession(null)}
+        currentName={editingSession?.session_name || ''}
+        onSave={handleEditSessionName}
+      />
     </div>
   );
 };

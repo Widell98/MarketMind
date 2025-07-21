@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -38,7 +39,6 @@ const EditHoldingDialog: React.FC<EditHoldingDialogProps> = ({
     name: '',
     symbol: '',
     quantity: '',
-    current_value: '',
     purchase_price: '',
     purchase_date: '',
     sector: '',
@@ -53,7 +53,6 @@ const EditHoldingDialog: React.FC<EditHoldingDialogProps> = ({
         name: holding.name || '',
         symbol: holding.symbol || '',
         quantity: holding.quantity?.toString() || '',
-        current_value: holding.current_value?.toString() || '',
         purchase_price: holding.purchase_price?.toString() || '',
         purchase_date: holding.purchase_date || '',
         sector: holding.sector || '',
@@ -73,7 +72,6 @@ const EditHoldingDialog: React.FC<EditHoldingDialogProps> = ({
       name: formData.name.trim(),
       symbol: formData.symbol.trim() || undefined,
       quantity: formData.quantity ? parseFloat(formData.quantity) : undefined,
-      current_value: formData.current_value ? parseFloat(formData.current_value) : undefined,
       purchase_price: formData.purchase_price ? parseFloat(formData.purchase_price) : undefined,
       purchase_date: formData.purchase_date || undefined,
       sector: formData.sector.trim() || undefined,
@@ -168,20 +166,6 @@ const EditHoldingDialog: React.FC<EditHoldingDialogProps> = ({
               />
             </div>
             <div>
-              <Label htmlFor="current_value">Aktuellt värde</Label>
-              <Input
-                id="current_value"
-                type="number"
-                step="0.01"
-                value={formData.current_value}
-                onChange={(e) => setFormData({ ...formData, current_value: e.target.value })}
-                placeholder="0"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
               <Label htmlFor="purchase_price">Inköpspris</Label>
               <Input
                 id="purchase_price"
@@ -192,6 +176,9 @@ const EditHoldingDialog: React.FC<EditHoldingDialogProps> = ({
                 placeholder="0"
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="purchase_date">Inköpsdatum</Label>
               <Input
@@ -201,9 +188,6 @@ const EditHoldingDialog: React.FC<EditHoldingDialogProps> = ({
                 onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
               />
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="sector">Sektor</Label>
               <Input
@@ -213,15 +197,16 @@ const EditHoldingDialog: React.FC<EditHoldingDialogProps> = ({
                 placeholder="Teknologi"
               />
             </div>
-            <div>
-              <Label htmlFor="market">Marknad</Label>
-              <Input
-                id="market"
-                value={formData.market}
-                onChange={(e) => setFormData({ ...formData, market: e.target.value })}
-                placeholder="Stockholm"
-              />
-            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="market">Marknad</Label>
+            <Input
+              id="market"
+              value={formData.market}
+              onChange={(e) => setFormData({ ...formData, market: e.target.value })}
+              placeholder="Stockholm"
+            />
           </div>
 
           <DialogFooter>

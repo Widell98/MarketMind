@@ -77,6 +77,24 @@ export const useStockCaseImageHistory = (stockCaseId: string) => {
 
   const setCurrentImage = async (imageId: string) => {
     try {
+      // First, get the stock case to check ownership
+      const { data: stockCase, error: stockCaseError } = await supabase
+        .from('stock_cases')
+        .select('user_id')
+        .eq('id', stockCaseId)
+        .single();
+
+      if (stockCaseError) {
+        console.error('Error fetching stock case:', stockCaseError);
+        return;
+      }
+
+      // Check if current user is the owner of the stock case
+      if (!user || stockCase.user_id !== user.id) {
+        console.error('Only the case owner can set the current image');
+        return;
+      }
+
       // Unset all current flags
       await (supabase as any)
         .from('stock_case_image_history')

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +18,7 @@ export interface UserHolding {
   currency: string;
   created_at: string;
   updated_at: string;
+  allocation?: number;
 }
 
 export const useUserHoldings = () => {
@@ -59,24 +59,130 @@ export const useUserHoldings = () => {
         return;
       }
 
-      // Type cast the data properly
-      const typedData: UserHolding[] = (data || []).map(item => ({
-        ...item,
-        holding_type: item.holding_type as UserHolding['holding_type']
-      }));
+      // Type cast the data properly and handle duplicates
+      const typedData: UserHolding[] = (data || []).map(item => {
+        const holding: UserHolding = {
+          id: item.id,
+          user_id: item.user_id,
+          holding_type: item.holding_type as UserHolding['holding_type'],
+          name: item.name,
+          symbol: item.symbol,
+          quantity: item.quantity,
+          current_value: item.current_value,
+          purchase_price: item.purchase_price,
+          purchase_date: item.purchase_date,
+          sector: item.sector,
+          market: item.market,
+          currency: item.currency,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+          allocation: item.allocation ? Number(item.allocation) : undefined
+        };
+
+        return holding;
+      });
 
       console.log('All holdings fetched:', typedData);
 
-      // Separate recommendations from actual holdings
+      // Helper function to normalize company names for comparison
+      const normalizeCompanyName = (name: string): string => {
+        return name
+          .toLowerCase()
+          .replace(/\s+(inc|ab|corp|ltd|etf|gaming)$/i, '') // Remove common suffixes
+          .replace(/\s+/g, ' ') // Normalize spaces
+          .trim();
+      };
+
+      // Helper function to check if a name is a valid stock/fund name
+      const isValidStockOrFund = (name: string): boolean => {
+        // Filter out strategy/concept names that are not actual stocks/funds
+        const invalidPatterns = [
+          'skatteoptimering',
+          'månadssparande',
+          'rebalanseringsstrategi',
+          'total allokering',
+          'investera',
+          'diversifiering',
+          'riskhantering',
+          'portföljstrategi',
+          'allokeringsstrategi',
+          'investeringsstrategi',
+          'strategi',
+          'optimering',
+          'sparande',
+          'plan',
+          'metod',
+          'teknik',
+          'approach',
+          'strategy'
+        ];
+        
+        const lowerName = name.toLowerCase();
+        
+        // Check if it matches any invalid pattern
+        if (invalidPatterns.some(pattern => lowerName.includes(pattern))) {
+          console.log(`Filtering out strategy/concept item: ${name}`);
+          return false;
+        }
+        
+        // Must have reasonable length (not too short, not too long)
+        if (name.length < 2 || name.length > 60) {
+          console.log(`Filtering out item with invalid length: ${name}`);
+          return false;
+        }
+        
+        return true;
+      };
+
+      // Remove duplicates from recommendations based on normalized name
+      const seenRecommendations = new Set<string>();
+      const uniqueRecommendations = typedData
+        .filter(h => h.holding_type === 'recommendation')
+        .filter(recommendation => {
+          // Skip invalid recommendations (strategy names, not actual stocks/funds)
+          if (!isValidStockOrFund(recommendation.name)) {
+            return false;
+          }
+          
+          // Create a unique key based on normalized name
+          const normalizedName = normalizeCompanyName(recommendation.name);
+          
+          if (seenRecommendations.has(normalizedName)) {
+            console.log(`Filtering out duplicate: ${recommendation.name} (normalized: ${normalizedName})`);
+            return false; // Skip duplicate
+          }
+          
+          seenRecommendations.add(normalizedName);
+          return true;
+        })
+        // Sort by created_at to keep the most recent version
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      console.log('Unique recommendations after deduplication:', uniqueRecommendations);
+
+      // Use actual allocation data if available, otherwise add mock allocation data for display purposes
+      const recommendationsWithAllocation = uniqueRecommendations.map((rec, index) => {
+        // If allocation is already set, use it, otherwise provide default allocations
+        if (rec.allocation) {
+          return rec;
+        }
+        
+        const allocations = [25, 20, 20, 15, 10, 10]; // Example allocations that sum to 100%
+        return {
+          ...rec,
+          allocation: allocations[index % allocations.length]
+        };
+      });
+
+      // Separate actual holdings (no duplicates needed here since they're user-entered)
       const actualHoldingsData = typedData.filter(h => h.holding_type !== 'recommendation');
-      const recommendationsData = typedData.filter(h => h.holding_type === 'recommendation');
 
+      console.log('Final unique recommendations:', recommendationsWithAllocation);
       console.log('Actual holdings:', actualHoldingsData);
-      console.log('Recommendations:', recommendationsData);
 
-      setHoldings(typedData);
+      setHoldings([...actualHoldingsData, ...recommendationsWithAllocation]);
       setActualHoldings(actualHoldingsData);
-      setRecommendations(recommendationsData);
+      setRecommendations(recommendationsWithAllocation);
     } catch (error) {
       console.error('Error fetching holdings:', error);
     } finally {
@@ -110,8 +216,27 @@ export const useUserHoldings = () => {
       if (data) {
         const typedData: UserHolding = {
           ...data,
-          holding_type: data.holding_type as UserHolding['holding_type']
+          holding_type: data.holding_type as UserHolding['holding_type'],
+          allocation: data.allocation ? Number(data.allocation) : undefined
         };
+        
+        // Record initial performance entry for actual holdings
+        if (typedData.holding_type !== 'recommendation' && typedData.current_value && typedData.purchase_price && typedData.quantity) {
+          try {
+            await supabase
+              .from('portfolio_performance_history')
+              .insert({
+                user_id: user.id,
+                holding_id: typedData.id,
+                date: new Date().toISOString().split('T')[0],
+                price_per_unit: typedData.purchase_price,
+                total_value: typedData.current_value,
+                currency: typedData.currency
+              });
+          } catch (error) {
+            console.error('Error recording initial performance:', error);
+          }
+        }
         
         setHoldings(prev => [typedData, ...prev]);
         
@@ -161,7 +286,8 @@ export const useUserHoldings = () => {
       if (data) {
         const typedData: UserHolding = {
           ...data,
-          holding_type: data.holding_type as UserHolding['holding_type']
+          holding_type: data.holding_type as UserHolding['holding_type'],
+          allocation: data.allocation ? Number(data.allocation) : undefined
         };
         
         setHoldings(prev => prev.map(h => h.id === id ? typedData : h));

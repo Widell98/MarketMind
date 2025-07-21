@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -20,18 +19,20 @@ import { Brain, TrendingUp, Target, BarChart3, Activity, Crown, AlertCircle, Use
 
 const PortfolioImplementation = () => {
   const { activePortfolio, loading } = usePortfolio();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { riskProfile, loading: riskProfileLoading } = useRiskProfile();
   const navigate = useNavigate();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
-    if (!user && !loading) {
-      // Show login modal for unauthenticated users
+    // Only show login modal if auth has finished loading and user is not authenticated
+    if (!authLoading && !user) {
       setShowLoginModal(true);
+    } else if (user) {
+      setShowLoginModal(false);
     }
-  }, [user, loading]);
+  }, [user, authLoading]);
 
   useEffect(() => {
     if (!user || loading) return;
@@ -70,12 +71,12 @@ const PortfolioImplementation = () => {
     return (
       <Layout>
         <div className="min-h-screen flex items-center justify-center p-4">
-          <div className="text-center p-6 sm:p-8 bg-white dark:bg-gray-800 backdrop-blur-lg border border-gray-200 dark:border-gray-700 rounded-3xl shadow-2xl max-w-sm mx-auto">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6 bg-primary shadow-2xl">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+          <div className="text-center p-6 bg-white dark:bg-gray-800 backdrop-blur-lg border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl w-full max-w-sm mx-auto">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 bg-primary shadow-2xl">
+              <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
             </div>
-            <h2 className="text-lg sm:text-xl font-semibold mb-2 text-foreground">Laddar din portfölj</h2>
-            <p className="text-sm sm:text-base text-muted-foreground">Hämtar dina investeringsdata...</p>
+            <h2 className="text-lg font-semibold mb-2 text-foreground">Laddar din portfölj</h2>
+            <p className="text-sm text-muted-foreground">Hämtar dina investeringsdata...</p>
           </div>
         </div>
       </Layout>
@@ -86,16 +87,16 @@ const PortfolioImplementation = () => {
   if (showOnboarding) {
     return (
       <Layout>
-        <div className="min-h-screen py-4 sm:py-6 lg:py-8 px-4">
+        <div className="min-h-screen py-6 px-4">
           <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-6 sm:mb-8">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl flex items-center justify-center mx-auto mb-4 sm:mb-6 bg-primary shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
-                <Brain className="w-8 h-8 sm:w-10 sm:h-10 text-primary-foreground" />
+            <div className="text-center mb-8">
+              <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 bg-primary shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                <Brain className="w-10 h-10 text-primary-foreground" />
               </div>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 text-foreground">
+              <h1 className="text-3xl font-bold mb-4 text-foreground">
                 Skapa din investeringsprofil
               </h1>
-              <p className="text-base sm:text-lg max-w-2xl mx-auto text-muted-foreground px-4">
+              <p className="text-lg max-w-2xl mx-auto text-muted-foreground px-4">
                 Låt oss skapa din personliga investeringsstrategi genom en kort konversation
               </p>
             </div>
@@ -114,38 +115,38 @@ const PortfolioImplementation = () => {
         onClose={() => setShowLoginModal(false)} 
       />
       
-      <div className="min-h-screen">
-        <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8 max-w-[1400px]">
-          {/* Modern Header - Mobile Optimized */}
-          <div className="mb-4 sm:mb-6">
-            <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
-              <div className="space-y-2 sm:space-y-3">
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-6 max-w-[1400px]">
+          {/* Modern Header - Fully Responsive */}
+          <div className="mb-6">
+            <div className="flex flex-col gap-4 mb-6">
+              <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-primary shadow-lg">
-                    <Brain className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-primary shadow-lg flex-shrink-0">
+                    <Brain className="w-6 h-6 text-primary-foreground" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-0.5 sm:mb-1 text-foreground">
+                    <h1 className="text-2xl md:text-3xl font-bold mb-1 text-foreground">
                       AI Portfolio Hub
                     </h1>
-                    <p className="text-xs sm:text-sm lg:text-base text-muted-foreground">
+                    <p className="text-sm md:text-base text-muted-foreground">
                       Intelligenta investeringsinsikter för din framgång
                     </p>
                   </div>
                 </div>
                 
-                <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                  <Badge className="px-2 sm:px-3 py-0.5 sm:py-1 text-xs font-medium bg-primary text-primary-foreground border-0 shadow-sm">
-                    <Brain className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1 sm:mr-1.5" />
+                <div className="flex flex-wrap gap-2">
+                  <Badge className="px-3 py-1 text-xs font-medium bg-primary text-primary-foreground border-0 shadow-sm">
+                    <Brain className="w-3 h-3 mr-1" />
                     AI-Optimerad
                   </Badge>
-                  <Badge className="px-2 sm:px-3 py-0.5 sm:py-1 text-xs font-medium bg-secondary text-secondary-foreground border-0 shadow-sm">
-                    <Activity className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1 sm:mr-1.5" />
+                  <Badge className="px-3 py-1 text-xs font-medium bg-secondary text-secondary-foreground border-0 shadow-sm">
+                    <Activity className="w-3 h-3 mr-1" />
                     Realtidsanalys
                   </Badge>
                   {activePortfolio && (
-                    <Badge className="px-2 sm:px-3 py-0.5 sm:py-1 text-xs font-medium bg-accent text-accent-foreground border-0 shadow-sm">
-                      <Target className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1 sm:mr-1.5" />
+                    <Badge className="px-3 py-1 text-xs font-medium bg-accent text-accent-foreground border-0 shadow-sm">
+                      <Target className="w-3 h-3 mr-1" />
                       <span className="hidden sm:inline">Aktiv sedan {new Date(activePortfolio.created_at).toLocaleDateString('sv-SE')}</span>
                       <span className="sm:hidden">Aktiv</span>
                     </Badge>
@@ -157,18 +158,18 @@ const PortfolioImplementation = () => {
 
           {/* Risk Profile Required Alert */}
           {user && !riskProfile && (
-            <Alert className="mb-4 sm:mb-6 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20">
+            <Alert className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20">
               <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
               <AlertDescription className="text-amber-800 dark:text-amber-200">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4" />
-                    <span className="font-medium">Skapa en riskprofil för att få tillgång till AI-chatten och personliga rekommendationer</span>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <MessageSquare className="w-4 h-4 flex-shrink-0" />
+                    <span className="font-medium text-sm">Skapa en riskprofil för att få tillgång till AI-chatten och personliga rekommendationer</span>
                   </div>
                   <Button
                     onClick={() => navigate('/portfolio-advisor')}
                     size="sm"
-                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                    className="bg-amber-600 hover:bg-amber-700 text-white flex-shrink-0"
                   >
                     <User className="w-4 h-4 mr-2" />
                     Skapa profil
@@ -179,35 +180,35 @@ const PortfolioImplementation = () => {
           )}
 
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 max-w-xl mx-auto mb-4 sm:mb-6 bg-muted p-1 rounded-xl">
+            <TabsList className="grid w-full grid-cols-3 max-w-xl mx-auto mb-6 bg-muted p-1 rounded-xl h-auto">
               <TabsTrigger 
                 value="overview" 
-                className="flex items-center gap-1.5 sm:gap-2 rounded-lg py-1.5 sm:py-2 px-2 sm:px-3 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs sm:text-sm"
+                className="flex items-center gap-2 rounded-lg py-3 px-4 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-sm"
               >
-                <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <BarChart3 className="w-4 h-4" />
                 <span className="hidden xs:inline">Portfölj</span>
                 <span className="xs:hidden">Översikt</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="analysis" 
-                className="flex items-center gap-1.5 sm:gap-2 rounded-lg py-1.5 sm:py-2 px-2 sm:px-3 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs sm:text-sm"
+                className="flex items-center gap-2 rounded-lg py-3 px-4 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-sm"
               >
-                <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline">Min Analys</span>
+                <Brain className="w-4 h-4" />
+                <span className="hidden xs:inline">Risk profil</span>
                 <span className="xs:hidden">Analys</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="membership" 
-                className="flex items-center gap-1.5 sm:gap-2 rounded-lg py-1.5 sm:py-2 px-2 sm:px-3 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs sm:text-sm"
+                className="flex items-center gap-2 rounded-lg py-3 px-4 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-sm"
               >
-                <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <Crown className="w-4 h-4" />
                 <span className="hidden xs:inline">Medlemskap</span>
                 <span className="xs:hidden">Plan</span>
               </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="overview">
-              <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 sm:gap-6">
+            <TabsContent value="overview" className="mt-0">
+              <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
                 <div className="xl:col-span-3">
                   <PortfolioOverview 
                     portfolio={activePortfolio}
@@ -221,15 +222,15 @@ const PortfolioImplementation = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="analysis">
+            <TabsContent value="analysis" className="mt-0">
               <UserInvestmentAnalysis onUpdateProfile={handleUpdateProfile} />
             </TabsContent>
 
-            <TabsContent value="membership">
+            <TabsContent value="membership" className="mt-0">
               <div className="max-w-2xl mx-auto">
                 <div className="mb-6 text-center">
                   <h2 className="text-2xl font-bold mb-2 text-foreground">Medlemskap & Prenumeration</h2>
-                  <p className="text-muted-foreground">Hantera din plan och få tillgång till avancerade funktioner</p>
+                  <p className="text-base text-muted-foreground">Hantera din plan och få tillgång till avancerade funktioner</p>
                 </div>
                 <SubscriptionCard />
               </div>

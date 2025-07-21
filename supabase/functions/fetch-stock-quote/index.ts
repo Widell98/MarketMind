@@ -30,7 +30,12 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('Error fetching stock quote:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      symbol: null,
+      price: null,
+      hasValidPrice: false
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -44,40 +49,145 @@ async function fetchStockQuote(symbol: string) {
   }
 
   try {
-    const response = await fetch(
-      `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${alphaVantageKey}`
-    );
+    // Förbättra symbolrensning
+    const cleanSymbol = symbol.trim().toUpperCase().replace(/[^A-Z0-9\.\-]/g, '');
+    console.log(`Cleaned symbol: ${symbol} -> ${cleanSymbol}`);
     
-    const data = await response.json();
-    
-    if (!data['Global Quote'] || Object.keys(data['Global Quote']).length === 0) {
-      console.log(`No data for ${symbol}, using mock data`);
-      return getMockQuote(symbol);
+    // Försök med olika varianter direkt från början
+    const variations = [
+      cleanSymbol,
+      cleanSymbol + '.ST', // Stockholm börsen
+      cleanSymbol + '.OL', // Oslo börsen  
+      cleanSymbol + '.CO', // Köpenhamn
+      cleanSymbol + '.HE', // Helsingfors
+      cleanSymbol.replace('.ST', '').replace('.OL', '').replace('.CO', '').replace('.HE', '') // Utan suffix
+    ];
+
+    // Ta bort duplikater
+    const uniqueVariations = [...new Set(variations)];
+    console.log(`Trying variations: ${uniqueVariations.join(', ')}`);
+
+    for (const variant of uniqueVariations) {
+      try {
+        console.log(`Fetching data for: ${variant}`);
+        
+        const response = await fetch(
+          `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${variant}&apikey=${alphaVantageKey}`,
+          { 
+            headers: { 'User-Agent': 'StockTracker/1.0' },
+            signal: AbortSignal.timeout(10000) // 10 sekunder timeout
+          }
+        );
+        
+        if (!response.ok) {
+          console.log(`HTTP error for ${variant}: ${response.status}`);
+          continue;
+        }
+        
+        const data = await response.json();
+        console.log(`Response for ${variant}:`, JSON.stringify(data, null, 2));
+        
+        // Kontrollera rate limit först
+        if (data['Note'] && data['Note'].includes('API call frequency')) {
+          console.log(`Rate limit reached for ${variant}, using mock data`);
+          return getMockQuote(cleanSymbol);
+        }
+        
+        // Kontrollera för fel
+        if (data['Error Message']) {
+          console.log(`Alpha Vantage error for ${variant}: ${data['Error Message']}`);
+          continue; // Försök nästa variant
+        }
+        
+        // Kontrollera om vi har giltig data
+        if (data['Global Quote'] && Object.keys(data['Global Quote']).length > 0) {
+          const quote = data['Global Quote'];
+          const price = parseFloat(quote['05. price'] || '0');
+          
+          if (price > 0 && !isNaN(price)) {
+            console.log(`Successfully found valid price for ${variant}: ${price}`);
+            return parseQuoteData(quote, variant);
+          } else {
+            console.log(`Invalid price data for ${variant}: ${price}`);
+            continue;
+          }
+        }
+        
+        console.log(`No valid quote data for ${variant}`);
+        
+      } catch (fetchError) {
+        console.log(`Fetch error for ${variant}:`, fetchError);
+        continue; // Fortsätt med nästa variant
+      }
     }
     
-    const quote = data['Global Quote'];
+    // Om alla varianter misslyckades, returnera mock data som fallback
+    console.log(`All variants failed for ${cleanSymbol}, using mock data as fallback`);
+    return getMockQuote(cleanSymbol);
     
-    return {
-      symbol,
-      price: parseFloat(quote['05. price'] || '0'),
-      change: parseFloat(quote['09. change'] || '0'),
-      changePercent: parseFloat(quote['10. change percent']?.replace('%', '') || '0'),
-      volume: parseInt(quote['06. volume'] || '0'),
-      high: parseFloat(quote['03. high'] || '0'),
-      low: parseFloat(quote['04. low'] || '0'),
-      open: parseFloat(quote['02. open'] || '0'),
-      previousClose: parseFloat(quote['08. previous close'] || '0'),
-      lastUpdated: new Date().toISOString()
-    };
   } catch (error) {
-    console.error(`Error fetching data for ${symbol}:`, error);
+    console.error(`Unexpected error for ${symbol}:`, error);
     return getMockQuote(symbol);
   }
 }
 
+function parseQuoteData(quote: any, symbol: string) {
+  const price = parseFloat(quote['05. price'] || '0');
+  const change = parseFloat(quote['09. change'] || '0');
+  const changePercent = parseFloat(quote['10. change percent']?.replace('%', '') || '0');
+  
+  // Kontrollera om vi har giltig prisdata
+  const hasValidPrice = price > 0 && !isNaN(price);
+  
+  // Bestäm valuta baserat på symbol
+  let currency = 'USD'; // Default
+  if (symbol.includes('.ST') || symbol.includes('.OM')) {
+    currency = 'SEK';
+  } else if (symbol.includes('.OL')) {
+    currency = 'NOK';
+  } else if (symbol.includes('.CO')) {
+    currency = 'DKK';
+  } else if (symbol.includes('.HE')) {
+    currency = 'EUR';
+  }
+  
+  console.log(`Parsed quote for ${symbol}: price=${price}, currency=${currency}, hasValidPrice=${hasValidPrice}`);
+  
+  return {
+    symbol,
+    price: hasValidPrice ? Math.round(price * 100) / 100 : null,
+    change: hasValidPrice ? Math.round(change * 100) / 100 : null,
+    changePercent: hasValidPrice ? Math.round(changePercent * 100) / 100 : null,
+    volume: hasValidPrice ? parseInt(quote['06. volume'] || '0') : null,
+    high: hasValidPrice ? Math.round(parseFloat(quote['03. high'] || '0') * 100) / 100 : null,
+    low: hasValidPrice ? Math.round(parseFloat(quote['04. low'] || '0') * 100) / 100 : null,
+    open: hasValidPrice ? Math.round(parseFloat(quote['02. open'] || '0') * 100) / 100 : null,
+    previousClose: hasValidPrice ? Math.round(parseFloat(quote['08. previous close'] || '0') * 100) / 100 : null,
+    lastUpdated: new Date().toISOString(),
+    hasValidPrice,
+    currency
+  };
+}
+
 function getMockQuote(symbol: string) {
-  const basePrice = Math.random() * 200 + 50; // Random price between 50-250
-  const change = (Math.random() - 0.5) * 10; // Random change between -5 to +5
+  console.log(`Generating mock quote for ${symbol}`);
+  
+  // Bestäm valuta och prisområde baserat på symbol
+  let currency = 'USD';
+  let basePrice = Math.random() * 200 + 50; // USD default: 50-250
+  
+  if (symbol.includes('.ST') || symbol.includes('.OM')) {
+    currency = 'SEK';
+    basePrice = Math.random() * 500 + 100; // SEK: 100-600
+  } else if (symbol.includes('.OL')) {
+    currency = 'NOK';
+    basePrice = Math.random() * 400 + 80; // NOK: 80-480
+  } else if (symbol.includes('.CO')) {
+    currency = 'DKK';
+    basePrice = Math.random() * 300 + 100; // DKK: 100-400
+  }
+  
+  const change = (Math.random() - 0.5) * (basePrice * 0.05); // Max 5% förändring
   
   return {
     symbol,
@@ -89,6 +199,8 @@ function getMockQuote(symbol: string) {
     low: Math.round((basePrice - Math.abs(change)) * 100) / 100,
     open: Math.round((basePrice - change) * 100) / 100,
     previousClose: Math.round((basePrice - change) * 100) / 100,
-    lastUpdated: new Date().toISOString()
+    lastUpdated: new Date().toISOString(),
+    hasValidPrice: true,
+    currency
   };
 }
