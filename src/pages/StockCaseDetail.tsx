@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
@@ -142,6 +141,11 @@ const StockCaseDetail = () => {
         </ToastAction>
       ),
     });
+
+    // Refresh the community recommendations if the function is available
+    if (typeof (window as any).refreshCommunityRecommendations === 'function') {
+      (window as any).refreshCommunityRecommendations();
+    }
   };
 
   return (

@@ -19,8 +19,16 @@ import {
 import { useCommunityRecommendations, CommunityRecommendation } from '@/hooks/useCommunityRecommendations';
 
 const CommunityRecommendations: React.FC = () => {
-  const { recommendations, loading } = useCommunityRecommendations();
+  const { recommendations, loading, refetch } = useCommunityRecommendations();
   const navigate = useNavigate();
+
+  // Expose refetch function globally so SaveOpportunityButton can use it
+  React.useEffect(() => {
+    (window as any).refreshCommunityRecommendations = refetch;
+    return () => {
+      delete (window as any).refreshCommunityRecommendations;
+    };
+  }, [refetch]);
 
   const handleViewItem = (recommendation: CommunityRecommendation) => {
     if (recommendation.stock_case) {
