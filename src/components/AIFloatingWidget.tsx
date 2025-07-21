@@ -1,9 +1,13 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
+import { useSubscription } from '@/hooks/useSubscription';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import {
   MessageSquare,
   X,
@@ -28,6 +32,7 @@ interface Message {
 const AIFloatingWidget = () => {
   const { user } = useAuth();
   const { riskProfile } = useRiskProfile();
+  const { usage, subscription } = useSubscription();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -35,6 +40,11 @@ const AIFloatingWidget = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+
+  const currentUsage = usage?.ai_messages_count || 0;
+  const isPremium = subscription?.subscribed;
+  const dailyLimit = 5;
 
   const quickActions = [
     'Analysera min portfölj',
@@ -50,6 +60,16 @@ const AIFloatingWidget = () => {
   const handleSendMessage = useCallback(async () => {
     if (!input.trim() || !user || isLoading) return;
 
+    // Check usage limits for free users
+    if (!isPremium && currentUsage >= dailyLimit) {
+      toast({
+        title: "Daglig gräns nådd",
+        description: "Du har nått din dagliga gräns för AI-meddelanden. Uppgradera till Premium för obegränsad användning.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -61,34 +81,65 @@ const AIFloatingWidget = () => {
     setInput('');
     setIsLoading(true);
 
-    const prompt = `Användarfråga: ${input.trim()}\n\nGe ett kort och tydligt investeringsrelaterat svar på svenska (max 2 meningar).`; // Exempel på framtida OpenAI-anrop
-
     try {
-      // Här kan du ersätta med ett faktiskt OpenAI API-anrop
-      const responseContent = mockResponse(userMessage.content);
+      // Create a focused investment prompt for the floating widget
+      const systemPrompt = `Du är en erfaren aktieanalytiker och investeringsrådgivare. 
+      
+VIKTIGA INSTRUKTIONER:
+- Svara KORT och KONCIST (max 2 meningar)
+- Ge ENDAST 1 specifik rekommendation eller svar
+- Fokusera på INVESTERINGAR och AKTIEMARKNADEN
+- Avsluta ALLTID med att hänvisa till huvudchatten för djupare analys
+- Använd hänvisningar som: "För djupare analys → klicka på huvudchat" eller "Mer detaljer finns i den stora chatten"
+
+Användarens riskprofil: ${riskProfile ? `${riskProfile.risk_tolerance} risk, ${riskProfile.investment_timeline} tidshorisont` : 'Okänd'}
+
+Svara kort och professionellt på investeringsfrågan.`;
+
+      const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
+        body: {
+          message: input.trim(),
+          systemPrompt,
+          model: 'gpt-4o-mini', // Använd den snabbare modellen för floating widget
+          maxTokens: 150, // Begränsa för kortare svar
+          portfolioId: null, // Ingen portföljdata för floating widget
+          temperature: 0.7
+        }
+      });
+
+      if (error) {
+        console.error('AI Chat Error:', error);
+        throw new Error(error.message || 'Fel vid AI-anrop');
+      }
 
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: responseContent,
+        content: data.response || 'Kunde inte generera svar. Prova igen.',
         timestamp: new Date()
       };
+
       setMessages(prev => [...prev, aiResponse]);
-    } catch (err) {
-      console.error('AI error', err);
+
+    } catch (error) {
+      console.error('AI error:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'Något gick fel. För hjälp → klicka på huvudchat',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      
+      toast({
+        title: "AI-fel",
+        description: "Kunde inte få svar från AI-assistenten. Försök igen.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [input, user, isLoading]);
-
-  const mockResponse = (input: string): string => {
-    const lowerInput = input.toLowerCase();
-    if (lowerInput.includes('portfölj')) return 'Överväg att diversifiera din portfölj med breda indexfonder.';
-    if (lowerInput.includes('marknad')) return 'Marknaden är volatil just nu, håll koll på räntebesked och techsektorn.';
-    if (lowerInput.includes('aktie')) return 'Investor B är ett stabilt val med god utdelningshistorik.';
-    if (lowerInput.includes('risk')) return 'Med en konservativ profil, begränsa högriskinvesteringar till max 20%.';
-    return 'Behöver mer kontext – klicka på huvudchatt för djupare analys →';
-  };
+  }, [input, user, isLoading, riskProfile, isPremium, currentUsage, dailyLimit, toast]);
 
   const handleQuickAction = (action: string) => {
     if (!user) {
@@ -152,8 +203,8 @@ const AIFloatingWidget = () => {
                     <Brain className="w-8 h-8 text-primary" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-sm mb-2">Snabba svar & råd!</h4>
-                    <p className="text-xs text-muted-foreground mb-3">Ställ enkla frågor här. För djupare analyser:</p>
+                    <h4 className="font-semibold text-sm mb-2">Snabba investeringsråd!</h4>
+                    <p className="text-xs text-muted-foreground mb-3">Ställ enkla investeringsfrågor här. För djupare analyser:</p>
                     <div className="grid grid-cols-1 gap-2">
                       {quickActions.map((action, i) => (
                         <Button key={i} onClick={() => handleQuickAction(action)} variant="outline" size="sm" className="text-xs h-8 justify-start">
@@ -191,13 +242,20 @@ const AIFloatingWidget = () => {
                 <Button onClick={() => window.location.href = '/auth'} className="w-full bg-gradient-to-r from-primary to-blue-600 text-white" size="sm">
                   Logga in för att chatta
                 </Button>
+              ) : !isPremium && currentUsage >= dailyLimit ? (
+                <div className="text-center space-y-2">
+                  <p className="text-xs text-muted-foreground">Daglig gräns nådd ({currentUsage}/{dailyLimit})</p>
+                  <Button onClick={() => window.location.href = '/profile'} className="w-full" size="sm" variant="outline">
+                    Uppgradera till Premium
+                  </Button>
+                </div>
               ) : (
                 <div className="flex gap-2">
                   <div className="flex-1 relative">
                     <Textarea
                       value={input}
                       onChange={e => setInput(e.target.value)}
-                      placeholder="Ställ en snabb fråga..."
+                      placeholder="Ställ en snabb investeringsfråga..."
                       className="resize-none h-10 pr-12 text-sm"
                       onKeyDown={e => {
                         if (e.key === 'Enter' && !e.shiftKey) {
@@ -214,6 +272,11 @@ const AIFloatingWidget = () => {
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>
+              )}
+              {user && !isPremium && (
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  {currentUsage}/{dailyLimit} meddelanden idag
+                </p>
               )}
             </div>
           </>
