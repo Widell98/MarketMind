@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -9,6 +8,7 @@ import UserInvestmentAnalysis from '@/components/UserInvestmentAnalysis';
 import SubscriptionCard from '@/components/SubscriptionCard';
 import LoginPromptModal from '@/components/LoginPromptModal';
 import PortfolioValueCards from '@/components/PortfolioValueCards';
+import CommunityRecommendations from '@/components/CommunityRecommendations';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAuth } from '@/contexts/AuthContext';
@@ -270,12 +270,15 @@ const PortfolioImplementation = () => {
             
             <TabsContent value="overview" className="mt-0">
               <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-                <div className="xl:col-span-3">
+                <div className="xl:col-span-3 space-y-6">
                   <PortfolioOverview 
                     portfolio={activePortfolio}
                     onQuickChat={handleQuickChat}
                     onActionClick={handleActionClick}
                   />
+                  
+                  {/* Community Recommendations Section */}
+                  <CommunityRecommendations />
                 </div>
                 <div className="xl:col-span-1">
                   <UserInsightsPanel />
