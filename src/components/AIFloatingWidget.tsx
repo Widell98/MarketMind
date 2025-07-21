@@ -89,8 +89,8 @@ VIKTIGA INSTRUKTIONER:
 - Svara KORT och KONCIST
 - Ge ENDAST 1 specifik rekommendation eller svar
 - Fokusera på INVESTERINGAR och AKTIEMARKNADEN
-- Avsluta ALLTID med att hänvisa till huvudchatten för djupare analys
-- Använd hänvisningar som: "För djupare analys → klicka på huvudchat" eller "Mer detaljer finns i den stora chatten"
+- Avsluta ALLTID med att hänvisa till AI-chatten för djupare analys
+- Använd hänvisningar som: "För djupare analys → gå till AI-chat" eller "Mer detaljer finns i AI-chatten"
 
 Användarens riskprofil: ${riskProfile ? `${riskProfile.risk_tolerance} risk, ${riskProfile.investment_horizon} tidshorisont` : 'Okänd'}
 
@@ -99,10 +99,11 @@ Svara kort och professionellt på investeringsfrågan.`;
       const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
         body: {
           message: input.trim(),
+          userId: user.id, // Här var problemet - userId saknades!
           systemPrompt,
-          model: 'gpt-4o-mini', // Använd den snabbare modellen för floating widget
-          maxTokens: 150, // Begränsa för kortare svar
-          portfolioId: null, // Ingen portföljdata för floating widget
+          model: 'gpt-4o-mini',
+          maxTokens: 150,
+          portfolioId: null,
           temperature: 0.7
         }
       });
@@ -126,14 +127,14 @@ Svara kort och professionellt på investeringsfrågan.`;
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'Något gick fel. För hjälp → klicka på huvudchat',
+        content: 'Något gick fel. Gå till AI-chat sidan för mer hjälp.',
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
       
       toast({
         title: "AI-fel",
-        description: "Kunde inte få svar från AI-assistenten. Försök igen.",
+        description: "Kunde inte få svar från AI-assistenten. Försök igen eller gå till AI-chat sidan.",
         variant: "destructive"
       });
     } finally {
@@ -146,11 +147,9 @@ Svara kort och professionellt på investeringsfrågan.`;
       window.location.href = '/auth';
       return;
     }
-    const event = new CustomEvent('prefillChatInput', {
-      detail: { message: action }
-    });
-    window.dispatchEvent(event);
-    window.location.href = '/ai-chat';
+    // Redirect to AI chat page with the action as a message parameter
+    const encodedMessage = encodeURIComponent(action);
+    window.location.href = `/ai-chat?message=${encodedMessage}`;
   };
 
   const toggleVoice = () => setIsListening(prev => !prev);
