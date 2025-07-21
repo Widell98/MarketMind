@@ -50,8 +50,15 @@ const StockCaseAIChat: React.FC<StockCaseAIChatProps> = ({ stockCase }) => {
     setIsLoading(true);
 
     try {
-      // Skapa kontext med aktiespecifik information
-      const stockContext = `
+      // Create system prompt with stock-specific information
+      const systemPrompt = `Du är en snabb AI-assistent för investeringar som specialiserar sig på ${stockCase.company_name}.
+
+KRITISKA REGLER:
+- Svara ENDAST med 2-3 korta meningar (max 70 ord)
+- Ge snabba, direkta svar utan långa förklaringar
+- Ingen djup analys eller långa texter
+- Fokusera på den specifika aktien
+
 Aktieinformation:
 - Företag: ${stockCase.company_name}
 - Titel: ${stockCase.title}
@@ -60,13 +67,16 @@ ${stockCase.current_price ? `- Nuvarande pris: ${stockCase.current_price} SEK` :
 ${stockCase.target_price ? `- Målkurs: ${stockCase.target_price} SEK` : ''}
 ${stockCase.description ? `- Beskrivning: ${stockCase.description}` : ''}
 
-Användarfråga: ${inputMessage}
-      `.trim();
+Ge ett kortfattat, snabbt svar på investeringsfrågan om ${stockCase.company_name}.`;
 
       const { data, error } = await supabase.functions.invoke('quick-ai-assistant', {
         body: {
-          message: stockContext,
-          context: 'stock_analysis'
+          message: inputMessage.trim(),
+          userId: user.id,
+          systemPrompt,
+          model: 'gpt-4o-mini',
+          maxTokens: 50,
+          temperature: 0.3
         }
       });
 
