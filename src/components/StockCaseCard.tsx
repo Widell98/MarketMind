@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Heart, Bookmark, TrendingUp, TrendingDown, Calendar, User, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Heart, Bookmark, TrendingUp, TrendingDown, Calendar, User, MoreHorizontal, Trash2, Bot, UserCircle } from 'lucide-react';
 import { StockCase } from '@/types/stockCase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -78,6 +78,20 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
               <Badge variant="outline" className="text-xs">
                 {stockCase.case_categories?.name || stockCase.sector || 'General'}
               </Badge>
+              {/* AI Generated Badge */}
+              {stockCase.ai_generated && (
+                <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800">
+                  <Bot className="w-3 h-3 mr-1" />
+                  AI
+                </Badge>
+              )}
+              {/* Community Badge */}
+              {!stockCase.ai_generated && stockCase.user_id && (
+                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800">
+                  <UserCircle className="w-3 h-3 mr-1" />
+                  Community
+                </Badge>
+              )}
             </div>
             <CardTitle className="text-base sm:text-lg leading-tight group-hover:text-primary transition-colors line-clamp-2">
               {stockCase.title}
@@ -141,7 +155,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
               </span>
             </div>
             <div className="text-xs sm:text-sm text-gray-500 truncate ml-2">
-              Target: {stockCase.target_price ? `$${stockCase.target_price}` : 'N/A'}
+              Target: {stockCase.target_price ? `${stockCase.target_price} kr` : 'N/A'}
             </div>
           </div>
 
@@ -152,8 +166,17 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
               <span className="truncate">{formatDate(stockCase.created_at)}</span>
             </div>
             <div className="flex items-center gap-1 min-w-0 ml-2">
-              <User className="w-3 h-3 flex-shrink-0" />
-              <span className="truncate">{stockCase.profiles?.display_name || stockCase.profiles?.username || 'Expert'}</span>
+              {stockCase.ai_generated ? (
+                <>
+                  <Bot className="w-3 h-3 flex-shrink-0" />
+                  <span className="truncate">AI Assistant</span>
+                </>
+              ) : (
+                <>
+                  <User className="w-3 h-3 flex-shrink-0" />
+                  <span className="truncate">{stockCase.profiles?.display_name || stockCase.profiles?.username || 'Expert'}</span>
+                </>
+              )}
             </div>
           </div>
 

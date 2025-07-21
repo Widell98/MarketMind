@@ -5,10 +5,11 @@ import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
 import { useStockCasesFilters } from '@/hooks/useStockCasesFilters';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, Users, Activity, Clock, Filter, Bookmark, BarChart3 } from 'lucide-react';
+import { TrendingUp, Users, Activity, Clock, Filter, Bookmark, BarChart3, Plus, Bot, UserCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import StockCaseCard from '@/components/StockCaseCard';
 import StockCaseListItem from '@/components/StockCaseListItem';
@@ -16,15 +17,19 @@ import StockCasesFilters from '@/components/StockCasesFilters';
 import StockCaseSkeletonCard from '@/components/StockCaseSkeletonCard';
 import CommunityStats from '@/components/CommunityStats';
 import AnalysisSection from '@/components/AnalysisSection';
+import CreateStockCaseDialog from '@/components/CreateStockCaseDialog';
 
 const StockCases = () => {
   const [viewMode, setViewMode] = useState<'all' | 'trending' | 'followed'>('all');
   const [contentType, setContentType] = useState<'stock-cases' | 'analyses' | 'both'>('both');
+  const [contentSource, setContentSource] = useState<'all' | 'ai' | 'community'>('all');
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   
   const { stockCases: allStockCases, loading: allLoading } = useStockCases(false);
   const { stockCases: followedStockCases, loading: followedLoading } = useStockCases(true);
   const { trendingCases, loading: trendingLoading } = useTrendingStockCases(20);
   const { deleteStockCase } = useStockCaseOperations();
+  const { user } = useAuth();
   
   const navigate = useNavigate();
 
@@ -55,16 +60,36 @@ const StockCases = () => {
   });
 
   const getDisplayData = () => {
+    let baseCases;
+    let loading;
+    
     switch (viewMode) {
       case 'all':
-        return { cases: allStockCases, loading: allLoading };
+        baseCases = allStockCases;
+        loading = allLoading;
+        break;
       case 'trending':
-        return { cases: trendingCases, loading: trendingLoading };
+        baseCases = trendingCases;
+        loading = trendingLoading;
+        break;
       case 'followed':
-        return { cases: followedStockCases, loading: followedLoading };
+        baseCases = followedStockCases;
+        loading = followedLoading;
+        break;
       default:
-        return { cases: allStockCases, loading: allLoading };
+        baseCases = allStockCases;
+        loading = allLoading;
     }
+
+    // Filter by content source (AI vs Community)
+    let filteredCases = baseCases;
+    if (contentSource === 'ai') {
+      filteredCases = baseCases.filter(stockCase => stockCase.ai_generated === true);
+    } else if (contentSource === 'community') {
+      filteredCases = baseCases.filter(stockCase => stockCase.ai_generated !== true);
+    }
+
+    return { cases: filteredCases, loading };
   };
 
   const { cases: displayCases, loading: isLoading } = getDisplayData();
@@ -85,6 +110,14 @@ const StockCases = () => {
     } catch (error) {
       // Error is already handled in the deleteStockCase function
     }
+  };
+
+  const handleCreateCase = () => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    setShowCreateDialog(true);
   };
 
   if (isLoading) {
@@ -117,7 +150,7 @@ const StockCases = () => {
   return (
     <Layout>
       <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-        {/* Header Section - More compact */}
+        {/* Header Section with Create Button */}
         <div className="space-y-2 sm:space-y-3">
           <div className="text-center space-y-1">
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">
@@ -126,6 +159,18 @@ const StockCases = () => {
             <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 max-w-2xl mx-auto px-4">
               Utforska aktiecases och investeringsanalyser från communityn
             </p>
+          </div>
+          
+          {/* Create Case Button */}
+          <div className="flex justify-center">
+            <Button
+              onClick={handleCreateCase}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Skapa nytt aktiecase</span>
+              <span className="sm:hidden">Skapa case</span>
+            </Button>
           </div>
         </div>
 
@@ -159,6 +204,39 @@ const StockCases = () => {
             <span className="sm:hidden">Analyser</span>
           </Button>
         </div>
+
+        {/* Content Source Filter */}
+        {(contentType === 'stock-cases' || contentType === 'both') && (
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 sm:px-0">
+            <Button
+              variant={contentSource === 'all' ? 'default' : 'outline'}
+              onClick={() => setContentSource('all')}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2"
+            >
+              <Activity className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Alla källor</span>
+              <span className="sm:hidden">Alla</span>
+            </Button>
+            <Button
+              variant={contentSource === 'ai' ? 'default' : 'outline'}
+              onClick={() => setContentSource('ai')}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2"
+            >
+              <Bot className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">AI-genererat</span>
+              <span className="sm:hidden">AI</span>
+            </Button>
+            <Button
+              variant={contentSource === 'community' ? 'default' : 'outline'}
+              onClick={() => setContentSource('community')}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2"
+            >
+              <UserCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Community</span>
+              <span className="sm:hidden">Community</span>
+            </Button>
+          </div>
+        )}
 
         {/* Stats Section - Compact version */}
         <div className="hidden sm:block">
@@ -238,24 +316,39 @@ const StockCases = () => {
                     )}
                     <CardTitle className="text-base sm:text-lg mb-2 text-gray-900 dark:text-gray-100">
                       {searchTerm
-                        ? 'No cases match your search'
+                        ? 'Inga cases matchar din sökning'
+                        : contentSource === 'ai'
+                        ? 'Inga AI-genererade cases ännu'
+                        : contentSource === 'community'
+                        ? 'Inga community-skapade cases ännu'
                         : viewMode === 'trending' 
-                        ? 'No trending cases yet'
+                        ? 'Inga trending cases ännu'
                         : viewMode === 'followed'
-                        ? 'No followed cases yet'
-                        : 'No stock cases yet'
+                        ? 'Inga följda cases ännu'
+                        : 'Inga aktiecases ännu'
                       }
                     </CardTitle>
                     <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 px-4">
                       {searchTerm
-                        ? 'Try adjusting your search criteria.'
+                        ? 'Prova att justera dina sökkriterier.'
+                        : contentSource === 'community'
+                        ? 'Bli den första att skapa ett community case!'
                         : viewMode === 'trending' 
-                        ? 'Cases will appear here when they start getting likes from the community.'
+                        ? 'Cases kommer visas här när de börjar få likes från communityn.'
                         : viewMode === 'followed'
-                        ? 'Start following some cases to see them here. You need to be logged in to follow cases.'
-                        : 'Stock cases will be displayed here when they are added by our experts.'
+                        ? 'Börja följa några cases för att se dem här. Du behöver vara inloggad för att följa cases.'
+                        : 'Aktiecases kommer visas här när de läggs till.'
                       }
                     </p>
+                    {contentSource === 'community' && (
+                      <Button 
+                        onClick={handleCreateCase}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Skapa första case
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               ) : (
@@ -300,10 +393,16 @@ const StockCases = () => {
             {/* Results Count */}
             <div className="flex items-center justify-between px-2 sm:px-0">
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                <span className="hidden sm:inline">Showing </span>
-                {filteredAndSortedCases.length} of {displayCases.length} cases
+                <span className="hidden sm:inline">Visar </span>
+                {filteredAndSortedCases.length} av {displayCases.length} cases
                 {searchTerm && (
-                  <span className="hidden sm:inline"> for "{searchTerm}"</span>
+                  <span className="hidden sm:inline"> för "{searchTerm}"</span>
+                )}
+                {contentSource === 'ai' && (
+                  <span> (AI-genererade)</span>
+                )}
+                {contentSource === 'community' && (
+                  <span> (Community-skapade)</span>
                 )}
               </p>
             </div>
@@ -319,18 +418,18 @@ const StockCases = () => {
               <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
                 {viewMode === 'trending' ? (
                   <>
-                    <span className="hidden sm:inline">Trending Stock Cases</span>
+                    <span className="hidden sm:inline">Trending Aktiecases</span>
                     <span className="sm:hidden">Trending</span>
                   </>
                 ) : viewMode === 'followed' ? (
                   <>
-                    <span className="hidden sm:inline">Followed Stock Cases</span>
-                    <span className="sm:hidden">Followed</span>
+                    <span className="hidden sm:inline">Följda Aktiecases</span>
+                    <span className="sm:hidden">Följda</span>
                   </>
                 ) : (
                   <>
-                    <span className="hidden sm:inline">All Stock Cases</span>
-                    <span className="sm:hidden">All Cases</span>
+                    <span className="hidden sm:inline">Alla Aktiecases</span>
+                    <span className="sm:hidden">Alla Cases</span>
                   </>
                 )}
               </h2>
@@ -346,22 +445,28 @@ const StockCases = () => {
                   )}
                   <CardTitle className="text-base sm:text-lg mb-2 text-gray-900 dark:text-gray-100">
                     {searchTerm
-                      ? 'No cases match your search'
+                      ? 'Inga cases matchar din sökning'
+                      : contentSource === 'ai'
+                      ? 'Inga AI-genererade cases ännu'
+                      : contentSource === 'community'
+                      ? 'Inga community-skapade cases ännu'
                       : viewMode === 'trending' 
-                      ? 'No trending cases yet'
+                      ? 'Inga trending cases ännu'
                       : viewMode === 'followed'
-                      ? 'No followed cases yet'
-                      : 'No stock cases yet'
+                      ? 'Inga följda cases ännu'
+                      : 'Inga aktiecases ännu'
                     }
                   </CardTitle>
                   <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 px-4">
                     {searchTerm
-                      ? 'Try adjusting your search criteria.'
+                      ? 'Prova att justera dina sökkriterier.'
+                      : contentSource === 'community'
+                      ? 'Bli den första att skapa ett community case!'
                       : viewMode === 'trending' 
-                      ? 'Cases will appear here when they start getting likes from the community.'
+                      ? 'Cases kommer visas här när de börjar få likes från communityn.'
                       : viewMode === 'followed'
-                      ? 'Start following some cases to see them here. You need to be logged in to follow cases.'
-                      : 'Stock cases will be displayed here when they are added by our experts.'
+                      ? 'Börja följa några cases för att se dem här. Du behöver vara inloggad för att följa cases.'
+                      : 'Aktiecases kommer visas här när de läggs till.'
                     }
                   </p>
                   {searchTerm && (
@@ -369,9 +474,18 @@ const StockCases = () => {
                       onClick={() => setSearchTerm('')}
                       variant="outline"
                       size="sm"
-                      className="text-xs sm:text-sm"
+                      className="text-xs sm:text-sm mr-2"
                     >
-                      Clear Search
+                      Rensa sökning
+                    </Button>
+                  )}
+                  {contentSource === 'community' && (
+                    <Button 
+                      onClick={handleCreateCase}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Skapa första case
                     </Button>
                   )}
                 </CardContent>
@@ -403,6 +517,12 @@ const StockCases = () => {
           </div>
         )}
       </div>
+
+      {/* Create Stock Case Dialog */}
+      <CreateStockCaseDialog 
+        isOpen={showCreateDialog}
+        onClose={() => setShowCreateDialog(false)}
+      />
     </Layout>
   );
 };
