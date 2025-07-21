@@ -1,6 +1,5 @@
-
 import { useState, useMemo } from 'react';
-import { StockCase } from '@/hooks/useStockCases';
+import { StockCase } from '@/types/stockCase';
 
 interface UseStockCasesFiltersProps {
   stockCases: StockCase[];

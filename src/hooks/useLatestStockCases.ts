@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { StockCase } from '@/hooks/useStockCases';
+import { StockCase } from '@/types/stockCase';
 
 // Helper function to ensure proper typing from database
 const transformStockCase = (rawCase: any): StockCase => {

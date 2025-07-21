@@ -1,9 +1,10 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { TrendingUp, TrendingDown, Clock, UserPlus, UserCheck, Trash2 } from 'lucide-react';
-import { StockCase } from '@/hooks/useStockCases';
+import { StockCase } from '@/types/stockCase';
 import { useStockCaseFollows } from '@/hooks/useStockCaseFollows';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
