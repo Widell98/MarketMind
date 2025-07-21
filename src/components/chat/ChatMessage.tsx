@@ -41,16 +41,16 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
   const extractStockSuggestions = (content: string): StockSuggestion[] => {
     const suggestions: StockSuggestion[] = [];
     
-    // Multiple regex patterns to catch different formats
+    // Multiple regex patterns to catch different formats - enhanced version
     const patterns = [
-      // Pattern 1: "Förslag: Company Name (TICKER)"
-      /(?:Förslag|Rekommendation|Aktie):\s*([^(]+?)\s*\(([A-Z]{1,6})\)/gi,
+      // Pattern 1: "Förslag: Company Name (TICKER)" - case insensitive
+      /(?:Förslag|Rekommendation|Aktie|Köp|Investera|Överväg):\s*([^(]+?)\s*\(([A-Z]{1,6})\)/gi,
       
       // Pattern 2: "**Company Name** (TICKER)"
       /\*\*([^*]+?)\*\*\s*\(([A-Z]{1,6})\)/g,
       
       // Pattern 3: "Company Name (TICKER)" - general pattern
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6})\)/g,
+      /([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+?)\s*\(([A-Z]{1,6})\)/g,
       
       // Pattern 4: "1. Company Name (TICKER)" - numbered lists
       /\d+\.\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
@@ -59,16 +59,31 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       /-\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
       
       // Pattern 6: "• Company Name (TICKER)" - bullet points with bullet
-      /•\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
+      /[•·▪▫]\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
       
       // Pattern 7: TICKER followed by company name
-      /([A-Z]{2,6}):\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
+      /([A-Z]{2,6}):\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+)/g,
       
       // Pattern 8: Company name with ticker in brackets at end of sentence
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{3,})\s+\(([A-Z]{1,6})\)(?=[\s.,!?]|$)/g,
+      /([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]{3,})\s+\(([A-Z]{1,6})\)(?=[\s.,!?:]|$)/g,
       
       // Pattern 9: Company (TICKER) - Sektor: SectorName
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6})\)\s*-\s*Sektor:\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g
+      /([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+?)\s*\(([A-Z]{1,6})\)\s*-\s*Sektor:\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+)/g,
+      
+      // Pattern 10: "Ticker: Company Name" or "TICKER - Company Name"
+      /([A-Z]{2,6})\s*[-:]\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+?)(?=\s*[-\n]|$)/g,
+      
+      // Pattern 11: Within tables or structured formats
+      /\|\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+?)\s*\|\s*([A-Z]{1,6})\s*\|/g,
+      
+      // Pattern 12: ETF patterns "Company Name ETF (TICKER)"
+      /([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+?)\s+(?:ETF|Fond)\s*\(([A-Z]{1,6})\)/gi,
+      
+      // Pattern 13: Swedish specific patterns with "aktie" or "bolag"
+      /([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+?)\s+(?:aktie|bolag|AB)\s*\(([A-Z]{1,6})\)/gi,
+      
+      // Pattern 14: Colon separated without spaces
+      /([A-Z]{2,6}):([A-ZÅÄÖ][a-zåäöA-Z\s&.\-\u00C0-\u017F]+?)(?=\s|$)/g
     ];
 
     // Get existing holdings symbols to filter out
@@ -84,14 +99,23 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         let name, symbol, sector;
         
         // Handle different capture group orders based on pattern
-        if (patterns.indexOf(pattern) === 6) { // Pattern 7: TICKER: Company
+        const patternIndex = patterns.indexOf(pattern);
+        
+        if (patternIndex === 6 || patternIndex === 9 || patternIndex === 13) { 
+          // Pattern 7, 10, 14: TICKER: Company or TICKER - Company or TICKER:Company
           symbol = match[1].trim();
           name = match[2].trim();
-        } else if (patterns.indexOf(pattern) === 8) { // Pattern 9: Company (TICKER) - Sektor: SectorName
+        } else if (patternIndex === 8) { 
+          // Pattern 9: Company (TICKER) - Sektor: SectorName
           name = match[1].trim();
           symbol = match[2].trim();
           sector = match[3].trim();
+        } else if (patternIndex === 10) { 
+          // Pattern 11: Table format |Company|TICKER|
+          name = match[1].trim();
+          symbol = match[2].trim();
         } else {
+          // Most common patterns: Company (TICKER) format
           name = match[1].trim();
           symbol = match[2].trim();
         }
