@@ -17,6 +17,7 @@ import CreateAnalysisDialog from '@/components/CreateAnalysisDialog';
 const UserAnalysesSection = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const { data: analyses, isLoading } = useQuery({
     queryKey: ['user-analyses', user?.id],
@@ -111,7 +112,10 @@ const UserAnalysesSection = () => {
             <FileText className="w-5 h-5 mr-2" />
             Mina Analyser ({analyses?.length || 0})
           </div>
-          <CreateAnalysisDialog />
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Skapa analys
+          </Button>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -119,7 +123,10 @@ const UserAnalysesSection = () => {
           <div className="text-center py-8">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500 mb-4">Du har inte skapat några analyser än.</p>
-            <CreateAnalysisDialog />
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Skapa analys
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">
@@ -213,6 +220,11 @@ const UserAnalysesSection = () => {
           </div>
         )}
       </CardContent>
+      
+      <CreateAnalysisDialog 
+        isOpen={isCreateDialogOpen}
+        onClose={() => setIsCreateDialogOpen(false)}
+      />
     </Card>
   );
 };

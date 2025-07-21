@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import CreateAnalysisDialog from './CreateAnalysisDialog';
 
 const AnalysisFeed = () => {
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { data: analyses, isLoading, error } = useAnalyses(20);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -94,7 +96,9 @@ const AnalysisFeed = () => {
     return (
       <div className="space-y-6">
         <div className="flex justify-end gap-2">
-          <CreateAnalysisDialog />
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            Skapa analys
+          </Button>
         </div>
         <Card className="text-center py-8 bg-red-50 dark:bg-red-900/20">
           <CardContent className="pt-4">
@@ -114,6 +118,10 @@ const AnalysisFeed = () => {
             </Button>
           </CardContent>
         </Card>
+        <CreateAnalysisDialog 
+          isOpen={isCreateDialogOpen}
+          onClose={() => setIsCreateDialogOpen(false)}
+        />
       </div>
     );
   }
@@ -122,7 +130,9 @@ const AnalysisFeed = () => {
     return (
       <div className="space-y-6">
         <div className="flex justify-end gap-2">
-          <CreateAnalysisDialog />
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            Skapa analys
+          </Button>
         </div>
         <Card className="text-center py-8 bg-gray-50 dark:bg-gray-800">
           <CardContent className="pt-4">
@@ -134,10 +144,16 @@ const AnalysisFeed = () => {
               Bli den första att dela en analys med communityn!
             </p>
             <div className="flex justify-center gap-2">
-              <CreateAnalysisDialog />
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                Skapa analys
+              </Button>
             </div>
           </CardContent>
         </Card>
+        <CreateAnalysisDialog 
+          isOpen={isCreateDialogOpen}
+          onClose={() => setIsCreateDialogOpen(false)}
+        />
       </div>
     );
   }
@@ -145,7 +161,9 @@ const AnalysisFeed = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-end gap-2">
-        <CreateAnalysisDialog />
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          Skapa analys
+        </Button>
       </div>
       
       <div className="space-y-4">
@@ -263,6 +281,11 @@ const AnalysisFeed = () => {
           </Card>
         ))}
       </div>
+      
+      <CreateAnalysisDialog 
+        isOpen={isCreateDialogOpen}
+        onClose={() => setIsCreateDialogOpen(false)}
+      />
     </div>
   );
 };
