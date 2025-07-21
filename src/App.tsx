@@ -22,12 +22,20 @@ import MyStockCases from "./pages/MyStockCases";
 import AIChat from "./pages/AIChat";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+// Create the query client outside the component to avoid recreation
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 1,
+    },
+  },
+});
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <TooltipProvider>
             <Toaster />
@@ -53,8 +61,8 @@ function App() {
             </Routes>
           </TooltipProvider>
         </AuthProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
   );
 }
 
