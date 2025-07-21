@@ -82,29 +82,28 @@ const AIFloatingWidget = () => {
     setIsLoading(true);
 
     try {
-      // Create a focused investment prompt for the floating widget
-      const systemPrompt = `Du är en erfaren aktieanalytiker och investeringsrådgivare. 
-      
-VIKTIGA INSTRUKTIONER:
-- Svara KORT och KONCIST med max 4 meningar
-- Ge ENDAST 1 specifik rekommendation eller svar
-- Fokusera på INVESTERINGAR och AKTIEMARKNADEN
-- Avsluta ALLTID med att hänvisa till AI-chatten för djupare analys
-- Använd hänvisningar som: "För djupare analys → gå till AI-chat" eller "Mer detaljer finns i AI-chatten"
+      // Create a very focused prompt for the floating widget - SHORT ANSWERS ONLY
+      const systemPrompt = `Du är en snabb AI-assistent för investeringar. 
 
-Användarens riskprofil: ${riskProfile ? `${riskProfile.risk_tolerance} risk, ${riskProfile.investment_horizon} tidshorisont` : 'Okänd'}
+KRITISKA REGLER:
+- Svara ENDAST med 1-2 korta meningar (max 30 ord)
+- Ge snabba, direkta svar utan långa förklaringar
+- Avsluta ALLTID med: "→ Gå till AI-chatten för mer info"
+- Ingen djup analys eller långa texter
 
-Svara kort och professionellt på investeringsfrågan.`;
+Användarens riskprofil: ${riskProfile ? `${riskProfile.risk_tolerance} risk` : 'Okänd'}
+
+Ge ett kortfattat, snabbt svar på investeringsfrågan.`;
 
       const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
         body: {
           message: input.trim(),
-          userId: user.id, // Här var problemet - userId saknades!
+          userId: user.id,
           systemPrompt,
           model: 'gpt-4o-mini',
-          maxTokens: 150,
+          maxTokens: 50, // Much shorter limit
           portfolioId: null,
-          temperature: 0.7
+          temperature: 0.3 // Lower temperature for more focused responses
         }
       });
 
@@ -116,7 +115,7 @@ Svara kort och professionellt på investeringsfrågan.`;
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.response || 'Kunde inte generera svar. Prova igen.',
+        content: data.response || 'Kunde inte generera svar. → Gå till AI-chatten för mer info',
         timestamp: new Date()
       };
 
@@ -127,7 +126,7 @@ Svara kort och professionellt på investeringsfrågan.`;
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'Något gick fel. Gå till AI-chat sidan för mer hjälp.',
+        content: 'Något gick fel. → Gå till AI-chatten för mer hjälp',
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
