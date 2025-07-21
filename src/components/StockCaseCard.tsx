@@ -3,12 +3,14 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Heart, Bookmark, TrendingUp, TrendingDown, Calendar, User, MoreHorizontal, Trash2, Bot, UserCircle } from 'lucide-react';
+import { Heart, Bookmark, TrendingUp, TrendingDown, Calendar, User, MoreHorizontal, Trash2, Bot, UserCircle, MessageCircle, Edit } from 'lucide-react';
 import { StockCase } from '@/types/stockCase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useStockCaseFollows } from '@/hooks/useStockCaseFollows';
+import { useNavigate } from 'react-router-dom';
+import SaveOpportunityButton from './SaveOpportunityButton';
 import ShareStockCase from './ShareStockCase';
 import {
   DropdownMenu,
@@ -32,6 +34,9 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
   const { isAdmin } = useUserRole();
   const { likeCount, isLiked, toggleLike } = useStockCaseLikes(stockCase.id);
   const { isFollowing, toggleFollow } = useStockCaseFollows(stockCase.id);
+  const navigate = useNavigate();
+
+  const isOwner = user && stockCase.user_id === user.id;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -56,12 +61,28 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
     });
   };
 
-  // Calculate performance based on entry_price and current_price
   const calculatePerformance = () => {
     if (stockCase.entry_price && stockCase.current_price) {
       return ((stockCase.current_price - stockCase.entry_price) / stockCase.entry_price) * 100;
     }
     return stockCase.performance_percentage || 0;
+  };
+
+  const handleDiscussWithAI = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const contextData = {
+      type: 'stock_case',
+      id: stockCase.id,
+      title: stockCase.title,
+      company: stockCase.company_name,
+      data: stockCase
+    };
+    navigate('/ai-chat', { state: { contextData } });
+  };
+
+  const handleEditCase = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate('/my-stock-cases');
   };
 
   const performance = calculatePerformance();
@@ -78,6 +99,14 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
               <Badge variant="outline" className="text-xs">
                 {stockCase.case_categories?.name || stockCase.sector || 'General'}
               </Badge>
+              
+              {/* Owner Badge */}
+              {isOwner && (
+                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800">
+                  Ditt Case
+                </Badge>
+              )}
+              
               {/* AI Generated Badge */}
               {stockCase.ai_generated && (
                 <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800">
@@ -85,6 +114,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
                   AI
                 </Badge>
               )}
+              
               {/* Community Badge */}
               {!stockCase.ai_generated && stockCase.user_id && (
                 <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800">
@@ -179,6 +209,45 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
               )}
             </div>
           </div>
+
+          {/* AI Discussion and Save Section */}
+          {user && (
+            <div className="p-3 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleDiscussWithAI}
+                  className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 flex-1"
+                >
+                  <MessageCircle className="w-4 h-4 mr-1" />
+                  Diskutera med AI
+                </Button>
+                
+                <SaveOpportunityButton 
+                  itemType="stock_case" 
+                  itemId={stockCase.id}
+                  itemTitle={stockCase.title}
+                  variant="outline"
+                  size="sm"
+                  showText={false}
+                />
+              </div>
+              
+              {/* Owner Actions */}
+              {isOwner && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleEditCase}
+                  className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 w-full"
+                >
+                  <Edit className="w-4 h-4 mr-1" />
+                  Redigera i Mina Cases
+                </Button>
+              )}
+            </div>
+          )}
 
           {/* Action buttons - Responsive layout */}
           <div className="pt-2 border-t">

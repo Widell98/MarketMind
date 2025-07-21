@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart } from 'lucide-react';
+import { Heart, MessageCircle, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
@@ -20,6 +21,8 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
   const { user } = useAuth();
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
+  const isOwner = user && stockCase.user_id === user.id;
+
   const handleClick = () => {
     if (!user) {
       setShowLoginPrompt(true);
@@ -35,6 +38,27 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
       return;
     }
     toggleLike();
+  };
+
+  const handleDiscussWithAI = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) {
+      setShowLoginPrompt(true);
+      return;
+    }
+    const contextData = {
+      type: 'stock_case',
+      id: stockCase.id,
+      title: stockCase.title,
+      company: stockCase.company_name,
+      data: stockCase
+    };
+    navigate('/ai-chat', { state: { contextData } });
+  };
+
+  const handleEditCase = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate('/my-stock-cases');
   };
 
   const getCategoryColor = (category: string) => {
@@ -94,6 +118,15 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
           <div className="absolute top-2 right-2">
             {getStatusBadge(stockCase.status, stockCase.performance_percentage)}
           </div>
+
+          {/* Owner badge */}
+          {isOwner && (
+            <div className="absolute top-2 left-2">
+              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800">
+                Ditt Case
+              </Badge>
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -111,7 +144,7 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
               <span>av {stockCase.profiles?.display_name || stockCase.profiles?.username || 'Anonym'}</span>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <button
                 onClick={handleLike}
                 className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full transition-colors ${
@@ -135,6 +168,33 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
               />
             </div>
           </div>
+
+          {/* AI Discussion and Owner Actions */}
+          {user && (
+            <div className="flex items-center gap-1 pt-2 border-t">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDiscussWithAI}
+                className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 flex-1 text-xs"
+              >
+                <MessageCircle className="w-3 h-3 mr-1" />
+                Diskutera AI
+              </Button>
+              
+              {isOwner && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleEditCase}
+                  className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex-1 text-xs"
+                >
+                  <Edit className="w-3 h-3 mr-1" />
+                  Redigera
+                </Button>
+              )}
+            </div>
+          )}
           
           <div className="text-xs text-muted-foreground">
             {formatDistanceToNow(new Date(stockCase.created_at), { addSuffix: true, locale: sv })}

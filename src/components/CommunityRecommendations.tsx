@@ -11,7 +11,10 @@ import {
   User,
   BookOpen,
   TrendingUp,
-  Tag
+  Tag,
+  MessageCircle,
+  ArrowRight,
+  Sparkles
 } from 'lucide-react';
 import { useCommunityRecommendations, CommunityRecommendation } from '@/hooks/useCommunityRecommendations';
 
@@ -25,6 +28,16 @@ const CommunityRecommendations: React.FC = () => {
     } else if (recommendation.analysis) {
       navigate(`/analysis/${recommendation.analysis.id}`);
     }
+  };
+
+  const handleDiscussWithAI = (recommendation: CommunityRecommendation) => {
+    const contextData = {
+      type: recommendation.stock_case ? 'stock_case' : 'analysis',
+      id: recommendation.stock_case?.id || recommendation.analysis?.id,
+      title: getItemTitle(recommendation),
+      data: recommendation.stock_case || recommendation.analysis
+    };
+    navigate('/ai-chat', { state: { contextData } });
   };
 
   const getItemIcon = (recommendation: CommunityRecommendation) => {
@@ -99,14 +112,37 @@ const CommunityRecommendations: React.FC = () => {
             <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
               Utforska stock-cases och analyser från communityn och spara intressanta innehåll för att se det här.
             </p>
-            <div className="flex gap-2 justify-center">
-              <Button onClick={() => navigate('/stock-cases')} className="flex items-center gap-2">
+            
+            {/* Enhanced CTA with inspiration hint */}
+            <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg mb-4">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Sparkles className="w-5 h-5 text-purple-600" />
+                <span className="font-medium text-purple-700 dark:text-purple-300">
+                  Hitta inspiration på /stock-cases
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground mb-3">
+                Spara intressanta cases och analyser för att bygga din investeringsstrategi
+              </p>
+            </div>
+            
+            <div className="flex flex-col gap-3">
+              <Button 
+                onClick={() => navigate('/stock-cases')} 
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
                 <TrendingUp className="w-4 h-4" />
                 Utforska Stock Cases
+                <ArrowRight className="w-4 h-4" />
               </Button>
-              <Button variant="outline" onClick={() => navigate('/discover-opportunities')} className="flex items-center gap-2">
+              
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/discover-opportunities')} 
+                className="flex items-center gap-2"
+              >
                 <BookOpen className="w-4 h-4" />
-                Utforska Analyser
+                Upptäck Analyser
               </Button>
             </div>
           </div>
@@ -122,8 +158,16 @@ const CommunityRecommendations: React.FC = () => {
           <Users className="w-5 h-5 text-blue-600" />
           Community-rekommenderade Innehav
         </CardTitle>
-        <CardDescription>
-          Dina sparade stock-cases och analyser från communityn ({recommendations.length} st)
+        <CardDescription className="flex items-center justify-between">
+          <span>Dina sparade stock-cases och analyser från communityn ({recommendations.length} st)</span>
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => navigate('/stock-cases')}
+            className="text-blue-600 hover:text-blue-700"
+          >
+            Hitta fler <ArrowRight className="w-3 h-3 ml-1" />
+          </Button>
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -165,7 +209,7 @@ const CommunityRecommendations: React.FC = () => {
                   )}
 
                   {recommendation.tags.length > 0 && (
-                    <div className="flex items-center gap-1 flex-wrap">
+                    <div className="flex items-center gap-1 flex-wrap mb-2">
                       <Tag className="w-3 h-3 text-muted-foreground" />
                       {recommendation.tags.slice(0, 3).map((tag, index) => (
                         <Badge key={index} variant="outline" className="text-xs">
@@ -177,6 +221,22 @@ const CommunityRecommendations: React.FC = () => {
                       )}
                     </div>
                   )}
+
+                  {/* AI Discussion for saved items */}
+                  <div className="flex items-center gap-2 pt-2 border-t">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDiscussWithAI(recommendation);
+                      }}
+                      className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 flex-1 text-xs"
+                    >
+                      <MessageCircle className="w-3 h-3 mr-1" />
+                      Diskutera med AI
+                    </Button>
+                  </div>
                 </div>
                 
                 <Button size="sm" variant="ghost" className="flex-shrink-0">
