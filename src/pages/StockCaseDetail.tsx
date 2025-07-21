@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
@@ -9,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { ToastAction } from '@/components/ui/toast';
 import { 
   ArrowLeft, 
   Heart, 
@@ -134,10 +136,11 @@ const StockCaseDetail = () => {
     toast({
       title: "Sparad till portfölj!",
       description: "Detta stock case har sparats och är nu tillgängligt i dina Community-rekommenderade Innehav.",
-      action: {
-        label: "Gå till portfölj",
-        onClick: () => navigate('/portfolio-implementation')
-      }
+      action: (
+        <ToastAction altText="Gå till portfölj" onClick={() => navigate('/portfolio-implementation')}>
+          Gå till portfölj
+        </ToastAction>
+      ),
     });
   };
 
