@@ -85,9 +85,8 @@ const AIFloatingWidget = () => {
       const systemPrompt = `Du är en snabb AI-assistent för investeringar. 
 
 KRITISKA REGLER:
-- Svara ENDAST med 1-2 korta meningar (max 30 ord)
+- Svara ENDAST med 2-3 korta meningar (max 70 ord)
 - Ge snabba, direkta svar utan långa förklaringar
-- Avsluta ALLTID med: "→ Gå till AI-chatten för mer info"
 - Ingen djup analys eller långa texter
 
 Användarens riskprofil: ${riskProfile ? `${riskProfile.risk_tolerance} risk` : 'Okänd'}
