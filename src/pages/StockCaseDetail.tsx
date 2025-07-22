@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
-import { useStockCaseFollows } from '@/hooks/useStockCaseFollows';
+import { useUserFollows } from '@/hooks/useUserFollows';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,11 +13,9 @@ import { ToastAction } from '@/components/ui/toast';
 import { 
   ArrowLeft, 
   Heart, 
-  Bookmark, 
   Share2, 
   TrendingUp, 
   TrendingDown,
-  DollarSign,
   Calendar,
   Building,
   BarChart3,
@@ -29,7 +27,7 @@ import {
   Brain,
   ShoppingCart,
   Plus,
-  BookmarkPlus
+  UserPlus
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -53,12 +51,7 @@ const StockCaseDetail = () => {
     loading: likesLoading 
   } = useStockCaseLikes(id || '');
   
-  const { 
-    followCount, 
-    isFollowing, 
-    toggleFollow, 
-    loading: followsLoading 
-  } = useStockCaseFollows(id || '');
+  const { followUser, unfollowUser, isFollowing } = useUserFollows();
 
   if (loading) {
     return (
@@ -141,12 +134,19 @@ const StockCaseDetail = () => {
     if (!user) {
       toast({
         title: "Inloggning krävs", 
-        description: "Du måste vara inloggad för att följa profiler",
+        description: "Du måste vara inloggad för att följa användare",
         variant: "destructive",
       });
       return;
     }
-    toggleFollow();
+
+    if (!stockCase.user_id) return;
+
+    if (isFollowing(stockCase.user_id)) {
+      unfollowUser(stockCase.user_id);
+    } else {
+      followUser(stockCase.user_id);
+    }
   };
 
   const handleSaveSuccess = () => {
@@ -261,7 +261,7 @@ const StockCaseDetail = () => {
               </CardContent>
             </Card>
 
-            {/* Stock Image with Action Buttons */}
+            {/* Stock Image with Like and Save Buttons */}
             {stockCase.image_url && (
               <Card className="overflow-hidden">
                 <CardContent className="p-0">
@@ -274,7 +274,7 @@ const StockCaseDetail = () => {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
                   </div>
                   
-                  {/* Action Buttons Below Image */}
+                  {/* Like and Save Buttons Below Image */}
                   <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t">
                     <div className="flex flex-col sm:flex-row justify-center items-center gap-3">
                       {/* Like and Save Buttons */}
@@ -445,7 +445,7 @@ const StockCaseDetail = () => {
             {/* Market Sentiment Analysis */}
             <MarketSentimentAnalysis />
 
-            {/* Case Info with Follow Button */}
+            {/* Case Info with Follow Button for Profile */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -465,23 +465,32 @@ const StockCaseDetail = () => {
                 </div>
 
                 {stockCase.profiles && (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                      <Users className="w-4 h-4" />
-                      <span>Av {stockCase.profiles.display_name || stockCase.profiles.username}</span>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                        <Users className="w-4 h-4" />
+                        <span>Av </span>
+                        <button
+                          onClick={() => navigate(`/profile/${stockCase.user_id}`)}
+                          className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                        >
+                          {stockCase.profiles.display_name || stockCase.profiles.username}
+                        </button>
+                      </div>
                     </div>
                     
-                    {/* Follow Button for Profile */}
-                    {user && (
+                    {/* Follow Button for Profile - Only show if not own case and user is logged in */}
+                    {user && stockCase.user_id !== user.id && (
                       <Button
-                        variant={isFollowing ? "default" : "outline"}
-                        size="sm"
                         onClick={handleFollowClick}
-                        disabled={followsLoading}
-                        className="flex items-center gap-2"
+                        variant={isFollowing(stockCase.user_id) ? "default" : "outline"}
+                        size="sm"
+                        className="w-full flex items-center gap-2"
                       >
-                        <Bookmark className={`w-4 h-4 ${isFollowing ? 'fill-current' : ''}`} />
-                        <span>{isFollowing ? 'Följer' : 'Följ'} ({followCount})</span>
+                        <UserPlus className="w-4 h-4" />
+                        <span>
+                          {isFollowing(stockCase.user_id) ? 'Följer användare' : 'Följ användare'}
+                        </span>
                       </Button>
                     )}
                   </div>
