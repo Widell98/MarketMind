@@ -157,6 +157,19 @@ const StockCases = () => {
         </div>
 
         {/* Main Content Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto">
+            <TabsTrigger value="all" className="flex items-center gap-2">
+              <Filter className="w-4 h-4" />
+              <span>Alla Fall</span>
+            </TabsTrigger>
+            
+            <TabsTrigger value="trending" className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              <span>Trending</span>
+            </TabsTrigger>
+          </TabsList>
+
           {/* Alla Fall Tab */}
           <TabsContent value="all" className="space-y-6">
             {/* Enhanced Category Filter */}
