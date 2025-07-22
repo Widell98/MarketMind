@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
@@ -142,7 +141,7 @@ const StockCaseDetail = () => {
     if (!user) {
       toast({
         title: "Inloggning krävs", 
-        description: "Du måste vara inloggad för att följa stock cases",
+        description: "Du måste vara inloggad för att följa profiler",
         variant: "destructive",
       });
       return;
@@ -217,87 +216,6 @@ const StockCaseDetail = () => {
           )}
         </div>
 
-        {/* Action Buttons - Improved Layout */}
-        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
-          <CardHeader>
-            <CardTitle className="text-center text-lg">Interagera med detta Stock Case</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-              {/* Social Actions */}
-              <div className="flex items-center gap-3">
-                <Button
-                  variant={isLiked ? "default" : "outline"}
-                  onClick={handleLikeClick}
-                  disabled={likesLoading}
-                  className="flex items-center gap-2 min-w-[100px]"
-                >
-                  <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-                  <span>Gilla ({likeCount})</span>
-                </Button>
-
-                <Button
-                  variant={isFollowing ? "default" : "outline"}
-                  onClick={handleFollowClick}
-                  disabled={followsLoading}
-                  className="flex items-center gap-2 min-w-[100px]"
-                >
-                  <Bookmark className={`w-4 h-4 ${isFollowing ? 'fill-current' : ''}`} />
-                  <span>Följ ({followCount})</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  onClick={handleShare}
-                  className="flex items-center gap-2"
-                >
-                  <Share2 className="w-4 h-4" />
-                  <span>Dela</span>
-                </Button>
-              </div>
-
-              {/* Portfolio Actions */}
-              {user && (
-                <>
-                  <Separator orientation="vertical" className="hidden sm:block h-8" />
-                  <div className="flex items-center gap-3">
-                    <SaveOpportunityButton
-                      itemType="stock_case"
-                      itemId={stockCase.id}
-                      itemTitle={stockCase.company_name}
-                      variant="outline"
-                      showText={true}
-                      onSaveSuccess={handleSaveSuccess}
-                      className="flex items-center gap-2"
-                    />
-
-                    <Button
-                      onClick={() => navigate('/portfolio-implementation')}
-                      variant="outline"
-                      className="flex items-center gap-2"
-                    >
-                      <ShoppingCart className="w-4 h-4" />
-                      <span>Till Portfölj</span>
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Help text for non-authenticated users */}
-            {!user && (
-              <div className="text-center mt-4 p-4 bg-blue-100 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center justify-center gap-2 text-blue-700 dark:text-blue-300">
-                  <Plus className="w-4 h-4" />
-                  <p>
-                    <strong>Logga in</strong> för att gilla, följa och spara detta case till din portfölj.
-                  </p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Main Content */}
@@ -343,7 +261,7 @@ const StockCaseDetail = () => {
               </CardContent>
             </Card>
 
-            {/* Stock Image - Larger and Better Styled */}
+            {/* Stock Image with Action Buttons */}
             {stockCase.image_url && (
               <Card className="overflow-hidden">
                 <CardContent className="p-0">
@@ -354,6 +272,72 @@ const StockCaseDetail = () => {
                       className="w-full h-80 md:h-96 object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                  </div>
+                  
+                  {/* Action Buttons Below Image */}
+                  <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t">
+                    <div className="flex flex-col sm:flex-row justify-center items-center gap-3">
+                      {/* Like and Save Buttons */}
+                      <div className="flex items-center gap-3">
+                        <Button
+                          variant={isLiked ? "default" : "outline"}
+                          onClick={handleLikeClick}
+                          disabled={likesLoading}
+                          className="flex items-center gap-2 min-w-[100px]"
+                        >
+                          <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+                          <span>Gilla ({likeCount})</span>
+                        </Button>
+
+                        {user && (
+                          <SaveOpportunityButton
+                            itemType="stock_case"
+                            itemId={stockCase.id}
+                            itemTitle={stockCase.company_name}
+                            variant="outline"
+                            showText={true}
+                            onSaveSuccess={handleSaveSuccess}
+                            className="flex items-center gap-2 min-w-[100px]"
+                          />
+                        )}
+
+                        <Button
+                          variant="outline"
+                          onClick={handleShare}
+                          className="flex items-center gap-2"
+                        >
+                          <Share2 className="w-4 h-4" />
+                          <span>Dela</span>
+                        </Button>
+                      </div>
+
+                      {/* Portfolio Link */}
+                      {user && (
+                        <>
+                          <Separator orientation="vertical" className="hidden sm:block h-8" />
+                          <Button
+                            onClick={() => navigate('/portfolio-implementation')}
+                            variant="outline"
+                            className="flex items-center gap-2"
+                          >
+                            <ShoppingCart className="w-4 h-4" />
+                            <span>Till Portfölj</span>
+                          </Button>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Help text for non-authenticated users */}
+                    {!user && (
+                      <div className="text-center mt-4 p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <div className="flex items-center justify-center gap-2 text-blue-700 dark:text-blue-300 text-sm">
+                          <Plus className="w-4 h-4" />
+                          <p>
+                            <strong>Logga in</strong> för att gilla och spara detta case till din portfölj.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -461,7 +445,7 @@ const StockCaseDetail = () => {
             {/* Market Sentiment Analysis */}
             <MarketSentimentAnalysis />
 
-            {/* Case Info */}
+            {/* Case Info with Follow Button */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -481,9 +465,25 @@ const StockCaseDetail = () => {
                 </div>
 
                 {stockCase.profiles && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                    <Users className="w-4 h-4" />
-                    <span>Av {stockCase.profiles.display_name || stockCase.profiles.username}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                      <Users className="w-4 h-4" />
+                      <span>Av {stockCase.profiles.display_name || stockCase.profiles.username}</span>
+                    </div>
+                    
+                    {/* Follow Button for Profile */}
+                    {user && (
+                      <Button
+                        variant={isFollowing ? "default" : "outline"}
+                        size="sm"
+                        onClick={handleFollowClick}
+                        disabled={followsLoading}
+                        className="flex items-center gap-2"
+                      >
+                        <Bookmark className={`w-4 h-4 ${isFollowing ? 'fill-current' : ''}`} />
+                        <span>{isFollowing ? 'Följer' : 'Följ'} ({followCount})</span>
+                      </Button>
+                    )}
                   </div>
                 )}
 
