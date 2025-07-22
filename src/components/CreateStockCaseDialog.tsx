@@ -14,9 +14,14 @@ import { Upload, TrendingUp } from 'lucide-react';
 interface CreateStockCaseDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
-const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({ isOpen, onClose }) => {
+const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSuccess 
+}) => {
   const [formData, setFormData] = useState({
     title: '',
     company_name: '',
@@ -100,8 +105,10 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({ isOpen, o
 
       onClose();
       
-      // Trigger a page reload to refresh the stock cases
-      window.location.reload();
+      // Call onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
       console.error('Error creating stock case:', error);
       toast({

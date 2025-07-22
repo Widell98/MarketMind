@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import Layout from '@/components/Layout';
-import { CreateStockCaseDialog } from '@/components/CreateStockCaseDialog';
+import CreateStockCaseDialog from '@/components/CreateStockCaseDialog';
 import StockCaseCard from '@/components/StockCaseCard';
 import AIWeeklyPicks from '@/components/AIWeeklyPicks';
 import { useStockCases } from '@/hooks/useStockCases';
@@ -24,7 +24,8 @@ const StockCases = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const { stockCases, loading, refetchStockCases } = useStockCases(false, categoryFilter);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const { stockCases, loading, refetch } = useStockCases();
 
   const categories = [
     { id: 'all', name: 'Alla Fall', count: stockCases.length },
@@ -41,7 +42,7 @@ const StockCases = () => {
   const handleDelete = async (id: string) => {
     try {
       // Implementation for delete
-      refetchStockCases();
+      refetch();
     } catch (error) {
       console.error('Error deleting stock case:', error);
     }
@@ -60,6 +61,11 @@ const StockCases = () => {
   const getFilteredCases = () => {
     if (categoryFilter === 'all') return stockCases;
     return stockCases.filter(stockCase => stockCase.sector === categoryFilter);
+  };
+
+  const handleCreateSuccess = () => {
+    setCreateDialogOpen(false);
+    refetch();
   };
 
   if (loading) {
@@ -97,12 +103,13 @@ const StockCases = () => {
             </h1>
           </div>
           {user && (
-            <CreateStockCaseDialog onSuccess={refetchStockCases}>
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                <PlusCircle className="w-4 h-4 mr-2" />
-                Nytt Aktiefall
-              </Button>
-            </CreateStockCaseDialog>
+            <Button 
+              onClick={() => setCreateDialogOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Nytt Aktiefall
+            </Button>
           )}
         </div>
 
@@ -177,12 +184,13 @@ const StockCases = () => {
                   }
                 </p>
                 {user && (
-                  <CreateStockCaseDialog onSuccess={refetchStockCases}>
-                    <Button className="bg-blue-600 hover:bg-blue-700">
-                      <PlusCircle className="w-4 h-4 mr-2" />
-                      Skapa första aktiefallet
-                    </Button>
-                  </CreateStockCaseDialog>
+                  <Button 
+                    onClick={() => setCreateDialogOpen(true)}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <PlusCircle className="w-4 h-4 mr-2" />
+                    Skapa första aktiefallet
+                  </Button>
                 )}
               </div>
             )}
@@ -199,6 +207,13 @@ const StockCases = () => {
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Create Stock Case Dialog */}
+        <CreateStockCaseDialog 
+          isOpen={createDialogOpen}
+          onClose={() => setCreateDialogOpen(false)}
+          onSuccess={handleCreateSuccess}
+        />
       </div>
     </Layout>
   );
