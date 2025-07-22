@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,10 +12,17 @@ import SavedOpportunitiesSection from '@/components/SavedOpportunitiesSection';
 import EnhancedProfileHeader from '@/components/EnhancedProfileHeader';
 import MembershipSection from '@/components/MembershipSection';
 import ActivitySection from '@/components/ActivitySection';
+import EditProfileDialog from '@/components/EditProfileDialog';
+import { useEnhancedUserStats } from '@/hooks/useEnhancedUserStats';
+import { useSavedOpportunities } from '@/hooks/useSavedOpportunities';
 
 const Profile = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  
+  const { stats } = useEnhancedUserStats();
+  const { savedItems, removeOpportunity } = useSavedOpportunities();
 
   if (loading) {
     return (
@@ -32,13 +39,38 @@ const Profile = () => {
     return null;
   }
 
+  const handleViewOpportunity = (opportunity: any) => {
+    if (opportunity.item_type === 'stock_case') {
+      navigate(`/stock-cases/${opportunity.item_id}`);
+    } else if (opportunity.item_type === 'analysis') {
+      navigate(`/analyses/${opportunity.item_id}`);
+    }
+  };
+
+  // Transform saved items to match the expected format
+  const transformedOpportunities = savedItems.map(item => ({
+    id: item.id,
+    type: item.item_type,
+    title: item.stock_cases?.title || item.analyses?.title || 'Unknown',
+    description: item.stock_cases?.description || item.analyses?.content?.substring(0, 150) || '',
+    company_name: item.stock_cases?.company_name || '',
+    sector: item.stock_cases?.sector || '',
+    created_at: item.created_at,
+    ai_generated: item.analyses?.ai_generated || false
+  }));
+
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Profile Info */}
           <div className="lg:col-span-1 space-y-6">
-            <EnhancedProfileHeader />
+            <EnhancedProfileHeader 
+              profileData={user}
+              isOwnProfile={true}
+              onEditClick={() => setIsEditDialogOpen(true)}
+              userStats={stats}
+            />
             <MembershipSection />
             
             {/* Quick Actions Card */}
@@ -82,10 +114,19 @@ const Profile = () => {
             <ActivitySection />
             <UserStockCasesSection compact={true} />
             <UserAnalysesSection compact={true} />
-            <SavedOpportunitiesSection />
+            <SavedOpportunitiesSection 
+              opportunities={transformedOpportunities}
+              onRemove={removeOpportunity}
+              onView={handleViewOpportunity}
+            />
           </div>
         </div>
       </div>
+      
+      <EditProfileDialog 
+        isOpen={isEditDialogOpen}
+        onClose={() => setIsEditDialogOpen(false)}
+      />
     </Layout>
   );
 };
