@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
+import PortfolioOverview from '@/components/PortfolioOverview';
 import UserInsightsPanel from '@/components/UserInsightsPanel';
 import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolioAdvisor';
 import UserInvestmentAnalysis from '@/components/UserInvestmentAnalysis';
@@ -8,9 +9,6 @@ import SubscriptionCard from '@/components/SubscriptionCard';
 import LoginPromptModal from '@/components/LoginPromptModal';
 import PortfolioValueCards from '@/components/PortfolioValueCards';
 import CommunityRecommendations from '@/components/CommunityRecommendations';
-import CurrentHoldingsSection from '@/components/portfolio/CurrentHoldingsSection';
-import SectorExposureSection from '@/components/portfolio/SectorExposureSection';
-import AIRecommendationsSection from '@/components/portfolio/AIRecommendationsSection';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAuth } from '@/contexts/AuthContext';
@@ -76,23 +74,6 @@ const PortfolioImplementation = () => {
 
   const handleActionClick = (action: string) => {
     console.log('Action clicked:', action);
-    
-    switch (action) {
-      case 'add_holding':
-        // Navigate to holdings management or open dialog
-        break;
-      case 'view_all_holdings':
-        // Navigate to detailed holdings view
-        break;
-      case 'create_risk_profile':
-        navigate('/portfolio-advisor');
-        break;
-      case 'refresh_recommendations':
-        // Refresh portfolio recommendations
-        break;
-      default:
-        console.log('Unknown action:', action);
-    }
   };
 
   const handleUpdateProfile = () => {
@@ -169,7 +150,7 @@ const PortfolioImplementation = () => {
       />
       
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-6 max-w-[1600px]">
+        <div className="container mx-auto px-4 py-6 max-w-[1400px]">
           {/* Modern Header */}
           <div className="mb-6">
             <div className="flex flex-col gap-4 mb-6">
@@ -288,37 +269,19 @@ const PortfolioImplementation = () => {
             </TabsList>
             
             <TabsContent value="overview" className="mt-0">
-              {/* New Improved Grid Layout */}
-              <div className="space-y-6">
-                {/* Top Row: Current Holdings and AI Insights */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2">
-                    <CurrentHoldingsSection 
-                      onQuickChat={handleQuickChat}
-                      onActionClick={handleActionClick}
-                    />
-                  </div>
-                  <div className="lg:col-span-1">
-                    <UserInsightsPanel />
-                  </div>
-                </div>
-
-                {/* Second Row: Sector Exposure and Community Recommendations */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-1">
-                    <SectorExposureSection onQuickChat={handleQuickChat} />
-                  </div>
-                  <div className="lg:col-span-2">
-                    <CommunityRecommendations />
-                  </div>
-                </div>
-
-                {/* Bottom Row: AI Recommendations (Full Width) */}
-                <div className="w-full">
-                  <AIRecommendationsSection 
+              <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                <div className="xl:col-span-3 space-y-6">
+                  <PortfolioOverview 
+                    portfolio={activePortfolio}
                     onQuickChat={handleQuickChat}
                     onActionClick={handleActionClick}
                   />
+                  
+                  {/* Community Recommendations Section */}
+                  <CommunityRecommendations />
+                </div>
+                <div className="xl:col-span-1">
+                  <UserInsightsPanel />
                 </div>
               </div>
             </TabsContent>
