@@ -12,9 +12,11 @@ import PersonalizedAIRecommendations from '@/components/PersonalizedAIRecommenda
 import AIWeeklyPicks from '@/components/AIWeeklyPicks';
 import SavedOpportunitiesSection from '@/components/SavedOpportunitiesSection';
 import StockCaseCard from '@/components/StockCaseCard';
-import AnalysisSection from '@/components/AnalysisSection';
+import AnalysisCarousel from '@/components/AnalysisCarousel';
+import EnhancedAnalysisGrid from '@/components/EnhancedAnalysisGrid';
 import { useStockCases } from '@/hooks/useStockCases';
 import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
+import { useAnalysesList } from '@/hooks/useAnalysesList';
 import { useNavigate } from 'react-router-dom';
 
 const DiscoverOpportunities = () => {
@@ -25,6 +27,7 @@ const DiscoverOpportunities = () => {
   
   const { stockCases: allStockCases, loading: allLoading } = useStockCases(false);
   const { trendingCases, loading: trendingLoading } = useTrendingStockCases(12);
+  const { data: allAnalyses, isLoading: analysesLoading } = useAnalysesList(20);
 
   const categories = [
     { id: 'all', name: 'Alla möjligheter', icon: Filter },
@@ -70,6 +73,19 @@ const DiscoverOpportunities = () => {
     navigate('/ai-chat', { state: { contextData } });
   };
 
+  // Filter analyses by type
+  const trendingAnalyses = allAnalyses?.filter(analysis => 
+    analysis.likes_count > 5 || analysis.views_count > 100
+  ).slice(0, 8) || [];
+
+  const latestAnalyses = allAnalyses?.filter(analysis => 
+    analysis.analysis_type === 'market_insight'
+  ).slice(0, 6) || [];
+
+  const aiGeneratedAnalyses = allAnalyses?.filter(analysis => 
+    analysis.ai_generated
+  ).slice(0, 6) || [];
+
   // Mock data for saved opportunities
   const mockSavedOpportunities = [
     {
@@ -108,7 +124,7 @@ const DiscoverOpportunities = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center gap-2 mb-2">
@@ -143,7 +159,7 @@ const DiscoverOpportunities = () => {
           <TabsContent value="discover" className="space-y-8">
             {user ? (
               <>
-                {/* AI Weekly Picks - New Section */}
+                {/* AI Weekly Picks */}
                 <AIWeeklyPicks />
 
                 {/* Personalized AI Recommendations */}
@@ -152,11 +168,41 @@ const DiscoverOpportunities = () => {
                 {/* Original Personalized Recommendations */}
                 <PersonalizedRecommendations />
 
-                {/* Trending sektion */}
+                {/* NEW: Trending Analyser - Netflix Style Carousel */}
+                {!analysesLoading && trendingAnalyses.length > 0 && (
+                  <AnalysisCarousel
+                    analyses={trendingAnalyses}
+                    title="🔥 Trending Analyser"
+                    className="my-8"
+                  />
+                )}
+
+                {/* NEW: Senaste Marknadsinsikter - Visual Grid */}
+                {!analysesLoading && latestAnalyses.length > 0 && (
+                  <EnhancedAnalysisGrid
+                    analyses={latestAnalyses}
+                    title="📊 Senaste Marknadsinsikter"
+                    subtitle="Få de senaste analyserna om marknadstrender och möjligheter"
+                    className="my-8"
+                  />
+                )}
+
+                {/* NEW: AI-Genererade Analyser - Special Section */}
+                {!analysesLoading && aiGeneratedAnalyses.length > 0 && (
+                  <EnhancedAnalysisGrid
+                    analyses={aiGeneratedAnalyses}
+                    title="🤖 AI-Genererade Analyser"
+                    subtitle="Avancerade analyser skapade av vår AI baserat på realtidsdata"
+                    showAIBadge={true}
+                    className="my-8"
+                  />
+                )}
+
+                {/* Trending Stock Cases sektion */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <TrendingUp className="w-5 h-5 text-orange-500" />
-                    <h2 className="text-xl font-bold">Trending Just Nu</h2>
+                    <h2 className="text-xl font-bold">Trending Stock Cases</h2>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -288,14 +334,15 @@ const DiscoverOpportunities = () => {
               </div>
             </div>
 
-            {/* Analyser sektion */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-purple-600" />
-                <h2 className="text-xl font-bold">Senaste Analyser</h2>
-              </div>
-              <AnalysisSection limit={6} showHeader={false} />
-            </div>
+            {/* All Analyses in Browse Tab */}
+            {!analysesLoading && allAnalyses && allAnalyses.length > 0 && (
+              <EnhancedAnalysisGrid
+                analyses={allAnalyses.slice(0, 9)}
+                title="Alla Analyser"
+                subtitle="Bläddra igenom alla tillgängliga analyser från communityn"
+                className="my-8"
+              />
+            )}
           </TabsContent>
         </Tabs>
       </div>
