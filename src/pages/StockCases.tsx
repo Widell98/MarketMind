@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Plus, 
   TrendingUp, 
@@ -21,6 +22,8 @@ import StockCaseCard from '@/components/StockCaseCard';
 import StockCasesFilters from '@/components/StockCasesFilters';
 import CreateStockCaseDialog from '@/components/CreateStockCaseDialog';
 import CreateAnalysisDialog from '@/components/CreateAnalysisDialog';
+import AIWeeklyPicks from '@/components/AIWeeklyPicks';
+import AnalysisFeed from '@/components/AnalysisFeed';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,7 +51,6 @@ const StockCases = () => {
   };
 
   const handleDeleteStockCase = async (id: string) => {
-    // Implementation for delete functionality
     console.log('Delete stock case:', id);
     refetch();
   };
@@ -107,49 +109,17 @@ const StockCases = () => {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8 space-y-8">
-        {/* Header with workflow explanation */}
+        {/* Header */}
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center gap-2 mb-2">
             <TrendingUp className="w-8 h-8 text-blue-600" />
             <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100">
-              Stock Cases
+              Investeringscentral
             </h1>
           </div>
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-            Din inspirationskälla för investeringsidéer. Upptäck cases från communityn, spara det du gillar och implementera i din portfölj.
+            Upptäck AI-drivna investeringsmöjligheter, community cases och marknadsanalyser i ett sammanhållet flöde.
           </p>
-          
-          {/* Workflow steps */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center max-w-4xl mx-auto mt-6">
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-blue-600" />
-              </div>
-              <div className="text-sm font-medium">1. Upptäck</div>
-              <div className="text-xs text-muted-foreground">Utforska cases och analyser</div>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-green-600" />
-              </div>
-              <div className="text-sm font-medium">2. Spara</div>
-              <div className="text-xs text-muted-foreground">Markera intressant innehåll</div>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
-                <MessageCircle className="w-5 h-5 text-purple-600" />
-              </div>
-              <div className="text-sm font-medium">3. Diskutera</div>
-              <div className="text-xs text-muted-foreground">Prata med AI om idéerna</div>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
-                <Target className="w-5 h-5 text-orange-600" />
-              </div>
-              <div className="text-sm font-medium">4. Implementera</div>
-              <div className="text-xs text-muted-foreground">Använd i din portfölj</div>
-            </div>
-          </div>
           
           {/* Enhanced CTA section */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-6">
@@ -186,62 +156,86 @@ const StockCases = () => {
               className="flex items-center gap-2"
             >
               <Target className="w-4 h-4" />
-              Se dina sparade rekommendationer
+              Se sparade rekommendationer
               <ArrowRight className="w-4 h-4" />
             </Button>
           </div>
         </div>
 
-        {/* Filters */}
-        <StockCasesFilters
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          selectedCategory={selectedCategory}
-          onCategoryChange={setSelectedCategory}
-          performanceFilter={performanceFilter}
-          onPerformanceFilterChange={setPerformanceFilter}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          sortOrder={sortOrder}
-          onSortOrderChange={setSortOrder}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-          categories={[]}
-        />
+        {/* AI Weekly Picks - Always show at top */}
+        <AIWeeklyPicks />
 
-        {/* Stock Cases Grid */}
-        {stockCases.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {stockCases.map((stockCase) => (
-              <StockCaseCard
-                key={stockCase.id}
-                stockCase={stockCase}
-                onViewDetails={handleViewDetails}
-                onDelete={handleDeleteStockCase}
-              />
-            ))}
-          </div>
-        ) : (
-          <Card className="text-center py-12 bg-gray-50 dark:bg-gray-800">
-            <CardContent className="pt-6">
-              <Users className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-              <CardTitle className="text-xl mb-2">Inga stock cases hittades</CardTitle>
-              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                Det verkar som att det inte finns några stock cases som matchar dina filter. 
-                Prova att ändra filtren eller skapa det första caset!
-              </p>
-              {user && (
-                <Button 
-                  onClick={() => setIsCreateStockCaseOpen(true)}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Skapa första Stock Case
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        )}
+        {/* Main Content with Tabs */}
+        <Tabs defaultValue="cases" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="cases" className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Stock Cases
+            </TabsTrigger>
+            <TabsTrigger value="analyses" className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4" />
+              Marknadsanalyser
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="cases" className="space-y-6">
+            {/* Filters for Stock Cases */}
+            <StockCasesFilters
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              selectedCategory={selectedCategory}
+              onCategoryChange={setSelectedCategory}
+              performanceFilter={performanceFilter}
+              onPerformanceFilterChange={setPerformanceFilter}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              sortOrder={sortOrder}
+              onSortOrderChange={setSortOrder}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              categories={[]}
+            />
+
+            {/* Stock Cases Grid */}
+            {stockCases.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {stockCases.map((stockCase) => (
+                  <StockCaseCard
+                    key={stockCase.id}
+                    stockCase={stockCase}
+                    onViewDetails={handleViewDetails}
+                    onDelete={handleDeleteStockCase}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Card className="text-center py-12 bg-gray-50 dark:bg-gray-800">
+                <CardContent className="pt-6">
+                  <Users className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+                  <CardTitle className="text-xl mb-2">Inga stock cases hittades</CardTitle>
+                  <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                    Det verkar som att det inte finns några stock cases som matchar dina filter. 
+                    Prova att ändra filtren eller skapa det första caset!
+                  </p>
+                  {user && (
+                    <Button 
+                      onClick={() => setIsCreateStockCaseOpen(true)}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Skapa första Stock Case
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="analyses" className="space-y-6">
+            {/* Analysis Feed with X/Twitter-like interface */}
+            <AnalysisFeed />
+          </TabsContent>
+        </Tabs>
 
         {/* Community stats */}
         <Card>
