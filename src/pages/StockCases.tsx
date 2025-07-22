@@ -16,7 +16,12 @@ import {
   PlusCircle, 
   Filter, 
   Sparkles,
-  MessageCircle
+  MessageCircle,
+  Building2,
+  Heart,
+  DollarSign,
+  Zap,
+  Tag
 } from 'lucide-react';
 
 const StockCases = () => {
@@ -28,11 +33,46 @@ const StockCases = () => {
   const { stockCases, loading, refetch } = useStockCases();
 
   const categories = [
-    { id: 'all', name: 'Alla Fall', count: stockCases.length },
-    { id: 'Technology', name: 'Teknik', count: stockCases.filter(c => c.sector === 'Technology').length },
-    { id: 'Healthcare', name: 'Hälsovård', count: stockCases.filter(c => c.sector === 'Healthcare').length },
-    { id: 'Finance', name: 'Finans', count: stockCases.filter(c => c.sector === 'Finance').length },
-    { id: 'Energy', name: 'Energi', count: stockCases.filter(c => c.sector === 'Energy').length },
+    { 
+      id: 'all', 
+      name: 'Alla Fall', 
+      count: stockCases.length,
+      icon: Tag,
+      color: 'bg-gradient-to-r from-blue-500 to-purple-500',
+      textColor: 'text-white'
+    },
+    { 
+      id: 'Technology', 
+      name: 'Teknik', 
+      count: stockCases.filter(c => c.sector === 'Technology').length,
+      icon: Zap,
+      color: 'bg-gradient-to-r from-emerald-500 to-teal-500',
+      textColor: 'text-white'
+    },
+    { 
+      id: 'Healthcare', 
+      name: 'Hälsovård', 
+      count: stockCases.filter(c => c.sector === 'Healthcare').length,
+      icon: Heart,
+      color: 'bg-gradient-to-r from-rose-500 to-pink-500',
+      textColor: 'text-white'
+    },
+    { 
+      id: 'Finance', 
+      name: 'Finans', 
+      count: stockCases.filter(c => c.sector === 'Finance').length,
+      icon: DollarSign,
+      color: 'bg-gradient-to-r from-amber-500 to-orange-500',
+      textColor: 'text-white'
+    },
+    { 
+      id: 'Energy', 
+      name: 'Energi', 
+      count: stockCases.filter(c => c.sector === 'Energy').length,
+      icon: Building2,
+      color: 'bg-gradient-to-r from-violet-500 to-indigo-500',
+      textColor: 'text-white'
+    },
   ];
 
   const handleViewDetails = (id: string) => {
@@ -132,21 +172,86 @@ const StockCases = () => {
 
           {/* Alla Fall Tab */}
           <TabsContent value="all" className="space-y-6">
-            {/* Category Filter */}
-            <div className="flex flex-wrap gap-2 justify-center">
-              {categories.map(category => (
-                <Button
-                  key={category.id}
-                  variant={categoryFilter === category.id ? 'default' : 'outline'}
-                  onClick={() => setCategoryFilter(category.id)}
-                  className="flex items-center gap-2"
-                >
-                  {category.name}
-                  <Badge variant="secondary" className="ml-1">
-                    {category.count}
-                  </Badge>
-                </Button>
-              ))}
+            {/* Enhanced Category Filter */}
+            <div className="space-y-3">
+              <div className="text-center">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                  Filtrera efter kategori
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Välj en kategori för att se relevanta aktiefall
+                </p>
+              </div>
+              
+              <div className="flex flex-wrap gap-3 justify-center max-w-4xl mx-auto">
+                {categories.map(category => {
+                  const IconComponent = category.icon;
+                  const isActive = categoryFilter === category.id;
+                  
+                  return (
+                    <button
+                      key={category.id}
+                      onClick={() => setCategoryFilter(category.id)}
+                      className={`
+                        group relative overflow-hidden rounded-xl px-4 py-3 min-w-[120px]
+                        transition-all duration-300 transform hover:scale-105 hover:shadow-lg
+                        ${isActive 
+                          ? `${category.color} ${category.textColor} shadow-md scale-105` 
+                          : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                        }
+                      `}
+                    >
+                      {/* Gradient overlay for inactive state */}
+                      {!isActive && (
+                        <div className={`
+                          absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300
+                          ${category.color}
+                        `} />
+                      )}
+                      
+                      <div className="relative flex flex-col items-center gap-2">
+                        <IconComponent className={`
+                          w-5 h-5 transition-colors duration-300
+                          ${isActive 
+                            ? 'text-white' 
+                            : 'text-gray-600 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200'
+                          }
+                        `} />
+                        
+                        <div className="text-center">
+                          <div className={`
+                            text-sm font-medium transition-colors duration-300
+                            ${isActive 
+                              ? 'text-white' 
+                              : 'text-gray-900 dark:text-gray-100'
+                            }
+                          `}>
+                            {category.name}
+                          </div>
+                          
+                          <Badge 
+                            variant={isActive ? "secondary" : "outline"} 
+                            className={`
+                              mt-1 text-xs transition-all duration-300
+                              ${isActive 
+                                ? 'bg-white/20 text-white border-white/30' 
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                              }
+                            `}
+                          >
+                            {category.count}
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      {/* Active indicator */}
+                      {isActive && (
+                        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white/30 rounded-full" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Stock Cases Grid */}
