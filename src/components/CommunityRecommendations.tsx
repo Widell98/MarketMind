@@ -12,15 +12,20 @@ import {
   BookOpen,
   TrendingUp,
   Tag,
-  MessageCircle,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Trash2
 } from 'lucide-react';
 import { useCommunityRecommendations, CommunityRecommendation } from '@/hooks/useCommunityRecommendations';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 const CommunityRecommendations: React.FC = () => {
   const { recommendations, loading, refetch } = useCommunityRecommendations();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   // Expose refetch function globally so SaveOpportunityButton can use it
   React.useEffect(() => {
@@ -38,14 +43,41 @@ const CommunityRecommendations: React.FC = () => {
     }
   };
 
-  const handleDiscussWithAI = (recommendation: CommunityRecommendation) => {
-    const contextData = {
-      type: recommendation.stock_case ? 'stock_case' : 'analysis',
-      id: recommendation.stock_case?.id || recommendation.analysis?.id,
-      title: getItemTitle(recommendation),
-      data: recommendation.stock_case || recommendation.analysis
-    };
-    navigate('/ai-chat', { state: { contextData } });
+  const handleDeleteRecommendation = async (recommendation: CommunityRecommendation, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!user) {
+      toast({
+        title: "Fel",
+        description: "Du måste vara inloggad för att ta bort rekommendationer",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('saved_opportunities')
+        .delete()
+        .eq('id', recommendation.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Rekommendation borttagen",
+        description: "Rekommendationen har tagits bort från din lista."
+      });
+
+      // Refresh the recommendations list
+      refetch();
+    } catch (error) {
+      console.error('Error deleting recommendation:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte ta bort rekommendationen. Försök igen senare.",
+        variant: "destructive"
+      });
+    }
   };
 
   const getItemIcon = (recommendation: CommunityRecommendation) => {
@@ -230,19 +262,16 @@ const CommunityRecommendations: React.FC = () => {
                     </div>
                   )}
 
-                  {/* AI Discussion for saved items */}
+                  {/* Delete action */}
                   <div className="flex items-center gap-2 pt-2 border-t">
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDiscussWithAI(recommendation);
-                      }}
-                      className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 flex-1 text-xs"
+                      onClick={(e) => handleDeleteRecommendation(recommendation, e)}
+                      className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 flex-1 text-xs"
                     >
-                      <MessageCircle className="w-3 h-3 mr-1" />
-                      Diskutera med AI
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      Ta bort från lista
                     </Button>
                   </div>
                 </div>
