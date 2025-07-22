@@ -55,7 +55,7 @@ const EnhancedProfileHeader: React.FC<EnhancedProfileHeaderProps> = ({
   return (
     <div className="relative">
       {/* Cover Background */}
-      <div className="h-48 bg-gradient-to-r from-slate-600 via-slate-700 to-slate-800 rounded-t-xl"></div>
+      <div className="h-48 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 rounded-t-xl"></div>
       
       <Card className="border-none shadow-xl -mt-24 mx-4 bg-white dark:bg-gray-900">
         <CardContent className="p-8">
@@ -68,7 +68,7 @@ const EnhancedProfileHeader: React.FC<EnhancedProfileHeaderProps> = ({
                     src={profileData?.avatar_url} 
                     alt={profileData?.display_name || profileData?.username || 'User'} 
                   />
-                  <AvatarFallback className="bg-gradient-to-br from-slate-500 to-slate-600 text-white text-3xl font-bold">
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-3xl font-bold">
                     {getInitials(profileData?.display_name || profileData?.username || '')}
                   </AvatarFallback>
                 </Avatar>
@@ -112,7 +112,7 @@ const EnhancedProfileHeader: React.FC<EnhancedProfileHeaderProps> = ({
                     onClick={handleFollowToggle}
                     variant={isFollowing(profileData?.id) ? "outline" : "default"}
                     size="sm"
-                    className={`px-6 ${isFollowing(profileData?.id) ? "hover:bg-red-50 hover:text-red-600 hover:border-red-300" : "bg-slate-700 hover:bg-slate-800"}`}
+                    className={`px-6 ${isFollowing(profileData?.id) ? "hover:bg-red-50 hover:text-red-600 hover:border-red-300" : "bg-blue-600 hover:bg-blue-700"}`}
                   >
                     {isFollowing(profileData?.id) ? 'Följer' : 'Följ'}
                   </Button>
@@ -130,49 +130,49 @@ const EnhancedProfileHeader: React.FC<EnhancedProfileHeaderProps> = ({
 
               {/* Stats Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="text-center p-3 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/20 dark:to-slate-800/20 rounded-lg border border-slate-200/50 dark:border-slate-700/50">
-                  <div className="text-2xl font-bold text-slate-700 dark:text-slate-300">
+                <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
                     {userStats.stockCasesCount + userStats.analysesCount}
                   </div>
-                  <div className="text-sm text-slate-600 dark:text-slate-400 font-medium">Inlägg</div>
+                  <div className="text-sm text-blue-600 dark:text-blue-400 font-medium">Inlägg</div>
                 </div>
                 
-                <div className="text-center p-3 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-lg border border-emerald-200/50 dark:border-emerald-700/50">
-                  <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                <div className="text-center p-3 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-lg">
+                  <div className="text-2xl font-bold text-green-700 dark:text-green-300">
                     {profileData?.follower_count || 0}
                   </div>
-                  <div className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Följare</div>
+                  <div className="text-sm text-green-600 dark:text-green-400 font-medium">Följare</div>
                 </div>
                 
-                <div className="text-center p-3 bg-gradient-to-br from-violet-50 to-violet-100 dark:from-violet-900/20 dark:to-violet-800/20 rounded-lg border border-violet-200/50 dark:border-violet-700/50">
-                  <div className="text-2xl font-bold text-violet-700 dark:text-violet-300">
+                <div className="text-center p-3 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg">
+                  <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">
                     {profileData?.following_count || 0}
                   </div>
-                  <div className="text-sm text-violet-600 dark:text-violet-400 font-medium">Följer</div>
+                  <div className="text-sm text-purple-600 dark:text-purple-400 font-medium">Följer</div>
                 </div>
                 
-                <div className="text-center p-3 bg-gradient-to-br from-rose-50 to-rose-100 dark:from-rose-900/20 dark:to-rose-800/20 rounded-lg border border-rose-200/50 dark:border-rose-700/50">
-                  <div className="text-2xl font-bold text-rose-700 dark:text-rose-300">
+                <div className="text-center p-3 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-lg">
+                  <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">
                     {userStats.totalLikes}
                   </div>
-                  <div className="text-sm text-rose-600 dark:text-rose-400 font-medium">Likes</div>
+                  <div className="text-sm text-orange-600 dark:text-orange-400 font-medium">Likes</div>
                 </div>
               </div>
 
               {/* Additional Info */}
               <div className="flex flex-wrap justify-center md:justify-start gap-3">
                 {profileData?.level && (
-                  <Badge variant="outline" className="bg-slate-50 text-slate-700 dark:bg-slate-900 dark:text-slate-300 border-slate-200">
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-300 border-blue-200">
                     Nivå: {profileData.level}
                   </Badge>
                 )}
                 {profileData?.investment_philosophy && (
-                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 border-emerald-200">
+                  <Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-300 border-green-200">
                     {profileData.investment_philosophy}
                   </Badge>
                 )}
                 {profileData?.location && (
-                  <Badge variant="outline" className="bg-violet-50 text-violet-700 dark:bg-violet-900 dark:text-violet-300 border-violet-200">
+                  <Badge variant="outline" className="bg-purple-50 text-purple-700 dark:bg-purple-900 dark:text-purple-300 border-purple-200">
                     📍 {profileData.location}
                   </Badge>
                 )}
