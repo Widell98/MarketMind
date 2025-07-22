@@ -22,6 +22,7 @@ import AdminStockCases from "./pages/AdminStockCases";
 import MyStockCases from "./pages/MyStockCases";
 import AdvancedFeatures from "./pages/AdvancedFeatures";
 import DiscoverOpportunities from "./pages/DiscoverOpportunities";
+import MarketAnalyses from "./pages/MarketAnalyses";
 import Watchlist from "./pages/Watchlist";
 import NotFound from "./pages/NotFound";
 
@@ -53,6 +54,7 @@ function App() {
               <Route path="/my-stock-cases" element={<MyStockCases />} />
               <Route path="/advanced-features" element={<AdvancedFeatures />} />
               <Route path="/discover-opportunities" element={<DiscoverOpportunities />} />
+              <Route path="/market-analyses" element={<MarketAnalyses />} />
               <Route path="/watchlist" element={<Watchlist />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
