@@ -27,7 +27,8 @@ import {
   Target,
   StopCircle,
   Brain,
-  ShoppingCart
+  ShoppingCart,
+  Plus
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -233,66 +234,76 @@ const StockCaseDetail = () => {
                     )}
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      variant={isLiked ? "default" : "outline"}
-                      onClick={handleLikeClick}
-                      disabled={likesLoading || !user}
-                      className="flex items-center gap-2"
-                    >
-                      <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-                      {likeCount}
-                    </Button>
-
-                    <Button
-                      variant={isFollowing ? "default" : "outline"}
-                      onClick={handleFollowClick}
-                      disabled={followsLoading || !user}
-                      className="flex items-center gap-2"
-                    >
-                      <Bookmark className={`w-4 h-4 ${isFollowing ? 'fill-current' : ''}`} />
-                      {followCount}
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      onClick={handleShare}
-                      className="flex items-center gap-2"
-                    >
-                      <Share2 className="w-4 h-4" />
-                      Dela
-                    </Button>
-
-                    {/* Save to Portfolio Button */}
-                    {user && (
-                      <SaveOpportunityButton
-                        itemType="stock_case"
-                        itemId={stockCase.id}
-                        itemTitle={stockCase.company_name}
-                        variant="default"
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-                        showText={true}
-                        onSaveSuccess={handleSaveSuccess}
-                      />
-                    )}
-
-                    {/* Portfolio Implementation Button */}
-                    {user && (
+                  {/* Improved Action Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    {/* Primary Actions - Social Engagement */}
+                    <div className="flex items-center gap-2">
                       <Button
-                        onClick={() => navigate('/portfolio-implementation')}
-                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+                        variant={isLiked ? "default" : "outline"}
+                        onClick={handleLikeClick}
+                        disabled={likesLoading || !user}
+                        size="sm"
                       >
-                        <ShoppingCart className="w-4 h-4" />
-                        Gå till portfölj
+                        <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+                        <span className="ml-1">{likeCount}</span>
                       </Button>
+
+                      <Button
+                        variant={isFollowing ? "default" : "outline"}
+                        onClick={handleFollowClick}
+                        disabled={followsLoading || !user}
+                        size="sm"
+                      >
+                        <Bookmark className={`w-4 h-4 ${isFollowing ? 'fill-current' : ''}`} />
+                        <span className="ml-1">{followCount}</span>
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        onClick={handleShare}
+                        size="sm"
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+
+                    {/* Secondary Actions - Portfolio Related */}
+                    {user && (
+                      <>
+                        <Separator orientation="vertical" className="hidden sm:block h-8" />
+                        <div className="flex items-center gap-2">
+                          <SaveOpportunityButton
+                            itemType="stock_case"
+                            itemId={stockCase.id}
+                            itemTitle={stockCase.company_name}
+                            variant="outline"
+                            size="sm"
+                            showText={false}
+                            onSaveSuccess={handleSaveSuccess}
+                          />
+
+                          <Button
+                            onClick={() => navigate('/portfolio-implementation')}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <ShoppingCart className="w-4 h-4 mr-1" />
+                            Portfölj
+                          </Button>
+                        </div>
+                      </>
                     )}
                   </div>
 
                   {/* Help text for non-authenticated users */}
                   {!user && (
-                    <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                      <p>Logga in för att spara detta stock case till din portfölj och diskutera det med AI.</p>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <div className="flex items-start gap-2">
+                        <Plus className="w-4 h-4 mt-0.5 text-blue-600" />
+                        <p className="text-blue-700 dark:text-blue-300">
+                          <strong>Logga in</strong> för att spara detta case till din portfölj och diskutera med AI.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
