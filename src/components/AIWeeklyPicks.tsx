@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,22 +7,18 @@ import { useLatestStockCases } from '@/hooks/useLatestStockCases';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
-
 const AIWeeklyPicks = () => {
-  const { latestCases, loading } = useLatestStockCases(6);
+  const {
+    latestCases,
+    loading
+  } = useLatestStockCases(6);
   const navigate = useNavigate();
 
   // Filter AI-generated cases (in the future this will be actual AI cases)
-  const aiCases = latestCases.filter(stockCase => 
-    stockCase.title?.includes('AI') || 
-    stockCase.description?.includes('AI-genererad') ||
-    stockCase.ai_generated === true
-  ).slice(0, 3);
-
+  const aiCases = latestCases.filter(stockCase => stockCase.title?.includes('AI') || stockCase.description?.includes('AI-genererad') || stockCase.ai_generated === true).slice(0, 3);
   const handleViewDetails = (id: string) => {
     navigate(`/stock-cases/${id}`);
   };
-
   const handleDiscussWithAI = (stockCase: any) => {
     const contextData = {
       type: 'stock_case',
@@ -31,28 +26,28 @@ const AIWeeklyPicks = () => {
       title: stockCase.title,
       data: stockCase
     };
-    navigate('/ai-chat', { state: { contextData } });
-  };
-
-  const handleGenerateAICases = () => {
-    // Trigger the weekly cases generation function
-    navigate('/ai-chat', { 
-      state: { 
-        initialMessage: 'Kan du hjälpa mig att generera AI-baserade investeringsmöjligheter baserat på aktuella marknadstrender?' 
-      } 
+    navigate('/ai-chat', {
+      state: {
+        contextData
+      }
     });
   };
-
+  const handleGenerateAICases = () => {
+    // Trigger the weekly cases generation function
+    navigate('/ai-chat', {
+      state: {
+        initialMessage: 'Kan du hjälpa mig att generera AI-baserade investeringsmöjligheter baserat på aktuella marknadstrender?'
+      }
+    });
+  };
   if (loading) {
-    return (
-      <div className="space-y-4">
+    return <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-purple-600" />
           <h2 className="text-xl font-bold">AI Veckans Val</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
+          {[...Array(3)].map((_, i) => <Card key={i} className="animate-pulse">
               <CardContent className="p-4">
                 <div className="space-y-3">
                   <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
@@ -60,16 +55,12 @@ const AIWeeklyPicks = () => {
                   <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
                 </div>
               </CardContent>
-            </Card>
-          ))}
+            </Card>)}
         </div>
-      </div>
-    );
+      </div>;
   }
-
   if (aiCases.length === 0) {
-    return (
-      <div className="space-y-6">
+    return <div className="space-y-6">
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-purple-600" />
           <h2 className="text-xl font-bold">AI Veckans Val</h2>
@@ -121,10 +112,7 @@ const AIWeeklyPicks = () => {
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Button 
-                    onClick={handleGenerateAICases}
-                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                  >
+                  <Button onClick={handleGenerateAICases} className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
                     <Sparkles className="w-4 h-4 mr-2" />
                     Få AI-Rekommendationer Nu
                   </Button>
@@ -149,91 +137,13 @@ const AIWeeklyPicks = () => {
         </Card>
 
         {/* Features Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-900/40">
-            <CardContent className="p-6 text-center">
-              <Target className="w-8 h-8 text-purple-600 mx-auto mb-3" />
-              <h4 className="font-semibold mb-2">Riskjusterade Val</h4>
-              <p className="text-sm text-muted-foreground">AI analyserar din riskprofil för optimala investeringsförslag</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/40">
-            <CardContent className="p-6 text-center">
-              <BarChart3 className="w-8 h-8 text-blue-600 mx-auto mb-3" />
-              <h4 className="font-semibold mb-2">Teknisk Analys</h4>
-              <p className="text-sm text-muted-foreground">Avancerad chartanalys och tekniska indikatorer</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/40">
-            <CardContent className="p-6 text-center">
-              <TrendingUp className="w-8 h-8 text-green-600 mx-auto mb-3" />
-              <h4 className="font-semibold mb-2">Trendidentifiering</h4>
-              <p className="text-sm text-muted-foreground">Upptäck nya möjligheter innan marknaden reagerar</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-900/40">
-            <CardContent className="p-6 text-center">
-              <Users className="w-8 h-8 text-orange-600 mx-auto mb-3" />
-              <h4 className="font-semibold mb-2">Community Insights</h4>
-              <p className="text-sm text-muted-foreground">Kombinera AI-analys med community-kunskap</p>
-            </CardContent>
-          </Card>
-        </div>
+        
 
         {/* Timeline Section */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-purple-600" />
-              Kommande Funktioner
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg">
-                <div className="w-3 h-3 bg-purple-600 rounded-full"></div>
-                <div className="flex-1">
-                  <h5 className="font-semibold">Automatisk Generering</h5>
-                  <p className="text-sm text-muted-foreground">AI kommer att automatiskt generera nya fall varje tisdag och fredag</p>
-                </div>
-                <Badge variant="outline" className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                  Q1 2025
-                </Badge>
-              </div>
-              
-              <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 rounded-lg">
-                <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
-                <div className="flex-1">
-                  <h5 className="font-semibold">Personalisering</h5>
-                  <p className="text-sm text-muted-foreground">Rekommendationer baserade på din portfölj och preferenser</p>
-                </div>
-                <Badge variant="outline" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                  Q1 2025
-                </Badge>
-              </div>
-              
-              <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-green-50 to-yellow-50 dark:from-green-900/20 dark:to-yellow-900/20 rounded-lg">
-                <div className="w-3 h-3 bg-green-600 rounded-full"></div>
-                <div className="flex-1">
-                  <h5 className="font-semibold">Realtidsuppdateringar</h5>
-                  <p className="text-sm text-muted-foreground">Live-uppdatering av AI-rekommendationer baserat på marknadsförändringar</p>
-                </div>
-                <Badge variant="outline" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-                  Q2 2025
-                </Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+        
+      </div>;
   }
-
-  return (
-    <div className="space-y-4">
+  return <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-purple-600" />
@@ -246,8 +156,7 @@ const AIWeeklyPicks = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {aiCases.map((stockCase) => (
-          <Card key={stockCase.id} className="border-0 shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
+        {aiCases.map(stockCase => <Card key={stockCase.id} className="border-0 shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
             <CardContent className="p-4">
               <div className="space-y-3">
                 <div className="flex items-start justify-between">
@@ -257,11 +166,9 @@ const AIWeeklyPicks = () => {
                         <Sparkles className="w-3 h-3 mr-1" />
                         AI-Genererad
                       </Badge>
-                      {stockCase.case_categories && (
-                        <Badge variant="secondary" className="text-xs">
+                      {stockCase.case_categories && <Badge variant="secondary" className="text-xs">
                           {stockCase.case_categories.name}
-                        </Badge>
-                      )}
+                        </Badge>}
                     </div>
                     <h3 className="font-semibold line-clamp-2 text-sm mb-1">
                       {stockCase.title}
@@ -269,54 +176,40 @@ const AIWeeklyPicks = () => {
                     <p className="text-sm text-muted-foreground mb-2">
                       {stockCase.company_name}
                     </p>
-                    {stockCase.sector && (
-                      <Badge variant="outline" className="text-xs mb-2">
+                    {stockCase.sector && <Badge variant="outline" className="text-xs mb-2">
                         {stockCase.sector}
-                      </Badge>
-                    )}
+                      </Badge>}
                   </div>
                 </div>
                 
-                {stockCase.description && (
-                  <p className="text-xs text-muted-foreground line-clamp-2">
+                {stockCase.description && <p className="text-xs text-muted-foreground line-clamp-2">
                     {stockCase.description}
-                  </p>
-                )}
+                  </p>}
                 
                 <div className="flex items-center justify-between pt-2">
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDiscussWithAI(stockCase)}
-                      className="text-purple-600 hover:text-purple-700 text-xs"
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => handleDiscussWithAI(stockCase)} className="text-purple-600 hover:text-purple-700 text-xs">
                       <MessageCircle className="w-3 h-3 mr-1" />
                       Diskutera
                     </Button>
                   </div>
                   
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleViewDetails(stockCase.id)}
-                    className="text-xs"
-                  >
+                  <Button variant="outline" size="sm" onClick={() => handleViewDetails(stockCase.id)} className="text-xs">
                     <TrendingUp className="w-3 h-3 mr-1" />
                     Visa detaljer
                   </Button>
                 </div>
 
                 <div className="text-xs text-muted-foreground">
-                  Skapad {formatDistanceToNow(new Date(stockCase.created_at), { addSuffix: true, locale: sv })}
+                  Skapad {formatDistanceToNow(new Date(stockCase.created_at), {
+                addSuffix: true,
+                locale: sv
+              })}
                 </div>
               </div>
             </CardContent>
-          </Card>
-        ))}
+          </Card>)}
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default AIWeeklyPicks;
