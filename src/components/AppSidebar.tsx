@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -32,13 +31,13 @@ const AppSidebar = () => {
   
   const aiNavigation = [
     { name: 'AI-Assistent', href: '/ai-chat', icon: Brain, priority: true },
-    { name: 'Smart Portfolio', href: '/portfolio-implementation', icon: BarChart3, requiresAuth: true },
-    { name: 'Advanced Features', href: '/advanced-features', icon: BarChart3, requiresAuth: true },
+    { name: 'Smart Portfölj', href: '/portfolio-implementation', icon: BarChart3, requiresAuth: true },
+    { name: 'Avancerade Funktioner', href: '/advanced-features', icon: BarChart3, requiresAuth: true },
   ];
 
   const mainNavigation = [
-    { name: 'Home', href: '/', icon: Home },
-    { name: 'Discover Opportunities', href: '/stock-cases', icon: TrendingUp },
+    { name: 'Hem', href: '/', icon: Home },
+    { name: 'Upptäck Möjligheter', href: '/stock-cases', icon: TrendingUp },
   ];
 
   const userNavigation = [
