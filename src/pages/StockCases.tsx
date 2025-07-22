@@ -134,7 +134,10 @@ const StockCases = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Header */}
+        {/* AI Weekly Picks Section - moved to top */}
+        <AIWeeklyPicks />
+
+        {/* Header - moved below AI Weekly Picks */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <TrendingUp className="w-8 h-8 text-blue-600" />
@@ -152,9 +155,6 @@ const StockCases = () => {
             </Button>
           )}
         </div>
-
-        {/* AI Weekly Picks Section */}
-        <AIWeeklyPicks />
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
