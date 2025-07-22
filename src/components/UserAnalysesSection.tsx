@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,11 +12,17 @@ import { toast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import CreateAnalysisDialog from '@/components/CreateAnalysisDialog';
+import { useNavigate } from 'react-router-dom';
 
-const UserAnalysesSection = () => {
+interface UserAnalysesSectionProps {
+  compact?: boolean;
+}
+
+const UserAnalysesSection = ({ compact = false }: UserAnalysesSectionProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const navigate = useNavigate();
 
   const { data: analyses, isLoading } = useQuery({
     queryKey: ['user-analyses', user?.id],
@@ -82,6 +87,112 @@ const UserAnalysesSection = () => {
       </Badge>
     );
   };
+
+  if (compact) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center">
+              <FileText className="w-5 h-5 mr-2" />
+              Mina Analyser ({analyses?.length || 0})
+            </CardTitle>
+            <Button 
+              onClick={() => navigate('/market-analyses')}
+              variant="outline"
+              size="sm"
+            >
+              Se alla
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+              <p className="text-sm text-gray-600">Laddar...</p>
+            </div>
+          ) : !analyses || analyses.length === 0 ? (
+            <div className="text-center py-6">
+              <FileText className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-gray-500 mb-3">Inga analyser än.</p>
+              <Button 
+                onClick={() => setIsCreateDialogOpen(true)}
+                size="sm"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Skapa första analys
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {analyses.slice(0, 3).map((analysis) => (
+                <div key={analysis.id} className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
+                      {analysis.title}
+                    </h4>
+                    {analysis.stock_cases && (
+                      <p className="text-xs text-blue-600 dark:text-blue-400 truncate">
+                        {analysis.stock_cases.company_name}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-2 mt-1">
+                      {getAnalysisTypeBadge(analysis.analysis_type)}
+                    </div>
+                  </div>
+                  <div className="flex gap-1 ml-2">
+                    <Button variant="outline" size="sm">
+                      <Edit className="w-3 h-3" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Ta bort analys</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Är du säker på att du vill ta bort denna analys? Denna åtgärd kan inte ångras.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteAnalysisMutation.mutate(analysis.id)}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            Ta bort
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              ))}
+              {analyses.length > 3 && (
+                <Button 
+                  onClick={() => navigate('/market-analyses')}
+                  variant="outline"
+                  className="w-full mt-3"
+                  size="sm"
+                >
+                  Se alla {analyses.length} analyser
+                </Button>
+              )}
+            </div>
+          )}
+          
+          <CreateAnalysisDialog 
+            isOpen={isCreateDialogOpen}
+            onClose={() => setIsCreateDialogOpen(false)}
+          />
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (isLoading) {
     return (
