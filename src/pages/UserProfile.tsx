@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
+import EnhancedProfileHeader from '@/components/EnhancedProfileHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserFollows } from '@/hooks/useUserFollows';
 import { supabase } from '@/integrations/supabase/client';
@@ -152,160 +152,127 @@ const UserProfile = () => {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto px-4 py-6">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
         {/* Back Button */}
-        <Button 
-          variant="outline" 
-          onClick={() => navigate(-1)}
-          className="mb-6"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Tillbaka
-        </Button>
+        <div className="max-w-4xl mx-auto px-4 pt-6">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate(-1)}
+            className="mb-6 bg-white dark:bg-gray-900 shadow-md"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Tillbaka
+          </Button>
+        </div>
 
         {/* Profile Header */}
-        <Card className="mb-8">
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="flex-1">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                  {profileData.display_name || profileData.username}
-                </h1>
-                
-                {profileData.username && profileData.display_name && (
-                  <p className="text-gray-600 dark:text-gray-400 mb-2">
-                    @{profileData.username}
-                  </p>
-                )}
+        <div className="pb-8">
+          <EnhancedProfileHeader 
+            profileData={profileData}
+            isOwnProfile={isOwnProfile}
+            onEditClick={() => navigate('/profile')}
+            userStats={{
+              stockCasesCount: stockCases.length,
+              analysesCount: analyses.length,
+              totalLikes: 0,
+              totalViews: 0
+            }}
+          />
+        </div>
 
-                {profileData.bio && (
-                  <p className="text-gray-700 dark:text-gray-300 mb-4">
-                    {profileData.bio}
-                  </p>
-                )}
+        {/* Content Tabs */}
+        <div className="max-w-4xl mx-auto px-4 pb-8">
+          <Tabs defaultValue="content" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-8 bg-white dark:bg-gray-900 shadow-lg">
+              <TabsTrigger value="content" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700">
+                Innehåll
+              </TabsTrigger>
+              <TabsTrigger value="about" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700">
+                Om
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="content" className="mt-6">
+              <ProfileContentGrid
+                stockCases={stockCases}
+                analyses={analyses}
+                isLoading={contentLoading}
+              />
+            </TabsContent>
+            
+            <TabsContent value="about" className="mt-6">
+              <Card className="shadow-lg border-0 bg-white dark:bg-gray-900">
+                <CardHeader>
+                  <CardTitle>Om {profileData?.display_name || profileData?.username}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {profileData?.bio && (
+                    <div>
+                      <h4 className="font-medium mb-2 text-gray-900 dark:text-gray-100">Biografi</h4>
+                      <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{profileData.bio}</p>
+                    </div>
+                  )}
 
-                <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-                  <div className="flex items-center gap-1">
-                    <Users className="w-4 h-4" />
-                    <span>{profileData.follower_count || 0} följare</span>
+                  {profileData?.investment_philosophy && (
+                    <div>
+                      <h4 className="font-medium mb-2 text-gray-900 dark:text-gray-100">Investeringsfilosofi</h4>
+                      <p className="text-gray-700 dark:text-gray-300">{profileData.investment_philosophy}</p>
+                    </div>
+                  )}
+
+                  {profileData?.location && (
+                    <div>
+                      <h4 className="font-medium mb-2 text-gray-900 dark:text-gray-100">Plats</h4>
+                      <p className="text-gray-700 dark:text-gray-300">{profileData.location}</p>
+                    </div>
+                  )}
+
+                  {profileData?.website_url && (
+                    <div>
+                      <h4 className="font-medium mb-2 text-gray-900 dark:text-gray-100">Webbsida</h4>
+                      <a 
+                        href={profileData.website_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                      >
+                        {profileData.website_url}
+                      </a>
+                    </div>
+                  )}
+
+                  <div>
+                    <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">Statistik</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{stockCases.length}</div>
+                        <div className="text-sm text-blue-600 dark:text-blue-400">Stock Cases</div>
+                      </div>
+                      <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                        <div className="text-2xl font-bold text-green-700 dark:text-green-300">{analyses.length}</div>
+                        <div className="text-sm text-green-600 dark:text-green-400">Analyser</div>
+                      </div>
+                      <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                        <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">{profileData?.post_count || 0}</div>
+                        <div className="text-sm text-purple-600 dark:text-purple-400">Inlägg</div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span>{profileData.following_count || 0} följer</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    <span>
-                      Medlem sedan {formatDistanceToNow(new Date(profileData.created_at), { 
+
+                  <div>
+                    <h4 className="font-medium mb-2 text-gray-900 dark:text-gray-100">Medlem sedan</h4>
+                    <p className="text-gray-700 dark:text-gray-300">
+                      {formatDistanceToNow(new Date(profileData?.created_at), { 
                         addSuffix: false, 
                         locale: sv 
                       })}
-                    </span>
+                    </p>
                   </div>
-                </div>
-
-                {profileData.level && (
-                  <div className="mt-3">
-                    <Badge variant="outline">
-                      Nivå: {profileData.level}
-                    </Badge>
-                  </div>
-                )}
-              </div>
-
-              {/* Follow Button - Only show if not own profile and user is logged in */}
-              {!isOwnProfile && user && (
-                <Button
-                  onClick={handleFollowToggle}
-                  variant={isFollowing(userId!) ? "default" : "outline"}
-                  className="min-w-[120px]"
-                >
-                  {isFollowing(userId!) ? 'Följer' : 'Följ'}
-                </Button>
-              )}
-
-              {/* Edit Profile Button - Only show for own profile */}
-              {isOwnProfile && (
-                <Button
-                  onClick={() => navigate('/profile')}
-                  variant="outline"
-                >
-                  Redigera profil
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Content Tabs */}
-        <Tabs defaultValue="content" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="content">Innehåll</TabsTrigger>
-            <TabsTrigger value="about">Om</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="content" className="mt-6">
-            <ProfileContentGrid
-              stockCases={stockCases}
-              analyses={analyses}
-              isLoading={contentLoading}
-            />
-          </TabsContent>
-          
-          <TabsContent value="about" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Om {profileData.display_name || profileData.username}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {profileData.investment_philosophy && (
-                  <div>
-                    <h4 className="font-medium mb-2">Investeringsfilosofi</h4>
-                    <p className="text-gray-700 dark:text-gray-300">{profileData.investment_philosophy}</p>
-                  </div>
-                )}
-
-                {profileData.location && (
-                  <div>
-                    <h4 className="font-medium mb-2">Plats</h4>
-                    <p className="text-gray-700 dark:text-gray-300">{profileData.location}</p>
-                  </div>
-                )}
-
-                {profileData.website_url && (
-                  <div>
-                    <h4 className="font-medium mb-2">Webbsida</h4>
-                    <a 
-                      href={profileData.website_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      {profileData.website_url}
-                    </a>
-                  </div>
-                )}
-
-                <div>
-                  <h4 className="font-medium mb-2">Statistik</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400">Stock Cases:</span>
-                      <span className="ml-2 font-medium">{stockCases.length}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400">Analyser:</span>
-                      <span className="ml-2 font-medium">{analyses.length}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400">Inlägg:</span>
-                      <span className="ml-2 font-medium">{profileData.post_count || 0}</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </Layout>
   );
