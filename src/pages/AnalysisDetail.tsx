@@ -1,8 +1,8 @@
+
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAnalysisDetail } from '@/hooks/useAnalysisDetail';
 import { useAnalysisComments } from '@/hooks/useAnalysisComments';
-import { useUserFollows } from '@/hooks/useUserFollows';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,8 +19,7 @@ import {
   Users,
   Tag,
   BarChart3,
-  Brain,
-  UserPlus
+  Brain
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -36,7 +35,6 @@ const AnalysisDetail = () => {
 
   const { data: analysis, isLoading: loading, error } = useAnalysisDetail(id || '');
   const { data: comments, isLoading: commentsLoading } = useAnalysisComments(id || '');
-  const { followUser, unfollowUser, isFollowing } = useUserFollows();
 
   if (loading) {
     return (
@@ -97,25 +95,6 @@ const AnalysisDetail = () => {
         title: "Länk kopierad",
         description: "Analyslänken har kopierats till urklipp",
       });
-    }
-  };
-
-  const handleFollowClick = () => {
-    if (!user) {
-      toast({
-        title: "Inloggning krävs", 
-        description: "Du måste vara inloggad för att följa användare",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!analysis.user_id) return;
-
-    if (isFollowing(analysis.user_id)) {
-      unfollowUser(analysis.user_id);
-    } else {
-      followUser(analysis.user_id);
     }
   };
 
@@ -199,13 +178,7 @@ const AnalysisDetail = () => {
                         {analysis.profiles && (
                           <div className="flex items-center gap-1">
                             <Users className="w-4 h-4" />
-                            <span>Av </span>
-                            <button
-                              onClick={() => navigate(`/profile/${analysis.user_id}`)}
-                              className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                            >
-                              {analysis.profiles.display_name || analysis.profiles.username}
-                            </button>
+                            <span>{analysis.profiles.display_name || analysis.profiles.username}</span>
                           </div>
                         )}
 
@@ -274,41 +247,6 @@ const AnalysisDetail = () => {
 
           {/* Right Column - Sidebar */}
           <div className="space-y-6">
-            {/* Author Info with Follow Button */}
-            {analysis.profiles && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Författare</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-gray-500" />
-                    <button
-                      onClick={() => navigate(`/profile/${analysis.user_id}`)}
-                      className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                    >
-                      {analysis.profiles.display_name || analysis.profiles.username}
-                    </button>
-                  </div>
-
-                  {/* Follow Button - Only show if not own analysis and user is logged in */}
-                  {user && analysis.user_id !== user.id && (
-                    <Button
-                      onClick={handleFollowClick}
-                      variant={isFollowing(analysis.user_id) ? "default" : "outline"}
-                      size="sm"
-                      className="w-full flex items-center gap-2"
-                    >
-                      <UserPlus className="w-4 h-4" />
-                      <span>
-                        {isFollowing(analysis.user_id) ? 'Följer användare' : 'Följ användare'}
-                      </span>
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
             {/* Market Sentiment Analysis */}
             <MarketSentimentAnalysis />
 
