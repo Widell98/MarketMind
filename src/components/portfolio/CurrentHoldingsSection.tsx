@@ -31,6 +31,14 @@ const CurrentHoldingsSection: React.FC<CurrentHoldingsSectionProps> = ({
     return <div className="w-4 h-4" />;
   };
 
+  const calculatePerformancePercentage = (holding: any) => {
+    if (!holding.purchase_price || !holding.current_value || !holding.quantity) {
+      return 0;
+    }
+    const totalPurchaseValue = holding.purchase_price * holding.quantity;
+    return ((holding.current_value - totalPurchaseValue) / totalPurchaseValue) * 100;
+  };
+
   return (
     <Card>
       <CardHeader className="pb-4">
@@ -78,43 +86,47 @@ const CurrentHoldingsSection: React.FC<CurrentHoldingsSectionProps> = ({
           </div>
         ) : currentHoldings.length > 0 ? (
           <div className="space-y-3">
-            {currentHoldings.slice(0, 5).map((holding) => (
-              <div key={holding.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border hover:shadow-sm transition-shadow">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-medium text-sm truncate">{holding.name}</h4>
-                    {holding.symbol && (
-                      <Badge variant="outline" className="text-xs font-mono">
-                        {holding.symbol}
-                      </Badge>
-                    )}
+            {currentHoldings.slice(0, 5).map((holding) => {
+              const performancePercentage = calculatePerformancePercentage(holding);
+              
+              return (
+                <div key={holding.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border hover:shadow-sm transition-shadow">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-medium text-sm truncate">{holding.name}</h4>
+                      {holding.symbol && (
+                        <Badge variant="outline" className="text-xs font-mono">
+                          {holding.symbol}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {holding.sector && <span>{holding.sector}</span>}
+                      {holding.quantity && <span>• {holding.quantity} st</span>}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    {holding.sector && <span>{holding.sector}</span>}
-                    {holding.quantity && <span>• {holding.quantity} st</span>}
-                  </div>
-                </div>
-                <div className="text-right flex-shrink-0 ml-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-sm">
-                      {formatCurrency(holding.current_value || 0)}
-                    </span>
-                    {getTrendIcon(0)} {/* Placeholder for trend */}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {holding.purchase_price && holding.current_price && (
-                      <span className={
-                        (holding.current_price - holding.purchase_price) >= 0 
-                          ? 'text-green-600' 
-                          : 'text-red-600'
-                      }>
-                        {((holding.current_price - holding.purchase_price) / holding.purchase_price * 100).toFixed(1)}%
+                  <div className="text-right flex-shrink-0 ml-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-medium text-sm">
+                        {formatCurrency(holding.current_value || 0)}
                       </span>
-                    )}
+                      {getTrendIcon(performancePercentage)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {holding.purchase_price && holding.current_value && holding.quantity && (
+                        <span className={
+                          performancePercentage >= 0 
+                            ? 'text-green-600' 
+                            : 'text-red-600'
+                        }>
+                          {performancePercentage.toFixed(1)}%
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             
             {currentHoldings.length > 5 && (
               <div className="text-center pt-2">
