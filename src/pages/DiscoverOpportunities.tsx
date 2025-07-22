@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,28 +15,45 @@ import AnalysisSection from '@/components/AnalysisSection';
 import { useStockCases } from '@/hooks/useStockCases';
 import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
 import { useNavigate } from 'react-router-dom';
-
 const DiscoverOpportunities = () => {
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('discover');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  
-  const { stockCases: allStockCases, loading: allLoading } = useStockCases(false);
-  const { trendingCases, loading: trendingLoading } = useTrendingStockCases(12);
-
-  const categories = [
-    { id: 'all', name: 'Alla möjligheter', icon: Filter },
-    { id: 'growth', name: 'Tillväxtmöjligheter', icon: TrendingUp },
-    { id: 'dividend', name: 'Utdelningsmöjligheter', icon: Target },
-    { id: 'value', name: 'Värdeinvesteringar', icon: BarChart3 },
-    { id: 'trending', name: 'Trending nu', icon: Sparkles },
-  ];
-
+  const {
+    stockCases: allStockCases,
+    loading: allLoading
+  } = useStockCases(false);
+  const {
+    trendingCases,
+    loading: trendingLoading
+  } = useTrendingStockCases(12);
+  const categories = [{
+    id: 'all',
+    name: 'Alla möjligheter',
+    icon: Filter
+  }, {
+    id: 'growth',
+    name: 'Tillväxtmöjligheter',
+    icon: TrendingUp
+  }, {
+    id: 'dividend',
+    name: 'Utdelningsmöjligheter',
+    icon: Target
+  }, {
+    id: 'value',
+    name: 'Värdeinvesteringar',
+    icon: BarChart3
+  }, {
+    id: 'trending',
+    name: 'Trending nu',
+    icon: Sparkles
+  }];
   const getFilteredCases = () => {
     if (categoryFilter === 'trending') return trendingCases;
     if (categoryFilter === 'all') return allStockCases;
-    
     return allStockCases.filter(stockCase => {
       switch (categoryFilter) {
         case 'growth':
@@ -51,15 +67,12 @@ const DiscoverOpportunities = () => {
       }
     });
   };
-
   const handleViewStockCaseDetails = (id: string) => {
     navigate(`/stock-cases/${id}`);
   };
-
   const handleDeleteStockCase = async (id: string) => {
     // Implementation for delete
   };
-
   const handleDiscussWithAI = (item: any, type: 'stock_case' | 'analysis') => {
     const contextData = {
       type,
@@ -67,37 +80,36 @@ const DiscoverOpportunities = () => {
       title: item.title || item.company_name,
       data: item
     };
-    navigate('/ai-chat', { state: { contextData } });
+    navigate('/ai-chat', {
+      state: {
+        contextData
+      }
+    });
   };
 
   // Mock data for saved opportunities
-  const mockSavedOpportunities = [
-    {
-      id: '1',
-      type: 'stock_case' as const,
-      title: 'Tesla Long-term Growth Case',
-      company_name: 'Tesla Inc.',
-      description: 'Electric vehicle market leader with strong fundamentals',
-      sector: 'Technology',
-      performance_percentage: 15.2,
-      created_at: '2024-01-15T10:00:00Z',
-      ai_generated: false,
-    },
-    {
-      id: '2',
-      type: 'analysis' as const,
-      title: 'Renewable Energy Sector Analysis',
-      description: 'Deep dive into renewable energy investment opportunities',
-      sector: 'Energy',
-      created_at: '2024-01-10T14:30:00Z',
-      ai_generated: true,
-    },
-  ];
-
+  const mockSavedOpportunities = [{
+    id: '1',
+    type: 'stock_case' as const,
+    title: 'Tesla Long-term Growth Case',
+    company_name: 'Tesla Inc.',
+    description: 'Electric vehicle market leader with strong fundamentals',
+    sector: 'Technology',
+    performance_percentage: 15.2,
+    created_at: '2024-01-15T10:00:00Z',
+    ai_generated: false
+  }, {
+    id: '2',
+    type: 'analysis' as const,
+    title: 'Renewable Energy Sector Analysis',
+    description: 'Deep dive into renewable energy investment opportunities',
+    sector: 'Energy',
+    created_at: '2024-01-10T14:30:00Z',
+    ai_generated: true
+  }];
   const handleRemoveOpportunity = (id: string) => {
     console.log('Removing opportunity:', id);
   };
-
   const handleViewOpportunity = (opportunity: any) => {
     if (opportunity.type === 'stock_case') {
       navigate(`/stock-cases/${opportunity.id}`);
@@ -105,9 +117,7 @@ const DiscoverOpportunities = () => {
       navigate(`/analysis/${opportunity.id}`);
     }
   };
-
-  return (
-    <Layout>
+  return <Layout>
       <div className="space-y-6">
         {/* Header */}
         <div className="text-center space-y-4">
@@ -129,10 +139,7 @@ const DiscoverOpportunities = () => {
               <Sparkles className="w-4 h-4" />
               <span className="hidden sm:inline">Upptäck</span>
             </TabsTrigger>
-            <TabsTrigger value="saved" className="flex items-center gap-2">
-              <Bookmark className="w-4 h-4" />
-              <span className="hidden sm:inline">Sparade</span>
-            </TabsTrigger>
+            
             <TabsTrigger value="browse" className="flex items-center gap-2">
               <Filter className="w-4 h-4" />
               <span className="hidden sm:inline">Bläddra</span>
@@ -141,8 +148,7 @@ const DiscoverOpportunities = () => {
 
           {/* Upptäck Tab */}
           <TabsContent value="discover" className="space-y-8">
-            {user ? (
-              <>
+            {user ? <>
                 {/* AI Weekly Picks - New Section */}
                 <AIWeeklyPicks />
 
@@ -160,8 +166,7 @@ const DiscoverOpportunities = () => {
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {trendingCases.slice(0, 6).map((stockCase) => (
-                      <Card key={stockCase.id} className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
+                    {trendingCases.slice(0, 6).map(stockCase => <Card key={stockCase.id} className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
                         <CardContent className="p-4">
                           <div className="space-y-3">
                             <div className="flex items-start justify-between">
@@ -179,33 +184,21 @@ const DiscoverOpportunities = () => {
                             </div>
                             
                             <div className="flex items-center justify-between pt-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDiscussWithAI(stockCase, 'stock_case')}
-                                className="text-purple-600 hover:text-purple-700"
-                              >
+                              <Button variant="ghost" size="sm" onClick={() => handleDiscussWithAI(stockCase, 'stock_case')} className="text-purple-600 hover:text-purple-700">
                                 <MessageCircle className="w-4 h-4 mr-1" />
                                 Diskutera med AI
                               </Button>
                               
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleViewStockCaseDetails(stockCase.id)}
-                              >
+                              <Button variant="outline" size="sm" onClick={() => handleViewStockCaseDetails(stockCase.id)}>
                                 Läs mer
                               </Button>
                             </div>
                           </div>
                         </CardContent>
-                      </Card>
-                    ))}
+                      </Card>)}
                   </div>
                 </div>
-              </>
-            ) : (
-              <Card className="text-center py-8 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
+              </> : <Card className="text-center py-8 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
                 <CardContent className="pt-4">
                   <Sparkles className="w-12 h-12 text-purple-600 mx-auto mb-3" />
                   <CardTitle className="text-xl mb-2">Få AI-Powered Rekommendationer</CardTitle>
@@ -216,21 +209,12 @@ const DiscoverOpportunities = () => {
                     Logga in för AI-rekommendationer
                   </Button>
                 </CardContent>
-              </Card>
-            )}
+              </Card>}
           </TabsContent>
 
           {/* Sparade Tab */}
           <TabsContent value="saved" className="space-y-6">
-            {user ? (
-              <SavedOpportunitiesSection 
-                opportunities={mockSavedOpportunities}
-                onRemove={handleRemoveOpportunity}
-                onView={handleViewOpportunity}
-                loading={false}
-              />
-            ) : (
-              <Card className="text-center py-8 bg-gray-50 dark:bg-gray-800">
+            {user ? <SavedOpportunitiesSection opportunities={mockSavedOpportunities} onRemove={handleRemoveOpportunity} onView={handleViewOpportunity} loading={false} /> : <Card className="text-center py-8 bg-gray-50 dark:bg-gray-800">
                 <CardContent className="pt-4">
                   <Bookmark className="w-12 h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
                   <CardTitle className="text-lg mb-2">Logga in för att spara möjligheter</CardTitle>
@@ -241,28 +225,20 @@ const DiscoverOpportunities = () => {
                     Logga in
                   </Button>
                 </CardContent>
-              </Card>
-            )}
+              </Card>}
           </TabsContent>
 
           {/* Bläddra Tab */}
           <TabsContent value="browse" className="space-y-6">
             {/* Category Filter */}
             <div className="flex flex-wrap gap-2 justify-center">
-              {categories.map((category) => {
-                const Icon = category.icon;
-                return (
-                  <Button
-                    key={category.id}
-                    variant={categoryFilter === category.id ? 'default' : 'outline'}
-                    onClick={() => setCategoryFilter(category.id)}
-                    className="flex items-center gap-2"
-                  >
+              {categories.map(category => {
+              const Icon = category.icon;
+              return <Button key={category.id} variant={categoryFilter === category.id ? 'default' : 'outline'} onClick={() => setCategoryFilter(category.id)} className="flex items-center gap-2">
                     <Icon className="w-4 h-4" />
                     {category.name}
-                  </Button>
-                );
-              })}
+                  </Button>;
+            })}
             </div>
 
             {/* Filtered Results */}
@@ -277,14 +253,7 @@ const DiscoverOpportunities = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {getFilteredCases().map((stockCase) => (
-                  <StockCaseCard
-                    key={stockCase.id}
-                    stockCase={stockCase}
-                    onViewDetails={handleViewStockCaseDetails}
-                    onDelete={handleDeleteStockCase}
-                  />
-                ))}
+                {getFilteredCases().map(stockCase => <StockCaseCard key={stockCase.id} stockCase={stockCase} onViewDetails={handleViewStockCaseDetails} onDelete={handleDeleteStockCase} />)}
               </div>
             </div>
 
@@ -299,8 +268,6 @@ const DiscoverOpportunities = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </Layout>
-  );
+    </Layout>;
 };
-
 export default DiscoverOpportunities;
