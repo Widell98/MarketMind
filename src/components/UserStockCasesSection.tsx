@@ -51,7 +51,11 @@ type Category = {
   color: string;
 };
 
-const UserStockCasesSection = () => {
+interface UserStockCasesSectionProps {
+  compact?: boolean;
+}
+
+const UserStockCasesSection = ({ compact = false }: UserStockCasesSectionProps) => {
   const { user } = useAuth();
   const { updateStockCase, uploadImage, deleteStockCase } = useStockCaseOperations();
   const { toast } = useToast();
@@ -391,6 +395,93 @@ const UserStockCasesSection = () => {
       </Badge>
     );
   };
+
+  if (compact) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center">
+              <TrendingUp className="w-5 h-5 mr-2" />
+              Mina Aktiecases ({myCases.length})
+            </CardTitle>
+            <Button 
+              onClick={() => navigate('/my-stock-cases')}
+              variant="outline"
+              size="sm"
+            >
+              Se alla
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+              <p className="text-sm text-gray-600">Laddar...</p>
+            </div>
+          ) : myCases.length === 0 ? (
+            <div className="text-center py-6">
+              <TrendingUp className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-gray-500 mb-3">Inga aktiecases än.</p>
+              <Button 
+                onClick={() => navigate('/my-stock-cases')}
+                size="sm"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Skapa första case
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {myCases.slice(0, 3).map((stockCase) => (
+                <div key={stockCase.id} className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
+                      {stockCase.title}
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {stockCase.company_name}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {getStatusBadge(stockCase.status)}
+                      {getCategoryBadge(stockCase.case_categories)}
+                    </div>
+                  </div>
+                  <div className="flex gap-1 ml-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => navigate(`/stock-cases/${stockCase.id}`)}
+                    >
+                      <TrendingUp className="w-3 h-3" />
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleEdit(stockCase)}
+                    >
+                      <Edit className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {myCases.length > 3 && (
+                <Button 
+                  onClick={() => navigate('/my-stock-cases')}
+                  variant="outline"
+                  className="w-full mt-3"
+                  size="sm"
+                >
+                  Se alla {myCases.length} cases
+                </Button>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
