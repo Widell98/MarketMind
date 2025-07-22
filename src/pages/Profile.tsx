@@ -131,7 +131,7 @@ const Profile = () => {
       <EditProfileDialog 
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
-        currentName={user?.display_name || user?.username || ''}
+        currentName={user?.email || ''}
         userId={user?.id || ''}
         onSaved={handleProfileSaved}
       />
