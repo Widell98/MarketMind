@@ -175,15 +175,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
           </div>
 
           {/* AI Discussion and Save Section */}
-          {user && <div className="p-3 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg">
-              
-              
-              {/* Owner Actions */}
-              {isOwner && <Button variant="ghost" size="sm" onClick={handleEditCase} className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 w-full">
-                  <Edit className="w-4 h-4 mr-1" />
-                  Redigera i Mina Cases
-                </Button>}
-            </div>}
+          {user}
 
           {/* Action buttons - Responsive layout */}
           <div className="pt-2 border-t">
