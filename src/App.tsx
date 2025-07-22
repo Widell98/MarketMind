@@ -1,68 +1,64 @@
 
-import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from 'sonner';
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import Index from "./pages/Index";
+import StockCases from "./pages/StockCases";
+import StockCaseDetail from "./pages/StockCaseDetail";
+import AnalysisDetail from "./pages/AnalysisDetail";
+import Profile from "./pages/Profile";
+import UserProfile from "./pages/UserProfile";
+import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
+import PortfolioImplementation from "./pages/PortfolioImplementation";
+import PortfolioAdvisor from "./pages/PortfolioAdvisor";
+import AIChat from "./pages/AIChat";
+import Learning from "./pages/Learning";
+import SocialIndex from "./pages/SocialIndex";
+import AdminStockCases from "./pages/AdminStockCases";
+import MyStockCases from "./pages/MyStockCases";
+import AdvancedFeatures from "./pages/AdvancedFeatures";
+import DiscoverOpportunities from "./pages/DiscoverOpportunities";
+import Watchlist from "./pages/Watchlist";
+import NotFound from "./pages/NotFound";
 
-import Index from '@/pages/Index';
-import Auth from '@/pages/Auth';
-import ResetPassword from '@/pages/ResetPassword';
-import Profile from '@/pages/Profile';
-import PortfolioAdvisor from '@/pages/PortfolioAdvisor';
-import PortfolioImplementation from '@/pages/PortfolioImplementation';
-import Learning from '@/pages/Learning';
-import AIChat from '@/pages/AIChat';
-import StockCaseDetail from '@/pages/StockCaseDetail';
-import MyStockCases from '@/pages/MyStockCases';
-import AdminStockCases from '@/pages/AdminStockCases';
-import AnalysisDetail from '@/pages/AnalysisDetail';
-import SocialIndex from '@/pages/SocialIndex';
-import Watchlist from '@/pages/Watchlist';
-import AdvancedFeatures from '@/pages/AdvancedFeatures';
-import NotFound from '@/pages/NotFound';
-import { AuthProvider } from '@/contexts/AuthContext';
-
-import DiscoverOpportunities from '@/pages/DiscoverOpportunities';
-
-// Create a client
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+const queryClient = new QueryClient();
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
-        <AuthProvider>
-          <div className="min-h-screen bg-background">
-            <Toaster position="top-right" />
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/portfolio-advisor" element={<PortfolioAdvisor />} />
-              <Route path="/portfolio-implementation" element={<PortfolioImplementation />} />
-              <Route path="/learning" element={<Learning />} />
-              <Route path="/ai-chat" element={<AIChat />} />
-              <Route path="/stock-cases" element={<DiscoverOpportunities />} />
+              <Route path="/stock-cases" element={<StockCases />} />
               <Route path="/stock-cases/:id" element={<StockCaseDetail />} />
-              <Route path="/my-stock-cases" element={<MyStockCases />} />
-              <Route path="/admin/stock-cases" element={<AdminStockCases />} />
               <Route path="/analysis/:id" element={<AnalysisDetail />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/profile/:userId" element={<UserProfile />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/reset-password" element={<ResetPassword />} />
+              <Route path="/portfolio-implementation" element={<PortfolioImplementation />} />
+              <Route path="/portfolio-advisor" element={<PortfolioAdvisor />} />
+              <Route path="/ai-chat" element={<AIChat />} />
+              <Route path="/learning" element={<Learning />} />
               <Route path="/social" element={<SocialIndex />} />
-              <Route path="/watchlist" element={<Watchlist />} />
+              <Route path="/admin/stock-cases" element={<AdminStockCases />} />
+              <Route path="/my-stock-cases" element={<MyStockCases />} />
               <Route path="/advanced-features" element={<AdvancedFeatures />} />
+              <Route path="/discover-opportunities" element={<DiscoverOpportunities />} />
+              <Route path="/watchlist" element={<Watchlist />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </div>
-        </AuthProvider>
-      </Router>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
