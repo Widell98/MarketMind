@@ -30,6 +30,11 @@ export interface PortfolioContext {
     percentage: number;
     type: 'security' | 'cash';
   }>;
+  healthMetrics: {
+    diversificationScore: number;
+    riskScore: number;
+    performanceScore: number;
+  };
 }
 
 export const usePortfolioContext = () => {
@@ -50,10 +55,15 @@ export const usePortfolioContext = () => {
     try {
       setLoading(true);
 
+      // Filter out AI recommendations for calculations
+      const currentHoldings = actualHoldings.filter(holding => 
+        holding.holding_type !== 'recommendation'
+      );
+
       // Calculate sector exposure
       const sectorMap = new Map<string, { value: number; count: number }>();
       
-      actualHoldings.forEach(holding => {
+      currentHoldings.forEach(holding => {
         const sector = holding.sector || 'Övriga';
         const value = holding.current_value || 0;
         
@@ -88,8 +98,16 @@ export const usePortfolioContext = () => {
       // Recommended cash level (typically 5-15% depending on risk profile)
       const recommendedCashLevel = Math.max(5, Math.min(15, performance.totalPortfolioValue * 0.1));
 
+      // Calculate health metrics
+      const totalHoldings = currentHoldings.length;
+      const uniqueSectors = new Set(currentHoldings.filter(h => h.sector).map(h => h.sector)).size;
+      
+      const diversificationScore = Math.min(100, (uniqueSectors / Math.max(1, totalHoldings)) * 100 + 20);
+      const riskScore = Math.max(20, 100 - (totalCash / Math.max(1, performance.totalPortfolioValue)) * 200);
+      const performanceScore = 75; // Could be calculated based on actual performance
+
       // Prepare holdings data for AI context
-      const securityHoldings = actualHoldings.map(holding => ({
+      const securityHoldings = currentHoldings.map(holding => ({
         name: holding.name,
         symbol: holding.symbol,
         sector: holding.sector,
@@ -122,7 +140,12 @@ export const usePortfolioContext = () => {
           liquidityLevel,
           recommendedCashLevel
         },
-        holdings: allHoldings
+        holdings: allHoldings,
+        healthMetrics: {
+          diversificationScore: Math.round(diversificationScore),
+          riskScore: Math.round(riskScore * 10) / 10,
+          performanceScore: Math.round(performanceScore)
+        }
       });
 
     } catch (error) {
