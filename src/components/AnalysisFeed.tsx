@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAnalyses } from '@/hooks/useAnalyses';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,7 +24,7 @@ import { sv } from 'date-fns/locale';
 const AnalysisFeed = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { data: analyses, loading } = useAnalyses(20);
+  const { data: analyses, isLoading } = useAnalyses(20);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('all');
 
@@ -84,7 +83,7 @@ const AnalysisFeed = () => {
     navigate('/ai-chat', { state: { contextData } });
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-4">
         {[...Array(5)].map((_, i) => (
