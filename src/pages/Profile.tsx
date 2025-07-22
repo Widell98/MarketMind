@@ -59,11 +59,6 @@ const Profile = () => {
     ai_generated: item.analyses?.ai_generated || false
   }));
 
-  const handleProfileSaved = (newName: string) => {
-    // Optionally refresh user data or show success message
-    console.log('Profile updated with new name:', newName);
-  };
-
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -129,11 +124,8 @@ const Profile = () => {
       </div>
       
       <EditProfileDialog 
-        open={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-        currentName={user?.email || ''}
-        userId={user?.id || ''}
-        onSaved={handleProfileSaved}
+        isOpen={isEditDialogOpen}
+        onClose={() => setIsEditDialogOpen(false)}
       />
     </Layout>
   );
