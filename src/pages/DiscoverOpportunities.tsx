@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Heart, MessageCircle, Bookmark, Share2, Search, Filter, TrendingUp, BarChart3, Calendar, Eye } from 'lucide-react';
+import { Heart, MessageCircle, Bookmark, Share2, Search, Filter, TrendingUp, BarChart3, Calendar, Eye, Activity, Brain, Target, Building } from 'lucide-react';
 import { useStockCases } from '@/hooks/useStockCases';
 import { useAnalyses } from '@/hooks/useAnalyses';
 import { useNavigate } from 'react-router-dom';
@@ -32,79 +32,81 @@ const DiscoverOpportunities = () => {
     item.content?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const StockCaseFeedCard = ({ stockCase }: { stockCase: any }) => {
+  const getAnalysisIcon = (analysisType: string) => {
+    switch (analysisType) {
+      case 'market_insight':
+        return <Activity className="h-8 w-8" />;
+      case 'technical_analysis':
+        return <BarChart3 className="h-8 w-8" />;
+      case 'fundamental_analysis':
+        return <Brain className="h-8 w-8" />;
+      case 'sector_analysis':
+        return <Building className="h-8 w-8" />;
+      case 'portfolio_analysis':
+        return <Target className="h-8 w-8" />;
+      default:
+        return <BarChart3 className="h-8 w-8" />;
+    }
+  };
+
+  const getAnalysisColor = (analysisType: string) => {
+    switch (analysisType) {
+      case 'market_insight':
+        return 'from-blue-500 to-blue-600';
+      case 'technical_analysis':
+        return 'from-green-500 to-green-600';
+      case 'fundamental_analysis':
+        return 'from-purple-500 to-purple-600';
+      case 'sector_analysis':
+        return 'from-orange-500 to-orange-600';
+      case 'portfolio_analysis':
+        return 'from-pink-500 to-pink-600';
+      default:
+        return 'from-gray-500 to-gray-600';
+    }
+  };
+
+  const StockCaseCard = ({ stockCase }: { stockCase: any }) => {
     const { likeCount, isLiked, toggleLike, loading: likeLoading } = useStockCaseLikes(stockCase.id);
     const { followCount, isFollowing, toggleFollow, loading: followLoading } = useStockCaseFollows(stockCase.id);
 
     return (
-      <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-0 shadow-md">
-        <div 
-          className="relative aspect-[16/10] cursor-pointer group"
-          onClick={() => navigate(`/stock-cases/${stockCase.id}`)}
-        >
+      <Card className="hover:shadow-lg transition-shadow">
+        <div className="relative">
           <img
             src={stockCase.image_url || 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=600&h=400&fit=crop'}
             alt={stockCase.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-48 object-cover"
           />
-          
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-          
-          {/* Status badge */}
-          <div className="absolute top-4 left-4">
-            <Badge 
-              className={`${
-                stockCase.status === 'active' 
-                  ? 'bg-green-500/90 text-white' 
-                  : 'bg-gray-500/90 text-white'
-              } backdrop-blur-sm`}
-            >
-              <TrendingUp className="h-3 w-3 mr-1" />
-              {stockCase.status === 'active' ? 'Aktiv' : 'Stängd'}
+          <div className="absolute top-3 left-3">
+            <Badge variant={stockCase.status === 'active' ? 'default' : 'secondary'}>
+              {stockCase.status}
             </Badge>
           </div>
-
-          {/* Company info overlay */}
-          <div className="absolute bottom-4 left-4 right-4">
-            <h3 className="text-white text-xl font-bold mb-1">{stockCase.company_name}</h3>
-            <p className="text-white/90 text-sm line-clamp-2">{stockCase.title}</p>
-            {stockCase.sector && (
-              <Badge variant="secondary" className="mt-2 bg-white/20 text-white backdrop-blur-sm">
-                {stockCase.sector}
-              </Badge>
-            )}
-          </div>
         </div>
-
-        <CardContent className="p-4">
-          {/* Metrics row */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              {stockCase.entry_price && (
-                <span>Ingång: {stockCase.entry_price} kr</span>
-              )}
-              {stockCase.target_price && (
-                <span>Mål: {stockCase.target_price} kr</span>
-              )}
+        
+        <CardHeader>
+          <CardTitle className="text-lg">{stockCase.company_name}</CardTitle>
+          <p className="text-sm text-muted-foreground line-clamp-2">{stockCase.title}</p>
+        </CardHeader>
+        
+        <CardContent>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+              <span>Ingång: {stockCase.entry_price}kr</span>
+              <span>Mål: {stockCase.target_price}kr</span>
             </div>
-            {stockCase.performance_percentage && (
-              <Badge variant={stockCase.performance_percentage >= 0 ? "default" : "destructive"}>
-                {stockCase.performance_percentage > 0 ? '+' : ''}{stockCase.performance_percentage.toFixed(1)}%
-              </Badge>
-            )}
           </div>
-
-          {/* Action buttons */}
+          
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center space-x-4">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleLike();
                 }}
                 disabled={likeLoading}
-                className="flex items-center gap-1 text-sm hover:text-red-500 transition-colors"
+                className="flex items-center space-x-1 hover:text-red-500"
               >
                 <Heart className={`h-4 w-4 ${isLiked ? 'fill-current text-red-500' : ''}`} />
                 <span>{likeCount}</span>
@@ -116,104 +118,86 @@ const DiscoverOpportunities = () => {
                   toggleFollow();
                 }}
                 disabled={followLoading}
-                className="flex items-center gap-1 text-sm hover:text-blue-500 transition-colors"
+                className="flex items-center space-x-1 hover:text-blue-500"
               >
                 <Eye className={`h-4 w-4 ${isFollowing ? 'fill-current text-blue-500' : ''}`} />
                 <span>{followCount}</span>
               </button>
 
-              <button className="flex items-center gap-1 text-sm hover:text-gray-700 transition-colors">
+              <div className="flex items-center space-x-1">
                 <MessageCircle className="h-4 w-4" />
                 <span>0</span>
-              </button>
+              </div>
             </div>
-
-            <div className="flex items-center gap-2">
-              <button className="hover:text-blue-500 transition-colors">
-                <Bookmark className="h-4 w-4" />
-              </button>
-              <button className="hover:text-blue-500 transition-colors">
-                <Share2 className="h-4 w-4" />
-              </button>
+            
+            <div className="flex items-center space-x-2">
+              <Bookmark className="h-4 w-4 cursor-pointer hover:text-blue-500" />
+              <Share2 className="h-4 w-4 cursor-pointer hover:text-blue-500" />
             </div>
           </div>
-
-          {/* Timestamp */}
-          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-3">
-            <Calendar className="h-3 w-3" />
-            <span>{new Date(stockCase.created_at).toLocaleDateString('sv-SE')}</span>
+          
+          <div className="mt-3 text-xs text-muted-foreground">
+            {new Date(stockCase.created_at).toLocaleDateString('sv-SE')}
           </div>
         </CardContent>
       </Card>
     );
   };
 
-  const AnalysisFeedCard = ({ analysis }: { analysis: any }) => {
+  const AnalysisCard = ({ analysis }: { analysis: any }) => {
     return (
-      <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-0 shadow-md">
-        <div 
-          className="relative aspect-[16/10] cursor-pointer group"
-          onClick={() => navigate(`/analysis/${analysis.id}`)}
-        >
-          <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-            <div className="text-center text-white p-6">
-              <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-80" />
-              <h3 className="text-lg font-bold mb-2">{analysis.title}</h3>
-              <p className="text-sm opacity-90 line-clamp-3">{analysis.content?.substring(0, 150)}...</p>
+      <Card 
+        className="hover:shadow-lg transition-shadow cursor-pointer"
+        onClick={() => navigate(`/analysis/${analysis.id}`)}
+      >
+        <div className={`h-48 bg-gradient-to-br ${getAnalysisColor(analysis.analysis_type)} flex items-center justify-center relative`}>
+          <div className="text-white text-center">
+            {getAnalysisIcon(analysis.analysis_type)}
+            <div className="mt-2 text-sm font-medium">
+              {analysis.analysis_type.replace('_', ' ').toUpperCase()}
             </div>
           </div>
           
-          {/* Type badge */}
-          <div className="absolute top-4 left-4">
-            <Badge className="bg-green-500/90 text-white backdrop-blur-sm">
-              <BarChart3 className="h-3 w-3 mr-1" />
+          <div className="absolute top-3 right-3">
+            <Badge variant="secondary" className="bg-white/20 text-white">
               Analys
             </Badge>
           </div>
         </div>
-
-        <CardContent className="p-4">
-          {/* Metrics */}
-          <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-            <div className="flex items-center gap-1">
-              <Heart className="h-3 w-3" />
-              <span>{analysis.likes_count || 0}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <MessageCircle className="h-3 w-3" />
-              <span>{analysis.comments_count || 0}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Eye className="h-3 w-3" />
-              <span>{analysis.views_count || 0}</span>
+        
+        <CardHeader>
+          <CardTitle className="text-lg line-clamp-2">{analysis.title}</CardTitle>
+          <p className="text-sm text-muted-foreground line-clamp-2">
+            {analysis.content?.substring(0, 100)}...
+          </p>
+        </CardHeader>
+        
+        <CardContent>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+              <div className="flex items-center space-x-1">
+                <Heart className="h-4 w-4" />
+                <span>{analysis.likes_count || 0}</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <MessageCircle className="h-4 w-4" />
+                <span>{analysis.comments_count || 0}</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <Eye className="h-4 w-4" />
+                <span>{analysis.views_count || 0}</span>
+              </div>
             </div>
           </div>
-
-          {/* Tags */}
-          {analysis.tags && analysis.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-3">
-              {analysis.tags.slice(0, 3).map((tag: string, index: number) => (
-                <Badge key={index} variant="outline" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          )}
-
-          {/* Actions */}
+          
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Calendar className="h-3 w-3" />
-              <span>{new Date(analysis.created_at).toLocaleDateString('sv-SE')}</span>
+            <div className="text-xs text-muted-foreground">
+              {new Date(analysis.created_at).toLocaleDateString('sv-SE')}
             </div>
-
-            <div className="flex items-center gap-2">
-              <button className="hover:text-blue-500 transition-colors">
-                <Bookmark className="h-4 w-4" />
-              </button>
-              <button className="hover:text-blue-500 transition-colors">
-                <Share2 className="h-4 w-4" />
-              </button>
+            
+            <div className="flex items-center space-x-2">
+              <Bookmark className="h-4 w-4 cursor-pointer hover:text-blue-500" />
+              <Share2 className="h-4 w-4 cursor-pointer hover:text-blue-500" />
             </div>
           </div>
         </CardContent>
@@ -268,9 +252,9 @@ const DiscoverOpportunities = () => {
                 .map((item, index) => (
                   <div key={`mixed-${index}`}>
                     {'company_name' in item ? (
-                      <StockCaseFeedCard stockCase={item} />
+                      <StockCaseCard stockCase={item} />
                     ) : (
-                      <AnalysisFeedCard analysis={item} />
+                      <AnalysisCard analysis={item} />
                     )}
                   </div>
                 ))}
@@ -280,7 +264,7 @@ const DiscoverOpportunities = () => {
           <TabsContent value="cases" className="mt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredStockCases.map((stockCase) => (
-                <StockCaseFeedCard key={stockCase.id} stockCase={stockCase} />
+                <StockCaseCard key={stockCase.id} stockCase={stockCase} />
               ))}
             </div>
           </TabsContent>
@@ -288,7 +272,7 @@ const DiscoverOpportunities = () => {
           <TabsContent value="analyses" className="mt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredAnalyses.map((analysis) => (
-                <AnalysisFeedCard key={analysis.id} analysis={analysis} />
+                <AnalysisCard key={analysis.id} analysis={analysis} />
               ))}
             </div>
           </TabsContent>
