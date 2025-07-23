@@ -277,7 +277,7 @@ const PortfolioImplementation = () => {
                     onActionClick={handleActionClick}
                   />
                   
-                  {/* Community Recommendations Section */}
+                  {/* Community Recommendations Section - moved directly under PortfolioOverview */}
                   <CommunityRecommendations />
                 </div>
                 <div className="xl:col-span-1">
