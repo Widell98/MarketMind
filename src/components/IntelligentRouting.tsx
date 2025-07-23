@@ -17,7 +17,15 @@ import {
   User,
   BarChart3,
   Target,
-  LineChart
+  LineChart,
+  FileText,
+  Users,
+  BookOpen,
+  Star,
+  Edit3,
+  Plus,
+  Search,
+  UserPlus
 } from 'lucide-react';
 
 interface SmartRoute {
@@ -27,13 +35,23 @@ interface SmartRoute {
   icon: any;
   reason: string;
   confidence: number;
+  priority: 'high' | 'medium' | 'low';
+  category: 'getting_started' | 'portfolio' | 'analysis' | 'learning' | 'community';
 }
 
 interface IntelligentRoutingProps {
   hasPortfolio?: boolean;
+  hasAnalyses?: boolean;
+  hasStockCases?: boolean;
+  userRegistrationDays?: number;
 }
 
-const IntelligentRouting = ({ hasPortfolio = false }: IntelligentRoutingProps) => {
+const IntelligentRouting = ({ 
+  hasPortfolio = false, 
+  hasAnalyses = false, 
+  hasStockCases = false, 
+  userRegistrationDays = 0 
+}: IntelligentRoutingProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -42,18 +60,152 @@ const IntelligentRouting = ({ hasPortfolio = false }: IntelligentRoutingProps) =
   const getSmartRoutes = (): SmartRoute[] => {
     const currentPath = location.pathname;
     const routes: SmartRoute[] = [];
+    const isNewUser = userRegistrationDays <= 7;
+    const isVeryNewUser = userRegistrationDays <= 1;
 
-    // AI-driven route suggestions based on user context and current location
+    // For users not logged in - focus on getting started
+    if (!user) {
+      routes.push({
+        path: '/auth',
+        title: 'Kom igång gratis',
+        description: 'Skapa konto för att få personliga AI-råd och bygga din portfölj',
+        icon: UserPlus,
+        reason: 'Första steget för att komma igång',
+        confidence: 0.95,
+        priority: 'high',
+        category: 'getting_started'
+      });
+
+      routes.push({
+        path: '/ai-chat',
+        title: 'Testa AI-assistenten',
+        description: 'Ställ frågor om investeringar utan att behöva skapa konto',
+        icon: Brain,
+        reason: 'Testa plattformen först',
+        confidence: 0.85,
+        priority: 'medium',
+        category: 'getting_started'
+      });
+
+      routes.push({
+        path: '/stock-cases',
+        title: 'Utforska community',
+        description: 'Se vad andra investerare diskuterar och analyserar',
+        icon: Users,
+        reason: 'Lär dig av andra investerare',
+        confidence: 0.8,
+        priority: 'medium',
+        category: 'community'
+      });
+
+      return routes.sort((a, b) => b.confidence - a.confidence);
+    }
+
+    // For very new users (first day) - focus on essential first steps
+    if (isVeryNewUser) {
+      if (!hasPortfolio) {
+        routes.push({
+          path: '/portfolio-advisor',
+          title: 'Skapa din första portfölj',
+          description: 'Börja med att bygga en diversifierad investeringsportfölj',
+          icon: PieChart,
+          reason: 'Första viktiga steget för nya användare',
+          confidence: 0.95,
+          priority: 'high',
+          category: 'getting_started'
+        });
+      }
+
+      routes.push({
+        path: '/ai-chat',
+        title: 'Få personlig AI-rådgivning',
+        description: 'Diskutera dina investeringsmål med AI-assistenten',
+        icon: Brain,
+        reason: 'Perfekt för att komma igång',
+        confidence: 0.9,
+        priority: 'high',
+        category: 'getting_started'
+      });
+
+      routes.push({
+        path: '/stock-cases',
+        title: 'Lär dig av community',
+        description: 'Utforska hur andra investerare tänker och analyserar',
+        icon: BookOpen,
+        reason: 'Bra för att lära sig grunderna',
+        confidence: 0.8,
+        priority: 'medium',
+        category: 'learning'
+      });
+    }
+
+    // For new users (within a week) - guide through key features
+    if (isNewUser && !isVeryNewUser) {
+      if (!hasAnalyses) {
+        routes.push({
+          path: '/market-analyses',
+          title: 'Skapa din första analys',
+          description: 'Dela dina investeringsinsikter med communityn',
+          icon: Edit3,
+          reason: 'Nästa steg för att engagera dig i communityn',
+          confidence: 0.9,
+          priority: 'high',
+          category: 'analysis'
+        });
+      }
+
+      if (!hasStockCases) {
+        routes.push({
+          path: '/stock-cases',
+          title: 'Skapa ett aktiecase',
+          description: 'Presentera en investeringsidé för communityn',
+          icon: Plus,
+          reason: 'Dela dina investeringsidéer',
+          confidence: 0.85,
+          priority: 'high',
+          category: 'community'
+        });
+      }
+
+      if (hasPortfolio) {
+        routes.push({
+          path: '/portfolio-implementation',
+          title: 'Analysera din portfölj',
+          description: 'Få AI-driven analys av din portföljs prestanda',
+          icon: BarChart3,
+          reason: 'Optimera din befintliga portfölj',
+          confidence: 0.8,
+          priority: 'medium',
+          category: 'portfolio'
+        });
+      }
+    }
+
+    // Page-specific recommendations
     if (currentPath === '/') {
       if (hasPortfolio) {
-        // User has portfolio - suggest analysis and optimization
+        if (!hasAnalyses) {
+          routes.push({
+            path: '/market-analyses',
+            title: 'Skapa din första analys',
+            description: 'Dela dina investeringsinsikter och få feedback',
+            icon: FileText,
+            reason: 'Du har portfölj men inga analyser ännu',
+            confidence: 0.9,
+            priority: 'high',
+            category: 'analysis'
+          });
+        }
+
         routes.push({
           path: '/portfolio-implementation',
           title: 'Analysera din portfölj',
           description: 'Se djupgående analys av dina innehav och prestanda',
           icon: BarChart3,
           reason: 'Din portfölj behöver regelbunden analys',
-          confidence: 0.95
+          confidence: 0.85,
+          priority: 'medium',
+          category: 'portfolio'
         });
         
         routes.push({
@@ -62,71 +214,116 @@ const IntelligentRouting = ({ hasPortfolio = false }: IntelligentRoutingProps) =
           description: 'Diskutera portföljoptimering med AI-assistenten',
           icon: Brain,
           reason: 'Optimera baserat på nuvarande innehav',
-          confidence: 0.9
-        });
-
-        routes.push({
-          path: '/stock-cases',
-          title: 'Upptäck nya möjligheter',
-          description: 'Utforska nya investeringsidéer från communityn',
-          icon: TrendingUp,
-          reason: 'Diversifiera med nya investeringar',
-          confidence: 0.8
+          confidence: 0.8,
+          priority: 'medium',
+          category: 'portfolio'
         });
       } else {
-        // User without portfolio - focus on getting started
+        routes.push({
+          path: '/portfolio-advisor',
+          title: 'Skapa din portfölj',
+          description: 'Bygg en diversifierad investeringsportfölj',
+          icon: PieChart,
+          reason: 'Nästa naturliga steg för dig',
+          confidence: 0.9,
+          priority: 'high',
+          category: 'getting_started'
+        });
+        
         routes.push({
           path: '/ai-chat',
           title: 'Starta AI-rådgivning',
           description: 'Få personliga investeringsråd baserat på din profil',
           icon: Brain,
-          reason: 'Perfekt första steg för nya användare',
-          confidence: 0.9
-        });
-        
-        routes.push({
-          path: '/portfolio-advisor',
-          title: 'Bygg din portfölj',
-          description: 'Skapa en diversifierad investeringsportfölj',
-          icon: PieChart,
-          reason: 'Nästa naturliga steg för dig',
-          confidence: 0.85
+          reason: 'Perfekt första steg för att komma igång',
+          confidence: 0.85,
+          priority: 'high',
+          category: 'getting_started'
         });
       }
     }
 
     if (currentPath === '/stock-cases') {
+      if (!hasStockCases) {
+        routes.push({
+          path: '/stock-cases',
+          title: 'Skapa ditt första aktiecase',
+          description: 'Dela en investeringsidé med communityn',
+          icon: Plus,
+          reason: 'Du har inte skapat något case ännu',
+          confidence: 0.9,
+          priority: 'high',
+          category: 'community'
+        });
+      }
+
+      if (!hasAnalyses) {
+        routes.push({
+          path: '/market-analyses',
+          title: 'Skapa en analys',
+          description: 'Gör en djupanalys av en intressant aktie',
+          icon: Edit3,
+          reason: 'Komplettera med djupare analyser',
+          confidence: 0.85,
+          priority: 'high',
+          category: 'analysis'
+        });
+      }
+
+      routes.push({
+        path: '/ai-chat',
+        title: 'Diskutera med AI',
+        description: 'Analysera intressanta aktier med AI-assistenten',
+        icon: Brain,
+        reason: 'Få djupare analys av upptäckta aktier',
+        confidence: 0.8,
+        priority: 'medium',
+        category: 'analysis'
+      });
+    }
+
+    if (currentPath === '/market-analyses') {
+      if (!hasAnalyses) {
+        routes.push({
+          path: '/market-analyses',
+          title: 'Skapa din första analys',
+          description: 'Dela dina investeringsinsikter med communityn',
+          icon: Edit3,
+          reason: 'Du har inte skapat någon analys ännu',
+          confidence: 0.95,
+          priority: 'high',
+          category: 'analysis'
+        });
+      }
+
       if (hasPortfolio) {
         routes.push({
-          path: '/ai-chat',
-          title: 'Diskutera med AI',
-          description: 'Analysera intressanta aktier med AI-assistenten',
-          icon: Brain,
-          reason: 'Få djupare analys av upptäckta aktier',
-          confidence: 0.9
-        });
-
-        routes.push({
           path: '/portfolio-implementation',
-          title: 'Jämför med portfölj',
-          description: 'Se hur nya idéer passar din nuvarande portfölj',
+          title: 'Analysera din portfölj',
+          description: 'Koppla dina analyser till din portfölj',
           icon: Target,
-          reason: 'Utvärdera nya investeringar',
-          confidence: 0.85
-        });
-      } else {
-        routes.push({
-          path: '/ai-chat',
-          title: 'Diskutera aktier med AI',
-          description: 'Djupanalys av intressanta aktier med AI-assistenten',
-          icon: Brain,
-          reason: 'För att få mer djup i din analys',
-          confidence: 0.85
+          reason: 'Integrera analyser med din portfölj',
+          confidence: 0.8,
+          priority: 'medium',
+          category: 'portfolio'
         });
       }
     }
 
     if (currentPath === '/ai-chat') {
+      if (hasPortfolio && !hasAnalyses) {
+        routes.push({
+          path: '/market-analyses',
+          title: 'Skapa en analys',
+          description: 'Omsätt AI-insikter till en egen analys',
+          icon: FileText,
+          reason: 'Nästa steg efter AI-rådgivning',
+          confidence: 0.9,
+          priority: 'high',
+          category: 'analysis'
+        });
+      }
+
       if (hasPortfolio) {
         routes.push({
           path: '/portfolio-implementation',
@@ -134,7 +331,9 @@ const IntelligentRouting = ({ hasPortfolio = false }: IntelligentRoutingProps) =
           description: 'Omsätt AI-råden till konkreta portföljförändringar',
           icon: PieChart,
           reason: 'Praktisera AI-insights i din portfölj',
-          confidence: 0.9
+          confidence: 0.85,
+          priority: 'medium',
+          category: 'portfolio'
         });
       } else {
         routes.push({
@@ -143,32 +342,53 @@ const IntelligentRouting = ({ hasPortfolio = false }: IntelligentRoutingProps) =
           description: 'Bygg din första portfölj baserat på AI-råd',
           icon: PieChart,
           reason: 'Nästa steg efter AI-rådgivning',
-          confidence: 0.9
+          confidence: 0.9,
+          priority: 'high',
+          category: 'getting_started'
         });
       }
     }
 
     if (currentPath === '/portfolio-implementation' && hasPortfolio) {
+      if (!hasAnalyses) {
+        routes.push({
+          path: '/market-analyses',
+          title: 'Dokumentera dina insikter',
+          description: 'Skapa analyser baserat på portföljprestanda',
+          icon: FileText,
+          reason: 'Dela dina portföljinsikter med andra',
+          confidence: 0.9,
+          priority: 'high',
+          category: 'analysis'
+        });
+      }
+
       routes.push({
         path: '/ai-chat',
         title: 'Optimera med AI',
         description: 'Få förslag på förbättringar av din portfölj',
         icon: Brain,
         reason: 'Kontinuerlig optimering rekommenderas',
-        confidence: 0.85
-      });
-
-      routes.push({
-        path: '/stock-cases',
-        title: 'Hitta nya investeringar',
-        description: 'Upptäck nya möjligheter att diversifiera med',
-        icon: LineChart,
-        reason: 'Utöka din portfölj med nya idéer',
-        confidence: 0.8
+        confidence: 0.8,
+        priority: 'medium',
+        category: 'portfolio'
       });
     }
 
-    return routes.sort((a, b) => b.confidence - a.confidence);
+    // Remove duplicates and sort by priority and confidence
+    const uniqueRoutes = routes.filter((route, index, self) => 
+      index === self.findIndex(r => r.path === route.path)
+    );
+
+    return uniqueRoutes
+      .sort((a, b) => {
+        const priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
+        if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+          return priorityOrder[b.priority] - priorityOrder[a.priority];
+        }
+        return b.confidence - a.confidence;
+      })
+      .slice(0, 4); // Show max 4 suggestions
   };
 
   const handleSmartNavigation = (route: SmartRoute) => {
@@ -199,12 +419,38 @@ const IntelligentRouting = ({ hasPortfolio = false }: IntelligentRoutingProps) =
       window.dispatchEvent(event);
     }
 
-    navigate(route.path);
+    // Special handling for creating analyses
+    if (route.path === '/market-analyses' && route.category === 'analysis') {
+      // Could trigger a create analysis dialog or navigate to analyses with create mode
+      navigate('/market-analyses?create=true');
+    } else {
+      navigate(route.path);
+    }
     
     toast({
       title: "Smart navigation",
-      description: `Navigerade till ${route.title} - ${route.reason}`,
+      description: `Navigerade till ${route.title}`,
     });
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'from-red-500 to-orange-500';
+      case 'medium': return 'from-blue-500 to-purple-500';
+      case 'low': return 'from-green-500 to-emerald-500';
+      default: return 'from-gray-500 to-gray-600';
+    }
+  };
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'getting_started': return Star;
+      case 'portfolio': return PieChart;
+      case 'analysis': return FileText;
+      case 'learning': return BookOpen;
+      case 'community': return Users;
+      default: return Target;
+    }
   };
 
   const smartRoutes = getSmartRoutes();
@@ -221,7 +467,16 @@ const IntelligentRouting = ({ hasPortfolio = false }: IntelligentRoutingProps) =
           <div>
             <h3 className="font-bold text-lg text-foreground">Smart Navigation</h3>
             <p className="text-sm text-muted-foreground">
-              {hasPortfolio ? "AI-föreslagna nästa steg för din portfölj" : "AI-föreslagna nästa steg för dig"}
+              {!user 
+                ? "AI-föreslagna steg för att komma igång"
+                : userRegistrationDays <= 1 
+                ? "Välkommen! Här är dina nästa steg"
+                : userRegistrationDays <= 7 
+                ? "Fortsätt utforska plattformen"
+                : hasPortfolio 
+                ? "AI-föreslagna nästa steg för din portfölj" 
+                : "AI-föreslagna nästa steg för dig"
+              }
             </p>
           </div>
         </div>
@@ -229,9 +484,10 @@ const IntelligentRouting = ({ hasPortfolio = false }: IntelligentRoutingProps) =
         <div className="space-y-3">
           {smartRoutes.map((route, index) => {
             const Icon = route.icon;
+            const CategoryIcon = getCategoryIcon(route.category);
             return (
               <div
-                key={route.path}
+                key={`${route.path}-${index}`}
                 className="group cursor-pointer border rounded-xl p-4 hover:shadow-lg transition-all duration-300 hover:border-primary/50 bg-background hover:bg-primary/5"
                 onClick={() => handleSmartNavigation(route)}
               >
@@ -244,7 +500,7 @@ const IntelligentRouting = ({ hasPortfolio = false }: IntelligentRoutingProps) =
                       <h4 className="font-semibold text-base text-foreground group-hover:text-primary transition-colors">
                         {route.title}
                       </h4>
-                      <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs">
+                      <Badge className={`bg-gradient-to-r ${getPriorityColor(route.priority)} text-white text-xs`}>
                         {Math.round(route.confidence * 100)}% match
                       </Badge>
                     </div>
@@ -253,7 +509,7 @@ const IntelligentRouting = ({ hasPortfolio = false }: IntelligentRoutingProps) =
                     </p>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Sparkles className="w-3 h-3 text-primary" />
+                        <CategoryIcon className="w-3 h-3 text-primary" />
                         <span className="text-xs text-primary font-medium">
                           {route.reason}
                         </span>

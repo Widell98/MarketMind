@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import IntelligentRouting from '@/components/IntelligentRouting';
@@ -9,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePortfolio } from '@/hooks/usePortfolio';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const { user } = useAuth();
@@ -16,6 +17,42 @@ const Index = () => {
 
   // Check if user has completed the main onboarding steps
   const hasPortfolio = !loading && !!activePortfolio;
+
+  // Query to check if user has analyses
+  const { data: userAnalyses } = useQuery({
+    queryKey: ['userAnalyses', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data } = await supabase
+        .from('analyses')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1);
+      return data || [];
+    },
+    enabled: !!user
+  });
+
+  // Query to check if user has stock cases
+  const { data: userStockCases } = useQuery({
+    queryKey: ['userStockCases', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data } = await supabase
+        .from('stock_cases')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1);
+      return data || [];
+    },
+    enabled: !!user
+  });
+
+  // Calculate user registration days
+  const userRegistrationDays = user ? Math.floor((Date.now() - new Date(user.created_at).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+
+  const hasAnalyses = userAnalyses && userAnalyses.length > 0;
+  const hasStockCases = userStockCases && userStockCases.length > 0;
   const shouldShowHero = !user || !hasPortfolio;
 
   return (
@@ -87,12 +124,15 @@ const Index = () => {
             </div>
           )}
 
-          {/* Smart Navigation - Enhanced with portfolio context */}
-          {user && (
-            <div className="mb-8 sm:mb-12">
-              <IntelligentRouting hasPortfolio={hasPortfolio} />
-            </div>
-          )}
+          {/* Enhanced Smart Navigation with more context */}
+          <div className="mb-8 sm:mb-12">
+            <IntelligentRouting 
+              hasPortfolio={hasPortfolio} 
+              hasAnalyses={hasAnalyses}
+              hasStockCases={hasStockCases}
+              userRegistrationDays={userRegistrationDays}
+            />
+          </div>
 
           {/* AI Features Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-8 sm:mb-12 lg:mb-16">
