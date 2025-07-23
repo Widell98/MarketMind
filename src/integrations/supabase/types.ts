@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           context_data: Json | null
           created_at: string
+          folder_id: string | null
           id: string
           is_active: boolean | null
           session_name: string | null
@@ -27,6 +28,7 @@ export type Database = {
         Insert: {
           context_data?: Json | null
           created_at?: string
+          folder_id?: string | null
           id?: string
           is_active?: boolean | null
           session_name?: string | null
@@ -36,13 +38,22 @@ export type Database = {
         Update: {
           context_data?: Json | null
           created_at?: string
+          folder_id?: string | null
           id?: string
           is_active?: boolean | null
           session_name?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ai_chat_sessions_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "chat_folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_market_insights: {
         Row: {
@@ -264,6 +275,33 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+        }
+        Relationships: []
+      }
+      chat_folders: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
