@@ -12,13 +12,11 @@ import { useNavigate } from 'react-router-dom';
 import SaveOpportunityButton from './SaveOpportunityButton';
 import ShareStockCase from './ShareStockCase';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-
 interface StockCaseCardProps {
   stockCase: StockCase;
   onViewDetails: (id: string) => void;
   onDelete?: (id: string) => void;
 }
-
 const StockCaseCard: React.FC<StockCaseCardProps> = ({
   stockCase,
   onViewDetails,
@@ -41,7 +39,6 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
   } = useStockCaseFollows(stockCase.id);
   const navigate = useNavigate();
   const isOwner = user && stockCase.user_id === user.id;
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -54,13 +51,11 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
         return 'bg-gray-500';
     }
   };
-
   const getPerformanceColor = (performance: number) => {
     if (performance > 0) return 'text-green-600 dark:text-green-400';
     if (performance < 0) return 'text-red-600 dark:text-red-400';
     return 'text-gray-600 dark:text-gray-400';
   };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('sv-SE', {
       year: 'numeric',
@@ -68,14 +63,12 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
       day: 'numeric'
     });
   };
-
   const calculatePerformance = () => {
     if (stockCase.entry_price && stockCase.current_price) {
       return (stockCase.current_price - stockCase.entry_price) / stockCase.entry_price * 100;
     }
     return stockCase.performance_percentage || 0;
   };
-
   const handleDiscussWithAI = (e: React.MouseEvent) => {
     e.stopPropagation();
     const contextData = {
@@ -91,16 +84,12 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
       }
     });
   };
-
   const handleEditCase = (e: React.MouseEvent) => {
     e.stopPropagation();
     navigate('/my-stock-cases');
   };
-
   const performance = calculatePerformance();
-
-  return (
-    <Card className="h-full flex flex-col hover:shadow-lg transition-shadow duration-200 group cursor-pointer" onClick={() => onViewDetails(stockCase.id)}>
+  return <Card className="h-full flex flex-col hover:shadow-lg transition-shadow duration-200 group cursor-pointer" onClick={() => onViewDetails(stockCase.id)}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
@@ -134,7 +123,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
             </CardTitle>
           </div>
           
-          {(isAdmin || (user && onDelete)) && <DropdownMenu>
+          {(isAdmin || user && onDelete) && <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ml-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
                   <MoreHorizontal className="h-4 w-4" />
@@ -186,21 +175,14 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
           </div>
 
           {/* AI Discussion and Save Section */}
-          {user && (
-            <div className="flex flex-col sm:flex-row items-center gap-2">
-              <Button size="sm" variant="outline" onClick={handleDiscussWithAI} className="flex-1 flex items-center gap-1 min-w-0">
-                <MessageCircle className="w-4 h-4" />
-                <span className="truncate">Diskutera med AI</span>
-              </Button>
+          {user && <div className="flex flex-col sm:flex-row items-center gap-2">
               
-              {isOwner && (
-                <Button size="sm" variant="outline" onClick={handleEditCase} className="flex-1 flex items-center gap-1 min-w-0">
+              
+              {isOwner && <Button size="sm" variant="outline" onClick={handleEditCase} className="flex-1 flex items-center gap-1 min-w-0">
                   <Edit className="w-4 h-4" />
                   <span className="truncate">Redigera Case</span>
-                </Button>
-              )}
-            </div>
-          )}
+                </Button>}
+            </div>}
 
           {/* Action buttons - Responsive layout */}
           <div className="pt-2 border-t">
@@ -257,8 +239,6 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
           </div>
         </div>
       </CardContent>
-    </Card>
-  );
+    </Card>;
 };
-
 export default StockCaseCard;
