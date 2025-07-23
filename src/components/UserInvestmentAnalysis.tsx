@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +16,8 @@ import {
   AlertCircle,
   CheckCircle,
   Settings,
-  Plus
+  Plus,
+  Activity
 } from 'lucide-react';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolio } from '@/hooks/usePortfolio';
@@ -164,17 +166,20 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
     return (
       <div className="space-y-6">
         {/* No Profile State */}
-        <Card className="border-dashed border-2 rounded-2xl">
+        <Card className="border-dashed border-2 rounded-2xl shadow-sm">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <div className="text-center text-muted-foreground">
-              <Brain className="w-16 h-16 mx-auto mb-4 opacity-50" />
-              <h3 className="text-xl font-semibold mb-2 text-foreground">Ingen riskprofil hittades</h3>
-              <p className="text-base mb-6 max-w-md">
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 bg-primary/10">
+                <Brain className="w-10 h-10 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3 text-foreground">Ingen riskprofil hittades</h3>
+              <p className="text-base mb-6 max-w-md text-muted-foreground">
                 Du behöver skapa en riskprofil för att få personliga investeringsrekommendationer och AI-analys.
               </p>
               <Button 
                 onClick={handleCreateNewProfile}
                 className="flex items-center gap-2"
+                size="lg"
               >
                 <Plus className="w-4 h-4" />
                 Skapa ny riskprofil
@@ -224,85 +229,109 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
         onConfirm={handleResetProfile}
       />
 
-      {/* Header with Update Profile Button */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 sm:p-6 bg-gradient-to-r from-blue-50 to-sky-50 dark:from-blue-950/20 dark:to-sky-950/20 rounded-2xl border border-blue-200 dark:border-blue-800">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-2">
-            Din Investeringsanalys
-          </h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            Personlig riskprofil och AI-genererad strategi
-          </p>
+      {/* Header Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-primary shadow-lg">
+              <User className="w-6 h-6 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                Din Investeringsanalys
+              </h1>
+              <p className="text-sm md:text-base text-muted-foreground">
+                Personlig riskprofil och AI-genererad strategi
+              </p>
+            </div>
+          </div>
+          {onUpdateProfile && (
+            <Button
+              onClick={() => setShowResetDialog(true)}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Settings className="w-4 h-4" />
+              Gör om profil
+            </Button>
+          )}
         </div>
-        {onUpdateProfile && (
-          <Button
-            onClick={() => setShowResetDialog(true)}
-            variant="outline"
-            className="flex items-center gap-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border-2 shadow-sm"
-          >
-            <Settings className="w-4 h-4" />
-            Gör om profil
-          </Button>
-        )}
+        
+        <div className="flex flex-wrap gap-2">
+          <Badge className="px-3 py-1 text-xs font-medium bg-primary text-primary-foreground">
+            <User className="w-3 h-3 mr-1" />
+            Riskprofil
+          </Badge>
+          <Badge className="px-3 py-1 text-xs font-medium bg-secondary text-secondary-foreground">
+            <Brain className="w-3 h-3 mr-1" />
+            AI-Analys
+          </Badge>
+          {activePortfolio && (
+            <Badge className="px-3 py-1 text-xs font-medium bg-accent text-accent-foreground">
+              <Activity className="w-3 h-3 mr-1" />
+              Aktiv sedan {new Date(activePortfolio.created_at).toLocaleDateString('sv-SE')}
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Profile Summary */}
-      <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-sky-50 dark:from-blue-950/20 dark:to-sky-950/20 rounded-2xl shadow-lg">
+      <Card className="rounded-2xl shadow-sm border-0 bg-gradient-to-br from-background via-background to-muted/30">
         <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2">
-            <User className="w-5 h-5 text-blue-600" />
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <User className="w-5 h-5 text-primary" />
             Din Investeringsprofil
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+            <div className="flex items-center gap-3 p-4 bg-card rounded-xl border shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
                 <Calendar className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Ålder</p>
-                <p className="font-semibold">{riskProfile.age || 'Ej angiven'} år</p>
+                <p className="text-sm font-medium text-muted-foreground">Ålder</p>
+                <p className="font-semibold text-foreground">{riskProfile.age || 'Ej angiven'} år</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-              <div className="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900 flex items-center justify-center">
+            <div className="flex items-center gap-3 p-4 bg-card rounded-xl border shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Erfarenhetsnivå</p>
-                <p className="font-semibold">{getExperienceLabel(riskProfile.investment_experience || '')}</p>
+                <p className="text-sm font-medium text-muted-foreground">Erfarenhetsnivå</p>
+                <p className="font-semibold text-foreground">{getExperienceLabel(riskProfile.investment_experience || '')}</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-              <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+            <div className="flex items-center gap-3 p-4 bg-card rounded-xl border shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
                 <BarChart3 className="w-5 h-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Risktolerans</p>
-                <p className="font-semibold">{getRiskToleranceLabel(riskProfile.risk_tolerance || '')}</p>
+                <p className="text-sm font-medium text-muted-foreground">Risktolerans</p>
+                <p className="font-semibold text-foreground">{getRiskToleranceLabel(riskProfile.risk_tolerance || '')}</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-              <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900 flex items-center justify-center">
+            <div className="flex items-center gap-3 p-4 bg-card rounded-xl border shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
                 <Target className="w-5 h-5 text-orange-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Tidshorisont</p>
-                <p className="font-semibold">{getInvestmentHorizonLabel(riskProfile.investment_horizon || '')}</p>
+                <p className="text-sm font-medium text-muted-foreground">Tidshorisont</p>
+                <p className="font-semibold text-foreground">{getInvestmentHorizonLabel(riskProfile.investment_horizon || '')}</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
+            <div className="flex items-center gap-3 p-4 bg-card rounded-xl border shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
                 <DollarSign className="w-5 h-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Månadssparande</p>
-                <p className="font-semibold">
+                <p className="text-sm font-medium text-muted-foreground">Månadssparande</p>
+                <p className="font-semibold text-foreground">
                   {riskProfile.monthly_investment_amount 
                     ? `${riskProfile.monthly_investment_amount.toLocaleString()} SEK` 
                     : 'Ej angiven'}
@@ -310,15 +339,15 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
               </div>
             </div>
             
-            <div className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-              <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+            <div className="flex items-center gap-3 p-4 bg-card rounded-xl border shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
                 <PieChart className="w-5 h-5 text-indigo-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Riskkomfort</p>
+                <p className="text-sm font-medium text-muted-foreground">Riskkomfort</p>
                 <div className="flex items-center gap-2">
                   <Progress value={(riskProfile.risk_comfort_level || 0) * 10} className="h-2 w-16" />
-                  <span className="text-sm font-semibold">{riskProfile.risk_comfort_level || 0}/10</span>
+                  <span className="text-sm font-semibold text-foreground">{riskProfile.risk_comfort_level || 0}/10</span>
                 </div>
               </div>
             </div>
@@ -328,18 +357,18 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
 
       {/* AI-Generated Strategy */}
       {aiStrategy && (
-        <Card className="border-l-4 border-l-green-500 bg-gradient-to-r from-green-50 to-lime-50 dark:from-green-950/20 dark:to-lime-950/20 rounded-2xl shadow-lg">
+        <Card className="rounded-2xl shadow-sm border-0 bg-gradient-to-br from-background via-background to-green-50/50 dark:to-green-950/20">
           <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-xl">
               <Brain className="w-5 h-5 text-green-600" />
               AI-Genererad Investeringsstrategi
-              <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+              <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
                 Personlig Analys
               </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="prose prose-sm max-w-none text-gray-800 dark:text-gray-200 p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+            <div className="prose prose-sm max-w-none text-foreground p-6 bg-card rounded-xl border shadow-sm">
               <div className="text-sm leading-relaxed">
                 {formatAIStrategy(aiStrategy)}
               </div>
@@ -350,9 +379,9 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
 
       {/* Conversation Context */}
       {conversationData && Object.keys(conversationData).length > 0 && (
-        <Card className="border-l-4 border-l-purple-500 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20 rounded-2xl shadow-lg">
+        <Card className="rounded-2xl shadow-sm border-0 bg-gradient-to-br from-background via-background to-purple-50/50 dark:to-purple-950/20">
           <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-xl">
               <CheckCircle className="w-5 h-5 text-purple-600" />
               Dina Svar från Konsultationen
             </CardTitle>
@@ -360,8 +389,8 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
           <CardContent>
             <div className="grid gap-3">
               {conversationData.isBeginnerInvestor !== undefined && (
-                <div className="flex justify-between items-center p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-                  <span className="font-medium">Erfarenhetsnivå:</span>
+                <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
+                  <span className="font-medium text-foreground">Erfarenhetsnivå:</span>
                   <Badge variant={conversationData.isBeginnerInvestor ? "secondary" : "default"}>
                     {conversationData.isBeginnerInvestor ? 'Nybörjare' : 'Erfaren'}
                   </Badge>
@@ -369,8 +398,8 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
               )}
               
               {conversationData.investmentGoal && (
-                <div className="flex justify-between items-center p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-                  <span className="font-medium">Investeringsmål:</span>
+                <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
+                  <span className="font-medium text-foreground">Investeringsmål:</span>
                   <span className="text-sm text-muted-foreground capitalize">
                     {conversationData.investmentGoal}
                   </span>
@@ -378,8 +407,8 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
               )}
               
               {conversationData.timeHorizon && (
-                <div className="flex justify-between items-center p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-                  <span className="font-medium">Tidshorisont:</span>
+                <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
+                  <span className="font-medium text-foreground">Tidshorisont:</span>
                   <span className="text-sm text-muted-foreground capitalize">
                     {conversationData.timeHorizon}
                   </span>
@@ -387,8 +416,8 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
               )}
               
               {conversationData.riskTolerance && (
-                <div className="flex justify-between items-center p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-                  <span className="font-medium">Risktolerans:</span>
+                <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
+                  <span className="font-medium text-foreground">Risktolerans:</span>
                   <span className="text-sm text-muted-foreground capitalize">
                     {conversationData.riskTolerance}
                   </span>
@@ -396,8 +425,8 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
               )}
               
               {conversationData.investmentStyle && (
-                <div className="flex justify-between items-center p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-                  <span className="font-medium">Investeringsstil:</span>
+                <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
+                  <span className="font-medium text-foreground">Investeringsstil:</span>
                   <span className="text-sm text-muted-foreground capitalize">
                     {conversationData.investmentStyle}
                   </span>
@@ -405,8 +434,8 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
               )}
               
               {conversationData.hasCurrentPortfolio !== undefined && (
-                <div className="flex justify-between items-center p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-                  <span className="font-medium">Befintlig portfölj:</span>
+                <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
+                  <span className="font-medium text-foreground">Befintlig portfölj:</span>
                   <Badge variant={conversationData.hasCurrentPortfolio ? "default" : "secondary"}>
                     {conversationData.hasCurrentPortfolio ? 'Ja' : 'Nej'}
                   </Badge>
@@ -419,10 +448,10 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
 
       {/* Risk Profile Summary */}
       {riskProfile.sector_interests && riskProfile.sector_interests.length > 0 && (
-        <Card className="rounded-2xl shadow-lg">
+        <Card className="rounded-2xl shadow-sm border-0 bg-gradient-to-br from-background via-background to-muted/30">
           <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <TrendingUp className="w-5 h-5 text-primary" />
               Sektorintressen
             </CardTitle>
           </CardHeader>
