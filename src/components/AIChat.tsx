@@ -5,9 +5,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { useSubscription } from '@/hooks/useSubscription';
-import ChatHeader from './chat/ChatHeader';
 import ChatMessages from './chat/ChatMessages';
 import ChatInput from './chat/ChatInput';
+import ChatFolderSidebar from './chat/ChatFolderSidebar';
 import { LogIn, MessageSquare, Brain, ArrowLeft, Lock, Sparkles, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -55,7 +55,6 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
   } = useAIChat(portfolioId);
 
   const [input, setInput] = useState('');
-  const [showSessions, setShowSessions] = useState(false);
   const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -168,112 +167,136 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
   };
 
   return (
-    <div className="flex flex-col h-[90vh] lg:h-[92vh] xl:h-[95vh] bg-transparent overflow-hidden relative">
-      <ChatHeader
-        showSessions={showSessions}
-        setShowSessions={setShowSessions}
-        sessions={sessions}
-        currentSessionId={currentSessionId}
-        isLoading={isLoading}
-        onNewSession={handleNewSession}
-        onLoadSession={loadSession}
-        onDeleteSession={deleteSession}
-        onEditSessionName={editSessionName}
-      />
+    <div className="flex h-[90vh] lg:h-[92vh] xl:h-[95vh] bg-transparent overflow-hidden">
+      {user ? (
+        <>
+          {/* Left Sidebar - Folders and Sessions */}
+          <div className="w-80 border-r bg-background">
+            <ChatFolderSidebar
+              currentSessionId={currentSessionId}
+              onLoadSession={loadSession}
+              onDeleteSession={deleteSession}
+              onEditSessionName={editSessionName}
+              onNewSession={handleNewSession}
+              isLoadingSession={isLoadingSession}
+            />
+          </div>
 
-      {user && riskProfile && (
-        <div className="border-b bg-background p-2 sm:p-3">
-          <div className="max-w-6xl mx-auto flex items-center justify-between">
-            <Button
-              onClick={handleBackToPortfolio}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2 hover:bg-muted/50 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Tillbaka till Min Portfölj</span>
-              <span className="sm:hidden">Min Portfölj</span>
-            </Button>
+          {/* Main Chat Area */}
+          <div className="flex-1 flex flex-col">
+            {/* Top Bar */}
+            {user && riskProfile && (
+              <div className="border-b bg-background p-3">
+                <div className="flex items-center justify-between">
+                  <Button
+                    onClick={handleBackToPortfolio}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2 hover:bg-muted/50 transition-colors"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span className="hidden sm:inline">Tillbaka till Min Portfölj</span>
+                    <span className="sm:hidden">Min Portfölj</span>
+                  </Button>
 
-            {/* Compact Usage Display for Free Users */}
-            {!isPremium && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <MessageSquare className="w-3 h-3" />
-                <span>{currentUsage}/{dailyLimit} meddelanden</span>
-                <Button
-                  variant="outline" 
-                  size="sm"
-                  onClick={handlePremiumClick}
-                  className="text-xs h-6 px-2 ml-1"
-                >
-                  <Crown className="w-3 h-3 mr-1" />
-                  Premium
-                </Button>
+                  {/* Compact Usage Display for Free Users */}
+                  {!isPremium && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <MessageSquare className="w-3 h-3" />
+                      <span>{currentUsage}/{dailyLimit} meddelanden</span>
+                      <Button
+                        variant="outline" 
+                        size="sm"
+                        onClick={handlePremiumClick}
+                        className="text-xs h-6 px-2 ml-1"
+                      >
+                        <Crown className="w-3 h-3 mr-1" />
+                        Premium
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Premium Badge */}
+                  {isPremium && (
+                    <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs px-2 py-1">
+                      <Crown className="w-3 h-3 mr-1" />
+                      Premium
+                    </Badge>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* Premium Badge */}
-            {isPremium && (
-              <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs px-2 py-1">
-                <Crown className="w-3 h-3 mr-1" />
-                Premium
-              </Badge>
-            )}
+            {/* Chat Messages */}
+            <ChatMessages
+              messages={messages}
+              isLoading={isLoading}
+              isLoadingSession={isLoadingSession}
+              messagesEndRef={messagesEndRef}
+            />
+
+            {/* Chat Input */}
+            <ChatInput
+              input={input}
+              setInput={setInput}
+              onSubmit={handleSubmit}
+              isLoading={isLoading}
+              quotaExceeded={quotaExceeded}
+              inputRef={inputRef}
+            />
           </div>
-        </div>
-      )}
-
-      {user ? (
-        <>
-          <ChatMessages
-            messages={messages}
-            isLoading={isLoading}
-            isLoadingSession={isLoadingSession}
-            messagesEndRef={messagesEndRef}
-          />
-
-          <ChatInput
-            input={input}
-            setInput={setInput}
-            onSubmit={handleSubmit}
-            isLoading={isLoading}
-            quotaExceeded={quotaExceeded}
-            inputRef={inputRef}
-          />
         </>
       ) : (
         <>
           {/* Show dimmed chat interface in background */}
-          <div className="flex-1 overflow-hidden opacity-30 pointer-events-none">
-            <div className="h-full flex flex-col">
-              {/* Demo chat messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-6 max-w-6xl mx-auto w-full">
-                <div className="flex justify-start">
-                  <div className="max-w-[75%] bg-muted rounded-2xl px-4 py-3">
-                    <p className="text-sm leading-relaxed">Hej! Jag är din AI Portfolio Assistent. Jag hjälper dig med investeringsråd, portföljanalys och marknadsinsikter.</p>
+          <div className="flex-1 overflow-hidden opacity-30 pointer-events-none relative">
+            <div className="flex h-full">
+              {/* Demo Sidebar */}
+              <div className="w-80 border-r bg-background p-4">
+                <h3 className="font-semibold mb-4">AI Chattar</h3>
+                <div className="space-y-2">
+                  <div className="p-2 bg-muted rounded-lg">
+                    <div className="text-sm font-medium">Portföljanalys</div>
+                    <div className="text-xs text-muted-foreground">Idag</div>
                   </div>
-                </div>
-                <div className="flex justify-end">
-                  <div className="max-w-[75%] bg-primary text-primary-foreground rounded-2xl px-4 py-3">
-                    <p className="text-sm leading-relaxed">Kan du analysera min portfölj?</p>
-                  </div>
-                </div>
-                <div className="flex justify-start">
-                  <div className="max-w-[75%] bg-muted rounded-2xl px-4 py-3">
-                    <p className="text-sm leading-relaxed">För att ge dig en personlig portföljanalys behöver du logga in så jag kan komma åt din investeringsprofil och aktuella innehav.</p>
+                  <div className="p-2 bg-muted rounded-lg">
+                    <div className="text-sm font-medium">Aktieråd Tesla</div>
+                    <div className="text-xs text-muted-foreground">Igår</div>
                   </div>
                 </div>
               </div>
               
-              {/* Demo input area */}
-              <div className="border-t p-4 max-w-6xl mx-auto w-full">
-                <div className="flex gap-2">
-                  <input 
-                    className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm" 
-                    placeholder="Skriv ditt meddelande här..."
-                    disabled
-                  />
-                  <Button disabled>Skicka</Button>
+              {/* Demo Chat */}
+              <div className="flex-1 flex flex-col">
+                {/* Demo chat messages */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                  <div className="flex justify-start">
+                    <div className="max-w-[75%] bg-muted rounded-2xl px-4 py-3">
+                      <p className="text-sm leading-relaxed">Hej! Jag är din AI Portfolio Assistent. Jag hjälper dig med investeringsråd, portföljanalys och marknadsinsikter.</p>
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <div className="max-w-[75%] bg-primary text-primary-foreground rounded-2xl px-4 py-3">
+                      <p className="text-sm leading-relaxed">Kan du analysera min portfölj?</p>
+                    </div>
+                  </div>
+                  <div className="flex justify-start">
+                    <div className="max-w-[75%] bg-muted rounded-2xl px-4 py-3">
+                      <p className="text-sm leading-relaxed">För att ge dig en personlig portföljanalys behöver du logga in så jag kan komma åt din investeringsprofil och aktuella innehav.</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Demo input area */}
+                <div className="border-t p-4">
+                  <div className="flex gap-2">
+                    <input 
+                      className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm" 
+                      placeholder="Skriv ditt meddelande här..."
+                      disabled
+                    />
+                    <Button disabled>Skicka</Button>
+                  </div>
                 </div>
               </div>
             </div>
