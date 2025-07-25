@@ -8,7 +8,7 @@ import BreadcrumbNavigation from './Breadcrumb';
 import AIFloatingWidget from './AIFloatingWidget';
 import MobileNavigation from './MobileNavigation';
 import AppSidebar from './AppSidebar';
-import ContextualAISuggestions from './ContextualAISuggestions';
+import SmartSuggestions from './SmartSuggestions';
 import { ConversationMemoryProvider } from './AIConversationMemory';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Brain } from 'lucide-react';
@@ -77,8 +77,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {/* AI Floating Widget - available on all pages */}
           <AIFloatingWidget />
 
-          {/* Contextual AI Suggestions */}
-          <ContextualAISuggestions />
+          {/* Smart AI Suggestions */}
+          <SmartSuggestions />
 
           {/* Mobile navigation */}
           <MobileNavigation />
