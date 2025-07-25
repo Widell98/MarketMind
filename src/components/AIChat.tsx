@@ -193,7 +193,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
   );
 
   return (
-    <div className="flex h-[90vh] lg:h-[92vh] xl:h-[95vh] bg-transparent overflow-hidden">
+    <div className="flex h-[calc(100vh-8rem)] md:h-[90vh] lg:h-[92vh] xl:h-[95vh] bg-transparent overflow-hidden">
       {user ? (
         <>
           {/* Desktop Sidebar - Folders and Sessions */}
