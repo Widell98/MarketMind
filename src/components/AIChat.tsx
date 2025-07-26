@@ -9,7 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import ChatMessages from './chat/ChatMessages';
 import ChatInput from './chat/ChatInput';
 import ChatFolderSidebar from './chat/ChatFolderSidebar';
-import { LogIn, MessageSquare, Brain, ArrowLeft, Lock, Sparkles, Crown, Menu } from 'lucide-react';
+import { LogIn, MessageSquare, Brain, ArrowLeft, Lock, Sparkles, Crown, Menu, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -60,6 +60,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
   const [input, setInput] = useState('');
   const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -197,7 +198,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
       {user ? (
         <>
           {/* Desktop Sidebar - Folders and Sessions */}
-          {!isMobile && (
+          {!isMobile && !desktopSidebarCollapsed && (
             <div className="w-80 border-r bg-background">
               <SidebarContent />
             </div>
@@ -223,6 +224,27 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
                         </SheetContent>
                       </Sheet>
                     )}
+                    
+                    {/* Desktop Sidebar Toggle Button */}
+                    {!isMobile && (
+                      <Button
+                        onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
+                        variant="ghost"
+                        size="sm"
+                        className="flex items-center gap-2 hover:bg-muted/50 transition-colors"
+                        title={desktopSidebarCollapsed ? "Visa mappar" : "Dölj mappar"}
+                      >
+                        {desktopSidebarCollapsed ? (
+                          <PanelLeft className="w-4 h-4" />
+                        ) : (
+                          <PanelLeftClose className="w-4 h-4" />
+                        )}
+                        <span className="hidden lg:inline">
+                          {desktopSidebarCollapsed ? "Visa mappar" : "Dölj mappar"}
+                        </span>
+                      </Button>
+                    )}
+                    
                     <Button
                       onClick={handleBackToPortfolio}
                       variant="outline"
