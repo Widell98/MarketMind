@@ -1458,6 +1458,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_role_audit: {
+        Row: {
+          action: string
+          id: string
+          performed_at: string
+          performed_by: string
+          reason: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          action: string
+          id?: string
+          performed_at?: string
+          performed_by: string
+          reason?: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          action?: string
+          id?: string
+          performed_at?: string
+          performed_by?: string
+          reason?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1484,6 +1514,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_user_role: {
+        Args: {
+          target_user_id: string
+          new_role: Database["public"]["Enums"]["app_role"]
+          reason?: string
+        }
+        Returns: boolean
+      }
       check_usage_limit: {
         Args: { _user_id: string; _usage_type: string }
         Returns: boolean
@@ -1521,6 +1559,14 @@ export type Database = {
       }
       increment_ai_usage: {
         Args: { _user_id: string; _usage_type: string }
+        Returns: boolean
+      }
+      revoke_user_role: {
+        Args: {
+          target_user_id: string
+          role_to_revoke: Database["public"]["Enums"]["app_role"]
+          reason?: string
+        }
         Returns: boolean
       }
       user_follows_case: {
