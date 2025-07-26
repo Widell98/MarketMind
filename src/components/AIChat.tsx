@@ -31,9 +31,10 @@ interface AIChatProps {
   portfolioId?: string;
   initialStock?: string | null;
   initialMessage?: string | null;
+  showExamplePrompts?: boolean;
 }
 
-const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
+const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts = true }: AIChatProps) => {
   const { user } = useAuth();
   const { riskProfile } = useRiskProfile();
   const { usage, subscription } = useSubscription();
@@ -181,6 +182,13 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
     }
   };
 
+  const handleExamplePrompt = (prompt: string) => {
+    setInput(prompt);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+  };
+
   const SidebarContent = () => (
     <ChatFolderSidebar
       currentSessionId={currentSessionId}
@@ -194,7 +202,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
   );
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] md:h-[90vh] lg:h-[92vh] xl:h-[95vh] bg-transparent overflow-hidden">
+    <div className="flex h-full bg-card border shadow-lg rounded-2xl overflow-hidden">
       {user ? (
         <>
           {/* Desktop Sidebar - Folders and Sessions */}
@@ -291,6 +299,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage }: AIChatProps) => {
               isLoading={isLoading}
               isLoadingSession={isLoadingSession}
               messagesEndRef={messagesEndRef}
+              onExamplePrompt={showExamplePrompts ? handleExamplePrompt : undefined}
             />
 
             {/* Chat Input */}
