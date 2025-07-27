@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,13 +19,11 @@ import { useNavigate } from 'react-router-dom';
 import AddHoldingDialog from './AddHoldingDialog';
 import EditHoldingDialog from './EditHoldingDialog';
 import UserHoldingsManager from './UserHoldingsManager';
-
 interface PortfolioOverviewProps {
   portfolio: any;
   onQuickChat?: (message: string) => void;
   onActionClick?: (action: string) => void;
 }
-
 const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   portfolio,
   onQuickChat,
@@ -64,7 +61,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
 
   // Get AI recommendations from portfolio data with better extraction
   const aiRecommendations = portfolio?.recommended_stocks || [];
-
   console.log('Portfolio data:', portfolio);
   console.log('AI recommendations from portfolio:', aiRecommendations);
   console.log('Database recommendations:', recommendations);
@@ -73,21 +69,12 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   // Filter out duplicates and invalid entries
   const allRecommendations = recommendations.filter(recommendation => {
     // Filter out recommendations that already exist as actual holdings
-    const alreadyOwned = actualHoldings.some(holding => 
-      holding.name.toLowerCase().includes(recommendation.name.toLowerCase()) || 
-      (holding.symbol && recommendation.symbol && 
-       holding.symbol.toLowerCase() === recommendation.symbol.toLowerCase())
-    );
-    
+    const alreadyOwned = actualHoldings.some(holding => holding.name.toLowerCase().includes(recommendation.name.toLowerCase()) || holding.symbol && recommendation.symbol && holding.symbol.toLowerCase() === recommendation.symbol.toLowerCase());
+
     // Filter out invalid or duplicate entries
-    const isValid = recommendation.name && 
-                   recommendation.name.length > 2 && 
-                   !recommendation.name.includes('Total allokering') &&
-                   !recommendation.name.includes('Investera');
-    
+    const isValid = recommendation.name && recommendation.name.length > 2 && !recommendation.name.includes('Total allokering') && !recommendation.name.includes('Investera');
     return !alreadyOwned && isValid;
   });
-
   console.log('Filtered database recommendations:', allRecommendations);
 
   // Calculate portfolio exposure data
@@ -170,7 +157,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         return 'border-gray-200 bg-gray-50';
     }
   };
-
   const formatCurrency = (amount: number | null | undefined, currency: string = 'SEK') => {
     if (!amount) return '0 kr';
     return new Intl.NumberFormat('sv-SE', {
@@ -180,7 +166,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       maximumFractionDigits: 0
     }).format(amount);
   };
-
   const getHoldingTypeColor = (type: string) => {
     const colors = {
       stock: 'bg-blue-100 text-blue-800',
@@ -193,7 +178,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     };
     return colors[type as keyof typeof colors] || colors.other;
   };
-
   const getHoldingTypeLabel = (type: string) => {
     const labels = {
       stock: 'Aktie',
@@ -206,7 +190,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     };
     return labels[type as keyof typeof labels] || 'Övrigt';
   };
-
   const handleStockChat = (stockName: string, stockSymbol?: string) => {
     // Create a detailed message about the stock
     const stockInfo = stockSymbol ? `${stockName} (${stockSymbol})` : stockName;
@@ -219,7 +202,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     });
     navigate(`/ai-chat?${params.toString()}`);
   };
-
   const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
     console.log(`Deleting holding: ${holdingName} (${holdingId})`);
     const success = await deleteHolding(holdingId);
@@ -232,7 +214,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       refetch();
     }
   };
-
   const toggleStockExpansion = (index: number) => {
     const newExpanded = new Set(expandedStocks);
     if (newExpanded.has(index)) {
@@ -242,7 +223,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     }
     setExpandedStocks(newExpanded);
   };
-
   const handleExamplePrompt = (prompt: string) => {
     const chatTab = document.querySelector('[data-value="chat"]') as HTMLElement;
     if (chatTab) {
@@ -257,7 +237,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       window.dispatchEvent(event);
     }, 100);
   };
-
   const handleQuickAction = (message: string) => {
     // Navigate to AI chat and trigger the pre-filled message
     navigate('/ai-chat');
@@ -272,11 +251,9 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       window.dispatchEvent(event);
     }, 100);
   };
-
   const handleRebalanceAction = () => {
     handleExamplePrompt('Analysera min nuvarande portfölj och föreslå en rebalanseringsstrategi. Visa vilka aktier jag borde köpa mer av, sälja eller behålla för att optimera min riskjusterade avkastning.');
   };
-
   const handleInsightAction = (insight: any) => {
     const message = `Berätta mer om denna insikt: ${insight.title}. ${insight.description}`;
     handleExamplePrompt(message);
@@ -286,7 +263,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       markAsRead(insight.id);
     }
   };
-
   const clearAIRecommendations = async () => {
     if (!user) {
       toast({
@@ -329,7 +305,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       setIsDeletingRecommendations(false);
     }
   };
-
   const handleResetProfile = async () => {
     if (!user) {
       toast({
@@ -389,17 +364,14 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       setIsResetting(false);
     }
   };
-
   const handleAddFromRecommendation = (recommendation: any) => {
     setSelectedRecommendation(recommendation);
     setAddHoldingDialogOpen(true);
   };
-
   const handleEditHolding = (holding: any) => {
     setSelectedHolding(holding);
     setEditHoldingDialogOpen(true);
   };
-
   const handleAddHolding = async (holdingData: any) => {
     const success = await addHolding(holdingData);
     if (success) {
@@ -412,7 +384,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     }
     return success;
   };
-
   const handleUpdateHolding = async (holdingData: any) => {
     if (!selectedHolding) return;
     const success = await updateHolding(selectedHolding.id, holdingData);
@@ -424,7 +395,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       refetch();
     }
   };
-
   const handleGetAIRecommendations = () => {
     navigate('/ai-chat', {
       state: {
@@ -552,7 +522,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </Card>
       </div>;
   }
-
   return <div className="space-y-6">
       {/* User's Current Holdings with integrated prices and cash management - NOW FIRST */}
       <UserHoldingsManager />
@@ -671,60 +640,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       </Card>
 
       {/* Quick Actions - NOW THIRD */}
-      <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-            <Zap className="w-5 h-5 text-blue-600" />
-            Snabbåtgärder för portfölj
-          </CardTitle>
-          <CardDescription className="text-sm text-muted-foreground mt-1">
-            AI-assisterade funktioner för att optimera din portfölj
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-start gap-3 text-left border-gray-200 hover:bg-muted/50" onClick={() => handleQuickAction("Jämför AI-rekommendationerna med mina nuvarande innehav. Vad borde jag sälja?")}>
-              <BarChart3 className="w-5 h-5 text-blue-600" />
-              <div>
-                <div className="font-medium text-sm mb-1">Portföljjämförelse</div>
-                <div className="text-xs text-muted-foreground">Nuvarande vs. rekommenderat</div>
-              </div>
-            </Button>
-            
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-start gap-3 text-left border-gray-200 hover:bg-muted/50" onClick={() => handleQuickAction("Vilka aktier borde jag köpa först baserat på AI-rekommendationerna och min budget?")}>
-              <TrendingUp className="w-5 h-5 text-green-600" />
-              <div>
-                <div className="font-medium text-sm mb-1">Köpordning</div>
-                <div className="text-xs text-muted-foreground">Prioritera investeringar</div>
-              </div>
-            </Button>
-            
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-start gap-3 text-left border-gray-200 hover:bg-muted/50" onClick={() => handleQuickAction("Berätta vilka risker som finns i de AI-rekommenderade aktierna")}>
-              <Shield className="w-5 h-5 text-red-600" />
-              <div>
-                <div className="font-medium text-sm mb-1">Riskanalys</div>
-                <div className="text-xs text-muted-foreground">Identifiera risker</div>
-              </div>
-            </Button>
-
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-start gap-3 text-left border-gray-200 hover:bg-muted/50" onClick={() => handleQuickAction("Föreslå alternativa aktier som inte finns i AI-rekommendationerna men som skulle passa min profil")}>
-              <Plus className="w-5 h-5 text-orange-600" />
-              <div>
-                <div className="font-medium text-sm mb-1">Alternativa val</div>
-                <div className="text-xs text-muted-foreground">Utforska andra möjligheter</div>
-              </div>
-            </Button>
-            
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-start gap-3 text-left border-gray-200 hover:bg-muted/50 sm:col-span-2 lg:col-span-1" onClick={() => handleQuickAction("Analysera min nuvarande portfölj och föreslå en rebalanseringsstrategi. Visa vilka aktier jag borde köpa mer av, sälja eller behålla för att optimera min riskjusterade avkastning.")}>
-              <Target className="w-5 h-5 text-green-600" />
-              <div>
-                <div className="font-medium text-sm mb-1">Rebalansering</div>
-                <div className="text-xs text-muted-foreground">Optimera fördelningen</div>
-              </div>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      
 
       {/* Sector Exposure - NOW FOURTH */}
       <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -823,5 +739,4 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       <EditHoldingDialog isOpen={editHoldingDialogOpen} onClose={() => setEditHoldingDialogOpen(false)} onSave={handleUpdateHolding} holding={selectedHolding} />
     </div>;
 };
-
 export default PortfolioOverview;
