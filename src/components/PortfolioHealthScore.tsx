@@ -81,50 +81,8 @@ const PortfolioHealthScore: React.FC<PortfolioHealthScoreProps> = ({
     icon: TrendingUp,
     description: 'Senaste månadens utveckling'
   }];
-  return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Heart className="h-5 w-5 text-primary" />
-            <h3 className="text-lg font-semibold">Portföljhälsa</h3>
-          </div>
-          <Badge className={cn("gap-1", status.bg, status.color)}>
-            <ScoreIcon className="h-3 w-3" />
-            {status.label}
-          </Badge>
-        </div>
-        
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Hälsopoäng</span>
-            <span className="text-2xl font-bold">{healthScore}/100</span>
-          </div>
-          <Progress value={healthScore} className="h-2" />
-        </div>
-
-        <div className="space-y-4">
-          {metrics.map((metric, index) => {
-            const Icon = metric.icon;
-            return (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Icon className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">{metric.label}</p>
-                    <p className="text-xs text-muted-foreground">{metric.description}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-semibold">{metric.score}/100</p>
-                  <Progress value={metric.score} className="w-16 h-1.5" />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  );
+  return <Card>
+      
+    </Card>;
 };
 export default PortfolioHealthScore;
