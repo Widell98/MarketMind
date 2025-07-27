@@ -10,39 +10,43 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-
 const Index = () => {
-  const { user } = useAuth();
-  const { activePortfolio, loading } = usePortfolio();
+  const {
+    user
+  } = useAuth();
+  const {
+    activePortfolio,
+    loading
+  } = usePortfolio();
 
   // Check if user has completed the main onboarding steps
   const hasPortfolio = !loading && !!activePortfolio;
 
   // Query to check if user has analyses
-  const { data: userAnalyses } = useQuery({
+  const {
+    data: userAnalyses
+  } = useQuery({
     queryKey: ['userAnalyses', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data } = await supabase
-        .from('analyses')
-        .select('id')
-        .eq('user_id', user.id)
-        .limit(1);
+      const {
+        data
+      } = await supabase.from('analyses').select('id').eq('user_id', user.id).limit(1);
       return data || [];
     },
     enabled: !!user
   });
 
   // Query to check if user has stock cases
-  const { data: userStockCases } = useQuery({
+  const {
+    data: userStockCases
+  } = useQuery({
     queryKey: ['userStockCases', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data } = await supabase
-        .from('stock_cases')
-        .select('id')
-        .eq('user_id', user.id)
-        .limit(1);
+      const {
+        data
+      } = await supabase.from('stock_cases').select('id').eq('user_id', user.id).limit(1);
       return data || [];
     },
     enabled: !!user
@@ -50,26 +54,19 @@ const Index = () => {
 
   // Calculate user registration days
   const userRegistrationDays = user ? Math.floor((Date.now() - new Date(user.created_at).getTime()) / (1000 * 60 * 60 * 24)) : 0;
-
   const hasAnalyses = userAnalyses && userAnalyses.length > 0;
   const hasStockCases = userStockCases && userStockCases.length > 0;
   const shouldShowHero = !user || !hasPortfolio;
-
-  return (
-    <Layout>
+  return <Layout>
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
         <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8 max-w-[1600px]">
           {/* Hero Section - Only show if user doesn't have portfolio */}
-          {shouldShowHero && (
-            <div className="text-center mb-8 sm:mb-12 lg:mb-16">
+          {shouldShowHero && <div className="text-center mb-8 sm:mb-12 lg:mb-16">
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4 sm:mb-6">
                 Investera smartare med AI
               </h1>
               <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed mb-6 sm:mb-8 lg:mb-10 max-w-3xl mx-auto">
-                {user 
-                  ? "Välkommen tillbaka! Få personliga investeringsråd, portföljanalys och marknadsinsikter med vår AI-drivna plattform."
-                  : "Få personliga investeringsråd, portföljanalys och marknadsinsikter med vår AI-drivna plattform. Börja idag och ta kontroll över dina investeringar."
-                }
+                {user ? "Välkommen tillbaka! Få personliga investeringsråd, portföljanalys och marknadsinsikter med vår AI-drivna plattform." : "Få personliga investeringsråd, portföljanalys och marknadsinsikter med vår AI-drivna plattform. Börja idag och ta kontroll över dina investeringar."}
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
                 <Button asChild size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 w-full sm:w-auto">
@@ -87,51 +84,22 @@ const Index = () => {
               </div>
               
               {/* Social proof for non-logged in users */}
-              {!user && (
-                <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <div className="flex -space-x-2">
-                      {[...Array(4)].map((_, i) => (
-                        <div key={i} className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-blue-600/20 border-2 border-background flex items-center justify-center">
-                          <Star className="w-3 h-3 text-primary" />
-                        </div>
-                      ))}
-                    </div>
-                    <span>1000+ aktiva investerare</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Target className="w-4 h-4 text-green-500" />
-                    <span>AI-driven analys</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-yellow-500" />
-                    <span>Gratis att komma igång</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+              {!user}
+            </div>}
 
           {/* Welcome back section for users with portfolio */}
-          {user && hasPortfolio && (
-            <div className="text-center mb-8 sm:mb-12">
+          {user && hasPortfolio && <div className="text-center mb-8 sm:mb-12">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-3 sm:mb-4">
                 Välkommen tillbaka!
               </h1>
               <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-6 max-w-2xl mx-auto">
                 Din portfölj är aktiv och redo för analys. Utforska marknadsinsikter och optimera dina investeringar.
               </p>
-            </div>
-          )}
+            </div>}
 
           {/* Enhanced Smart Navigation with more context */}
           <div className="mb-8 sm:mb-12">
-            <IntelligentRouting 
-              hasPortfolio={hasPortfolio} 
-              hasAnalyses={hasAnalyses}
-              hasStockCases={hasStockCases}
-              userRegistrationDays={userRegistrationDays}
-            />
+            <IntelligentRouting hasPortfolio={hasPortfolio} hasAnalyses={hasAnalyses} hasStockCases={hasStockCases} userRegistrationDays={userRegistrationDays} />
           </div>
 
           {/* AI Features Grid */}
@@ -271,20 +239,10 @@ const Index = () => {
           {/* CTA Section - Updated based on user status */}
           <div className="text-center bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-3xl p-6 sm:p-8 lg:p-12 border border-primary/20">
             <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
-              {user && hasPortfolio
-                ? "Fortsätt optimera din portfölj"
-                : user 
-                ? "Redo att ta din investering till nästa nivå?"
-                : "Redo att börja din investeringsresa?"
-              }
+              {user && hasPortfolio ? "Fortsätt optimera din portfölj" : user ? "Redo att ta din investering till nästa nivå?" : "Redo att börja din investeringsresa?"}
             </h2>
             <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-6 max-w-2xl mx-auto">
-              {user && hasPortfolio
-                ? "Din portfölj är uppsatt! Använd AI-verktygen för att få djupare insikter och optimera dina investeringar ytterligare."
-                : user 
-                ? "Fortsätt utveckla din portfölj och upplev kraften i AI-drivna investeringar."
-                : "Gå med i tusentals investerare som redan använder AI för att fatta smartare investeringsbeslut. Helt gratis att komma igång."
-              }
+              {user && hasPortfolio ? "Din portfölj är uppsatt! Använd AI-verktygen för att få djupare insikter och optimera dina investeringar ytterligare." : user ? "Fortsätt utveckla din portfölj och upplev kraften i AI-drivna investeringar." : "Gå med i tusentals investerare som redan använder AI för att fatta smartare investeringsbeslut. Helt gratis att komma igång."}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button asChild size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 w-full sm:w-auto">
@@ -293,26 +251,20 @@ const Index = () => {
                   <Rocket className="w-4 h-4 ml-2" />
                 </Link>
               </Button>
-              {!hasPortfolio && (
-                <Button asChild variant="outline" size="lg" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground w-full sm:w-auto">
+              {!hasPortfolio && <Button asChild variant="outline" size="lg" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground w-full sm:w-auto">
                   <Link to="/stock-cases">
                     Utforska community
                     <ArrowUpRight className="w-4 h-4 ml-2" />
                   </Link>
-                </Button>
-              )}
+                </Button>}
             </div>
             
-            {!user && (
-              <div className="mt-6 text-xs text-muted-foreground">
+            {!user && <div className="mt-6 text-xs text-muted-foreground">
                 Ingen kreditkort krävs • Avsluta när som helst • 1000+ nöjda användare
-              </div>
-            )}
+              </div>}
           </div>
         </div>
       </div>
-    </Layout>
-  );
+    </Layout>;
 };
-
 export default Index;
