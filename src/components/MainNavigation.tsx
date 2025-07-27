@@ -17,9 +17,9 @@ const MainNavigation = () => {
   
   const navigation = [
     { name: 'Hem', href: '/', icon: Home },
-    { name: 'AI-Chat', href: '/ai-chat', icon: MessageSquare },
     { name: 'Aktiefall', href: '/stock-cases', icon: TrendingUp },
-    { name: 'Profil', href: '/profile', icon: BarChart3, requiresAuth: true },
+    { name: 'AI-Assistent', href: '/ai-chat', icon: MessageSquare },
+    { name: 'Min Portfölj', href: '/portfolio-implementation', icon: BarChart3, requiresAuth: true },
   ];
 
   const handleLockedNavigation = (e: React.MouseEvent, requiresAuth: boolean) => {

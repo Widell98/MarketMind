@@ -20,7 +20,7 @@ const MobileNavigation = () => {
     { name: 'Hem', href: '/', icon: Home },
     { name: 'AI-Chat', href: '/ai-chat', icon: Brain, priority: true },
     { name: 'Aktiefall', href: '/stock-cases', icon: TrendingUp },
-    { name: 'Profil', href: '/profile', icon: BarChart3, requiresAuth: true },
+    { name: 'Portfölj', href: '/portfolio-implementation', icon: BarChart3, requiresAuth: true },
   ];
 
   const handleLockedNavigation = (e: React.MouseEvent, requiresAuth: boolean) => {
