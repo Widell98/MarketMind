@@ -388,7 +388,7 @@ const IntelligentRouting = ({
         }
         return b.confidence - a.confidence;
       })
-      .slice(0, 4); // Show max 4 suggestions
+      .slice(0, 2); // Show max 2 suggestions - simplified
   };
 
   const handleSmartNavigation = (route: SmartRoute) => {
@@ -468,14 +468,10 @@ const IntelligentRouting = ({
             <h3 className="font-bold text-lg text-foreground">Smart Navigation</h3>
             <p className="text-sm text-muted-foreground">
               {!user 
-                ? "AI-föreslagna steg för att komma igång"
-                : userRegistrationDays <= 1 
-                ? "Välkommen! Här är dina nästa steg"
-                : userRegistrationDays <= 7 
-                ? "Fortsätt utforska plattformen"
+                ? "Första stegen för att komma igång"
                 : hasPortfolio 
-                ? "AI-föreslagna nästa steg för din portfölj" 
-                : "AI-föreslagna nästa steg för dig"
+                ? "Förbättra din portfölj" 
+                : "Skapa din portfölj"
               }
             </p>
           </div>
