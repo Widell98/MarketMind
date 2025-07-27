@@ -643,46 +643,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       
 
       {/* Sector Exposure - NOW FOURTH */}
-      <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-            <Building2 className="w-5 h-5 text-orange-600" />
-            Sektorexponering
-          </CardTitle>
-          <CardDescription className="text-sm text-muted-foreground mt-1">
-            Fördelning över olika industrisektorer
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {exposureData.sectorData.length > 0 ? <div className="space-y-6">
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsPieChart>
-                    <Pie data={exposureData.sectorData} cx="50%" cy="50%" innerRadius={50} outerRadius={100} paddingAngle={2} dataKey="value">
-                      {exposureData.sectorData.map((entry, index) => <Cell key={`cell-${index}`} fill={sectorColors[index % sectorColors.length]} />)}
-                    </Pie>
-                    <Tooltip formatter={(value: number, name: string) => [`${formatCurrency(value)} (${exposureData.sectorData.find(d => d.name === name)?.percentage}%)`, 'Värde']} />
-                  </RechartsPieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="space-y-3">
-                {exposureData.sectorData.map((sector, index) => <div key={sector.name} className="flex items-center justify-between text-sm p-2 rounded-lg bg-muted/30">
-                    <div className="flex items-center gap-3">
-                      <div className="w-4 h-4 rounded-full flex-shrink-0" style={{
-                  backgroundColor: sectorColors[index % sectorColors.length]
-                }} />
-                      <span className="font-medium">{sector.name}</span>
-                    </div>
-                    <span className="font-semibold text-foreground">{sector.percentage}%</span>
-                  </div>)}
-              </div>
-            </div> : <div className="text-center py-12 text-muted-foreground">
-              <Building2 className="w-16 h-16 mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-medium mb-2">Ingen sektordata ännu</h3>
-              <p className="text-sm">Lägg till innehav för att se sektorfördelning</p>
-            </div>}
-        </CardContent>
-      </Card>
+      
 
       {/* AI Insights from Database - NOW FIFTH */}
       {insights.length > 0 && <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
