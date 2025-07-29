@@ -388,7 +388,7 @@ const IntelligentRouting = ({
         }
         return b.confidence - a.confidence;
       })
-      .slice(0, 2); // Show max 2 suggestions
+      .slice(0, 4); // Show max 4 suggestions
   };
 
   const handleSmartNavigation = (route: SmartRoute) => {
@@ -458,35 +458,42 @@ const IntelligentRouting = ({
   if (smartRoutes.length === 0) return null;
 
   return (
-    <Card className="border border-primary/10 bg-background">
+    <Card className="border-2 border-primary/20 bg-gradient-to-br from-background via-background to-primary/5">
       <div className="p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Navigation className="w-4 h-4 text-primary" />
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center">
+            <Navigation className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-base text-foreground">Nästa steg</h3>
-            <p className="text-xs text-muted-foreground">
-              {userRegistrationDays <= 1 
+            <h3 className="font-bold text-lg text-foreground">Smart Navigation</h3>
+            <p className="text-sm text-muted-foreground">
+              {!user 
+                ? "AI-föreslagna steg för att komma igång"
+                : userRegistrationDays <= 1 
                 ? "Välkommen! Här är dina nästa steg"
+                : userRegistrationDays <= 7 
+                ? "Fortsätt utforska plattformen"
+                : hasPortfolio 
+                ? "AI-föreslagna nästa steg för din portfölj" 
                 : "AI-föreslagna nästa steg för dig"
               }
             </p>
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           {smartRoutes.map((route, index) => {
             const Icon = route.icon;
+            const CategoryIcon = getCategoryIcon(route.category);
             return (
               <div
                 key={`${route.path}-${index}`}
-                className="group cursor-pointer border rounded-lg p-3 hover:shadow-sm transition-all duration-200 hover:border-primary/30 bg-background hover:bg-primary/5"
+                className="group cursor-pointer border rounded-xl p-4 hover:shadow-lg transition-all duration-300 hover:border-primary/50 bg-background hover:bg-primary/5"
                 onClick={() => handleSmartNavigation(route)}
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
-                    <Icon className="w-4 h-4 text-primary" />
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
+                    <Icon className="w-6 h-6 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
@@ -501,9 +508,12 @@ const IntelligentRouting = ({
                       {route.description}
                     </p>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-primary font-medium">
-                        {route.reason}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <CategoryIcon className="w-3 h-3 text-primary" />
+                        <span className="text-xs text-primary font-medium">
+                          {route.reason}
+                        </span>
+                      </div>
                       <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                     </div>
                   </div>
