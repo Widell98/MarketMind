@@ -3,9 +3,10 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle, Eye, Heart, BookOpen, Sparkles } from 'lucide-react';
+import { MessageCircle, Eye, Heart, BookOpen, Sparkles, Plus } from 'lucide-react';
 import { Analysis } from '@/types/analysis';
 import { useNavigate } from 'react-router-dom';
+import AddAnalysisToHoldingDialog from './AddAnalysisToHoldingDialog';
 
 interface AnalysisVisualCardProps {
   analysis: Analysis;
@@ -152,15 +153,23 @@ const AnalysisVisualCard: React.FC<AnalysisVisualCardProps> = ({
               })}
             </div>
             
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleDiscussClick}
-              className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center gap-1"
-            >
-              <MessageCircle className="w-4 h-4" />
-              Diskutera
-            </Button>
+            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <AddAnalysisToHoldingDialog analysis={analysis}>
+                <Button size="sm" variant="outline" className="flex items-center gap-1">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </AddAnalysisToHoldingDialog>
+              
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleDiscussClick}
+                className="flex items-center gap-1"
+              >
+                <MessageCircle className="w-4 h-4" />
+                Diskutera
+              </Button>
+            </div>
           </div>
         </CardContent>
       </div>

@@ -15,8 +15,10 @@ import {
   TrendingUp,
   Eye,
   Calendar,
-  Filter
+  Filter,
+  Plus
 } from 'lucide-react';
+import AddAnalysisToHoldingDialog from './AddAnalysisToHoldingDialog';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -227,6 +229,17 @@ const AnalysisFeed = () => {
                     </div>
 
                     <div className="flex items-center space-x-2">
+                      <AddAnalysisToHoldingDialog analysis={analysis}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20"
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Lägg till
+                        </Button>
+                      </AddAnalysisToHoldingDialog>
+                      
                       <Button
                         variant="ghost"
                         size="sm"
