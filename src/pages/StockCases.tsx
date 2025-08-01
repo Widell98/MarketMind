@@ -214,9 +214,9 @@ const StockCases = () => {
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
               selectedSector={selectedSector}
-              onSectorChange={setSelectedSector}
+              onSectorChange={(sector) => setSelectedSector(sector === 'all-sectors' ? '' : sector)}
               performanceFilter={performanceFilter}
-              onPerformanceFilterChange={setPerformanceFilter}
+              onPerformanceFilterChange={(filter) => setPerformanceFilter(filter === 'all-results' ? '' : filter)}
               sortBy={sortBy}
               onSortChange={setSortBy}
               sortOrder={sortOrder}

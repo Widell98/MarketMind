@@ -80,7 +80,7 @@ const EnhancedStockCasesSearch: React.FC<EnhancedStockCasesSearchProps> = ({
               <SelectValue placeholder="Välj sektor" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Alla sektorer</SelectItem>
+              <SelectItem value="all-sectors">Alla sektorer</SelectItem>
               {availableSectors.map((sector) => (
                 <SelectItem key={sector} value={sector}>
                   {sector}
@@ -95,7 +95,7 @@ const EnhancedStockCasesSearch: React.FC<EnhancedStockCasesSearchProps> = ({
               <SelectValue placeholder="Prestanda" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Alla resultat</SelectItem>
+              <SelectItem value="all-results">Alla resultat</SelectItem>
               <SelectItem value="positive">Positiva (+)</SelectItem>
               <SelectItem value="negative">Negativa (-)</SelectItem>
               <SelectItem value="high">Höga (&gt;10%)</SelectItem>
