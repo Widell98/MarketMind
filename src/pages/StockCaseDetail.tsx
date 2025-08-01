@@ -52,7 +52,6 @@ const StockCaseDetail = () => {
   } = useStockCaseLikes(id || '');
   
   const { followUser, unfollowUser, isFollowing } = useUserFollows();
-  const isOwner = user && stockCase?.user_id === user.id;
 
   if (loading) {
     return (
@@ -217,116 +216,131 @@ const StockCaseDetail = () => {
           )}
         </div>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Main Content */}
-          <div className="lg:col-span-3 space-y-6">
-            {/* Key Information Bar */}
-            <div className="flex flex-wrap items-center gap-4 p-4 bg-card rounded-lg border">
-              {stockCase.sector && (
-                <div className="flex items-center gap-2">
-                  <Building className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{stockCase.sector}</span>
+          <div className="lg:col-span-2 space-y-6">
+            {/* Company Details Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Företagsinformation</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  {stockCase.sector && (
+                    <div className="flex items-center gap-2">
+                      <Building className="w-4 h-4 text-gray-500" />
+                      <div>
+                        <p className="text-gray-500 dark:text-gray-400">Sektor</p>
+                        <p className="font-medium">{stockCase.sector}</p>
+                      </div>
+                    </div>
+                  )}
+                  {stockCase.market_cap && (
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-gray-500" />
+                      <div>
+                        <p className="text-gray-500 dark:text-gray-400">Börsvärde</p>
+                        <p className="font-medium">{stockCase.market_cap}</p>
+                      </div>
+                    </div>
+                  )}
+                  {stockCase.pe_ratio && (
+                    <div>
+                      <p className="text-gray-500 dark:text-gray-400">P/E-tal</p>
+                      <p className="font-medium">{stockCase.pe_ratio}</p>
+                    </div>
+                  )}
+                  {stockCase.dividend_yield && (
+                    <div>
+                      <p className="text-gray-500 dark:text-gray-400">Utdelningsavkastning</p>
+                      <p className="font-medium">{stockCase.dividend_yield}</p>
+                    </div>
+                  )}
                 </div>
-              )}
-              {stockCase.market_cap && (
-                <div className="flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{stockCase.market_cap}</span>
-                </div>
-              )}
-              {stockCase.pe_ratio && (
-                <div className="text-sm">
-                  <span className="text-muted-foreground">P/E: </span>
-                  <span className="font-medium">{stockCase.pe_ratio}</span>
-                </div>
-              )}
-              {stockCase.dividend_yield && (
-                <div className="text-sm">
-                  <span className="text-muted-foreground">Utdelning: </span>
-                  <span className="font-medium">{stockCase.dividend_yield}</span>
-                </div>
-              )}
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* Stock Image */}
+            {/* Stock Image with Like and Save Buttons */}
             {stockCase.image_url && (
-              <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
-                <img
-                  src={stockCase.image_url}
-                  alt={stockCase.company_name}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-              </div>
-            )}
+              <Card className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="relative">
+                    <img
+                      src={stockCase.image_url}
+                      alt={stockCase.company_name}
+                      className="w-full h-80 md:h-96 object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                  </div>
+                  
+                  {/* Like and Save Buttons Below Image */}
+                  <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t">
+                    <div className="flex flex-col sm:flex-row justify-center items-center gap-3">
+                      {/* Like and Save Buttons */}
+                      <div className="flex items-center gap-3">
+                        <Button
+                          variant={isLiked ? "default" : "outline"}
+                          onClick={handleLikeClick}
+                          disabled={likesLoading}
+                          className="flex items-center gap-2 min-w-[100px]"
+                        >
+                          <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+                          <span>Gilla ({likeCount})</span>
+                        </Button>
 
-            {/* Action Buttons */}
-            <div className="flex flex-wrap items-center gap-3 p-4 bg-card rounded-lg border">
-              <Button
-                variant={isLiked ? "default" : "outline"}
-                onClick={handleLikeClick}
-                disabled={likesLoading}
-                className="flex items-center gap-2"
-              >
-                <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-                Gilla ({likeCount})
-              </Button>
+                        {user && (
+                          <SaveOpportunityButton
+                            itemType="stock_case"
+                            itemId={stockCase.id}
+                            itemTitle={stockCase.company_name}
+                            variant="outline"
+                            showText={true}
+                            onSaveSuccess={handleSaveSuccess}
+                            className="flex items-center gap-2 min-w-[100px]"
+                          />
+                        )}
 
-              {user && (
-                <SaveOpportunityButton
-                  itemType="stock_case"
-                  itemId={stockCase.id}
-                  itemTitle={stockCase.company_name}
-                  variant="outline"
-                  showText={true}
-                  onSaveSuccess={handleSaveSuccess}
-                  className="flex items-center gap-2"
-                />
-              )}
+                        <Button
+                          variant="outline"
+                          onClick={handleShare}
+                          className="flex items-center gap-2"
+                        >
+                          <Share2 className="w-4 h-4" />
+                          <span>Dela</span>
+                        </Button>
+                      </div>
 
-              {user && !isOwner && stockCase.user_id && (
-                <Button
-                  variant={isFollowing(stockCase.user_id) ? "default" : "outline"}
-                  onClick={handleFollowClick}
-                  className="flex items-center gap-2"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  {isFollowing(stockCase.user_id) ? 'Följer användare' : 'Följ användare'}
-                </Button>
-              )}
+                      {/* Portfolio Link */}
+                      {user && (
+                        <>
+                          <Separator orientation="vertical" className="hidden sm:block h-8" />
+                          <Button
+                            onClick={() => navigate('/portfolio-implementation')}
+                            variant="outline"
+                            className="flex items-center gap-2"
+                          >
+                            <ShoppingCart className="w-4 h-4" />
+                            <span>Till Portfölj</span>
+                          </Button>
+                        </>
+                      )}
+                    </div>
 
-              <Button
-                variant="outline"
-                onClick={handleShare}
-                className="flex items-center gap-2"
-              >
-                <Share2 className="w-4 h-4" />
-                Dela
-              </Button>
-
-              {user && (
-                <Button
-                  onClick={() => navigate('/portfolio-implementation')}
-                  variant="outline"
-                  className="flex items-center gap-2 ml-auto"
-                >
-                  <ShoppingCart className="w-4 h-4" />
-                  Till Portfölj
-                </Button>
-              )}
-            </div>
-
-            {/* Login prompt for non-authenticated users */}
-            {!user && (
-              <div className="p-4 bg-muted rounded-lg border border-border">
-                <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm">
-                  <Plus className="w-4 h-4" />
-                  <p>
-                    <strong>Logga in</strong> för att gilla, spara och följa användare
-                  </p>
-                </div>
-              </div>
+                    {/* Help text for non-authenticated users */}
+                    {!user && (
+                      <div className="text-center mt-4 p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <div className="flex items-center justify-center gap-2 text-blue-700 dark:text-blue-300 text-sm">
+                          <Plus className="w-4 h-4" />
+                          <p>
+                            <strong>Logga in</strong> för att gilla och spara detta case till din portfölj.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
             {/* Description */}
@@ -376,68 +390,71 @@ const StockCaseDetail = () => {
 
           {/* Right Column - Sidebar */}
           <div className="space-y-6">
-            {/* Price Information */}
+            {/* Price Targets */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
+                <CardTitle className="flex items-center gap-2">
                   <Target className="w-5 h-5" />
                   Prisinformation
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-4">
                 {stockCase.entry_price && (
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-muted-foreground">Ingångspris</span>
-                    <span className="font-semibold">{stockCase.entry_price} SEK</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 dark:text-gray-400">Ingångspris:</span>
+                    <span className="font-medium">{stockCase.entry_price} SEK</span>
                   </div>
                 )}
                 
                 {stockCase.current_price && (
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-muted-foreground">Nuvarande pris</span>
-                    <span className="font-semibold">{stockCase.current_price} SEK</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 dark:text-gray-400">Nuvarande pris:</span>
+                    <span className="font-medium">{stockCase.current_price} SEK</span>
                   </div>
                 )}
 
                 {stockCase.target_price && (
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-muted-foreground">Målkurs</span>
-                    <span className="font-semibold text-green-600">{stockCase.target_price} SEK</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 dark:text-gray-400">Målkurs:</span>
+                    <span className="font-medium text-green-600">{stockCase.target_price} SEK</span>
                   </div>
                 )}
 
                 {stockCase.stop_loss && (
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-muted-foreground">Stop loss</span>
-                    <span className="font-semibold text-red-600">{stockCase.stop_loss} SEK</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 dark:text-gray-400">Stop loss:</span>
+                    <span className="font-medium text-red-600">{stockCase.stop_loss} SEK</span>
                   </div>
                 )}
 
-                <div className="pt-3 border-t">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Status</span>
-                    <Badge variant={
-                      stockCase.status === 'winner' ? 'default' :
-                      stockCase.status === 'loser' ? 'destructive' : 'secondary'
-                    }>
-                      {stockCase.status === 'active' ? 'Aktiv' : 
-                       stockCase.status === 'winner' ? 'Vinnare' : 'Förlorare'}
-                    </Badge>
-                  </div>
+                <Separator />
+
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 dark:text-gray-400">Status:</span>
+                  <Badge variant={
+                    stockCase.status === 'winner' ? 'default' :
+                    stockCase.status === 'loser' ? 'destructive' : 'secondary'
+                  }>
+                    {stockCase.status === 'active' ? 'Aktiv' : 
+                     stockCase.status === 'winner' ? 'Vinnare' : 'Förlorare'}
+                  </Badge>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Case Information */}
+            {/* Market Sentiment Analysis */}
+            <MarketSentimentAnalysis />
+
+            {/* Case Info with Follow Button for Profile */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
+                <CardTitle className="flex items-center gap-2">
                   <Eye className="w-5 h-5" />
-                  Case Information
+                  Information
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                   <Calendar className="w-4 h-4" />
                   <span>
                     Skapad {formatDistanceToNow(new Date(stockCase.created_at), { 
