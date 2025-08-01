@@ -86,11 +86,6 @@ const Index = () => {
             </div>
           )}
 
-          {/* Smart Navigation */}
-          <div className="mb-16">
-            <IntelligentRouting />
-          </div>
-
           {/* Main Action Cards - Only 3 focused cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
             
@@ -175,6 +170,11 @@ const Index = () => {
           {/* Latest Cases - Simplified */}
           <div className="mb-16">
             <CompactLatestCases />
+          </div>
+
+          {/* Smart Navigation */}
+          <div className="mb-16">
+            <IntelligentRouting />
           </div>
 
         </div>
