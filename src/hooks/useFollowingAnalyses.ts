@@ -39,9 +39,7 @@ export const useFollowingAnalyses = () => {
             username,
             display_name,
             created_at
-          ),
-          likes_count:analysis_likes(count),
-          comments_count:analysis_comments(count)
+          )
         `)
         .in('user_id', followedUserIds)
         .order('created_at', { ascending: false });
@@ -51,7 +49,30 @@ export const useFollowingAnalyses = () => {
         throw analysesError;
       }
 
-      return analyses || [];
+      // Get like counts and user like status for each analysis
+      const transformedAnalyses = await Promise.all(
+        (analyses || []).map(async (analysis) => {
+          const [likeCountResult, userLikeResult, commentCountResult] = await Promise.all([
+            supabase.rpc('get_analysis_like_count', { analysis_id: analysis.id }),
+            user ? supabase
+              .from('analysis_likes')
+              .select('id')
+              .eq('analysis_id', analysis.id)
+              .eq('user_id', user.id)
+              .maybeSingle() : null,
+            supabase.rpc('get_analysis_comment_count', { analysis_id: analysis.id })
+          ]);
+
+          return {
+            ...analysis,
+            likes_count: likeCountResult.data || 0,
+            comments_count: commentCountResult.data || 0,
+            isLiked: !!userLikeResult?.data
+          };
+        })
+      );
+
+      return transformedAnalyses;
     },
     enabled: !!user?.id,
   });
