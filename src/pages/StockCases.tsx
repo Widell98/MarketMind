@@ -18,7 +18,6 @@ const StockCases = () => {
   } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
-  const [categoryFilter, setCategoryFilter] = useState('all');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const {
     stockCases,
