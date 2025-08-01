@@ -1,33 +1,69 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Heart, MessageCircle, TrendingUp, Plus } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { sv } from 'date-fns/locale';
-import { useNavigate } from 'react-router-dom';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { Heart, MessageCircle, Share2, TrendingUp, TrendingDown, Calendar, MoreHorizontal, Trash2, Bot, UserPlus, UserCheck, User } from 'lucide-react';
+import { StockCase } from '@/types/stockCase';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
-import SaveOpportunityButton from '@/components/SaveOpportunityButton';
+import { useUserFollows } from '@/hooks/useUserFollows';
+import { useNavigate } from 'react-router-dom';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import ShareStockCase from './ShareStockCase';
 
 interface EnhancedStockCaseCardProps {
-  stockCase: any;
+  stockCase: StockCase;
   onViewDetails: (id: string) => void;
   onDelete?: (id: string) => void;
-  showAIActions?: boolean;
+  showProfileActions?: boolean;
 }
 
-const EnhancedStockCaseCard = ({ 
-  stockCase, 
-  onViewDetails, 
+const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
+  stockCase,
+  onViewDetails,
   onDelete,
-  showAIActions = true 
-}: EnhancedStockCaseCardProps) => {
+  showProfileActions = true
+}) => {
+  const { user } = useAuth();
+  const { isAdmin } = useUserRole();
   const { likeCount, isLiked, toggleLike } = useStockCaseLikes(stockCase.id);
+  const { isFollowing, followUser, unfollowUser } = useUserFollows();
   const navigate = useNavigate();
 
-  const handleCardClick = () => {
-    onViewDetails(stockCase.id);
+  const isOwner = user && stockCase.user_id === user.id;
+  const isUserCase = !stockCase.ai_generated && stockCase.user_id;
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-500';
+      case 'winner': return 'bg-blue-500';
+      case 'loser': return 'bg-red-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
+  const getPerformanceColor = (performance: number) => {
+    if (performance > 0) return 'text-green-600 dark:text-green-400';
+    if (performance < 0) return 'text-red-600 dark:text-red-400';
+    return 'text-gray-600 dark:text-gray-400';
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('sv-SE', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const calculatePerformance = () => {
+    if (stockCase.entry_price && stockCase.current_price) {
+      return ((stockCase.current_price - stockCase.entry_price) / stockCase.entry_price) * 100;
+    }
+    return stockCase.performance_percentage || 0;
   };
 
   const handleDiscussWithAI = (e: React.MouseEvent) => {
@@ -42,202 +78,241 @@ const EnhancedStockCaseCard = ({
     navigate('/ai-chat', { state: { contextData } });
   };
 
-  const handleAddToPortfolio = (e: React.MouseEvent) => {
+  const handleFollowToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate('/portfolio-implementation', { 
-      state: { 
-        suggestion: {
-          symbol: stockCase.company_name,
-          name: stockCase.title,
-          type: 'stock',
-          reason: `Baserat på aktiefall: ${stockCase.title}`
-        }
-      }
-    });
+    if (!stockCase.user_id) return;
+    
+    if (isFollowing(stockCase.user_id)) {
+      await unfollowUser(stockCase.user_id);
+    } else {
+      await followUser(stockCase.user_id);
+    }
   };
 
-  const getCategoryColor = (category: string) => {
-    const colors = {
-      'Tech': 'bg-purple-500',
-      'Biotech': 'bg-green-500',
-      'Theme': 'bg-orange-500',
-      'Gaming': 'bg-red-500',
-      'Industrial': 'bg-blue-500'
-    };
-    return colors[category as keyof typeof colors] || 'bg-gray-500';
+  const handleProfileClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (stockCase.user_id) {
+      navigate(`/profile/${stockCase.user_id}`);
+    }
   };
 
-  const getStatusBadge = (status: string, performance: number | null) => {
-    if (status === 'winner') {
-      return (
-        <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800">
-          <TrendingUp className="w-3 h-3 mr-1" />
-          Winner {performance ? `+${performance}%` : ''}
-        </Badge>
-      );
-    }
-    if (status === 'loser') {
-      return (
-        <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800">
-          <TrendingUp className="w-3 h-3 mr-1" />
-          Loser {performance ? `${performance}%` : ''}
-        </Badge>
-      );
-    }
-    return (
-      <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-        Active
-      </Badge>
-    );
-  };
-
-  const getImageUrl = (stockCase: any) => {
-    if (stockCase.image_url) {
-      return stockCase.image_url;
-    }
-    const fallbackImages = [
-      'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&h=200&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=400&h=200&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=200&fit=crop&crop=center',
-    ];
-    return fallbackImages[Math.floor(Math.random() * fallbackImages.length)];
-  };
+  const performance = calculatePerformance();
+  const PerformanceIcon = performance > 0 ? TrendingUp : performance < 0 ? TrendingDown : null;
 
   return (
-    <Card 
-      className="border-0 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group overflow-hidden"
-      onClick={handleCardClick}
-    >
-      {/* Image */}
-      <div className="relative h-48 bg-gray-100 dark:bg-gray-800 overflow-hidden">
-        <img 
-          src={getImageUrl(stockCase)} 
-          alt={stockCase.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-        />
-        <div className="absolute top-3 left-3">
-          <Badge variant="outline" className="text-xs font-medium text-white bg-black/50 border-white/20 backdrop-blur-sm">
-            STOCK CASE
-          </Badge>
-        </div>
-        <div className="absolute top-3 right-3">
-          {getStatusBadge(stockCase.status, stockCase.performance_percentage)}
-        </div>
-        <div className="absolute bottom-3 left-3 flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${getCategoryColor(stockCase.case_categories?.name || 'Tech')}`}></div>
-          <span className="text-xs text-white bg-black/50 px-2 py-1 rounded backdrop-blur-sm">
-            {stockCase.case_categories?.name || 'Tech'}
-          </span>
-        </div>
-      </div>
-
-      {/* Content */}
+    <Card className="h-full flex flex-col hover:shadow-lg transition-all duration-200 group cursor-pointer border-border bg-card" onClick={() => onViewDetails(stockCase.id)}>
       <CardHeader className="pb-3">
+        {/* Header with profile info */}
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            {/* Profile Section */}
+            {isUserCase ? (
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={handleProfileClick}>
+                    <Avatar className="w-8 h-8">
+                      <AvatarFallback className="text-xs bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+                        {stockCase.profiles?.display_name?.[0] || stockCase.profiles?.username?.[0] || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {stockCase.profiles?.display_name || stockCase.profiles?.username}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDate(stockCase.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                </HoverCardTrigger>
+                <HoverCardContent className="w-80">
+                  <div className="flex justify-between space-x-4">
+                    <Avatar>
+                      <AvatarFallback>{stockCase.profiles?.display_name?.[0] || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div className="space-y-1 flex-1">
+                      <h4 className="text-sm font-semibold">{stockCase.profiles?.display_name || stockCase.profiles?.username}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Aktiv investerare i communityn
+                      </p>
+                      <div className="flex items-center pt-2">
+                        <Calendar className="mr-2 h-4 w-4 opacity-70" />
+                        <span className="text-xs text-muted-foreground">
+                          Medlem sedan {formatDate(stockCase.created_at)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </HoverCardContent>
+              </HoverCard>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Avatar className="w-8 h-8">
+                  <AvatarFallback className="bg-gradient-to-r from-purple-500 to-pink-600 text-white">
+                    <Bot className="w-4 h-4" />
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm font-medium text-foreground">AI Assistant</p>
+                  <p className="text-xs text-muted-foreground">{formatDate(stockCase.created_at)}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Follow Button & Actions */}
+          <div className="flex items-center gap-2">
+            {showProfileActions && isUserCase && !isOwner && user && (
+              <Button
+                size="sm"
+                variant={isFollowing(stockCase.user_id!) ? "secondary" : "outline"}
+                onClick={handleFollowToggle}
+                className="text-xs px-2 py-1"
+              >
+                {isFollowing(stockCase.user_id!) ? (
+                  <>
+                    <UserCheck className="w-3 h-3 mr-1" />
+                    Följer
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-3 h-3 mr-1" />
+                    Följ
+                  </>
+                )}
+              </Button>
+            )}
+
+            {(isAdmin || (user && onDelete)) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={e => e.stopPropagation()}>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {onDelete && (
+                    <DropdownMenuItem 
+                      onClick={e => {
+                        e.stopPropagation();
+                        onDelete(stockCase.id);
+                      }} 
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Ta bort
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        </div>
+
+        {/* Title and badges */}
         <div className="space-y-2">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge 
+              variant="secondary" 
+              className={`${getStatusColor(stockCase.status || 'active')} text-white text-xs`}
+            >
+              {stockCase.status || 'active'}
+            </Badge>
+            
+            {stockCase.sector && (
+              <Badge variant="outline" className="text-xs">
+                {stockCase.sector}
+              </Badge>
+            )}
+            
+            {stockCase.ai_generated && (
+              <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800">
+                <Bot className="w-3 h-3 mr-1" />
+                AI
+              </Badge>
+            )}
+          </div>
+
+          <h3 className="text-lg font-semibold leading-tight group-hover:text-primary transition-colors line-clamp-2">
             {stockCase.title}
           </h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+          
+          <p className="text-sm text-muted-foreground">
             {stockCase.company_name}
           </p>
-          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-            <span>av {stockCase.profiles?.display_name || stockCase.profiles?.username || 'Anonym'}</span>
-            <span>•</span>
-            <span>
-              {formatDistanceToNow(new Date(stockCase.created_at), { addSuffix: true, locale: sv })}
-            </span>
-          </div>
         </div>
       </CardHeader>
-
-      <CardContent className="pt-0">
-        {/* Price Information */}
-        {stockCase.entry_price && (
-          <div className="grid grid-cols-3 gap-3 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="text-center">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Entry</p>
-              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                {stockCase.entry_price} kr
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Current</p>
-              <p className="text-sm font-semibold text-green-600 dark:text-green-400">
-                {stockCase.current_price || stockCase.entry_price} kr
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Target</p>
-              <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                {stockCase.target_price || 'TBD'}
-              </p>
-            </div>
+      
+      <CardContent className="flex-1 flex flex-col space-y-4">
+        {/* Stock Image */}
+        {stockCase.image_url && (
+          <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-muted">
+            <img 
+              src={stockCase.image_url} 
+              alt={`${stockCase.company_name} stock chart`} 
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+            />
           </div>
         )}
 
-        {/* AI Actions Section */}
-        {showAIActions && (
-          <div className="mb-4 p-3 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg">
-            <div className="flex items-center justify-between gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleDiscussWithAI}
-                className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 flex-1"
-              >
-                <MessageCircle className="w-4 h-4 mr-1" />
-                Diskutera med AI
-              </Button>
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleAddToPortfolio}
-                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex-1"
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Lägg till i portfölj
-              </Button>
-            </div>
+        {/* Description */}
+        <p className="text-sm text-muted-foreground line-clamp-3 flex-1">
+          {stockCase.description}
+        </p>
+        
+        {/* Performance metrics */}
+        {(stockCase.target_price || performance !== 0) && (
+          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+            {stockCase.target_price && (
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground">Målkurs</p>
+                <p className="text-sm font-semibold">{stockCase.target_price} kr</p>
+              </div>
+            )}
+            
+            {performance !== 0 && (
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground">Resultat</p>
+                <div className={`flex items-center gap-1 text-sm font-semibold ${getPerformanceColor(performance)}`}>
+                  {PerformanceIcon && <PerformanceIcon className="w-3 h-3" />}
+                  {performance > 0 ? '+' : ''}{performance.toFixed(1)}%
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Engagement Stats and Actions */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800">
-          <div className="flex items-center space-x-3 text-sm text-gray-500 dark:text-gray-400">
-            <div className="flex items-center gap-1">
-              <Eye className="w-4 h-4" />
-              <span>0</span>
-            </div>
-            <button
-              onClick={(e) => {
+        {/* Action buttons */}
+        <div className="pt-4 border-t space-y-3">
+          {/* Social actions */}
+          <div className="flex items-center gap-2">
+            <Button 
+              size="sm" 
+              variant={isLiked ? "default" : "outline"} 
+              onClick={e => {
                 e.stopPropagation();
                 toggleLike();
-              }}
-              className={`flex items-center gap-1 transition-colors ${
-                isLiked 
-                  ? 'text-red-500 hover:text-red-600' 
-                  : 'hover:text-red-500'
-              }`}
+              }} 
+              className="flex-1 flex items-center justify-center gap-2"
             >
               <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
               <span>{likeCount}</span>
-            </button>
-            <div className="flex items-center gap-1">
+            </Button>
+
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={handleDiscussWithAI}
+              className="flex-1 flex items-center justify-center gap-2"
+            >
               <MessageCircle className="w-4 h-4" />
-              <span>0</span>
+              <span className="hidden sm:inline">Diskutera</span>
+              <span className="sm:hidden">AI</span>
+            </Button>
+
+            <div className="flex-1">
+              <ShareStockCase stockCaseId={stockCase.id} title={stockCase.title} />
             </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <SaveOpportunityButton 
-              itemType="stock_case" 
-              itemId={stockCase.id}
-              itemTitle={stockCase.title}
-              variant="ghost"
-              size="sm"
-              showText={false}
-            />
           </div>
         </div>
       </CardContent>

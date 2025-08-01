@@ -1,34 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import Layout from '@/components/Layout';
 import Breadcrumb from '@/components/Breadcrumb';
 import CreateStockCaseDialog from '@/components/CreateStockCaseDialog';
 import StockCaseCard from '@/components/StockCaseCard';
+import EnhancedStockCaseCard from '@/components/EnhancedStockCaseCard';
+import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
 import AIWeeklyPicks from '@/components/AIWeeklyPicks';
 import { useStockCases } from '@/hooks/useStockCases';
 import { useFollowingStockCases } from '@/hooks/useFollowingStockCases';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { TrendingUp, PlusCircle, Sparkles, MessageCircle, Users } from 'lucide-react';
+import { TrendingUp, PlusCircle, Sparkles, MessageCircle, Users, Search } from 'lucide-react';
 const StockCases = () => {
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const {
-    stockCases,
-    loading,
-    refetch
-  } = useStockCases();
-  const {
-    followingStockCases,
-    loading: followingLoading
-  } = useFollowingStockCases();
+  
+  // Search and filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSector, setSelectedSector] = useState('');
+  const [performanceFilter, setPerformanceFilter] = useState('');
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [viewMode, setViewMode] = useState('grid');
+  
+  const { stockCases, loading, refetch } = useStockCases();
+  const { followingStockCases, loading: followingLoading } = useFollowingStockCases();
   const handleViewDetails = (id: string) => {
     navigate(`/stock-cases/${id}`);
   };
@@ -57,6 +60,94 @@ const StockCases = () => {
     setCreateDialogOpen(false);
     refetch();
   };
+
+  // Get available sectors from stock cases
+  const availableSectors = useMemo(() => {
+    const sectors = new Set<string>();
+    stockCases.forEach(stockCase => {
+      if (stockCase.sector) sectors.add(stockCase.sector);
+    });
+    return Array.from(sectors).sort();
+  }, [stockCases]);
+
+  // Filter and sort stock cases
+  const filteredStockCases = useMemo(() => {
+    let filtered = [...stockCases];
+
+    // Apply search filter
+    if (searchTerm) {
+      const lowerSearchTerm = searchTerm.toLowerCase();
+      filtered = filtered.filter(stockCase =>
+        stockCase.title.toLowerCase().includes(lowerSearchTerm) ||
+        stockCase.company_name.toLowerCase().includes(lowerSearchTerm) ||
+        stockCase.description?.toLowerCase().includes(lowerSearchTerm) ||
+        stockCase.profiles?.display_name?.toLowerCase().includes(lowerSearchTerm) ||
+        stockCase.profiles?.username?.toLowerCase().includes(lowerSearchTerm)
+      );
+    }
+
+    // Apply sector filter
+    if (selectedSector) {
+      filtered = filtered.filter(stockCase => stockCase.sector === selectedSector);
+    }
+
+    // Apply performance filter
+    if (performanceFilter) {
+      filtered = filtered.filter(stockCase => {
+        const performance = stockCase.performance_percentage || 0;
+        switch (performanceFilter) {
+          case 'positive': return performance > 0;
+          case 'negative': return performance < 0;
+          case 'high': return performance > 10;
+          case 'low': return performance < 5;
+          default: return true;
+        }
+      });
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case 'performance':
+          aValue = a.performance_percentage || 0;
+          bValue = b.performance_percentage || 0;
+          break;
+        case 'title':
+          aValue = a.title.toLowerCase();
+          bValue = b.title.toLowerCase();
+          break;
+        case 'created_at':
+        default:
+          aValue = new Date(a.created_at).getTime();
+          bValue = new Date(b.created_at).getTime();
+          break;
+      }
+
+      if (sortOrder === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+
+    return filtered;
+  }, [stockCases, searchTerm, selectedSector, performanceFilter, sortBy, sortOrder]);
+
+  // Filter following stock cases with search
+  const filteredFollowingStockCases = useMemo(() => {
+    if (!searchTerm) return followingStockCases;
+    
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    return followingStockCases.filter(stockCase =>
+      stockCase.title.toLowerCase().includes(lowerSearchTerm) ||
+      stockCase.company_name.toLowerCase().includes(lowerSearchTerm) ||
+      stockCase.description?.toLowerCase().includes(lowerSearchTerm) ||
+      stockCase.profiles?.display_name?.toLowerCase().includes(lowerSearchTerm) ||
+      stockCase.profiles?.username?.toLowerCase().includes(lowerSearchTerm)
+    );
+  }, [followingStockCases, searchTerm]);
   if (loading) {
     return <Layout>
         <div className="space-y-6">
@@ -118,34 +209,65 @@ const StockCases = () => {
 
           {/* Upptäck Tab */}
           <TabsContent value="all" className="space-y-6">
-            {/* Stock Cases Feed */}
-            <div className="space-y-4">
-              {stockCases.map(stockCase => (
-                <div key={stockCase.id} className="relative group">
-                  <StockCaseCard stockCase={stockCase} onViewDetails={handleViewDetails} onDelete={handleDelete} />
-                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleDiscussWithAI(stockCase)} className="bg-white/90 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300">
-                      <MessageCircle className="w-4 h-4 mr-1" />
-                      Diskutera med AI
-                    </Button>
-                    {user && (
-                      <Button variant="outline" size="sm" onClick={() => navigate('/portfolio-implementation')} className="bg-white/90 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300">
-                        Lägg till i portfölj
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+            {/* Enhanced Search and Filters */}
+            <EnhancedStockCasesSearch
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              selectedSector={selectedSector}
+              onSectorChange={setSelectedSector}
+              performanceFilter={performanceFilter}
+              onPerformanceFilterChange={setPerformanceFilter}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              sortOrder={sortOrder}
+              onSortOrderChange={setSortOrder}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              availableSectors={availableSectors}
+              resultsCount={filteredStockCases.length}
+              totalCount={stockCases.length}
+            />
 
-            {stockCases.length === 0 && (
+            {/* Stock Cases Feed */}
+            {filteredStockCases.length > 0 ? (
+              <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
+                {filteredStockCases.map(stockCase => (
+                  <EnhancedStockCaseCard 
+                    key={stockCase.id} 
+                    stockCase={stockCase} 
+                    onViewDetails={handleViewDetails} 
+                    onDelete={handleDelete}
+                    showProfileActions={true}
+                  />
+                ))}
+              </div>
+            ) : (
               <div className="text-center py-12">
                 <TrendingUp className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Inga aktiefall hittades</h3>
+                <h3 className="text-xl font-semibold mb-2">
+                  {searchTerm || selectedSector || performanceFilter 
+                    ? "Inga aktiefall matchar dina filter" 
+                    : "Inga aktiefall hittades"
+                  }
+                </h3>
                 <p className="text-muted-foreground mb-6">
-                  Var den första att skapa ett aktiefall!
+                  {searchTerm || selectedSector || performanceFilter 
+                    ? "Prova att ändra dina sökkriterier eller filter"
+                    : "Var den första att skapa ett aktiefall!"
+                  }
                 </p>
-                {user && (
+                {searchTerm || selectedSector || performanceFilter ? (
+                  <Button 
+                    onClick={() => {
+                      setSearchTerm('');
+                      setSelectedSector('');
+                      setPerformanceFilter('');
+                    }}
+                    variant="outline"
+                  >
+                    Rensa filter
+                  </Button>
+                ) : user && (
                   <Button onClick={() => setCreateDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
                     <PlusCircle className="w-4 h-4 mr-2" />
                     Skapa första aktiefallet
@@ -157,6 +279,19 @@ const StockCases = () => {
 
           {/* Följer Tab */}
           <TabsContent value="following" className="space-y-6">
+            {/* Search for following tab */}
+            {followingStockCases.length > 0 && (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Sök bland aktiefall från personer du följer..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            )}
+
             {followingLoading ? (
               <div className="space-y-4">
                 {[...Array(3)].map((_, i) => (
@@ -169,80 +304,35 @@ const StockCases = () => {
                   </Card>
                 ))}
               </div>
-            ) : followingStockCases.length > 0 ? (
-              <div className="space-y-4">
-                {followingStockCases.map(stockCase => (
-                  <div key={stockCase.id} className="relative group">
-                    <Card className="hover:shadow-lg transition-all duration-200">
-                      <CardContent className="p-6">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
-                              {stockCase.profiles?.display_name?.[0] || stockCase.profiles?.username?.[0] || 'U'}
-                            </div>
-                            <div>
-                              <p className="font-medium text-foreground">
-                                {stockCase.profiles?.display_name || stockCase.profiles?.username}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {new Date(stockCase.created_at).toLocaleDateString('sv-SE')}
-                              </p>
-                            </div>
-                          </div>
-                          {stockCase.sector && (
-                            <Badge variant="secondary">
-                              {stockCase.sector}
-                            </Badge>
-                          )}
-                        </div>
-                        
-                        <h3 className="text-lg font-semibold mb-2 text-foreground">
-                          {stockCase.title}
-                        </h3>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          {stockCase.company_name}
-                        </p>
-                        {stockCase.description && (
-                          <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
-                            {stockCase.description}
-                          </p>
-                        )}
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            {stockCase.target_price && (
-                              <span>Målkurs: {stockCase.target_price} kr</span>
-                            )}
-                            {stockCase.performance_percentage && (
-                              <span className={stockCase.performance_percentage > 0 ? 'text-green-600' : 'text-red-600'}>
-                                {stockCase.performance_percentage > 0 ? '+' : ''}{stockCase.performance_percentage}%
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => handleDiscussWithAI(stockCase)}
-                              className="text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300"
-                            >
-                              <MessageCircle className="w-4 h-4 mr-1" />
-                              Diskutera med AI
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => handleViewDetails(stockCase.id)}
-                              className="text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
-                            >
-                              Visa detaljer
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+            ) : filteredFollowingStockCases.length > 0 ? (
+              <div className="space-y-6">
+                {searchTerm && (
+                  <div className="text-sm text-muted-foreground">
+                    Visar {filteredFollowingStockCases.length} av {followingStockCases.length} aktiefall
                   </div>
-                ))}
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredFollowingStockCases.map(stockCase => (
+                    <EnhancedStockCaseCard 
+                      key={stockCase.id} 
+                      stockCase={stockCase} 
+                      onViewDetails={handleViewDetails} 
+                      onDelete={handleDelete}
+                      showProfileActions={false} // Don't show follow button in following tab
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : followingStockCases.length > 0 && searchTerm ? (
+              <div className="text-center py-12">
+                <Search className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Inga resultat hittades</h3>
+                <p className="text-muted-foreground mb-6">
+                  Inga aktiefall från personer du följer matchar "{searchTerm}"
+                </p>
+                <Button onClick={() => setSearchTerm('')} variant="outline">
+                  Rensa sökning
+                </Button>
               </div>
             ) : (
               <div className="text-center py-12">
