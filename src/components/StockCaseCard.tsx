@@ -184,53 +184,16 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
                 </Button>}
             </div>}
 
-          {/* Action buttons - Responsive layout */}
+          {/* Action buttons - Clean layout */}
           <div className="pt-2 border-t">
-            {/* Desktop layout */}
-            <div className="hidden sm:flex items-center gap-2">
-              {/* Follow Button - Only show for logged in users */}
-              {user && <Button size="sm" variant={isFollowing ? "default" : "outline"} onClick={e => {
-                e.stopPropagation();
-                toggleFollow();
-              }} className="flex-1 flex items-center gap-1 min-w-0">
-                <Bookmark className={`w-4 h-4 ${isFollowing ? 'fill-current' : ''}`} />
-                <span className="hidden lg:inline">{isFollowing ? 'Följer' : 'Följ'}</span>
-                <span className="lg:hidden">{isFollowing ? 'Följer' : 'Följ'}</span>
-              </Button>}
-
+            <div className="flex items-center gap-2">
               {/* Like Button - For appreciation with counter */}
               <Button size="sm" variant={isLiked ? "default" : "outline"} onClick={e => {
-              e.stopPropagation();
-              toggleLike();
-            }} className="flex-1 flex items-center gap-1 min-w-0">
+                e.stopPropagation();
+                toggleLike();
+              }} className="flex-1 flex items-center justify-center gap-2">
                 <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-                <span className="hidden lg:inline">{likeCount}</span>
-                <span className="lg:hidden">{likeCount > 99 ? '99+' : likeCount}</span>
-              </Button>
-
-              <div className="flex-1">
-                <ShareStockCase stockCaseId={stockCase.id} title={stockCase.title} />
-              </div>
-            </div>
-
-            {/* Mobile layout - compact buttons */}
-            <div className="flex items-center gap-1 sm:hidden">
-              {/* Follow Button - Mobile - Only show for logged in users */}
-              {user && <Button size="sm" variant={isFollowing ? "default" : "outline"} onClick={e => {
-              e.stopPropagation();
-              toggleFollow();
-            }} className="flex-1 flex items-center justify-center gap-1 px-2" title={isFollowing ? "Sluta följa" : "Följ case"}>
-                  <Bookmark className={`w-4 h-4 ${isFollowing ? 'fill-current' : ''}`} />
-                  <span className="text-xs">{isFollowing ? 'Följer' : 'Följ'}</span>
-                </Button>}
-
-              {/* Like Button - Mobile */}
-              <Button size="sm" variant={isLiked ? "default" : "outline"} onClick={e => {
-              e.stopPropagation();
-              toggleLike();
-            }} className="flex-1 flex items-center justify-center gap-1 px-2">
-                <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-                <span className="text-xs">{likeCount}</span>
+                <span>{likeCount}</span>
               </Button>
 
               <div className="flex-1">
