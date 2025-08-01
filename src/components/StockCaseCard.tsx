@@ -2,12 +2,13 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Heart, Bookmark, TrendingUp, TrendingDown, Calendar, User, MoreHorizontal, Trash2, Bot, UserCircle, MessageCircle, Edit } from 'lucide-react';
+import { Heart, Bookmark, TrendingUp, TrendingDown, Calendar, User, MoreHorizontal, Trash2, Bot, UserCircle, MessageCircle, Edit, UserPlus } from 'lucide-react';
 import { StockCase } from '@/types/stockCase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useStockCaseFollows } from '@/hooks/useStockCaseFollows';
+import { useUserFollows } from '@/hooks/useUserFollows';
 import { useNavigate } from 'react-router-dom';
 import SaveOpportunityButton from './SaveOpportunityButton';
 import ShareStockCase from './ShareStockCase';
@@ -34,9 +35,14 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
     toggleLike
   } = useStockCaseLikes(stockCase.id);
   const {
-    isFollowing,
-    toggleFollow
+    isFollowing: isFollowingCase,
+    toggleFollow: toggleFollowCase
   } = useStockCaseFollows(stockCase.id);
+  const { 
+    isFollowing: isFollowingUser, 
+    followUser, 
+    unfollowUser 
+  } = useUserFollows();
   const navigate = useNavigate();
   const isOwner = user && stockCase.user_id === user.id;
   const getStatusColor = (status: string) => {
@@ -174,9 +180,22 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
             </div>
           </div>
 
-          {/* AI Discussion and Save Section */}
+          {/* Quick Actions Section */}
           {user && <div className="flex flex-col sm:flex-row items-center gap-2">
+              <Button size="sm" variant="outline" onClick={handleDiscussWithAI} className="flex-1 flex items-center gap-1 min-w-0">
+                <MessageCircle className="w-4 h-4" />
+                <span className="truncate">Diskutera med AI</span>
+              </Button>
               
+              <SaveOpportunityButton
+                itemType="stock_case"
+                itemId={stockCase.id}
+                itemTitle={stockCase.company_name}
+                variant="outline"
+                size="sm"
+                showText={true}
+                className="flex-1 flex items-center gap-1 min-w-0"
+              />
               
               {isOwner && <Button size="sm" variant="outline" onClick={handleEditCase} className="flex-1 flex items-center gap-1 min-w-0">
                   <Edit className="w-4 h-4" />
@@ -188,13 +207,34 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
           <div className="pt-2 border-t">
             {/* Desktop layout */}
             <div className="hidden sm:flex items-center gap-2">
-              {/* Follow Button - Only show for logged in users */}
-              {user && <Button size="sm" variant={isFollowing ? "default" : "outline"} onClick={e => {
+              {/* Follow User Button - Only show for logged in users and not own case */}
+              {user && !isOwner && stockCase.user_id && (
+                <Button 
+                  size="sm" 
+                  variant={isFollowingUser(stockCase.user_id) ? "default" : "outline"} 
+                  onClick={e => {
+                    e.stopPropagation();
+                    if (isFollowingUser(stockCase.user_id)) {
+                      unfollowUser(stockCase.user_id);
+                    } else {
+                      followUser(stockCase.user_id);
+                    }
+                  }} 
+                  className="flex-1 flex items-center gap-1 min-w-0" 
+                  title={isFollowingUser(stockCase.user_id) ? "Sluta följa användare" : "Följ användare"}
+                >
+                  <UserPlus className={`w-4 h-4 ${isFollowingUser(stockCase.user_id) ? 'fill-current' : ''}`} />
+                  <span className="hidden lg:inline">{isFollowingUser(stockCase.user_id) ? 'Följer' : 'Följ'}</span>
+                </Button>
+              )}
+
+              {/* Follow Case Button - Only show for logged in users */}
+              {user && <Button size="sm" variant={isFollowingCase ? "default" : "outline"} onClick={e => {
               e.stopPropagation();
-              toggleFollow();
-            }} className="flex-1 flex items-center gap-1 min-w-0" title={isFollowing ? "Sluta följa" : "Följ case"}>
-                  <Bookmark className={`w-4 h-4 ${isFollowing ? 'fill-current' : ''}`} />
-                  <span className="hidden lg:inline">{isFollowing ? 'Följer' : 'Följ'}</span>
+              toggleFollowCase();
+            }} className="flex-1 flex items-center gap-1 min-w-0" title={isFollowingCase ? "Sluta följa case" : "Följ case"}>
+                  <Bookmark className={`w-4 h-4 ${isFollowingCase ? 'fill-current' : ''}`} />
+                  <span className="hidden lg:inline">{isFollowingCase ? 'Sparad' : 'Spara'}</span>
                 </Button>}
 
               {/* Like Button - For appreciation with counter */}
@@ -214,13 +254,34 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
 
             {/* Mobile layout - compact buttons */}
             <div className="flex items-center gap-1 sm:hidden">
-              {/* Follow Button - Mobile - Only show for logged in users */}
-              {user && <Button size="sm" variant={isFollowing ? "default" : "outline"} onClick={e => {
+              {/* Follow User Button - Mobile - Only show for logged in users and not own case */}
+              {user && !isOwner && stockCase.user_id && (
+                <Button 
+                  size="sm" 
+                  variant={isFollowingUser(stockCase.user_id) ? "default" : "outline"} 
+                  onClick={e => {
+                    e.stopPropagation();
+                    if (isFollowingUser(stockCase.user_id)) {
+                      unfollowUser(stockCase.user_id);
+                    } else {
+                      followUser(stockCase.user_id);
+                    }
+                  }} 
+                  className="flex-1 flex items-center justify-center gap-1 px-2" 
+                  title={isFollowingUser(stockCase.user_id) ? "Sluta följa användare" : "Följ användare"}
+                >
+                  <UserPlus className={`w-4 h-4 ${isFollowingUser(stockCase.user_id) ? 'fill-current' : ''}`} />
+                  <span className="text-xs">Följ</span>
+                </Button>
+              )}
+
+              {/* Follow Case Button - Mobile - Only show for logged in users */}
+              {user && <Button size="sm" variant={isFollowingCase ? "default" : "outline"} onClick={e => {
               e.stopPropagation();
-              toggleFollow();
-            }} className="flex-1 flex items-center justify-center gap-1 px-2" title={isFollowing ? "Sluta följa" : "Följ case"}>
-                  <Bookmark className={`w-4 h-4 ${isFollowing ? 'fill-current' : ''}`} />
-                  <span className="text-xs">{isFollowing ? 'Följer' : 'Följ'}</span>
+              toggleFollowCase();
+            }} className="flex-1 flex items-center justify-center gap-1 px-2" title={isFollowingCase ? "Sluta följa case" : "Följ case"}>
+                  <Bookmark className={`w-4 h-4 ${isFollowingCase ? 'fill-current' : ''}`} />
+                  <span className="text-xs">{isFollowingCase ? 'Sparad' : 'Spara'}</span>
                 </Button>}
 
               {/* Like Button - Mobile */}

@@ -123,17 +123,6 @@ const StockCases = () => {
               {stockCases.map(stockCase => (
                 <div key={stockCase.id} className="relative group">
                   <StockCaseCard stockCase={stockCase} onViewDetails={handleViewDetails} onDelete={handleDelete} />
-                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleDiscussWithAI(stockCase)} className="bg-white/90 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300">
-                      <MessageCircle className="w-4 h-4 mr-1" />
-                      Diskutera med AI
-                    </Button>
-                    {user && (
-                      <Button variant="outline" size="sm" onClick={() => navigate('/portfolio-implementation')} className="bg-white/90 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300">
-                        Lägg till i portfölj
-                      </Button>
-                    )}
-                  </div>
                 </div>
               ))}
             </div>
