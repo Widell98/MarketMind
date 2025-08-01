@@ -9,6 +9,7 @@ import CreateStockCaseDialog from '@/components/CreateStockCaseDialog';
 import StockCaseCard from '@/components/StockCaseCard';
 import AIWeeklyPicks from '@/components/AIWeeklyPicks';
 import { useStockCases } from '@/hooks/useStockCases';
+import { useFollowingStockCases } from '@/hooks/useFollowingStockCases';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { TrendingUp, PlusCircle, Sparkles, MessageCircle, Users } from 'lucide-react';
@@ -24,6 +25,10 @@ const StockCases = () => {
     loading,
     refetch
   } = useStockCases();
+  const {
+    followingStockCases,
+    loading: followingLoading
+  } = useFollowingStockCases();
   const handleViewDetails = (id: string) => {
     navigate(`/stock-cases/${id}`);
   };
@@ -152,20 +157,118 @@ const StockCases = () => {
 
           {/* Följer Tab */}
           <TabsContent value="following" className="space-y-6">
-            <div className="text-center py-12">
-              <Users className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Följer-flöde</h3>
-              <p className="text-muted-foreground mb-6">
-                Här kommer innehåll från profiler du följer att visas
-              </p>
-              {!user && (
-                <Button asChild>
-                  <Link to="/auth">
-                    Logga in för att följa andra
-                  </Link>
-                </Button>
-              )}
-            </div>
+            {followingLoading ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <Card key={i} className="animate-pulse">
+                    <CardContent className="p-6">
+                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-4"></div>
+                      <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : followingStockCases.length > 0 ? (
+              <div className="space-y-4">
+                {followingStockCases.map(stockCase => (
+                  <div key={stockCase.id} className="relative group">
+                    <Card className="hover:shadow-lg transition-all duration-200">
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                              {stockCase.profiles?.display_name?.[0] || stockCase.profiles?.username?.[0] || 'U'}
+                            </div>
+                            <div>
+                              <p className="font-medium text-foreground">
+                                {stockCase.profiles?.display_name || stockCase.profiles?.username}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(stockCase.created_at).toLocaleDateString('sv-SE')}
+                              </p>
+                            </div>
+                          </div>
+                          {stockCase.sector && (
+                            <Badge variant="secondary">
+                              {stockCase.sector}
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        <h3 className="text-lg font-semibold mb-2 text-foreground">
+                          {stockCase.title}
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          {stockCase.company_name}
+                        </p>
+                        {stockCase.description && (
+                          <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                            {stockCase.description}
+                          </p>
+                        )}
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            {stockCase.target_price && (
+                              <span>Målkurs: {stockCase.target_price} kr</span>
+                            )}
+                            {stockCase.performance_percentage && (
+                              <span className={stockCase.performance_percentage > 0 ? 'text-green-600' : 'text-red-600'}>
+                                {stockCase.performance_percentage > 0 ? '+' : ''}{stockCase.performance_percentage}%
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleDiscussWithAI(stockCase)}
+                              className="text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300"
+                            >
+                              <MessageCircle className="w-4 h-4 mr-1" />
+                              Diskutera med AI
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleViewDetails(stockCase.id)}
+                              className="text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
+                            >
+                              Visa detaljer
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Users className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Inga aktiefall från följda användare</h3>
+                <p className="text-muted-foreground mb-6">
+                  {!user 
+                    ? "Logga in för att följa andra användare och se deras aktiefall"
+                    : "Du följer inga användare ännu, eller så har de du följer inte publicerat några aktiefall"
+                  }
+                </p>
+                {!user ? (
+                  <Button asChild>
+                    <Link to="/auth">
+                      Logga in
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button asChild variant="outline">
+                    <Link to="/stock-cases" onClick={() => setActiveTab('all')}>
+                      Upptäck användare att följa
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
 
