@@ -22,6 +22,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Brain, TrendingUp, Target, BarChart3, Activity, Crown, AlertCircle, User, MessageSquare, Clock } from 'lucide-react';
 import PortfolioHealthScore from '@/components/PortfolioHealthScore';
 import FloatingActionButton from '@/components/FloatingActionButton';
+import Breadcrumb from '@/components/Breadcrumb';
 
 const PortfolioImplementation = () => {
   const { actualHoldings } = useUserHoldings();
@@ -151,6 +152,9 @@ const PortfolioImplementation = () => {
       
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-6 max-w-[1400px]">
+          {/* Breadcrumb Navigation */}
+          <Breadcrumb />
+          
           {/* Modern Header */}
           <div className="mb-6">
             <div className="flex flex-col gap-4 mb-6">

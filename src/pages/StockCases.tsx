@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import Layout from '@/components/Layout';
+import Breadcrumb from '@/components/Breadcrumb';
 import CreateStockCaseDialog from '@/components/CreateStockCaseDialog';
 import StockCaseCard from '@/components/StockCaseCard';
 import AIWeeklyPicks from '@/components/AIWeeklyPicks';
@@ -112,6 +113,9 @@ const StockCases = () => {
   }
   return <Layout>
       <div className="space-y-6">
+        {/* Breadcrumb Navigation */}
+        <Breadcrumb />
+        
         {/* AI Weekly Picks Section - moved to top */}
         <AIWeeklyPicks />
 
@@ -195,11 +199,16 @@ const StockCases = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {getFilteredCases().map(stockCase => <div key={stockCase.id} className="relative group">
                   <StockCaseCard stockCase={stockCase} onViewDetails={handleViewDetails} onDelete={handleDelete} />
-                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => handleDiscussWithAI(stockCase)} className="bg-white/90 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300">
                       <MessageCircle className="w-4 h-4 mr-1" />
-                      AI
+                      Diskutera med AI
                     </Button>
+                    {user && (
+                      <Button variant="outline" size="sm" onClick={() => navigate('/portfolio-implementation')} className="bg-white/90 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300">
+                        Lägg till i portfölj
+                      </Button>
+                    )}
                   </div>
                 </div>)}
             </div>
