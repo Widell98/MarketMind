@@ -96,19 +96,6 @@ const AppSidebar = () => {
   return (
     <Sidebar className="border-r transition-all duration-300">
       <SidebarContent className="px-3 py-4">
-        {/* AI-First Section */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-primary flex items-center gap-2">
-            <Brain className="w-4 h-4" />
-            AI-Verktyg
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {aiNavigation.map((item) => renderNavItem(item, true))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
         {/* Main Navigation */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
@@ -118,6 +105,19 @@ const AppSidebar = () => {
           <SidebarGroupContent>
             <SidebarMenu>
               {mainNavigation.map((item) => renderNavItem(item))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* AI-First Section */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-xs font-semibold text-primary flex items-center gap-2">
+            <Brain className="w-4 h-4" />
+            AI-Verktyg
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {aiNavigation.map((item) => renderNavItem(item, true))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
