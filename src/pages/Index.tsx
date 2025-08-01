@@ -37,7 +37,7 @@ const Index = () => {
               <Button asChild size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200">
                 <Link to={user ? (hasPortfolio ? "/portfolio-implementation" : "/portfolio-advisor") : "/auth"}>
                   <BarChart3 className="w-5 h-5 mr-2" />
-                  {user ? (hasPortfolio ? "Min Portfölj" : "Skapa Portfölj") : "Starta nu"}
+                  {user ? (hasPortfolio ? "Min Portfölj" : "Skapa Portfölj") : "Kom igång gratis"}
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground shadow-md hover:shadow-lg transition-all duration-200">
@@ -106,7 +106,7 @@ const Index = () => {
                       {user && hasPortfolio ? "Min Portfölj" : "Skapa Portfölj"}
                     </h3>
                     <Badge variant="secondary" className="mt-1">
-                      {user && hasPortfolio ? "Aktiv" : "Ny"}
+                      {user && hasPortfolio ? "Aktiv" : "Kom igång"}
                     </Badge>
                   </div>
                 </div>
@@ -117,7 +117,7 @@ const Index = () => {
                   }
                 </p>
                 <div className="flex items-center text-primary font-medium group-hover:gap-3 transition-all duration-200">
-                  {user && hasPortfolio ? "Analysera portfölj" : "Skapa portfölj"}
+                  {user && hasPortfolio ? "Analysera portfölj" : "Kom igång"}
                   <ArrowUpRight className="w-4 h-4 ml-2 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-200" />
                 </div>
               </Link>
