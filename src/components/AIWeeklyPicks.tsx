@@ -79,11 +79,11 @@ const AIWeeklyPicks = () => {
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-8 h-8 text-purple-600" />
                     <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                      AI-Driven Investeringsanalys
+                      AI-Drivna Aktierekommendationer
                     </h3>
                   </div>
                   <p className="text-lg text-muted-foreground">
-                    Få personaliserade investeringsmöjligheter baserade på avancerad AI-analys av marknadstrender, sektorprestanda och din riskprofil.
+                    Få personaliserade aktiefall och investeringsmöjligheter baserade på avancerad AI-analys av marknadstrender, sektorprestanda och din riskprofil.
                   </p>
                 </div>
 
