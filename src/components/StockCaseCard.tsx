@@ -189,7 +189,14 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
             {/* Desktop layout */}
             <div className="hidden sm:flex items-center gap-2">
               {/* Follow Button - Only show for logged in users */}
-              {user}
+              {user && <Button size="sm" variant={isFollowing ? "default" : "outline"} onClick={e => {
+                e.stopPropagation();
+                toggleFollow();
+              }} className="flex-1 flex items-center gap-1 min-w-0">
+                <Bookmark className={`w-4 h-4 ${isFollowing ? 'fill-current' : ''}`} />
+                <span className="hidden lg:inline">{isFollowing ? 'Följer' : 'Följ'}</span>
+                <span className="lg:hidden">{isFollowing ? 'Följer' : 'Följ'}</span>
+              </Button>}
 
               {/* Like Button - For appreciation with counter */}
               <Button size="sm" variant={isLiked ? "default" : "outline"} onClick={e => {
