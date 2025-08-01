@@ -36,23 +36,31 @@ export const useFollowingStockCases = () => {
       // Extract the user IDs being followed
       const followingUserIds = follows.map(follow => follow.following_id);
 
-      // Get stock cases from followed users, joined with profiles for user info
+      // Get stock cases from followed users
       const { data: stockCases, error: stockCasesError } = await supabase
         .from('stock_cases')
-        .select(`
-          *,
-          profiles:user_id (
-            username,
-            display_name
-          )
-        `)
+        .select('*')
         .in('user_id', followingUserIds)
         .eq('is_public', true)
         .order('created_at', { ascending: false });
 
       if (stockCasesError) throw stockCasesError;
 
-      setFollowingStockCases(stockCases || []);
+      // Get profile information for the users
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, display_name')
+        .in('id', followingUserIds);
+
+      if (profilesError) throw profilesError;
+
+      // Merge stock cases with profile information
+      const stockCasesWithProfiles = (stockCases || []).map(stockCase => ({
+        ...stockCase,
+        profiles: profiles?.find(profile => profile.id === stockCase.user_id) || null
+      }));
+
+      setFollowingStockCases(stockCasesWithProfiles);
     } catch (error: any) {
       console.error('Error fetching following stock cases:', error);
       toast({
