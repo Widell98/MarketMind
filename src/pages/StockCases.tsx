@@ -10,8 +10,8 @@ import StockCaseCard from '@/components/StockCaseCard';
 import AIWeeklyPicks from '@/components/AIWeeklyPicks';
 import { useStockCases } from '@/hooks/useStockCases';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { TrendingUp, PlusCircle, Filter, Sparkles, MessageCircle, Building2, Heart, DollarSign, Zap, Tag } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { TrendingUp, PlusCircle, Sparkles, MessageCircle, Users } from 'lucide-react';
 const StockCases = () => {
   const {
     user
@@ -25,42 +25,6 @@ const StockCases = () => {
     loading,
     refetch
   } = useStockCases();
-  const categories = [{
-    id: 'all',
-    name: 'Alla Fall',
-    count: stockCases.length,
-    icon: Tag,
-    color: 'bg-gradient-to-r from-blue-500 to-purple-500',
-    textColor: 'text-white'
-  }, {
-    id: 'Technology',
-    name: 'Teknik',
-    count: stockCases.filter(c => c.sector === 'Technology').length,
-    icon: Zap,
-    color: 'bg-gradient-to-r from-emerald-500 to-teal-500',
-    textColor: 'text-white'
-  }, {
-    id: 'Healthcare',
-    name: 'Hälsovård',
-    count: stockCases.filter(c => c.sector === 'Healthcare').length,
-    icon: Heart,
-    color: 'bg-gradient-to-r from-rose-500 to-pink-500',
-    textColor: 'text-white'
-  }, {
-    id: 'Finance',
-    name: 'Finans',
-    count: stockCases.filter(c => c.sector === 'Finance').length,
-    icon: DollarSign,
-    color: 'bg-gradient-to-r from-amber-500 to-orange-500',
-    textColor: 'text-white'
-  }, {
-    id: 'Energy',
-    name: 'Energi',
-    count: stockCases.filter(c => c.sector === 'Energy').length,
-    icon: Building2,
-    color: 'bg-gradient-to-r from-violet-500 to-indigo-500',
-    textColor: 'text-white'
-  }];
   const handleViewDetails = (id: string) => {
     navigate(`/stock-cases/${id}`);
   };
@@ -84,10 +48,6 @@ const StockCases = () => {
         contextData
       }
     });
-  };
-  const getFilteredCases = () => {
-    if (categoryFilter === 'all') return stockCases;
-    return stockCases.filter(stockCase => stockCase.sector === categoryFilter);
   };
   const handleCreateSuccess = () => {
     setCreateDialogOpen(false);
@@ -135,69 +95,29 @@ const StockCases = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          
+          <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-8 bg-muted p-1 rounded-xl h-auto">
+            <TabsTrigger 
+              value="all" 
+              className="flex items-center gap-2 rounded-lg py-3 px-4 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-sm"
+            >
+              <Sparkles className="w-4 h-4" />
+              Upptäck
+            </TabsTrigger>
+            <TabsTrigger 
+              value="following" 
+              className="flex items-center gap-2 rounded-lg py-3 px-4 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-sm"
+            >
+              <Users className="w-4 h-4" />
+              Följer
+            </TabsTrigger>
+          </TabsList>
 
-          {/* Alla Fall Tab */}
+          {/* Upptäck Tab */}
           <TabsContent value="all" className="space-y-6">
-            {/* Enhanced Category Filter */}
-            <div className="space-y-3">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                  Filtrera efter kategori
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Välj en kategori för att se relevanta aktiefall
-                </p>
-              </div>
-              
-              <div className="flex flex-wrap gap-3 justify-center max-w-4xl mx-auto">
-                {categories.map(category => {
-                const IconComponent = category.icon;
-                const isActive = categoryFilter === category.id;
-                return <button key={category.id} onClick={() => setCategoryFilter(category.id)} className={`
-                        group relative overflow-hidden rounded-xl px-4 py-3 min-w-[120px]
-                        transition-all duration-300 transform hover:scale-105 hover:shadow-lg
-                        ${isActive ? `${category.color} ${category.textColor} shadow-md scale-105` : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}
-                      `}>
-                      {/* Gradient overlay for inactive state */}
-                      {!isActive && <div className={`
-                          absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300
-                          ${category.color}
-                        `} />}
-                      
-                      <div className="relative flex flex-col items-center gap-2">
-                        <IconComponent className={`
-                          w-5 h-5 transition-colors duration-300
-                          ${isActive ? 'text-white' : 'text-gray-600 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200'}
-                        `} />
-                        
-                        <div className="text-center">
-                          <div className={`
-                            text-sm font-medium transition-colors duration-300
-                            ${isActive ? 'text-white' : 'text-gray-900 dark:text-gray-100'}
-                          `}>
-                            {category.name}
-                          </div>
-                          
-                          <Badge variant={isActive ? "secondary" : "outline"} className={`
-                              mt-1 text-xs transition-all duration-300
-                              ${isActive ? 'bg-white/20 text-white border-white/30' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}
-                            `}>
-                            {category.count}
-                          </Badge>
-                        </div>
-                      </div>
-                      
-                      {/* Active indicator */}
-                      {isActive && <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white/30 rounded-full" />}
-                    </button>;
-              })}
-              </div>
-            </div>
-
-            {/* Stock Cases Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {getFilteredCases().map(stockCase => <div key={stockCase.id} className="relative group">
+            {/* Stock Cases Feed */}
+            <div className="space-y-4">
+              {stockCases.map(stockCase => (
+                <div key={stockCase.id} className="relative group">
                   <StockCaseCard stockCase={stockCase} onViewDetails={handleViewDetails} onDelete={handleDelete} />
                   <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => handleDiscussWithAI(stockCase)} className="bg-white/90 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300">
@@ -210,30 +130,42 @@ const StockCases = () => {
                       </Button>
                     )}
                   </div>
-                </div>)}
+                </div>
+              ))}
             </div>
 
-            {getFilteredCases().length === 0 && <div className="text-center py-12">
+            {stockCases.length === 0 && (
+              <div className="text-center py-12">
                 <TrendingUp className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold mb-2">Inga aktiefall hittades</h3>
                 <p className="text-muted-foreground mb-6">
-                  {categoryFilter === 'all' ? 'Var den första att skapa ett aktiefall!' : `Inga aktiefall hittades för kategorin ${categories.find(c => c.id === categoryFilter)?.name}.`}
+                  Var den första att skapa ett aktiefall!
                 </p>
-                {user && <Button onClick={() => setCreateDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+                {user && (
+                  <Button onClick={() => setCreateDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
                     <PlusCircle className="w-4 h-4 mr-2" />
                     Skapa första aktiefallet
-                  </Button>}
-              </div>}
+                  </Button>
+                )}
+              </div>
+            )}
           </TabsContent>
 
-          {/* Trending Tab */}
-          <TabsContent value="trending" className="space-y-6">
-            <div className="text-center py-8">
-              <Sparkles className="w-16 h-16 text-orange-500 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Trending Aktiefall</h3>
-              <p className="text-muted-foreground">
-                Här kommer trending aktiefall att visas baserat på popularitet och engagemang.
+          {/* Följer Tab */}
+          <TabsContent value="following" className="space-y-6">
+            <div className="text-center py-12">
+              <Users className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">Följer-flöde</h3>
+              <p className="text-muted-foreground mb-6">
+                Här kommer innehåll från profiler du följer att visas
               </p>
+              {!user && (
+                <Button asChild>
+                  <Link to="/auth">
+                    Logga in för att följa andra
+                  </Link>
+                </Button>
+              )}
             </div>
           </TabsContent>
         </Tabs>
