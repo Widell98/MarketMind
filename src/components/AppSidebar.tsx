@@ -98,7 +98,7 @@ const AppSidebar = () => {
       <SidebarContent className="px-3 py-4">
         {/* Main Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+          <SidebarGroupLabel className="text-xs font-semibold text-primary flex items-center gap-2">
             <Home className="w-4 h-4" />
             Huvudmeny
           </SidebarGroupLabel>
