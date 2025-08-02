@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Brain, TrendingUp, Target, User, MessageCircle, Star, ShoppingCart, Sparkles, Trash2, ArrowRight } from 'lucide-react';
+import { Brain, TrendingUp, Target, User, MessageCircle, Star, ShoppingCart, Sparkles, Trash2, ArrowRight, Tag } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLatestStockCases } from '@/hooks/useLatestStockCases';
 import { useNavigate } from 'react-router-dom';
@@ -229,6 +229,7 @@ const PersonalizedAIRecommendations = () => {
 
                     {stockCase.sector && (
                       <div className="flex items-center gap-1 flex-wrap mb-2">
+                        <Tag className="w-3 h-3 text-muted-foreground" />
                         <Badge variant="outline" className="text-xs">
                           {stockCase.sector}
                         </Badge>
