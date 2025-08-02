@@ -48,7 +48,7 @@ const StockCaseDetail = () => {
   const { user } = useAuth();
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [selectedVersion, setSelectedVersion] = useState<any>(null);
 
   const { stockCase, loading, error } = useStockCase(id || '');
   const { 
@@ -174,6 +174,19 @@ const StockCaseDetail = () => {
     }
   };
 
+  const handleVersionSelect = (version: any) => {
+    setSelectedVersion(version);
+  };
+
+  // Use selected version data or fall back to original stock case
+  const displayData = selectedVersion || {
+    title: stockCase.title,
+    description: stockCase.description,
+    image_url: stockCase.image_url,
+    created_at: stockCase.created_at,
+    isOriginal: true
+  };
+
   return (
     <Layout>
       <div className="max-w-6xl mx-auto space-y-6">
@@ -215,34 +228,21 @@ const StockCaseDetail = () => {
             )}
           </div>
 
-          {/* Hero Image with History */}
-          {stockCase.image_url && (
+          {/* Hero Image */}
+          {displayData.image_url && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                <div className="lg:col-span-3">
-                  <div className="relative aspect-video rounded-lg overflow-hidden">
-                    <img
-                      src={stockCase.image_url}
-                      alt={stockCase.company_name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                </div>
-                
-                {/* Compact History Viewer for Owners */}
-                {isOwner && (
-                  <div className="lg:col-span-1">
-                    <StockCaseHistoryViewer
-                      stockCaseId={stockCase.id}
-                      originalStockCase={{
-                        title: stockCase.title,
-                        description: stockCase.description,
-                        image_url: stockCase.image_url,
-                        created_at: stockCase.created_at,
-                        user_id: stockCase.user_id
-                      }}
-                      compact={true}
-                    />
+              <div className="relative aspect-video rounded-lg overflow-hidden">
+                <img
+                  src={displayData.image_url}
+                  alt={stockCase.company_name}
+                  className="w-full h-full object-cover"
+                />
+                {selectedVersion && !selectedVersion.isOriginal && (
+                  <div className="absolute top-2 right-2">
+                    <Badge variant="secondary" className="bg-black/50 text-white">
+                      <History className="w-3 h-3 mr-1" />
+                      Uppdaterad version
+                    </Badge>
                   </div>
                 )}
               </div>
@@ -292,6 +292,22 @@ const StockCaseDetail = () => {
                     <span>Uppdatera Case</span>
                   </Button>
                 </div>
+              )}
+
+              {/* History Viewer for owners */}
+              {isOwner && (
+                <StockCaseHistoryViewer
+                  stockCaseId={stockCase.id}
+                  originalStockCase={{
+                    title: stockCase.title,
+                    description: stockCase.description,
+                    image_url: stockCase.image_url,
+                    created_at: stockCase.created_at,
+                    user_id: stockCase.user_id
+                  }}
+                  onVersionSelect={handleVersionSelect}
+                  compact={true}
+                />
               )}
 
               {/* Login prompt for non-users */}
@@ -374,17 +390,24 @@ const StockCaseDetail = () => {
             </Card>
 
             {/* Description */}
-            {stockCase.description && (
+            {displayData.description && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Analys & Beskrivning</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Analys & Beskrivning</CardTitle>
+                    {selectedVersion && !selectedVersion.isOriginal && (
+                      <Badge variant="outline" className="text-xs">
+                        Uppdaterad version
+                      </Badge>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="prose dark:prose-invert max-w-none">
                     <p className={showFullDescription ? '' : 'line-clamp-4'}>
-                      {stockCase.description}
+                      {displayData.description}
                     </p>
-                    {stockCase.description.length > 300 && (
+                    {displayData.description.length > 300 && (
                       <Button
                         variant="link"
                         onClick={() => setShowFullDescription(!showFullDescription)}
