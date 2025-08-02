@@ -30,8 +30,8 @@ const AppSidebar = () => {
   const { user } = useAuth();
   
   const aiNavigation = [
-    { name: 'AI-Assistent', href: '/ai-chat', icon: Brain, priority: true },
     { name: 'Smart Portfölj', href: '/portfolio-implementation', icon: BarChart3, requiresAuth: true },
+    { name: 'AI-Assistent', href: '/ai-chat', icon: Brain },
     { name: 'Avancerade Funktioner', href: '/advanced-features', icon: BarChart3, requiresAuth: true },
   ];
 
