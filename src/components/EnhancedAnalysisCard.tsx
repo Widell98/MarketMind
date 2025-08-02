@@ -7,21 +7,19 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { 
   Heart, 
   MessageCircle, 
-  Share2, 
   BookOpen,
   Eye,
-  Plus,
-  User,
   UserPlus,
   UserMinus,
   Calendar
 } from 'lucide-react';
-import AddAnalysisToHoldingDialog from './AddAnalysisToHoldingDialog';
+
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserFollows } from '@/hooks/useUserFollows';
+import { useAnalysisLikes } from '@/hooks/useAnalysisLikes';
 
 interface EnhancedAnalysisCardProps {
   analysis: any;
@@ -39,6 +37,7 @@ const EnhancedAnalysisCard: React.FC<EnhancedAnalysisCardProps> = ({
   const { user } = useAuth();
   const navigate = useNavigate();
   const { followUser, unfollowUser, isFollowing } = useUserFollows();
+  const { likeCount, isLiked, toggleLike } = useAnalysisLikes(analysis.id);
 
   const getAnalysisTypeLabel = (type: string) => {
     const labels = {
@@ -206,9 +205,19 @@ const EnhancedAnalysisCard: React.FC<EnhancedAnalysisCardProps> = ({
             {/* Engagement Bar */}
             <div className="flex items-center justify-between pt-3 border-t border-border">
               <div className="flex items-center space-x-6">
-                <button className="flex items-center space-x-2 text-muted-foreground hover:text-red-500 transition-colors group">
-                  <Heart className="w-4 h-4 group-hover:fill-current" />
-                  <span className="text-sm">{analysis.likes_count || 0}</span>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleLike();
+                  }}
+                  className={`flex items-center space-x-2 transition-colors group ${
+                    isLiked 
+                      ? 'text-red-500' 
+                      : 'text-muted-foreground hover:text-red-500'
+                  }`}
+                >
+                  <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : 'group-hover:fill-current'}`} />
+                  <span className="text-sm">{likeCount}</span>
                 </button>
                 
                 <button 
@@ -226,27 +235,6 @@ const EnhancedAnalysisCard: React.FC<EnhancedAnalysisCardProps> = ({
               </div>
 
               <div className="flex items-center space-x-2">
-                <AddAnalysisToHoldingDialog analysis={analysis}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20"
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Lägg till
-                  </Button>
-                </AddAnalysisToHoldingDialog>
-                
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDiscussWithAI(analysis)}
-                  className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20"
-                >
-                  <MessageCircle className="w-4 h-4 mr-1" />
-                  Diskutera med AI
-                </Button>
-
                 <Button
                   variant="ghost"
                   size="sm"
