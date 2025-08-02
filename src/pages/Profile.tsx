@@ -40,7 +40,7 @@ const Profile = () => {
     return (
       <Layout>
         <div className="flex justify-center items-center h-[50vh]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-finance-navy"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </Layout>
     );
@@ -112,17 +112,17 @@ const Profile = () => {
               <MembershipSection />
               
               {/* Quick Actions Card */}
-              <Card className="shadow-lg border-0 bg-white dark:bg-gray-900">
+              <Card className="border">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center text-lg">
-                    <Plus className="w-5 h-5 mr-2 text-blue-600" />
+                    <Plus className="w-5 h-5 mr-2 text-primary" />
                     Snabbåtgärder
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <Button 
                     onClick={() => setIsCreateCaseDialogOpen(true)}
-                    className="w-full justify-between bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                    className="w-full justify-between"
                     size="sm"
                   >
                     <div className="flex items-center">
@@ -134,7 +134,8 @@ const Profile = () => {
                   
                   <Button 
                     onClick={() => navigate('/market-analyses')}
-                    className="w-full justify-between bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                    variant="outline"
+                    className="w-full justify-between"
                     size="sm"
                   >
                     <div className="flex items-center">
@@ -147,26 +148,26 @@ const Profile = () => {
               </Card>
 
               {/* Stats Overview */}
-              <Card className="shadow-lg border-0 bg-white dark:bg-gray-900">
+              <Card className="border">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center text-lg">
-                    <BarChart3 className="w-5 h-5 mr-2 text-purple-600" />
+                    <BarChart3 className="w-5 h-5 mr-2 text-primary" />
                     Översikt
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <div className="text-xl font-bold text-blue-700 dark:text-blue-300">
+                    <div className="text-center p-3 bg-muted/50 rounded-lg border border-border">
+                      <div className="text-xl font-bold text-foreground">
                         {stats.stockCasesCount}
                       </div>
-                      <div className="text-xs text-blue-600 dark:text-blue-400">Stock Cases</div>
+                      <div className="text-xs text-muted-foreground">Stock Cases</div>
                     </div>
-                    <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                      <div className="text-xl font-bold text-green-700 dark:text-green-300">
+                    <div className="text-center p-3 bg-muted/50 rounded-lg border border-border">
+                      <div className="text-xl font-bold text-foreground">
                         {stats.analysesCount}
                       </div>
-                      <div className="text-xs text-green-600 dark:text-green-400">Analyser</div>
+                      <div className="text-xs text-muted-foreground">Analyser</div>
                     </div>
                   </div>
                 </CardContent>
@@ -176,31 +177,30 @@ const Profile = () => {
             {/* Main Content Area */}
             <div className="lg:col-span-3">
               <Tabs defaultValue="content" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 mb-8 bg-white dark:bg-gray-900 shadow-lg">
-                  <TabsTrigger value="content" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700">
+                <TabsList className="grid w-full grid-cols-3 mb-8 bg-background border">
+                  <TabsTrigger value="content">
                     Innehåll
                   </TabsTrigger>
-                  <TabsTrigger value="activity" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700">
+                  <TabsTrigger value="activity">
                     Aktivitet
                   </TabsTrigger>
-                  <TabsTrigger value="saved" className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700">
+                  <TabsTrigger value="saved">
                     Sparade
                   </TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="content" className="space-y-8">
                   {/* Stock Cases */}
-                  <Card className="shadow-lg border-0 bg-white dark:bg-gray-900">
+                  <Card className="border">
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <CardTitle className="flex items-center gap-2 text-xl">
-                          <TrendingUp className="w-6 h-6 text-blue-600" />
+                          <TrendingUp className="w-6 h-6 text-primary" />
                           Mina Stock Cases
                         </CardTitle>
                         <Button 
                           onClick={() => setIsCreateCaseDialogOpen(true)}
                           size="sm"
-                          className="bg-blue-600 hover:bg-blue-700"
                         >
                           <Plus className="w-4 h-4 mr-2" />
                           Nytt case
@@ -210,8 +210,8 @@ const Profile = () => {
                     <CardContent>
                       {stockCasesLoading ? (
                         <div className="text-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                          <p className="text-sm text-gray-600">Laddar cases...</p>
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Laddar cases...</p>
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -226,12 +226,11 @@ const Profile = () => {
                           ))}
                           {stockCases.filter(c => c.user_id === user.id).length === 0 && (
                             <div className="col-span-full text-center py-8">
-                              <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Inga cases än</h3>
-                              <p className="text-gray-500 dark:text-gray-400 mb-4">Skapa ditt första aktiecase och dela dina investeringsidéer.</p>
+                              <TrendingUp className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                              <h3 className="text-lg font-medium text-foreground mb-2">Inga cases än</h3>
+                              <p className="text-muted-foreground mb-4">Skapa ditt första aktiecase och dela dina investeringsidéer.</p>
                               <Button 
                                 onClick={() => setIsCreateCaseDialogOpen(true)}
-                                className="bg-blue-600 hover:bg-blue-700"
                               >
                                 <Plus className="w-4 h-4 mr-2" />
                                 Skapa första case
@@ -244,10 +243,10 @@ const Profile = () => {
                   </Card>
 
                   {/* Analyses */}
-                  <Card className="shadow-lg border-0 bg-white dark:bg-gray-900">
+                  <Card className="border">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-xl">
-                        <FileText className="w-6 h-6 text-green-600" />
+                        <FileText className="w-6 h-6 text-primary" />
                         Mina Analyser
                       </CardTitle>
                     </CardHeader>
