@@ -295,21 +295,20 @@ const StockCaseDetail = () => {
                     className="px-6 py-3 rounded-xl transition-all duration-200 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 dark:hover:bg-blue-950/20"
                   />
                 )}
-              </div>
 
-              {/* Owner Actions */}
-              {isOwner && (
-                <div className="flex justify-center items-center gap-3 pt-3 border-t">
+                {/* Owner Actions */}
+                {isOwner && (
                   <Button
                     variant="outline"
                     onClick={() => setShowUpdateDialog(true)}
-                    className="flex items-center gap-2"
+                    size="lg"
+                    className="flex items-center gap-3 px-6 py-3 rounded-xl transition-all duration-200 hover:bg-amber-50 hover:border-amber-200 hover:text-amber-600 dark:hover:bg-amber-950/20"
                   >
-                    <PlusCircle className="w-4 h-4" />
-                    <span>Uppdatera Case</span>
+                    <PlusCircle className="w-5 h-5" />
+                    <span className="font-medium">Uppdatera Case</span>
                   </Button>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* History Viewer - visible for everyone but only editable by owner */}
               <StockCaseHistoryViewer
