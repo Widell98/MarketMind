@@ -181,168 +181,154 @@ const StockCaseDetail = () => {
           </Button>
         </div>
 
-        {/* Page Title - Large and Prominent */}
-        <div className="text-center py-6 border-b">
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100">
-              {stockCase.title}
-            </h1>
-            {stockCase.ai_generated === true && (
-              <Badge variant="outline" className="bg-purple-50 text-purple-700">
-                <Brain className="w-4 h-4 mr-1" />
-                AI
+        {/* Hero Section */}
+        <div className="space-y-6">
+          <div className="text-center space-y-4">
+            <div className="flex items-center justify-center gap-3">
+              <h1 className="text-4xl font-bold">{stockCase.title}</h1>
+              {stockCase.ai_generated === true && (
+                <Badge variant="outline" className="bg-purple-50 text-purple-700">
+                  <Brain className="w-4 h-4 mr-1" />
+                  AI
+                </Badge>
+              )}
+            </div>
+            <h2 className="text-xl text-muted-foreground">{stockCase.company_name}</h2>
+            
+            {/* Performance Badge */}
+            {performance !== null && (
+              <Badge variant={isPositivePerformance ? "default" : "destructive"} className="text-lg px-4 py-1">
+                {isPositivePerformance ? (
+                  <TrendingUp className="w-4 h-4 mr-1" />
+                ) : (
+                  <TrendingDown className="w-4 h-4 mr-1" />
+                )}
+                {performance > 0 ? '+' : ''}{performance.toFixed(1)}%
               </Badge>
             )}
           </div>
-          <h2 className="text-xl md:text-2xl text-gray-600 dark:text-gray-300">
-            {stockCase.company_name}
-          </h2>
-          
-          {/* Performance Badge - Prominent */}
-          {performance !== null && (
-            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full mt-3 ${
-              isPositivePerformance 
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
-                : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-            }`}>
-              {isPositivePerformance ? (
-                <TrendingUp className="w-5 h-5" />
-              ) : (
-                <TrendingDown className="w-5 h-5" />
+
+          {/* Hero Image */}
+          {stockCase.image_url && (
+            <div className="space-y-4">
+              <div className="relative aspect-video rounded-lg overflow-hidden">
+                <img
+                  src={stockCase.image_url}
+                  alt={stockCase.company_name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex justify-center items-center gap-3">
+                <Button
+                  variant={isLiked ? "default" : "outline"}
+                  onClick={handleLikeClick}
+                  disabled={likesLoading}
+                  className="flex items-center gap-2"
+                >
+                  <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+                  <span>{likeCount}</span>
+                </Button>
+
+                {user && (
+                  <SaveOpportunityButton
+                    itemType="stock_case"
+                    itemId={stockCase.id}
+                    itemTitle={stockCase.company_name}
+                    variant="outline"
+                    showText={true}
+                    onSaveSuccess={handleSaveSuccess}
+                  />
+                )}
+
+                <Button
+                  variant="outline"
+                  onClick={handleShare}
+                  className="flex items-center gap-2"
+                >
+                  <Share2 className="w-4 h-4" />
+                  <span>Dela</span>
+                </Button>
+              </div>
+
+              {/* Login prompt for non-users */}
+              {!user && (
+                <div className="text-center p-3 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    Logga in för att gilla och spara
+                  </p>
+                </div>
               )}
-              <span className="font-bold text-xl">
-                {performance > 0 ? '+' : ''}{performance.toFixed(1)}%
-              </span>
             </div>
           )}
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Company Details Card */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-3 space-y-6">
+            {/* Combined Overview Card */}
             <Card>
               <CardHeader>
-                <CardTitle>Företagsinformation</CardTitle>
+                <CardTitle>Översikt</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  {/* Price Information */}
+                  {stockCase.entry_price && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Inköpspris</p>
+                      <p className="font-semibold text-lg">{stockCase.entry_price} SEK</p>
+                    </div>
+                  )}
+                  {stockCase.current_price && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Nuvarande pris</p>
+                      <p className="font-semibold text-lg">{stockCase.current_price} SEK</p>
+                    </div>
+                  )}
+                  {stockCase.target_price && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Målpris</p>
+                      <p className="font-semibold text-lg text-green-600">{stockCase.target_price} SEK</p>
+                    </div>
+                  )}
+                  {stockCase.stop_loss && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Stop Loss</p>
+                      <p className="font-semibold text-lg text-red-600">{stockCase.stop_loss} SEK</p>
+                    </div>
+                  )}
+                  
+                  {/* Company Information */}
                   {stockCase.sector && (
-                    <div className="flex items-center gap-2">
-                      <Building className="w-4 h-4 text-gray-500" />
-                      <div>
-                        <p className="text-gray-500 dark:text-gray-400">Sektor</p>
-                        <p className="font-medium">{stockCase.sector}</p>
-                      </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Sektor</p>
+                      <p className="font-semibold">{stockCase.sector}</p>
                     </div>
                   )}
                   {stockCase.market_cap && (
-                    <div className="flex items-center gap-2">
-                      <BarChart3 className="w-4 h-4 text-gray-500" />
-                      <div>
-                        <p className="text-gray-500 dark:text-gray-400">Börsvärde</p>
-                        <p className="font-medium">{stockCase.market_cap}</p>
-                      </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Börsvärde</p>
+                      <p className="font-semibold">{stockCase.market_cap}</p>
                     </div>
                   )}
                   {stockCase.pe_ratio && (
                     <div>
-                      <p className="text-gray-500 dark:text-gray-400">P/E-tal</p>
-                      <p className="font-medium">{stockCase.pe_ratio}</p>
+                      <p className="text-sm text-muted-foreground">P/E-tal</p>
+                      <p className="font-semibold">{stockCase.pe_ratio}</p>
                     </div>
                   )}
                   {stockCase.dividend_yield && (
                     <div>
-                      <p className="text-gray-500 dark:text-gray-400">Utdelningsavkastning</p>
-                      <p className="font-medium">{stockCase.dividend_yield}</p>
+                      <p className="text-sm text-muted-foreground">Utdelning</p>
+                      <p className="font-semibold">{stockCase.dividend_yield}</p>
                     </div>
                   )}
                 </div>
               </CardContent>
             </Card>
-
-            {/* Stock Image with Like and Save Buttons */}
-            {stockCase.image_url && (
-              <Card className="overflow-hidden">
-                <CardContent className="p-0">
-                  <div className="relative">
-                    <img
-                      src={stockCase.image_url}
-                      alt={stockCase.company_name}
-                      className="w-full h-80 md:h-96 object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-                  </div>
-                  
-                  {/* Like and Save Buttons Below Image */}
-                  <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t">
-                    <div className="flex flex-col sm:flex-row justify-center items-center gap-3">
-                      {/* Like and Save Buttons */}
-                      <div className="flex items-center gap-3">
-                        <Button
-                          variant={isLiked ? "default" : "outline"}
-                          onClick={handleLikeClick}
-                          disabled={likesLoading}
-                          className="flex items-center gap-2 min-w-[100px]"
-                        >
-                          <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-                          <span>Gilla ({likeCount})</span>
-                        </Button>
-
-                        {user && (
-                          <SaveOpportunityButton
-                            itemType="stock_case"
-                            itemId={stockCase.id}
-                            itemTitle={stockCase.company_name}
-                            variant="outline"
-                            showText={true}
-                            onSaveSuccess={handleSaveSuccess}
-                            className="flex items-center gap-2 min-w-[100px]"
-                          />
-                        )}
-
-                        <Button
-                          variant="outline"
-                          onClick={handleShare}
-                          className="flex items-center gap-2"
-                        >
-                          <Share2 className="w-4 h-4" />
-                          <span>Dela</span>
-                        </Button>
-                      </div>
-
-                      {/* Portfolio Link */}
-                      {user && (
-                        <>
-                          <Separator orientation="vertical" className="hidden sm:block h-8" />
-                          <Button
-                            onClick={() => navigate('/portfolio-implementation')}
-                            variant="outline"
-                            className="flex items-center gap-2"
-                          >
-                            <ShoppingCart className="w-4 h-4" />
-                            <span>Till Portfölj</span>
-                          </Button>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Help text for non-authenticated users */}
-                    {!user && (
-                      <div className="text-center mt-4 p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                        <div className="flex items-center justify-center gap-2 text-blue-700 dark:text-blue-300 text-sm">
-                          <Plus className="w-4 h-4" />
-                          <p>
-                            <strong>Logga in</strong> för att gilla och spara detta case till din portfölj.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
             {/* Description */}
             {stockCase.description && (
@@ -392,73 +378,49 @@ const StockCaseDetail = () => {
             <StockCaseComments stockCaseId={stockCase.id} />
           </div>
 
-          {/* Right Column - Sidebar */}
+          {/* Sidebar */}
           <div className="space-y-6">
-            {/* Price Targets */}
+            {/* Creator Card */}
+            {stockCase.profiles && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Skapad av</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+                        <span className="text-sm font-semibold">
+                          {stockCase.profiles.display_name?.charAt(0) || stockCase.profiles.username.charAt(0)}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-semibold">
+                          {stockCase.profiles.display_name || stockCase.profiles.username}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          @{stockCase.profiles.username}
+                        </p>
+                      </div>
+                    </div>
+                    {user && user.id !== stockCase.user_id && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleFollowClick}
+                      >
+                        {isFollowing(stockCase.user_id) ? 'Sluta följa' : 'Följ'}
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Case Details */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="w-5 h-5" />
-                  Prisinformation
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {stockCase.entry_price && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 dark:text-gray-400">Ingångspris:</span>
-                    <span className="font-medium">{stockCase.entry_price} SEK</span>
-                  </div>
-                )}
-                
-                {stockCase.current_price && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 dark:text-gray-400">Nuvarande pris:</span>
-                    <span className="font-medium">{stockCase.current_price} SEK</span>
-                  </div>
-                )}
-
-                {stockCase.target_price && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 dark:text-gray-400">Målkurs:</span>
-                    <span className="font-medium text-green-600">{stockCase.target_price} SEK</span>
-                  </div>
-                )}
-
-                {stockCase.stop_loss && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 dark:text-gray-400">Stop loss:</span>
-                    <span className="font-medium text-red-600">{stockCase.stop_loss} SEK</span>
-                  </div>
-                )}
-
-                <Separator />
-
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 dark:text-gray-400">Status:</span>
-                  <Badge variant={
-                    stockCase.status === 'winner' ? 'default' :
-                    stockCase.status === 'loser' ? 'destructive' : 'secondary'
-                  }>
-                    {stockCase.status === 'active' ? 'Aktiv' : 
-                     stockCase.status === 'winner' ? 'Vinnare' : 'Förlorare'}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Market Sentiment Analysis */}
-            <MarketSentimentAnalysis />
-
-            {/* Case Info with Follow Button for Profile */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Eye className="w-5 h-5" />
-                  Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <CardContent className="pt-6 space-y-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="w-4 h-4" />
                   <span>
                     Skapad {formatDistanceToNow(new Date(stockCase.created_at), { 
@@ -468,42 +430,23 @@ const StockCaseDetail = () => {
                   </span>
                 </div>
 
-                {stockCase.profiles && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                        <Users className="w-4 h-4" />
-                        <span>Av </span>
-                        <button
-                          onClick={() => navigate(`/profile/${stockCase.user_id}`)}
-                          className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                        >
-                          {stockCase.profiles.display_name || stockCase.profiles.username}
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {/* Follow Button for Profile - Only show if not own case and user is logged in */}
-                    {user && stockCase.user_id !== user.id && (
-                      <Button
-                        onClick={handleFollowClick}
-                        variant={isFollowing(stockCase.user_id) ? "default" : "outline"}
-                        size="sm"
-                        className="w-full flex items-center gap-2"
-                      >
-                        <UserPlus className="w-4 h-4" />
-                        <span>
-                          {isFollowing(stockCase.user_id) ? 'Följer användare' : 'Följ användare'}
-                        </span>
-                      </Button>
-                    )}
-                  </div>
-                )}
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Status:</span>
+                  <Badge variant={
+                    stockCase.status === 'winner' ? 'default' :
+                    stockCase.status === 'loser' ? 'destructive' : 'secondary'
+                  }>
+                    {stockCase.status === 'active' ? 'Aktiv' : 
+                     stockCase.status === 'winner' ? 'Vinnare' : 'Förlorare'}
+                  </Badge>
+                </div>
 
                 {stockCase.case_categories && (
-                  <div className="flex items-center gap-2">
+                  <div>
+                    <span className="text-sm text-muted-foreground">Kategori:</span>
                     <Badge 
                       variant="outline" 
+                      className="ml-2"
                       style={{ 
                         borderColor: stockCase.case_categories.color,
                         color: stockCase.case_categories.color 
@@ -513,38 +456,36 @@ const StockCaseDetail = () => {
                     </Badge>
                   </div>
                 )}
-
-                {stockCase.closed_at && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                    <StopCircle className="w-4 h-4" />
-                    <span>
-                      Stängd {formatDistanceToNow(new Date(stockCase.closed_at), { 
-                        addSuffix: true, 
-                        locale: sv 
-                      })}
-                    </span>
-                  </div>
-                )}
               </CardContent>
             </Card>
 
             {/* Risk Warning */}
-            <Card className="border-amber-200 bg-amber-50 dark:bg-amber-900/20">
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
-                  <div>
-                    <h4 className="font-medium text-amber-800 dark:text-amber-200 mb-1">
-                      Investeringsvarning
-                    </h4>
-                    <p className="text-sm text-amber-700 dark:text-amber-300">
-                      Detta är inte investeringsrådgivning. Alla investeringar medför risk för förlust. 
-                      Gör alltid din egen analys innan du investerar.
-                    </p>
-                  </div>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm text-muted-foreground">
+                  <p className="font-medium mb-2">⚠️ Riskvarning</p>
+                  <p>
+                    Detta är inte finansiell rådgivning. Alla investeringar innebär risk.
+                  </p>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Login Prompt for non-users */}
+            {!user && (
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Logga in för att interagera
+                    </p>
+                    <Button size="sm" onClick={() => navigate('/auth')}>
+                      Logga in
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
