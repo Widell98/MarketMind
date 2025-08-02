@@ -146,9 +146,9 @@ const Profile = () => {
 
         {/* Main Content */}
         <div className="max-w-7xl mx-auto px-4 pb-8">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 lg:gap-8">
             {/* Left Sidebar */}
-            <div className="lg:col-span-1 space-y-6">
+            <div className="xl:col-span-1 space-y-4 lg:space-y-6">
               <MembershipSection />
               
               {/* Quick Actions Card */}
@@ -215,7 +215,7 @@ const Profile = () => {
             </div>
 
             {/* Main Content Area */}
-            <div className="lg:col-span-3">
+            <div className="xl:col-span-3">
               <Tabs defaultValue="content" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-8 bg-background border">
                   <TabsTrigger value="content">
@@ -251,7 +251,7 @@ const Profile = () => {
                           <p className="text-sm text-muted-foreground">Laddar cases...</p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                           {stockCases.filter(c => c.user_id === user.id).map((stockCase) => (
                             <EnhancedStockCaseCard 
                               key={stockCase.id} 

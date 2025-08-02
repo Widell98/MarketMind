@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
-import { Heart, MessageCircle, Share2, TrendingUp, TrendingDown, Calendar, MoreHorizontal, Trash2, Bot, UserPlus, UserCheck, User, Edit } from 'lucide-react';
+import { Heart, MessageCircle, TrendingUp, TrendingDown, Calendar, MoreHorizontal, Trash2, Bot, UserPlus, UserCheck, User, Edit } from 'lucide-react';
 import { StockCase } from '@/types/stockCase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -12,7 +12,6 @@ import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useUserFollows } from '@/hooks/useUserFollows';
 import { useNavigate } from 'react-router-dom';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import ShareStockCase from './ShareStockCase';
 
 interface EnhancedStockCaseCardProps {
   stockCase: StockCase;
@@ -318,10 +317,6 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
               <span className="hidden sm:inline">Diskutera</span>
               <span className="sm:hidden">AI</span>
             </Button>
-
-            <div className="flex-1">
-              <ShareStockCase stockCaseId={stockCase.id} title={stockCase.title} />
-            </div>
           </div>
         </div>
       </CardContent>
