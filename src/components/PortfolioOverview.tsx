@@ -534,9 +534,11 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
                 <Brain className="w-5 h-5 text-purple-600" />
                 AI-Rekommenderade Innehav
-                {allRecommendations.length > 0 && <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 ml-2">
+                {allRecommendations.length > 0 && (
+                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 ml-2">
                     {allRecommendations.length} rekommendationer
-                  </Badge>}
+                  </Badge>
+                )}
               </CardTitle>
               <CardDescription className="text-sm text-muted-foreground mt-1">
                 Aktier som AI-advisorn rekommenderar för din portfölj
