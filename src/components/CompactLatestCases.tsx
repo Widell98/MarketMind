@@ -9,7 +9,7 @@ import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import LoginPromptModal from '@/components/LoginPromptModal';
-import CompactStockCaseCard from '@/components/CompactStockCaseCard';
+import EnhancedStockCaseCard from '@/components/EnhancedStockCaseCard';
 import CompactLatestCasesEmpty from '@/components/CompactLatestCasesEmpty';
 import CompactLatestCasesFilters from '@/components/CompactLatestCasesFilters';
 
@@ -56,6 +56,15 @@ const CompactLatestCases = () => {
     navigate('/stock-cases');
   };
 
+  const handleViewDetails = (id: string) => {
+    navigate(`/stock-cases/${id}`);
+  };
+
+  const handleDelete = async (id: string) => {
+    // For read-only display on homepage, we don't need delete functionality
+    console.log('Delete not available on homepage');
+  };
+
   if (loading) {
     return (
       <Card className="shadow-md hover:shadow-lg transition-all duration-200">
@@ -66,7 +75,7 @@ const CompactLatestCases = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(3)].map((_, i) => (
               <div key={i} className="animate-pulse">
                 <div className="aspect-[4/3] bg-gray-200 dark:bg-gray-700 rounded-lg mb-3"></div>
@@ -148,9 +157,15 @@ const CompactLatestCases = () => {
           />
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {displayCases.map((stockCase) => (
-              <CompactStockCaseCard key={stockCase.id} stockCase={stockCase} />
+              <EnhancedStockCaseCard 
+                key={stockCase.id} 
+                stockCase={stockCase} 
+                onViewDetails={handleViewDetails} 
+                onDelete={handleDelete}
+                showProfileActions={true}
+              />
             ))}
           </div>
           
