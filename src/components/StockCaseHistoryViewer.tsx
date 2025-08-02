@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { History, Clock, Image as ImageIcon, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { History, Clock, Image as ImageIcon, Trash2, FolderOpen, FileText } from 'lucide-react';
 import { useStockCaseUpdates, StockCaseUpdate } from '@/hooks/useStockCaseUpdates';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -16,11 +17,15 @@ interface StockCaseHistoryViewerProps {
     created_at: string;
     user_id: string | null;
   };
+  onVersionSelect?: (version: any) => void;
+  compact?: boolean;
 }
 
 const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
   stockCaseId,
-  originalStockCase
+  originalStockCase,
+  onVersionSelect,
+  compact = false
 }) => {
   const { user } = useAuth();
   const { updates, isLoading, deleteUpdate } = useStockCaseUpdates(stockCaseId);
@@ -106,6 +111,102 @@ const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
     );
   }
 
+  const handleVersionChange = (value: string) => {
+    const index = parseInt(value);
+    setCurrentIndex(index);
+    if (onVersionSelect) {
+      onVersionSelect(timeline[index]);
+    }
+  };
+
+  if (compact) {
+    return (
+      <>
+        <Card className="w-full">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <FolderOpen className="w-4 h-4" />
+                Versionshistorik
+              </CardTitle>
+              <Badge variant="outline" className="text-xs">
+                {timeline.length} versioner
+              </Badge>
+            </div>
+          </CardHeader>
+          
+          <CardContent className="space-y-4">
+            <Select value={currentIndex.toString()} onValueChange={handleVersionChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {timeline.map((item, index) => (
+                  <SelectItem key={item.id} value={index.toString()}>
+                    <div className="flex items-center gap-2">
+                      {item.isOriginal ? (
+                        <FileText className="w-3 h-3" />
+                      ) : (
+                        <ImageIcon className="w-3 h-3" />
+                      )}
+                      <span className="text-xs">
+                        {item.isOriginal ? 'Original' : `Uppdatering ${index}`}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDate(item.created_at).split(' ')[0]}
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Badge variant={currentItem.isOriginal ? "secondary" : "outline"} className="text-xs">
+                  {currentItem.isOriginal ? 'Original' : 'Uppdatering'}
+                </Badge>
+                {canDelete && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setUpdateToDelete(currentItem.id)}
+                    className="text-red-600 hover:text-red-700 p-1 h-auto"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                )}
+              </div>
+              
+              <div className="text-xs text-muted-foreground">
+                <Clock className="w-3 h-3 inline mr-1" />
+                {formatDate(currentItem.created_at)}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Delete confirmation dialog */}
+        <AlertDialog open={!!updateToDelete} onOpenChange={() => setUpdateToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Ta bort uppdatering</AlertDialogTitle>
+              <AlertDialogDescription>
+                Är du säker på att du vill ta bort denna uppdatering? Denna åtgärd kan inte ångras.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Avbryt</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete}>
+                Ta bort
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
+  }
+
   return (
     <>
       <Card>
@@ -134,40 +235,30 @@ const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
         </CardHeader>
         
         <CardContent className="space-y-6">
-          {/* Navigation */}
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={goToPrevious}
-              disabled={currentIndex === 0}
-            >
-              <ChevronLeft className="w-4 h-4 mr-2" />
-              Tidigare
-            </Button>
-            
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">
-                {formatDate(currentItem.created_at)}
-              </span>
-              {currentItem.isOriginal && (
-                <Badge variant="secondary" className="ml-2">
-                  Original
-                </Badge>
-              )}
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={goToNext}
-              disabled={currentIndex === timeline.length - 1}
-            >
-              Senare
-              <ChevronRight className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
+          <Select value={currentIndex.toString()} onValueChange={handleVersionChange}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {timeline.map((item, index) => (
+                <SelectItem key={item.id} value={index.toString()}>
+                  <div className="flex items-center gap-2">
+                    {item.isOriginal ? (
+                      <FileText className="w-4 h-4" />
+                    ) : (
+                      <ImageIcon className="w-4 h-4" />
+                    )}
+                    <span>
+                      {item.isOriginal ? 'Original' : `Uppdatering ${index}`}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {formatDate(item.created_at)}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           {/* Current content */}
           <div className="space-y-4">
@@ -201,23 +292,6 @@ const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Timeline indicators */}
-          <div className="flex items-center justify-center space-x-2 pt-4">
-            {timeline.map((_, index) => (
-              <button
-                key={index}
-                className={`w-2 h-2 rounded-full transition-colors ${
-                  index === currentIndex 
-                    ? 'bg-blue-600' 
-                    : index < currentIndex 
-                      ? 'bg-blue-300' 
-                      : 'bg-gray-300'
-                }`}
-                onClick={() => setCurrentIndex(index)}
-              />
-            ))}
           </div>
         </CardContent>
       </Card>

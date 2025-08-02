@@ -215,15 +215,36 @@ const StockCaseDetail = () => {
             )}
           </div>
 
-          {/* Hero Image */}
+          {/* Hero Image with History */}
           {stockCase.image_url && (
             <div className="space-y-4">
-              <div className="relative aspect-video rounded-lg overflow-hidden">
-                <img
-                  src={stockCase.image_url}
-                  alt={stockCase.company_name}
-                  className="w-full h-full object-cover"
-                />
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                <div className="lg:col-span-3">
+                  <div className="relative aspect-video rounded-lg overflow-hidden">
+                    <img
+                      src={stockCase.image_url}
+                      alt={stockCase.company_name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
+                
+                {/* Compact History Viewer for Owners */}
+                {isOwner && (
+                  <div className="lg:col-span-1">
+                    <StockCaseHistoryViewer
+                      stockCaseId={stockCase.id}
+                      originalStockCase={{
+                        title: stockCase.title,
+                        description: stockCase.description,
+                        image_url: stockCase.image_url,
+                        created_at: stockCase.created_at,
+                        user_id: stockCase.user_id
+                      }}
+                      compact={true}
+                    />
+                  </div>
+                )}
               </div>
               
               {/* Action Buttons */}
@@ -270,15 +291,6 @@ const StockCaseDetail = () => {
                     <PlusCircle className="w-4 h-4" />
                     <span>Uppdatera Case</span>
                   </Button>
-                  
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowHistory(!showHistory)}
-                    className="flex items-center gap-2"
-                  >
-                    <History className="w-4 h-4" />
-                    <span>{showHistory ? 'Dölj Historik' : 'Se Historik'}</span>
-                  </Button>
                 </div>
               )}
 
@@ -294,19 +306,6 @@ const StockCaseDetail = () => {
           )}
         </div>
 
-        {/* History Viewer */}
-        {showHistory && isOwner && (
-          <StockCaseHistoryViewer
-            stockCaseId={stockCase.id}
-            originalStockCase={{
-              title: stockCase.title,
-              description: stockCase.description,
-              image_url: stockCase.image_url,
-              created_at: stockCase.created_at,
-              user_id: stockCase.user_id
-            }}
-          />
-        )}
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
