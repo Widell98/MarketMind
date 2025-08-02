@@ -199,7 +199,7 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
                       Redigera
                     </DropdownMenuItem>
                   )}
-                  {onDelete && (
+                  {onDelete && (isOwner || isAdmin) && (
                     <DropdownMenuItem 
                       onClick={e => {
                         e.stopPropagation();

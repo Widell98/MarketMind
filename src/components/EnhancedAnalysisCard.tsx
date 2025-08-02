@@ -11,8 +11,17 @@ import {
   Eye,
   UserPlus,
   UserMinus,
-  Calendar
+  Calendar,
+  MoreHorizontal,
+  Edit,
+  Trash2
 } from 'lucide-react';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
@@ -25,6 +34,7 @@ interface EnhancedAnalysisCardProps {
   analysis: any;
   onViewDetails: (id: string) => void;
   onDelete?: (id: string) => void;
+  onEdit?: (analysis: any) => void;
   showProfileActions?: boolean;
 }
 
@@ -32,6 +42,7 @@ const EnhancedAnalysisCard: React.FC<EnhancedAnalysisCardProps> = ({
   analysis,
   onViewDetails,
   onDelete,
+  onEdit,
   showProfileActions = true
 }) => {
   const { user } = useAuth();
@@ -149,27 +160,65 @@ const EnhancedAnalysisCard: React.FC<EnhancedAnalysisCardProps> = ({
                 </span>
               </div>
               
-              {/* Follow Button */}
-              {showProfileActions && user && !isOwnAnalysis && (
-                <Button
-                  variant={userIsFollowing ? "secondary" : "outline"}
-                  size="sm"
-                  onClick={handleFollow}
-                  className="ml-2"
-                >
-                  {userIsFollowing ? (
-                    <>
-                      <UserMinus className="w-3 h-3 mr-1" />
-                      Sluta följa
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="w-3 h-3 mr-1" />
-                      Följ
-                    </>
-                  )}
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {/* Follow Button */}
+                {showProfileActions && user && !isOwnAnalysis && (
+                  <Button
+                    variant={userIsFollowing ? "secondary" : "outline"}
+                    size="sm"
+                    onClick={handleFollow}
+                    className="ml-2"
+                  >
+                    {userIsFollowing ? (
+                      <>
+                        <UserMinus className="w-3 h-3 mr-1" />
+                        Sluta följa
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-3 h-3 mr-1" />
+                        Följ
+                      </>
+                    )}
+                  </Button>
+                )}
+
+                {/* Edit/Delete Menu for Own Analyses */}
+                {user && isOwnAnalysis && (onEdit || onDelete) && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {onEdit && (
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(analysis);
+                          }}
+                        >
+                          <Edit className="mr-2 h-4 w-4" />
+                          Redigera
+                        </DropdownMenuItem>
+                      )}
+                      {onDelete && (
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(analysis.id);
+                          }} 
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Ta bort
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             </div>
 
             {/* Analysis Type Badge */}

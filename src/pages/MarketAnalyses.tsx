@@ -31,6 +31,11 @@ const MarketAnalyses = () => {
   const { data: analyses, isLoading } = useAnalyses(50);
   const { data: followingAnalyses, isLoading: followingLoading } = useFollowingAnalyses();
 
+  const handleEdit = (analysis: any) => {
+    // För framtida implementation - navigera till edit-sida eller öppna edit-dialog
+    console.log('Edit analysis:', analysis);
+  };
+
   const handleViewDetails = (id: string) => {
     navigate(`/analysis/${id}`);
   };
@@ -204,6 +209,7 @@ const MarketAnalyses = () => {
                     analysis={analysis} 
                     onViewDetails={handleViewDetails} 
                     onDelete={handleDelete}
+                    onEdit={handleEdit}
                     showProfileActions={true}
                   />
                 ))}
@@ -284,6 +290,7 @@ const MarketAnalyses = () => {
                       analysis={analysis} 
                       onViewDetails={handleViewDetails} 
                       onDelete={handleDelete}
+                      onEdit={handleEdit}
                       showProfileActions={false} // Don't show follow button in following tab
                     />
                   ))}
