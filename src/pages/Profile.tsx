@@ -233,7 +233,7 @@ const Profile = () => {
                       <div className="flex items-center justify-between">
                         <CardTitle className="flex items-center gap-2 text-xl">
                           <TrendingUp className="w-6 h-6 text-primary" />
-                          Mina Stock Cases
+                          Mina Inlägg
                         </CardTitle>
                         <Button 
                           onClick={() => setIsCreateCaseDialogOpen(true)}
