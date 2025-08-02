@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
+import AddHoldingDialog from '@/components/AddHoldingDialog';
 
 const CommunityRecommendations: React.FC = () => {
   const { recommendations, loading, refetch } = useCommunityRecommendations();
@@ -31,6 +32,8 @@ const CommunityRecommendations: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { addHolding } = useUserHoldings();
+  const [isAddHoldingOpen, setIsAddHoldingOpen] = useState(false);
+  const [selectedRecommendation, setSelectedRecommendation] = useState<CommunityRecommendation | null>(null);
 
   // Expose refetch function globally so SaveOpportunityButton can use it
   React.useEffect(() => {
@@ -60,37 +63,46 @@ const CommunityRecommendations: React.FC = () => {
       return;
     }
 
-    try {
-      // Extract stock information from recommendation
-      let stockName = '';
-      let stockSymbol = '';
-      let sector = '';
+    // Extract stock information and prepare for dialog
+    let stockName = '';
+    let stockSymbol = '';
+    let sector = '';
 
-      if (recommendation.stock_case) {
-        stockName = recommendation.stock_case.company_name;
-        stockSymbol = recommendation.stock_case.title; // Temporary fallback
-        sector = recommendation.stock_case.sector || 'Okänd';
-      } else if (recommendation.analysis) {
-        stockName = recommendation.analysis.title;
-        sector = 'Analys';
-      }
+    if (recommendation.stock_case) {
+      stockName = recommendation.stock_case.company_name;
+      stockSymbol = recommendation.stock_case.title;
+      sector = recommendation.stock_case.sector || 'Okänd';
+    } else if (recommendation.analysis) {
+      stockName = recommendation.analysis.title;
+      sector = 'Analys';
+    }
 
-      await addHolding({
+    setSelectedRecommendation({
+      ...recommendation,
+      stockInfo: {
         name: stockName,
         symbol: stockSymbol || stockName.toUpperCase().substring(0, 4),
-        holding_type: 'stock',
-        quantity: 0,
-        current_value: 0,
         sector: sector,
         market: 'Stockholm',
         currency: 'SEK'
-      });
+      }
+    } as any);
+    setIsAddHoldingOpen(true);
+  };
 
+  const handleAddHolding = async (holdingData: any) => {
+    try {
+      await addHolding(holdingData);
+      
       toast({
         title: "Tillagt till portfölj!",
-        description: `${stockName} har lagts till i din portfölj som en Community-rekommendation`,
+        description: `${holdingData.name} har lagts till i din portfölj som en Community-rekommendation`,
         variant: "default"
       });
+      
+      setIsAddHoldingOpen(false);
+      setSelectedRecommendation(null);
+      return true;
     } catch (error) {
       console.error('Error adding to portfolio:', error);
       toast({
@@ -98,6 +110,7 @@ const CommunityRecommendations: React.FC = () => {
         description: "Kunde inte lägga till i portföljen. Försök igen.",
         variant: "destructive"
       });
+      return false;
     }
   };
 
@@ -398,6 +411,16 @@ const CommunityRecommendations: React.FC = () => {
           )}
         </div>
       </CardContent>
+
+      <AddHoldingDialog
+        isOpen={isAddHoldingOpen}
+        onClose={() => {
+          setIsAddHoldingOpen(false);
+          setSelectedRecommendation(null);
+        }}
+        onAdd={handleAddHolding}
+        initialData={(selectedRecommendation as any)?.stockInfo}
+      />
     </Card>
   );
 };
