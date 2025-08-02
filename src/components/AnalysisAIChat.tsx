@@ -31,6 +31,7 @@ const AnalysisAIChat: React.FC<AnalysisAIChatProps> = ({ analysis }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const suggestedQuestions = [
     "Vad är de största riskerna med denna analys?",
@@ -98,31 +99,46 @@ const AnalysisAIChat: React.FC<AnalysisAIChatProps> = ({ analysis }) => {
   if (!user) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageCircle className="w-5 h-5" />
-            Diskutera med AI
+        <CardHeader className="cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="w-5 h-5" />
+              Diskutera med AI
+              <Badge variant="secondary">Beta</Badge>
+            </div>
+            <Button variant="ghost" size="sm">
+              {isExpanded ? 'Minimera' : 'Expandera'}
+            </Button>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-center text-gray-600 py-4">
-            Logga in för att diskutera denna analys med AI
-          </p>
-        </CardContent>
+        {isExpanded && (
+          <CardContent>
+            <p className="text-center text-gray-600 py-4">
+              Logga in för att diskutera denna analys med AI
+            </p>
+          </CardContent>
+        )}
       </Card>
     );
   }
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MessageCircle className="w-5 h-5" />
-          Diskutera med AI
-          <Badge variant="secondary">Beta</Badge>
+      <CardHeader className="cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MessageCircle className="w-5 h-5" />
+            Diskutera med AI
+            <Badge variant="secondary">Beta</Badge>
+          </div>
+          <Button variant="ghost" size="sm">
+            {isExpanded ? 'Minimera' : 'Expandera'}
+          </Button>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      
+      {isExpanded && (
+        <CardContent className="space-y-4">
         {/* Suggested Questions */}
         {messages.length === 0 && (
           <div className="space-y-2">
@@ -218,10 +234,11 @@ const AnalysisAIChat: React.FC<AnalysisAIChatProps> = ({ analysis }) => {
           </Button>
         </div>
 
-        <div className="text-xs text-gray-500 text-center">
-          AI-assistenten kan hjälpa dig förstå och tillämpa analysens insikter
-        </div>
-      </CardContent>
+          <div className="text-xs text-gray-500 text-center">
+            AI-assistenten kan hjälpa dig förstå och tillämpa analysens insikter
+          </div>
+        </CardContent>
+      )}
     </Card>
   );
 };
