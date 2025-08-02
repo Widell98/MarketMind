@@ -129,9 +129,21 @@ const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
                 <FolderOpen className="w-4 h-4" />
                 Versionshistorik
               </CardTitle>
-              <Badge variant="outline" className="text-xs">
-                {timeline.length} versioner
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs">
+                  {timeline.length} versioner
+                </Badge>
+                {canDelete && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setUpdateToDelete(currentItem.id)}
+                    className="text-red-600 hover:text-red-700 p-1 h-auto"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                )}
+              </div>
             </div>
           </CardHeader>
           

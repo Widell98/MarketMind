@@ -313,21 +313,19 @@ const StockCaseDetail = () => {
                 </div>
               )}
 
-              {/* History Viewer for owners */}
-              {isOwner && (
-                <StockCaseHistoryViewer
-                  stockCaseId={stockCase.id}
-                  originalStockCase={{
-                    title: stockCase.title,
-                    description: stockCase.description,
-                    image_url: stockCase.image_url,
-                    created_at: stockCase.created_at,
-                    user_id: stockCase.user_id
-                  }}
-                  onVersionSelect={handleVersionSelect}
-                  compact={true}
-                />
-              )}
+              {/* History Viewer - visible for everyone but only editable by owner */}
+              <StockCaseHistoryViewer
+                stockCaseId={stockCase.id}
+                originalStockCase={{
+                  title: stockCase.title,
+                  description: stockCase.description,
+                  image_url: stockCase.image_url,
+                  created_at: stockCase.created_at,
+                  user_id: stockCase.user_id
+                }}
+                onVersionSelect={handleVersionSelect}
+                compact={true}
+              />
 
               {/* Login prompt for non-users */}
               {!user && (
