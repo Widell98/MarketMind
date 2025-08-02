@@ -127,7 +127,7 @@ const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-sm">
                 <FolderOpen className="w-4 h-4" />
-                Versionshistorik
+                Historik
               </CardTitle>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">
@@ -137,7 +137,10 @@ const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setUpdateToDelete(currentItem.id)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setUpdateToDelete(currentItem.id);
+                    }}
                     className="text-red-600 hover:text-red-700 p-1 h-auto"
                   >
                     <Trash2 className="w-3 h-3" />
@@ -182,7 +185,10 @@ const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setUpdateToDelete(currentItem.id)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setUpdateToDelete(currentItem.id);
+                    }}
                     className="text-red-600 hover:text-red-700 p-1 h-auto"
                   >
                     <Trash2 className="w-3 h-3" />
@@ -236,7 +242,10 @@ const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setUpdateToDelete(currentItem.id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setUpdateToDelete(currentItem.id);
+                  }}
                   className="text-red-600 hover:text-red-700"
                 >
                   <Trash2 className="w-4 h-4" />
