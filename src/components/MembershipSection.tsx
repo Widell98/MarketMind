@@ -39,10 +39,10 @@ const MembershipSection = () => {
   return (
     <div className="space-y-6">
       {/* Current Membership Status */}
-      <Card>
+      <Card className="border">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Crown className="h-5 w-5 text-yellow-600" />
+            <Crown className="h-5 w-5 text-primary" />
             Din medlemskapsstatus
           </CardTitle>
         </CardHeader>
@@ -95,10 +95,10 @@ const MembershipSection = () => {
       </Card>
 
       {/* Membership Actions */}
-      <Card>
+      <Card className="border">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
+            <CreditCard className="h-5 w-5 text-primary" />
             Hantera medlemskap
           </CardTitle>
         </CardHeader>

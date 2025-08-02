@@ -217,15 +217,12 @@ const Profile = () => {
             {/* Main Content Area */}
             <div className="lg:col-span-3">
               <Tabs defaultValue="content" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 mb-8 bg-background border">
+                <TabsList className="grid w-full grid-cols-2 mb-8 bg-background border">
                   <TabsTrigger value="content">
                     Innehåll
                   </TabsTrigger>
                   <TabsTrigger value="activity">
                     Aktivitet
-                  </TabsTrigger>
-                  <TabsTrigger value="saved">
-                    Sparade
                   </TabsTrigger>
                 </TabsList>
                 
@@ -298,14 +295,6 @@ const Profile = () => {
                 
                 <TabsContent value="activity" className="space-y-8">
                   <ActivitySection />
-                </TabsContent>
-                
-                <TabsContent value="saved" className="space-y-8">
-                  <SavedOpportunitiesSection 
-                    opportunities={transformedOpportunities}
-                    onRemove={removeOpportunity}
-                    onView={handleViewOpportunity}
-                  />
                 </TabsContent>
               </Tabs>
             </div>
