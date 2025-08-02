@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { TrendingUp, TrendingDown, BarChart3, PieChart, Activity, Target, Zap, Brain, AlertTriangle, Shield, Plus, Edit3, MessageCircle, Settings, ChevronDown, ChevronUp, Info, Star, User, Globe, Building2, X, ShoppingCart, Edit, Trash2, LogIn } from 'lucide-react';
+import { TrendingUp, TrendingDown, BarChart3, PieChart, Activity, Target, Zap, Brain, AlertTriangle, Shield, Plus, Edit3, MessageCircle, Settings, ChevronDown, ChevronUp, Info, Star, User, Globe, Building2, X, ShoppingCart, Edit, Trash2, LogIn, ArrowRight, Sparkles, Tag } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -547,9 +547,9 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             <div className="flex gap-2">
               {allRecommendations.length > 0 && <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" disabled={isDeletingRecommendations} className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300">
-                      <X className="w-4 h-4 mr-1" />
-                      {isDeletingRecommendations ? "Rensar..." : "Rensa alla"}
+                    <Button variant="outline" size="sm" disabled={isDeletingRecommendations} className="text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300">
+                      <ArrowRight className="w-4 h-4 mr-1" />
+                      Hitta fler
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
@@ -574,70 +574,132 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
           </div>
         </CardHeader>
         <CardContent>
-          {loading ? <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-              <p className="text-sm text-muted-foreground">Laddar rekommendationer...</p>
-            </div> : allRecommendations.length === 0 ? <div className="text-center py-12">
-              <Brain className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">Inga AI-rekommendationer ännu</h3>
-              <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <div className="flex items-center justify-center gap-2">
+                <Brain className="w-4 h-4 animate-pulse" />
+                <span>Laddar AI-rekommendationer...</span>
+              </div>
+            </div>
+          ) : allRecommendations.length === 0 ? (
+            <div className="text-center py-8">
+              <Brain className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+              <h3 className="text-lg font-medium mb-2 text-foreground">Inga AI-rekommendationer ännu</h3>
+              <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
                 Få personliga aktieförslag från AI-advisorn baserat på din riskprofil
               </p>
-              <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                <Button onClick={handleGetAIRecommendations} className="flex items-center gap-2 bg-primary hover:bg-primary/90">
-                  <MessageCircle className="w-4 h-4" />
-                  Få AI-rekommendationer
+              
+              <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg mb-4">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Sparkles className="w-5 h-5 text-blue-600" />
+                  <span className="font-medium text-blue-700 dark:text-blue-300">
+                    Få AI-rekommendationer
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Chatta med AI:n för att få personaliserade investeringsförslag
+                </p>
+              </div>
+              
+              <Button 
+                onClick={handleGetAIRecommendations} 
+                className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              >
+                <MessageCircle className="w-4 h-4" />
+                Få AI-rekommendationer
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-sm text-muted-foreground">
+                  {allRecommendations.length} AI-rekommendationer
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={handleGetAIRecommendations}
+                  className="text-purple-600 hover:text-purple-700"
+                >
+                  Få fler <ArrowRight className="w-3 h-3 ml-1" />
                 </Button>
               </div>
-            </div> : <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="font-medium">Rekommenderad Aktie</TableHead>
-                    <TableHead className="font-medium">Typ</TableHead>
-                    <TableHead className="font-medium">Sektor</TableHead>
-                    <TableHead className="text-right font-medium">Åtgärder</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {allRecommendations.map((recommendation, index) => <TableRow key={recommendation.id || index} className="hover:bg-muted/50">
-                      <TableCell>
-                        <div className="flex items-center gap-2">
+              <div className="space-y-3">
+                {allRecommendations.map((recommendation, index) => (
+                  <div 
+                    key={recommendation.id || index}
+                    className="p-3 border rounded-lg hover:shadow-md transition-all duration-200"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
                           <Star className="w-4 h-4 text-purple-600 flex-shrink-0" />
-                          <div className="min-w-0">
-                            <div className="font-medium text-sm">{recommendation.name}</div>
-                            {recommendation.symbol && <div className="text-xs text-muted-foreground">{recommendation.symbol}</div>}
-                            {recommendation.allocation !== undefined && <div className="text-xs text-purple-600 font-medium">{recommendation.allocation}% allokering</div>}
+                          <h4 className="font-medium text-sm truncate">{recommendation.name}</h4>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <Badge variant="secondary" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                              <Brain className="w-3 h-3 mr-1" />
+                              AI
+                            </Badge>
                           </div>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
-                          AI-Rekommendation
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm text-muted-foreground">
-                          {recommendation.sector || 'Okänd sektor'}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center gap-1 justify-end">
-                          <Button variant="outline" size="sm" onClick={() => handleAddFromRecommendation(recommendation)} className="h-8 px-2 text-xs bg-white hover:bg-green-50 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300">
-                            <ShoppingCart className="w-3 h-3" />
+                        
+                        {recommendation.symbol && (
+                          <p className="text-xs text-muted-foreground mb-2">
+                            Symbol: {recommendation.symbol}
+                          </p>
+                        )}
+
+                        {recommendation.allocation !== undefined && (
+                          <p className="text-xs text-purple-600 font-medium mb-2">
+                            {recommendation.allocation}% allokering
+                          </p>
+                        )}
+
+                        {recommendation.sector && (
+                          <div className="flex items-center gap-1 flex-wrap mb-2">
+                            <Tag className="w-3 h-3 text-muted-foreground" />
+                            <Badge variant="outline" className="text-xs">
+                              {recommendation.sector}
+                            </Badge>
+                          </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-2 pt-2 border-t">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleAddFromRecommendation(recommendation)}
+                            className="text-xs bg-white hover:bg-green-50 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300 flex-1"
+                          >
+                            <ShoppingCart className="w-3 h-3 mr-1" />
+                            Lägg till i portfölj
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleStockChat(recommendation.name, recommendation.symbol)} className="h-8 px-2 text-xs bg-white hover:bg-purple-50 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300">
-                            <MessageCircle className="w-3 h-3" />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleStockChat(recommendation.name, recommendation.symbol)}
+                            className="text-xs bg-white hover:bg-purple-50 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300 flex-1"
+                          >
+                            <MessageCircle className="w-3 h-3 mr-1" />
+                            Diskutera
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleDeleteHolding(recommendation.id, recommendation.name)} className="h-8 px-2 text-xs bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteHolding(recommendation.id, recommendation.name)}
+                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-xs"
+                          >
                             <Trash2 className="w-3 h-3" />
                           </Button>
                         </div>
-                      </TableCell>
-                    </TableRow>)}
-                </TableBody>
-              </Table>
-            </div>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
