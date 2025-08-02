@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAnalysisDetail } from '@/hooks/useAnalysisDetail';
 import { useAnalysisComments } from '@/hooks/useAnalysisComments';
@@ -25,9 +25,10 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import AnalysisComments from '@/components/AnalysisComments';
 import AnalysisAIChat from '@/components/AnalysisAIChat';
-import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
+
 
 const AnalysisDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -38,6 +39,30 @@ const AnalysisDetail = () => {
   const { data: comments, isLoading: commentsLoading } = useAnalysisComments(id || '');
   const { likeCount, isLiked, toggleLike } = useAnalysisLikes(id || '');
   const { followUser, unfollowUser, isFollowing } = useUserFollows();
+
+  // Update view count when analysis is loaded
+  useEffect(() => {
+    const updateViewCount = async () => {
+      if (analysis?.id && user) {
+        try {
+          const { error } = await supabase
+            .from('analyses')
+            .update({ views_count: analysis.views_count + 1 })
+            .eq('id', analysis.id);
+
+          if (error) {
+            console.error('Error updating view count:', error);
+          }
+        } catch (error) {
+          console.error('Error updating view count:', error);
+        }
+      }
+    };
+
+    if (analysis && !loading) {
+      updateViewCount();
+    }
+  }, [analysis?.id, user]); // Only run when analysis ID or user changes
 
   if (loading) {
     return (
@@ -282,9 +307,6 @@ const AnalysisDetail = () => {
                 </CardContent>
               </Card>
             )}
-
-            {/* Market Sentiment Analysis */}
-            <MarketSentimentAnalysis />
 
             {/* Related Holdings */}
             {analysis.related_holdings && analysis.related_holdings.length > 0 && (
