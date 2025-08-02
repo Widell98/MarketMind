@@ -66,13 +66,13 @@ const AppSidebar = () => {
             to={isLocked ? '#' : item.href}
             onClick={(e) => handleLockedNavigation(e, item.requiresAuth || false)}
             className={cn(
-              'flex items-center gap-3 rounded-lg text-sm font-medium transition-all duration-200 relative',
+              'flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-300 relative px-3 py-2.5',
               isActive && !isLocked
-                ? 'bg-primary text-primary-foreground shadow-sm'
+                ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-lg shadow-primary/20'
                 : isLocked
-                ? 'text-muted-foreground/60 cursor-pointer hover:text-muted-foreground hover:bg-muted/30'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
-              isPriority && 'border-l-2 border-primary'
+                ? 'text-muted-foreground/60 cursor-pointer hover:text-muted-foreground hover:bg-muted/40 hover:shadow-sm'
+                : 'text-muted-foreground hover:text-foreground hover:bg-gradient-to-r hover:from-muted/70 hover:to-muted/50 hover:shadow-sm',
+              isPriority && 'ring-1 ring-primary/20 bg-gradient-to-r from-primary/5 to-primary/10'
             )}
           >
             {isLocked ? (
@@ -94,8 +94,8 @@ const AppSidebar = () => {
   };
 
   return (
-    <Sidebar className="border-r transition-all duration-300">
-      <SidebarContent className="px-3 py-4">
+    <Sidebar className="border-r bg-gradient-to-b from-background via-background to-muted/20 shadow-sm">
+      <SidebarContent className="px-4 py-6 space-y-6">
         {/* Main Navigation */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-semibold text-primary flex items-center gap-2">
