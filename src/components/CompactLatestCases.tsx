@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Clock, ArrowRight } from 'lucide-react';
 import { useLatestStockCases } from '@/hooks/useLatestStockCases';
 import { useStockCases } from '@/hooks/useStockCases';
+import { useFollowingStockCases } from '@/hooks/useFollowingStockCases';
 import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,7 +22,7 @@ const CompactLatestCases = () => {
 
   // Fetch data based on view mode - limit to 3 for compact display
   const { stockCases: allStockCases, loading: allLoading } = useStockCases(false);
-  const { stockCases: followedStockCases, loading: followedLoading } = useStockCases(true);
+  const { followingStockCases, loading: followingLoading } = useFollowingStockCases();
   const { trendingCases, loading: trendingLoading } = useTrendingStockCases(3);
   const { latestCases: latestStockCases, loading: latestLoading } = useLatestStockCases(3);
 
@@ -32,7 +33,7 @@ const CompactLatestCases = () => {
       case 'trending':
         return { cases: trendingCases, loading: trendingLoading };
       case 'followed':
-        return { cases: followedStockCases.slice(0, 3), loading: followedLoading };
+        return { cases: followingStockCases.slice(0, 3), loading: followingLoading };
       default:
         return { cases: latestStockCases, loading: latestLoading };
     }
