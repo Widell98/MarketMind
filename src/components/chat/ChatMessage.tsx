@@ -239,24 +239,24 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
               
               {/* Stock suggestions - now shows ALL suggestions dynamically */}
               {stockSuggestions.length > 0 && (
-                <div className="mt-5 pt-4 border-t border-border/50">
-                  <p className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4" />
+                <div className="mt-3 pt-3 border-t border-border/50">
+                  <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                    <TrendingUp className="w-3 h-3" />
                     Aktieförslag från AI ({stockSuggestions.length} st)
                   </p>
-                  <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-2">
                     {stockSuggestions.map((suggestion) => {
                       const isAdded = addedStocks.has(suggestion.symbol);
                       return (
                         <div
                           key={suggestion.symbol}
-                          className="flex items-center justify-between gap-4 bg-background/80 rounded-lg p-4 border border-border/50"
+                          className="flex items-center justify-between gap-3 bg-background/80 rounded-lg p-3 border border-border/50"
                         >
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm sm:text-base font-medium text-foreground truncate">
+                            <p className="text-xs sm:text-sm font-medium text-foreground truncate">
                               {suggestion.name}
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-xs text-muted-foreground">
                               {suggestion.symbol}
                             </p>
                           </div>
@@ -265,16 +265,16 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
                             variant={isAdded ? "outline" : "default"}
                             onClick={() => handleAddStock(suggestion)}
                             disabled={isAdded}
-                            className="h-9 px-4 text-sm flex-shrink-0"
+                            className="h-7 px-3 text-xs flex-shrink-0"
                           >
                             {isAdded ? (
                               <>
-                                <Check className="w-4 h-4 mr-2" />
+                                <Check className="w-3 h-3 mr-1" />
                                 Tillagd
                               </>
                             ) : (
                               <>
-                                <Plus className="w-4 h-4 mr-2" />
+                                <Plus className="w-3 h-3 mr-1" />
                                 Lägg till
                               </>
                             )}
