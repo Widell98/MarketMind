@@ -13,11 +13,13 @@ import { useFollowingAnalyses } from '@/hooks/useFollowingAnalyses';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { BarChart3, TrendingUp, Sparkles, Users, Search, BookOpen, Plus } from 'lucide-react';
+import CreateAnalysisDialog from '@/components/CreateAnalysisDialog';
 
 const MarketAnalyses = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -149,7 +151,7 @@ const MarketAnalyses = () => {
             </h1>
           </div>
           {user && (
-            <Button onClick={() => navigate('/create-analysis')} className="bg-purple-600 hover:bg-purple-700">
+            <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700">
               <Plus className="w-4 h-4 mr-2" />
               Ny Analys
             </Button>
@@ -232,7 +234,7 @@ const MarketAnalyses = () => {
                     Rensa filter
                   </Button>
                 ) : user && (
-                  <Button onClick={() => navigate('/create-analysis')} className="bg-purple-600 hover:bg-purple-700">
+                  <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700">
                     <BookOpen className="w-4 h-4 mr-2" />
                     Skapa första analysen
                   </Button>
@@ -325,6 +327,12 @@ const MarketAnalyses = () => {
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Create Analysis Dialog */}
+        <CreateAnalysisDialog 
+          isOpen={isCreateDialogOpen}
+          onClose={() => setIsCreateDialogOpen(false)}
+        />
       </div>
     </Layout>
   );
