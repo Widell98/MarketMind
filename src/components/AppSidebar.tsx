@@ -53,7 +53,7 @@ const AppSidebar = () => {
     }
   };
 
-  const renderNavItem = (item: any, isPriority = false) => {
+  const renderNavItem = (item: any) => {
     const Icon = item.icon;
     const isActive = location.pathname === item.href || 
       (item.href !== '/' && location.pathname.startsWith(item.href));
@@ -71,8 +71,7 @@ const AppSidebar = () => {
                 ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-lg shadow-primary/20'
                 : isLocked
                 ? 'text-muted-foreground/60 cursor-pointer hover:text-muted-foreground hover:bg-muted/40 hover:shadow-sm'
-                : 'text-muted-foreground hover:text-foreground hover:bg-gradient-to-r hover:from-muted/70 hover:to-muted/50 hover:shadow-sm',
-              isPriority && 'ring-1 ring-primary/20 bg-gradient-to-r from-primary/5 to-primary/10'
+                : 'text-muted-foreground hover:text-foreground hover:bg-gradient-to-r hover:from-muted/70 hover:to-muted/50 hover:shadow-sm'
             )}
           >
             {isLocked ? (
@@ -81,12 +80,6 @@ const AppSidebar = () => {
               <Icon className="w-4 h-4" />
             )}
             <span>{item.name}</span>
-            {isPriority && (
-              <Badge className="ml-auto bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs">
-                <Sparkles className="w-3 h-3 mr-1" />
-                AI
-              </Badge>
-            )}
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -117,7 +110,7 @@ const AppSidebar = () => {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {aiNavigation.map((item) => renderNavItem(item, true))}
+              {aiNavigation.map((item) => renderNavItem(item))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
