@@ -70,14 +70,10 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
 
   const handleDiscussWithAI = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const contextData = {
-      type: 'stock_case',
-      id: stockCase.id,
-      title: stockCase.title,
-      company: stockCase.company_name,
-      data: stockCase
-    };
-    navigate('/ai-chat', { state: { contextData } });
+    // Navigate to stock case detail page and scroll to comments
+    navigate(`/stock-cases/${stockCase.id}`, { 
+      state: { scrollToComments: true } 
+    });
   };
 
   const handleFollowToggle = async (e: React.MouseEvent) => {

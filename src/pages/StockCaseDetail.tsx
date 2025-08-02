@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useUserFollows } from '@/hooks/useUserFollows';
@@ -45,6 +45,7 @@ import type { StockCase } from '@/types/stockCase';
 const StockCaseDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
@@ -177,6 +178,22 @@ const StockCaseDetail = () => {
   const handleVersionSelect = (version: any) => {
     setSelectedVersion(version);
   };
+
+  // Effect to scroll to comments when navigated from "Diskutera" button
+  useEffect(() => {
+    if (location.state?.scrollToComments) {
+      // Use setTimeout to ensure the page is fully rendered
+      setTimeout(() => {
+        const commentsSection = document.getElementById('comments-section');
+        if (commentsSection) {
+          commentsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 500);
+      
+      // Clear the state so it doesn't persist on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   // Use selected version data or fall back to original stock case
   const displayData = selectedVersion || {
@@ -441,7 +458,9 @@ const StockCaseDetail = () => {
             <StockCaseAIChat stockCase={stockCase} />
 
             {/* Comments Section */}
-            <StockCaseComments stockCaseId={stockCase.id} />
+            <div id="comments-section">
+              <StockCaseComments stockCaseId={stockCase.id} />
+            </div>
           </div>
 
           {/* Sidebar */}
