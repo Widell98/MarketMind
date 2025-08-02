@@ -19,7 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Brain, TrendingUp, Target, BarChart3, Activity, Crown, AlertCircle, User, MessageSquare, Clock } from 'lucide-react';
+import { Brain, TrendingUp, Target, BarChart3, Activity, AlertCircle, User, MessageSquare, Clock } from 'lucide-react';
 import PortfolioHealthScore from '@/components/PortfolioHealthScore';
 import FloatingActionButton from '@/components/FloatingActionButton';
 import Breadcrumb from '@/components/Breadcrumb';
@@ -245,7 +245,7 @@ const PortfolioImplementation = () => {
           )}
 
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 max-w-xl mx-auto mb-6 bg-muted p-1 rounded-xl h-auto">
+            <TabsList className="grid w-full grid-cols-2 max-w-lg mx-auto mb-6 bg-muted p-1 rounded-xl h-auto">
               <TabsTrigger 
                 value="overview" 
                 className="flex items-center gap-2 rounded-lg py-3 px-4 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-sm"
@@ -261,14 +261,6 @@ const PortfolioImplementation = () => {
                 <Brain className="w-4 h-4" />
                 <span className="hidden xs:inline">Riskprofil</span>
                 <span className="xs:hidden">Analys</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="membership" 
-                className="flex items-center gap-2 rounded-lg py-3 px-4 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-sm"
-              >
-                <Crown className="w-4 h-4" />
-                <span className="hidden xs:inline">Medlemskap</span>
-                <span className="xs:hidden">Plan</span>
               </TabsTrigger>
             </TabsList>
             
@@ -294,15 +286,6 @@ const PortfolioImplementation = () => {
               <UserInvestmentAnalysis onUpdateProfile={handleUpdateProfile} />
             </TabsContent>
 
-            <TabsContent value="membership" className="mt-0">
-              <div className="max-w-2xl mx-auto">
-                <div className="mb-6 text-center">
-                  <h2 className="text-2xl font-bold mb-2 text-foreground">Medlemskap & Prenumeration</h2>
-                  <p className="text-base text-muted-foreground">Hantera din plan och få tillgång till avancerade funktioner</p>
-                </div>
-                <SubscriptionCard />
-              </div>
-            </TabsContent>
           </Tabs>
         </div>
       </div>
