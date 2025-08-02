@@ -108,20 +108,23 @@ const MembershipSection = () => {
               <p className="text-sm text-muted-foreground">
                 Uppgradera ditt konto för att få tillgång till obegränsade AI-funktioner och avancerade verktyg.
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <Button 
                   onClick={() => handleUpgrade('premium')}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="w-full"
+                  size="sm"
                 >
-                  <Crown className="h-4 w-4 mr-2" />
-                  Uppgradera till Premium
+                  <Crown className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span className="truncate">Uppgradera till Premium</span>
                 </Button>
                 <Button 
                   onClick={() => handleUpgrade('pro')}
                   variant="outline"
+                  className="w-full"
+                  size="sm"
                 >
-                  <Crown className="h-4 w-4 mr-2" />
-                  Uppgradera till Pro
+                  <Crown className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span className="truncate">Uppgradera till Pro</span>
                 </Button>
               </div>
             </div>
@@ -133,10 +136,11 @@ const MembershipSection = () => {
               <Button 
                 onClick={handleManageSubscription}
                 variant="outline"
-                className="w-full sm:w-auto"
+                className="w-full"
+                size="sm"
               >
-                <Settings className="h-4 w-4 mr-2" />
-                Hantera prenumeration
+                <Settings className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span className="truncate">Hantera prenumeration</span>
               </Button>
             </div>
           )}
