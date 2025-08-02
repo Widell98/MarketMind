@@ -39,7 +39,7 @@ const MembershipSection = () => {
   return (
     <div className="space-y-6">
       {/* Current Membership Status */}
-      <Card className="border">
+      <Card className="border bg-background">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Crown className="h-5 w-5 text-primary" />
@@ -95,7 +95,7 @@ const MembershipSection = () => {
       </Card>
 
       {/* Membership Actions */}
-      <Card className="border">
+      <Card className="border bg-background">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-primary" />
