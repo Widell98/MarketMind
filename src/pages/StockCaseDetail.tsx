@@ -27,7 +27,9 @@ import {
   Brain,
   ShoppingCart,
   Plus,
-  UserPlus
+  UserPlus,
+  PlusCircle,
+  History
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -36,6 +38,8 @@ import StockCaseAIChat from '@/components/StockCaseAIChat';
 import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
 import StockCaseComments from '@/components/StockCaseComments';
+import AddStockCaseUpdateDialog from '@/components/AddStockCaseUpdateDialog';
+import StockCaseHistoryViewer from '@/components/StockCaseHistoryViewer';
 import type { StockCase } from '@/types/stockCase';
 
 const StockCaseDetail = () => {
@@ -43,6 +47,8 @@ const StockCaseDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const { stockCase, loading, error } = useStockCase(id || '');
   const { 
@@ -98,6 +104,7 @@ const StockCaseDetail = () => {
 
   const performance = stockCase.performance_percentage;
   const isPositivePerformance = performance && performance >= 0;
+  const isOwner = user && stockCase.user_id === user.id;
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -252,6 +259,29 @@ const StockCaseDetail = () => {
                 </Button>
               </div>
 
+              {/* Owner Actions */}
+              {isOwner && (
+                <div className="flex justify-center items-center gap-3 pt-3 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowUpdateDialog(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    <span>Uppdatera Case</span>
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowHistory(!showHistory)}
+                    className="flex items-center gap-2"
+                  >
+                    <History className="w-4 h-4" />
+                    <span>{showHistory ? 'Dölj Historik' : 'Se Historik'}</span>
+                  </Button>
+                </div>
+              )}
+
               {/* Login prompt for non-users */}
               {!user && (
                 <div className="text-center p-3 bg-muted rounded-lg">
@@ -263,6 +293,20 @@ const StockCaseDetail = () => {
             </div>
           )}
         </div>
+
+        {/* History Viewer */}
+        {showHistory && isOwner && (
+          <StockCaseHistoryViewer
+            stockCaseId={stockCase.id}
+            originalStockCase={{
+              title: stockCase.title,
+              description: stockCase.description,
+              image_url: stockCase.image_url,
+              created_at: stockCase.created_at,
+              user_id: stockCase.user_id
+            }}
+          />
+        )}
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -489,6 +533,20 @@ const StockCaseDetail = () => {
           </div>
         </div>
       </div>
+
+      {/* Update Dialog */}
+      <AddStockCaseUpdateDialog
+        isOpen={showUpdateDialog}
+        onClose={() => setShowUpdateDialog(false)}
+        stockCaseId={stockCase.id}
+        onSuccess={() => {
+          setShowUpdateDialog(false);
+          toast({
+            title: "Uppdatering skapad!",
+            description: "Din uppdatering har lagts till framgångsrikt"
+          });
+        }}
+      />
     </Layout>
   );
 };

@@ -914,6 +914,50 @@ export type Database = {
           },
         ]
       }
+      stock_case_updates: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          stock_case_id: string
+          title: string | null
+          update_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          stock_case_id: string
+          title?: string | null
+          update_type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          stock_case_id?: string
+          title?: string | null
+          update_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_case_updates_stock_case_id_fkey"
+            columns: ["stock_case_id"]
+            isOneToOne: false
+            referencedRelation: "stock_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_cases: {
         Row: {
           admin_comment: string | null
