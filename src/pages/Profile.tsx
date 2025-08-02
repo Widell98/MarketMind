@@ -14,6 +14,7 @@ import MembershipSection from '@/components/MembershipSection';
 import ActivitySection from '@/components/ActivitySection';
 import EditProfileDialog from '@/components/EditProfileDialog';
 import CreateStockCaseDialog from '@/components/CreateStockCaseDialog';
+import EditStockCaseDialog from '@/components/EditStockCaseDialog';
 import { useStockCases } from '@/hooks/useStockCases';
 import { useStockCaseOperations } from '@/hooks/useStockCaseOperations';
 import EnhancedStockCaseCard from '@/components/EnhancedStockCaseCard';
@@ -26,7 +27,9 @@ const Profile = () => {
   const navigate = useNavigate();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateCaseDialogOpen, setIsCreateCaseDialogOpen] = useState(false);
+  const [isEditCaseDialogOpen, setIsEditCaseDialogOpen] = useState(false);
   const [caseToDelete, setCaseToDelete] = useState<string | null>(null);
+  const [caseToEdit, setCaseToEdit] = useState<any>(null);
   
   const { stats } = useEnhancedUserStats();
   const { savedItems, removeOpportunity } = useSavedOpportunities();
@@ -81,6 +84,11 @@ const Profile = () => {
     } catch (error) {
       console.error('Error deleting case:', error);
     }
+  };
+
+  const handleEditCase = (stockCase: any) => {
+    setCaseToEdit(stockCase);
+    setIsEditCaseDialogOpen(true);
   };
 
   return (
@@ -213,6 +221,7 @@ const Profile = () => {
                               stockCase={stockCase}
                               onViewDetails={() => navigate(`/stock-cases/${stockCase.id}`)}
                               onDelete={() => setCaseToDelete(stockCase.id)}
+                              onEdit={handleEditCase}
                             />
                           ))}
                           {stockCases.filter(c => c.user_id === user.id).length === 0 && (
@@ -281,6 +290,20 @@ const Profile = () => {
           setIsCreateCaseDialogOpen(false);
           refetch();
         }}
+      />
+
+      <EditStockCaseDialog 
+        isOpen={isEditCaseDialogOpen}
+        onClose={() => {
+          setIsEditCaseDialogOpen(false);
+          setCaseToEdit(null);
+        }}
+        onSuccess={() => {
+          setIsEditCaseDialogOpen(false);
+          setCaseToEdit(null);
+          refetch();
+        }}
+        stockCase={caseToEdit}
       />
 
       <AlertDialog open={!!caseToDelete} onOpenChange={() => setCaseToDelete(null)}>

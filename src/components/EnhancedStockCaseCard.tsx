@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
-import { Heart, MessageCircle, Share2, TrendingUp, TrendingDown, Calendar, MoreHorizontal, Trash2, Bot, UserPlus, UserCheck, User } from 'lucide-react';
+import { Heart, MessageCircle, Share2, TrendingUp, TrendingDown, Calendar, MoreHorizontal, Trash2, Bot, UserPlus, UserCheck, User, Edit } from 'lucide-react';
 import { StockCase } from '@/types/stockCase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -18,6 +18,7 @@ interface EnhancedStockCaseCardProps {
   stockCase: StockCase;
   onViewDetails: (id: string) => void;
   onDelete?: (id: string) => void;
+  onEdit?: (stockCase: StockCase) => void;
   showProfileActions?: boolean;
 }
 
@@ -25,6 +26,7 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
   stockCase,
   onViewDetails,
   onDelete,
+  onEdit,
   showProfileActions = true
 }) => {
   const { user } = useAuth();
@@ -183,7 +185,7 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
               </Button>
             )}
 
-            {(isAdmin || (user && onDelete)) && (
+            {(isAdmin || (user && (onDelete || onEdit))) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={e => e.stopPropagation()}>
@@ -191,6 +193,17 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {onEdit && isOwner && (
+                    <DropdownMenuItem 
+                      onClick={e => {
+                        e.stopPropagation();
+                        onEdit(stockCase);
+                      }}
+                    >
+                      <Edit className="mr-2 h-4 w-4" />
+                      Redigera
+                    </DropdownMenuItem>
+                  )}
                   {onDelete && (
                     <DropdownMenuItem 
                       onClick={e => {
