@@ -21,6 +21,7 @@ import EnhancedStockCaseCard from '@/components/EnhancedStockCaseCard';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useEnhancedUserStats } from '@/hooks/useEnhancedUserStats';
 import { useSavedOpportunities } from '@/hooks/useSavedOpportunities';
+import { supabase } from '@/integrations/supabase/client';
 
 const Profile = () => {
   const { user, loading } = useAuth();
@@ -30,13 +31,42 @@ const Profile = () => {
   const [isEditCaseDialogOpen, setIsEditCaseDialogOpen] = useState(false);
   const [caseToDelete, setCaseToDelete] = useState<string | null>(null);
   const [caseToEdit, setCaseToEdit] = useState<any>(null);
+  const [profileData, setProfileData] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
   
   const { stats } = useEnhancedUserStats();
   const { savedItems, removeOpportunity } = useSavedOpportunities();
   const { stockCases, loading: stockCasesLoading, refetch } = useStockCases();
   const { deleteStockCase } = useStockCaseOperations();
 
-  if (loading) {
+  // Fetch profile data
+  React.useEffect(() => {
+    const fetchProfileData = async () => {
+      if (!user?.id) return;
+      
+      try {
+        setProfileLoading(true);
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (error) throw error;
+        setProfileData(data);
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        // Fallback to user data if profile fetch fails
+        setProfileData(user);
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    fetchProfileData();
+  }, [user]);
+
+  if (loading || profileLoading) {
     return (
       <Layout>
         <div className="flex justify-center items-center h-[50vh]">
@@ -71,9 +101,19 @@ const Profile = () => {
     ai_generated: item.analyses?.ai_generated || false
   }));
 
-  const handleProfileSaved = () => {
-    // Optionally refresh user data or show success message
-    window.location.reload(); // Simple refresh to get updated profile data
+  const handleProfileSaved = async () => {
+    // Refresh profile data after save
+    if (user?.id) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (data) {
+        setProfileData(data);
+      }
+    }
   };
 
   const handleDeleteCase = async (caseId: string) => {
@@ -97,7 +137,7 @@ const Profile = () => {
         {/* Profile Header */}
         <div className="pb-8">
           <EnhancedProfileHeader 
-            profileData={user}
+            profileData={profileData || user}
             isOwnProfile={true}
             onEditClick={() => setIsEditDialogOpen(true)}
             userStats={stats}
@@ -276,9 +316,9 @@ const Profile = () => {
       <EditProfileDialog 
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
-        currentName={user?.email || ''}
+        currentName={profileData?.display_name || profileData?.username || user?.email || ''}
         userId={user?.id || ''}
-        profileData={user}
+        profileData={profileData || user}
         onSaved={handleProfileSaved}
       />
 
