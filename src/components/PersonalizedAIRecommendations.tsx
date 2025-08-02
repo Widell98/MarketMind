@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Brain, TrendingUp, Target, User, MessageCircle, Star, ShoppingCart, Sparkles } from 'lucide-react';
+import { Brain, TrendingUp, Target, User, MessageCircle, Star, ShoppingCart, Sparkles, Trash2, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLatestStockCases } from '@/hooks/useLatestStockCases';
 import { useNavigate } from 'react-router-dom';
@@ -57,6 +57,18 @@ const PersonalizedAIRecommendations = () => {
       state: {
         contextData
       }
+    });
+  };
+
+  const handleDeleteRecommendation = (stockCase: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // For AI recommendations, we could implement removal from recommendations list
+    // For now, we'll show a toast that this feature could be implemented
+    toast({
+      title: "Funktionen kommer snart",
+      description: "Möjligheten att ta bort AI-rekommendationer kommer i en framtida uppdatering.",
+      variant: "default"
     });
   };
 
@@ -182,7 +194,7 @@ const PersonalizedAIRecommendations = () => {
               onClick={() => navigate('/ai-chat')}
               className="text-purple-600 hover:text-purple-700"
             >
-              Chatta med AI
+              Få fler <ArrowRight className="w-3 h-3 ml-1" />
             </Button>
           </div>
           <div className="space-y-3">
@@ -197,10 +209,12 @@ const PersonalizedAIRecommendations = () => {
                     <div className="flex items-center gap-2 mb-1">
                       <Star className="w-4 h-4 text-purple-600 flex-shrink-0" />
                       <h4 className="font-medium text-sm truncate">{stockCase.company_name}</h4>
-                      <Badge variant="secondary" className="text-xs bg-purple-50 text-purple-700 border-purple-200 flex-shrink-0">
-                        <Brain className="w-3 h-3 mr-1" />
-                        AI
-                      </Badge>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Badge variant="secondary" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                          <Brain className="w-3 h-3 mr-1" />
+                          AI
+                        </Badge>
+                      </div>
                     </div>
                     
                     <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
@@ -214,7 +228,7 @@ const PersonalizedAIRecommendations = () => {
                     )}
 
                     {stockCase.sector && (
-                      <div className="flex items-center gap-1 mb-2">
+                      <div className="flex items-center gap-1 flex-wrap mb-2">
                         <Badge variant="outline" className="text-xs">
                           {stockCase.sector}
                         </Badge>
@@ -240,6 +254,14 @@ const PersonalizedAIRecommendations = () => {
                       >
                         <MessageCircle className="w-3 h-3 mr-1" />
                         Diskutera
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleDeleteRecommendation(stockCase, e)}
+                        className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-xs"
+                      >
+                        <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
                   </div>
