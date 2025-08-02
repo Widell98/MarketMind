@@ -267,15 +267,20 @@ const StockCaseDetail = () => {
               </div>
               
               {/* Action Buttons */}
-              <div className="flex justify-center items-center gap-3">
+              <div className="flex justify-center items-center gap-4">
                 <Button
                   variant={isLiked ? "default" : "outline"}
                   onClick={handleLikeClick}
                   disabled={likesLoading}
-                  className="flex items-center gap-2"
+                  size="lg"
+                  className={`flex items-center gap-3 px-6 py-3 rounded-xl transition-all duration-200 ${
+                    isLiked 
+                      ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg shadow-red-500/25 hover:shadow-red-500/40' 
+                      : 'hover:bg-red-50 hover:border-red-200 hover:text-red-600 dark:hover:bg-red-950/20'
+                  }`}
                 >
-                  <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-                  <span>{likeCount}</span>
+                  <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+                  <span className="font-medium">{likeCount}</span>
                 </Button>
 
                 {user && (
@@ -286,17 +291,10 @@ const StockCaseDetail = () => {
                     variant="outline"
                     showText={true}
                     onSaveSuccess={handleSaveSuccess}
+                    size="lg"
+                    className="px-6 py-3 rounded-xl transition-all duration-200 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 dark:hover:bg-blue-950/20"
                   />
                 )}
-
-                <Button
-                  variant="outline"
-                  onClick={handleShare}
-                  className="flex items-center gap-2"
-                >
-                  <Share2 className="w-4 h-4" />
-                  <span>Dela</span>
-                </Button>
               </div>
 
               {/* Owner Actions */}
