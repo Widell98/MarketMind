@@ -152,10 +152,10 @@ const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
           
           <CardContent className="space-y-4">
             <Select value={currentIndex.toString()} onValueChange={handleVersionChange}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full h-10 min-h-[2.5rem] transition-none">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-50 bg-background border shadow-lg">
                 {timeline.map((item, index) => (
                   <SelectItem key={item.id} value={index.toString()}>
                     <div className="flex items-center gap-2">
@@ -257,10 +257,10 @@ const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
         
         <CardContent className="space-y-6">
           <Select value={currentIndex.toString()} onValueChange={handleVersionChange}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full h-10 min-h-[2.5rem] transition-none">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-50 bg-background border shadow-lg">
               {timeline.map((item, index) => (
                 <SelectItem key={item.id} value={index.toString()}>
                   <div className="flex items-center gap-2">
