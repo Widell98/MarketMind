@@ -81,12 +81,6 @@ const AppSidebar = () => {
               <Icon className="w-4 h-4" />
             )}
             <span>{item.name}</span>
-            {isPriority && (
-              <Badge className="ml-auto bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs">
-                <Sparkles className="w-3 h-3 mr-1" />
-                AI
-              </Badge>
-            )}
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
