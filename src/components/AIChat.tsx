@@ -88,7 +88,15 @@ const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts 
     // Handle initial stock and message from URL parameters - but only once
     if (initialStock && initialMessage && !hasProcessedInitialMessage) {
       console.log('Processing initial chat session for stock:', initialStock);
-      createNewSession(initialStock, initialMessage);
+      createNewSession(initialStock);
+      
+      // Pre-fill the input with the initial message instead of sending it
+      const decodedMessage = decodeURIComponent(initialMessage);
+      setInput(decodedMessage);
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      
       setHasProcessedInitialMessage(true);
     }
   }, [initialStock, initialMessage, hasProcessedInitialMessage, createNewSession]);
