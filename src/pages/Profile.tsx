@@ -217,7 +217,7 @@ const Profile = () => {
             {/* Main Content Area */}
             <div className="xl:col-span-3">
               <Tabs defaultValue="content" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-8 bg-background border">
+                <TabsList className="grid w-full grid-cols-2 mb-8 bg-muted/30 border border-border/50 rounded-lg p-1 shadow-sm">
                   <TabsTrigger value="content">
                     Innehåll
                   </TabsTrigger>
