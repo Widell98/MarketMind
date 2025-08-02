@@ -115,7 +115,10 @@ const ChatFolder: React.FC<ChatFolderProps> = ({
           variant="ghost"
           size="sm"
           className="flex items-center gap-2 flex-1 justify-start h-8 px-2"
-          onClick={() => setIsExpanded(!isExpanded)}
+          onClick={(e) => {
+            e.preventDefault();
+            setIsExpanded(!isExpanded);
+          }}
         >
           {isExpanded ? (
             <ChevronDown className="w-3 h-3" />
@@ -178,7 +181,7 @@ const ChatFolder: React.FC<ChatFolderProps> = ({
 
       {/* Sessions */}
       {isExpanded && (
-        <div className="ml-4 space-y-1">
+        <div className="ml-4 space-y-1 transition-all duration-200 ease-in-out">
           {sessions.map((session) => (
             <ChatSessionItem
               key={session.id}
