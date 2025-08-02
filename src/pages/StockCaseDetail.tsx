@@ -51,6 +51,7 @@ const StockCaseDetail = () => {
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [selectedVersion, setSelectedVersion] = useState<any>(null);
 
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL LOGIC
   const { stockCase, loading, error } = useStockCase(id || '');
   const { 
     likeCount, 
@@ -61,6 +62,23 @@ const StockCaseDetail = () => {
   
   const { followUser, unfollowUser, isFollowing } = useUserFollows();
 
+  // Effect to scroll to comments when navigated from "Diskutera" button
+  useEffect(() => {
+    if (location.state?.scrollToComments) {
+      // Use setTimeout to ensure the page is fully rendered
+      setTimeout(() => {
+        const commentsSection = document.getElementById('comments-section');
+        if (commentsSection) {
+          commentsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 500);
+      
+      // Clear the state so it doesn't persist on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
+  // NOW we can have conditional logic and early returns
   if (loading) {
     return (
       <Layout>
@@ -178,22 +196,6 @@ const StockCaseDetail = () => {
   const handleVersionSelect = (version: any) => {
     setSelectedVersion(version);
   };
-
-  // Effect to scroll to comments when navigated from "Diskutera" button
-  useEffect(() => {
-    if (location.state?.scrollToComments) {
-      // Use setTimeout to ensure the page is fully rendered
-      setTimeout(() => {
-        const commentsSection = document.getElementById('comments-section');
-        if (commentsSection) {
-          commentsSection.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 500);
-      
-      // Clear the state so it doesn't persist on refresh
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state]);
 
   // Use selected version data or fall back to original stock case
   const displayData = selectedVersion || {
