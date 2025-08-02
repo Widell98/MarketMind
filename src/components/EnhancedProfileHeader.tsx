@@ -136,15 +136,7 @@ const EnhancedProfileHeader: React.FC<EnhancedProfileHeaderProps> = ({
               </div>
 
               {/* Additional Info */}
-              <div className="flex flex-wrap justify-center md:justify-start gap-3">
-                {profileData?.level}
-                {profileData?.investment_philosophy && <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 border-emerald-200">
-                    {profileData.investment_philosophy}
-                  </Badge>}
-                {profileData?.location && <Badge variant="outline" className="bg-violet-50 text-violet-700 dark:bg-violet-900 dark:text-violet-300 border-violet-200">
-                    📍 {profileData.location}
-                  </Badge>}
-              </div>
+              
             </div>
           </div>
         </CardContent>
