@@ -437,14 +437,14 @@ const StockCaseDetail = () => {
 
             {/* Admin Comment */}
             {stockCase.admin_comment && (
-              <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20">
+              <Card className="border-blue-600/20 bg-blue-600/10 dark:bg-blue-950/30">
                 <CardHeader>
-                  <CardTitle className="text-blue-800 dark:text-blue-200">
+                  <CardTitle className="text-blue-600 dark:text-blue-400">
                     Expertkommentar
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-blue-700 dark:text-blue-300">
+                  <p className="text-blue-600 dark:text-blue-300">
                     {stockCase.admin_comment}
                   </p>
                 </CardContent>
