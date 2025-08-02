@@ -31,7 +31,7 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
     target_price: '',
     stop_loss: '',
     sector: '',
-    image_url: ''
+    currency: 'SEK'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -113,7 +113,7 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
     setIsSubmitting(true);
 
     try {
-      let imageUrl = formData.image_url || null;
+      let imageUrl = null;
       
       // Handle image upload if file is selected
       if (imageFile) {
@@ -130,6 +130,7 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
           target_price: formData.target_price ? parseFloat(formData.target_price) : null,
           stop_loss: formData.stop_loss ? parseFloat(formData.stop_loss) : null,
           sector: formData.sector || null,
+          currency: formData.currency,
           image_url: imageUrl,
           user_id: user.id,
           is_public: true,
@@ -153,7 +154,7 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
         target_price: '',
         stop_loss: '',
         sector: '',
-        image_url: ''
+        currency: 'SEK'
       });
       setImageFile(null);
       setImagePreview(null);
@@ -228,7 +229,7 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="entry_price">Inköpspris (SEK)</Label>
+              <Label htmlFor="entry_price">Inköpspris</Label>
               <Input
                 id="entry_price"
                 type="number"
@@ -240,7 +241,7 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="target_price">Målpris (SEK)</Label>
+              <Label htmlFor="target_price">Målpris</Label>
               <Input
                 id="target_price"
                 type="number"
@@ -252,7 +253,7 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="stop_loss">Stop Loss (SEK)</Label>
+              <Label htmlFor="stop_loss">Stop Loss</Label>
               <Input
                 id="stop_loss"
                 type="number"
@@ -287,13 +288,17 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="image_url">Bild URL (alternativt)</Label>
-              <Input
-                id="image_url"
-                placeholder="https://example.com/image.jpg"
-                value={formData.image_url}
-                onChange={(e) => handleInputChange('image_url', e.target.value)}
-              />
+              <Label htmlFor="currency">Valuta</Label>
+              <Select value={formData.currency} onValueChange={(value) => handleInputChange('currency', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Välj valuta" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SEK">SEK (Svenska kronor)</SelectItem>
+                  <SelectItem value="USD">USD (US Dollar)</SelectItem>
+                  <SelectItem value="EUR">EUR (Euro)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

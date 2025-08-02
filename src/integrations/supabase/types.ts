@@ -922,6 +922,7 @@ export type Database = {
           closed_at: string | null
           company_name: string
           created_at: string
+          currency: string | null
           current_price: number | null
           description: string | null
           dividend_yield: string | null
@@ -947,6 +948,7 @@ export type Database = {
           closed_at?: string | null
           company_name: string
           created_at?: string
+          currency?: string | null
           current_price?: number | null
           description?: string | null
           dividend_yield?: string | null
@@ -972,6 +974,7 @@ export type Database = {
           closed_at?: string | null
           company_name?: string
           created_at?: string
+          currency?: string | null
           current_price?: number | null
           description?: string | null
           dividend_yield?: string | null
