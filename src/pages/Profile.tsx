@@ -15,6 +15,7 @@ import ActivitySection from '@/components/ActivitySection';
 import EditProfileDialog from '@/components/EditProfileDialog';
 import CreateStockCaseDialog from '@/components/CreateStockCaseDialog';
 import EditStockCaseDialog from '@/components/EditStockCaseDialog';
+import CreateAnalysisDialog from '@/components/CreateAnalysisDialog';
 import { useStockCases } from '@/hooks/useStockCases';
 import { useStockCaseOperations } from '@/hooks/useStockCaseOperations';
 import EnhancedStockCaseCard from '@/components/EnhancedStockCaseCard';
@@ -29,6 +30,7 @@ const Profile = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateCaseDialogOpen, setIsCreateCaseDialogOpen] = useState(false);
   const [isEditCaseDialogOpen, setIsEditCaseDialogOpen] = useState(false);
+  const [isCreateAnalysisDialogOpen, setIsCreateAnalysisDialogOpen] = useState(false);
   const [caseToDelete, setCaseToDelete] = useState<string | null>(null);
   const [caseToEdit, setCaseToEdit] = useState<any>(null);
   const [profileData, setProfileData] = useState<any>(null);
@@ -173,7 +175,7 @@ const Profile = () => {
                   </Button>
                   
                   <Button 
-                    onClick={() => navigate('/market-analyses')}
+                    onClick={() => setIsCreateAnalysisDialogOpen(true)}
                     variant="outline"
                     className="w-full justify-between"
                     size="sm"
@@ -332,6 +334,11 @@ const Profile = () => {
           refetch();
         }}
         stockCase={caseToEdit}
+      />
+
+      <CreateAnalysisDialog 
+        isOpen={isCreateAnalysisDialogOpen}
+        onClose={() => setIsCreateAnalysisDialogOpen(false)}
       />
 
       <AlertDialog open={!!caseToDelete} onOpenChange={() => setCaseToDelete(null)}>
