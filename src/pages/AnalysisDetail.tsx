@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAnalysisDetail } from '@/hooks/useAnalysisDetail';
 import { useAnalysisComments } from '@/hooks/useAnalysisComments';
+import { useAnalysisLikes } from '@/hooks/useAnalysisLikes';
 import { useUserFollows } from '@/hooks/useUserFollows';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
@@ -13,7 +14,6 @@ import {
   ArrowLeft, 
   Heart, 
   MessageCircle, 
-  Share2, 
   Eye,
   Calendar,
   Users,
@@ -36,6 +36,7 @@ const AnalysisDetail = () => {
 
   const { data: analysis, isLoading: loading, error } = useAnalysisDetail(id || '');
   const { data: comments, isLoading: commentsLoading } = useAnalysisComments(id || '');
+  const { likeCount, isLiked, toggleLike } = useAnalysisLikes(id || '');
   const { followUser, unfollowUser, isFollowing } = useUserFollows();
 
   if (loading) {
@@ -80,25 +81,6 @@ const AnalysisDetail = () => {
     );
   }
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: analysis.title,
-          text: `Kolla in denna analys: ${analysis.title}`,
-          url: window.location.href,
-        });
-      } catch (error) {
-        console.log('Sharing failed:', error);
-      }
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      toast({
-        title: "Länk kopierad",
-        description: "Analyslänken har kopierats till urklipp",
-      });
-    }
-  };
 
   const handleFollowClick = () => {
     if (!user) {
@@ -221,10 +203,11 @@ const AnalysisDetail = () => {
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
-                      className="flex items-center gap-2"
+                      onClick={toggleLike}
+                      className={`flex items-center gap-2 ${isLiked ? 'text-red-500 hover:text-red-600' : ''}`}
                     >
-                      <Heart className="w-4 h-4" />
-                      {analysis.likes_count}
+                      <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+                      {likeCount}
                     </Button>
 
                     <Button
@@ -232,16 +215,7 @@ const AnalysisDetail = () => {
                       className="flex items-center gap-2"
                     >
                       <MessageCircle className="w-4 h-4" />
-                      {analysis.comments_count}
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      onClick={handleShare}
-                      className="flex items-center gap-2"
-                    >
-                      <Share2 className="w-4 h-4" />
-                      Dela
+                      {comments?.length || 0}
                     </Button>
                   </div>
                 </div>
@@ -346,12 +320,12 @@ const AnalysisDetail = () => {
                 
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 dark:text-gray-400">Gillningar:</span>
-                  <span className="font-medium">{analysis.likes_count}</span>
+                  <span className="font-medium">{likeCount}</span>
                 </div>
 
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 dark:text-gray-400">Kommentarer:</span>
-                  <span className="font-medium">{analysis.comments_count}</span>
+                  <span className="font-medium">{comments?.length || 0}</span>
                 </div>
 
                 <Separator />
