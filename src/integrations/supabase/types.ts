@@ -799,6 +799,33 @@ export type Database = {
           },
         ]
       }
+      stock_case_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          stock_case_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          stock_case_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          stock_case_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       stock_case_follows: {
         Row: {
           created_at: string
@@ -1540,6 +1567,10 @@ export type Database = {
       }
       get_post_like_count: {
         Args: { post_id: string }
+        Returns: number
+      }
+      get_stock_case_comment_count: {
+        Args: { case_id: string }
         Returns: number
       }
       get_stock_case_follow_count: {

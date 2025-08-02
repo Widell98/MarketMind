@@ -35,6 +35,7 @@ import { toast } from '@/hooks/use-toast';
 import StockCaseAIChat from '@/components/StockCaseAIChat';
 import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
+import StockCaseComments from '@/components/StockCaseComments';
 import type { StockCase } from '@/types/stockCase';
 
 const StockCaseDetail = () => {
@@ -386,6 +387,9 @@ const StockCaseDetail = () => {
 
             {/* AI Chat Integration */}
             <StockCaseAIChat stockCase={stockCase} />
+
+            {/* Comments Section */}
+            <StockCaseComments stockCaseId={stockCase.id} />
           </div>
 
           {/* Right Column - Sidebar */}
