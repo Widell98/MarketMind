@@ -58,7 +58,7 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
 
   const handleEditCase = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate('/my-stock-cases');
+    navigate('/profile');
   };
 
   const getCategoryColor = (category: string) => {

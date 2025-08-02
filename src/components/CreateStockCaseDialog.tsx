@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Upload, TrendingUp } from 'lucide-react';
+import { useStockCaseOperations } from '@/hooks/useStockCaseOperations';
+import { Upload, TrendingUp, X } from 'lucide-react';
 
 interface CreateStockCaseDialogProps {
   isOpen: boolean;
@@ -33,14 +34,59 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
     image_url: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { uploadImage } = useStockCaseOperations();
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "Fel filtyp",
+          description: "Endast JPG, PNG och WebP-filer är tillåtna",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const maxSize = 5 * 1024 * 1024;
+      if (file.size > maxSize) {
+        toast({
+          title: "Fil för stor",
+          description: "Maximal filstorlek är 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setImageFile(file);
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    const fileInput = document.getElementById('image-upload') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,6 +113,13 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
     setIsSubmitting(true);
 
     try {
+      let imageUrl = formData.image_url || null;
+      
+      // Handle image upload if file is selected
+      if (imageFile) {
+        imageUrl = await uploadImage(imageFile);
+      }
+
       const { error } = await supabase
         .from('stock_cases')
         .insert({
@@ -77,7 +130,7 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
           target_price: formData.target_price ? parseFloat(formData.target_price) : null,
           stop_loss: formData.stop_loss ? parseFloat(formData.stop_loss) : null,
           sector: formData.sector || null,
-          image_url: formData.image_url || null,
+          image_url: imageUrl,
           user_id: user.id,
           is_public: true,
           ai_generated: false,
@@ -102,6 +155,8 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
         sector: '',
         image_url: ''
       });
+      setImageFile(null);
+      setImagePreview(null);
 
       onClose();
       
@@ -232,7 +287,7 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="image_url">Bild URL</Label>
+              <Label htmlFor="image_url">Bild URL (alternativt)</Label>
               <Input
                 id="image_url"
                 placeholder="https://example.com/image.jpg"
@@ -240,6 +295,46 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
                 onChange={(e) => handleInputChange('image_url', e.target.value)}
               />
             </div>
+          </div>
+
+          {/* Image Upload Section */}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="image-upload">Ladda upp bild</Label>
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <Input
+                    id="image-upload"
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={handleImageChange}
+                    className="cursor-pointer"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Stödda format: JPG, PNG, WebP. Max 5MB.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {(imagePreview || imageFile) && (
+              <div className="relative">
+                <img
+                  src={imagePreview || ''}
+                  alt="Förhandsvisning"
+                  className="w-full h-48 object-cover rounded-lg border"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={removeImage}
+                  className="absolute top-2 right-2"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">

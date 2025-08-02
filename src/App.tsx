@@ -19,7 +19,6 @@ import AIChat from "./pages/AIChat";
 import Learning from "./pages/Learning";
 import SocialIndex from "./pages/SocialIndex";
 import AdminStockCases from "./pages/AdminStockCases";
-import MyStockCases from "./pages/MyStockCases";
 import AdvancedFeatures from "./pages/AdvancedFeatures";
 import DiscoverOpportunities from "./pages/DiscoverOpportunities";
 import MarketAnalyses from "./pages/MarketAnalyses";
@@ -51,7 +50,6 @@ function App() {
               <Route path="/learning" element={<Learning />} />
               <Route path="/social" element={<SocialIndex />} />
               <Route path="/admin/stock-cases" element={<AdminStockCases />} />
-              <Route path="/my-stock-cases" element={<MyStockCases />} />
               <Route path="/advanced-features" element={<AdvancedFeatures />} />
               <Route path="/discover-opportunities" element={<DiscoverOpportunities />} />
               <Route path="/market-analyses" element={<MarketAnalyses />} />

@@ -86,7 +86,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
   };
   const handleEditCase = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate('/my-stock-cases');
+    navigate('/profile');
   };
   const performance = calculatePerformance();
   return <Card className="h-full flex flex-col hover:shadow-lg transition-shadow duration-200 group cursor-pointer" onClick={() => onViewDetails(stockCase.id)}>
