@@ -74,7 +74,8 @@ serve(async (req) => {
 KRITISKA RIKTLINJER FÖR PORTFÖLJSKAPANDE:
 - Skapa en KOMPLETT portfölj med 6-8 specifika aktie- och fondrekommendationer
 - ALLA aktier och fonder MÅSTE ha ticker/symbol i parenteser: **Företag (SYMBOL)**
-- Anpassa rekommendationerna helt till användarens unika profil, intressen och situation
+- ALDRIG ge allmänna råd, strategier eller metoder som rekommendationer
+- ENDAST riktiga investerbara tillgångar med ticker-symboler
 - Inkludera svenska aktier, nordiska fonder och relevanta ETF:er som finns på Avanza/Nordnet
 - Använd EXAKT detta format för alla rekommendationer:
 
@@ -83,7 +84,21 @@ KRITISKA RIKTLINJER FÖR PORTFÖLJSKAPANDE:
 OBLIGATORISKA EXEMPEL på korrekt format:
 **Evolution Gaming (EVO)**: Svenskt teknikbolag inom online-gaming med stark tillväxt...
 **Castellum (CAST)**: Fastighetsbolag med fokus på kommersiella fastigheter...
-**Avanza Global**: Indexfond för global diversifiering med låga avgifter...
+**Avanza Global (AVGLOBAL)**: Indexfond för global diversifiering med låga avgifter...
+
+FÖRBJUDNA REKOMMENDATIONER (ge ALDRIG):
+- Diversifiering som strategi
+- Riskspridning som metod
+- Rebalansering som teknik
+- Dollar Cost Averaging som metod
+- Skatteoptimering som strategi
+- Pensionssparande som allmänt råd
+- Strategier utan specifika investeringar
+
+ENDAST RIKTIGA INVESTERINGAR:
+- Svenska aktier med ticker (ex: EVO, CAST, SHB-A)
+- Nordiska fonder med namn (ex: Avanza Global, Spiltan Aktiefond)
+- ETF:er med ticker (ex: XACT OMXS30)
 
 - VARIERA mellan olika sektorer och marknader baserat på användarens intressen
 - Ta hänsyn till användarens EXAKTA ekonomiska situation och psykologiska profil
@@ -333,13 +348,26 @@ function parseAIRecommendations(text: string): Array<{name: string, symbol?: str
   const stocks: Array<{name: string, symbol?: string, allocation: number, sector?: string}> = [];
   const lines = text.split('\n');
   
-  // Define invalid patterns that should be filtered out
+  // Define invalid patterns that should be filtered out (extended list)
   const invalidPatterns = [
     /^(erfarenhet|ålder|investeringsstil|risktolerans|tidshorisont|månatligt)/i,
     /^(diversifiering|rebalansering|skatteoptimering|strategi|optimering)/i,
     /^(riskprofil|investeringsmål|portföljstrategi|allokeringsstrategi)/i,
     /^(metod|teknik|approach|filosofi|princip|analys|situation)/i,
-    /^(månadsplan|uppföljning|implementation|risker|möjligheter)/i
+    /^(månadsplan|uppföljning|implementation|risker|möjligheter)/i,
+    /^(riskspridning|dollar cost averaging|dca|automatisk)/i,
+    /^(pensionssparande|pension|buffert|emergency|sparande)/i,
+    /^(skatteeffektivt|avdrag|isk|kapitalförsäkring)/i,
+    /^(marknadsanalys|timing|teknisk analys|fundamental)/i,
+    /^(växling|byte|ändring|justering|omfördelning)/i
+  ];
+  
+  // Define valid ticker patterns to ensure we only get real investments
+  const validTickerPatterns = [
+    /^[A-Z]{2,6}(-[A-Z])?$/, // Standard tickers like EVO, SHB-A
+    /^XACT/, // XACT ETFs
+    /^(AVANZA|SPILTAN|LÄNSFÖRSÄKRINGAR)/, // Valid fund prefixes
+    /^[A-Z]+\s*(GLOBAL|SWEDEN|EUROPE|INDEX)$/i // Fund patterns
   ];
   
   for (const line of lines) {
@@ -350,16 +378,29 @@ function parseAIRecommendations(text: string): Array<{name: string, symbol?: str
       const symbol = match[2].trim();
       const allocation = parseInt(match[3]);
       
-      // Skip if it matches invalid patterns
-      const isInvalid = invalidPatterns.some(pattern => pattern.test(name));
-      if (isInvalid) {
-        console.log(`Filtering out invalid recommendation: ${name}`);
+      // Skip if name matches invalid patterns
+      const isInvalidName = invalidPatterns.some(pattern => pattern.test(name));
+      if (isInvalidName) {
+        console.log(`Filtering out invalid recommendation (invalid name): ${name}`);
+        continue;
+      }
+      
+      // Skip if symbol doesn't match valid patterns
+      const isValidTicker = validTickerPatterns.some(pattern => pattern.test(symbol));
+      if (!isValidTicker && !name.toLowerCase().includes('fond') && !name.toLowerCase().includes('index')) {
+        console.log(`Filtering out invalid recommendation (invalid ticker): ${name} (${symbol})`);
         continue;
       }
       
       // Skip if allocation is unrealistic
       if (allocation < 1 || allocation > 40) {
         console.log(`Filtering out unrealistic allocation: ${name} (${allocation}%)`);
+        continue;
+      }
+      
+      // Skip if name is too generic or strategic
+      if (name.length < 3 || /^(strategi|metod|approach|teknik)$/i.test(name)) {
+        console.log(`Filtering out generic name: ${name}`);
         continue;
       }
       
