@@ -84,13 +84,13 @@ const ProfileContentGrid: React.FC<ProfileContentGridProps> = ({
     <div className="space-y-6">
       {/* Tab Navigation */}
       <div className="flex justify-center">
-        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+        <div className="flex bg-muted rounded-lg p-1 border">
           <button
             onClick={() => setActiveTab('all')}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               activeTab === 'all'
-                ? 'bg-white dark:bg-gray-700 text-finance-navy dark:text-gray-200 shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-finance-navy dark:hover:text-gray-200'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Alla ({allContent.length})
@@ -99,8 +99,8 @@ const ProfileContentGrid: React.FC<ProfileContentGridProps> = ({
             onClick={() => setActiveTab('cases')}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               activeTab === 'cases'
-                ? 'bg-white dark:bg-gray-700 text-finance-navy dark:text-gray-200 shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-finance-navy dark:hover:text-gray-200'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Aktiecases ({stockCases.length})
@@ -109,8 +109,8 @@ const ProfileContentGrid: React.FC<ProfileContentGridProps> = ({
             onClick={() => setActiveTab('analyses')}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               activeTab === 'analyses'
-                ? 'bg-white dark:bg-gray-700 text-finance-navy dark:text-gray-200 shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-finance-navy dark:hover:text-gray-200'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Analyser ({analyses.length})
@@ -195,14 +195,10 @@ const ProfileContentGrid: React.FC<ProfileContentGridProps> = ({
                           </div>
                           
                           <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-1">
-                              <Heart className="h-4 w-4" />
-                              <span>{item.likes_count || 0}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <MessageCircle className="h-4 w-4" />
-                              <span>{item.comments_count || 0}</span>
-                            </div>
+                           <div className="flex items-center gap-1">
+                             <MessageCircle className="h-4 w-4" />
+                             <span>{item.comments_count || 0}</span>
+                           </div>
                             {item.views_count && (
                               <div className="flex items-center gap-1">
                                 <Eye className="h-4 w-4" />
@@ -274,15 +270,11 @@ const ProfileContentGrid: React.FC<ProfileContentGridProps> = ({
                           </span>
                         </div>
                         
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-1">
-                            <Heart className="h-3 w-3" />
-                            <span>{item.likes_count || 0}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <MessageCircle className="h-3 w-3" />
-                            <span>{item.comments_count || 0}</span>
-                          </div>
+                         <div className="flex items-center gap-3">
+                           <div className="flex items-center gap-1">
+                             <MessageCircle className="h-3 w-3" />
+                             <span>{item.comments_count || 0}</span>
+                           </div>
                           {item.views_count && (
                             <div className="flex items-center gap-1">
                               <Eye className="h-3 w-3" />

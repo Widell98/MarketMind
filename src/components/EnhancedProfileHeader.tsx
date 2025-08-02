@@ -105,33 +105,26 @@ const EnhancedProfileHeader: React.FC<EnhancedProfileHeaderProps> = ({
                 </div>}
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="text-center p-3 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/20 dark:to-slate-800/20 rounded-lg border border-slate-200/50 dark:border-slate-700/50">
-                  <div className="text-2xl font-bold text-slate-700 dark:text-slate-300">
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="text-center p-3 bg-muted/50 rounded-lg border border-border">
+                  <div className="text-2xl font-bold text-foreground">
                     {userStats.stockCasesCount + userStats.analysesCount}
                   </div>
-                  <div className="text-sm text-slate-600 dark:text-slate-400 font-medium">Inlägg</div>
+                  <div className="text-sm text-muted-foreground font-medium">Inlägg</div>
                 </div>
                 
-                <div className="text-center p-3 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-lg border border-emerald-200/50 dark:border-emerald-700/50">
-                  <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                <div className="text-center p-3 bg-muted/50 rounded-lg border border-border">
+                  <div className="text-2xl font-bold text-foreground">
                     {profileData?.follower_count || 0}
                   </div>
-                  <div className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Följare</div>
+                  <div className="text-sm text-muted-foreground font-medium">Följare</div>
                 </div>
                 
-                <div className="text-center p-3 bg-gradient-to-br from-violet-50 to-violet-100 dark:from-violet-900/20 dark:to-violet-800/20 rounded-lg border border-violet-200/50 dark:border-violet-700/50">
-                  <div className="text-2xl font-bold text-violet-700 dark:text-violet-300">
+                <div className="text-center p-3 bg-muted/50 rounded-lg border border-border">
+                  <div className="text-2xl font-bold text-foreground">
                     {profileData?.following_count || 0}
                   </div>
-                  <div className="text-sm text-violet-600 dark:text-violet-400 font-medium">Följer</div>
-                </div>
-                
-                <div className="text-center p-3 bg-gradient-to-br from-rose-50 to-rose-100 dark:from-rose-900/20 dark:to-rose-800/20 rounded-lg border border-rose-200/50 dark:border-rose-700/50">
-                  <div className="text-2xl font-bold text-rose-700 dark:text-rose-300">
-                    {userStats.totalLikes}
-                  </div>
-                  <div className="text-sm text-rose-600 dark:text-rose-400 font-medium">Likes</div>
+                  <div className="text-sm text-muted-foreground font-medium">Följer</div>
                 </div>
               </div>
 

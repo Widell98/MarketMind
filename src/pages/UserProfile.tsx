@@ -183,11 +183,11 @@ const UserProfile = () => {
         {/* Content Tabs */}
         <div className="max-w-4xl mx-auto px-4 pb-8">
           <Tabs defaultValue="content" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-8 bg-white dark:bg-gray-900 shadow-lg">
-              <TabsTrigger value="content" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700">
+            <TabsList className="grid w-full grid-cols-2 mb-8 bg-background border">
+              <TabsTrigger value="content">
                 Innehåll
               </TabsTrigger>
-              <TabsTrigger value="about" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700">
+              <TabsTrigger value="about">
                 Om
               </TabsTrigger>
             </TabsList>
@@ -201,40 +201,40 @@ const UserProfile = () => {
             </TabsContent>
             
             <TabsContent value="about" className="mt-6">
-              <Card className="shadow-lg border-0 bg-white dark:bg-gray-900">
+              <Card className="border">
                 <CardHeader>
                   <CardTitle>Om {profileData?.display_name || profileData?.username}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {profileData?.bio && (
                     <div>
-                      <h4 className="font-medium mb-2 text-gray-900 dark:text-gray-100">Biografi</h4>
-                      <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{profileData.bio}</p>
+                      <h4 className="font-medium mb-2 text-foreground">Biografi</h4>
+                      <p className="text-muted-foreground leading-relaxed">{profileData.bio}</p>
                     </div>
                   )}
 
                   {profileData?.investment_philosophy && (
                     <div>
-                      <h4 className="font-medium mb-2 text-gray-900 dark:text-gray-100">Investeringsfilosofi</h4>
-                      <p className="text-gray-700 dark:text-gray-300">{profileData.investment_philosophy}</p>
+                      <h4 className="font-medium mb-2 text-foreground">Investeringsfilosofi</h4>
+                      <p className="text-muted-foreground">{profileData.investment_philosophy}</p>
                     </div>
                   )}
 
                   {profileData?.location && (
                     <div>
-                      <h4 className="font-medium mb-2 text-gray-900 dark:text-gray-100">Plats</h4>
-                      <p className="text-gray-700 dark:text-gray-300">{profileData.location}</p>
+                      <h4 className="font-medium mb-2 text-foreground">Plats</h4>
+                      <p className="text-muted-foreground">{profileData.location}</p>
                     </div>
                   )}
 
                   {profileData?.website_url && (
                     <div>
-                      <h4 className="font-medium mb-2 text-gray-900 dark:text-gray-100">Webbsida</h4>
+                      <h4 className="font-medium mb-2 text-foreground">Webbsida</h4>
                       <a 
                         href={profileData.website_url} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
+                        className="text-primary hover:underline"
                       >
                         {profileData.website_url}
                       </a>
@@ -242,26 +242,26 @@ const UserProfile = () => {
                   )}
 
                   <div>
-                    <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">Statistik</h4>
+                    <h4 className="font-medium mb-4 text-foreground">Statistik</h4>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{stockCases.length}</div>
-                        <div className="text-sm text-blue-600 dark:text-blue-400">Stock Cases</div>
+                      <div className="text-center p-4 bg-muted/50 rounded-lg border border-border">
+                        <div className="text-2xl font-bold text-foreground">{stockCases.length}</div>
+                        <div className="text-sm text-muted-foreground">Stock Cases</div>
                       </div>
-                      <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                        <div className="text-2xl font-bold text-green-700 dark:text-green-300">{analyses.length}</div>
-                        <div className="text-sm text-green-600 dark:text-green-400">Analyser</div>
+                      <div className="text-center p-4 bg-muted/50 rounded-lg border border-border">
+                        <div className="text-2xl font-bold text-foreground">{analyses.length}</div>
+                        <div className="text-sm text-muted-foreground">Analyser</div>
                       </div>
-                      <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                        <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">{profileData?.post_count || 0}</div>
-                        <div className="text-sm text-purple-600 dark:text-purple-400">Inlägg</div>
+                      <div className="text-center p-4 bg-muted/50 rounded-lg border border-border">
+                        <div className="text-2xl font-bold text-foreground">{profileData?.post_count || 0}</div>
+                        <div className="text-sm text-muted-foreground">Inlägg</div>
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="font-medium mb-2 text-gray-900 dark:text-gray-100">Medlem sedan</h4>
-                    <p className="text-gray-700 dark:text-gray-300">
+                    <h4 className="font-medium mb-2 text-foreground">Medlem sedan</h4>
+                    <p className="text-muted-foreground">
                       {formatDistanceToNow(new Date(profileData?.created_at), { 
                         addSuffix: false, 
                         locale: sv 
