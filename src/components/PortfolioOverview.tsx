@@ -547,9 +547,9 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             <div className="flex gap-2">
               {allRecommendations.length > 0 && <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" disabled={isDeletingRecommendations} className="text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300">
-                      <ArrowRight className="w-4 h-4 mr-1" />
-                      Hitta fler
+                    <Button variant="outline" size="sm" disabled={isDeletingRecommendations} className="text-destructive hover:text-destructive border-destructive/20 hover:border-destructive/30">
+                      <X className="w-4 h-4 mr-1" />
+                      Rensa alla
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
