@@ -1,24 +1,9 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { 
-  User, 
-  Target, 
-  TrendingUp, 
-  DollarSign, 
-  Calendar, 
-  PieChart,
-  Brain,
-  BarChart3,
-  AlertCircle,
-  CheckCircle,
-  Settings,
-  Plus,
-  Activity
-} from 'lucide-react';
+import { User, Target, TrendingUp, DollarSign, Calendar, PieChart, Brain, BarChart3, AlertCircle, CheckCircle, Settings, Plus, Activity } from 'lucide-react';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import ResetProfileConfirmDialog from '@/components/ResetProfileConfirmDialog';
@@ -26,18 +11,29 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-
 interface UserInvestmentAnalysisProps {
   onUpdateProfile?: () => void;
 }
-
-const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps) => {
-  const { riskProfile, loading: riskLoading, clearRiskProfile } = useRiskProfile();
-  const { activePortfolio, loading: portfolioLoading } = usePortfolio();
+const UserInvestmentAnalysis = ({
+  onUpdateProfile
+}: UserInvestmentAnalysisProps) => {
+  const {
+    riskProfile,
+    loading: riskLoading,
+    clearRiskProfile
+  } = useRiskProfile();
+  const {
+    activePortfolio,
+    loading: portfolioLoading
+  } = usePortfolio();
   const [showResetDialog, setShowResetDialog] = useState(false);
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const {
+    user
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
 
   // Function to format AI strategy text with proper CSS styling
   const formatAIStrategy = (text: string) => {
@@ -50,11 +46,9 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
       const percentageMatch = line.match(/^#+\s*(.+?)\s*\((\d+)%\)/);
       if (percentageMatch) {
         const [, sectionName, percentage] = percentageMatch;
-        return (
-          <h3 key={index} className="text-lg font-bold text-green-700 dark:text-green-300 mt-4 mb-2 pb-1 border-b-2 border-green-200 dark:border-green-700">
+        return <h3 key={index} className="text-lg font-bold text-green-700 dark:text-green-300 mt-4 mb-2 pb-1 border-b-2 border-green-200 dark:border-green-700">
             {sectionName.trim()} ({percentage}%)
-          </h3>
-        );
+          </h3>;
       }
 
       // Check for other markdown headers
@@ -62,62 +56,47 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
       if (headerMatch) {
         const [, hashes, title] = headerMatch;
         const level = hashes.length;
-        
         if (level === 1) {
-          return (
-            <h1 key={index} className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-6 mb-3">
+          return <h1 key={index} className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-6 mb-3">
               {title.trim()}
-            </h1>
-          );
+            </h1>;
         } else if (level === 2) {
-          return (
-            <h2 key={index} className="text-xl font-bold text-gray-800 dark:text-gray-200 mt-5 mb-2">
+          return <h2 key={index} className="text-xl font-bold text-gray-800 dark:text-gray-200 mt-5 mb-2">
               {title.trim()}
-            </h2>
-          );
+            </h2>;
         } else if (level === 3) {
-          return (
-            <h3 key={index} className="text-lg font-semibold text-gray-700 dark:text-gray-300 mt-4 mb-2">
+          return <h3 key={index} className="text-lg font-semibold text-gray-700 dark:text-gray-300 mt-4 mb-2">
               {title.trim()}
-            </h3>
-          );
+            </h3>;
         }
       }
 
       // Regular text line
       if (line.trim()) {
-        return (
-          <p key={index} className="mb-2 leading-relaxed">
+        return <p key={index} className="mb-2 leading-relaxed">
             {line.trim()}
-          </p>
-        );
+          </p>;
       }
 
       // Empty line
       return <br key={index} />;
     });
-
     return <div className="space-y-1">{formattedLines}</div>;
   };
-
   const handleResetProfile = async () => {
     if (!user) {
       toast({
         title: "Fel",
         description: "Du måste vara inloggad för att återställa din profil",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     try {
       // First, clear AI recommendations from user_holdings
-      const { error: holdingsError } = await supabase
-        .from('user_holdings')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('holding_type', 'recommendation');
-
+      const {
+        error: holdingsError
+      } = await supabase.from('user_holdings').delete().eq('user_id', user.id).eq('holding_type', 'recommendation');
       if (holdingsError) {
         console.error('Error clearing AI recommendations:', holdingsError);
       }
@@ -128,7 +107,7 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
         if (success) {
           toast({
             title: "Profil återställd",
-            description: "Din riskprofil och AI-rekommendationer har raderats.",
+            description: "Din riskprofil och AI-rekommendationer har raderats."
           });
           if (onUpdateProfile) {
             onUpdateProfile();
@@ -142,29 +121,22 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
       toast({
         title: "Fel",
         description: "Ett oväntat fel uppstod. Försök igen senare.",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
-    
     setShowResetDialog(false);
   };
-
   const handleCreateNewProfile = () => {
     navigate('/portfolio-advisor');
   };
-
   if (riskLoading || portfolioLoading) {
-    return (
-      <div className="space-y-6">
+    return <div className="space-y-6">
         <div className="animate-pulse bg-muted h-32 rounded-2xl"></div>
         <div className="animate-pulse bg-muted h-48 rounded-2xl"></div>
-      </div>
-    );
+      </div>;
   }
-
   if (!riskProfile) {
-    return (
-      <div className="space-y-6">
+    return <div className="space-y-6">
         {/* No Profile State */}
         <Card className="border-dashed border-2 rounded-2xl shadow-sm">
           <CardContent className="flex flex-col items-center justify-center py-12">
@@ -176,104 +148,58 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
               <p className="text-base mb-6 max-w-md text-muted-foreground">
                 Du behöver skapa en riskprofil för att få personliga investeringsrekommendationer och AI-analys.
               </p>
-              <Button 
-                onClick={handleCreateNewProfile}
-                className="flex items-center gap-2"
-                size="lg"
-              >
+              <Button onClick={handleCreateNewProfile} className="flex items-center gap-2" size="lg">
                 <Plus className="w-4 h-4" />
                 Skapa ny riskprofil
               </Button>
             </div>
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
-
   const getRiskToleranceLabel = (tolerance: string) => {
     switch (tolerance) {
-      case 'conservative': return 'Konservativ';
-      case 'moderate': return 'Måttlig';
-      case 'aggressive': return 'Aggressiv';
-      default: return tolerance || 'Ej angiven';
+      case 'conservative':
+        return 'Konservativ';
+      case 'moderate':
+        return 'Måttlig';
+      case 'aggressive':
+        return 'Aggressiv';
+      default:
+        return tolerance || 'Ej angiven';
     }
   };
-
   const getInvestmentHorizonLabel = (horizon: string) => {
     switch (horizon) {
-      case 'short': return 'Kort (1-3 år)';
-      case 'medium': return 'Medel (3-7 år)';
-      case 'long': return 'Lång (7+ år)';
-      default: return horizon || 'Ej angiven';
+      case 'short':
+        return 'Kort (1-3 år)';
+      case 'medium':
+        return 'Medel (3-7 år)';
+      case 'long':
+        return 'Lång (7+ år)';
+      default:
+        return horizon || 'Ej angiven';
     }
   };
-
   const getExperienceLabel = (experience: string) => {
     switch (experience) {
-      case 'beginner': return 'Nybörjare';
-      case 'intermediate': return 'Mellannivå';
-      case 'advanced': return 'Avancerad';
-      default: return experience || 'Ej angiven';
+      case 'beginner':
+        return 'Nybörjare';
+      case 'intermediate':
+        return 'Mellannivå';
+      case 'advanced':
+        return 'Avancerad';
+      default:
+        return experience || 'Ej angiven';
     }
   };
-
   const aiStrategy = activePortfolio?.asset_allocation?.ai_strategy || '';
   const conversationData = activePortfolio?.asset_allocation?.conversation_data || {};
-
-  return (
-    <div className="space-y-6">
-      <ResetProfileConfirmDialog
-        isOpen={showResetDialog}
-        onClose={() => setShowResetDialog(false)}
-        onConfirm={handleResetProfile}
-      />
+  return <div className="space-y-6">
+      <ResetProfileConfirmDialog isOpen={showResetDialog} onClose={() => setShowResetDialog(false)} onConfirm={handleResetProfile} />
 
       {/* Header Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-primary shadow-lg">
-              <User className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                Din Investeringsanalys
-              </h1>
-              <p className="text-sm md:text-base text-muted-foreground">
-                Personlig riskprofil och AI-genererad strategi
-              </p>
-            </div>
-          </div>
-          {onUpdateProfile && (
-            <Button
-              onClick={() => setShowResetDialog(true)}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <Settings className="w-4 h-4" />
-              Gör om profil
-            </Button>
-          )}
-        </div>
-        
-        <div className="flex flex-wrap gap-2">
-          <Badge className="px-3 py-1 text-xs font-medium bg-primary text-primary-foreground">
-            <User className="w-3 h-3 mr-1" />
-            Riskprofil
-          </Badge>
-          <Badge className="px-3 py-1 text-xs font-medium bg-secondary text-secondary-foreground">
-            <Brain className="w-3 h-3 mr-1" />
-            AI-Analys
-          </Badge>
-          {activePortfolio && (
-            <Badge className="px-3 py-1 text-xs font-medium bg-accent text-accent-foreground">
-              <Activity className="w-3 h-3 mr-1" />
-              Aktiv sedan {new Date(activePortfolio.created_at).toLocaleDateString('sv-SE')}
-            </Badge>
-          )}
-        </div>
-      </div>
+      
 
       {/* Profile Summary */}
       <Card className="rounded-2xl shadow-sm border-0 bg-gradient-to-br from-background via-background to-muted/30">
@@ -332,9 +258,7 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Månadssparande</p>
                 <p className="font-semibold text-foreground">
-                  {riskProfile.monthly_investment_amount 
-                    ? `${riskProfile.monthly_investment_amount.toLocaleString()} SEK` 
-                    : 'Ej angiven'}
+                  {riskProfile.monthly_investment_amount ? `${riskProfile.monthly_investment_amount.toLocaleString()} SEK` : 'Ej angiven'}
                 </p>
               </div>
             </div>
@@ -356,8 +280,7 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
       </Card>
 
       {/* AI-Generated Strategy */}
-      {aiStrategy && (
-        <Card className="rounded-2xl shadow-sm border-0 bg-gradient-to-br from-background via-background to-green-50/50 dark:to-green-950/20">
+      {aiStrategy && <Card className="rounded-2xl shadow-sm border-0 bg-gradient-to-br from-background via-background to-green-50/50 dark:to-green-950/20">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2 text-xl">
               <Brain className="w-5 h-5 text-green-600" />
@@ -374,12 +297,10 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
               </div>
             </div>
           </CardContent>
-        </Card>
-      )}
+        </Card>}
 
       {/* Conversation Context */}
-      {conversationData && Object.keys(conversationData).length > 0 && (
-        <Card className="rounded-2xl shadow-sm border-0 bg-gradient-to-br from-background via-background to-purple-50/50 dark:to-purple-950/20">
+      {conversationData && Object.keys(conversationData).length > 0 && <Card className="rounded-2xl shadow-sm border-0 bg-gradient-to-br from-background via-background to-purple-50/50 dark:to-purple-950/20">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2 text-xl">
               <CheckCircle className="w-5 h-5 text-purple-600" />
@@ -388,67 +309,53 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
           </CardHeader>
           <CardContent>
             <div className="grid gap-3">
-              {conversationData.isBeginnerInvestor !== undefined && (
-                <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
+              {conversationData.isBeginnerInvestor !== undefined && <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
                   <span className="font-medium text-foreground">Erfarenhetsnivå:</span>
                   <Badge variant={conversationData.isBeginnerInvestor ? "secondary" : "default"}>
                     {conversationData.isBeginnerInvestor ? 'Nybörjare' : 'Erfaren'}
                   </Badge>
-                </div>
-              )}
+                </div>}
               
-              {conversationData.investmentGoal && (
-                <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
+              {conversationData.investmentGoal && <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
                   <span className="font-medium text-foreground">Investeringsmål:</span>
                   <span className="text-sm text-muted-foreground capitalize">
                     {conversationData.investmentGoal}
                   </span>
-                </div>
-              )}
+                </div>}
               
-              {conversationData.timeHorizon && (
-                <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
+              {conversationData.timeHorizon && <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
                   <span className="font-medium text-foreground">Tidshorisont:</span>
                   <span className="text-sm text-muted-foreground capitalize">
                     {conversationData.timeHorizon}
                   </span>
-                </div>
-              )}
+                </div>}
               
-              {conversationData.riskTolerance && (
-                <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
+              {conversationData.riskTolerance && <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
                   <span className="font-medium text-foreground">Risktolerans:</span>
                   <span className="text-sm text-muted-foreground capitalize">
                     {conversationData.riskTolerance}
                   </span>
-                </div>
-              )}
+                </div>}
               
-              {conversationData.investmentStyle && (
-                <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
+              {conversationData.investmentStyle && <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
                   <span className="font-medium text-foreground">Investeringsstil:</span>
                   <span className="text-sm text-muted-foreground capitalize">
                     {conversationData.investmentStyle}
                   </span>
-                </div>
-              )}
+                </div>}
               
-              {conversationData.hasCurrentPortfolio !== undefined && (
-                <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
+              {conversationData.hasCurrentPortfolio !== undefined && <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
                   <span className="font-medium text-foreground">Befintlig portfölj:</span>
                   <Badge variant={conversationData.hasCurrentPortfolio ? "default" : "secondary"}>
                     {conversationData.hasCurrentPortfolio ? 'Ja' : 'Nej'}
                   </Badge>
-                </div>
-              )}
+                </div>}
             </div>
           </CardContent>
-        </Card>
-      )}
+        </Card>}
 
       {/* Risk Profile Summary */}
-      {riskProfile.sector_interests && riskProfile.sector_interests.length > 0 && (
-        <Card className="rounded-2xl shadow-sm border-0 bg-gradient-to-br from-background via-background to-muted/30">
+      {riskProfile.sector_interests && riskProfile.sector_interests.length > 0 && <Card className="rounded-2xl shadow-sm border-0 bg-gradient-to-br from-background via-background to-muted/30">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2 text-xl">
               <TrendingUp className="w-5 h-5 text-primary" />
@@ -457,17 +364,12 @@ const UserInvestmentAnalysis = ({ onUpdateProfile }: UserInvestmentAnalysisProps
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {riskProfile.sector_interests.map((sector, index) => (
-                <Badge key={index} variant="outline" className="capitalize px-3 py-1">
+              {riskProfile.sector_interests.map((sector, index) => <Badge key={index} variant="outline" className="capitalize px-3 py-1">
                   {sector}
-                </Badge>
-              ))}
+                </Badge>)}
             </div>
           </CardContent>
-        </Card>
-      )}
-    </div>
-  );
+        </Card>}
+    </div>;
 };
-
 export default UserInvestmentAnalysis;
