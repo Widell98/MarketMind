@@ -23,6 +23,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useEnhancedUserStats } from '@/hooks/useEnhancedUserStats';
 import { useSavedOpportunities } from '@/hooks/useSavedOpportunities';
 import { supabase } from '@/integrations/supabase/client';
+import UserInvestmentAnalysis from '@/components/UserInvestmentAnalysis';
+import { useRiskProfile } from '@/hooks/useRiskProfile';
+import { Brain } from 'lucide-react';
 
 const Profile = () => {
   const { user, loading } = useAuth();
@@ -40,6 +43,7 @@ const Profile = () => {
   const { savedItems, removeOpportunity } = useSavedOpportunities();
   const { stockCases, loading: stockCasesLoading, refetch } = useStockCases();
   const { deleteStockCase } = useStockCaseOperations();
+  const { riskProfile } = useRiskProfile();
 
   // Fetch profile data
   React.useEffect(() => {
@@ -219,9 +223,13 @@ const Profile = () => {
             {/* Main Content Area */}
             <div className="xl:col-span-3">
               <Tabs defaultValue="content" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-8 bg-muted/30 border border-border/50 rounded-lg p-1 shadow-sm">
+                <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted/30 border border-border/50 rounded-lg p-1 shadow-sm">
                   <TabsTrigger value="content">
                     Innehåll
+                  </TabsTrigger>
+                  <TabsTrigger value="riskprofile" className="flex items-center gap-2">
+                    <Brain className="w-4 h-4" />
+                    Riskprofil
                   </TabsTrigger>
                   <TabsTrigger value="activity">
                     Aktivitet
@@ -293,6 +301,10 @@ const Profile = () => {
                       <UserAnalysesSection compact={false} />
                     </CardContent>
                   </Card>
+                </TabsContent>
+                
+                <TabsContent value="riskprofile" className="space-y-8">
+                  <UserInvestmentAnalysis />
                 </TabsContent>
                 
                 <TabsContent value="activity" className="space-y-8">

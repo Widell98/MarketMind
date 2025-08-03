@@ -244,49 +244,21 @@ const PortfolioImplementation = () => {
             </Alert>
           )}
 
-          <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 max-w-lg mx-auto mb-6 bg-muted p-1 rounded-xl h-auto">
-              <TabsTrigger 
-                value="overview" 
-                className="flex items-center gap-2 rounded-lg py-3 px-4 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-sm"
-              >
-                <BarChart3 className="w-4 h-4" />
-                <span className="hidden xs:inline">Portfölj</span>
-                <span className="xs:hidden">Översikt</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="analysis" 
-                className="flex items-center gap-2 rounded-lg py-3 px-4 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-sm"
-              >
-                <Brain className="w-4 h-4" />
-                <span className="hidden xs:inline">Riskprofil</span>
-                <span className="xs:hidden">Analys</span>
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="overview" className="mt-0">
-              <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-                <div className="xl:col-span-3 space-y-6">
-                  <PortfolioOverview 
-                    portfolio={activePortfolio}
-                    onQuickChat={handleQuickChat}
-                    onActionClick={handleActionClick}
-                  />
-                  
-                  {/* Community Recommendations Section - moved directly under PortfolioOverview */}
-                  <CommunityRecommendations />
-                </div>
-                <div className="xl:col-span-1">
-                  <UserInsightsPanel />
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="analysis" className="mt-0">
-              <UserInvestmentAnalysis onUpdateProfile={handleUpdateProfile} />
-            </TabsContent>
-
-          </Tabs>
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+            <div className="xl:col-span-3 space-y-6">
+              <PortfolioOverview 
+                portfolio={activePortfolio}
+                onQuickChat={handleQuickChat}
+                onActionClick={handleActionClick}
+              />
+              
+              {/* Community Recommendations Section - moved directly under PortfolioOverview */}
+              <CommunityRecommendations />
+            </div>
+            <div className="xl:col-span-1">
+              <UserInsightsPanel />
+            </div>
+          </div>
         </div>
       </div>
 
