@@ -257,102 +257,100 @@ const SmartHoldingSuggestions: React.FC<SmartHoldingSuggestionsProps> = ({
     .slice(0, 3);
 
   return (
-    <div className="space-y-3 mt-4 pt-4 border-t border-border">
-      <div className="flex items-center gap-2 mb-3">
-        <Brain className="w-4 h-4 text-primary" />
-        <span className="text-sm font-semibold text-foreground">AI-insikter & förslag</span>
-        <Badge variant="outline" className="text-xs">
-          {suggestions.length} förslag
+    <div className="space-y-2 mt-2 pt-2 border-t border-border">
+      <div className="flex items-center gap-2 mb-2">
+        <Brain className="w-3 h-3 text-primary" />
+        <span className="text-xs font-medium text-foreground">AI-förslag</span>
+        <Badge variant="outline" className="text-xs px-1 py-0 h-4">
+          {suggestions.length}
         </Badge>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setIsVisible(false)}
-          className="ml-auto w-6 h-6 p-0 hover:bg-destructive/10"
+          className="ml-auto w-4 h-4 p-0 hover:bg-destructive/10"
         >
-          <X className="w-3 h-3" />
+          <X className="w-2 h-2" />
         </Button>
       </div>
       
       {prioritizedSuggestions.map((suggestion) => {
         const Icon = getSuggestionIcon(suggestion.type);
+        const [expanded, setExpanded] = useState(false);
+        
         return (
           <Card key={suggestion.id} className={cn(
-            "border-l-4 transition-all duration-200 hover:shadow-md",
+            "border-l-2 transition-all duration-200",
             getBorderColor(suggestion.type)
           )}>
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
+            <CardContent className="p-2">
+              <div className="flex items-center gap-2">
                 <div className={cn(
-                  "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
+                  "w-6 h-6 rounded flex items-center justify-center flex-shrink-0",
                   getSuggestionColor(suggestion.type)
                 )}>
-                  <Icon className="w-5 h-5" />
+                  <Icon className="w-3 h-3" />
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h4 className="font-semibold text-sm text-foreground">
+                  <div className="flex items-center gap-1 mb-1">
+                    <h4 className="font-medium text-xs text-foreground truncate">
                       {suggestion.title}
                     </h4>
-                    <Badge className={cn("text-xs", getConfidenceBadge(suggestion.confidence))}>
-                      {suggestion.confidence === 'high' ? 'Hög' : suggestion.confidence === 'medium' ? 'Medel' : 'Låg'} säkerhet
-                    </Badge>
-                    <Badge className={cn("text-xs", getRiskBadge(suggestion.riskLevel))}>
-                      {suggestion.riskLevel === 'high' ? 'Hög' : suggestion.riskLevel === 'medium' ? 'Medel' : 'Låg'} risk
+                    <Badge className={cn("text-xs px-1 py-0 h-4", getConfidenceBadge(suggestion.confidence))}>
+                      {suggestion.confidence === 'high' ? 'H' : suggestion.confidence === 'medium' ? 'M' : 'L'}
                     </Badge>
                   </div>
                   
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+                  <p className="text-xs text-muted-foreground leading-tight mb-1 line-clamp-2">
                     {suggestion.description}
                   </p>
-
-                  <div className="bg-muted/30 rounded-lg p-3 mb-3">
-                    <div className="flex items-center gap-1 mb-2">
-                      <Lightbulb className="w-3 h-3 text-primary" />
-                      <span className="text-xs font-medium text-foreground">Detaljerad analys</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {suggestion.detailedAnalysis}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 mb-3 text-xs">
-                    <div>
-                      <span className="font-medium text-muted-foreground">Potential:</span>
-                      <div className="text-foreground">{suggestion.potentialReturn}</div>
-                    </div>
-                    <div>
-                      <span className="font-medium text-muted-foreground">Tidsram:</span>
-                      <div className="text-foreground">
-                        {suggestion.timeframe === 'short' ? 'Kort sikt' : 
-                         suggestion.timeframe === 'medium' ? 'Medellång sikt' : 'Lång sikt'}
+                  
+                  {expanded && (
+                    <div className="bg-muted/20 rounded p-2 mb-2">
+                      <p className="text-xs text-muted-foreground leading-relaxed mb-2">
+                        {suggestion.detailedAnalysis}
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="font-medium text-muted-foreground">Potential:</span>
+                          <div className="text-foreground">{suggestion.potentialReturn}</div>
+                        </div>
+                        <div>
+                          <span className="font-medium text-muted-foreground">Tidsram:</span>
+                          <div className="text-foreground">
+                            {suggestion.timeframe === 'short' ? 'Kort' : 
+                             suggestion.timeframe === 'medium' ? 'Medel' : 'Lång'}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="text-xs text-muted-foreground mb-4 italic">
-                    💡 {suggestion.marketCondition}
-                  </div>
+                  )}
                   
-                  <div className="flex gap-2">
+                  <div className="flex gap-1 items-center">
                     <Button
                       size="sm"
                       variant="default"
-                      className="text-xs h-8 px-4"
+                      className="text-xs h-6 px-2"
                       onClick={() => handleSuggestionAction(suggestion.id, 'follow')}
                     >
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      Följ förslag
+                      Följ
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      className="text-xs h-8 px-4"
+                      className="text-xs h-6 px-2"
                       onClick={() => handleSuggestionAction(suggestion.id, 'dismiss')}
                     >
-                      <X className="w-3 h-3 mr-1" />
                       Avfärda
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-xs h-6 px-1"
+                      onClick={() => setExpanded(!expanded)}
+                    >
+                      {expanded ? 'Mindre' : 'Mer'}
                     </Button>
                   </div>
                 </div>
@@ -363,11 +361,9 @@ const SmartHoldingSuggestions: React.FC<SmartHoldingSuggestionsProps> = ({
       })}
       
       {suggestions.length > 3 && (
-        <div className="text-center">
-          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
-            Visa {suggestions.length - 3} fler förslag
-          </Button>
-        </div>
+        <Button variant="ghost" size="sm" className="w-full text-xs h-6 text-muted-foreground">
+          +{suggestions.length - 3} fler
+        </Button>
       )}
     </div>
   );
