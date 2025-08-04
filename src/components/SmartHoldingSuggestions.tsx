@@ -45,7 +45,10 @@ const SmartHoldingSuggestions: React.FC<SmartHoldingSuggestionsProps> = ({
 }) => {
   const [suggestions, setSuggestions] = useState<SmartSuggestion[]>([]);
   const [isVisible, setIsVisible] = useState(true);
-  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(() => {
+    const stored = localStorage.getItem('dismissedSuggestions');
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -168,7 +171,9 @@ const SmartHoldingSuggestions: React.FC<SmartHoldingSuggestionsProps> = ({
 
   const handleSuggestionAction = (suggestionId: string, action: string) => {
     if (action === 'dismiss') {
-      setDismissedSuggestions(prev => new Set([...prev, suggestionId]));
+      const updatedDismissed = new Set([...dismissedSuggestions, suggestionId]);
+      setDismissedSuggestions(updatedDismissed);
+      localStorage.setItem('dismissedSuggestions', JSON.stringify([...updatedDismissed]));
       toast({
         title: "Förslag avfärdat",
         description: "Förslaget har tagits bort från din lista.",
