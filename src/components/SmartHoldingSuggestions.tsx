@@ -59,6 +59,7 @@ const SmartHoldingSuggestions: React.FC<SmartHoldingSuggestionsProps> = ({
   const [suggestions, setSuggestions] = useState<SmartSuggestion[]>([]);
   const [isVisible, setIsVisible] = useState(true);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
+  const [expandedSuggestions, setExpandedSuggestions] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   useEffect(() => {
@@ -276,7 +277,7 @@ const SmartHoldingSuggestions: React.FC<SmartHoldingSuggestionsProps> = ({
       
       {prioritizedSuggestions.map((suggestion) => {
         const Icon = getSuggestionIcon(suggestion.type);
-        const [expanded, setExpanded] = useState(false);
+        const expanded = expandedSuggestions.has(suggestion.id);
         
         return (
           <Card key={suggestion.id} className={cn(
@@ -348,7 +349,17 @@ const SmartHoldingSuggestions: React.FC<SmartHoldingSuggestionsProps> = ({
                       size="sm"
                       variant="ghost"
                       className="text-xs h-6 px-1"
-                      onClick={() => setExpanded(!expanded)}
+                      onClick={() => {
+                        setExpandedSuggestions(prev => {
+                          const newSet = new Set(prev);
+                          if (expanded) {
+                            newSet.delete(suggestion.id);
+                          } else {
+                            newSet.add(suggestion.id);
+                          }
+                          return newSet;
+                        });
+                      }}
                     >
                       {expanded ? 'Mindre' : 'Mer'}
                     </Button>
