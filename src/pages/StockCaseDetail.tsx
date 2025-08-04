@@ -366,7 +366,7 @@ const StockCaseDetail = () => {
                   <div className="flex items-center justify-between">
                     <div 
                       className="flex items-center space-x-3 cursor-pointer hover:bg-accent rounded-lg p-2 -m-2 transition-colors"
-                      onClick={() => navigate(`/user/${stockCase.profiles.username}`)}
+                      onClick={() => navigate(`/profile/${stockCase.user_id}`)}
                     >
                       <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
                         <span className="text-sm font-semibold">
