@@ -230,7 +230,7 @@ const StockCases = () => {
 
             {/* Stock Cases Feed */}
             {filteredStockCases.length > 0 ? (
-              <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
+              <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6" : "space-y-4"}>
                 {filteredStockCases.map(stockCase => (
                   <EnhancedStockCaseCard 
                     key={stockCase.id} 
