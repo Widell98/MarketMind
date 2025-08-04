@@ -122,15 +122,15 @@ const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
   if (compact) {
     return (
       <>
-        <Card className="w-full">
-          <CardHeader>
+        <Card className="w-full border-2 border-dashed border-muted bg-gradient-to-r from-background to-muted/20">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-sm">
-                <FolderOpen className="w-4 h-4" />
-                Historik
+                <History className="w-4 h-4 text-primary" />
+                Versionshistorik
               </CardTitle>
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="secondary" className="text-xs font-semibold bg-primary/10 text-primary border-primary/20">
                   {timeline.length} versioner
                 </Badge>
                 {canDelete && (
