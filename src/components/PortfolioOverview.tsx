@@ -624,7 +624,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                   Få fler <ArrowRight className="w-3 h-3 ml-1" />
                 </Button>
               </div>
-              <div className="space-y-3">
+              <div className={`space-y-3 ${allRecommendations.length > 5 ? 'max-h-96 overflow-y-auto' : ''}`}>
                 {allRecommendations.map((recommendation, index) => (
                   <div 
                     key={recommendation.id || index}
