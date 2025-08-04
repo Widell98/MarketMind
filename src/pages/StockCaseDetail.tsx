@@ -364,14 +364,17 @@ const StockCaseDetail = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
+                    <div 
+                      className="flex items-center space-x-3 cursor-pointer hover:bg-accent rounded-lg p-2 -m-2 transition-colors"
+                      onClick={() => navigate(`/user/${stockCase.profiles.username}`)}
+                    >
                       <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
                         <span className="text-sm font-semibold">
                           {stockCase.profiles.display_name?.charAt(0) || stockCase.profiles.username.charAt(0)}
                         </span>
                       </div>
                       <div>
-                        <p className="font-semibold">
+                        <p className="font-semibold hover:text-primary transition-colors">
                           {stockCase.profiles.display_name || stockCase.profiles.username}
                         </p>
                         <p className="text-sm text-muted-foreground">
