@@ -109,62 +109,56 @@ const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
   };
   if (compact) {
     return <>
-        <Card className="w-full border-2 border-dashed border-muted bg-gradient-to-r from-background to-muted/20">
-          <CardHeader className="pb-3">
+        <div className="bg-background/95 backdrop-blur-sm border border-muted/50 rounded-lg shadow-sm">
+          <div className="p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <History className="w-4 h-4 text-primary" />
-                Versionshistorik
-              </CardTitle>
               <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="text-xs font-semibold bg-primary/10 text-primary border-primary/20">
+                <History className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-muted-foreground">Versionshistorik</span>
+                <Badge variant="secondary" className="text-xs bg-muted/50 text-muted-foreground border-muted">
                   {timeline.length} versioner
                 </Badge>
-                {canDelete}
               </div>
-            </div>
-          </CardHeader>
-          
-          <CardContent className="space-y-4">
-            <Select value={currentIndex.toString()} onValueChange={handleVersionChange}>
-              <SelectTrigger className="w-full h-10 min-h-[2.5rem] transition-none">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="z-50 bg-background border shadow-lg">
-                {timeline.map((item, index) => <SelectItem key={item.id} value={index.toString()}>
-                    <div className="flex items-center gap-2">
-                      {item.isOriginal ? <FileText className="w-3 h-3" /> : <ImageIcon className="w-3 h-3" />}
-                      <span className="text-xs">
-                        {item.isOriginal ? 'Original' : `Uppdatering ${index}`}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(item.created_at).split(' ')[0]}
-                      </span>
-                    </div>
-                  </SelectItem>)}
-              </SelectContent>
-            </Select>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Badge variant={currentItem.isOriginal ? "secondary" : "outline"} className="text-xs">
-                  {currentItem.isOriginal ? 'Original' : 'Uppdatering'}
-                </Badge>
-                {canDelete && <Button variant="ghost" size="sm" onClick={e => {
+              {canDelete && <Button variant="ghost" size="sm" onClick={e => {
                 e.preventDefault();
                 setUpdateToDelete(currentItem.id);
               }} className="text-red-600 hover:text-red-700 p-1 h-auto">
-                    <Trash2 className="w-3 h-3" />
-                  </Button>}
-              </div>
-              
-              <div className="text-xs text-muted-foreground">
-                <Clock className="w-3 h-3 inline mr-1" />
-                {formatDate(currentItem.created_at)}
+                <Trash2 className="w-3 h-3" />
+              </Button>}
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <Select value={currentIndex.toString()} onValueChange={handleVersionChange}>
+                <SelectTrigger className="w-48 h-9 text-sm bg-background/50 border-muted/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-50 bg-background border shadow-lg">
+                  {timeline.map((item, index) => <SelectItem key={item.id} value={index.toString()}>
+                      <div className="flex items-center gap-2">
+                        {item.isOriginal ? <FileText className="w-3 h-3" /> : <ImageIcon className="w-3 h-3" />}
+                        <span className="text-xs">
+                          {item.isOriginal ? 'Original' : `Uppdatering ${index}`}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDate(item.created_at).split(' ')[0]}
+                        </span>
+                      </div>
+                    </SelectItem>)}
+                </SelectContent>
+              </Select>
+
+              <div className="flex items-center gap-2">
+                <Badge variant={currentItem.isOriginal ? "secondary" : "outline"} className="text-xs bg-muted/30 border-muted/50">
+                  {currentItem.isOriginal ? 'Original' : 'Uppdatering'}
+                </Badge>
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {formatDate(currentItem.created_at)}
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Delete confirmation dialog */}
         <AlertDialog open={!!updateToDelete} onOpenChange={() => setUpdateToDelete(null)}>
