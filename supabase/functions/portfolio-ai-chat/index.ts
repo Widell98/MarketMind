@@ -90,6 +90,10 @@ serve(async (req) => {
 
     // Check if this is a stock exchange request
     const isExchangeRequest = /(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|amerikanska|svenska|europeiska|asiatiska|aktier|innehav)/i.test(message);
+    
+    // Check if this is a stock analysis request
+    const isStockAnalysisRequest = /(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|investera i|köpa|sälja|värdering av|fundamentalanalys|teknisk analys)/i.test(message) && 
+      /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5}|investor|volvo|ericsson|sandvik|atlas|kinnevik|hex|alfa laval|skf|telia|seb|handelsbanken|nordea|abb|astra|electrolux|husqvarna|getinge|boliden|ssab|stora enso|svenska cellulosa|lund|billerud|holmen|nibe|beijer|essity|kindred|evolution|betsson|net|entertainment|fingerprint|sinch|tobii|xvivo|medivir|orexo|camurus|diamyd|raysearch|elekta|sectra|bactiguard|vitrolife|bioinvent|immunovia|hansa|cantargia|oncopeptides|wilson|therapeutics|solberg|probi|biovica|addlife|duni|traction|embracer|stillfront|paradox|starbreeze|remedy|stillfront|remedy|starbreeze|gaming)/i.test(message);
 
     // Filter out existing holdings from recommendations
     const existingSymbols = new Set();
@@ -107,16 +111,42 @@ serve(async (req) => {
     }
 
     // Build enhanced context for AI with emphasis on actionable portfolio changes
-    let contextInfo = `Du är en professionell AI-rådgivare för investeringar som ger personliga rekommendationer på svenska.
+    let contextInfo = `Du är en professionell AI-investeringsrådgivare och aktieanalytiker som ger djupgående analyser och personliga rekommendationer på svenska.
 
-KRITISKA RIKTLINJER FÖR REKOMMENDATIONER:
+HUVUDKOMPETENSER:
+1. DJUP AKTIEANALYS som en professionell analytiker
+2. PORTFÖLJREKOMMENDATIONER med specifika tillgångar  
+3. MARKNADSINSIKTER och värdering av enskilda aktier
+
+AKTIEANALYS RIKTLINJER:
+När användaren frågar om en specifik aktie (ex: "analysera Investor", "vad tycker du om Tesla"), ge en professionell aktieanalys som inkluderar:
+
+**FUNDAMENTAL ANALYS:**
+- Affärsmodell och verksamhet
+- Finansiell prestanda (intäkter, vinst, skuldsättning)
+- Konkurrensposition och marknadsledarskap
+- Ledning och företagsstyrning
+- Framtidsutsikter och tillväxtpotential
+
+**TEKNISK ANALYS:**
+- Kursutveckling senaste tiden
+- Värdering (P/E, P/B, EV/EBITDA etc.)
+- Jämförelse med branschsnitt
+- Support- och motståndsnivåer
+
+**INVESTERINGSSYN:**
+- KÖP/BEHÅLL/SÄLJ rekommendation med motivering
+- Kursmål och tidshorisont
+- Huvudsakliga risker och möjligheter
+- Passar för vilken typ av investerare
+
+PORTFÖLJREKOMMENDATIONER (när användaren ber om investeringsförslag):
 - Ge ENDAST specifika aktie- och fondrekommendationer med EXAKTA namn och symboler
 - ALLA aktier och fonder MÅSTE ha ticker/symbol i parenteser: **Företag (SYMBOL)**
 - ALDRIG ge allmänna råd, strategier eller metoder som rekommendationer
 - ENDAST riktiga investerbara tillgångar med ticker-symboler
 - Föreslå 5-8 konkreta investeringar med tydliga motiveringar
 - Inkludera svenska aktier, nordiska fonder och relevanta ETF:er som finns på Avanza/Nordnet
-- Använd EXAKT detta format för alla rekommendationer:
 
 **Företagsnamn (EXAKT-SYMBOL)**: Detaljerad beskrivning av varför denna investering passar användarens specifika profil, inklusive sektor, risk och potential. Allokering: XX%
 
@@ -230,8 +260,54 @@ ENDAST RIKTIGA INVESTERINGAR:
       }
     }
 
-    // Enhanced system prompt for portfolio generation
-    let systemPrompt = `${contextInfo}
+    // Enhanced system prompt for different types of analysis
+    let systemPrompt = `${contextInfo}`;
+    
+    if (isStockAnalysisRequest) {
+      systemPrompt += `
+
+SPECIALUPPDRAG - DJUP AKTIEANALYS:
+Du ska nu agera som en professionell aktieanalytiker på en investmentbank och ge en detaljerad analys av den specifika aktien användaren frågar om.
+
+STRUKTURERA DIN AKTIEANALYS SÅ HÄR:
+
+🏢 **FÖRETAGSÖVERSIKT**
+- Affärsmodell och huvudsakliga verksamhetsområden
+- Position på marknaden och konkurrensfördelar
+- Ledning och ägarstruktur
+
+📊 **FINANSIELL ANALYS**
+- Senaste kvartalets resultat och nyckeltal
+- Intäktstillväxt och lönsamhetsutveckling
+- Balansräkning och skuldsättning
+- Kassaflöde och kapitaleffektivitet
+
+📈 **VÄRDERING OCH KURSUTVECKLING**
+- Nuvarande värderingsmultiplar (P/E, P/B, EV/EBITDA)
+- Jämförelse med branschsnitt
+- Kursutveckling senaste 12 månaderna
+- Tekniska nivåer (support/motstånd)
+
+🎯 **INVESTERINGSREKOMMENDATION**
+- KÖP/BEHÅLL/SÄLJ med tydlig motivering
+- Kursmål för 12 månader
+- Förväntad totalavkastning inklusive utdelning
+- Passar för vilken typ av investerare (konservativ/aggressiv/långsiktig)
+
+⚠️ **RISKER OCH MÖJLIGHETER**
+- Huvudsakliga investeringsrisker
+- Tillväxtmöjligheter och katalysatorer
+- Sektorspecifika faktorer att bevaka
+- Makroekonomisk påverkan
+
+💡 **SLUTSATS**
+- Sammanfattande investeringssyn
+- Position i en balanserad portfölj
+- Tidshorisont för investeringen
+
+GE EN PROFESSIONELL ANALYS med konkreta siffror, branschkunskap och tydliga slutsatser. Använd aktuell marknadskunskap och branschspecifik expertis.`;
+    } else {
+      systemPrompt += `
 
 UPPDRAG - SKAPA PERSONLIG PORTFÖLJSTRATEGI:
 
@@ -265,6 +341,7 @@ KRITISKT VIKTIGT:
 - Skapa UNIKA rekommendationer för varje användare
 - Basera på deras SPECIFIKA intressen och profil
 - ALDRIG samma standardlista för alla användare`;
+    }
 
     if (analysisType === 'portfolio_generation') {
       systemPrompt += `\n\nSPECIELL INSTRUKTION FÖR PORTFÖLJGENERERING:
@@ -297,6 +374,8 @@ Detta är en komplett portföljanalys. Ge en omfattande strategi med:
     console.log('Messages count:', messages.length);
     console.log('User message:', message);
     console.log('Analysis type:', analysisType);
+    console.log('Is stock analysis request:', isStockAnalysisRequest);
+    console.log('Is exchange request:', isExchangeRequest);
     console.log('Has conversation data:', !!conversationData);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
