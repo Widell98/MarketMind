@@ -91,9 +91,12 @@ serve(async (req) => {
     // Check if this is a stock exchange request
     const isExchangeRequest = /(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|amerikanska|svenska|europeiska|asiatiska|aktier|innehav)/i.test(message);
     
-    // Check if this is a stock analysis request
-    const isStockAnalysisRequest = /(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|investera i|köpa|sälja|värdering av|fundamentalanalys|teknisk analys)/i.test(message) && 
-      /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5}|investor|volvo|ericsson|sandvik|atlas|kinnevik|hex|alfa laval|skf|telia|seb|handelsbanken|nordea|abb|astra|electrolux|husqvarna|getinge|boliden|ssab|stora enso|svenska cellulosa|lund|billerud|holmen|nibe|beijer|essity|kindred|evolution|betsson|net|entertainment|fingerprint|sinch|tobii|xvivo|medivir|orexo|camurus|diamyd|raysearch|elekta|sectra|bactiguard|vitrolife|bioinvent|immunovia|hansa|cantargia|oncopeptides|wilson|therapeutics|solberg|probi|biovica|addlife|duni|traction|embracer|stillfront|paradox|starbreeze|remedy|stillfront|remedy|starbreeze|gaming)/i.test(message);
+    // Check if this is a stock analysis request (objective analysis, not personal advice)
+    const isStockAnalysisRequest = /(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) && 
+      /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5}|investor|volvo|ericsson|sandvik|atlas|kinnevik|hex|alfa laval|skf|telia|seb|handelsbanken|nordea|abb|astra|electrolux|husqvarna|getinge|boliden|ssab|stora enso|svenska cellulosa|lund|billerud|holmen|nibe|beijer|essity|kindred|evolution|betsson|net|entertainment|fingerprint|sinch|tobii|xvivo|medivir|orexo|camurus|diamyd|raysearch|elekta|sectra|bactiguard|vitrolife|bioinvent|immunovia|hansa|cantargia|oncopeptides|wilson|therapeutics|solberg|probi|biovica|addlife|duni|traction|embracer|stillfront|paradox|starbreeze|remedy|stillfront|remedy|starbreeze|gaming|saab)/i.test(message);
+    
+    // Check if user wants personal investment advice/recommendations
+    const isPersonalAdviceRequest = /(?:rekommendation|förslag|vad ska jag|bör jag|passar mig|min portfölj|mina intressen|för mig|personlig|skräddarsy|baserat på|investera|köpa|sälja|portföljanalys|investeringsstrategi)/i.test(message);
 
     // Filter out existing holdings from recommendations
     const existingSymbols = new Set();
@@ -184,9 +187,10 @@ ENDAST RIKTIGA INVESTERINGAR:
 - Ge procentuell vikt i portföljen`;
     }
 
-    // Add detailed user profile information
-    if (riskProfile) {
-      contextInfo += `\n\nANVÄNDARPROFIL:
+    // Only add user profile information for personal advice requests
+    if (isPersonalAdviceRequest || isExchangeRequest) {
+      if (riskProfile) {
+        contextInfo += `\n\nANVÄNDARPROFIL:
 - Ålder: ${riskProfile.age || 'Ej angivet'} år
 - Erfarenhetsnivå: ${riskProfile.investment_experience === 'beginner' ? 'Nybörjare' : riskProfile.investment_experience === 'intermediate' ? 'Mellannivå' : 'Erfaren'}
 - Risktolerans: ${riskProfile.risk_tolerance === 'conservative' ? 'Konservativ' : riskProfile.risk_tolerance === 'moderate' ? 'Måttlig' : 'Aggressiv'}
@@ -194,69 +198,70 @@ ENDAST RIKTIGA INVESTERINGAR:
 - Månatlig budget: ${riskProfile.monthly_investment_amount ? riskProfile.monthly_investment_amount.toLocaleString() + ' SEK' : 'Ej angivet'}
 - Riskkomfort: ${riskProfile.risk_comfort_level || 5}/10
 - Sektorintressen: ${riskProfile.sector_interests ? riskProfile.sector_interests.join(', ') : 'Allmänna'}`;
-      
-      if (riskProfile.annual_income) {
-        contextInfo += `\n- Årsinkomst: ${riskProfile.annual_income.toLocaleString()} SEK`;
+        
+        if (riskProfile.annual_income) {
+          contextInfo += `\n- Årsinkomst: ${riskProfile.annual_income.toLocaleString()} SEK`;
+        }
+        
+        if (riskProfile.liquid_capital) {
+          contextInfo += `\n- Tillgängligt kapital: ${riskProfile.liquid_capital.toLocaleString()} SEK`;
+        }
       }
-      
-      if (riskProfile.liquid_capital) {
-        contextInfo += `\n- Tillgängligt kapital: ${riskProfile.liquid_capital.toLocaleString()} SEK`;
-      }
-    }
 
-    // Add conversation data if available
-    if (conversationData) {
-      contextInfo += `\n\nKONVERSATIONSDATA:`;
-      
-      if (conversationData.interests && conversationData.interests.length > 0) {
-        contextInfo += `\n- Personliga intressen: ${conversationData.interests.join(', ')}`;
+      // Add conversation data if available
+      if (conversationData) {
+        contextInfo += `\n\nKONVERSATIONSDATA:`;
+        
+        if (conversationData.interests && conversationData.interests.length > 0) {
+          contextInfo += `\n- Personliga intressen: ${conversationData.interests.join(', ')}`;
+        }
+        
+        if (conversationData.companies && conversationData.companies.length > 0) {
+          contextInfo += `\n- Företag de gillar: ${conversationData.companies.join(', ')}`;
+        }
+        
+        if (conversationData.sustainabilityPreference) {
+          contextInfo += `\n- Hållbarhetspreferens: ${conversationData.sustainabilityPreference}`;
+        }
+        
+        if (conversationData.geographicPreference) {
+          contextInfo += `\n- Geografisk preferens: ${conversationData.geographicPreference}`;
+        }
+        
+        if (conversationData.investmentStyle) {
+          contextInfo += `\n- Investeringsstil: ${conversationData.investmentStyle}`;
+        }
+        
+        if (conversationData.marketCrashReaction) {
+          contextInfo += `\n- Reaktion på börskrasch: ${conversationData.marketCrashReaction}`;
+        }
       }
-      
-      if (conversationData.companies && conversationData.companies.length > 0) {
-        contextInfo += `\n- Företag de gillar: ${conversationData.companies.join(', ')}`;
-      }
-      
-      if (conversationData.sustainabilityPreference) {
-        contextInfo += `\n- Hållbarhetspreferens: ${conversationData.sustainabilityPreference}`;
-      }
-      
-      if (conversationData.geographicPreference) {
-        contextInfo += `\n- Geografisk preferens: ${conversationData.geographicPreference}`;
-      }
-      
-      if (conversationData.investmentStyle) {
-        contextInfo += `\n- Investeringsstil: ${conversationData.investmentStyle}`;
-      }
-      
-      if (conversationData.marketCrashReaction) {
-        contextInfo += `\n- Reaktion på börskrasch: ${conversationData.marketCrashReaction}`;
-      }
-    }
 
-    if (portfolio) {
-      const totalValue = portfolio.total_value || 0;
-      const expectedReturn = portfolio.expected_return || 0;
-      const allocation = portfolio.asset_allocation || {};
-      
-      contextInfo += `\n\nNUVARANDE PORTFÖLJ:
+      if (portfolio) {
+        const totalValue = portfolio.total_value || 0;
+        const expectedReturn = portfolio.expected_return || 0;
+        const allocation = portfolio.asset_allocation || {};
+        
+        contextInfo += `\n\nNUVARANDE PORTFÖLJ:
 - Totalt värde: ${totalValue.toLocaleString()} SEK
 - Förväntad avkastning: ${(expectedReturn * 100).toFixed(1)}%
 - Skapad: ${new Date(portfolio.created_at).toLocaleDateString('sv-SE')}`;
-      
-      if (allocation.stocks) contextInfo += `\n- Aktieallokering: ${allocation.stocks}%`;
-      if (allocation.bonds) contextInfo += `\n- Obligationsallokering: ${allocation.bonds}%`;
-    }
-
-    if (holdings && holdings.length > 0) {
-      const actualHoldings = holdings.filter(h => h.holding_type !== 'recommendation');
-      
-      if (actualHoldings.length > 0) {
-        contextInfo += `\n\nNUVARANDE INNEHAV (UNDVIK DESSA I REKOMMENDATIONER):`;
-        actualHoldings.forEach(holding => {
-          contextInfo += `\n- ${holding.name} (${holding.symbol || 'N/A'})`;
-        });
         
-        contextInfo += `\n\nVIKTIGT: Föreslå ALDRIG aktier som användaren redan äger.`;
+        if (allocation.stocks) contextInfo += `\n- Aktieallokering: ${allocation.stocks}%`;
+        if (allocation.bonds) contextInfo += `\n- Obligationsallokering: ${allocation.bonds}%`;
+      }
+
+      if (holdings && holdings.length > 0) {
+        const actualHoldings = holdings.filter(h => h.holding_type !== 'recommendation');
+        
+        if (actualHoldings.length > 0) {
+          contextInfo += `\n\nNUVARANDE INNEHAV (UNDVIK DESSA I REKOMMENDATIONER):`;
+          actualHoldings.forEach(holding => {
+            contextInfo += `\n- ${holding.name} (${holding.symbol || 'N/A'})`;
+          });
+          
+          contextInfo += `\n\nVIKTIGT: Föreslå ALDRIG aktier som användaren redan äger.`;
+        }
       }
     }
 
@@ -375,6 +380,7 @@ Detta är en komplett portföljanalys. Ge en omfattande strategi med:
     console.log('User message:', message);
     console.log('Analysis type:', analysisType);
     console.log('Is stock analysis request:', isStockAnalysisRequest);
+    console.log('Is personal advice request:', isPersonalAdviceRequest);
     console.log('Is exchange request:', isExchangeRequest);
     console.log('Has conversation data:', !!conversationData);
 
