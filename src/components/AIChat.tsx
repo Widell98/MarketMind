@@ -197,7 +197,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts 
     }, 100);
   };
 
-  const SidebarContent = () => (
+  const SidebarContent = React.memo(() => (
     <ChatFolderSidebar
       currentSessionId={currentSessionId}
       onLoadSession={handleLoadSession}
@@ -207,7 +207,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts 
       isLoadingSession={isLoadingSession}
       className={isMobile ? "w-full" : ""}
     />
-  );
+  ));
 
   return (
     <div className="flex h-full bg-card border shadow-lg rounded-2xl overflow-hidden">
