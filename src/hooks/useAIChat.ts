@@ -12,6 +12,7 @@ interface Message {
   context?: {
     analysisType?: string;
     confidence?: number;
+    isExchangeRequest?: boolean;
   };
 }
 
@@ -590,9 +591,9 @@ export const useAIChat = (portfolioId?: string) => {
         content: data.response,
         timestamp: new Date(),
         context: {
-          ...data.context,
+          analysisType: data.analysisType,
+          confidence: data.confidence,
           isExchangeRequest: data.isExchangeRequest || isExchangeRequest,
-          confidence: data.confidence
         },
       };
 
