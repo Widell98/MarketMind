@@ -231,8 +231,7 @@ const ChatMessage = ({
                   </div>
                 </div>}
               
-              {/* Context badges */}
-              {message.context}
+              {/* Context badges - removed as it was trying to render an object */}
             </div>
           </div>
         </> : <>
