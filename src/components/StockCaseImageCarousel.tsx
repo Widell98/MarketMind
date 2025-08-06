@@ -118,7 +118,8 @@ const StockCaseImageCarousel: React.FC<StockCaseImageCarouselProps> = ({
     );
   }
 
-  if (images.length <= 1) {
+  // Show carousel even with just one image to display history info
+  if (images.length === 0) {
     return null;
   }
 
@@ -152,63 +153,96 @@ const StockCaseImageCarousel: React.FC<StockCaseImageCarouselProps> = ({
               )}
             </div>
 
-            {/* Navigation Controls */}
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={goToPrevious}
-                disabled={currentImageIndex === 0}
-                className="px-3"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
+            {/* Navigation Controls - only show if more than one image */}
+            {images.length > 1 && (
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goToPrevious}
+                  disabled={currentImageIndex === 0}
+                  className="px-3"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
 
-              <div className="flex-1 min-w-0">
-                <div className="bg-muted/30 rounded-lg p-3 border border-muted/50">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(currentImage?.created_at || '')}
-                      </span>
+                <div className="flex-1 min-w-0">
+                  <div className="bg-muted/30 rounded-lg p-3 border border-muted/50">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">
+                          {formatDate(currentImage?.created_at || '')}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-1">
+                        <Badge variant="outline" className="text-xs">
+                          {currentImageIndex + 1}/{images.length}
+                        </Badge>
+                        {currentImage?.is_current && (
+                          <Badge className="bg-green-500 hover:bg-green-600 text-xs">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Nuvarande
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     
-                    <div className="flex items-center gap-1">
-                      <Badge variant="outline" className="text-xs">
-                        {currentImageIndex + 1}/{images.length}
-                      </Badge>
-                      {currentImage?.is_current && (
-                        <Badge className="bg-green-500 hover:bg-green-600 text-xs">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Nuvarande
-                        </Badge>
-                      )}
-                    </div>
+                    {currentImage?.description ? (
+                      <div className="text-sm text-muted-foreground">
+                        <ExpandableText text={currentImage.description} />
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">
+                        Ingen beskrivning
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goToNext}
+                  disabled={currentImageIndex === images.length - 1}
+                  className="px-3"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+
+            {/* Single image info for when there's only one image */}
+            {images.length === 1 && (
+              <div className="bg-muted/30 rounded-lg p-3 border border-muted/50">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">
+                      {formatDate(currentImage?.created_at || '')}
+                    </span>
                   </div>
                   
-                  {currentImage?.description ? (
-                    <div className="text-sm text-muted-foreground">
-                      <ExpandableText text={currentImage.description} />
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic">
-                      Ingen beskrivning
-                    </p>
+                  {currentImage?.is_current && (
+                    <Badge className="bg-green-500 hover:bg-green-600 text-xs">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Nuvarande
+                    </Badge>
                   )}
                 </div>
+                
+                {currentImage?.description ? (
+                  <div className="text-sm text-muted-foreground">
+                    <ExpandableText text={currentImage.description} />
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    Ingen beskrivning
+                  </p>
+                )}
               </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={goToNext}
-                disabled={currentImageIndex === images.length - 1}
-                className="px-3"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
+            )}
 
             {/* Set as current button for owners */}
             {isOwner && currentImage && !currentImage.is_current && (
@@ -222,29 +256,31 @@ const StockCaseImageCarousel: React.FC<StockCaseImageCarouselProps> = ({
               </Button>
             )}
 
-            {/* Thumbnail strip */}
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {images.map((image, index) => (
-                <button
-                  key={image.id}
-                  onClick={() => setCurrentImageIndex(index)}
-                  className={`flex-shrink-0 relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
-                    index === currentImageIndex 
-                      ? 'border-primary shadow-md' 
-                      : 'border-muted hover:border-muted-foreground'
-                  }`}
-                >
-                  <img
-                    src={image.image_url}
-                    alt={`Historisk bild ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                  {image.is_current && (
-                    <div className="absolute top-0 right-0 w-3 h-3 bg-green-500 rounded-full border border-white"></div>
-                  )}
-                </button>
-              ))}
-            </div>
+            {/* Thumbnail strip - only show if more than one image */}
+            {images.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {images.map((image, index) => (
+                  <button
+                    key={image.id}
+                    onClick={() => setCurrentImageIndex(index)}
+                    className={`flex-shrink-0 relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                      index === currentImageIndex 
+                        ? 'border-primary shadow-md' 
+                        : 'border-muted hover:border-muted-foreground'
+                    }`}
+                  >
+                    <img
+                      src={image.image_url}
+                      alt={`Historisk bild ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    {image.is_current && (
+                      <div className="absolute top-0 right-0 w-3 h-3 bg-green-500 rounded-full border border-white"></div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
