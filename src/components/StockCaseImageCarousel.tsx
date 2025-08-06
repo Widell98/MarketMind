@@ -120,8 +120,11 @@ const StockCaseImageCarousel: React.FC<StockCaseImageCarouselProps> = ({
 
   // Show carousel even with just one image to display history info
   if (images.length === 0) {
+    console.log('No images found for stockCaseId:', stockCaseId);
     return null;
   }
+
+  console.log('Images found:', images.length, 'for stockCaseId:', stockCaseId);
 
   const currentImage = images[currentImageIndex];
 

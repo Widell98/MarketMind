@@ -238,12 +238,14 @@ const StockCaseDetail = () => {
               </div>
 
               {/* Image Carousel for browsing through image history */}
-              <StockCaseImageCarousel 
-                stockCaseId={stockCase.id}
-                currentImageUrl={currentDisplayImageUrl}
-                onImageChange={handleImageChange}
-                caseOwnerId={stockCase.user_id}
-              />
+              <div className="w-full">
+                <StockCaseImageCarousel 
+                  stockCaseId={stockCase.id}
+                  currentImageUrl={currentDisplayImageUrl}
+                  onImageChange={handleImageChange}
+                  caseOwnerId={stockCase.user_id}
+                />
+              </div>
 
               {/* Login prompt for non-users */}
               {!user && <div className="text-center p-3 bg-muted rounded-lg">
