@@ -19,7 +19,7 @@ import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
 import StockCaseComments from '@/components/StockCaseComments';
 import AddStockCaseUpdateDialog from '@/components/AddStockCaseUpdateDialog';
-import StockCaseImageCarousel from '@/components/StockCaseImageCarousel';
+import StockCaseHistoryViewer from '@/components/StockCaseHistoryViewer';
 import type { StockCase } from '@/types/stockCase';
 const StockCaseDetail = () => {
   const {
@@ -34,7 +34,7 @@ const StockCaseDetail = () => {
   } = useAuth();
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
-  const [currentDisplayImageUrl, setCurrentDisplayImageUrl] = useState<string | null>(null);
+  const [selectedVersion, setSelectedVersion] = useState<any>(null);
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL LOGIC
   const {
@@ -172,15 +172,17 @@ const StockCaseDetail = () => {
       (window as any).refreshCommunityRecommendations();
     }
   };
-  // Initialize current display image with stock case image
-  useEffect(() => {
-    if (stockCase?.image_url && !currentDisplayImageUrl) {
-      setCurrentDisplayImageUrl(stockCase.image_url);
-    }
-  }, [stockCase?.image_url, currentDisplayImageUrl]);
+  const handleVersionSelect = (version: any) => {
+    setSelectedVersion(version);
+  };
 
-  const handleImageChange = (imageUrl: string) => {
-    setCurrentDisplayImageUrl(imageUrl);
+  // Use selected version data or fall back to original stock case
+  const displayData = selectedVersion || {
+    title: stockCase.title,
+    description: stockCase.description,
+    image_url: stockCase.image_url,
+    created_at: stockCase.created_at,
+    isOriginal: true
   };
   return <Layout>
       <div className="max-w-6xl mx-auto space-y-6">
@@ -212,13 +214,15 @@ const StockCaseDetail = () => {
           </div>
 
           {/* Hero Image */}
-          {(currentDisplayImageUrl || stockCase.image_url) && <div className="space-y-4">
+          {displayData.image_url && <div className="space-y-4">
               <div className="relative aspect-video rounded-lg overflow-hidden">
-                <img 
-                  src={currentDisplayImageUrl || stockCase.image_url} 
-                  alt={stockCase.company_name} 
-                  className="w-full h-full object-cover" 
-                />
+                <img src={displayData.image_url} alt={stockCase.company_name} className="w-full h-full object-cover" />
+                {selectedVersion && !selectedVersion.isOriginal && <div className="absolute top-2 right-2">
+                    <Badge variant="secondary" className="bg-black/50 text-white">
+                      <History className="w-3 h-3 mr-1" />
+                      Uppdaterad version
+                    </Badge>
+                  </div>}
               </div>
               
               {/* Action Buttons */}
@@ -237,15 +241,14 @@ const StockCaseDetail = () => {
                   </Button>}
               </div>
 
-              {/* Image Carousel for browsing through image history */}
-              <div className="w-full">
-                <StockCaseImageCarousel 
-                  stockCaseId={stockCase.id}
-                  currentImageUrl={currentDisplayImageUrl}
-                  onImageChange={handleImageChange}
-                  caseOwnerId={stockCase.user_id}
-                />
-              </div>
+              {/* History Viewer - visible for everyone but only editable by owner */}
+              <StockCaseHistoryViewer stockCaseId={stockCase.id} originalStockCase={{
+            title: stockCase.title,
+            description: stockCase.description,
+            image_url: stockCase.image_url,
+            created_at: stockCase.created_at,
+            user_id: stockCase.user_id
+          }} onVersionSelect={handleVersionSelect} compact={true} />
 
               {/* Login prompt for non-users */}
               {!user && <div className="text-center p-3 bg-muted rounded-lg">
@@ -308,16 +311,21 @@ const StockCaseDetail = () => {
             </Card>
 
             {/* Description */}
-            {stockCase.description && <Card>
+            {displayData.description && <Card>
                 <CardHeader>
-                  <CardTitle>Analys & Beskrivning</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Analys & Beskrivning</CardTitle>
+                    {selectedVersion && !selectedVersion.isOriginal && <Badge variant="outline" className="text-xs">
+                        Uppdaterad version
+                      </Badge>}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="prose dark:prose-invert max-w-none">
                     <p className={showFullDescription ? '' : 'line-clamp-4'}>
-                      {stockCase.description}
+                      {displayData.description}
                     </p>
-                    {stockCase.description.length > 300 && <Button variant="link" onClick={() => setShowFullDescription(!showFullDescription)} className="p-0 h-auto mt-3">
+                    {displayData.description.length > 300 && <Button variant="link" onClick={() => setShowFullDescription(!showFullDescription)} className="p-0 h-auto mt-3">
                         {showFullDescription ? 'Visa mindre' : 'Läs mer'}
                       </Button>}
                   </div>
