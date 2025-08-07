@@ -215,44 +215,19 @@ const StockCaseDetail = () => {
 
           {/* Hero Image */}
           {displayData.image_url && <div className="space-y-4">
-              <div className="relative aspect-video rounded-lg overflow-hidden">
-                <img src={displayData.image_url} alt={stockCase.company_name} className="w-full h-full object-cover" />
-                {selectedVersion && !selectedVersion.isOriginal && <div className="absolute top-2 right-2">
-                    <Badge variant="secondary" className="bg-black/50 text-white">
-                      <History className="w-3 h-3 mr-1" />
-                      Uppdaterad version
-                    </Badge>
-                  </div>}
-              </div>
+              
               
               {/* Action Buttons */}
-              <div className="flex justify-center items-center gap-4">
-                <Button variant={isLiked ? "default" : "outline"} onClick={handleLikeClick} disabled={likesLoading} size="lg" className={`flex items-center gap-3 px-6 py-3 rounded-xl transition-all duration-200 ${isLiked ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg shadow-red-500/25 hover:shadow-red-500/40' : 'hover:bg-red-50 hover:border-red-200 hover:text-red-600 dark:hover:bg-red-950/20'}`}>
-                  <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-                  <span className="font-medium">{likeCount}</span>
-                </Button>
-
-                {user && <SaveOpportunityButton itemType="stock_case" itemId={stockCase.id} itemTitle={stockCase.company_name} variant="outline" showText={true} onSaveSuccess={handleSaveSuccess} size="lg" className="px-6 py-3 rounded-xl transition-all duration-200 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 dark:hover:bg-blue-950/20" />}
-
-                {/* Owner Actions */}
-                {isOwner && <Button variant="outline" onClick={() => setShowUpdateDialog(true)} size="lg" className="flex items-center gap-3 px-6 py-3 rounded-xl transition-all duration-200 hover:bg-amber-50 hover:border-amber-200 hover:text-amber-600 dark:hover:bg-amber-950/20">
-                    <PlusCircle className="w-5 h-5" />
-                    <span className="font-medium">Uppdatera Case</span>
-                  </Button>}
-              </div>
+              
 
               {/* Timeline Viewer - visible for everyone but only editable by owner */}
-              <StockCaseTimelineViewer 
-                stockCaseId={stockCase.id} 
-                originalStockCase={{
-                  title: stockCase.title,
-                  description: stockCase.description,
-                  image_url: stockCase.image_url,
-                  created_at: stockCase.created_at,
-                  user_id: stockCase.user_id
-                }} 
-                onVersionSelect={handleVersionSelect} 
-              />
+              <StockCaseTimelineViewer stockCaseId={stockCase.id} originalStockCase={{
+            title: stockCase.title,
+            description: stockCase.description,
+            image_url: stockCase.image_url,
+            created_at: stockCase.created_at,
+            user_id: stockCase.user_id
+          }} onVersionSelect={handleVersionSelect} />
 
               {/* Login prompt for non-users */}
               {!user && <div className="text-center p-3 bg-muted rounded-lg">
@@ -368,10 +343,7 @@ const StockCaseDetail = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between">
-                    <div 
-                      className="flex items-center space-x-3 cursor-pointer hover:bg-accent rounded-lg p-2 -m-2 transition-colors"
-                      onClick={() => navigate(`/profile/${stockCase.user_id}`)}
-                    >
+                    <div className="flex items-center space-x-3 cursor-pointer hover:bg-accent rounded-lg p-2 -m-2 transition-colors" onClick={() => navigate(`/profile/${stockCase.user_id}`)}>
                       <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
                         <span className="text-sm font-semibold">
                           {stockCase.profiles.display_name?.charAt(0) || stockCase.profiles.username.charAt(0)}
