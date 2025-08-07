@@ -19,7 +19,7 @@ import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
 import StockCaseComments from '@/components/StockCaseComments';
 import AddStockCaseUpdateDialog from '@/components/AddStockCaseUpdateDialog';
-import StockCaseHistoryViewer from '@/components/StockCaseHistoryViewer';
+import StockCaseTimelineViewer from '@/components/StockCaseTimelineViewer';
 import type { StockCase } from '@/types/stockCase';
 const StockCaseDetail = () => {
   const {
@@ -241,14 +241,18 @@ const StockCaseDetail = () => {
                   </Button>}
               </div>
 
-              {/* History Viewer - visible for everyone but only editable by owner */}
-              <StockCaseHistoryViewer stockCaseId={stockCase.id} originalStockCase={{
-            title: stockCase.title,
-            description: stockCase.description,
-            image_url: stockCase.image_url,
-            created_at: stockCase.created_at,
-            user_id: stockCase.user_id
-          }} onVersionSelect={handleVersionSelect} compact={true} />
+              {/* Timeline Viewer - visible for everyone but only editable by owner */}
+              <StockCaseTimelineViewer 
+                stockCaseId={stockCase.id} 
+                originalStockCase={{
+                  title: stockCase.title,
+                  description: stockCase.description,
+                  image_url: stockCase.image_url,
+                  created_at: stockCase.created_at,
+                  user_id: stockCase.user_id
+                }} 
+                onVersionSelect={handleVersionSelect} 
+              />
 
               {/* Login prompt for non-users */}
               {!user && <div className="text-center p-3 bg-muted rounded-lg">
