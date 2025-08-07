@@ -215,11 +215,6 @@ const StockCaseDetail = () => {
 
           {/* Hero Image */}
           {displayData.image_url && <div className="space-y-4">
-              
-              
-              {/* Action Buttons */}
-              
-
               {/* Timeline Viewer - visible for everyone but only editable by owner */}
               <StockCaseTimelineViewer stockCaseId={stockCase.id} originalStockCase={{
             title: stockCase.title,
@@ -228,6 +223,23 @@ const StockCaseDetail = () => {
             created_at: stockCase.created_at,
             user_id: stockCase.user_id
           }} onVersionSelect={handleVersionSelect} />
+
+              {/* Action Buttons */}
+              {user && <div className="flex items-center justify-center gap-4 py-4">
+                  <Button variant="outline" onClick={handleLikeClick} disabled={likesLoading} className="flex items-center gap-2">
+                    <Heart className={`w-4 h-4 ${isLiked ? 'fill-current text-red-500' : ''}`} />
+                    {likeCount} Gilla
+                  </Button>
+                  <SaveOpportunityButton itemType="stock_case" itemId={stockCase.id} itemTitle={stockCase.title} onSaveSuccess={handleSaveSuccess} />
+                  <Button variant="outline" onClick={handleShare} className="flex items-center gap-2">
+                    <Share2 className="w-4 h-4" />
+                    Dela
+                  </Button>
+                  {isOwner && <Button variant="outline" onClick={() => setShowUpdateDialog(true)} className="flex items-center gap-2">
+                      <Plus className="w-4 h-4" />
+                      Lägg till uppdatering
+                    </Button>}
+                </div>}
 
               {/* Login prompt for non-users */}
               {!user && <div className="text-center p-3 bg-muted rounded-lg">
@@ -243,8 +255,8 @@ const StockCaseDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-6">
-            {/* Combined Overview Card */}
-            <Card>
+            {/* Combined Overview Card - only show if there are financial metrics */}
+            {(stockCase.entry_price || stockCase.current_price || stockCase.target_price || stockCase.stop_loss || stockCase.sector || stockCase.market_cap || stockCase.pe_ratio || stockCase.dividend_yield) && <Card>
               <CardHeader>
                 <CardTitle>Översikt</CardTitle>
               </CardHeader>
@@ -287,29 +299,7 @@ const StockCaseDetail = () => {
                     </div>}
                 </div>
               </CardContent>
-            </Card>
-
-            {/* Description */}
-            {displayData.description && <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Analys & Beskrivning</CardTitle>
-                    {selectedVersion && !selectedVersion.isOriginal && <Badge variant="outline" className="text-xs">
-                        Uppdaterad version
-                      </Badge>}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="prose dark:prose-invert max-w-none">
-                    <p className={showFullDescription ? '' : 'line-clamp-4'}>
-                      {displayData.description}
-                    </p>
-                    {displayData.description.length > 300 && <Button variant="link" onClick={() => setShowFullDescription(!showFullDescription)} className="p-0 h-auto mt-3">
-                        {showFullDescription ? 'Visa mindre' : 'Läs mer'}
-                      </Button>}
-                  </div>
-                </CardContent>
-              </Card>}
+            </Card>}
 
             {/* Admin Comment */}
             {stockCase.admin_comment && <Card className="border-blue-600/20 bg-blue-600/10 dark:bg-blue-950/30">
