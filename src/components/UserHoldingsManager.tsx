@@ -33,6 +33,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import HoldingsGroupSection from '@/components/HoldingsGroupSection';
+import AddHoldingDialog from '@/components/AddHoldingDialog';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
@@ -94,6 +95,7 @@ const UserHoldingsManager: React.FC = () => {
     amount: ''
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const [showAddHoldingDialog, setShowAddHoldingDialog] = useState(false);
   
   // Price data state
   const [prices, setPrices] = useState<StockPrice[]>([]);
@@ -146,6 +148,16 @@ const UserHoldingsManager: React.FC = () => {
 
   const handleDeleteCash = async (id: string) => {
     await deleteCashHolding(id);
+  };
+
+  const { addHolding } = useUserHoldings();
+
+  const handleAddHolding = async (holdingData: any) => {
+    const success = await addHolding(holdingData);
+    if (success) {
+      setShowAddHoldingDialog(false);
+    }
+    return success;
   };
 
   const formatCurrency = (amount: number, currency = 'SEK', showCurrency = true) => {
@@ -410,7 +422,7 @@ const UserHoldingsManager: React.FC = () => {
                 Lägg till dina nuvarande aktier, fonder och kassapositioner för att få en komplett bild av din portfölj och bättre AI-rekommendationer.
               </p>
               <div className="flex gap-2 justify-center">
-                <Button className="flex items-center gap-2" onClick={() => navigate('/ai-chat')}>
+                <Button className="flex items-center gap-2" onClick={() => setShowAddHoldingDialog(true)}>
                   <Plus className="w-4 h-4" />
                   Lägg till innehav
                 </Button>
@@ -425,7 +437,7 @@ const UserHoldingsManager: React.FC = () => {
               {/* Action Bar */}
               <div className="flex flex-col sm:flex-row gap-4 pb-4 border-b border-border">
                 <div className="flex gap-2">
-                  <Button size="sm" className="flex items-center gap-2" onClick={() => navigate('/ai-chat')}>
+                  <Button size="sm" className="flex items-center gap-2" onClick={() => setShowAddHoldingDialog(true)}>
                     <Plus className="w-4 h-4" />
                     Lägg till innehav
                   </Button>
@@ -551,6 +563,13 @@ const UserHoldingsManager: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Add Holding Dialog */}
+      <AddHoldingDialog
+        isOpen={showAddHoldingDialog}
+        onClose={() => setShowAddHoldingDialog(false)}
+        onAdd={handleAddHolding}
+      />
     </>
   );
 };
