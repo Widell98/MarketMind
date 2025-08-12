@@ -53,91 +53,6 @@ serve(async (req) => {
 
     console.log('Supabase client initialized');
 
-    // Fetch recent chat history for context (last 10 messages from this session)
-    const { data: recentHistory } = await supabase
-      .from('portfolio_chat_history')
-      .select('message, message_type, context_data')
-      .eq('user_id', userId)
-      .eq('chat_session_id', sessionId || 'default')
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    // Extract mentioned stocks/companies from recent conversation
-    const extractStockMentions = (text: string): string[] => {
-      const stockMentions: string[] = [];
-      
-      // Swedish companies (common ones)
-      const swedishStocks = /\b(investor|volvo|ericsson|sandvik|atlas copco|kinnevik|hexagon|alfa laval|skf|telia|seb|handelsbanken|nordea|abb|astra|astrazeneca|electrolux|husqvarna|getinge|boliden|ssab|stora enso|svenska cellulosa|billerud|holmen|nibe|beijer|essity|kindred|evolution|betsson|net entertainment|fingerprint|sinch|tobii|xvivo|medivir|orexo|camurus|diamyd|raysearch|elekta|sectra|bactiguard|vitrolife|bioinvent|immunovia|hansa|cantargia|oncopeptides|wilson therapeutics|probi|biovica|addlife|duni|traction|embracer|stillfront|paradox|starbreeze|remedy|gaming|saab|scania|spotify|klarna|king|minecraft|mojang|truecaller|oatly|northvolt)\b/gi;
-      
-      // International companies  
-      const internationalStocks = /\b(apple|microsoft|google|alphabet|amazon|tesla|meta|facebook|netflix|nvidia|intel|amd|oracle|salesforce|adobe|zoom|uber|airbnb|twitter|spacex|paypal|visa|mastercard|coca cola|pepsi|mcdonalds|nike|disney|walmart|berkshire hathaway|johnson|procter|gamble|exxon|chevron|jp morgan|bank of america|wells fargo|goldman sachs|morgan stanley|blackrock|vanguard)\b/gi;
-      
-      // Stock symbols (3-5 uppercase letters)
-      const symbols = /\b[A-Z]{3,5}\b/g;
-      
-      const swedishMatches = text.match(swedishStocks) || [];
-      const internationalMatches = text.match(internationalStocks) || [];
-      const symbolMatches = text.match(symbols) || [];
-      
-      stockMentions.push(...swedishMatches, ...internationalMatches, ...symbolMatches);
-      
-      return [...new Set(stockMentions.map(s => s.toLowerCase()))];
-    };
-
-    let currentStockContext = '';
-    
-    if (recentHistory && recentHistory.length > 0) {
-      // Look for stock mentions in recent messages (prioritize most recent)
-      for (const historyItem of recentHistory) {
-        const mentions = extractStockMentions(historyItem.message);
-        if (mentions.length > 0) {
-          currentStockContext = mentions[0]; // Take the most recent stock mention
-          break;
-        }
-      }
-    }
-
-    // Also check current message for new stock mentions
-    const currentMentions = extractStockMentions(message);
-    if (currentMentions.length > 0) {
-      currentStockContext = currentMentions[0]; // Override with current mention
-    }
-
-    console.log('Current stock context:', currentStockContext);
-
-    // Update session context with current stock
-    if (sessionId && currentStockContext) {
-      await supabase
-        .from('ai_chat_sessions')
-        .update({
-          context_data: {
-            created_for: 'advisory',
-            market_context: 'normal',
-            portfolio_id: portfolioId,
-            current_stock: currentStockContext,
-            last_stock_mention: new Date().toISOString()
-          }
-        })
-        .eq('id', sessionId)
-        .eq('user_id', userId);
-    }
-
-    // Fetch current session to get existing stock context
-    let sessionStockContext = currentStockContext;
-    if (sessionId && !currentStockContext) {
-      const { data: session } = await supabase
-        .from('ai_chat_sessions')
-        .select('context_data')
-        .eq('id', sessionId)
-        .eq('user_id', userId)
-        .maybeSingle();
-      
-      if (session?.context_data?.current_stock) {
-        sessionStockContext = session.context_data.current_stock;
-        console.log('Using existing session stock context:', sessionStockContext);
-      }
-    }
-
     // Fetch enhanced context data
     const { data: riskProfile } = await supabase
       .from('user_risk_profiles')
@@ -348,16 +263,6 @@ ENDAST RIKTIGA INVESTERINGAR:
           contextInfo += `\n\nVIKTIGT: Föreslå ALDRIG aktier som användaren redan äger.`;
         }
       }
-    }
-
-    // Add stock context information if available
-    if (sessionStockContext) {
-      contextInfo += `\n\n🎯 KONVERSATIONSKONTEXT:
-ANVÄNDAREN PRATAR OM: ${sessionStockContext.toUpperCase()}
-
-VIKTIGT: Om användaren ställer en följdfråga utan att nämna företagsnamn (ex: "Hur var deras rapport?", "Vad tycker du om den?", "Är den värd att investera i?"), så syftar de på ${sessionStockContext.toUpperCase()}.
-
-Svara alltid som om de pratar om ${sessionStockContext.toUpperCase()} när de inte specificerar vilket företag de menar.`;
     }
 
     // Enhanced system prompt for different types of analysis
