@@ -14,22 +14,30 @@ import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 const Index = () => {
-  const { user } = useAuth();
-  const { activePortfolio, loading } = usePortfolio();
-  const { performance } = usePortfolioPerformance();
-  const { totalCash } = useCashHoldings();
-  const { actualHoldings } = useUserHoldings();
-
+  const {
+    user
+  } = useAuth();
+  const {
+    activePortfolio,
+    loading
+  } = usePortfolio();
+  const {
+    performance
+  } = usePortfolioPerformance();
+  const {
+    totalCash
+  } = useCashHoldings();
+  const {
+    actualHoldings
+  } = useUserHoldings();
   const hasPortfolio = !loading && !!activePortfolio;
   const totalPortfolioValue = performance.totalPortfolioValue + totalCash;
-  return (
-    <Layout>
+  return <Layout>
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
         <div className="container mx-auto px-4 py-8 max-w-6xl">
           
           {/* Hero Section - Only show for non-logged in users */}
-          {!user && (
-            <div className="text-center mb-16">
+          {!user && <div className="text-center mb-16">
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6">
                 Investera smartare med AI
               </h1>
@@ -50,12 +58,10 @@ const Index = () => {
                   </Link>
                 </Button>
               </div>
-            </div>
-          )}
+            </div>}
 
           {/* Enhanced Portfolio Dashboard for logged-in users */}
-          {user && hasPortfolio && (
-            <div className="mb-16">
+          {user && hasPortfolio && <div className="mb-16">
               <Card className="bg-gradient-to-r from-primary/5 to-blue-50 dark:from-primary/10 dark:to-blue-950/20 border-primary/20 shadow-lg">
                 <div className="p-6">
                   {/* Portfolio Header */}
@@ -66,7 +72,7 @@ const Index = () => {
                       </div>
                       <div>
                         <h3 className="font-semibold text-xl">Din Portfölj</h3>
-                        <p className="text-sm text-muted-foreground">Totalt värde: {totalPortfolioValue.toLocaleString('sv-SE')} kr</p>
+                        
                       </div>
                     </div>
                     <Badge className="bg-green-100 text-green-700 border-green-200 px-3 py-1">
@@ -158,12 +164,10 @@ const Index = () => {
                   </div>
                 </div>
               </Card>
-            </div>
-          )}
+            </div>}
 
           {/* Welcome message for logged-in users without portfolio */}
-          {user && !hasPortfolio && !loading && (
-            <div className="mb-16">
+          {user && !hasPortfolio && !loading && <div className="mb-16">
               <Card className="bg-gradient-to-r from-primary/5 to-purple-50 dark:from-primary/10 dark:to-purple-950/20 border-primary/20 shadow-lg">
                 <div className="p-6 text-center">
                   <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
@@ -189,15 +193,14 @@ const Index = () => {
                   </div>
                 </div>
               </Card>
-            </div>
-          )}
+            </div>}
 
           {/* Main Action Cards - Only 3 focused cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
             
             {/* Portfolio Management */}
             <Card className="bg-card border shadow-lg hover:shadow-xl transition-all duration-300 group cursor-pointer">
-              <Link to={user ? (hasPortfolio ? "/portfolio-implementation" : "/portfolio-advisor") : "/auth"} className="block p-8">
+              <Link to={user ? hasPortfolio ? "/portfolio-implementation" : "/portfolio-advisor" : "/auth"} className="block p-8">
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                     <BarChart3 className="w-8 h-8 text-white" />
@@ -212,10 +215,7 @@ const Index = () => {
                   </div>
                 </div>
                 <p className="text-muted-foreground leading-relaxed mb-4">
-                  {user && hasPortfolio 
-                    ? "Analysera prestanda, optimera allokering och få AI-drivna insikter om din portfölj." 
-                    : "Låt AI hjälpa dig bygga en diversifierad portfölj baserad på din riskprofil och mål."
-                  }
+                  {user && hasPortfolio ? "Analysera prestanda, optimera allokering och få AI-drivna insikter om din portfölj." : "Låt AI hjälpa dig bygga en diversifierad portfölj baserad på din riskprofil och mål."}
                 </p>
                 <div className="flex items-center text-primary font-medium group-hover:gap-3 transition-all duration-200">
                   {user && hasPortfolio ? "Analysera portfölj" : "Skapa portfölj"}
@@ -285,7 +285,6 @@ const Index = () => {
 
         </div>
       </div>
-    </Layout>
-  );
+    </Layout>;
 };
 export default Index;
