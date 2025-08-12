@@ -25,29 +25,31 @@ const Index = () => {
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
         <div className="container mx-auto px-4 py-8 max-w-6xl">
           
-          {/* Hero Section - Clear and focused */}
-          <div className="text-center mb-16">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-              Investera smartare med AI
-            </h1>
-            <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed mb-10 max-w-3xl mx-auto">
-              Skapa, analysera och optimera din portfölj med hjälp av AI. Upptäck nya möjligheter genom vårt community.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button asChild size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200">
-                <Link to={user ? (hasPortfolio ? "/portfolio-implementation" : "/portfolio-advisor") : "/auth"}>
-                  <BarChart3 className="w-5 h-5 mr-2" />
-                  {user ? (hasPortfolio ? "Min Portfölj" : "Skapa Portfölj") : "Starta nu"}
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground shadow-md hover:shadow-lg transition-all duration-200">
-                <Link to="/ai-chat">
-                  <Brain className="w-5 h-5 mr-2" />
-                  AI-Rådgivare
-                </Link>
-              </Button>
+          {/* Hero Section - Only show for non-logged in users */}
+          {!user && (
+            <div className="text-center mb-16">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6">
+                Investera smartare med AI
+              </h1>
+              <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed mb-10 max-w-3xl mx-auto">
+                Skapa, analysera och optimera din portfölj med hjälp av AI. Upptäck nya möjligheter genom vårt community.
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <Button asChild size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200">
+                  <Link to="/auth">
+                    <BarChart3 className="w-5 h-5 mr-2" />
+                    Starta nu
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground shadow-md hover:shadow-lg transition-all duration-200">
+                  <Link to="/ai-chat">
+                    <Brain className="w-5 h-5 mr-2" />
+                    AI-Rådgivare
+                  </Link>
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Portfolio Widget for logged-in users with portfolio */}
           {user && hasPortfolio && (
