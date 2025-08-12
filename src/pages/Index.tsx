@@ -2,7 +2,7 @@ import React from 'react';
 import Layout from '@/components/Layout';
 import IntelligentRouting from '@/components/IntelligentRouting';
 import CompactLatestCases from '@/components/CompactLatestCases';
-import { Brain, UserPlus, BarChart3, Users, ArrowUpRight, TrendingUp } from 'lucide-react';
+import { Brain, UserPlus, BarChart3, Users, ArrowUpRight, TrendingUp, Wallet } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -78,13 +78,13 @@ const Index = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 border border-white/20">
                       <div className="flex items-center gap-2 mb-2">
-                        <TrendingUp className="w-4 h-4 text-green-600" />
-                        <span className="text-sm font-medium">Prestanda</span>
+                        <BarChart3 className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm font-medium">Totalt värde</span>
                       </div>
-                      <p className="text-lg font-bold text-green-600">
-                        +{performance.totalReturn?.toFixed(1) || '0.0'}%
+                      <p className="text-lg font-bold text-blue-600">
+                        {totalPortfolioValue.toLocaleString('sv-SE')} kr
                       </p>
-                      <p className="text-xs text-muted-foreground">Sedan start</p>
+                      <p className="text-xs text-muted-foreground">Hela portföljen</p>
                     </div>
 
                     <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 border border-white/20">
@@ -100,7 +100,7 @@ const Index = () => {
 
                     <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 border border-white/20">
                       <div className="flex items-center gap-2 mb-2">
-                        <Users className="w-4 h-4 text-purple-600" />
+                        <Wallet className="w-4 h-4 text-green-600" />
                         <span className="text-sm font-medium">Kassa</span>
                       </div>
                       <p className="text-lg font-bold">
