@@ -2,7 +2,7 @@ import React from 'react';
 import Layout from '@/components/Layout';
 import IntelligentRouting from '@/components/IntelligentRouting';
 import CompactLatestCases from '@/components/CompactLatestCases';
-import { Brain, UserPlus, BarChart3, Users, ArrowUpRight } from 'lucide-react';
+import { Brain, UserPlus, BarChart3, Users, ArrowUpRight, TrendingUp } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
+import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 const Index = () => {
@@ -17,6 +18,7 @@ const Index = () => {
   const { activePortfolio, loading } = usePortfolio();
   const { performance } = usePortfolioPerformance();
   const { totalCash } = useCashHoldings();
+  const { actualHoldings } = useUserHoldings();
 
   const hasPortfolio = !loading && !!activePortfolio;
   const totalPortfolioValue = performance.totalPortfolioValue + totalCash;
@@ -51,35 +53,137 @@ const Index = () => {
             </div>
           )}
 
-          {/* Portfolio Widget for logged-in users with portfolio */}
+          {/* Enhanced Portfolio Dashboard for logged-in users */}
           {user && hasPortfolio && (
             <div className="mb-16">
               <Card className="bg-gradient-to-r from-primary/5 to-blue-50 dark:from-primary/10 dark:to-blue-950/20 border-primary/20 shadow-lg">
                 <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
+                  {/* Portfolio Header */}
+                  <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-                        <BarChart3 className="w-5 h-5 text-primary-foreground" />
+                      <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
+                        <BarChart3 className="w-6 h-6 text-primary-foreground" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-lg">Din Portfölj</h3>
+                        <h3 className="font-semibold text-xl">Din Portfölj</h3>
                         <p className="text-sm text-muted-foreground">Totalt värde: {totalPortfolioValue.toLocaleString('sv-SE')} kr</p>
                       </div>
                     </div>
-                    <Badge className="bg-green-100 text-green-700 border-green-200">
+                    <Badge className="bg-green-100 text-green-700 border-green-200 px-3 py-1">
                       Aktiv
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <Button asChild>
+
+                  {/* Portfolio Metrics Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 border border-white/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <TrendingUp className="w-4 h-4 text-green-600" />
+                        <span className="text-sm font-medium">Prestanda</span>
+                      </div>
+                      <p className="text-lg font-bold text-green-600">
+                        +{performance.totalReturn?.toFixed(1) || '0.0'}%
+                      </p>
+                      <p className="text-xs text-muted-foreground">Sedan start</p>
+                    </div>
+
+                    <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 border border-white/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <BarChart3 className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm font-medium">Innehav</span>
+                      </div>
+                      <p className="text-lg font-bold">
+                        {actualHoldings?.length || 0}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Aktiva positioner</p>
+                    </div>
+
+                    <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 border border-white/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Users className="w-4 h-4 text-purple-600" />
+                        <span className="text-sm font-medium">Kassa</span>
+                      </div>
+                      <p className="text-lg font-bold">
+                        {totalCash.toLocaleString('sv-SE')} kr
+                      </p>
+                      <p className="text-xs text-muted-foreground">Tillgängligt</p>
+                    </div>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                    <Button asChild variant="outline" size="sm" className="h-auto p-3 flex flex-col gap-1">
                       <Link to="/portfolio-implementation">
-                        Visa detaljer
+                        <BarChart3 className="w-4 h-4" />
+                        <span className="text-xs">Översikt</span>
+                      </Link>
+                    </Button>
+                    
+                    <Button asChild variant="outline" size="sm" className="h-auto p-3 flex flex-col gap-1">
+                      <Link to="/ai-chat">
+                        <Brain className="w-4 h-4" />
+                        <span className="text-xs">AI-Råd</span>
+                      </Link>
+                    </Button>
+                    
+                    <Button asChild variant="outline" size="sm" className="h-auto p-3 flex flex-col gap-1">
+                      <Link to="/stock-cases">
+                        <Users className="w-4 h-4" />
+                        <span className="text-xs">Upptäck</span>
+                      </Link>
+                    </Button>
+                    
+                    <Button asChild variant="outline" size="sm" className="h-auto p-3 flex flex-col gap-1">
+                      <Link to="/market-analyses">
+                        <TrendingUp className="w-4 h-4" />
+                        <span className="text-xs">Analyser</span>
+                      </Link>
+                    </Button>
+                  </div>
+
+                  {/* Main Action Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button asChild className="flex-1">
+                      <Link to="/portfolio-implementation">
+                        Hantera portfölj
                         <ArrowUpRight className="w-4 h-4 ml-2" />
                       </Link>
                     </Button>
-                    <Button asChild variant="outline">
+                    <Button asChild variant="outline" className="flex-1">
                       <Link to="/ai-chat">
                         Diskutera med AI
+                        <Brain className="w-4 h-4 ml-2" />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {/* Welcome message for logged-in users without portfolio */}
+          {user && !hasPortfolio && !loading && (
+            <div className="mb-16">
+              <Card className="bg-gradient-to-r from-primary/5 to-purple-50 dark:from-primary/10 dark:to-purple-950/20 border-primary/20 shadow-lg">
+                <div className="p-6 text-center">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                    <UserPlus className="w-8 h-8 text-primary" />
+                  </div>
+                  <h3 className="font-semibold text-xl mb-2">Välkommen tillbaka!</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Redo att skapa din första AI-drivna portfölj? Låt oss komma igång.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <Button asChild size="lg">
+                      <Link to="/portfolio-advisor">
+                        <BarChart3 className="w-5 h-5 mr-2" />
+                        Skapa portfölj
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" size="lg">
+                      <Link to="/ai-chat">
+                        <Brain className="w-5 h-5 mr-2" />
+                        Prata med AI först
                       </Link>
                     </Button>
                   </div>
