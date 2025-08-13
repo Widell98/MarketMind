@@ -22,7 +22,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 
@@ -90,11 +89,6 @@ const AppSidebar = () => {
   return (
     <Sidebar className="border-r bg-gradient-to-b from-background via-background to-muted/20 shadow-sm">
       <SidebarContent className="px-4 py-6 space-y-6">
-        {/* Sidebar Toggle Button */}
-        <div className="flex justify-end mb-4">
-          <SidebarTrigger className="h-8 w-8 border border-border hover:bg-muted" />
-        </div>
-        
         {/* Main Navigation */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-semibold text-primary flex items-center gap-2">
