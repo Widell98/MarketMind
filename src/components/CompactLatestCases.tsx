@@ -13,6 +13,9 @@ import LoginPromptModal from '@/components/LoginPromptModal';
 import EnhancedStockCaseCard from '@/components/EnhancedStockCaseCard';
 import CompactLatestCasesEmpty from '@/components/CompactLatestCasesEmpty';
 import CompactLatestCasesFilters from '@/components/CompactLatestCasesFilters';
+import EnhancedAnalysisCard from '@/components/EnhancedAnalysisCard';
+import { useAnalyses } from '@/hooks/useAnalyses';
+import { useFollowingAnalyses } from '@/hooks/useFollowingAnalyses';
 
 const CompactLatestCases = () => {
   const [viewMode, setViewMode] = useState<'all' | 'trending' | 'followed'>('all');
@@ -25,7 +28,8 @@ const CompactLatestCases = () => {
   const { followingStockCases, loading: followingLoading } = useFollowingStockCases();
   const { trendingCases, loading: trendingLoading } = useTrendingStockCases(3);
   const { latestCases: latestStockCases, loading: latestLoading } = useLatestStockCases(3);
-
+  const { data: latestAnalyses = [], isLoading: analysesLoading } = useAnalyses(3);
+  const { data: followingAnalyses = [], isLoading: followingAnalysesLoading } = useFollowingAnalyses();
   const getDisplayData = () => {
     switch (viewMode) {
       case 'all':
@@ -40,6 +44,8 @@ const CompactLatestCases = () => {
   };
 
   const { cases: displayCases, loading } = getDisplayData();
+  const displayAnalyses = viewMode === 'followed' && user ? (followingAnalyses || []).slice(0, 3) : (latestAnalyses || []);
+  const analysesLoadingState = viewMode === 'followed' && user ? followingAnalysesLoading : analysesLoading;
 
   const handleCreateCase = () => {
     if (!user) {
@@ -61,6 +67,18 @@ const CompactLatestCases = () => {
     navigate(`/stock-cases/${id}`);
   };
 
+  const handleViewAnalysisDetails = (id: string) => {
+    navigate(`/analysis/${id}`);
+  };
+
+  const handleViewAllAnalyses = () => {
+    if (!user) {
+      setShowLoginPrompt(true);
+      return;
+    }
+    navigate('/market-analyses');
+  };
+
   const handleDelete = async (id: string) => {
     // For read-only display on homepage, we don't need delete functionality
     console.log('Delete not available on homepage');
@@ -72,7 +90,7 @@ const CompactLatestCases = () => {
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2 text-xl">
             <Clock className="w-6 h-6 text-blue-500" />
-            Senaste Aktiefall
+            Senaste Aktiefall & Analyser
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -97,7 +115,7 @@ const CompactLatestCases = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-xl">
               <Clock className="w-6 h-6 text-blue-500" />
-              Senaste Aktiefall
+              Senaste Aktiefall & Analyser
             </CardTitle>
             <Button 
               variant="ghost" 
@@ -123,6 +141,46 @@ const CompactLatestCases = () => {
             onCreateCase={handleCreateCase}
           />
         </CardContent>
+        <CardContent>
+          <div className="mt-2">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold">Senaste analyser</h3>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={handleViewAllAnalyses}
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                Visa alla analyser
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+            {analysesLoadingState ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="h-24 bg-gray-200 dark:bg-gray-700 rounded mb-3"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-2"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                  </div>
+                ))}
+              </div>
+            ) : displayAnalyses.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {displayAnalyses.map((analysis: any) => (
+                  <EnhancedAnalysisCard 
+                    key={analysis.id}
+                    analysis={analysis}
+                    onViewDetails={handleViewAnalysisDetails}
+                    showProfileActions={true}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Inga analyser hittades just nu.</p>
+            )}
+          </div>
+        </CardContent>
         <LoginPromptModal 
           isOpen={showLoginPrompt} 
           onClose={() => setShowLoginPrompt(false)} 
@@ -138,7 +196,7 @@ const CompactLatestCases = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-xl">
               <Clock className="w-6 h-6 text-blue-500" />
-              Senaste Aktiefall
+              Senaste Aktiefall & Analyser
             </CardTitle>
             <Button 
               variant="ghost" 
@@ -181,6 +239,48 @@ const CompactLatestCases = () => {
               </Button>
             </div>
           )}
+
+          {/* Analyses section */}
+          <div className="mt-8">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold">Senaste analyser</h3>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={handleViewAllAnalyses}
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                Visa alla analyser
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+            {analysesLoadingState ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="h-24 bg-gray-200 dark:bg-gray-700 rounded mb-3"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-2"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {displayAnalyses.length > 0 ? (
+                  displayAnalyses.map((analysis: any) => (
+                    <EnhancedAnalysisCard 
+                      key={analysis.id}
+                      analysis={analysis}
+                      onViewDetails={handleViewAnalysisDetails}
+                      showProfileActions={true}
+                    />
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">Inga analyser hittades just nu.</p>
+                )}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
       
