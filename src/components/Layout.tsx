@@ -28,6 +28,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <header className="sticky top-0 z-40 bg-white/95 dark:bg-gray-800/95 border-b border-gray-200 dark:border-gray-700 shadow-sm backdrop-blur-sm">
               <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl py-3 lg:py-4 flex justify-between items-center">
                 <div className="flex items-center space-x-4 md:space-x-6 lg:space-x-8">
+                  {/* Sidebar trigger for desktop */}
+                  <SidebarTrigger className="hidden md:flex" />
+                  
                   <Link to="/" className="text-xl sm:text-2xl lg:text-3xl font-bold text-finance-navy dark:text-gray-200 flex items-center">
                     <div className="mr-2 lg:mr-3 w-8 h-8 lg:w-10 lg:h-10 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center transform rotate-3 hover:rotate-0 transition-transform duration-300">
                       <Brain className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
@@ -38,7 +41,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </div>
                 
                 <div className="flex items-center space-x-2 md:space-x-3 lg:space-x-4">
-                  {user && <SidebarTrigger className="hidden md:flex h-9 w-9 border border-gray-300 dark:border-gray-600" />}
                   {user ? (
                     <ProfileMenu />
                   ) : (
