@@ -38,7 +38,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </div>
                 
                 <div className="flex items-center space-x-2 md:space-x-3 lg:space-x-4">
-                  {user && <SidebarTrigger className="hidden md:flex" />}
+                  {user && <SidebarTrigger className="hidden md:flex h-9 w-9 border border-gray-300 dark:border-gray-600" />}
                   {user ? (
                     <ProfileMenu />
                   ) : (
