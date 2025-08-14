@@ -63,6 +63,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts 
   const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
+  const [isGuideSession, setIsGuideSession] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -192,19 +193,41 @@ const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts 
   };
 
   const handleExamplePrompt = (prompt: string) => {
+    // Exit guide session when user starts using AI chat
+    if (isGuideSession) {
+      setIsGuideSession(false);
+      // Create a new regular session when user starts chatting
+      handleNewSession();
+    }
     setInput(prompt);
     setTimeout(() => {
       inputRef.current?.focus();
     }, 100);
   };
 
+  const handleLoadGuideSession = () => {
+    // Clear regular chat and show guide
+    setIsGuideSession(true);
+    clearMessages();
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  };
+
   const SidebarContent = React.memo(() => (
     <ChatFolderSidebar
-      currentSessionId={currentSessionId}
-      onLoadSession={handleLoadSession}
+      currentSessionId={isGuideSession ? 'guide-session' : currentSessionId}
+      onLoadSession={(sessionId) => {
+        setIsGuideSession(false);
+        handleLoadSession(sessionId);
+      }}
       onDeleteSession={deleteSession}
       onEditSessionName={editSessionName}
-      onNewSession={handleNewSession}
+      onNewSession={() => {
+        setIsGuideSession(false);
+        handleNewSession();
+      }}
+      onLoadGuideSession={handleLoadGuideSession}
       isLoadingSession={isLoadingSession}
       className={isMobile ? "w-full" : ""}
     />
@@ -312,18 +335,20 @@ const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts 
               isLoadingSession={isLoadingSession}
               messagesEndRef={messagesEndRef}
               onExamplePrompt={showExamplePrompts ? handleExamplePrompt : undefined}
-              showGuideBot={true}
+              showGuideBot={isGuideSession}
             />
 
-            {/* Chat Input */}
-            <ChatInput
-              input={input}
-              setInput={setInput}
-              onSubmit={handleSubmit}
-              isLoading={isLoading}
-              quotaExceeded={quotaExceeded}
-              inputRef={inputRef}
-            />
+            {/* Chat Input - Hidden during guide session */}
+            {!isGuideSession && (
+              <ChatInput
+                input={input}
+                setInput={setInput}
+                onSubmit={handleSubmit}
+                isLoading={isLoading}
+                quotaExceeded={quotaExceeded}
+                inputRef={inputRef}
+              />
+            )}
           </div>
         </>
       ) : (
