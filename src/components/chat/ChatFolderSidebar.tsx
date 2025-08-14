@@ -10,12 +10,9 @@ import {
   MessageSquare, 
   Folder,
   Archive,
-  MoreHorizontal,
-  Compass,
-  BookOpen
+  MoreHorizontal
 } from 'lucide-react';
 import { useChatFolders } from '@/hooks/useChatFolders';
-import { useGuideSession } from '@/hooks/useGuideSession';
 import CreateFolderDialog from './CreateFolderDialog';
 import ChatFolder from './ChatFolder';
 
@@ -25,7 +22,6 @@ interface ChatFolderSidebarProps {
   onDeleteSession: (sessionId: string) => void;
   onEditSessionName: (sessionId: string, name: string) => void;
   onNewSession: () => void;
-  onLoadGuideSession?: () => void;
   isLoadingSession?: boolean;
   className?: string;
 }
@@ -36,12 +32,10 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = ({
   onDeleteSession,
   onEditSessionName,
   onNewSession,
-  onLoadGuideSession,
   isLoadingSession = false,
   className = ""
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const { shouldShowGuide } = useGuideSession();
   const {
     folders,
     sessions,
@@ -69,7 +63,6 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = ({
   );
 
   const totalSessions = sessions.length;
-  const isGuideActive = currentSessionId === 'guide-session';
 
   return (
     <div className={`flex flex-col h-full bg-background border-r ${className}`}>
@@ -110,33 +103,6 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = ({
       {/* Folders and Sessions */}
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
-          {/* Permanent Guide Session */}
-          <div className="mb-4">
-            <Button
-              variant={isGuideActive ? "default" : "outline"}
-              size="sm"
-              onClick={onLoadGuideSession}
-              className={`w-full justify-start gap-3 h-10 transition-all duration-200 ${
-                isGuideActive 
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md' 
-                  : 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800 hover:from-amber-100 hover:to-orange-100 dark:hover:from-amber-950/30 dark:hover:to-orange-950/30'
-              }`}
-            >
-              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-600 to-orange-700 flex items-center justify-center flex-shrink-0">
-                <Compass className="w-3 h-3 text-white" />
-              </div>
-              <div className="flex-1 text-left">
-                <div className="font-medium text-sm">Market Mind Guide</div>
-                <div className="text-xs opacity-75">Kom igång med plattformen</div>
-              </div>
-              {shouldShowGuide && (
-                <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
-              )}
-            </Button>
-          </div>
-
-          <Separator />
-
           {/* Create Folder Button */}
           <CreateFolderDialog
             onCreateFolder={createFolder}
