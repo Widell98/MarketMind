@@ -11,7 +11,8 @@ import {
   Brain,
   Sparkles,
   User,
-  Settings
+  Settings,
+  HelpCircle
 } from 'lucide-react';
 import {
   Sidebar,
@@ -24,6 +25,7 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
+import HelpButton from '@/components/HelpButton';
 
 const AppSidebar = () => {
   const location = useLocation();
@@ -129,6 +131,13 @@ const AppSidebar = () => {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
+
+        {/* Help Section */}
+        <SidebarGroup className="mt-auto pt-4 border-t">
+          <div className="px-3">
+            <HelpButton className="w-full justify-start" />
+          </div>
+        </SidebarGroup>
       </SidebarContent>
     </Sidebar>
   );

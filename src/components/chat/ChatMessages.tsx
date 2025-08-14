@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PieChart, Activity, Zap, TrendingUp, Brain, Lightbulb } from 'lucide-react';
 import ChatMessage from './ChatMessage';
+import GuideBot from './GuideBot';
+import { useGuideSession } from '@/hooks/useGuideSession';
 
 interface Message {
   id: string;
@@ -24,9 +26,11 @@ interface ChatMessagesProps {
   isLoadingSession: boolean;
   messagesEndRef: React.RefObject<HTMLDivElement>;
   onExamplePrompt?: (prompt: string) => void;
+  showGuideBot?: boolean;
 }
 
-const ChatMessages = ({ messages, isLoading, isLoadingSession, messagesEndRef, onExamplePrompt }: ChatMessagesProps) => {
+const ChatMessages = ({ messages, isLoading, isLoadingSession, messagesEndRef, onExamplePrompt, showGuideBot = false }: ChatMessagesProps) => {
+  const { shouldShowGuide, handlePromptExample, handleNavigate, handleShowDemo } = useGuideSession();
   const examplePrompts = [
     {
       title: "Portföljanalys",
@@ -75,7 +79,16 @@ const ChatMessages = ({ messages, isLoading, isLoadingSession, messagesEndRef, o
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="p-4 sm:p-6 space-y-6 sm:space-y-8 max-w-6xl mx-auto w-full">
-        {messages.length === 0 && !isLoading && onExamplePrompt && (
+        {/* Guide Bot - Always shown at the top when active */}
+        {(showGuideBot || shouldShowGuide) && (
+          <GuideBot
+            onPromptExample={onExamplePrompt || handlePromptExample}
+            onNavigate={handleNavigate}
+            onShowDemo={handleShowDemo}
+          />
+        )}
+        
+        {messages.length === 0 && !isLoading && onExamplePrompt && !shouldShowGuide && (
           <div className="space-y-6">
             {/* Welcome Message */}
             <div className="text-center py-8">
@@ -116,7 +129,7 @@ const ChatMessages = ({ messages, isLoading, isLoadingSession, messagesEndRef, o
           </div>
         )}
         
-        {messages.length === 0 && !isLoading && !onExamplePrompt && (
+        {messages.length === 0 && !isLoading && !onExamplePrompt && !shouldShowGuide && (
           <div className="text-center py-12">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center mx-auto mb-4 shadow-lg">
               <Brain className="w-8 h-8 text-primary-foreground" />

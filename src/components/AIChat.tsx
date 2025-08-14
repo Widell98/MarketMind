@@ -10,6 +10,7 @@ import ChatMessages from './chat/ChatMessages';
 import ChatInput from './chat/ChatInput';
 import ChatFolderSidebar from './chat/ChatFolderSidebar';
 import { LogIn, MessageSquare, Brain, ArrowLeft, Lock, Sparkles, Crown, Menu, PanelLeftClose, PanelLeft } from 'lucide-react';
+import HelpButton from '@/components/HelpButton';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -261,16 +262,19 @@ const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts 
                       </Button>
                     )}
                     
-                    <Button
-                      onClick={handleBackToPortfolio}
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center gap-2 hover:bg-muted/50 transition-colors"
-                    >
-                      <ArrowLeft className="w-4 h-4" />
-                      <span className="hidden sm:inline">Tillbaka till Min Portfölj</span>
-                      <span className="sm:hidden">Min Portfölj</span>
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <HelpButton />
+                      <Button
+                        onClick={handleBackToPortfolio}
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-2 hover:bg-muted/50 transition-colors"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        <span className="hidden sm:inline">Tillbaka till Min Portfölj</span>
+                        <span className="sm:hidden">Min Portfölj</span>
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Compact Usage Display for Free Users */}
@@ -308,6 +312,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts 
               isLoadingSession={isLoadingSession}
               messagesEndRef={messagesEndRef}
               onExamplePrompt={showExamplePrompts ? handleExamplePrompt : undefined}
+              showGuideBot={true}
             />
 
             {/* Chat Input */}
