@@ -224,22 +224,6 @@ const StockCaseDetail = () => {
             user_id: stockCase.user_id
           }} onVersionSelect={handleVersionSelect} />
 
-              {/* Action Buttons - moved here to be right under the image */}
-              {user && <div className="flex items-center justify-center gap-4 py-4">
-                  <Button variant="outline" onClick={handleLikeClick} disabled={likesLoading} className="flex items-center gap-2">
-                    <Heart className={`w-4 h-4 ${isLiked ? 'fill-current text-red-500' : ''}`} />
-                    {likeCount} Gilla
-                  </Button>
-                  <SaveOpportunityButton itemType="stock_case" itemId={stockCase.id} itemTitle={stockCase.title} onSaveSuccess={handleSaveSuccess} />
-                  <Button variant="outline" onClick={handleShare} className="flex items-center gap-2">
-                    <Share2 className="w-4 h-4" />
-                    Dela
-                  </Button>
-                  {isOwner && <Button variant="outline" onClick={() => setShowUpdateDialog(true)} className="flex items-center gap-2">
-                      <Plus className="w-4 h-4" />
-                      Lägg till uppdatering
-                    </Button>}
-                </div>}
 
               {/* Login prompt for non-users */}
               {!user && <div className="text-center p-3 bg-muted rounded-lg">
@@ -255,6 +239,22 @@ const StockCaseDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-6">
+            {/* Action Buttons - moved above main content */}
+            {user && <div className="flex items-center justify-center gap-4 py-4">
+                <Button variant="outline" onClick={handleLikeClick} disabled={likesLoading} className="flex items-center gap-2">
+                  <Heart className={`w-4 h-4 ${isLiked ? 'fill-current text-red-500' : ''}`} />
+                  {likeCount} Gilla
+                </Button>
+                <SaveOpportunityButton itemType="stock_case" itemId={stockCase.id} itemTitle={stockCase.title} onSaveSuccess={handleSaveSuccess} />
+                <Button variant="outline" onClick={handleShare} className="flex items-center gap-2">
+                  <Share2 className="w-4 h-4" />
+                  Dela
+                </Button>
+                {isOwner && <Button variant="outline" onClick={() => setShowUpdateDialog(true)} className="flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    Lägg till uppdatering
+                  </Button>}
+              </div>}
             {/* Combined Overview Card - only show if there are financial metrics */}
             {(stockCase.entry_price || stockCase.current_price || stockCase.target_price || stockCase.stop_loss || stockCase.sector || stockCase.market_cap || stockCase.pe_ratio || stockCase.dividend_yield) && <Card>
               <CardHeader>
