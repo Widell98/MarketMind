@@ -224,7 +224,7 @@ const StockCaseDetail = () => {
             user_id: stockCase.user_id
           }} onVersionSelect={handleVersionSelect} />
 
-              {/* Action Buttons */}
+              {/* Action Buttons - moved here to be right under the image */}
               {user && <div className="flex items-center justify-center gap-4 py-4">
                   <Button variant="outline" onClick={handleLikeClick} disabled={likesLoading} className="flex items-center gap-2">
                     <Heart className={`w-4 h-4 ${isLiked ? 'fill-current text-red-500' : ''}`} />
