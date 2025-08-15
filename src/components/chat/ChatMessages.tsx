@@ -79,8 +79,8 @@ const ChatMessages = ({ messages, isLoading, isLoadingSession, messagesEndRef, o
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="p-4 sm:p-6 space-y-6 sm:space-y-8 max-w-6xl mx-auto w-full">
-        {/* Guide Bot - Always shown at the top when active */}
-        {(showGuideBot || shouldShowGuide) && (
+        {/* Guide Bot - Only shown when explicitly in guide session */}
+        {showGuideBot && (
           <GuideBot
             onPromptExample={onExamplePrompt || handlePromptExample}
             onNavigate={handleNavigate}
@@ -88,7 +88,7 @@ const ChatMessages = ({ messages, isLoading, isLoadingSession, messagesEndRef, o
           />
         )}
         
-        {messages.length === 0 && !isLoading && onExamplePrompt && !shouldShowGuide && (
+        {messages.length === 0 && !isLoading && onExamplePrompt && !showGuideBot && (
           <div className="space-y-6">
             {/* Welcome Message */}
             <div className="text-center py-8">
@@ -129,7 +129,7 @@ const ChatMessages = ({ messages, isLoading, isLoadingSession, messagesEndRef, o
           </div>
         )}
         
-        {messages.length === 0 && !isLoading && !onExamplePrompt && !shouldShowGuide && (
+        {messages.length === 0 && !isLoading && !onExamplePrompt && !showGuideBot && (
           <div className="text-center py-12">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center mx-auto mb-4 shadow-lg">
               <Brain className="w-8 h-8 text-primary-foreground" />

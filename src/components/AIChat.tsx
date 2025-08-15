@@ -198,11 +198,16 @@ const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts 
       setIsGuideSession(false);
       // Create a new regular session when user starts chatting
       handleNewSession();
+      setTimeout(() => {
+        setInput(prompt);
+        inputRef.current?.focus();
+      }, 200);
+    } else {
+      setInput(prompt);
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     }
-    setInput(prompt);
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 100);
   };
 
   const handleLoadGuideSession = () => {
