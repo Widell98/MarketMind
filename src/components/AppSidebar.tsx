@@ -39,9 +39,8 @@ const AppSidebar = () => {
 
   const mainNavigation = [
     { name: 'Hem', href: '/', icon: Home },
-    { name: 'Upptäck Möjligheter', href: '/stock-cases', icon: TrendingUp },
-    { name: 'Analyser', href: '/market-analyses', icon: BarChart3 }
-    
+    { name: 'Upptäck', href: '/discover', icon: Sparkles },
+    { name: 'Stock Cases', href: '/stock-cases', icon: TrendingUp }
   ];
 
   const userNavigation = [
