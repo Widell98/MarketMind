@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -1590,14 +1590,14 @@ export type Database = {
     Functions: {
       assign_user_role: {
         Args: {
-          target_user_id: string
           new_role: Database["public"]["Enums"]["app_role"]
           reason?: string
+          target_user_id: string
         }
         Returns: boolean
       }
       check_usage_limit: {
-        Args: { _user_id: string; _usage_type: string }
+        Args: { _usage_type: string; _user_id: string }
         Returns: boolean
       }
       get_analysis_comment_count: {
@@ -1630,20 +1630,20 @@ export type Database = {
       }
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
       increment_ai_usage: {
-        Args: { _user_id: string; _usage_type: string }
+        Args: { _usage_type: string; _user_id: string }
         Returns: boolean
       }
       revoke_user_role: {
         Args: {
-          target_user_id: string
-          role_to_revoke: Database["public"]["Enums"]["app_role"]
           reason?: string
+          role_to_revoke: Database["public"]["Enums"]["app_role"]
+          target_user_id: string
         }
         Returns: boolean
       }
