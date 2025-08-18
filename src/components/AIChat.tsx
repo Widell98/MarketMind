@@ -239,120 +239,153 @@ const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts 
   ));
 
   return (
-    <div className="flex h-full bg-card border shadow-lg rounded-2xl overflow-hidden">
+    <div className="flex h-full bg-background overflow-hidden">
       {user ? (
         <>
-          {/* Desktop Sidebar - Folders and Sessions */}
+          {/* Desktop Sidebar - Clean and minimal */}
           {!isMobile && !desktopSidebarCollapsed && (
-            <div className="w-80 border-r bg-background">
+            <div className="w-72 bg-background border-r border-border">
               <SidebarContent />
             </div>
           )}
 
           {/* Main Chat Area */}
-          <div className="flex-1 flex flex-col">
-            {/* Top Bar */}
-            {user && riskProfile && (
-              <div className="border-b bg-background p-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {/* Mobile Menu Button */}
-                    {isMobile && (
-                      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-                        <SheetTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <Menu className="w-4 h-4" />
-                          </Button>
-                        </SheetTrigger>
-                        <SheetContent side="left" className="w-80 p-0">
-                          <SidebarContent />
-                        </SheetContent>
-                      </Sheet>
+          <div className="flex-1 flex flex-col bg-background">
+            {/* Minimal Top Bar */}
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <div className="flex items-center gap-3">
+                {/* Mobile Menu Button */}
+                {isMobile && (
+                  <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                    <SheetTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <Menu className="w-4 h-4" />
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="w-72 p-0">
+                      <SidebarContent />
+                    </SheetContent>
+                  </Sheet>
+                )}
+                
+                {/* Desktop Sidebar Toggle Button */}
+                {!isMobile && (
+                  <Button
+                    onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
+                    variant="ghost"
+                    size="sm"
+                    className="hover:bg-muted/50"
+                  >
+                    {desktopSidebarCollapsed ? (
+                      <PanelLeft className="w-4 h-4" />
+                    ) : (
+                      <PanelLeftClose className="w-4 h-4" />
                     )}
-                    
-                    {/* Desktop Sidebar Toggle Button */}
-                    {!isMobile && (
-                      <Button
-                        onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
-                        variant="ghost"
-                        size="sm"
-                        className="flex items-center gap-2 hover:bg-muted/50 transition-colors"
-                        title={desktopSidebarCollapsed ? "Visa mappar" : "Dölj mappar"}
-                      >
-                        {desktopSidebarCollapsed ? (
-                          <PanelLeft className="w-4 h-4" />
-                        ) : (
-                          <PanelLeftClose className="w-4 h-4" />
-                        )}
-                        <span className="hidden lg:inline">
-                          {desktopSidebarCollapsed ? "Visa mappar" : "Dölj mappar"}
-                        </span>
-                      </Button>
-                    )}
-                    
-                    <div className="flex items-center gap-2">
-                      <HelpButton />
-                      <Button
-                        onClick={handleBackToPortfolio}
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-2 hover:bg-muted/50 transition-colors"
-                      >
-                        <ArrowLeft className="w-4 h-4" />
-                        <span className="hidden sm:inline">Tillbaka till Min Portfölj</span>
-                        <span className="sm:hidden">Min Portfölj</span>
-                      </Button>
-                    </div>
-                  </div>
+                  </Button>
+                )}
 
-                  {/* Compact Usage Display for Free Users */}
-                  {!isPremium && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <MessageSquare className="w-3 h-3" />
-                      <span>{currentUsage}/{dailyLimit} meddelanden</span>
-                      <Button
-                        variant="outline" 
-                        size="sm"
-                        onClick={handlePremiumClick}
-                        className="text-xs h-6 px-2 ml-1"
-                      >
-                        <Crown className="w-3 h-3 mr-1" />
-                        Premium
-                      </Button>
-                    </div>
-                  )}
+                <Button
+                  onClick={handleNewSession}
+                  variant="ghost"
+                  size="sm"
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  New chat
+                </Button>
+              </div>
 
-                  {/* Premium Badge */}
-                  {isPremium && (
-                    <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs px-2 py-1">
-                      <Crown className="w-3 h-3 mr-1" />
-                      Premium
-                    </Badge>
-                  )}
+              {/* Usage indicator for free users */}
+              {!isPremium && (
+                <div className="text-xs text-muted-foreground">
+                  {currentUsage}/{dailyLimit} daily messages
+                </div>
+              )}
+            </div>
+
+            {/* Chat Content */}
+            {messages.length === 0 && !isLoading && !isGuideSession ? (
+              /* Welcome Screen */
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-2xl mx-auto">
+                <h1 className="text-4xl font-medium text-foreground mb-2">
+                  Hey there!
+                </h1>
+                <p className="text-lg text-muted-foreground mb-12">
+                  Ask me anything
+                </p>
+
+                {/* Example Prompts Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl">
+                  <Button
+                    variant="outline"
+                    className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border"
+                    onClick={() => handleExamplePrompt("Analysera min portfölj och ge rekommendationer för optimering")}
+                  >
+                    <div>
+                      <div className="text-sm font-medium text-foreground">Analysera min portfölj</div>
+                      <div className="text-xs text-muted-foreground mt-1">Få en genomgång av prestanda och struktur</div>
+                    </div>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border"
+                    onClick={() => handleExamplePrompt("Vilka risker finns i min portfölj och hur kan jag diversifiera bättre?")}
+                  >
+                    <div>
+                      <div className="text-sm font-medium text-foreground">Riskanalys och diversifiering</div>
+                      <div className="text-xs text-muted-foreground mt-1">Identifiera och minimera risker</div>
+                    </div>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border"
+                    onClick={() => handleExamplePrompt("Vilka aktier och tillgångar borde jag överväga baserat på min riskprofil?")}
+                  >
+                    <div>
+                      <div className="text-sm font-medium text-foreground">Investeringsförslag</div>
+                      <div className="text-xs text-muted-foreground mt-1">Personliga rekommendationer</div>
+                    </div>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border"
+                    onClick={() => handleExamplePrompt("Vad händer på marknaden just nu och hur påverkar det min strategi?")}
+                  >
+                    <div>
+                      <div className="text-sm font-medium text-foreground">Marknadsläget</div>
+                      <div className="text-xs text-muted-foreground mt-1">Aktuella trender och påverkan</div>
+                    </div>
+                  </Button>
                 </div>
               </div>
+            ) : (
+              /* Chat Messages */
+              <>
+                <ChatMessages
+                  messages={messages}
+                  isLoading={isLoading}
+                  isLoadingSession={isLoadingSession}
+                  messagesEndRef={messagesEndRef}
+                  onExamplePrompt={showExamplePrompts ? handleExamplePrompt : undefined}
+                  showGuideBot={isGuideSession}
+                />
+              </>
             )}
 
-            {/* Chat Messages */}
-            <ChatMessages
-              messages={messages}
-              isLoading={isLoading}
-              isLoadingSession={isLoadingSession}
-              messagesEndRef={messagesEndRef}
-              onExamplePrompt={showExamplePrompts ? handleExamplePrompt : undefined}
-              showGuideBot={isGuideSession}
-            />
-
-            {/* Chat Input - Hidden during guide session */}
+            {/* Chat Input - Always visible when user is logged in and not in guide session */}
             {!isGuideSession && (
-              <ChatInput
-                input={input}
-                setInput={setInput}
-                onSubmit={handleSubmit}
-                isLoading={isLoading}
-                quotaExceeded={quotaExceeded}
-                inputRef={inputRef}
-              />
+              <div className="border-t border-border bg-background p-4">
+                <ChatInput
+                  input={input}
+                  setInput={setInput}
+                  onSubmit={handleSubmit}
+                  isLoading={isLoading}
+                  quotaExceeded={quotaExceeded}
+                  inputRef={inputRef}
+                />
+              </div>
             )}
           </div>
         </>
