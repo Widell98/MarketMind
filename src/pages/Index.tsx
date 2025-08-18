@@ -167,35 +167,6 @@ const Index = () => {
                 </div>
               </div>
 
-              {/* Trust section with warmer colors */}
-              <div className="bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-800 dark:to-blue-900/20 rounded-2xl p-8 mb-16 border border-slate-200 dark:border-slate-700">
-                <h2 className="text-2xl font-bold text-center mb-2">Byggt med kärlek för vanliga svenskar</h2>
-                <p className="text-center text-muted-foreground mb-8">Lika smart som hedgefonderna, men för alla</p>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center mx-auto mb-3">
-                      <Clock className="w-6 h-6 text-emerald-600" />
-                    </div>
-                    <h3 className="font-semibold mb-1">Finns när du behöver</h3>
-                    <p className="text-sm text-muted-foreground">Vaknar du mitt i natten och oroar dig? Vi finns här</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center mx-auto mb-3">
-                      <Coffee className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <h3 className="font-semibold mb-1">Pratar ditt språk</h3>
-                    <p className="text-sm text-muted-foreground">Inga krångliga termer - bara ärliga samtal på svenska</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-full bg-pink-100 dark:bg-pink-900/20 flex items-center justify-center mx-auto mb-3">
-                      <HandHeart className="w-6 h-6 text-pink-600" />
-                    </div>
-                    <h3 className="font-semibold mb-1">Byggt för din framtid</h3>
-                    <p className="text-sm text-muted-foreground">Varje råd handlar om att du ska må bra och sova gott</p>
-                  </div>
-                </div>
-              </div>
 
               {/* Personal final CTA */}
               <div className="text-center">
