@@ -3,8 +3,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Users, Heart, Eye, PenLine, Settings, Camera } from 'lucide-react';
+import { Users, Heart, Eye, PenLine, Settings, Camera, RotateCcw } from 'lucide-react';
 import { useUserFollows } from '@/hooks/useUserFollows';
+import { useRiskProfile } from '@/hooks/useRiskProfile';
+import { useToast } from '@/hooks/use-toast';
+
 interface EnhancedProfileHeaderProps {
   profileData: any;
   isOwnProfile: boolean;
@@ -17,6 +20,7 @@ interface EnhancedProfileHeaderProps {
     totalViews: number;
   };
 }
+
 const EnhancedProfileHeader: React.FC<EnhancedProfileHeaderProps> = ({
   profileData,
   isOwnProfile,
@@ -35,6 +39,10 @@ const EnhancedProfileHeader: React.FC<EnhancedProfileHeaderProps> = ({
     unfollowUser,
     isFollowing
   } = useUserFollows();
+  
+  const { clearRiskProfile, loading: riskProfileLoading } = useRiskProfile();
+  const { toast } = useToast();
+
   const getInitials = (name: string): string => {
     if (!name) return '??';
     if (name.includes('@')) {
@@ -42,6 +50,7 @@ const EnhancedProfileHeader: React.FC<EnhancedProfileHeaderProps> = ({
     }
     return name.split(' ').map(part => part.charAt(0)).join('').toUpperCase().substring(0, 2);
   };
+
   const handleFollowToggle = () => {
     if (!profileData?.id) return;
     if (isFollowing(profileData.id)) {
@@ -50,6 +59,17 @@ const EnhancedProfileHeader: React.FC<EnhancedProfileHeaderProps> = ({
       followUser(profileData.id);
     }
   };
+
+  const handleResetRiskProfile = async () => {
+    const success = await clearRiskProfile();
+    if (success) {
+      toast({
+        title: "Riskprofil raderad",
+        description: "Du kan nu skapa en ny riskprofil genom att gå till portföljrådgivaren.",
+      });
+    }
+  };
+
   return <div className="relative">
       {/* Cover Background */}
       <div className="h-48 bg-gradient-to-r from-slate-600 via-slate-700 to-slate-800 rounded-t-xl"></div>
@@ -88,6 +108,16 @@ const EnhancedProfileHeader: React.FC<EnhancedProfileHeaderProps> = ({
                     <Button variant="outline" size="sm" onClick={onEditClick} className="flex items-center gap-2">
                       <PenLine className="h-4 w-4" />
                       Redigera profil
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleResetRiskProfile}
+                      disabled={riskProfileLoading}
+                      className="flex items-center gap-2 hover:bg-red-50 hover:text-red-600 hover:border-red-300"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      Ny riskprofil
                     </Button>
                     <Button variant="outline" size="sm">
                       <Settings className="h-4 w-4" />
@@ -136,4 +166,5 @@ const EnhancedProfileHeader: React.FC<EnhancedProfileHeaderProps> = ({
       </Card>
     </div>;
 };
+
 export default EnhancedProfileHeader;
