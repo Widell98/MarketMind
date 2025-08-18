@@ -550,7 +550,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               {allRecommendations.length > 0 && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" disabled={isDeletingRecommendations} className="text-red hover:text-red/80 border-red/20 hover:border-red/30 rounded-xl">
+                    <Button variant="outline" size="sm" disabled={isDeletingRecommendations} className="text-destructive hover:text-destructive/80 border-destructive/20 hover:border-destructive/30 rounded-xl">
                       {isDeletingRecommendations ? "Rensar..." : "Rensa alla"}
                       <Trash2 className="w-3 h-3 ml-1" />
                     </Button>
@@ -623,7 +623,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                           </div>
                           <h4 className="font-semibold text-base truncate text-foreground">{recommendation.name}</h4>
                           <div className="flex items-center gap-1 flex-shrink-0">
-                            <Badge variant="secondary" className="text-xs bg-purple/10 text-purple border-purple/20 rounded-full px-2 py-1">
+                            <Badge variant="secondary" className="text-xs bg-primary/10 text-primary border-primary/20 rounded-full px-2 py-1">
                               <Brain className="w-3 h-3 mr-1" />
                               AI
                             </Badge>
@@ -657,7 +657,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => handleAddFromRecommendation(recommendation)}
-                            className="text-xs bg-card/50 hover:bg-green/5 text-green hover:text-green/80 border-green/20 hover:border-green/30 flex-1 rounded-xl py-2"
+                            className="text-xs bg-card/50 hover:bg-primary/5 text-primary hover:text-primary/80 border-primary/20 hover:border-primary/30 flex-1 rounded-xl py-2"
                           >
                             <ShoppingCart className="w-3 h-3 mr-2" />
                             Lägg till i portfölj
@@ -666,7 +666,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => handleStockChat(recommendation.name, recommendation.symbol)}
-                            className="text-xs bg-card/50 hover:bg-purple/5 text-purple hover:text-purple/80 border-purple/20 hover:border-purple/30 flex-1 rounded-xl py-2"
+                            className="text-xs bg-card/50 hover:bg-primary/5 text-primary hover:text-primary/80 border-primary/20 hover:border-primary/30 flex-1 rounded-xl py-2"
                           >
                             <MessageCircle className="w-3 h-3 mr-2" />
                             Diskutera
@@ -675,7 +675,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteHolding(recommendation.id, recommendation.name)}
-                            className="text-red hover:text-red/80 hover:bg-red/5 text-xs rounded-xl px-3"
+                            className="text-destructive hover:text-destructive/80 hover:bg-destructive/5 text-xs rounded-xl px-3"
                           >
                             <Trash2 className="w-3 h-3" />
                           </Button>
