@@ -13,6 +13,8 @@ interface SwipeableHoldingCardProps {
   onDiscuss: (name: string, symbol?: string) => void;
   onEdit?: (id: string) => void;
   onDelete: (id: string, name: string) => void;
+  onAddToPortfolio?: (id: string) => void;
+  showAsRecommendation?: boolean;
   isMobile?: boolean;
 }
 
@@ -23,6 +25,8 @@ const SwipeableHoldingCard: React.FC<SwipeableHoldingCardProps> = ({
   onDiscuss,
   onEdit,
   onDelete,
+  onAddToPortfolio,
+  showAsRecommendation = false,
   isMobile = false
 }) => {
   const [swipeOffset, setSwipeOffset] = useState(0);
@@ -182,6 +186,8 @@ const SwipeableHoldingCard: React.FC<SwipeableHoldingCardProps> = ({
           onDiscuss={onDiscuss}
           onEdit={onEdit}
           onDelete={onDelete}
+          onAddToPortfolio={onAddToPortfolio}
+          showAsRecommendation={showAsRecommendation}
         />
       </div>
     </div>

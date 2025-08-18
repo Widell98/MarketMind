@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Brain, TrendingUp, Target, User, MessageCircle, Star, ShoppingCart, Sparkles, Trash2, ArrowRight, Tag } from 'lucide-react';
+import HoldingsGroupSection from '@/components/HoldingsGroupSection';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLatestStockCases } from '@/hooks/useLatestStockCases';
 import { useNavigate } from 'react-router-dom';
@@ -197,78 +198,38 @@ const PersonalizedAIRecommendations = () => {
               Få fler <ArrowRight className="w-3 h-3 ml-1" />
             </Button>
           </div>
-          <div className="space-y-3">
-            {personalizedCases.map((stockCase) => (
-              <div 
-                key={stockCase.id}
-                className="p-3 border rounded-lg hover:shadow-md transition-all duration-200 cursor-pointer hover:border-purple-200"
-                onClick={() => handleViewDetails(stockCase)}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Star className="w-4 h-4 text-purple-600 flex-shrink-0" />
-                      <h4 className="font-medium text-sm truncate">{stockCase.company_name}</h4>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <Badge variant="secondary" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
-                          <Brain className="w-3 h-3 mr-1" />
-                          AI
-                        </Badge>
-                      </div>
-                    </div>
-                    
-                    <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                      {stockCase.description || stockCase.title}
-                    </p>
-
-                    {stockCase.profiles && (
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Av: {stockCase.profiles.display_name || stockCase.profiles.username}
-                      </p>
-                    )}
-
-                    {stockCase.sector && (
-                      <div className="flex items-center gap-1 flex-wrap mb-2">
-                        <Tag className="w-3 h-3 text-muted-foreground" />
-                        <Badge variant="outline" className="text-xs">
-                          {stockCase.sector}
-                        </Badge>
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="flex items-center gap-2 pt-2 border-t">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => handleAddToPortfolio(stockCase, e)}
-                        className="text-xs bg-white hover:bg-green-50 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300 flex-1"
-                      >
-                        <ShoppingCart className="w-3 h-3 mr-1" />
-                        Lägg till i portfölj
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => handleDiscussWithAI(stockCase, e)}
-                        className="text-xs bg-white hover:bg-purple-50 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300 flex-1"
-                      >
-                        <MessageCircle className="w-3 h-3 mr-1" />
-                        Diskutera
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => handleDeleteRecommendation(stockCase, e)}
-                        className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-xs"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="space-y-4">
+            <HoldingsGroupSection
+              title="AI-Rekommenderade Innehav"
+              holdings={personalizedCases.map(stockCase => ({
+                id: stockCase.id,
+                name: stockCase.company_name,
+                symbol: stockCase.title,
+                holding_type: 'recommendation',
+                current_value: 0,
+                currency: 'SEK',
+                sector: stockCase.sector,
+                _originalData: stockCase
+              }))}
+              totalValue={0}
+              groupPercentage={0}
+              isCollapsible={false}
+              defaultExpanded={true}
+              getPriceForHolding={() => null}
+              onDiscuss={(name, symbol) => {
+                const stockCase = personalizedCases.find(sc => sc.company_name === name || sc.title === symbol);
+                if (stockCase) handleDiscussWithAI(stockCase, {} as any);
+              }}
+              onDelete={(id) => {
+                const stockCase = personalizedCases.find(sc => sc.id === id);
+                if (stockCase) handleDeleteRecommendation(stockCase, {} as any);
+              }}
+              onAddToPortfolio={(id) => {
+                const stockCase = personalizedCases.find(sc => sc.id === id);
+                if (stockCase) handleAddToPortfolio(stockCase, {} as any);
+              }}
+              showAsRecommendations={true}
+            />
           </div>
         </CardContent>
       </Card>

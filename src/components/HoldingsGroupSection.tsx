@@ -29,6 +29,8 @@ interface HoldingsGroupSectionProps {
   onDiscuss: (name: string, symbol?: string) => void;
   onEdit?: (id: string) => void;
   onDelete: (id: string, name: string) => void;
+  onAddToPortfolio?: (id: string) => void;
+  showAsRecommendations?: boolean;
 }
 
 const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
@@ -41,7 +43,9 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
   getPriceForHolding,
   onDiscuss,
   onEdit,
-  onDelete
+  onDelete,
+  onAddToPortfolio,
+  showAsRecommendations = false
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -119,6 +123,8 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
                     onDiscuss={onDiscuss}
                     onEdit={onEdit}
                     onDelete={onDelete}
+                    onAddToPortfolio={onAddToPortfolio}
+                    showAsRecommendation={showAsRecommendations}
                     isMobile={true}
                   />
                 );
@@ -133,6 +139,8 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
                   onDiscuss={onDiscuss}
                   onEdit={onEdit}
                   onDelete={onDelete}
+                  onAddToPortfolio={onAddToPortfolio}
+                  showAsRecommendation={showAsRecommendations}
                 />
               );
             })}
