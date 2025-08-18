@@ -23,19 +23,32 @@ import { Brain, TrendingUp, Target, BarChart3, Activity, AlertCircle, User, Mess
 import PortfolioHealthScore from '@/components/PortfolioHealthScore';
 import FloatingActionButton from '@/components/FloatingActionButton';
 import Breadcrumb from '@/components/Breadcrumb';
-
 const PortfolioImplementation = () => {
-  const { actualHoldings } = useUserHoldings();
-  const { activePortfolio, loading } = usePortfolio();
-  const { user, loading: authLoading } = useAuth();
-  const { riskProfile, loading: riskProfileLoading } = useRiskProfile();
-  const { performance } = usePortfolioPerformance();
-  const { totalCash } = useCashHoldings();
+  const {
+    actualHoldings
+  } = useUserHoldings();
+  const {
+    activePortfolio,
+    loading
+  } = usePortfolio();
+  const {
+    user,
+    loading: authLoading
+  } = useAuth();
+  const {
+    riskProfile,
+    loading: riskProfileLoading
+  } = useRiskProfile();
+  const {
+    performance
+  } = usePortfolioPerformance();
+  const {
+    totalCash
+  } = useCashHoldings();
   const navigate = useNavigate();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-
   useEffect(() => {
     // Only show login modal if auth has finished loading and user is not authenticated
     if (!authLoading && !user) {
@@ -44,12 +57,10 @@ const PortfolioImplementation = () => {
       setShowLoginModal(false);
     }
   }, [user, authLoading]);
-
   useEffect(() => {
     if (!user || loading) return;
     setShowOnboarding(false);
   }, [user, activePortfolio, loading]);
-
   useEffect(() => {
     // Set last updated time
     setLastUpdated(new Date().toLocaleTimeString('sv-SE', {
@@ -57,34 +68,33 @@ const PortfolioImplementation = () => {
       minute: '2-digit'
     }));
   }, [performance, totalCash]);
-
   const handleQuickChat = (message: string) => {
     if (!riskProfile) {
       return;
     }
-    
     if (message.startsWith('NEW_SESSION:')) {
       const [, sessionName, actualMessage] = message.split(':');
       navigate('/ai-chat', {
-        state: { createNewSession: true, sessionName, initialMessage: actualMessage }
+        state: {
+          createNewSession: true,
+          sessionName,
+          initialMessage: actualMessage
+        }
       });
     } else {
       navigate('/ai-chat');
     }
   };
-
   const handleActionClick = (action: string) => {
     console.log('Action clicked:', action);
   };
-
   const handleUpdateProfile = () => {
     setShowOnboarding(true);
   };
 
   // Show loading while portfolio is loading
   if (loading || riskProfileLoading) {
-    return (
-      <Layout>
+    return <Layout>
         <div className="min-h-screen flex items-center justify-center p-4">
           <div className="text-center p-6 bg-white dark:bg-gray-800 backdrop-blur-lg border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl w-full max-w-sm mx-auto">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 bg-primary shadow-2xl">
@@ -94,14 +104,12 @@ const PortfolioImplementation = () => {
             <p className="text-sm text-muted-foreground">Hämtar dina investeringsdata...</p>
           </div>
         </div>
-      </Layout>
-    );
+      </Layout>;
   }
 
   // Show onboarding if user explicitly wants to create a profile
   if (showOnboarding) {
-    return (
-      <Layout>
+    return <Layout>
         <div className="min-h-screen py-6 px-4">
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-8">
@@ -118,37 +126,28 @@ const PortfolioImplementation = () => {
             <ConversationalPortfolioAdvisor />
           </div>
         </div>
-      </Layout>
-    );
+      </Layout>;
   }
-
   const totalPortfolioValue = performance.totalPortfolioValue + totalCash;
   const investedValue = performance.totalValue;
 
   // Calculate portfolio health metrics - fix the actualHoldings check
   const calculateHealthMetrics = () => {
     const totalHoldings = actualHoldings ? actualHoldings.length : 0;
-    const uniqueSectors = actualHoldings && actualHoldings.length > 0 
-      ? new Set(actualHoldings.filter(h => h.sector).map(h => h.sector)).size 
-      : 0;
-    
+    const uniqueSectors = actualHoldings && actualHoldings.length > 0 ? new Set(actualHoldings.filter(h => h.sector).map(h => h.sector)).size : 0;
     return {
-      diversificationScore: Math.min(100, (uniqueSectors / Math.max(1, totalHoldings)) * 100 + 20),
-      riskScore: Math.max(20, 100 - (totalCash / Math.max(1, totalPortfolioValue)) * 200),
-      performanceScore: 75, // Mock performance score
-      cashPercentage: totalPortfolioValue > 0 ? (totalCash / totalPortfolioValue) * 100 : 0
+      diversificationScore: Math.min(100, uniqueSectors / Math.max(1, totalHoldings) * 100 + 20),
+      riskScore: Math.max(20, 100 - totalCash / Math.max(1, totalPortfolioValue) * 200),
+      performanceScore: 75,
+      // Mock performance score
+      cashPercentage: totalPortfolioValue > 0 ? totalCash / totalPortfolioValue * 100 : 0
     };
   };
-
   const healthMetrics = calculateHealthMetrics();
 
   // Always show portfolio implementation page with tabs
-  return (
-    <Layout>
-      <LoginPromptModal 
-        isOpen={showLoginModal} 
-        onClose={() => setShowLoginModal(false)} 
-      />
+  return <Layout>
+      <LoginPromptModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
       
       <div className="min-h-screen bg-gradient-to-br from-background to-secondary/5">
         <div className="container mx-auto px-6 py-12 max-w-7xl">
@@ -174,47 +173,28 @@ const PortfolioImplementation = () => {
                 <Brain className="w-4 h-4 mr-2" />
                 AI-Analys
               </Badge>
-              <Badge className="px-4 py-2 text-sm font-medium bg-secondary/50 text-secondary-foreground border border-secondary/30 hover:bg-secondary/70 transition-colors">
-                <Activity className="w-4 h-4 mr-2" />
-                Realtidsdata
-              </Badge>
-              {lastUpdated && (
-                <Badge className="px-4 py-2 text-sm font-medium bg-muted/50 text-muted-foreground border border-muted/30 hover:bg-muted/70 transition-colors">
+              
+              {lastUpdated && <Badge className="px-4 py-2 text-sm font-medium bg-muted/50 text-muted-foreground border border-muted/30 hover:bg-muted/70 transition-colors">
                   <Clock className="w-4 h-4 mr-2" />
                   Uppdaterad {lastUpdated}
-                </Badge>
-              )}
+                </Badge>}
             </div>
           </div>
 
           {/* Portfolio Health Score */}
-          {user && totalPortfolioValue > 0 && (
-            <div className="mb-12">
+          {user && totalPortfolioValue > 0 && <div className="mb-12">
               <div className="bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl p-8 shadow-xl">
-                <PortfolioHealthScore
-                  totalValue={totalPortfolioValue}
-                  diversificationScore={healthMetrics.diversificationScore}
-                  riskScore={healthMetrics.riskScore}
-                  performanceScore={healthMetrics.performanceScore}
-                  cashPercentage={healthMetrics.cashPercentage}
-                />
+                <PortfolioHealthScore totalValue={totalPortfolioValue} diversificationScore={healthMetrics.diversificationScore} riskScore={healthMetrics.riskScore} performanceScore={healthMetrics.performanceScore} cashPercentage={healthMetrics.cashPercentage} />
               </div>
-            </div>
-          )}
+            </div>}
 
           {/* Portfolio Value Cards */}
           <div className="mb-12">
-            <PortfolioValueCards
-              totalPortfolioValue={totalPortfolioValue}
-              totalInvestedValue={investedValue}
-              totalCashValue={totalCash}
-              loading={loading}
-            />
+            <PortfolioValueCards totalPortfolioValue={totalPortfolioValue} totalInvestedValue={investedValue} totalCashValue={totalCash} loading={loading} />
           </div>
 
           {/* Risk Profile Required Alert */}
-          {user && !riskProfile && (
-            <div className="mb-12">
+          {user && !riskProfile && <div className="mb-12">
               <div className="bg-amber-50/70 dark:bg-amber-950/20 backdrop-blur-xl border border-amber-200/50 dark:border-amber-800/50 rounded-3xl p-8 shadow-xl">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
                   <div className="flex items-center gap-4">
@@ -230,26 +210,18 @@ const PortfolioImplementation = () => {
                       </p>
                     </div>
                   </div>
-                  <Button
-                    onClick={() => navigate('/portfolio-advisor')}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl px-6 py-3 shadow-lg hover:shadow-xl transition-all duration-200"
-                  >
+                  <Button onClick={() => navigate('/portfolio-advisor')} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl px-6 py-3 shadow-lg hover:shadow-xl transition-all duration-200">
                     <User className="w-4 h-4 mr-2" />
                     Skapa profil
                   </Button>
                 </div>
               </div>
-            </div>
-          )}
+            </div>}
 
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
             <div className="xl:col-span-3 space-y-8">
               <div className="bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
-                <PortfolioOverview 
-                  portfolio={activePortfolio}
-                  onQuickChat={handleQuickChat}
-                  onActionClick={handleActionClick}
-                />
+                <PortfolioOverview portfolio={activePortfolio} onQuickChat={handleQuickChat} onActionClick={handleActionClick} />
               </div>
               
               <div className="bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
@@ -267,8 +239,6 @@ const PortfolioImplementation = () => {
 
       {/* Floating Action Button */}
       <FloatingActionButton />
-    </Layout>
-  );
+    </Layout>;
 };
-
 export default PortfolioImplementation;
