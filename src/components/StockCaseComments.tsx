@@ -217,11 +217,21 @@ const StockCaseComments: React.FC<StockCaseCommentsProps> = ({ stockCaseId }) =>
             ))}
           </div>
         ) : (
-          <div className="text-center py-8">
+          <div className="text-center py-8 space-y-3">
             <MessageCircle className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">
-              Inga kommentarer än. Var den första att kommentera!
-            </p>
+            <div className="space-y-2">
+              <p className="text-lg font-medium text-foreground">
+                Vad tycker du om detta case?
+              </p>
+              <p className="text-muted-foreground">
+                Diskutera här! Var den första att dela dina tankar.
+              </p>
+            </div>
+            {!user && (
+              <Button variant="outline" onClick={() => window.location.href = '/auth'}>
+                Logga in för att kommentera
+              </Button>
+            )}
           </div>
         )}
       </CardContent>
