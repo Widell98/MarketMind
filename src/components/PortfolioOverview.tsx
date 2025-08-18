@@ -536,19 +536,16 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                   <Brain className="w-5 h-5 text-primary" />
                 </div>
                 AI-Rekommenderade Innehav
-                {allRecommendations.length > 0 && (
-                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 ml-2 px-3 py-1 rounded-full">
+                {allRecommendations.length > 0 && <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 ml-2 px-3 py-1 rounded-full">
                     {allRecommendations.length} rekommendationer
-                  </Badge>
-                )}
+                  </Badge>}
               </CardTitle>
               <CardDescription className="text-muted-foreground mt-2 ml-13 leading-relaxed">
                 Aktier som AI-advisorn rekommenderar för din portfölj
               </CardDescription>
             </div>
             <div className="flex gap-2">
-              {allRecommendations.length > 0 && (
-                <AlertDialog>
+              {allRecommendations.length > 0 && <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="outline" size="sm" disabled={isDeletingRecommendations} className="text-destructive hover:text-destructive/80 border-destructive/20 hover:border-destructive/30 rounded-xl">
                       {isDeletingRecommendations ? "Rensar..." : "Rensa alla"}
@@ -570,14 +567,12 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
-                </AlertDialog>
-              )}
+                </AlertDialog>}
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-8">
-          {allRecommendations.length === 0 ? (
-            <div className="text-center py-16">
+          {allRecommendations.length === 0 ? <div className="text-center py-16">
               <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mx-auto mb-6 shadow-xl">
                 <Brain className="w-10 h-10 text-primary" />
               </div>
@@ -585,36 +580,21 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               <p className="text-muted-foreground mb-8 max-w-sm mx-auto leading-relaxed">
                 Du har inga AI-rekommendationer just nu. Gå till AI-chatten för att få personliga investeringsförslag.
               </p>
-              <Button 
-                onClick={handleGetAIRecommendations} 
-                className="px-8 py-3 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                size="lg"
-              >
+              <Button onClick={handleGetAIRecommendations} className="px-8 py-3 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105" size="lg">
                 <Brain className="w-4 h-4 mr-2" />
                 Få AI-rekommendationer
               </Button>
-            </div>
-          ) : (
-            <div>
+            </div> : <div>
               <div className="flex items-center justify-between mb-6">
                 <div className="text-sm text-muted-foreground font-medium">
                   {allRecommendations.length} AI-rekommendationer
                 </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={handleGetAIRecommendations}
-                  className="text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl font-medium"
-                >
+                <Button variant="ghost" size="sm" onClick={handleGetAIRecommendations} className="text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl font-medium">
                   Få fler <ArrowRight className="w-3 h-3 ml-1" />
                 </Button>
               </div>
               <div className={`space-y-4 ${allRecommendations.length > 5 ? 'max-h-96 overflow-y-auto pr-2' : ''}`}>
-                {allRecommendations.map((recommendation, index) => (
-                  <div 
-                    key={recommendation.id || index}
-                    className="p-5 bg-card/50 backdrop-blur-sm border border-border/30 rounded-2xl hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 hover:border-primary/30 hover:bg-card/70"
-                  >
+                {allRecommendations.map((recommendation, index) => <div key={recommendation.id || index} className="p-5 bg-card/50 backdrop-blur-sm border border-border/30 rounded-2xl hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 hover:border-primary/30 hover:bg-card/70">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2">
@@ -630,63 +610,38 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                           </div>
                         </div>
                         
-                        {recommendation.symbol && (
-                          <p className="text-sm text-muted-foreground mb-3 font-medium">
+                        {recommendation.symbol && <p className="text-sm text-muted-foreground mb-3 font-medium">
                             Symbol: {recommendation.symbol}
-                          </p>
-                        )}
+                          </p>}
 
-                        {recommendation.allocation !== undefined && (
-                          <p className="text-sm text-primary font-semibold mb-3">
-                            {recommendation.allocation}% allokering
-                          </p>
-                        )}
+                        {recommendation.allocation !== undefined}
 
-                        {recommendation.sector && (
-                          <div className="flex items-center gap-2 flex-wrap mb-4">
+                        {recommendation.sector && <div className="flex items-center gap-2 flex-wrap mb-4">
                             <Tag className="w-3 h-3 text-muted-foreground" />
                             <Badge variant="outline" className="text-xs rounded-full px-2 py-1 bg-muted/50 border-muted">
                               {recommendation.sector}
                             </Badge>
-                          </div>
-                        )}
+                          </div>}
 
                         {/* Action Buttons */}
                         <div className="flex items-center gap-3 pt-4 border-t border-border/30">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleAddFromRecommendation(recommendation)}
-                            className="text-xs bg-card/50 hover:bg-primary/5 text-primary hover:text-primary/80 border-primary/20 hover:border-primary/30 flex-1 rounded-xl py-2"
-                          >
+                          <Button variant="outline" size="sm" onClick={() => handleAddFromRecommendation(recommendation)} className="text-xs bg-card/50 hover:bg-primary/5 text-primary hover:text-primary/80 border-primary/20 hover:border-primary/30 flex-1 rounded-xl py-2">
                             <ShoppingCart className="w-3 h-3 mr-2" />
                             Lägg till i portfölj
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleStockChat(recommendation.name, recommendation.symbol)}
-                            className="text-xs bg-card/50 hover:bg-primary/5 text-primary hover:text-primary/80 border-primary/20 hover:border-primary/30 flex-1 rounded-xl py-2"
-                          >
+                          <Button variant="outline" size="sm" onClick={() => handleStockChat(recommendation.name, recommendation.symbol)} className="text-xs bg-card/50 hover:bg-primary/5 text-primary hover:text-primary/80 border-primary/20 hover:border-primary/30 flex-1 rounded-xl py-2">
                             <MessageCircle className="w-3 h-3 mr-2" />
                             Diskutera
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteHolding(recommendation.id, recommendation.name)}
-                            className="text-destructive hover:text-destructive/80 hover:bg-destructive/5 text-xs rounded-xl px-3"
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteHolding(recommendation.id, recommendation.name)} className="text-destructive hover:text-destructive/80 hover:bg-destructive/5 text-xs rounded-xl px-3">
                             <Trash2 className="w-3 h-3" />
                           </Button>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  </div>)}
               </div>
-            </div>
-          )}
+            </div>}
         </CardContent>
       </Card>
 
