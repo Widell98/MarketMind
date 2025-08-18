@@ -34,6 +34,7 @@ const StockCaseTimelineViewer: React.FC<StockCaseTimelineViewerProps> = ({
   } = useStockCaseUpdates(stockCaseId);
   const [selectedVersion, setSelectedVersion] = useState<any>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [isTimelineMinimized, setIsTimelineMinimized] = useState(false);
   const [updateToDelete, setUpdateToDelete] = useState<string | null>(null);
 
   // Combine original case with updates for timeline
@@ -109,50 +110,68 @@ const StockCaseTimelineViewer: React.FC<StockCaseTimelineViewerProps> = ({
   return <div className="space-y-6">
       {/* Main Content Area - Focus on Latest/Selected Version */}
       <div className="space-y-4">
-        {/* Version Header */}
+        {/* Minimize/Expand Toggle */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {!isViewingLatest && <Button variant="outline" size="sm" onClick={handleBackToLatest} className="flex items-center gap-2">
-                <ArrowLeft className="w-4 h-4" />
-                Tillbaka till senaste
-              </Button>}
-            <div className="flex items-center gap-2">
-              <Badge variant={isViewingLatest ? "default" : "secondary"}>
-                {displayVersion?.isOriginal ? 'Original version' : isViewingLatest ? 'Senaste version' : 'Historisk version'}
-              </Badge>
-              <span className="text-sm text-muted-foreground">
-                {displayVersion && formatRelativeDate(displayVersion.created_at)}
-              </span>
-            </div>
-          </div>
-          
-          {canDelete && <Button variant="ghost" size="sm" onClick={() => setUpdateToDelete(displayVersion.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50">
-              <Trash2 className="w-4 h-4 mr-1" />
-              Ta bort
-            </Button>}
+          <h2 className="text-lg font-semibold">Case innehåll</h2>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setIsTimelineMinimized(!isTimelineMinimized)}
+            className="flex items-center gap-2"
+          >
+            {isTimelineMinimized ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            {isTimelineMinimized ? 'Visa innehåll' : 'Minimera'}
+          </Button>
         </div>
 
-        {/* Main Image */}
-        {displayVersion?.image_url && <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
-            <img src={displayVersion.image_url} alt={displayVersion.title || ''} className="w-full h-full object-cover" />
-            {!isViewingLatest && <div className="absolute top-3 right-3">
-                <Badge variant="secondary" className="bg-black/70 text-white">
-                  <History className="w-3 h-3 mr-1" />
-                  Historisk bild
-                </Badge>
-              </div>}
-          </div>}
-
-        {/* Content Description */}
-        {displayVersion?.description && <Card>
-            <CardContent className="pt-6">
-              <div className="prose dark:prose-invert max-w-none">
-                <p className="whitespace-pre-wrap">
-                  {displayVersion.description}
-                </p>
+        {!isTimelineMinimized && (
+          <>
+            {/* Version Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {!isViewingLatest && <Button variant="outline" size="sm" onClick={handleBackToLatest} className="flex items-center gap-2">
+                    <ArrowLeft className="w-4 h-4" />
+                    Tillbaka till senaste
+                  </Button>}
+                <div className="flex items-center gap-2">
+                  <Badge variant={isViewingLatest ? "default" : "secondary"}>
+                    {displayVersion?.isOriginal ? 'Original version' : isViewingLatest ? 'Senaste version' : 'Historisk version'}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">
+                    {displayVersion && formatRelativeDate(displayVersion.created_at)}
+                  </span>
+                </div>
               </div>
-            </CardContent>
-          </Card>}
+              
+              {canDelete && <Button variant="ghost" size="sm" onClick={() => setUpdateToDelete(displayVersion.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Ta bort
+                </Button>}
+            </div>
+
+            {/* Main Image */}
+            {displayVersion?.image_url && <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
+                <img src={displayVersion.image_url} alt={displayVersion.title || ''} className="w-full h-full object-cover" />
+                {!isViewingLatest && <div className="absolute top-3 right-3">
+                    <Badge variant="secondary" className="bg-black/70 text-white">
+                      <History className="w-3 h-3 mr-1" />
+                      Historisk bild
+                    </Badge>
+                  </div>}
+              </div>}
+
+            {/* Content Description */}
+            {displayVersion?.description && <Card>
+                <CardContent className="pt-6">
+                  <div className="prose dark:prose-invert max-w-none">
+                    <p className="whitespace-pre-wrap">
+                      {displayVersion.description}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>}
+          </>
+        )}
       </div>
 
       {/* History Section */}
