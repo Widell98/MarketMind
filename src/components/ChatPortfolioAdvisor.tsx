@@ -78,7 +78,7 @@ const ChatPortfolioAdvisor = () => {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [showHoldingsInput, setShowHoldingsInput] = useState(false);
   const [localLoading, setLoading] = useState(false);
-  const [conversationStarted, setConversationStarted] = useState(false);
+  const isInitialized = useRef(false);
   
   const { generatePortfolioFromConversation, loading } = useConversationalPortfolio();
   const { refetch } = usePortfolio();
@@ -359,18 +359,26 @@ const ChatPortfolioAdvisor = () => {
   }, [messages]);
 
   useEffect(() => {
+    console.log('ChatPortfolioAdvisor useEffect triggered', { 
+      isInitialized: isInitialized.current,
+      messagesLength: messages.length 
+    });
+    
     // Start conversation only once
-    if (!conversationStarted && messages.length === 0) {
-      setConversationStarted(true);
+    if (!isInitialized.current) {
+      console.log('Starting conversation - adding first question');
+      isInitialized.current = true;
       const firstQuestion = questions[0];
       addBotMessage(firstQuestion.question, firstQuestion.hasOptions, firstQuestion.options);
       setWaitingForAnswer(true);
     }
-  }, [conversationStarted, messages.length]);
+  }, []); // Empty dependency array
 
   const addBotMessage = (content: string, hasOptions: boolean = false, options?: Array<{ value: string; label: string }>, hasHoldingsInput: boolean = false) => {
+    console.log('addBotMessage called with content:', content.substring(0, 50) + '...');
+    
     const message: Message = {
-      id: Date.now().toString(),
+      id: `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Unique ID
       type: 'bot',
       content,
       timestamp: new Date(),
@@ -378,7 +386,10 @@ const ChatPortfolioAdvisor = () => {
       options,
       hasHoldingsInput
     };
-    setMessages(prev => [...prev, message]);
+    setMessages(prev => {
+      console.log('Adding bot message, current messages length:', prev.length);
+      return [...prev, message];
+    });
   };
 
   const addUserMessage = (content: string) => {
