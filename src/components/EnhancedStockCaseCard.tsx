@@ -251,7 +251,8 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
           {/* Save Case */}
           <div className="flex justify-center">
             <SaveOpportunityButton 
-              opportunityId={stockCase.id} 
+              itemType="stock_case"
+              itemId={stockCase.id} 
               className="flex items-center justify-center gap-1 border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/30" 
             />
           </div>
