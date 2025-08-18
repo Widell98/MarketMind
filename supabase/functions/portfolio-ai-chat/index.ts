@@ -96,7 +96,8 @@ serve(async (req) => {
       /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5}|investor|volvo|ericsson|sandvik|atlas|kinnevik|hex|alfa laval|skf|telia|seb|handelsbanken|nordea|abb|astra|electrolux|husqvarna|getinge|boliden|ssab|stora enso|svenska cellulosa|lund|billerud|holmen|nibe|beijer|essity|kindred|evolution|betsson|net|entertainment|fingerprint|sinch|tobii|xvivo|medivir|orexo|camurus|diamyd|raysearch|elekta|sectra|bactiguard|vitrolife|bioinvent|immunovia|hansa|cantargia|oncopeptides|wilson|therapeutics|solberg|probi|biovica|addlife|duni|traction|embracer|stillfront|paradox|starbreeze|remedy|stillfront|remedy|starbreeze|gaming|saab)/i.test(message);
     
     // Check if user wants personal investment advice/recommendations
-    const isPersonalAdviceRequest = /(?:rekommendation|förslag|vad ska jag|bör jag|passar mig|min portfölj|mina intressen|för mig|personlig|skräddarsy|baserat på|investera|köpa|sälja|portföljanalys|investeringsstrategi)/i.test(message);
+const isPersonalAdviceRequest = /(?:rekommendation|förslag|vad ska jag|bör jag|passar mig|min portfölj|mina intressen|för mig|personlig|skräddarsy|baserat på|investera|köpa|sälja|portföljanalys|investeringsstrategi)/i.test(message);
+const isPortfolioOptimizationRequest = /portfölj/i.test(message) && /optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma/i.test(message);
 
     // Filter out existing holdings from recommendations
     const existingSymbols = new Set();
@@ -188,7 +189,7 @@ ENDAST RIKTIGA INVESTERINGAR:
     }
 
     // Only add user profile information for personal advice requests
-    if (isPersonalAdviceRequest || isExchangeRequest) {
+    if (isPersonalAdviceRequest || isExchangeRequest || isPortfolioOptimizationRequest) {
       if (riskProfile) {
         contextInfo += `\n\nANVÄNDARPROFIL:
 - Ålder: ${riskProfile.age || 'Ej angivet'} år
@@ -255,12 +256,16 @@ ENDAST RIKTIGA INVESTERINGAR:
         const actualHoldings = holdings.filter(h => h.holding_type !== 'recommendation');
         
         if (actualHoldings.length > 0) {
-          contextInfo += `\n\nNUVARANDE INNEHAV (UNDVIK DESSA I REKOMMENDATIONER):`;
+          contextInfo += `\n\nNUVARANDE INNEHAV (UNDVIK DESSA I KÖP-REKOMMENDATIONER):`;
           actualHoldings.forEach(holding => {
             contextInfo += `\n- ${holding.name} (${holding.symbol || 'N/A'})`;
           });
           
-          contextInfo += `\n\nVIKTIGT: Föreslå ALDRIG aktier som användaren redan äger.`;
+          if (isExchangeRequest || isPortfolioOptimizationRequest) {
+            contextInfo += `\n\nVIKTIGT: Föreslå ALDRIG köp av aktier som användaren redan äger. Du får rekommendera att TRIMMA/SÄLJA befintliga innehav eller BYTA ut ett befintligt innehav mot ett nytt.`;
+          } else {
+            contextInfo += `\n\nVIKTIGT: Föreslå ALDRIG aktier som användaren redan äger.`;
+          }
         }
       }
     }
@@ -311,6 +316,26 @@ STRUKTURERA DIN AKTIEANALYS SÅ HÄR:
 - Tidshorisont för investeringen
 
 GE EN PROFESSIONELL ANALYS med konkreta siffror, branschkunskap och tydliga slutsatser. Använd aktuell marknadskunskap och branschspecifik expertis.`;
+    } else if (isExchangeRequest || isPortfolioOptimizationRequest) {
+      systemPrompt += `
+
+UPPDRAG - PORTFÖLJOPTIMERING:
+
+MÅL: Ge 2–3 mycket konkreta åtgärdsförslag för att förbättra användarens nuvarande portfölj.
+
+REGLER:
+- Använd EXAKTA tickers för alla nya köp (Företagsnamn (SYMBOL))
+- Föreslå INTE köp av innehav som redan finns i portföljen
+- Du får rekommendera att TRIMMA/SÄLJA befintliga innehav samt BYTA: FROM -> TO
+- Respektera användarens riskprofil och sektorintressen
+- Kortfattat: max ca 120 ord totalt
+
+FORMAT (följ exakt, 2–3 punkter):
+- Åtgärd: Köp/Sälj/Byt FROM(SYMBOL) -> TO(SYMBOL)
+  Vikt: +X% / -Y% (eller Omviktning: FROM -Z %-p -> TO +Z %-p)
+  Motivering: 1–2 meningar som kopplar till risk, värdering, momentum eller diversifiering
+
+Avsluta med en kort påminnelse om att detta inte är finansiell rådgivning.`;
     } else {
       systemPrompt += `
 
@@ -382,6 +407,7 @@ Detta är en komplett portföljanalys. Ge en omfattande strategi med:
     console.log('Is stock analysis request:', isStockAnalysisRequest);
     console.log('Is personal advice request:', isPersonalAdviceRequest);
     console.log('Is exchange request:', isExchangeRequest);
+    console.log('Is portfolio optimization request:', isPortfolioOptimizationRequest);
     console.log('Has conversation data:', !!conversationData);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
