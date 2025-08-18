@@ -92,6 +92,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       if (error) throw error;
 
+      // Security logging for successful login
+      console.info('User login successful', {
+        userId: data.user?.id,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+      });
+
       toast({
         title: "Welcome back!",
         description: "You have successfully signed in.",
@@ -99,6 +106,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       return { data, error: null };
     } catch (error: any) {
+      // Security logging for failed login attempts
+      console.warn('Login attempt failed', {
+        email: email.substring(0, 3) + '***', // Partial email for privacy
+        error: error.message,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+      });
+
       console.error('Sign in error:', error);
       toast({
         title: "Sign in failed",

@@ -18,6 +18,7 @@ import { toast } from '@/hooks/use-toast';
 import StockCaseAIChat from '@/components/StockCaseAIChat';
 import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
+import { highlightNumbersSafely } from '@/utils/sanitizer';
 import StockCaseComments from '@/components/StockCaseComments';
 import AddStockCaseUpdateDialog from '@/components/AddStockCaseUpdateDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -274,16 +275,11 @@ const StockCaseDetail = () => {
         );
       }
       
-      // Highlight numbers in text
-      const highlightNumbers = (text: string) => {
-        return text.replace(/(\d+[\d\s]*,?\d*\.?\d*)\s?(SEK|%|kr)/gi, '<span class="font-bold text-primary">$1 $2</span>');
-      };
-      
       return (
         <p 
           key={index} 
           className="text-foreground leading-relaxed mb-4"
-          dangerouslySetInnerHTML={{ __html: highlightNumbers(section) }}
+          dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(section) }}
         />
       );
     });

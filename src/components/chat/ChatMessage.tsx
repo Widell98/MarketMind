@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
+import { parseMarkdownSafely } from '@/utils/sanitizer';
 interface StockSuggestion {
   symbol: string;
   name: string;
@@ -35,10 +36,7 @@ const ChatMessage = ({
     toast
   } = useToast();
 
-  // Parse markdown formatting
-  const parseMarkdown = (text: string): string => {
-    return text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900 dark:text-gray-100">$1</strong>');
-  };
+  // Parse markdown formatting - replaced with secure version
 
   // Enhanced stock suggestion extraction with more comprehensive patterns
   const extractStockSuggestions = (content: string): StockSuggestion[] => {
@@ -158,31 +156,31 @@ const ChatMessage = ({
       // Handle headers
       if (line.startsWith('###')) {
         return <h3 key={index} className="font-semibold text-sm sm:text-base mt-3 mb-2 text-gray-900 dark:text-gray-100 leading-tight" dangerouslySetInnerHTML={{
-          __html: parseMarkdown(line.replace('###', '').trim())
+          __html: parseMarkdownSafely(line.replace('###', '').trim())
         }} />;
       }
       if (line.startsWith('##')) {
         return <h2 key={index} className="font-semibold text-base sm:text-lg mt-4 mb-2 text-gray-900 dark:text-gray-100 leading-tight" dangerouslySetInnerHTML={{
-          __html: parseMarkdown(line.replace('##', '').trim())
+          __html: parseMarkdownSafely(line.replace('##', '').trim())
         }} />;
       }
 
       // Handle lists
       if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
         return <li key={index} className="ml-3 sm:ml-4 text-xs sm:text-sm text-gray-800 dark:text-gray-200 leading-relaxed mb-1" dangerouslySetInnerHTML={{
-          __html: parseMarkdown(line.trim().substring(1).trim())
+          __html: parseMarkdownSafely(line.trim().substring(1).trim())
         }} />;
       }
 
       // Handle numbered lists
       if (/^\d+\./.test(line.trim())) {
         return <li key={index} className="ml-3 sm:ml-4 text-xs sm:text-sm text-gray-800 dark:text-gray-200 leading-relaxed mb-1 list-decimal" dangerouslySetInnerHTML={{
-          __html: parseMarkdown(line.trim().replace(/^\d+\.\s*/, ''))
+          __html: parseMarkdownSafely(line.trim().replace(/^\d+\.\s*/, ''))
         }} />;
       }
 
       // Handle regular text with markdown
-      const parsedContent = parseMarkdown(line);
+      const parsedContent = parseMarkdownSafely(line);
       return <p key={index} className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 mb-2 leading-relaxed break-words" dangerouslySetInnerHTML={{
         __html: parsedContent
       }} />;
