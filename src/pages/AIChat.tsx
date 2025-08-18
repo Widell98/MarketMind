@@ -143,26 +143,36 @@ const AIChatPage = () => {
       {/* Full-height container with gradient background */}
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/[0.02] overflow-hidden">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 h-full max-w-7xl">
-          {/* Header Section */}
-          <div className="pt-8 pb-6 sm:pt-12 sm:pb-8">
-            <div className="text-center max-w-3xl mx-auto">
-              <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-primary/10 backdrop-blur-sm rounded-3xl mb-6 shadow-2xl shadow-primary/10">
-                <Brain className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />
+          {/* Compact Header Section for logged in users */}
+          {user && riskProfile ? (
+            <div className="pt-4 pb-2">
+              <div className="text-center">
+                <h1 className="text-2xl font-bold text-foreground tracking-tight">
+                  AI Portfolio Assistent
+                </h1>
               </div>
-              
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4 tracking-tight">
-                AI Portfolio Assistent
-              </h1>
-              <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                Din intelligenta investeringsrådgivare som hjälper dig att fatta smartare beslut med AI-driven analys
-              </p>
             </div>
-          </div>
+          ) : (
+            <div className="pt-8 pb-6 sm:pt-12 sm:pb-8">
+              <div className="text-center max-w-3xl mx-auto">
+                <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-primary/10 backdrop-blur-sm rounded-3xl mb-6 shadow-2xl shadow-primary/10">
+                  <Brain className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />
+                </div>
+                
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4 tracking-tight">
+                  AI Portfolio Assistent
+                </h1>
+                <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                  Din intelligenta investeringsrådgivare som hjälper dig att fatta smartare beslut med AI-driven analys
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Content based on authentication status */}
           {user && riskProfile ? (
             /* Full Chat Interface */
-            <div className="h-[calc(100vh-16rem)]">
+            <div className="h-[calc(100vh-8rem)]">
               <AIChat 
                 portfolioId={activePortfolio?.id} 
                 initialStock={stockName} 
