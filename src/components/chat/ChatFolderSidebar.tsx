@@ -126,18 +126,18 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                   <MoreHorizontal className="w-3 h-3" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="bg-background border shadow-lg z-50">
                 <DropdownMenuItem onClick={() => onEditSessionName(session.id, session.session_name)}>
                   <Edit className="w-4 h-4 mr-2" />
                   Byt namn
                 </DropdownMenuItem>
                 {folders.length > 0 && (
                   <DropdownMenu>
-                    <DropdownMenuTrigger className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-accent rounded-sm">
+                    <DropdownMenuTrigger className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-accent rounded-sm cursor-pointer">
                       <Move className="w-4 h-4 mr-2" />
                       Flytta till mapp
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent side="right" align="start">
+                    <DropdownMenuContent side="right" align="start" className="bg-background border shadow-lg z-50">
                       {folders.map(folder => (
                         <DropdownMenuItem 
                           key={folder.id}
@@ -212,13 +212,16 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
               session.session_name.toLowerCase().includes(searchTerm.toLowerCase())
             );
             const isExpanded = expandedFolders.has(folder.id);
+            const hasActiveSession = folderSessions.some(session => session.id === currentSessionId);
             
             return (
               <div key={folder.id} className="space-y-1">
                 <div className="flex items-center justify-between group">
                   <button
                     onClick={() => toggleFolder(folder.id)}
-                    className="flex items-center gap-2 px-2 py-1 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors flex-1"
+                    className={`flex items-center gap-2 px-2 py-1 text-sm font-medium rounded-lg hover:bg-muted/50 transition-colors flex-1 ${
+                      hasActiveSession ? 'text-foreground bg-muted/30' : 'text-muted-foreground hover:text-foreground'
+                    }`}
                   >
                     {isExpanded ? (
                       <ChevronDown className="w-3 h-3" />
@@ -241,7 +244,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                         <MoreHorizontal className="w-3 h-3" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="bg-background border shadow-lg z-50">
                       <DropdownMenuItem onClick={() => {
                         const newName = prompt('Enter new folder name:', folder.name);
                         if (newName && newName !== folder.name) {
@@ -249,11 +252,11 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                         }
                       }}>
                         <Edit className="w-4 h-4 mr-2" />
-                        Rename
+                        Byt namn
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => deleteFolder(folder.id)} className="text-red-600">
                         <Trash className="w-4 h-4 mr-2" />
-                        Delete
+                        Ta bort
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -266,7 +269,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                         <button
                           onClick={() => onLoadSession(session.id)}
                           className={`flex-1 text-left px-2 py-2 text-sm rounded-lg hover:bg-muted/50 transition-colors truncate ${
-                            currentSessionId === session.id ? 'bg-muted text-foreground' : 'text-muted-foreground'
+                            currentSessionId === session.id ? 'bg-muted text-foreground font-medium' : 'text-muted-foreground'
                           }`}
                         >
                           {session.session_name}
@@ -281,18 +284,18 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                               <MoreHorizontal className="w-3 h-3" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent align="end" className="bg-background border shadow-lg z-50">
                             <DropdownMenuItem onClick={() => onEditSessionName(session.id, session.session_name)}>
                               <Edit className="w-4 h-4 mr-2" />
-                              Rename
+                              Byt namn
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => moveSessionToFolder(session.id, null)}>
                               <Move className="w-4 h-4 mr-2" />
-                              Remove from folder
+                              Ta bort från mapp
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => onDeleteSession(session.id)} className="text-red-600">
                               <Trash className="w-4 h-4 mr-2" />
-                              Delete
+                              Ta bort
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
