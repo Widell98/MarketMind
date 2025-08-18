@@ -2,7 +2,7 @@ import React from 'react';
 import Layout from '@/components/Layout';
 import IntelligentRouting from '@/components/IntelligentRouting';
 import CompactLatestCases from '@/components/CompactLatestCases';
-import { Brain, UserPlus, BarChart3, Users, ArrowUpRight, TrendingUp, Wallet, Shield, MessageCircle, CheckCircle, Star, Heart, Target, Coffee, HandHeart, MapPin, Clock } from 'lucide-react';
+import { Brain, UserPlus, BarChart3, Users, ArrowUpRight, TrendingUp, Wallet, Shield, MessageCircle, CheckCircle, Star, Heart, Target, Coffee, HandHeart, MapPin, Clock, Zap, DollarSign } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -53,34 +53,67 @@ const Index = () => {
                 </p>
               </div>
 
-              {/* Personal story visualization */}
+              {/* Personal story visualization - Multiple examples */}
               <div className="mb-10 relative">
-                <div className="bg-gradient-to-r from-slate-100 via-blue-50 to-indigo-100 dark:from-slate-800 dark:via-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-8 max-w-md mx-auto border border-slate-200/50 dark:border-slate-700/50 shadow-lg">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 flex items-center justify-center">
-                      <Coffee className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-sm font-medium">Anna, 34</p>
-                      <p className="text-xs text-muted-foreground">Precis som du</p>
-                    </div>
-                  </div>
-                  <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-left text-sm shadow-sm">
-                    "Hjälp mig bygga en trygg portfölj för min pension. Jag vill sova gott om nätterna."
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
                   
-                  <div className="flex items-center gap-3 mt-4 mb-2">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-emerald-500 to-blue-500 flex items-center justify-center">
-                      <HandHeart className="w-5 h-5 text-white" />
+                  {/* Example 1: Conservative investor */}
+                  <div className="bg-gradient-to-r from-slate-100 via-blue-50 to-indigo-100 dark:from-slate-800 dark:via-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-6 border border-slate-200/50 dark:border-slate-700/50 shadow-lg">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 flex items-center justify-center">
+                        <Coffee className="w-4 h-4 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-medium">Anna, 45</p>
+                        <p className="text-xs text-muted-foreground">Konservativ</p>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <p className="text-sm font-medium">Din personliga rådgivare</p>
-                      <p className="text-xs text-muted-foreground">Förstår dina behov</p>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-left text-xs shadow-sm mb-3">
+                      "Hjälp mig bygga en trygg portfölj för min pension. Jag vill sova gott om nätterna."
+                    </div>
+                    <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3 text-left text-xs border border-emerald-200 dark:border-emerald-800">
+                      "Perfekt! Jag föreslår 70% räntor och 30% stabila aktier för trygghet."
                     </div>
                   </div>
-                  <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3 text-left text-sm border border-emerald-200 dark:border-emerald-800">
-                    "Jag förstår. Låt mig bygga en trygg portfölj med 70% räntor och 30% stabila aktier. Vi tar det steg för steg tillsammans."
+
+                  {/* Example 2: Young aggressive investor */}
+                  <div className="bg-gradient-to-r from-orange-100 via-red-50 to-pink-100 dark:from-orange-900/20 dark:via-red-900/20 dark:to-pink-900/20 rounded-2xl p-6 border border-orange-200/50 dark:border-orange-700/50 shadow-lg">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-orange-500 to-red-500 flex items-center justify-center">
+                        <Zap className="w-4 h-4 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-medium">Erik, 26</p>
+                        <p className="text-xs text-muted-foreground">Aggressiv</p>
+                      </div>
+                    </div>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-left text-xs shadow-sm mb-3">
+                      "Jag är ung och vill maximera tillväxten. Kan ta höga risker för bättre avkastning!"
+                    </div>
+                    <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 text-left text-xs border border-orange-200 dark:border-orange-800">
+                      "Utmärkt! 90% tillväxtaktier och 10% emerging markets. Långsiktig hög avkastning!"
+                    </div>
                   </div>
+
+                  {/* Example 3: Dividend-focused older investor */}
+                  <div className="bg-gradient-to-r from-green-100 via-emerald-50 to-teal-100 dark:from-green-900/20 dark:via-emerald-900/20 dark:to-teal-900/20 rounded-2xl p-6 border border-green-200/50 dark:border-green-700/50 shadow-lg">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center">
+                        <DollarSign className="w-4 h-4 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-medium">Gunnar, 62</p>
+                        <p className="text-xs text-muted-foreground">Utdelningsfokus</p>
+                      </div>
+                    </div>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-left text-xs shadow-sm mb-3">
+                      "Jag vill ha regelbunden inkomst från utdelningar. Stabilitet är viktigast nu."
+                    </div>
+                    <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-left text-xs border border-green-200 dark:border-green-800">
+                      "Klart! Utdelningsaktier och REITs med 4-6% direktavkastning. Månatlig inkomst!"
+                    </div>
+                  </div>
+
                 </div>
               </div>
 
