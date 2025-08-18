@@ -218,184 +218,268 @@ const Discover = () => {
     console.log('Edit analysis:', analysis);
   };
   return <Layout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Sparkles className="w-8 h-8 text-purple-600" />
-            <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100">
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
+          {/* Clean Header - Apple style */}
+          <div className="text-center space-y-6 mb-12">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Sparkles className="w-6 h-6 text-primary" />
+              </div>
+            </div>
+            <h1 className="text-4xl sm:text-5xl font-semibold text-foreground tracking-tight">
               Upptäck & Utforska
             </h1>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto font-light leading-relaxed">
+              Hitta inspiration genom visuella aktiecase och djupa marknadsanalyser
+            </p>
           </div>
-          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-            Hitta inspiration genom visuella aktiecase och djupa marknadsanalyser
-          </p>
-        </div>
 
-        {/* Main Content Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-8 bg-muted p-1 rounded-xl h-auto">
-            <TabsTrigger value="cases" className="flex items-center gap-2 rounded-lg py-3 px-4 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-sm">
-              <Camera className="w-4 h-4" />
-              Case 📷
-            </TabsTrigger>
-            <TabsTrigger value="analyses" className="flex items-center gap-2 rounded-lg py-3 px-4 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-sm">
-              <PenTool className="w-4 h-4" />
-              Analyser ✍️
-            </TabsTrigger>
-          </TabsList>
+          {/* Clean Tabs - Apple style */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 max-w-sm mx-auto mb-12 bg-muted/50 p-1 rounded-xl h-auto border">
+              <TabsTrigger 
+                value="cases" 
+                className="flex items-center gap-2 rounded-lg py-3 px-6 font-medium transition-all duration-300 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary text-sm"
+              >
+                <Camera className="w-4 h-4" />
+                Stock Cases
+              </TabsTrigger>
+              <TabsTrigger 
+                value="analyses" 
+                className="flex items-center gap-2 rounded-lg py-3 px-6 font-medium transition-all duration-300 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary text-sm"
+              >
+                <PenTool className="w-4 h-4" />
+                Analyser
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Cases Tab */}
-          <TabsContent value="cases" className="space-y-8">
-            {/* Enhanced Search */}
-            <EnhancedStockCasesSearch
-              searchTerm={caseSearchTerm}
-              onSearchChange={setCaseSearchTerm}
-              selectedSector={selectedSector}
-              onSectorChange={setSelectedSector}
-              performanceFilter={performanceFilter}
-              onPerformanceFilterChange={setPerformanceFilter}
-              sortBy={caseSortBy}
-              onSortChange={setCaseSortBy}
-              sortOrder={caseSortOrder}
-              onSortOrderChange={setCaseSortOrder}
-              viewMode={caseViewMode}
-              onViewModeChange={setCaseViewMode}
-              availableSectors={availableSectors}
-              resultsCount={getFilteredCases.length}
-              totalCount={allStockCases?.length || 0}
-            />
+            {/* Cases Tab */}
+            <TabsContent value="cases" className="space-y-8">
+              {/* Clean Search */}
+              <div className="bg-card border rounded-2xl p-6">
+                <EnhancedStockCasesSearch
+                  searchTerm={caseSearchTerm}
+                  onSearchChange={setCaseSearchTerm}
+                  selectedSector={selectedSector}
+                  onSectorChange={setSelectedSector}
+                  performanceFilter={performanceFilter}
+                  onPerformanceFilterChange={setPerformanceFilter}
+                  sortBy={caseSortBy}
+                  onSortChange={setCaseSortBy}
+                  sortOrder={caseSortOrder}
+                  onSortOrderChange={setCaseSortOrder}
+                  viewMode={caseViewMode}
+                  onViewModeChange={setCaseViewMode}
+                  availableSectors={availableSectors}
+                  resultsCount={getFilteredCases.length}
+                  totalCount={allStockCases?.length || 0}
+                />
+              </div>
 
-            {/* Cases Grid */}
-            <div className="space-y-4">
-
-              {stockCasesLoading ? <div className={`grid gap-4 ${caseViewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
-                  {[...Array(6)].map((_, i) => <Card key={i} className="animate-pulse">
-                      <CardContent className="p-4">
-                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-4"></div>
-                        <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                      </CardContent>
-                    </Card>)}
-                </div> : <div className={`grid gap-4 ${caseViewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
-                  {getFilteredCases.map(stockCase => <StockCaseCard key={stockCase.id} stockCase={stockCase} onViewDetails={handleViewStockCaseDetails} onDelete={handleDeleteStockCase} />)}
-                </div>}
-
-              {!stockCasesLoading && getFilteredCases.length === 0 && (
-                <div className="text-center py-12">
-                  <Camera className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">
-                    {caseSearchTerm ? "Inga case matchar din sökning" : "Inga case hittades"}
-                  </h3>
-                  <p className="text-muted-foreground mb-6">
-                    {caseSearchTerm ? "Prova att ändra dina sökord eller rensa sökningen" : "Kom tillbaka senare för nya case"}
-                  </p>
-                  {caseSearchTerm && (
-                    <Button onClick={() => setCaseSearchTerm('')} variant="outline">
-                      Rensa sökning
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          </TabsContent>
-
-          {/* Analyses Tab */}
-          <TabsContent value="analyses" className="space-y-6">
-            {/* Enhanced Search */}
-            <EnhancedAnalysesSearch
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
-              selectedType={selectedType}
-              onTypeChange={setSelectedType}
-              sortBy={sortBy}
-              onSortChange={setSortBy}
-              sortOrder={sortOrder}
-              onSortOrderChange={setSortOrder}
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-              resultsCount={filteredAnalyses.length}
-              totalCount={analyses?.length || 0}
-            />
-
-            {/* Analysis Sub-tabs */}
-            <Tabs value={analysisSubTab} onValueChange={setAnalysisSubTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-6 bg-muted p-1 rounded-xl h-auto">
-                <TabsTrigger value="all" className="flex items-center gap-2 rounded-lg py-2 px-3 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-sm">
-                  <Sparkles className="w-4 h-4" />
-                  Upptäck
-                </TabsTrigger>
-                <TabsTrigger value="following" className="flex items-center gap-2 rounded-lg py-2 px-3 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-sm">
-                  <Users className="w-4 h-4" />
-                  Följer
-                </TabsTrigger>
-              </TabsList>
-
-              {/* All Analyses Tab */}
-              <TabsContent value="all" className="space-y-6">
-                
-
-                {analysesLoading ? <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'space-y-4'}`}>
-                    {[...Array(5)].map((_, i) => <Card key={i} className="animate-pulse">
+              {/* Cases Grid */}
+              <div className="space-y-6">
+                {stockCasesLoading ? (
+                  <div className={`grid gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+                    {[...Array(6)].map((_, i) => (
+                      <Card key={i} className="animate-pulse border rounded-2xl">
                         <CardContent className="p-6">
-                          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-                          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-4"></div>
-                          <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                          <div className="h-4 bg-muted rounded mb-3"></div>
+                          <div className="h-4 bg-muted rounded w-2/3 mb-6"></div>
+                          <div className="h-32 bg-muted rounded-xl"></div>
                         </CardContent>
-                      </Card>)}
-                  </div> : filteredAnalyses.length > 0 ? <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'space-y-4'}`}>
-                    {filteredAnalyses.map(analysis => <EnhancedAnalysisCard key={analysis.id} analysis={analysis} onViewDetails={handleViewAnalysisDetails} onDelete={handleDeleteAnalysis} onEdit={handleEditAnalysis} showProfileActions={true} />)}
-                  </div> : <div className="text-center py-12">
-                    <BookOpen className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold mb-2">
-                      {searchTerm || selectedType ? "Inga analyser matchar dina filter" : "Inga analyser hittades"}
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={`grid gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+                    {getFilteredCases.map(stockCase => (
+                      <StockCaseCard 
+                        key={stockCase.id} 
+                        stockCase={stockCase} 
+                        onViewDetails={handleViewStockCaseDetails} 
+                        onDelete={handleDeleteStockCase} 
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {!stockCasesLoading && getFilteredCases.length === 0 && (
+                  <div className="text-center py-16">
+                    <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-6">
+                      <Camera className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-3 text-foreground">
+                      {caseSearchTerm ? "Inga case matchar din sökning" : "Inga case hittades"}
                     </h3>
-                    <p className="text-muted-foreground mb-6">
-                      {searchTerm || selectedType ? "Prova att ändra dina sökkriterier eller filter" : "Var den första att dela en marknadsanalys!"}
+                    <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+                      {caseSearchTerm ? "Prova att ändra dina sökord eller rensa sökningen" : "Kom tillbaka senare för nya case"}
                     </p>
-                    {searchTerm && (
-                      <Button onClick={() => setSearchTerm('')} variant="outline">
+                    {caseSearchTerm && (
+                      <Button 
+                        onClick={() => setCaseSearchTerm('')} 
+                        variant="outline"
+                        className="rounded-xl border-border hover:bg-muted/50"
+                      >
                         Rensa sökning
                       </Button>
                     )}
-                  </div>}
-              </TabsContent>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
 
-              {/* Following Analyses Tab */}
-              <TabsContent value="following" className="space-y-6">
+            {/* Analyses Tab */}
+            <TabsContent value="analyses" className="space-y-8">
+              {/* Clean Search */}
+              <div className="bg-card border rounded-2xl p-6">
+                <EnhancedAnalysesSearch
+                  searchTerm={searchTerm}
+                  onSearchChange={setSearchTerm}
+                  selectedType={selectedType}
+                  onTypeChange={setSelectedType}
+                  sortBy={sortBy}
+                  onSortChange={setSortBy}
+                  sortOrder={sortOrder}
+                  onSortOrderChange={setSortOrder}
+                  viewMode={viewMode}
+                  onViewModeChange={setViewMode}
+                  resultsCount={filteredAnalyses.length}
+                  totalCount={analyses?.length || 0}
+                />
+              </div>
 
-                {followingAnalysesLoading ? <div className="space-y-4">
-                    {[...Array(3)].map((_, i) => <Card key={i} className="animate-pulse">
-                        <CardContent className="p-6">
-                          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-                          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-4"></div>
-                          <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                        </CardContent>
-                      </Card>)}
-                  </div> : filteredFollowingAnalyses.length > 0 ? <div className="space-y-6">
-                    {searchTerm && <div className="text-sm text-muted-foreground">
-                        Visar {filteredFollowingAnalyses.length} av {followingAnalyses?.length || 0} analyser
-                      </div>}
-                    <div className="space-y-4">
-                      {filteredFollowingAnalyses.map(analysis => <EnhancedAnalysisCard key={analysis.id} analysis={analysis} onViewDetails={handleViewAnalysisDetails} onDelete={handleDeleteAnalysis} onEdit={handleEditAnalysis} showProfileActions={false} />)}
+              {/* Analysis Sub-tabs */}
+              <Tabs value={analysisSubTab} onValueChange={setAnalysisSubTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 max-w-sm mx-auto mb-8 bg-muted/50 p-1 rounded-xl h-auto border">
+                  <TabsTrigger 
+                    value="all" 
+                    className="flex items-center gap-2 rounded-lg py-2 px-4 font-medium transition-all duration-300 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary text-sm"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Upptäck
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="following" 
+                    className="flex items-center gap-2 rounded-lg py-2 px-4 font-medium transition-all duration-300 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary text-sm"
+                  >
+                    <Users className="w-4 h-4" />
+                    Följer
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* All Analyses Tab */}
+                <TabsContent value="all" className="space-y-6">
+                  {analysesLoading ? (
+                    <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'space-y-6'}`}>
+                      {[...Array(5)].map((_, i) => (
+                        <Card key={i} className="animate-pulse border rounded-2xl">
+                          <CardContent className="p-6">
+                            <div className="h-4 bg-muted rounded mb-3"></div>
+                            <div className="h-4 bg-muted rounded w-2/3 mb-6"></div>
+                            <div className="h-20 bg-muted rounded-xl"></div>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
-                  </div> : <div className="text-center py-12">
-                    <Users className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold mb-2">Inga analyser från följda användare</h3>
-                    <p className="text-muted-foreground mb-6">
-                      {!user ? "Logga in för att följa andra användare och se deras analyser" : "Du följer inga användare ännu, eller så har de du följer inte publicerat några analyser"}
-                    </p>
-                    {!user ? <Button onClick={() => navigate('/auth')}>
-                        Logga in
-                      </Button> : <Button onClick={() => setAnalysisSubTab('all')} variant="outline">
-                        Upptäck användare att följa
-                      </Button>}
-                  </div>}
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
-        </Tabs>
+                  ) : filteredAnalyses.length > 0 ? (
+                    <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'space-y-6'}`}>
+                      {filteredAnalyses.map(analysis => (
+                        <EnhancedAnalysisCard 
+                          key={analysis.id} 
+                          analysis={analysis} 
+                          onViewDetails={handleViewAnalysisDetails} 
+                          onDelete={handleDeleteAnalysis} 
+                          onEdit={handleEditAnalysis} 
+                          showProfileActions={true} 
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-16">
+                      <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-6">
+                        <BookOpen className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-3 text-foreground">
+                        {searchTerm || selectedType ? "Inga analyser matchar dina filter" : "Inga analyser hittades"}
+                      </h3>
+                      <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+                        {searchTerm || selectedType ? "Prova att ändra dina sökkriterier eller filter" : "Var den första att dela en marknadsanalys!"}
+                      </p>
+                      {searchTerm && (
+                        <Button 
+                          onClick={() => setSearchTerm('')} 
+                          variant="outline"
+                          className="rounded-xl border-border hover:bg-muted/50"
+                        >
+                          Rensa sökning
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </TabsContent>
 
+                {/* Following Analyses Tab */}
+                <TabsContent value="following" className="space-y-6">
+                  {followingAnalysesLoading ? (
+                    <div className="space-y-6">
+                      {[...Array(3)].map((_, i) => (
+                        <Card key={i} className="animate-pulse border rounded-2xl">
+                          <CardContent className="p-6">
+                            <div className="h-4 bg-muted rounded mb-3"></div>
+                            <div className="h-4 bg-muted rounded w-2/3 mb-6"></div>
+                            <div className="h-20 bg-muted rounded-xl"></div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : filteredFollowingAnalyses.length > 0 ? (
+                    <div className="space-y-6">
+                      {searchTerm && (
+                        <div className="text-sm text-muted-foreground bg-muted/50 rounded-xl p-4 border">
+                          Visar {filteredFollowingAnalyses.length} av {followingAnalyses?.length || 0} analyser
+                        </div>
+                      )}
+                      <div className="space-y-6">
+                        {filteredFollowingAnalyses.map(analysis => (
+                          <EnhancedAnalysisCard 
+                            key={analysis.id} 
+                            analysis={analysis} 
+                            onViewDetails={handleViewAnalysisDetails} 
+                            onDelete={handleDeleteAnalysis} 
+                            onEdit={handleEditAnalysis} 
+                            showProfileActions={false} 
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-16">
+                      <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-6">
+                        <Users className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-3 text-foreground">
+                        {searchTerm ? "Inga analyser matchar din sökning" : user ? "Du följer inga analyser än" : "Logga in för att följa analyser"}
+                      </h3>
+                      <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+                        {searchTerm ? "Prova att ändra dina sökord" : user ? "Gå till Upptäck-fliken för att hitta analyser att följa" : "Skapa ett konto för att följa dina favoritanalytiker"}
+                      </p>
+                      {searchTerm && (
+                        <Button 
+                          onClick={() => setSearchTerm('')} 
+                          variant="outline"
+                          className="rounded-xl border-border hover:bg-muted/50"
+                        >
+                          Rensa sökning
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </Layout>;
 };
