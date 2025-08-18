@@ -307,10 +307,10 @@ const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts 
               /* Welcome Screen */
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-2xl mx-auto">
                 <h1 className="text-4xl font-medium text-foreground mb-2">
-                  Hey there!
+                  Hej där!
                 </h1>
                 <p className="text-lg text-muted-foreground mb-12">
-                  Ask me anything
+                  Fråga mig vad som helst
                 </p>
 
                 {/* Example Prompts Grid */}

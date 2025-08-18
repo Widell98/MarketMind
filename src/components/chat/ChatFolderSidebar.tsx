@@ -131,6 +131,25 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                   <Edit className="w-4 h-4 mr-2" />
                   Byt namn
                 </DropdownMenuItem>
+                {folders.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-accent rounded-sm">
+                      <Move className="w-4 h-4 mr-2" />
+                      Flytta till mapp
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="right" align="start">
+                      {folders.map(folder => (
+                        <DropdownMenuItem 
+                          key={folder.id}
+                          onClick={() => moveSessionToFolder(session.id, folder.id)}
+                        >
+                          <Folder className="w-4 h-4 mr-2" />
+                          {folder.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
                 <DropdownMenuItem onClick={() => onDeleteSession(session.id)} className="text-red-600">
                   <Trash className="w-4 h-4 mr-2" />
                   Ta bort
