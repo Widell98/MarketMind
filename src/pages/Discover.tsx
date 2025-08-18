@@ -16,6 +16,7 @@ import AIWeeklyPicks from '@/components/AIWeeklyPicks';
 import StockCaseCard from '@/components/StockCaseCard';
 import EnhancedAnalysisCard from '@/components/EnhancedAnalysisCard';
 import EnhancedAnalysesSearch from '@/components/EnhancedAnalysesSearch';
+import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
 import CreateAnalysisDialog from '@/components/CreateAnalysisDialog';
 
 // Hooks
@@ -34,6 +35,11 @@ const Discover = () => {
   // Case filters
   const [caseFilter, setCaseFilter] = useState('all');
   const [caseSearchTerm, setCaseSearchTerm] = useState('');
+  const [caseSector, setCaseSector] = useState('');
+  const [casePerformanceFilter, setCasePerformanceFilter] = useState('');
+  const [caseSortBy, setCaseSortBy] = useState('created_at');
+  const [caseSortOrder, setCaseSortOrder] = useState('desc');
+  const [caseViewMode, setCaseViewMode] = useState('grid');
   
   // Analysis filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,7 +67,18 @@ const Discover = () => {
     { id: 'value', name: 'Värde', icon: BarChart3 }
   ];
 
-  // Filter cases based on selected category and search term
+  // Get available sectors from all stock cases
+  const availableSectors = useMemo(() => {
+    const sectors = new Set<string>();
+    allStockCases.forEach(stockCase => {
+      if (stockCase.sector) {
+        sectors.add(stockCase.sector);
+      }
+    });
+    return Array.from(sectors).sort();
+  }, [allStockCases]);
+
+  // Filter cases based on all filters
   const getFilteredCases = () => {
     let cases = [];
     
@@ -85,7 +102,7 @@ const Discover = () => {
       });
     }
     
-    // Then apply search filter
+    // Apply search filter
     if (caseSearchTerm) {
       const lowerSearchTerm = caseSearchTerm.toLowerCase();
       cases = cases.filter(stockCase =>
@@ -96,6 +113,61 @@ const Discover = () => {
         stockCase.tags?.some((tag: string) => tag.toLowerCase().includes(lowerSearchTerm))
       );
     }
+
+    // Apply sector filter
+    if (caseSector && caseSector !== 'all-sectors') {
+      cases = cases.filter(stockCase => stockCase.sector === caseSector);
+    }
+
+    // Apply performance filter
+    if (casePerformanceFilter && casePerformanceFilter !== 'all-results') {
+      cases = cases.filter(stockCase => {
+        const performance = parseFloat(stockCase.performance_1y || '0');
+        switch (casePerformanceFilter) {
+          case 'positive':
+            return performance > 0;
+          case 'negative':
+            return performance < 0;
+          case 'high':
+            return performance > 10;
+          case 'low':
+            return performance < 5;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Apply sorting
+    cases.sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (caseSortBy) {
+        case 'performance':
+          aValue = parseFloat(a.performance_1y || '0');
+          bValue = parseFloat(b.performance_1y || '0');
+          break;
+        case 'likes':
+          aValue = a.likes_count || 0;
+          bValue = b.likes_count || 0;
+          break;
+        case 'title':
+          aValue = a.title.toLowerCase();
+          bValue = b.title.toLowerCase();
+          break;
+        case 'created_at':
+        default:
+          aValue = new Date(a.created_at).getTime();
+          bValue = new Date(b.created_at).getTime();
+          break;
+      }
+
+      if (caseSortOrder === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
     
     return cases;
   };
@@ -233,18 +305,24 @@ const Discover = () => {
               </>
             )}
 
-            {/* Search Input */}
-            <div className="max-w-md mx-auto mb-6">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  placeholder="Sök efter case, företag, sektorer..."
-                  value={caseSearchTerm}
-                  onChange={(e) => setCaseSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
+            {/* Enhanced Search and Filters */}
+            <EnhancedStockCasesSearch
+              searchTerm={caseSearchTerm}
+              onSearchChange={setCaseSearchTerm}
+              selectedSector={caseSector}
+              onSectorChange={setCaseSector}
+              performanceFilter={casePerformanceFilter}
+              onPerformanceFilterChange={setCasePerformanceFilter}
+              sortBy={caseSortBy}
+              onSortChange={setCaseSortBy}
+              sortOrder={caseSortOrder}
+              onSortOrderChange={setCaseSortOrder}
+              viewMode={caseViewMode}
+              onViewModeChange={setCaseViewMode}
+              availableSectors={availableSectors}
+              resultsCount={getFilteredCases().length}
+              totalCount={allStockCases.length}
+            />
 
             {/* Category Filter */}
             <div className="flex flex-wrap gap-2 justify-center">
@@ -289,7 +367,10 @@ const Discover = () => {
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className={`${caseViewMode === 'grid' 
+                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' 
+                  : 'space-y-4'
+                }`}>
                   {getFilteredCases().map(stockCase => (
                     <StockCaseCard
                       key={stockCase.id}
