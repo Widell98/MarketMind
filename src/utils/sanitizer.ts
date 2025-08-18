@@ -6,6 +6,17 @@ import DOMPurify from 'dompurify';
  * @returns Sanitized HTML string safe for rendering
  */
 export const sanitizeHtml = (html: string): string => {
+  // Simple fallback if DOMPurify is not available
+  if (typeof DOMPurify?.sanitize !== 'function') {
+    console.warn('DOMPurify not available, falling back to basic sanitization');
+    // Basic fallback - remove script tags and event handlers
+    return html
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/on\w+="[^"]*"/gi, '')
+      .replace(/on\w+='[^']*'/gi, '')
+      .replace(/javascript:/gi, '');
+  }
+
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: ['strong', 'em', 'b', 'i', 'span', 'p', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li'],
     ALLOWED_ATTR: ['class'],
