@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ExportSharingSection from '@/components/ExportSharingSection';
 import { TrendingUp, FileText, Plus, ArrowRight, BarChart3 } from 'lucide-react';
 import UserAnalysesSection from '@/components/UserAnalysesSection';
 import SavedOpportunitiesSection from '@/components/SavedOpportunitiesSection';
@@ -225,13 +226,16 @@ const Profile = () => {
             {/* Main Content Area */}
             <div className="xl:col-span-3">
               <Tabs defaultValue="content" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted/20 border border-border/30 rounded-xl p-1 shadow-sm backdrop-blur-sm">
+                <TabsList className="grid w-full grid-cols-4 mb-8 bg-muted/20 border border-border/30 rounded-xl p-1 shadow-sm backdrop-blur-sm">
                   <TabsTrigger value="content" className="rounded-lg font-medium">
                     Innehåll
                   </TabsTrigger>
                   <TabsTrigger value="riskprofile" className="flex items-center gap-2 rounded-lg font-medium">
                     <Brain className="w-4 h-4" />
                     Riskprofil
+                  </TabsTrigger>
+                  <TabsTrigger value="export" className="rounded-lg font-medium">
+                    Export & Delning
                   </TabsTrigger>
                   <TabsTrigger value="activity" className="rounded-lg font-medium">
                     Aktivitet
@@ -315,6 +319,10 @@ const Profile = () => {
                 
                 <TabsContent value="riskprofile" className="space-y-8">
                   <UserInvestmentAnalysis />
+                </TabsContent>
+                
+                <TabsContent value="export" className="space-y-8">
+                  <ExportSharingSection />
                 </TabsContent>
                 
                 <TabsContent value="activity" className="space-y-8">

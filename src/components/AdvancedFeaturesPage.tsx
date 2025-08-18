@@ -4,7 +4,6 @@ import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ScenarioSimulator from '@/components/ScenarioSimulator';
-import ConversationExporter from '@/components/ConversationExporter';
 import NotificationSystem from '@/components/NotificationSystem';
 import { 
   Calculator, 
@@ -36,7 +35,7 @@ const AdvancedFeaturesPage = () => {
             </div>
 
             {/* Feature Overview Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6">
               <Card className="border border-blue-200 dark:border-blue-800">
                 <CardContent className="p-3 sm:p-4">
                   <div className="flex items-center gap-2 mb-2">
@@ -45,18 +44,6 @@ const AdvancedFeaturesPage = () => {
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Testa hur din portfölj reagerar på olika marknadsscenarier
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="border border-green-200 dark:border-green-800">
-                <CardContent className="p-3 sm:p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Download className="w-4 h-4 text-green-600" />
-                    <h3 className="text-sm font-medium">Export & Delning</h3>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Exportera konversationer och analysresultat
                   </p>
                 </CardContent>
               </Card>
@@ -78,20 +65,13 @@ const AdvancedFeaturesPage = () => {
           {/* Main Content */}
           <Tabs defaultValue="simulator" className="w-full">
             <div className="w-full overflow-x-auto mb-4 sm:mb-6">
-              <TabsList className="flex w-max min-w-full sm:grid sm:grid-cols-3 sm:w-full h-auto p-1">
+              <TabsList className="flex w-max min-w-full sm:grid sm:grid-cols-2 sm:w-full h-auto p-1">
                 <TabsTrigger 
                   value="simulator" 
                   className="text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-3 min-w-32 sm:min-w-0 flex items-center gap-2"
                 >
                   <Calculator className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span>Scenario-simulator</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="export" 
-                  className="text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-3 min-w-32 sm:min-w-0 flex items-center gap-2"
-                >
-                  <Download className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span>Export & Delning</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="notifications" 
@@ -105,10 +85,6 @@ const AdvancedFeaturesPage = () => {
 
             <TabsContent value="simulator" className="focus-visible:outline-none">
               <ScenarioSimulator />
-            </TabsContent>
-
-            <TabsContent value="export" className="focus-visible:outline-none">
-              <ConversationExporter />
             </TabsContent>
 
             <TabsContent value="notifications" className="focus-visible:outline-none">
@@ -140,18 +116,6 @@ const AdvancedFeaturesPage = () => {
 
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium flex items-center gap-2">
-                    <Download className="w-4 h-4 text-green-600" />
-                    Export & Delning
-                  </h4>
-                  <ul className="text-xs text-muted-foreground space-y-1">
-                    <li>• Spara AI-konversationer för framtida referens</li>
-                    <li>• Dela insikter med finansiella rådgivare</li>
-                    <li>• Exportera i olika format</li>
-                  </ul>
-                </div>
-
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium flex items-center gap-2">
                     <Bell className="w-4 h-4 text-orange-600" />
                     Smart Notifikationer
                   </h4>
@@ -170,7 +134,7 @@ const AdvancedFeaturesPage = () => {
                   <ul className="text-xs text-muted-foreground space-y-1">
                     <li>• Börja med förberedda scenarier</li>
                     <li>• Aktivera viktiga notifikationer</li>
-                    <li>• Exportera din första analys</li>
+                    <li>• Exportera din första analys (se profil)</li>
                   </ul>
                 </div>
               </div>
