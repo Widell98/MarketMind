@@ -13,7 +13,7 @@ import Layout from '@/components/Layout';
 import PersonalizedRecommendations from '@/components/PersonalizedRecommendations';
 import PersonalizedAIRecommendations from '@/components/PersonalizedAIRecommendations';
 import AIWeeklyPicks from '@/components/AIWeeklyPicks';
-import EnhancedStockCaseCard from '@/components/EnhancedStockCaseCard';
+import StockCaseCard from '@/components/StockCaseCard';
 import EnhancedAnalysisCard from '@/components/EnhancedAnalysisCard';
 import EnhancedAnalysesSearch from '@/components/EnhancedAnalysesSearch';
 import CreateAnalysisDialog from '@/components/CreateAnalysisDialog';
@@ -190,127 +190,40 @@ const Discover = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Hero Section */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-blue-950/30 dark:via-purple-950/30 dark:to-pink-950/30 border border-blue-100 dark:border-blue-900/30">
-          <div className="absolute inset-0 bg-pattern opacity-30" />
-          <div className="relative px-6 py-12 text-center">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="p-3 bg-blue-500/10 rounded-full">
-                <Sparkles className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-              </div>
-              <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Upptäck & Utforska
-              </h1>
-            </div>
-            
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
-              Utforska case från communityt eller skriv dina egna analyser – börja här!
-            </p>
-            
-            {user && (
-              <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
-                <Button 
-                  onClick={() => navigate('/profile')}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Skapa nytt case
-                </Button>
-                <Button 
-                  onClick={() => setIsCreateAnalysisDialogOpen(true)}
-                  variant="outline"
-                  className="border-purple-200 bg-white/50 hover:bg-purple-50 text-purple-700 hover:text-purple-800 backdrop-blur-sm"
-                >
-                  <PenTool className="w-4 h-4 mr-2" />
-                  Skriv analys
-                </Button>
-              </div>
-            )}
+        {/* Header */}
+        <div className="text-center space-y-4">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Sparkles className="w-8 h-8 text-purple-600" />
+            <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100">
+              Upptäck & Utforska
+            </h1>
           </div>
+          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
+            Hitta inspiration genom visuella aktiecase och djupa marknadsanalyser
+          </p>
         </div>
 
-        {/* Enhanced Tab Navigation */}
+        {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="relative mb-8">
-            <TabsList className="grid w-full max-w-lg mx-auto grid-cols-2 p-1 rounded-2xl h-auto bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 border border-blue-100 dark:border-blue-900/30">
-              <TabsTrigger 
-                value="cases" 
-                className="flex items-center gap-3 rounded-xl py-4 px-6 font-medium transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-blue-700 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/25 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30"
-              >
-                <div className="flex items-center gap-2">
-                  <Camera className="w-5 h-5" />
-                  <span className="font-semibold">Case</span>
-                  <span className="text-lg">📷</span>
-                </div>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="analyses" 
-                className="flex items-center gap-3 rounded-xl py-4 px-6 font-medium transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-700 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-purple-500/25 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30"
-              >
-                <div className="flex items-center gap-2">
-                  <PenTool className="w-5 h-5" />
-                  <span className="font-semibold">Analyser</span>
-                  <span className="text-lg">✍️</span>
-                </div>
-              </TabsTrigger>
-            </TabsList>
-            
-            {/* Tab indicator line */}
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-200 via-purple-200 to-pink-200 dark:from-blue-800 dark:via-purple-800 dark:to-pink-800 rounded-full opacity-30" />
-          </div>
+          <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-8 bg-muted p-1 rounded-xl h-auto">
+            <TabsTrigger 
+              value="cases" 
+              className="flex items-center gap-2 rounded-lg py-3 px-4 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-sm"
+            >
+              <Camera className="w-4 h-4" />
+              Case 📷
+            </TabsTrigger>
+            <TabsTrigger 
+              value="analyses" 
+              className="flex items-center gap-2 rounded-lg py-3 px-4 font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:shadow-sm text-sm"
+            >
+              <PenTool className="w-4 h-4" />
+              Analyser ✍️
+            </TabsTrigger>
+          </TabsList>
 
           {/* Cases Tab */}
           <TabsContent value="cases" className="space-y-8">
-            {/* Cases Section Header */}
-            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 rounded-xl p-6 border border-blue-100 dark:border-blue-900/30">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-blue-500/10 rounded-lg">
-                  <Camera className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-blue-900 dark:text-blue-100">Visuella Aktiecase</h2>
-                  <p className="text-blue-700 dark:text-blue-300 text-sm">Snabba idéer och inspiration med grafer och bilder</p>
-                </div>
-              </div>
-              
-              {/* Search and Filter Bar */}
-              <div className="space-y-4">
-                <div className="max-w-md mx-auto">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-500 w-4 h-4" />
-                    <Input
-                      placeholder="Sök efter case, företag, sektorer..."
-                      value={caseSearchTerm}
-                      onChange={(e) => setCaseSearchTerm(e.target.value)}
-                      className="pl-10 border-blue-200 dark:border-blue-800 bg-white/70 dark:bg-blue-950/30 backdrop-blur-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {caseCategories.map(category => {
-                    const Icon = category.icon;
-                    return (
-                      <Button
-                        key={category.id}
-                        variant={caseFilter === category.id ? 'default' : 'outline'}
-                        onClick={() => setCaseFilter(category.id)}
-                        className={`flex items-center gap-2 transition-all duration-200 ${
-                          caseFilter === category.id 
-                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25' 
-                            : 'border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/30'
-                        }`}
-                        size="sm"
-                      >
-                        <Icon className="w-4 h-4" />
-                        {category.name}
-                      </Button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
             {/* AI-Powered Recommendations for logged in users */}
             {user && (
               <>
@@ -319,6 +232,38 @@ const Discover = () => {
                 <PersonalizedRecommendations />
               </>
             )}
+
+            {/* Search Input */}
+            <div className="max-w-md mx-auto mb-6">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Sök efter case, företag, sektorer..."
+                  value={caseSearchTerm}
+                  onChange={(e) => setCaseSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {/* Category Filter */}
+            <div className="flex flex-wrap gap-2 justify-center">
+              {caseCategories.map(category => {
+                const Icon = category.icon;
+                return (
+                  <Button
+                    key={category.id}
+                    variant={caseFilter === category.id ? 'default' : 'outline'}
+                    onClick={() => setCaseFilter(category.id)}
+                    className="flex items-center gap-2"
+                    size="sm"
+                  >
+                    <Icon className="w-4 h-4" />
+                    {category.name}
+                  </Button>
+                );
+              })}
+            </div>
 
             {/* Cases Grid */}
             <div className="space-y-4">
@@ -344,9 +289,9 @@ const Discover = () => {
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {getFilteredCases().map(stockCase => (
-                    <EnhancedStockCaseCard
+                    <StockCaseCard
                       key={stockCase.id}
                       stockCase={stockCase}
                       onViewDetails={handleViewStockCaseDetails}
@@ -375,28 +320,14 @@ const Discover = () => {
 
           {/* Analyses Tab */}
           <TabsContent value="analyses" className="space-y-6">
-            {/* Analyses Section Header */}
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-xl p-6 border border-purple-100 dark:border-purple-900/30">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-500/10 rounded-lg">
-                    <PenTool className="w-6 h-6 text-purple-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-purple-900 dark:text-purple-100">Marknadsanalyser</h2>
-                    <p className="text-purple-700 dark:text-purple-300 text-sm">Djupgående analyser och marknadsinsikter</p>
-                  </div>
-                </div>
-                {user && (
-                  <Button 
-                    onClick={() => setIsCreateAnalysisDialogOpen(true)} 
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/25"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Ny Analys
-                  </Button>
-                )}
-              </div>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold">Marknadsanalyser</h2>
+              {user && (
+                <Button onClick={() => setIsCreateAnalysisDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Ny Analys
+                </Button>
+              )}
             </div>
 
             {/* Analysis Sub-tabs */}
