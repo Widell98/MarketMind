@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -227,8 +227,10 @@ export const useChatFolders = () => {
     }
   }, [user, folders, toast]);
 
-  const getSessionsByFolder = useCallback((folderId: string | null) => {
-    return sessions.filter(session => session.folder_id === folderId);
+  const getSessionsByFolder = useMemo(() => {
+    return (folderId: string | null) => {
+      return sessions.filter(session => session.folder_id === folderId);
+    };
   }, [sessions]);
 
   useEffect(() => {

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +22,7 @@ interface ChatInputProps {
   inputRef: React.RefObject<HTMLInputElement>;
 }
 
-const ChatInput = ({
+const ChatInput = memo(({
   input,
   setInput,
   onSubmit,
@@ -113,6 +113,8 @@ const ChatInput = ({
       />
     </>
   );
-};
+});
+
+ChatInput.displayName = 'ChatInput';
 
 export default ChatInput;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -30,7 +30,7 @@ interface ChatFolderSidebarProps {
   className?: string;
 }
 
-const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = ({
+const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
   currentSessionId,
   onLoadSession,
   onDeleteSession,
@@ -232,6 +232,8 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = ({
       </div>
     </div>
   );
-};
+});
+
+ChatFolderSidebar.displayName = 'ChatFolderSidebar';
 
 export default ChatFolderSidebar;
