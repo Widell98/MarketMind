@@ -11,12 +11,7 @@ import {
   TrendingDown, 
   Wallet,
   Building2,
-  AlertTriangle,
-  ShoppingCart,
-  Brain,
-  User,
-  Star,
-  Tag
+  AlertTriangle
 } from 'lucide-react';
 import SmartHoldingSuggestions from './SmartHoldingSuggestions';
 
@@ -31,7 +26,6 @@ interface HoldingCardProps {
     purchase_price?: number;
     sector?: string;
     currency: string;
-    _originalData?: any;
   };
   portfolioPercentage: number;
   currentPrice?: {
@@ -44,8 +38,6 @@ interface HoldingCardProps {
   onDiscuss: (name: string, symbol?: string) => void;
   onEdit?: (id: string) => void;
   onDelete: (id: string, name: string) => void;
-  onAddToPortfolio?: (id: string) => void;
-  showAsRecommendation?: boolean;
   showAISuggestions?: boolean;
 }
 
@@ -56,9 +48,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   onDiscuss,
   onEdit,
   onDelete,
-  onAddToPortfolio,
-  showAsRecommendation = false,
-  showAISuggestions = false
+  showAISuggestions = true
 }) => {
   const formatCurrency = (amount: number, currency = 'SEK') => {
     return new Intl.NumberFormat('sv-SE', {
@@ -77,7 +67,6 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
 
   const Icon = getHoldingIcon();
   const isCash = holding.holding_type === 'cash';
-  const isRecommendation = holding.holding_type === 'recommendation';
 
   const handleSuggestionAction = (suggestionId: string, action: string) => {
     console.log(`Suggestion ${suggestionId} ${action}`);
@@ -104,12 +93,6 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold text-foreground truncate">{holding.name}</h3>
-                  {showAsRecommendation && (
-                    <Badge variant="secondary" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
-                      <Brain className="w-3 h-3 mr-1" />
-                      AI Rekommendation
-                    </Badge>
-                  )}
                   {holding.symbol && (
                     <Badge variant="outline" className="text-xs font-mono">
                       {holding.symbol}
@@ -217,18 +200,6 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
               >
                 <MessageSquare className="w-4 h-4 mr-1" />
                 Diskutera
-              </Button>
-            )}
-            
-            {showAsRecommendation && onAddToPortfolio && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 bg-white hover:bg-green-50 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300"
-                onClick={() => onAddToPortfolio(holding.id)}
-              >
-                <ShoppingCart className="w-4 h-4 mr-1" />
-                Lägg till i portfölj
               </Button>
             )}
             

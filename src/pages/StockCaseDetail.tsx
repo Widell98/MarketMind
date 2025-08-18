@@ -372,6 +372,10 @@ const StockCaseDetail = () => {
                     {isFollowing(stockCase.user_id) ? 'Sluta följ' : 'Följ författare'}
                   </Button>
                 )}
+                <Button variant="outline" onClick={handleShare} className="flex items-center gap-2 text-lg px-6 py-3">
+                  <Share2 className="w-5 h-5" />
+                  Dela
+                </Button>
                 {isOwner && (
                   <Button 
                     variant="outline" 
