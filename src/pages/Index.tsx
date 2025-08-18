@@ -15,7 +15,6 @@ import { useAIInsights } from '@/hooks/useAIInsights';
 import { useFinancialProgress } from '@/hooks/useFinancialProgress';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-
 const Index = () => {
   const {
     user
@@ -33,25 +32,23 @@ const Index = () => {
   const {
     actualHoldings
   } = useUserHoldings();
-  const { insights, isLoading: insightsLoading } = useAIInsights();
+  const {
+    insights,
+    isLoading: insightsLoading
+  } = useAIInsights();
   const progressData = useFinancialProgress();
   const hasPortfolio = !loading && !!activePortfolio;
   const totalPortfolioValue = performance.totalPortfolioValue + totalCash;
-  
   return <Layout>
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-12 max-w-6xl">
           
           {/* Hero Section - Apple-inspired clean design */}
-          {!user && (
-            <div className="text-center mb-20">
+          {!user && <div className="text-center mb-20">
               {/* Hero Content */}
               <div className="max-w-4xl mx-auto mb-16">
                 <div className="mb-6">
-                  <div className="inline-flex items-center gap-2 bg-muted/50 text-muted-foreground px-4 py-2 rounded-full text-sm font-medium mb-8 border">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                    Redan 1000+ svenskar litar på oss
-                  </div>
+                  
                 </div>
                 
                 <h1 className="text-5xl sm:text-6xl lg:text-7xl font-medium text-foreground mb-8 leading-tight tracking-tight">
@@ -207,12 +204,10 @@ const Index = () => {
                   </Link>
                 </Button>
               </div>
-            </div>
-          )}
+            </div>}
 
           {/* Clean Dashboard for logged-in users */}
-          {user && hasPortfolio && (
-            <div className="min-h-screen bg-background">
+          {user && hasPortfolio && <div className="min-h-screen bg-background">
               <div className="container mx-auto px-4 py-6 max-w-6xl">
                 {/* Clean Header */}
                 <div className="flex items-center justify-between mb-8">
@@ -258,10 +253,9 @@ const Index = () => {
                         <div className="flex items-center gap-4">
                           <div className="flex-1">
                             <div className="bg-muted rounded-full h-2">
-                              <div 
-                                className="bg-primary rounded-full h-2 transition-all duration-700 ease-out"
-                                style={{ width: `${progressData.percentage}%` }}
-                              />
+                              <div className="bg-primary rounded-full h-2 transition-all duration-700 ease-out" style={{
+                            width: `${progressData.percentage}%`
+                          }} />
                             </div>
                           </div>
                           <span className="text-sm font-medium text-primary">{progressData.percentage}%</span>
@@ -274,8 +268,7 @@ const Index = () => {
 
                 {/* AI Insights */}
                 <div className="mb-8">
-                  {insightsLoading ? (
-                    <div className="bg-card border rounded-xl p-6">
+                  {insightsLoading ? <div className="bg-card border rounded-xl p-6">
                       <div className="flex items-start gap-4">
                         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                           <Brain className="w-5 h-5 text-primary animate-pulse" />
@@ -285,9 +278,7 @@ const Index = () => {
                           <div className="h-3 bg-muted rounded w-3/4 animate-pulse"></div>
                         </div>
                       </div>
-                    </div>
-                  ) : insights.length > 0 ? (
-                    <div className="bg-card border rounded-xl p-6 hover:shadow-md transition-shadow">
+                    </div> : insights.length > 0 ? <div className="bg-card border rounded-xl p-6 hover:shadow-md transition-shadow">
                       <div className="flex items-start gap-4">
                         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                           <Brain className="w-5 h-5 text-primary" />
@@ -309,9 +300,7 @@ const Index = () => {
                           </Button>
                         </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="bg-card border rounded-xl p-6">
+                    </div> : <div className="bg-card border rounded-xl p-6">
                       <div className="flex items-start gap-4">
                         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                           <Brain className="w-5 h-5 text-primary" />
@@ -323,8 +312,7 @@ const Index = () => {
                           </p>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    </div>}
                 </div>
 
                 {/* Portfolio Overview Cards */}
@@ -404,8 +392,7 @@ const Index = () => {
                   </Button>
                 </div>
               </div>
-            </div>
-          )}
+            </div>}
 
           {/* Enhanced personal welcome for users without portfolio */}
           {user && !hasPortfolio && !loading && <div className="mb-16">
@@ -464,5 +451,4 @@ const Index = () => {
       </div>
     </Layout>;
 };
-
 export default Index;
