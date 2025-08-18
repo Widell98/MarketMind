@@ -2,7 +2,7 @@ import React from 'react';
 import Layout from '@/components/Layout';
 import IntelligentRouting from '@/components/IntelligentRouting';
 import CompactLatestCases from '@/components/CompactLatestCases';
-import { Brain, UserPlus, BarChart3, Users, ArrowUpRight, TrendingUp, Wallet } from 'lucide-react';
+import { Brain, UserPlus, BarChart3, Users, ArrowUpRight, TrendingUp, Wallet, MessageCircle, Shield, Clock, CheckCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -37,26 +37,138 @@ const Index = () => {
         <div className="container mx-auto px-4 py-8 max-w-6xl">
           
           {/* Hero Section - Only show for non-logged in users */}
-          {!user && <div className="text-center mb-16">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-                Investera smartare med AI
-              </h1>
-              <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed mb-10 max-w-3xl mx-auto">
-                Skapa, analysera och optimera din portfölj med hjälp av AI. Upptäck nya möjligheter genom vårt community.
-              </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Button asChild size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200">
-                  <Link to="/auth">
-                    <BarChart3 className="w-5 h-5 mr-2" />
-                    Starta nu
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" size="lg" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground shadow-md hover:shadow-lg transition-all duration-200">
-                  <Link to="/ai-chat">
-                    <Brain className="w-5 h-5 mr-2" />
-                    AI-Rådgivare
-                  </Link>
-                </Button>
+          {!user && <div className="mb-16">
+              {/* Hero Section */}
+              <div className="text-center mb-16">
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6">
+                  Din personliga finansiella rådgivare
+                  <span className="block text-primary mt-2">– alltid vid din sida</span>
+                </h1>
+                <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed mb-10 max-w-3xl mx-auto">
+                  Optimera din portfölj, förstå marknaden och få stöd i osäkra tider. Enkelt, tryggt, smart.
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                  <Button asChild size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200">
+                    <Link to="/auth">
+                      <MessageCircle className="w-5 h-5 mr-2" />
+                      Kom igång gratis
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="lg" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground shadow-md hover:shadow-lg transition-all duration-200">
+                    <Link to="#how-it-works">
+                      <Brain className="w-5 h-5 mr-2" />
+                      Se hur det fungerar
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Visualisering */}
+              <div className="mb-16 text-center">
+                <Card className="max-w-md mx-auto bg-gradient-to-br from-primary/5 to-blue-50 dark:from-primary/10 dark:to-blue-950/20 border-primary/20 shadow-lg">
+                  <div className="p-8">
+                    <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                      <MessageCircle className="w-10 h-10 text-primary" />
+                    </div>
+                    <h3 className="font-semibold text-lg mb-2">Bolla idéer direkt med AI</h3>
+                    <p className="text-sm text-muted-foreground">
+                      "Borde jag sälja mina techaktier nu?" 
+                      <br />
+                      "Vilken risk tar jag egentligen?"
+                    </p>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Hur det funkar (3 steg) */}
+              <div id="how-it-works" className="mb-16">
+                <h2 className="text-3xl font-bold text-center mb-12">Så här funkar det</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto mb-4 text-xl font-bold">
+                      1
+                    </div>
+                    <h3 className="font-semibold text-lg mb-2">Berätta om dina mål</h3>
+                    <p className="text-muted-foreground">
+                      Dela din risknivå, tidshorisont och vad du vill uppnå med dina investeringar.
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto mb-4 text-xl font-bold">
+                      2
+                    </div>
+                    <h3 className="font-semibold text-lg mb-2">AI bygger din portfölj</h3>
+                    <p className="text-muted-foreground">
+                      Få en skräddarsydd portfölj baserad på dina preferenser och marknadens möjligheter.
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto mb-4 text-xl font-bold">
+                      3
+                    </div>
+                    <h3 className="font-semibold text-lg mb-2">Bolla löpande med rådgivaren</h3>
+                    <p className="text-muted-foreground">
+                      Ställ frågor när som helst. Få råd om när du ska köpa, sälja eller bara vara lugn.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Förtroendesektion */}
+              <div className="mb-16">
+                <Card className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 border-green-200 dark:border-green-800">
+                  <div className="p-8 text-center">
+                    <h2 className="text-2xl font-bold mb-4">
+                      Byggt för vanliga sparare
+                    </h2>
+                    <p className="text-lg text-muted-foreground mb-8">
+                      Lika smart som hedgefonderna, men för alla.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="flex flex-col items-center">
+                        <Clock className="w-12 h-12 text-green-600 mb-3" />
+                        <h3 className="font-semibold mb-2">Alltid tillgänglig</h3>
+                        <p className="text-sm text-muted-foreground">
+                          24/7 tillgång till din personliga finansiella rådgivare
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <MessageCircle className="w-12 h-12 text-blue-600 mb-3" />
+                        <h3 className="font-semibold mb-2">Ingen krånglig jargong</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Enkla svar på svenska utan komplicerade finanstermer
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <CheckCircle className="w-12 h-12 text-purple-600 mb-3" />
+                        <h3 className="font-semibold mb-2">Anpassat för dig</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Råd som passar just din situation och dina mål
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Call to Action igen i botten */}
+              <div className="text-center">
+                <Card className="bg-gradient-to-r from-primary/5 to-blue-50 dark:from-primary/10 dark:to-blue-950/20 border-primary/20">
+                  <div className="p-8">
+                    <h2 className="text-2xl font-bold mb-4">
+                      Redo att börja?
+                    </h2>
+                    <p className="text-muted-foreground mb-6">
+                      Börja chatta med din rådgivare idag och få personliga råd direkt.
+                    </p>
+                    <Button asChild size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200">
+                      <Link to="/auth">
+                        <MessageCircle className="w-5 h-5 mr-2" />
+                        Börja chatta med din rådgivare →
+                      </Link>
+                    </Button>
+                  </div>
+                </Card>
               </div>
             </div>}
 
