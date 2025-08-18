@@ -297,25 +297,6 @@ const Discover = () => {
           {/* Cases Tab */}
           <TabsContent value="cases" className="space-y-8">
 
-            {/* Enhanced Search and Filters */}
-            <EnhancedStockCasesSearch
-              searchTerm={caseSearchTerm}
-              onSearchChange={setCaseSearchTerm}
-              selectedSector={caseSector}
-              onSectorChange={setCaseSector}
-              performanceFilter={casePerformanceFilter}
-              onPerformanceFilterChange={setCasePerformanceFilter}
-              sortBy={caseSortBy}
-              onSortChange={setCaseSortBy}
-              sortOrder={caseSortOrder}
-              onSortOrderChange={setCaseSortOrder}
-              viewMode={caseViewMode}
-              onViewModeChange={setCaseViewMode}
-              availableSectors={availableSectors}
-              resultsCount={getFilteredCases().length}
-              totalCount={allStockCases.length}
-            />
-
             {/* Category Filter */}
             <div className="flex flex-wrap gap-2 justify-center">
               {caseCategories.map(category => {
