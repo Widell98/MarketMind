@@ -32,8 +32,8 @@ const Discover = () => {
   // Main tab state
   const [activeTab, setActiveTab] = useState('cases');
 
-  // Case filters
-  const [caseFilter, setCaseFilter] = useState('all');
+  // Search state
+  const [caseSearchTerm, setCaseSearchTerm] = useState('');
 
   // Analysis filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -64,45 +64,20 @@ const Discover = () => {
     isLoading: followingAnalysesLoading
   } = useFollowingAnalyses();
 
-  // Case categories
-  const caseCategories = [{
-    id: 'all',
-    name: 'Alla case',
-    icon: Filter
-  }, {
-    id: 'trending',
-    name: 'Trending',
-    icon: TrendingUp
-  }, {
-    id: 'growth',
-    name: 'Tillväxt',
-    icon: TrendingUp
-  }, {
-    id: 'dividend',
-    name: 'Utdelning',
-    icon: Target
-  }, {
-    id: 'value',
-    name: 'Värde',
-    icon: BarChart3
-  }];
 
-  // Filter cases based on selected category
+  // Filter cases based on search term
   const getFilteredCases = () => {
-    if (caseFilter === 'trending') return trendingCases;
-    if (caseFilter === 'all') return allStockCases;
-    return allStockCases.filter(stockCase => {
-      switch (caseFilter) {
-        case 'growth':
-          return stockCase.sector === 'Technology' || stockCase.sector === 'Healthcare';
-        case 'dividend':
-          return stockCase.dividend_yield && parseFloat(stockCase.dividend_yield) > 3;
-        case 'value':
-          return stockCase.pe_ratio && parseFloat(stockCase.pe_ratio) < 15;
-        default:
-          return true;
-      }
-    });
+    if (!caseSearchTerm) return allStockCases;
+    
+    const lowerSearchTerm = caseSearchTerm.toLowerCase();
+    return allStockCases.filter(stockCase => 
+      stockCase.title.toLowerCase().includes(lowerSearchTerm) ||
+      stockCase.company_name?.toLowerCase().includes(lowerSearchTerm) ||
+      stockCase.description?.toLowerCase().includes(lowerSearchTerm) ||
+      stockCase.sector?.toLowerCase().includes(lowerSearchTerm) ||
+      stockCase.profiles?.display_name?.toLowerCase().includes(lowerSearchTerm) ||
+      stockCase.profiles?.username?.toLowerCase().includes(lowerSearchTerm)
+    );
   };
 
   // Filter and sort analyses
@@ -198,22 +173,22 @@ const Discover = () => {
 
           {/* Cases Tab */}
           <TabsContent value="cases" className="space-y-8">
-            {/* Category Filter */}
-            <div className="flex flex-wrap gap-2 justify-center">
-              {caseCategories.map(category => {
-              const Icon = category.icon;
-              return <Button key={category.id} variant={caseFilter === category.id ? 'default' : 'outline'} onClick={() => setCaseFilter(category.id)} className="flex items-center gap-2" size="sm">
-                    <Icon className="w-4 h-4" />
-                    {category.name}
-                  </Button>;
-            })}
+            {/* Search */}
+            <div className="relative max-w-md mx-auto">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Input
+                placeholder="Sök bland case..."
+                value={caseSearchTerm}
+                onChange={(e) => setCaseSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
 
             {/* Cases Grid */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold">
-                  {caseCategories.find(c => c.id === caseFilter)?.name || 'Alla case'}
+                  {caseSearchTerm ? `Sökresultat för "${caseSearchTerm}"` : 'Alla case'}
                 </h2>
                 <Badge variant="secondary">
                   {getFilteredCases().length} case
@@ -232,18 +207,22 @@ const Discover = () => {
                   {getFilteredCases().map(stockCase => <StockCaseCard key={stockCase.id} stockCase={stockCase} onViewDetails={handleViewStockCaseDetails} onDelete={handleDeleteStockCase} />)}
                 </div>}
 
-              {!stockCasesLoading && getFilteredCases().length === 0 && <div className="text-center py-12">
+              {!stockCasesLoading && getFilteredCases().length === 0 && (
+                <div className="text-center py-12">
                   <Camera className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold mb-2">
-                    Inga case hittades
+                    {caseSearchTerm ? "Inga case matchar din sökning" : "Inga case hittades"}
                   </h3>
                   <p className="text-muted-foreground mb-6">
-                    Prova att ändra kategorifilter eller kolla in andra avsnitt.
+                    {caseSearchTerm ? "Prova att ändra dina sökord eller rensa sökningen" : "Kom tillbaka senare för nya case"}
                   </p>
-                  <Button onClick={() => setCaseFilter('all')} variant="outline">
-                    Visa alla case
-                  </Button>
-                </div>}
+                  {caseSearchTerm && (
+                    <Button onClick={() => setCaseSearchTerm('')} variant="outline">
+                      Rensa sökning
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </TabsContent>
 
@@ -251,6 +230,17 @@ const Discover = () => {
           <TabsContent value="analyses" className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold">Marknadsanalyser</h2>
+            </div>
+
+            {/* Search */}
+            <div className="relative max-w-md mx-auto">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Input
+                placeholder="Sök bland analyser..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
 
             {/* Analysis Sub-tabs */}
@@ -288,21 +278,16 @@ const Discover = () => {
                     <p className="text-muted-foreground mb-6">
                       {searchTerm || selectedType ? "Prova att ändra dina sökkriterier eller filter" : "Var den första att dela en marknadsanalys!"}
                     </p>
-                    {searchTerm || selectedType && <Button onClick={() => {
-                  setSearchTerm('');
-                  setSelectedType('');
-                }} variant="outline">
-                        Rensa filter
-                      </Button>}
+                    {searchTerm && (
+                      <Button onClick={() => setSearchTerm('')} variant="outline">
+                        Rensa sökning
+                      </Button>
+                    )}
                   </div>}
               </TabsContent>
 
               {/* Following Analyses Tab */}
               <TabsContent value="following" className="space-y-6">
-                {(followingAnalyses?.length || 0) > 0 && <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                    <Input placeholder="Sök bland analyser från personer du följer..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
-                  </div>}
 
                 {followingAnalysesLoading ? <div className="space-y-4">
                     {[...Array(3)].map((_, i) => <Card key={i} className="animate-pulse">
