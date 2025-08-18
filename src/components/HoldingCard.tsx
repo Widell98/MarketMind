@@ -90,81 +90,6 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
     }
   };
 
-  if (showAsRecommendation && isRecommendation) {
-    // Recommendation layout similar to the original design
-    const originalData = holding._originalData;
-    
-    return (
-      <div className="p-3 border rounded-lg hover:shadow-md transition-all duration-200 cursor-pointer hover:border-blue-200">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <Star className="w-4 h-4 text-blue-600 flex-shrink-0" />
-              <h4 className="font-medium text-sm truncate">{holding.name}</h4>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <Badge variant="secondary" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
-                  <Brain className="w-3 h-3 mr-1" />
-                  AI
-                </Badge>
-              </div>
-            </div>
-            
-            <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-              {originalData?.description || originalData?.title || 'Rekommendation från AI'}
-            </p>
-
-            {originalData?.profiles && (
-              <p className="text-xs text-muted-foreground mb-2">
-                Av: {originalData.profiles.display_name || originalData.profiles.username}
-              </p>
-            )}
-
-            {holding.sector && (
-              <div className="flex items-center gap-1 flex-wrap mb-2">
-                <Tag className="w-3 h-3 text-muted-foreground" />
-                <Badge variant="outline" className="text-xs">
-                  {holding.sector}
-                </Badge>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2 pt-2 border-t">
-              {onAddToPortfolio && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onAddToPortfolio(holding.id)}
-                  className="text-xs bg-white hover:bg-green-50 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300 flex-1"
-                >
-                  <ShoppingCart className="w-3 h-3 mr-1" />
-                  Lägg till i portfölj
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onDiscuss(holding.name, holding.symbol)}
-                className="text-xs bg-white hover:bg-purple-50 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300 flex-1"
-              >
-                <MessageSquare className="w-3 h-3 mr-1" />
-                Diskutera
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onDelete(holding.id, holding.name)}
-                className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-xs"
-              >
-                <Trash2 className="w-3 h-3" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <Card className="hover:shadow-md transition-all duration-200 border-l-4 border-l-primary/20">
       <CardContent className="p-4">
@@ -179,6 +104,12 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold text-foreground truncate">{holding.name}</h3>
+                  {showAsRecommendation && (
+                    <Badge variant="secondary" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                      <Brain className="w-3 h-3 mr-1" />
+                      AI Rekommendation
+                    </Badge>
+                  )}
                   {holding.symbol && (
                     <Badge variant="outline" className="text-xs font-mono">
                       {holding.symbol}
@@ -286,6 +217,18 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
               >
                 <MessageSquare className="w-4 h-4 mr-1" />
                 Diskutera
+              </Button>
+            )}
+            
+            {showAsRecommendation && onAddToPortfolio && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 bg-white hover:bg-green-50 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300"
+                onClick={() => onAddToPortfolio(holding.id)}
+              >
+                <ShoppingCart className="w-4 h-4 mr-1" />
+                Lägg till i portfölj
               </Button>
             )}
             
