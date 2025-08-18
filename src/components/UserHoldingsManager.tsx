@@ -200,8 +200,17 @@ const UserHoldingsManager: React.FC = () => {
       await fetchExchangeRate();
 
       const symbolsToFetch = actualHoldings.map((holding) => {
+        // Förbered symbol baserat på valutan och marknaden
+        let searchTerm = holding.symbol || holding.name;
+        
+        // Om användaren valt SEK som valuta för en svensk aktie, säkerställ att vi använder .ST
+        if (holding.currency === 'SEK' && searchTerm && !searchTerm.includes('.')) {
+          // För svenska aktier, lägg till .ST-suffix om det inte redan finns
+          searchTerm = `${searchTerm}.ST`;
+        }
+        
         return {
-          searchTerm: holding.symbol || holding.name,
+          searchTerm,
           holding,
         };
       });
