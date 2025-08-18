@@ -2,7 +2,7 @@ import React from 'react';
 import Layout from '@/components/Layout';
 import IntelligentRouting from '@/components/IntelligentRouting';
 import CompactLatestCases from '@/components/CompactLatestCases';
-import { Brain, UserPlus, BarChart3, Users, ArrowUpRight, TrendingUp, Wallet, Shield, MessageCircle, CheckCircle, Star, Heart, Target, Coffee, HandHeart, MapPin, Clock, Zap, DollarSign } from 'lucide-react';
+import { Brain, UserPlus, BarChart3, Users, ArrowUpRight, TrendingUp, Wallet, Shield, MessageCircle, CheckCircle, Star, Heart, Target, Coffee, HandHeart, MapPin, Clock, Zap, DollarSign, MessageSquare, Settings, Building2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -180,56 +180,98 @@ const Index = () => {
               </div>
             </div>}
 
-          {/* Enhanced Portfolio Dashboard for logged-in users */}
-          {user && hasPortfolio && <div className="mb-16">
-              <Card className="bg-gradient-to-r from-primary/5 to-blue-50 dark:from-primary/10 dark:to-blue-950/20 border-primary/20 shadow-lg">
-                <div className="p-6">
-                  {/* Personal Welcome */}
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-primary to-blue-600 flex items-center justify-center">
-                        <Heart className="w-6 h-6 text-primary-foreground" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-xl">Välkommen tillbaka! 👋</h3>
-                        <p className="text-sm text-muted-foreground">Din portfölj utvecklas fint</p>
-                      </div>
+          {/* Clean Dashboard for logged-in users */}
+          {user && hasPortfolio && (
+            <div className="min-h-screen bg-background">
+              <div className="container mx-auto px-4 py-6 max-w-6xl">
+                {/* Clean Header */}
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
+                      <TrendingUp className="w-6 h-6 text-primary-foreground" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                      <span className="text-sm font-medium text-green-700">Allt ser bra ut</span>
+                    <div>
+                      <h1 className="text-2xl font-semibold text-foreground">
+                        Hej, {user.user_metadata?.first_name || 'there'}!
+                      </h1>
+                      <p className="text-muted-foreground">
+                        Här är din investeringsöversikt för idag
+                      </p>
                     </div>
                   </div>
+                  <div className="flex items-center gap-3">
+                    <Button asChild variant="outline" size="sm" className="hover:bg-muted/50">
+                      <Link to="/ai-chat">
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        AI Chat
+                      </Link>
+                    </Button>
+                    <Button asChild size="sm" className="bg-primary hover:bg-primary/90">
+                      <Link to="/portfolio-implementation">
+                        <BarChart3 className="w-4 h-4 mr-2" />
+                        Min Portfölj
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
 
-                  {/* AI Insights */}
-                  <div className="space-y-3 mb-6">
-                    {insightsLoading ? (
-                      <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border border-primary/20">
-                        <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center flex-shrink-0">
-                            <Brain className="w-4 h-4 text-white animate-pulse" />
-                          </div>
+                {/* Progress Section */}
+                <div className="mb-8">
+                  <div className="bg-card border rounded-xl p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Target className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-foreground mb-1">{progressData.title}</h3>
+                        <p className="text-sm text-muted-foreground mb-3">{progressData.description}</p>
+                        <div className="flex items-center gap-4">
                           <div className="flex-1">
-                            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded mb-2 animate-pulse"></div>
-                            <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-3/4 animate-pulse"></div>
+                            <div className="bg-muted rounded-full h-2">
+                              <div 
+                                className="bg-primary rounded-full h-2 transition-all duration-700 ease-out"
+                                style={{ width: `${progressData.percentage}%` }}
+                              />
+                            </div>
                           </div>
+                          <span className="text-sm font-medium text-primary">{progressData.percentage}%</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">{progressData.nextStep}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* AI Insights */}
+                <div className="mb-8">
+                  {insightsLoading ? (
+                    <div className="bg-card border rounded-xl p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Brain className="w-5 h-5 text-primary animate-pulse" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="h-4 bg-muted rounded mb-3 animate-pulse"></div>
+                          <div className="h-3 bg-muted rounded w-3/4 animate-pulse"></div>
                         </div>
                       </div>
-                    ) : insights.length > 0 ? (
-                      insights.map((insight, index) => (
-                        <div key={index} className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border border-primary/20">
-                          <div className="flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center flex-shrink-0">
-                              <Brain className="w-4 h-4 text-white" />
+                    </div>
+                  ) : insights.length > 0 ? (
+                    <div className="space-y-4">
+                      {insights.map((insight, index) => (
+                        <div key={index} className="bg-card border rounded-xl p-6 hover:shadow-md transition-shadow">
+                          <div className="flex items-start gap-4">
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <Brain className="w-5 h-5 text-primary" />
                             </div>
                             <div className="flex-1">
-                              <div className="flex items-center justify-between mb-1">
-                                <p className="text-sm font-medium">AI-insikt för dig:</p>
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="font-medium text-foreground">AI-insikt för dig</p>
                                 <Badge variant="secondary" className="text-xs">
                                   {insight.confidence > 0.8 ? 'Hög tillförlitlighet' : 'Medel tillförlitlighet'}
                                 </Badge>
                               </div>
-                              <p className="text-sm text-muted-foreground mb-2">
+                              <p className="text-muted-foreground mb-3">
                                 {insight.message}
                               </p>
                               <Button asChild size="sm" variant="ghost" className="p-0 h-auto text-primary hover:text-primary/80">
@@ -240,178 +282,104 @@ const Index = () => {
                             </div>
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border border-primary/20">
-                        <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center flex-shrink-0">
-                            <Brain className="w-4 h-4 text-white" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium mb-1">AI-analys pågår...</p>
-                            <p className="text-sm text-muted-foreground">
-                              Analyserar din portfölj för personliga insikter.
-                            </p>
-                          </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-card border rounded-xl p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Brain className="w-5 h-5 text-primary" />
                         </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Portfolio Progress with emotional connection */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border border-primary/20 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-blue-500/20 to-transparent rounded-bl-full"></div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Star className="w-4 h-4 text-blue-600" />
-                        <span className="text-sm font-medium">Ditt sparande</span>
-                      </div>
-                      <p className="text-2xl font-bold text-blue-600 mb-1">
-                        {totalPortfolioValue.toLocaleString('sv-SE')} kr
-                      </p>
-                      <p className="text-xs text-green-600 font-medium">↗ På rätt väg mot dina mål</p>
-                    </div>
-
-                    <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border border-primary/20 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-purple-500/20 to-transparent rounded-bl-full"></div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <BarChart3 className="w-4 h-4 text-purple-600" />
-                        <span className="text-sm font-medium">Dina innehav</span>
-                      </div>
-                      <p className="text-2xl font-bold text-purple-600 mb-1">
-                        {actualHoldings?.length || 0}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Välbalanserad spridning</p>
-                    </div>
-
-                    <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border border-primary/20 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-green-500/20 to-transparent rounded-bl-full"></div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Wallet className="w-4 h-4 text-green-600" />
-                        <span className="text-sm font-medium">Redo att investera</span>
-                      </div>
-                      <p className="text-2xl font-bold text-green-600 mb-1">
-                        {totalCash.toLocaleString('sv-SE')} kr
-                      </p>
-                      <p className="text-xs text-muted-foreground">Flexibilitet för nya möjligheter</p>
-                    </div>
-                  </div>
-
-                  {/* Personal Quick Actions */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    <Button asChild variant="outline" size="sm" className="h-auto p-3 flex flex-col gap-1 hover:bg-primary/10 hover:border-primary">
-                      <Link to="/portfolio-implementation">
-                        <BarChart3 className="w-4 h-4" />
-                        <span className="text-xs">Se min översikt</span>
-                      </Link>
-                    </Button>
-                    
-                    <Button asChild variant="outline" size="sm" className="h-auto p-3 flex flex-col gap-1 hover:bg-purple-50 hover:border-purple-300">
-                      <Link to="/ai-chat">
-                        <Brain className="w-4 h-4" />
-                        <span className="text-xs">Fråga rådgivaren</span>
-                      </Link>
-                    </Button>
-                    
-                    <Button asChild variant="outline" size="sm" className="h-auto p-3 flex flex-col gap-1 hover:bg-green-50 hover:border-green-300">
-                      <Link to="/stock-cases">
-                        <Users className="w-4 h-4" />
-                        <span className="text-xs">Hitta idéer</span>
-                      </Link>
-                    </Button>
-                    
-                    <Button asChild variant="outline" size="sm" className="h-auto p-3 flex flex-col gap-1 hover:bg-blue-50 hover:border-blue-300">
-                      <Link to="/market-analyses">
-                        <TrendingUp className="w-4 h-4" />
-                        <span className="text-xs">Läs analyser</span>
-                      </Link>
-                    </Button>
-                  </div>
-
-                  {/* Dynamic Progress indicator */}
-                  <div className={`bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 mb-6 border ${
-                    progressData.color === 'green' ? 'border-green-200 dark:border-green-800' :
-                    progressData.color === 'blue' ? 'border-blue-200 dark:border-blue-800' :
-                    progressData.color === 'orange' ? 'border-orange-200 dark:border-orange-800' :
-                    'border-purple-200 dark:border-purple-800'
-                  }`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className={`text-sm font-medium ${
-                        progressData.color === 'green' ? 'text-green-700 dark:text-green-400' :
-                        progressData.color === 'blue' ? 'text-blue-700 dark:text-blue-400' :
-                        progressData.color === 'orange' ? 'text-orange-700 dark:text-orange-400' :
-                        'text-purple-700 dark:text-purple-400'
-                      }`}>{progressData.title}</h4>
-                      <span className={`text-xs font-medium ${
-                        progressData.color === 'green' ? 'text-green-600 dark:text-green-400' :
-                        progressData.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
-                        progressData.color === 'orange' ? 'text-orange-600 dark:text-orange-400' :
-                        'text-purple-600 dark:text-purple-400'
-                      }`}>{progressData.percentage}%</span>
-                    </div>
-                    <Progress 
-                      value={progressData.percentage} 
-                      className={`h-2 mb-2 ${
-                        progressData.color === 'green' ? '[&>div]:bg-green-500' :
-                        progressData.color === 'blue' ? '[&>div]:bg-blue-500' :
-                        progressData.color === 'orange' ? '[&>div]:bg-orange-500' :
-                        '[&>div]:bg-purple-500'
-                      }`} 
-                    />
-                    <p className={`text-xs mb-1 ${
-                      progressData.color === 'green' ? 'text-green-600 dark:text-green-400' :
-                      progressData.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
-                      progressData.color === 'orange' ? 'text-orange-600 dark:text-orange-400' :
-                      'text-purple-600 dark:text-purple-400'
-                    }`}>{progressData.description}</p>
-                    {progressData.nextStep && (
-                      <p className="text-xs text-muted-foreground">
-                        <strong>Nästa steg:</strong> {progressData.nextStep}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Additional AI suggestions */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/20 dark:to-blue-900/20 rounded-lg p-4 border border-blue-200">
-                      <div className="flex items-start gap-2">
-                        <TrendingUp className="w-4 h-4 text-blue-600 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-blue-700">Marknadsmöjlighet</p>
-                          <p className="text-xs text-blue-600 mt-1">Nordiska banker ser starka just nu. Överväg att öka din exponering med 3-5%.</p>
+                        <div className="flex-1">
+                          <p className="font-medium text-foreground mb-1">AI-analys pågår...</p>
+                          <p className="text-muted-foreground">
+                            Analyserar din portfölj för personliga insikter.
+                          </p>
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-950/20 dark:to-purple-900/20 rounded-lg p-4 border border-purple-200">
-                      <div className="flex items-start gap-2">
-                        <Shield className="w-4 h-4 text-purple-600 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-purple-700">Riskbalans</p>
-                          <p className="text-xs text-purple-600 mt-1">Din portfölj har perfekt riskspridning för dina mål. Bra jobbat!</p>
-                        </div>
+                  )}
+                </div>
+
+                {/* Portfolio Overview Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  <div className="bg-card border rounded-xl p-6 hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Star className="w-4 h-4 text-primary" />
                       </div>
+                      <span className="font-medium text-foreground">Totalt sparande</span>
                     </div>
+                    <p className="text-3xl font-bold text-primary mb-2">
+                      {totalPortfolioValue.toLocaleString('sv-SE')} kr
+                    </p>
+                    <p className="text-sm text-green-600 font-medium">↗ På väg mot dina mål</p>
                   </div>
 
-                  {/* Conversational Action Buttons */}
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <Button asChild className="flex-1 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90">
-                      <Link to="/portfolio-implementation">
-                        Titta på min portfölj
-                        <ArrowUpRight className="w-4 h-4 ml-2" />
-                      </Link>
-                    </Button>
-                    <Button asChild variant="outline" className="flex-1 border-primary text-primary hover:bg-primary hover:text-primary-foreground">
-                      <Link to="/ai-chat">
-                        Prata med min rådgivare
-                        <MessageCircle className="w-4 h-4 ml-2" />
-                      </Link>
-                    </Button>
+                  <div className="bg-card border rounded-xl p-6 hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <BarChart3 className="w-4 h-4 text-primary" />
+                      </div>
+                      <span className="font-medium text-foreground">Innehav</span>
+                    </div>
+                    <p className="text-3xl font-bold text-primary mb-2">
+                      {actualHoldings?.length || 0}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Välbalanserad spridning</p>
+                  </div>
+
+                  <div className="bg-card border rounded-xl p-6 hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Wallet className="w-4 h-4 text-primary" />
+                      </div>
+                      <span className="font-medium text-foreground">Likvida medel</span>
+                    </div>
+                    <p className="text-3xl font-bold text-primary mb-2">
+                      {totalCash.toLocaleString('sv-SE')} kr
+                    </p>
+                    <p className="text-sm text-muted-foreground">Redo för nya möjligheter</p>
                   </div>
                 </div>
-              </Card>
-            </div>}
+
+                {/* Quick Actions */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                  <Button asChild variant="outline" className="h-auto p-4 hover:bg-muted/50 border-border">
+                    <Link to="/ai-chat" className="flex flex-col items-center gap-2 text-center">
+                      <MessageSquare className="w-6 h-6 text-primary" />
+                      <span className="font-medium">AI Chat</span>
+                      <span className="text-xs text-muted-foreground">Få investeringsråd</span>
+                    </Link>
+                  </Button>
+
+                  <Button asChild variant="outline" className="h-auto p-4 hover:bg-muted/50 border-border">
+                    <Link to="/market-analyses" className="flex flex-col items-center gap-2 text-center">
+                      <TrendingUp className="w-6 h-6 text-primary" />
+                      <span className="font-medium">Marknadsanalyser</span>
+                      <span className="text-xs text-muted-foreground">Senaste insikter</span>
+                    </Link>
+                  </Button>
+
+                  <Button asChild variant="outline" className="h-auto p-4 hover:bg-muted/50 border-border">
+                    <Link to="/stock-cases" className="flex flex-col items-center gap-2 text-center">
+                      <Building2 className="w-6 h-6 text-primary" />
+                      <span className="font-medium">Stock Cases</span>
+                      <span className="text-xs text-muted-foreground">Utforska företag</span>
+                    </Link>
+                  </Button>
+
+                  <Button asChild variant="outline" className="h-auto p-4 hover:bg-muted/50 border-border">
+                    <Link to="/portfolio-advisor" className="flex flex-col items-center gap-2 text-center">
+                      <Settings className="w-6 h-6 text-primary" />
+                      <span className="font-medium">Portföljrådgivare</span>
+                      <span className="text-xs text-muted-foreground">Optimera din portfölj</span>
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Enhanced personal welcome for users without portfolio */}
           {user && !hasPortfolio && !loading && <div className="mb-16">
