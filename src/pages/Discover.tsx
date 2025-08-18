@@ -16,6 +16,7 @@ import AIWeeklyPicks from '@/components/AIWeeklyPicks';
 import StockCaseCard from '@/components/StockCaseCard';
 import EnhancedAnalysisCard from '@/components/EnhancedAnalysisCard';
 import EnhancedAnalysesSearch from '@/components/EnhancedAnalysesSearch';
+import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
 import CreateAnalysisDialog from '@/components/CreateAnalysisDialog';
 
 // Hooks
@@ -32,8 +33,13 @@ const Discover = () => {
   // Main tab state
   const [activeTab, setActiveTab] = useState('cases');
 
-  // Search state
+  // Stock cases filters
   const [caseSearchTerm, setCaseSearchTerm] = useState('');
+  const [selectedSector, setSelectedSector] = useState('');
+  const [performanceFilter, setPerformanceFilter] = useState('');
+  const [caseSortBy, setCaseSortBy] = useState('created_at');
+  const [caseSortOrder, setCaseSortOrder] = useState('desc');
+  const [caseViewMode, setCaseViewMode] = useState('grid');
 
   // Analysis filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -65,20 +71,88 @@ const Discover = () => {
   } = useFollowingAnalyses();
 
 
-  // Filter cases based on search term
-  const getFilteredCases = () => {
-    if (!caseSearchTerm) return allStockCases;
+  // Filter and sort stock cases
+  const getFilteredCases = useMemo(() => {
+    let filtered = [...(allStockCases || [])];
     
-    const lowerSearchTerm = caseSearchTerm.toLowerCase();
-    return allStockCases.filter(stockCase => 
-      stockCase.title.toLowerCase().includes(lowerSearchTerm) ||
-      stockCase.company_name?.toLowerCase().includes(lowerSearchTerm) ||
-      stockCase.description?.toLowerCase().includes(lowerSearchTerm) ||
-      stockCase.sector?.toLowerCase().includes(lowerSearchTerm) ||
-      stockCase.profiles?.display_name?.toLowerCase().includes(lowerSearchTerm) ||
-      stockCase.profiles?.username?.toLowerCase().includes(lowerSearchTerm)
-    );
-  };
+    // Search filter
+    if (caseSearchTerm) {
+      const lowerSearchTerm = caseSearchTerm.toLowerCase();
+      filtered = filtered.filter(stockCase => 
+        stockCase.title.toLowerCase().includes(lowerSearchTerm) ||
+        stockCase.company_name?.toLowerCase().includes(lowerSearchTerm) ||
+        stockCase.description?.toLowerCase().includes(lowerSearchTerm) ||
+        stockCase.sector?.toLowerCase().includes(lowerSearchTerm) ||
+        stockCase.profiles?.display_name?.toLowerCase().includes(lowerSearchTerm) ||
+        stockCase.profiles?.username?.toLowerCase().includes(lowerSearchTerm)
+      );
+    }
+
+    // Sector filter
+    if (selectedSector && selectedSector !== 'all-sectors') {
+      filtered = filtered.filter(stockCase => stockCase.sector === selectedSector);
+    }
+
+    // Performance filter
+    if (performanceFilter && performanceFilter !== 'all-results') {
+      filtered = filtered.filter(stockCase => {
+        const performance = stockCase.performance_percentage || 0;
+        switch (performanceFilter) {
+          case 'positive':
+            return performance > 0;
+          case 'negative':
+            return performance < 0;
+          case 'high':
+            return performance > 10;
+          case 'low':
+            return performance < 5;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
+      let aValue, bValue;
+      switch (caseSortBy) {
+        case 'performance':
+          aValue = a.performance_percentage || 0;
+          bValue = b.performance_percentage || 0;
+          break;
+        case 'likes':
+          aValue = 0; // Note: likes not available in StockCase type
+          bValue = 0; // Note: likes not available in StockCase type
+          break;
+        case 'title':
+          aValue = a.title.toLowerCase();
+          bValue = b.title.toLowerCase();
+          break;
+        case 'created_at':
+        default:
+          aValue = new Date(a.created_at).getTime();
+          bValue = new Date(b.created_at).getTime();
+          break;
+      }
+
+      if (caseSortOrder === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+
+    return filtered;
+  }, [allStockCases, caseSearchTerm, selectedSector, performanceFilter, caseSortBy, caseSortOrder]);
+
+  // Get available sectors
+  const availableSectors = useMemo(() => {
+    const sectors = new Set<string>();
+    allStockCases?.forEach(stockCase => {
+      if (stockCase.sector) sectors.add(stockCase.sector);
+    });
+    return Array.from(sectors).sort();
+  }, [allStockCases]);
 
   // Filter and sort analyses
   const filteredAnalyses = useMemo(() => {
@@ -173,29 +247,29 @@ const Discover = () => {
 
           {/* Cases Tab */}
           <TabsContent value="cases" className="space-y-8">
-            {/* Search */}
-            <div className="relative max-w-md mx-auto">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input
-                placeholder="Sök bland case..."
-                value={caseSearchTerm}
-                onChange={(e) => setCaseSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            {/* Enhanced Search */}
+            <EnhancedStockCasesSearch
+              searchTerm={caseSearchTerm}
+              onSearchChange={setCaseSearchTerm}
+              selectedSector={selectedSector}
+              onSectorChange={setSelectedSector}
+              performanceFilter={performanceFilter}
+              onPerformanceFilterChange={setPerformanceFilter}
+              sortBy={caseSortBy}
+              onSortChange={setCaseSortBy}
+              sortOrder={caseSortOrder}
+              onSortOrderChange={setCaseSortOrder}
+              viewMode={caseViewMode}
+              onViewModeChange={setCaseViewMode}
+              availableSectors={availableSectors}
+              resultsCount={getFilteredCases.length}
+              totalCount={allStockCases?.length || 0}
+            />
 
             {/* Cases Grid */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold">
-                  {caseSearchTerm ? `Sökresultat för "${caseSearchTerm}"` : 'Alla case'}
-                </h2>
-                <Badge variant="secondary">
-                  {getFilteredCases().length} case
-                </Badge>
-              </div>
 
-              {stockCasesLoading ? <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {stockCasesLoading ? <div className={`grid gap-4 ${caseViewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
                   {[...Array(6)].map((_, i) => <Card key={i} className="animate-pulse">
                       <CardContent className="p-4">
                         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
@@ -203,11 +277,11 @@ const Discover = () => {
                         <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
                       </CardContent>
                     </Card>)}
-                </div> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {getFilteredCases().map(stockCase => <StockCaseCard key={stockCase.id} stockCase={stockCase} onViewDetails={handleViewStockCaseDetails} onDelete={handleDeleteStockCase} />)}
+                </div> : <div className={`grid gap-4 ${caseViewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+                  {getFilteredCases.map(stockCase => <StockCaseCard key={stockCase.id} stockCase={stockCase} onViewDetails={handleViewStockCaseDetails} onDelete={handleDeleteStockCase} />)}
                 </div>}
 
-              {!stockCasesLoading && getFilteredCases().length === 0 && (
+              {!stockCasesLoading && getFilteredCases.length === 0 && (
                 <div className="text-center py-12">
                   <Camera className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold mb-2">
@@ -228,20 +302,21 @@ const Discover = () => {
 
           {/* Analyses Tab */}
           <TabsContent value="analyses" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold">Marknadsanalyser</h2>
-            </div>
-
-            {/* Search */}
-            <div className="relative max-w-md mx-auto">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input
-                placeholder="Sök bland analyser..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            {/* Enhanced Search */}
+            <EnhancedAnalysesSearch
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              selectedType={selectedType}
+              onTypeChange={setSelectedType}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              sortOrder={sortOrder}
+              onSortOrderChange={setSortOrder}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              resultsCount={filteredAnalyses.length}
+              totalCount={analyses?.length || 0}
+            />
 
             {/* Analysis Sub-tabs */}
             <Tabs value={analysisSubTab} onValueChange={setAnalysisSubTab} className="w-full">
@@ -260,7 +335,7 @@ const Discover = () => {
               <TabsContent value="all" className="space-y-6">
                 
 
-                {analysesLoading ? <div className="space-y-4">
+                {analysesLoading ? <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'space-y-4'}`}>
                     {[...Array(5)].map((_, i) => <Card key={i} className="animate-pulse">
                         <CardContent className="p-6">
                           <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
@@ -268,7 +343,7 @@ const Discover = () => {
                           <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
                         </CardContent>
                       </Card>)}
-                  </div> : filteredAnalyses.length > 0 ? <div className="space-y-4">
+                  </div> : filteredAnalyses.length > 0 ? <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'space-y-4'}`}>
                     {filteredAnalyses.map(analysis => <EnhancedAnalysisCard key={analysis.id} analysis={analysis} onViewDetails={handleViewAnalysisDetails} onDelete={handleDeleteAnalysis} onEdit={handleEditAnalysis} showProfileActions={true} />)}
                   </div> : <div className="text-center py-12">
                     <BookOpen className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
