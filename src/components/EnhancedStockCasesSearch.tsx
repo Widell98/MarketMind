@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Search, Filter, SortAsc, SortDesc, Grid3X3, List, X } from 'lucide-react';
-
 interface EnhancedStockCasesSearchProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
@@ -22,7 +21,6 @@ interface EnhancedStockCasesSearchProps {
   resultsCount: number;
   totalCount: number;
 }
-
 const EnhancedStockCasesSearch: React.FC<EnhancedStockCasesSearchProps> = ({
   searchTerm,
   onSearchChange,
@@ -41,34 +39,19 @@ const EnhancedStockCasesSearch: React.FC<EnhancedStockCasesSearchProps> = ({
   totalCount
 }) => {
   const hasActiveFilters = searchTerm || selectedSector || performanceFilter;
-
   const clearAllFilters = () => {
     onSearchChange('');
     onSectorChange('');
     onPerformanceFilterChange('');
   };
-
-  return (
-    <div className="space-y-4">
+  return <div className="space-y-4">
       {/* Search Bar */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-        <Input
-          placeholder="Sök aktiefall, företag eller användare..."
-          value={searchTerm}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-10 pr-4"
-        />
-        {searchTerm && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onSearchChange('')}
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-          >
+        <Input placeholder="Sök aktiefall, företag eller användare..." value={searchTerm} onChange={e => onSearchChange(e.target.value)} className="pl-10 pr-4" />
+        {searchTerm && <Button variant="ghost" size="sm" onClick={() => onSearchChange('')} className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0">
             <X className="w-3 h-3" />
-          </Button>
-        )}
+          </Button>}
       </div>
 
       {/* Filters Row */}
@@ -81,11 +64,9 @@ const EnhancedStockCasesSearch: React.FC<EnhancedStockCasesSearchProps> = ({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all-sectors">Alla sektorer</SelectItem>
-              {availableSectors.map((sector) => (
-                <SelectItem key={sector} value={sector}>
+              {availableSectors.map(sector => <SelectItem key={sector} value={sector}>
                   {sector}
-                </SelectItem>
-              ))}
+                </SelectItem>)}
             </SelectContent>
           </Select>
 
@@ -117,12 +98,7 @@ const EnhancedStockCasesSearch: React.FC<EnhancedStockCasesSearchProps> = ({
               </SelectContent>
             </Select>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onSortOrderChange(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="px-3"
-            >
+            <Button variant="outline" size="sm" onClick={() => onSortOrderChange(sortOrder === 'asc' ? 'desc' : 'asc')} className="px-3">
               {sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
             </Button>
           </div>
@@ -130,92 +106,17 @@ const EnhancedStockCasesSearch: React.FC<EnhancedStockCasesSearchProps> = ({
 
         {/* View Mode Toggle */}
         <div className="flex gap-1 border rounded-lg p-1">
-          <Button
-            variant={viewMode === 'grid' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => onViewModeChange('grid')}
-            className="px-3"
-          >
+          <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="sm" onClick={() => onViewModeChange('grid')} className="px-3">
             <Grid3X3 className="w-4 h-4" />
           </Button>
-          <Button
-            variant={viewMode === 'list' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => onViewModeChange('list')}
-            className="px-3"
-          >
+          <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="sm" onClick={() => onViewModeChange('list')} className="px-3">
             <List className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
       {/* Active Filters & Results */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="flex items-center gap-2 flex-wrap">
-          {hasActiveFilters && (
-            <>
-              <span className="text-sm text-muted-foreground">Aktiva filter:</span>
-              {searchTerm && (
-                <Badge variant="secondary" className="gap-1">
-                  Sök: {searchTerm}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onSearchChange('')}
-                    className="h-4 w-4 p-0 hover:bg-transparent"
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
-                </Badge>
-              )}
-              {selectedSector && (
-                <Badge variant="secondary" className="gap-1">
-                  {selectedSector}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onSectorChange('')}
-                    className="h-4 w-4 p-0 hover:bg-transparent"
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
-                </Badge>
-              )}
-              {performanceFilter && (
-                <Badge variant="secondary" className="gap-1">
-                  {performanceFilter === 'positive' && 'Positiva'}
-                  {performanceFilter === 'negative' && 'Negativa'}
-                  {performanceFilter === 'high' && 'Höga resultat'}
-                  {performanceFilter === 'low' && 'Låga resultat'}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onPerformanceFilterChange('')}
-                    className="h-4 w-4 p-0 hover:bg-transparent"
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
-                </Badge>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearAllFilters}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                Rensa alla
-              </Button>
-            </>
-          )}
-        </div>
-
-        {/* Results Count */}
-        <div className="text-sm text-muted-foreground">
-          Visar {resultsCount} av {totalCount} aktiefall
-        </div>
-      </div>
-    </div>
-  );
+      
+    </div>;
 };
-
 export default EnhancedStockCasesSearch;
