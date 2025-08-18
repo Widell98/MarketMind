@@ -410,7 +410,7 @@ const Index = () => {
           {/* Enhanced personal welcome for users without portfolio */}
           {user && !hasPortfolio && !loading && <div className="mb-16">
               <Card className="bg-gradient-to-r from-slate-50 to-indigo-50 dark:from-slate-800 dark:to-indigo-900/20 border-slate-200 dark:border-slate-700 shadow-lg">
-                <div className="p-8 text-center">
+                <div className="p-12 text-center bg-background/80 backdrop-blur-sm rounded-2xl">
                   <div className="w-20 h-20 rounded-full bg-gradient-to-r from-emerald-500 to-blue-600 flex items-center justify-center mx-auto mb-6">
                     <HandHeart className="w-10 h-10 text-white" />
                   </div>
