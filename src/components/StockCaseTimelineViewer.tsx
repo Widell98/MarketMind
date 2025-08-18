@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { History, Clock, Image as ImageIcon, Trash2, FileText, ChevronDown, ChevronUp, Edit3, ArrowLeft } from 'lucide-react';
+import { History, Clock, Image as ImageIcon, Trash2, FileText, ChevronLeft, ChevronRight, Edit3, ArrowLeft } from 'lucide-react';
 import { useStockCaseUpdates, StockCaseUpdate } from '@/hooks/useStockCaseUpdates';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
@@ -32,9 +32,8 @@ const StockCaseTimelineViewer: React.FC<StockCaseTimelineViewerProps> = ({
     isLoading,
     deleteUpdate
   } = useStockCaseUpdates(stockCaseId);
-  const [selectedVersion, setSelectedVersion] = useState<any>(null);
-  const [showHistory, setShowHistory] = useState(false);
-  const [isTimelineMinimized, setIsTimelineMinimized] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isMinimized, setIsMinimized] = useState(false);
   const [updateToDelete, setUpdateToDelete] = useState<string | null>(null);
 
   // Combine original case with updates for timeline
@@ -52,10 +51,9 @@ const StockCaseTimelineViewer: React.FC<StockCaseTimelineViewerProps> = ({
     isOriginal: false
   }))].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-  // Use selected version or latest version (first in timeline)
-  const displayVersion = selectedVersion || timeline[0];
-  const isViewingLatest = !selectedVersion || selectedVersion.id === timeline[0]?.id;
-  const hasHistory = timeline.length > 1;
+  // Current version based on carousel index
+  const currentVersion = timeline[currentIndex];
+  const hasMultipleVersions = timeline.length > 1;
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('sv-SE', {
       year: 'numeric',
@@ -71,25 +69,29 @@ const StockCaseTimelineViewer: React.FC<StockCaseTimelineViewerProps> = ({
       locale: sv
     });
   };
-  const handleVersionSelect = (version: any) => {
-    setSelectedVersion(version);
-    if (onVersionSelect) {
-      onVersionSelect(version);
-    }
+
+  // Navigation functions
+  const goToPrevious = () => {
+    setCurrentIndex(prev => (prev > 0 ? prev - 1 : timeline.length - 1));
   };
-  const handleBackToLatest = () => {
-    setSelectedVersion(null);
+
+  const goToNext = () => {
+    setCurrentIndex(prev => (prev < timeline.length - 1 ? prev + 1 : 0));
+  };
+
+  const goToVersion = (index: number) => {
+    setCurrentIndex(index);
     if (onVersionSelect) {
-      onVersionSelect(timeline[0]);
+      onVersionSelect(timeline[index]);
     }
   };
   const handleDelete = async () => {
     if (updateToDelete) {
       try {
         await deleteUpdate(updateToDelete);
-        // If we deleted the currently selected version, go back to latest
-        if (selectedVersion && selectedVersion.id === updateToDelete) {
-          handleBackToLatest();
+        // If we deleted the current version, go to latest
+        if (currentVersion && currentVersion.id === updateToDelete) {
+          setCurrentIndex(0);
         }
         setUpdateToDelete(null);
       } catch (error) {
@@ -97,7 +99,8 @@ const StockCaseTimelineViewer: React.FC<StockCaseTimelineViewerProps> = ({
       }
     }
   };
-  const canDelete = user && displayVersion && !displayVersion.isOriginal && displayVersion.user_id === user.id;
+
+  const canDelete = user && currentVersion && !currentVersion.isOriginal && currentVersion.user_id === user.id;
   if (isLoading) {
     return <div className="space-y-6">
         <div className="animate-pulse">
@@ -107,152 +110,161 @@ const StockCaseTimelineViewer: React.FC<StockCaseTimelineViewerProps> = ({
         </div>
       </div>;
   }
-  return <div className="space-y-6">
-      {/* Main Content Area - Focus on Latest/Selected Version */}
-      <div className="space-y-4">
-        {/* Minimize/Expand Toggle */}
-        <div className="flex items-center justify-between">
+
+  return (
+    <div className="space-y-6">
+      {/* Header with minimize toggle */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold">Case innehåll</h2>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setIsTimelineMinimized(!isTimelineMinimized)}
-            className="flex items-center gap-2"
-          >
-            {isTimelineMinimized ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-            {isTimelineMinimized ? 'Visa innehåll' : 'Minimera'}
-          </Button>
+          {hasMultipleVersions && (
+            <Badge variant="outline" className="text-xs">
+              {currentIndex + 1} av {timeline.length}
+            </Badge>
+          )}
         </div>
-
-        {!isTimelineMinimized && (
-          <>
-            {/* Version Header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {!isViewingLatest && <Button variant="outline" size="sm" onClick={handleBackToLatest} className="flex items-center gap-2">
-                    <ArrowLeft className="w-4 h-4" />
-                    Tillbaka till senaste
-                  </Button>}
-                <div className="flex items-center gap-2">
-                  <Badge variant={isViewingLatest ? "default" : "secondary"}>
-                    {displayVersion?.isOriginal ? 'Original version' : isViewingLatest ? 'Senaste version' : 'Historisk version'}
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {displayVersion && formatRelativeDate(displayVersion.created_at)}
-                  </span>
-                </div>
-              </div>
-              
-              {canDelete && <Button variant="ghost" size="sm" onClick={() => setUpdateToDelete(displayVersion.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50">
-                  <Trash2 className="w-4 h-4 mr-1" />
-                  Ta bort
-                </Button>}
-            </div>
-
-            {/* Main Image */}
-            {displayVersion?.image_url && <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
-                <img src={displayVersion.image_url} alt={displayVersion.title || ''} className="w-full h-full object-cover" />
-                {!isViewingLatest && <div className="absolute top-3 right-3">
-                    <Badge variant="secondary" className="bg-black/70 text-white">
-                      <History className="w-3 h-3 mr-1" />
-                      Historisk bild
-                    </Badge>
-                  </div>}
-              </div>}
-
-            {/* Content Description */}
-            {displayVersion?.description && <Card>
-                <CardContent className="pt-6">
-                  <div className="prose dark:prose-invert max-w-none">
-                    <p className="whitespace-pre-wrap">
-                      {displayVersion.description}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>}
-          </>
-        )}
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => setIsMinimized(!isMinimized)}
+          className="flex items-center gap-2"
+        >
+          {isMinimized ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          {isMinimized ? 'Visa' : 'Minimera'}
+        </Button>
       </div>
 
-      {/* History Section */}
-      {hasHistory && <div className="border-t pt-6">
-          <div className="flex items-center justify-between mb-4">
+      {!isMinimized && (
+        <div className="space-y-4">
+          {/* Version info and controls */}
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <History className="w-5 h-5 text-muted-foreground" />
-              <h3 className="text-lg font-semibold">Versionshistorik</h3>
-              <Badge variant="outline" className="text-xs">
-                {timeline.length - 1} tidigare {timeline.length - 1 === 1 ? 'version' : 'versioner'}
+              <Badge variant={currentIndex === 0 ? "default" : "secondary"}>
+                {currentVersion?.isOriginal ? 'Original' : currentIndex === 0 ? 'Senaste version' : 'Historisk version'}
               </Badge>
+              <span className="text-sm text-muted-foreground">
+                {currentVersion && formatRelativeDate(currentVersion.created_at)}
+              </span>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => setShowHistory(!showHistory)} className="flex items-center gap-1">
-              {showHistory ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              {showHistory ? 'Dölj historik' : 'Visa historik'}
-            </Button>
+            
+            {canDelete && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setUpdateToDelete(currentVersion.id)} 
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                Ta bort
+              </Button>
+            )}
           </div>
 
-          {/* Compact History Summary */}
-          {!showHistory}
-
-          {/* Expanded History Timeline */}
-          {showHistory && <div className="space-y-4">
-              <div className="relative">
-                {/* Timeline Line */}
-                <div className="absolute left-6 top-0 bottom-0 w-px bg-border"></div>
+          {/* Image carousel */}
+          {currentVersion?.image_url && (
+            <div className="relative group">
+              <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
+                <img 
+                  src={currentVersion.image_url} 
+                  alt={currentVersion.title || ''} 
+                  className="w-full h-full object-cover transition-all duration-300" 
+                />
                 
-                {timeline.map((item, index) => {
-            const isSelected = selectedVersion?.id === item.id || isViewingLatest && index === 0;
-            const canDeleteItem = user && !item.isOriginal && item.user_id === user.id;
-            return <div key={item.id} className="relative flex gap-4 pb-6">
-                      {/* Timeline Dot */}
-                      <div className={`relative z-10 w-12 h-12 rounded-full border-4 ${isSelected ? 'bg-primary border-primary' : 'bg-background border-border'} flex items-center justify-center`}>
-                        {item.isOriginal ? <FileText className={`w-4 h-4 ${isSelected ? 'text-primary-foreground' : 'text-muted-foreground'}`} /> : <ImageIcon className={`w-4 h-4 ${isSelected ? 'text-primary-foreground' : 'text-muted-foreground'}`} />}
-                      </div>
+                {/* Navigation arrows */}
+                {hasMultipleVersions && (
+                  <>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={goToPrevious}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/70 hover:bg-black/80 text-white border-0"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={goToNext}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/70 hover:bg-black/80 text-white border-0"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </>
+                )}
 
-                      {/* Timeline Content Card */}
-                      <div className={`flex-1 cursor-pointer transition-all duration-200 ${isSelected ? 'transform scale-[1.02]' : 'hover:transform hover:scale-[1.01]'}`} onClick={() => handleVersionSelect(item)}>
-                        <Card className={`${isSelected ? 'ring-2 ring-primary shadow-lg' : 'hover:shadow-md'}`}>
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1 space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <Badge variant={item.isOriginal ? "secondary" : "outline"} className="text-xs">
-                                    {item.isOriginal ? 'Original' : `Uppdatering ${timeline.length - index}`}
-                                  </Badge>
-                                  <span className="text-xs text-muted-foreground">
-                                    {formatDate(item.created_at)}
-                                  </span>
-                                </div>
-                                
-                                {item.title && index > 0 && <h4 className="font-medium text-sm line-clamp-1">
-                                    {item.title}
-                                  </h4>}
-                                
-                                {item.description && <p className="text-sm text-muted-foreground line-clamp-2">
-                                    {item.description}
-                                  </p>}
-                              </div>
-
-                              <div className="flex items-center gap-2 ml-4">
-                                {item.image_url && <div className="w-12 h-12 rounded bg-muted overflow-hidden">
-                                    <img src={item.image_url} alt="" className="w-full h-full object-cover" />
-                                  </div>}
-                                
-                                {canDeleteItem && <Button variant="ghost" size="sm" onClick={e => {
-                          e.stopPropagation();
-                          setUpdateToDelete(item.id);
-                        }} className="text-red-600 hover:text-red-700 hover:bg-red-50 p-1 h-auto">
-                                    <Trash2 className="w-3 h-3" />
-                                  </Button>}
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    </div>;
-          })}
+                {/* Version indicator */}
+                {currentIndex > 0 && (
+                  <div className="absolute top-3 left-3">
+                    <Badge variant="secondary" className="bg-black/70 text-white">
+                      <History className="w-3 h-3 mr-1" />
+                      Historisk
+                    </Badge>
+                  </div>
+                )}
               </div>
-            </div>}
-        </div>}
+
+              {/* Dots indicator */}
+              {hasMultipleVersions && (
+                <div className="flex justify-center gap-2 mt-3">
+                  {timeline.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => goToVersion(index)}
+                      className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                        currentIndex === index 
+                          ? 'bg-primary scale-125' 
+                          : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Content description */}
+          {currentVersion?.description && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="prose dark:prose-invert max-w-none">
+                  <p className="whitespace-pre-wrap">
+                    {currentVersion.description}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Version list for quick access */}
+          {hasMultipleVersions && (
+            <div className="border-t pt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <History className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-muted-foreground">Alla versioner</span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {timeline.map((version, index) => (
+                  <button
+                    key={version.id}
+                    onClick={() => goToVersion(index)}
+                    className={`flex-shrink-0 px-3 py-2 rounded-md text-xs transition-colors ${
+                      currentIndex === index
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted hover:bg-muted/80'
+                    }`}
+                  >
+                    {version.isOriginal ? 'Original' : `V${timeline.length - index}`}
+                    <span className="block text-[10px] opacity-70 mt-0.5">
+                      {formatRelativeDate(version.created_at)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!updateToDelete} onOpenChange={() => setUpdateToDelete(null)}>
@@ -271,6 +283,7 @@ const StockCaseTimelineViewer: React.FC<StockCaseTimelineViewerProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>;
+    </div>
+  );
 };
 export default StockCaseTimelineViewer;
