@@ -192,7 +192,7 @@ const SmartHoldingSuggestions: React.FC<SmartHoldingSuggestionsProps> = ({
 
   const prioritizedSuggestions = suggestions
     .sort((a, b) => a.priority - b.priority)
-    .slice(0, 3);
+    .slice(0, 1);
 
   return (
     <div className="space-y-2 mt-2 pt-2 border-t border-border">
