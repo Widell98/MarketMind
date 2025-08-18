@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -50,6 +50,23 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const [fetchingPrice, setFetchingPrice] = useState(false);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const { validateAndPriceHolding, getCurrentPrice } = useRealTimePricing();
+
+  // Update form data when initialData changes
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        name: initialData.name || '',
+        symbol: initialData.symbol || '',
+        holding_type: initialData.holding_type === 'recommendation' ? 'stock' : (initialData.holding_type || 'stock'),
+        quantity: '',
+        purchase_price: initialData.purchase_price?.toString() || '',
+        purchase_date: '',
+        sector: initialData.sector || '',
+        market: initialData.market || '',
+        currency: initialData.currency || 'SEK'
+      });
+    }
+  }, [initialData]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
