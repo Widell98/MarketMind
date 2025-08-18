@@ -39,146 +39,176 @@ const Index = () => {
   const totalPortfolioValue = performance.totalPortfolioValue + totalCash;
   
   return <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 dark:from-gray-950 dark:via-blue-950/20 dark:to-indigo-950/30">
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-12 max-w-6xl">
           
-          {/* Hero Section - Only show for non-logged in users */}
-          {!user && <div className="text-center mb-16">
-              <div className="mb-8">
-                <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 px-4 py-2 rounded-full text-sm font-medium mb-6">
-                  <HandHeart className="w-4 h-4" />
-                  Redan 1000+ svenskar litar på oss
-                </div>
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-                  Din personliga finansiella rådgivare
-                  <span className="block text-primary">– alltid vid din sida</span>
-                </h1>
-                <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed mb-10 max-w-3xl mx-auto">
-                  Optimera din portfölj, förstå marknaden och få stöd i osäkra tider. 
-                  <span className="font-medium text-foreground"> Enkelt, tryggt, smart.</span>
-                </p>
-              </div>
-
-              {/* Personal story visualization - Multiple examples */}
-              <div className="mb-10 relative">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-                  
-                  {/* Example 1: Conservative investor */}
-                  <div className="bg-gradient-to-r from-slate-100 via-blue-50 to-indigo-100 dark:from-slate-800 dark:via-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-6 border border-slate-200/50 dark:border-slate-700/50 shadow-lg">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 flex items-center justify-center">
-                        <Coffee className="w-4 h-4 text-white" />
-                      </div>
-                      <div className="text-left">
-                        <p className="text-sm font-medium">Anna, 45</p>
-                        <p className="text-xs text-muted-foreground">Konservativ</p>
-                      </div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-left text-xs shadow-sm mb-3">
-                      "Hjälp mig bygga en trygg portfölj för min pension. Jag vill sova gott om nätterna."
-                    </div>
-                    <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3 text-left text-xs border border-emerald-200 dark:border-emerald-800">
-                      "Perfekt! Jag föreslår 70% räntor och 30% stabila aktier för trygghet."
-                    </div>
-                  </div>
-
-                  {/* Example 2: Young aggressive investor */}
-                  <div className="bg-gradient-to-r from-orange-100 via-red-50 to-pink-100 dark:from-orange-900/20 dark:via-red-900/20 dark:to-pink-900/20 rounded-2xl p-6 border border-orange-200/50 dark:border-orange-700/50 shadow-lg">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-orange-500 to-red-500 flex items-center justify-center">
-                        <Zap className="w-4 h-4 text-white" />
-                      </div>
-                      <div className="text-left">
-                        <p className="text-sm font-medium">Erik, 26</p>
-                        <p className="text-xs text-muted-foreground">Aggressiv</p>
-                      </div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-left text-xs shadow-sm mb-3">
-                      "Jag är ung och vill maximera tillväxten. Kan ta höga risker för bättre avkastning!"
-                    </div>
-                    <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 text-left text-xs border border-orange-200 dark:border-orange-800">
-                      "Utmärkt! 90% tillväxtaktier och 10% emerging markets. Långsiktig hög avkastning!"
-                    </div>
-                  </div>
-
-                  {/* Example 3: Dividend-focused older investor */}
-                  <div className="bg-gradient-to-r from-green-100 via-emerald-50 to-teal-100 dark:from-green-900/20 dark:via-emerald-900/20 dark:to-teal-900/20 rounded-2xl p-6 border border-green-200/50 dark:border-green-700/50 shadow-lg">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center">
-                        <DollarSign className="w-4 h-4 text-white" />
-                      </div>
-                      <div className="text-left">
-                        <p className="text-sm font-medium">Gunnar, 62</p>
-                        <p className="text-xs text-muted-foreground">Utdelningsfokus</p>
-                      </div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-left text-xs shadow-sm mb-3">
-                      "Jag vill ha regelbunden inkomst från utdelningar. Stabilitet är viktigast nu."
-                    </div>
-                    <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-left text-xs border border-green-200 dark:border-green-800">
-                      "Klart! Utdelningsaktier och REITs med 4-6% direktavkastning. Månatlig inkomst!"
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-                <Button asChild size="lg" className="bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200">
-                  <Link to="/auth">
-                    <UserPlus className="w-5 h-5 mr-2" />
-                    Kom igång gratis
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" size="lg" className="border-emerald-500 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 shadow-md hover:shadow-lg transition-all duration-200">
-                  <Link to="/ai-chat">
-                    <MessageCircle className="w-5 h-5 mr-2" />
-                    Se hur det fungerar
-                  </Link>
-                </Button>
-              </div>
-
-              {/* How it works - with storytelling */}
+          {/* Hero Section - Apple-inspired clean design */}
+          {!user && (
+            <div className="text-center mb-20">
+              {/* Hero Content */}
               <div className="max-w-4xl mx-auto mb-16">
-                <h2 className="text-2xl font-bold text-center mb-3">Så här hjälper vi dig</h2>
-                <p className="text-center text-muted-foreground mb-8">Tusentals svenskar har redan gjort resan - nu är det din tur</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  <div className="text-center group">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                      <Coffee className="w-8 h-8 text-blue-600" />
-                    </div>
-                    <h3 className="font-semibold mb-2">1. Vi lär känna dig</h3>
-                    <p className="text-muted-foreground text-sm">Som att prata med en vän över kaffe - berätta om dina drömmar och oro</p>
+                <div className="mb-6">
+                  <div className="inline-flex items-center gap-2 bg-muted/50 text-muted-foreground px-4 py-2 rounded-full text-sm font-medium mb-8 border">
+                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                    Redan 1000+ svenskar litar på oss
                   </div>
-                  <div className="text-center group">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-emerald-100 to-green-100 dark:from-emerald-900/20 dark:to-green-900/20 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                      <HandHeart className="w-8 h-8 text-emerald-600" />
+                </div>
+                
+                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-medium text-foreground mb-8 leading-tight tracking-tight">
+                  Din personliga
+                  <br />
+                  <span className="text-primary">finansiella rådgivare</span>
+                </h1>
+                
+                <p className="text-xl text-muted-foreground leading-relaxed mb-12 max-w-2xl mx-auto font-light">
+                  Optimera din portfölj, förstå marknaden och få stöd i osäkra tider. 
+                  Enkelt, tryggt, smart.
+                </p>
+                
+                {/* Clean CTA Buttons */}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
+                  <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-lg">
+                    <Link to="/auth">
+                      Kom igång gratis
+                    </Link>
+                  </Button>
+                  <Button asChild variant="ghost" size="lg" className="text-primary hover:bg-primary/5 font-medium px-8 py-4 rounded-xl transition-all duration-300 text-lg">
+                    <Link to="/ai-chat">
+                      Se hur det fungerar →
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Clean Examples Section */}
+              <div className="mb-20">
+                <h2 className="text-3xl font-semibold text-foreground mb-4">Personliga råd för alla</h2>
+                <p className="text-lg text-muted-foreground mb-12 max-w-2xl mx-auto">
+                  Oavsett var du är i livet hjälper vi dig bygga ekonomisk trygghet
+                </p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                  {/* Example 1: Conservative */}
+                  <div className="bg-card border rounded-2xl p-8 hover:shadow-lg transition-all duration-300">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                      <Shield className="w-6 h-6 text-primary" />
                     </div>
-                    <h3 className="font-semibold mb-2">2. Vi skapar din trygghet</h3>
-                    <p className="text-muted-foreground text-sm">En portfölj byggd med omsorg, anpassad efter just din livssituation</p>
+                    <div className="mb-4">
+                      <p className="font-semibold text-foreground">Anna, 45</p>
+                      <p className="text-sm text-muted-foreground">Konservativ investerare</p>
+                    </div>
+                    <div className="bg-muted/50 rounded-xl p-4 mb-4 text-left">
+                      <p className="text-sm text-muted-foreground italic">
+                        "Hjälp mig bygga en trygg portfölj för min pension. Jag vill sova gott om nätterna."
+                      </p>
+                    </div>
+                    <div className="bg-primary/5 rounded-xl p-4 text-left border border-primary/20">
+                      <p className="text-sm text-primary font-medium">
+                        "Perfekt! 70% räntor och 30% stabila aktier för trygghet."
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-center group">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                      <Clock className="w-8 h-8 text-purple-600" />
+
+                  {/* Example 2: Aggressive */}
+                  <div className="bg-card border rounded-2xl p-8 hover:shadow-lg transition-all duration-300">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                      <TrendingUp className="w-6 h-6 text-primary" />
                     </div>
-                    <h3 className="font-semibold mb-2">3. Vi följs åt framåt</h3>
-                    <p className="text-muted-foreground text-sm">Din personliga guide genom livets alla förändringar</p>
+                    <div className="mb-4">
+                      <p className="font-semibold text-foreground">Erik, 26</p>
+                      <p className="text-sm text-muted-foreground">Aggressiv investerare</p>
+                    </div>
+                    <div className="bg-muted/50 rounded-xl p-4 mb-4 text-left">
+                      <p className="text-sm text-muted-foreground italic">
+                        "Jag är ung och vill maximera tillväxten. Kan ta höga risker!"
+                      </p>
+                    </div>
+                    <div className="bg-primary/5 rounded-xl p-4 text-left border border-primary/20">
+                      <p className="text-sm text-primary font-medium">
+                        "Utmärkt! 90% tillväxtaktier för långsiktig hög avkastning!"
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Example 3: Dividend-focused */}
+                  <div className="bg-card border rounded-2xl p-8 hover:shadow-lg transition-all duration-300">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                      <DollarSign className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="mb-4">
+                      <p className="font-semibold text-foreground">Gunnar, 62</p>
+                      <p className="text-sm text-muted-foreground">Utdelningsfokus</p>
+                    </div>
+                    <div className="bg-muted/50 rounded-xl p-4 mb-4 text-left">
+                      <p className="text-sm text-muted-foreground italic">
+                        "Jag vill ha regelbunden inkomst från utdelningar."
+                      </p>
+                    </div>
+                    <div className="bg-primary/5 rounded-xl p-4 text-left border border-primary/20">
+                      <p className="text-sm text-primary font-medium">
+                        "Klart! Utdelningsaktier med 4-6% direktavkastning!"
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
 
+              {/* How it works - Clean Apple style */}
+              <div className="max-w-4xl mx-auto mb-20">
+                <h2 className="text-3xl font-semibold text-foreground mb-4">Så enkelt är det</h2>
+                <p className="text-lg text-muted-foreground mb-16 max-w-2xl mx-auto">
+                  Tre enkla steg till din personliga investeringsstrategi
+                </p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                      <MessageSquare className="w-8 h-8 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-3 text-foreground">Berätta om dig</h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      Vi lär känna dina mål, riskprofil och drömmar i en enkel konversation
+                    </p>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                      <Brain className="w-8 h-8 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-3 text-foreground">AI skapar din plan</h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      Avancerad AI bygger en personlig portfölj baserad på dina behov
+                    </p>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                      <BarChart3 className="w-8 h-8 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-3 text-foreground">Följ din utveckling</h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      Löpande uppföljning och anpassning när ditt liv förändras
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-              {/* Personal final CTA */}
-              <div className="text-center">
-                <h3 className="text-xl font-semibold mb-4">Din finansiella trygghet väntar på dig</h3>
-                <Button asChild size="lg" className="bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200">
+              {/* Final CTA - Apple style */}
+              <div className="max-w-2xl mx-auto text-center">
+                <h3 className="text-2xl font-semibold text-foreground mb-4">
+                  Redo att börja din resa?
+                </h3>
+                <p className="text-lg text-muted-foreground mb-8">
+                  Tusentals svenskar har redan tagit steget. Nu är det din tur.
+                </p>
+                <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-lg">
                   <Link to="/auth">
-                    <HandHeart className="w-5 h-5 mr-2" />
-                    Ta första steget idag
+                    Kom igång gratis idag
                   </Link>
                 </Button>
               </div>
-            </div>}
+            </div>
+          )}
 
           {/* Clean Dashboard for logged-in users */}
           {user && hasPortfolio && (
