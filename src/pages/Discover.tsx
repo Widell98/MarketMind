@@ -198,13 +198,6 @@ const Discover = () => {
 
           {/* Cases Tab */}
           <TabsContent value="cases" className="space-y-8">
-            {/* AI-Powered Recommendations for logged in users */}
-            {user && <>
-                <AIWeeklyPicks />
-                <PersonalizedAIRecommendations />
-                <PersonalizedRecommendations />
-              </>}
-
             {/* Category Filter */}
             <div className="flex flex-wrap gap-2 justify-center">
               {caseCategories.map(category => {
@@ -258,10 +251,6 @@ const Discover = () => {
           <TabsContent value="analyses" className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold">Marknadsanalyser</h2>
-              {user && <Button onClick={() => setIsCreateAnalysisDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Ny Analys
-                </Button>}
             </div>
 
             {/* Analysis Sub-tabs */}
@@ -299,14 +288,11 @@ const Discover = () => {
                     <p className="text-muted-foreground mb-6">
                       {searchTerm || selectedType ? "Prova att ändra dina sökkriterier eller filter" : "Var den första att dela en marknadsanalys!"}
                     </p>
-                    {searchTerm || selectedType ? <Button onClick={() => {
+                    {searchTerm || selectedType && <Button onClick={() => {
                   setSearchTerm('');
                   setSelectedType('');
                 }} variant="outline">
                         Rensa filter
-                      </Button> : user && <Button onClick={() => setIsCreateAnalysisDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700">
-                        <BookOpen className="w-4 h-4 mr-2" />
-                        Skapa första analysen
                       </Button>}
                   </div>}
               </TabsContent>
@@ -350,8 +336,6 @@ const Discover = () => {
           </TabsContent>
         </Tabs>
 
-        {/* Create Analysis Dialog */}
-        <CreateAnalysisDialog isOpen={isCreateAnalysisDialogOpen} onClose={() => setIsCreateAnalysisDialogOpen(false)} />
       </div>
     </Layout>;
 };
