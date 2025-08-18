@@ -150,113 +150,116 @@ const PortfolioImplementation = () => {
         onClose={() => setShowLoginModal(false)} 
       />
       
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-6 max-w-[1400px]">
+      <div className="min-h-screen bg-gradient-to-br from-background to-secondary/5">
+        <div className="container mx-auto px-6 py-12 max-w-7xl">
           {/* Breadcrumb Navigation */}
-          <Breadcrumb />
+          <div className="mb-8">
+            <Breadcrumb />
+          </div>
           
-          {/* Modern Header */}
-          <div className="mb-6">
-            <div className="flex flex-col gap-4 mb-6">
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-primary shadow-lg flex-shrink-0">
-                    <Brain className="w-6 h-6 text-primary-foreground" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h1 className="text-2xl md:text-3xl font-bold mb-1 text-foreground">
-                      Portfolio Analys
-                    </h1>
-                    <p className="text-sm md:text-base text-muted-foreground">
-                      Analysera och förstå din investeringsportfölj
-                    </p>
-                  </div>
-                  {lastUpdated && (
-                    <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground bg-muted px-3 py-2 rounded-lg">
-                      <Clock className="w-4 h-4" />
-                      <span>Uppdaterad {lastUpdated}</span>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex flex-wrap gap-2">
-                  <Badge className="px-3 py-1 text-xs font-medium bg-primary text-primary-foreground border-0 shadow-sm">
-                    <Brain className="w-3 h-3 mr-1" />
-                    AI-Analys
-                  </Badge>
-                  <Badge className="px-3 py-1 text-xs font-medium bg-secondary text-secondary-foreground border-0 shadow-sm">
-                    <Activity className="w-3 h-3 mr-1" />
-                    Realtidsdata
-                  </Badge>
-                  {activePortfolio && (
-                    <Badge className="px-3 py-1 text-xs font-medium bg-accent text-accent-foreground border-0 shadow-sm">
-                      <Target className="w-3 h-3 mr-1" />
-                      <span className="hidden sm:inline">Aktiv sedan {new Date(activePortfolio.created_at).toLocaleDateString('sv-SE')}</span>
-                      <span className="sm:hidden">Aktiv</span>
-                    </Badge>
-                  )}
-                </div>
-              </div>
+          {/* Clean Header */}
+          <div className="text-center mb-16">
+            <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-8 bg-primary/10 border border-primary/20 shadow-lg">
+              <Brain className="w-10 h-10 text-primary" />
+            </div>
+            <h1 className="text-4xl font-bold mb-4 text-foreground">
+              Portfolio Analys
+            </h1>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Analysera och förstå din investeringsportfölj med AI-driven insikter
+            </p>
+            
+            <div className="flex flex-wrap justify-center gap-3 mt-8">
+              <Badge className="px-4 py-2 text-sm font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors">
+                <Brain className="w-4 h-4 mr-2" />
+                AI-Analys
+              </Badge>
+              <Badge className="px-4 py-2 text-sm font-medium bg-secondary/50 text-secondary-foreground border border-secondary/30 hover:bg-secondary/70 transition-colors">
+                <Activity className="w-4 h-4 mr-2" />
+                Realtidsdata
+              </Badge>
+              {lastUpdated && (
+                <Badge className="px-4 py-2 text-sm font-medium bg-muted/50 text-muted-foreground border border-muted/30 hover:bg-muted/70 transition-colors">
+                  <Clock className="w-4 h-4 mr-2" />
+                  Uppdaterad {lastUpdated}
+                </Badge>
+              )}
             </div>
           </div>
 
           {/* Portfolio Health Score */}
           {user && totalPortfolioValue > 0 && (
-            <div className="mb-6">
-              <PortfolioHealthScore
-                totalValue={totalPortfolioValue}
-                diversificationScore={healthMetrics.diversificationScore}
-                riskScore={healthMetrics.riskScore}
-                performanceScore={healthMetrics.performanceScore}
-                cashPercentage={healthMetrics.cashPercentage}
-              />
+            <div className="mb-12">
+              <div className="bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl p-8 shadow-xl">
+                <PortfolioHealthScore
+                  totalValue={totalPortfolioValue}
+                  diversificationScore={healthMetrics.diversificationScore}
+                  riskScore={healthMetrics.riskScore}
+                  performanceScore={healthMetrics.performanceScore}
+                  cashPercentage={healthMetrics.cashPercentage}
+                />
+              </div>
             </div>
           )}
 
           {/* Portfolio Value Cards */}
-          <PortfolioValueCards
-            totalPortfolioValue={totalPortfolioValue}
-            totalInvestedValue={investedValue}
-            totalCashValue={totalCash}
-            loading={loading}
-          />
+          <div className="mb-12">
+            <PortfolioValueCards
+              totalPortfolioValue={totalPortfolioValue}
+              totalInvestedValue={investedValue}
+              totalCashValue={totalCash}
+              loading={loading}
+            />
+          </div>
 
           {/* Risk Profile Required Alert */}
           {user && !riskProfile && (
-            <Alert className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20">
-              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
-              <AlertDescription className="text-amber-800 dark:text-amber-200">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <MessageSquare className="w-4 h-4 flex-shrink-0" />
-                    <span className="font-medium text-sm">Skapa en riskprofil för AI-analys och personliga rekommendationer</span>
+            <div className="mb-12">
+              <div className="bg-amber-50/70 dark:bg-amber-950/20 backdrop-blur-xl border border-amber-200/50 dark:border-amber-800/50 rounded-3xl p-8 shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+                      <AlertCircle className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-amber-800 dark:text-amber-200 mb-1">
+                        Skapa din riskprofil
+                      </h3>
+                      <p className="text-amber-700 dark:text-amber-300">
+                        Få AI-analys och personliga rekommendationer baserat på din investeringsstil
+                      </p>
+                    </div>
                   </div>
                   <Button
                     onClick={() => navigate('/portfolio-advisor')}
-                    size="sm"
-                    className="bg-amber-600 hover:bg-amber-700 text-white flex-shrink-0"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl px-6 py-3 shadow-lg hover:shadow-xl transition-all duration-200"
                   >
                     <User className="w-4 h-4 mr-2" />
                     Skapa profil
                   </Button>
                 </div>
-              </AlertDescription>
-            </Alert>
+              </div>
+            </div>
           )}
 
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-            <div className="xl:col-span-3 space-y-6">
-              <PortfolioOverview 
-                portfolio={activePortfolio}
-                onQuickChat={handleQuickChat}
-                onActionClick={handleActionClick}
-              />
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+            <div className="xl:col-span-3 space-y-8">
+              <div className="bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
+                <PortfolioOverview 
+                  portfolio={activePortfolio}
+                  onQuickChat={handleQuickChat}
+                  onActionClick={handleActionClick}
+                />
+              </div>
               
-              {/* Community Recommendations Section - moved directly under PortfolioOverview */}
-              <CommunityRecommendations />
+              <div className="bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
+                <CommunityRecommendations />
+              </div>
             </div>
             <div className="xl:col-span-1">
-              <UserInsightsPanel />
+              <div className="bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
+                <UserInsightsPanel />
+              </div>
             </div>
           </div>
         </div>
