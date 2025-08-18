@@ -11,6 +11,7 @@ import { usePortfolio } from '@/hooks/usePortfolio';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
+import { useAIInsights } from '@/hooks/useAIInsights';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 
@@ -31,6 +32,7 @@ const Index = () => {
   const {
     actualHoldings
   } = useUserHoldings();
+  const { insights, isLoading: insightsLoading } = useAIInsights();
   const hasPortfolio = !loading && !!activePortfolio;
   const totalPortfolioValue = performance.totalPortfolioValue + totalCash;
   
@@ -226,22 +228,61 @@ const Index = () => {
                     </div>
                   </div>
 
-                  {/* AI Insight */}
-                  <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 mb-6 border border-primary/20">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center flex-shrink-0">
-                        <Brain className="w-4 h-4 text-white" />
+                  {/* AI Insights */}
+                  <div className="space-y-3 mb-6">
+                    {insightsLoading ? (
+                      <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border border-primary/20">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center flex-shrink-0">
+                            <Brain className="w-4 h-4 text-white animate-pulse" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded mb-2 animate-pulse"></div>
+                            <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-3/4 animate-pulse"></div>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium mb-1">AI-insikt för dig:</p>
-                        <p className="text-sm text-muted-foreground">
-                          Din portfölj har god balans. Överväg att öka exponeringen mot tech-sektorn med 5-10% för bättre långsiktig tillväxt.
-                        </p>
-                        <Button size="sm" variant="ghost" className="mt-2 p-0 h-auto text-primary hover:text-primary/80">
-                          Diskutera med AI →
-                        </Button>
+                    ) : insights.length > 0 ? (
+                      insights.map((insight, index) => (
+                        <div key={index} className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border border-primary/20">
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center flex-shrink-0">
+                              <Brain className="w-4 h-4 text-white" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-1">
+                                <p className="text-sm font-medium">AI-insikt för dig:</p>
+                                <Badge variant="secondary" className="text-xs">
+                                  {insight.confidence > 0.8 ? 'Hög tillförlitlighet' : 'Medel tillförlitlighet'}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground mb-2">
+                                {insight.message}
+                              </p>
+                              <Button asChild size="sm" variant="ghost" className="p-0 h-auto text-primary hover:text-primary/80">
+                                <Link to="/ai-chat">
+                                  Diskutera med AI →
+                                </Link>
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border border-primary/20">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center flex-shrink-0">
+                            <Brain className="w-4 h-4 text-white" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium mb-1">AI-analys pågår...</p>
+                            <p className="text-sm text-muted-foreground">
+                              Analyserar din portfölj för personliga insikter.
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Portfolio Progress with emotional connection */}
