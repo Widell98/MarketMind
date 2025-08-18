@@ -291,10 +291,30 @@ const UserHoldingsManager: React.FC = () => {
 
   const getPriceForHolding = (holding: any) => {
     if (holding.holding_type === 'cash') return null;
-    return prices.find(p => 
-      p.symbol === holding.symbol || 
-      p.name === holding.name
+    
+    // Try to match by symbol first (most reliable)
+    if (holding.symbol) {
+      const priceBySymbol = prices.find(p => 
+        p.symbol === holding.symbol
+      );
+      if (priceBySymbol && priceBySymbol.hasValidPrice) {
+        return priceBySymbol;
+      }
+    }
+    
+    // Fallback to matching by name (less reliable but better than nothing)
+    const priceByName = prices.find(p => 
+      p.name && holding.name && 
+      p.name.toLowerCase().includes(holding.name.toLowerCase()) ||
+      holding.name.toLowerCase().includes(p.name.toLowerCase())
     );
+    
+    if (priceByName && priceByName.hasValidPrice) {
+      return priceByName;
+    }
+    
+    // Return null if no valid price found
+    return null;
   };
 
   useEffect(() => {
