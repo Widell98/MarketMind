@@ -247,35 +247,68 @@ const Index = () => {
                     </div>
                   </div>
 
-                  {/* Quick Actions */}
+                  {/* Personal Quick Actions */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    <Button asChild variant="outline" size="sm" className="h-auto p-3 flex flex-col gap-1">
+                    <Button asChild variant="outline" size="sm" className="h-auto p-3 flex flex-col gap-1 hover:bg-primary/10 hover:border-primary">
                       <Link to="/portfolio-implementation">
                         <BarChart3 className="w-4 h-4" />
-                        <span className="text-xs">Översikt</span>
+                        <span className="text-xs">Se min översikt</span>
                       </Link>
                     </Button>
                     
-                    <Button asChild variant="outline" size="sm" className="h-auto p-3 flex flex-col gap-1">
+                    <Button asChild variant="outline" size="sm" className="h-auto p-3 flex flex-col gap-1 hover:bg-purple-50 hover:border-purple-300">
                       <Link to="/ai-chat">
                         <Brain className="w-4 h-4" />
-                        <span className="text-xs">AI-Råd</span>
+                        <span className="text-xs">Fråga rådgivaren</span>
                       </Link>
                     </Button>
                     
-                    <Button asChild variant="outline" size="sm" className="h-auto p-3 flex flex-col gap-1">
+                    <Button asChild variant="outline" size="sm" className="h-auto p-3 flex flex-col gap-1 hover:bg-green-50 hover:border-green-300">
                       <Link to="/stock-cases">
                         <Users className="w-4 h-4" />
-                        <span className="text-xs">Upptäck</span>
+                        <span className="text-xs">Hitta idéer</span>
                       </Link>
                     </Button>
                     
-                    <Button asChild variant="outline" size="sm" className="h-auto p-3 flex flex-col gap-1">
+                    <Button asChild variant="outline" size="sm" className="h-auto p-3 flex flex-col gap-1 hover:bg-blue-50 hover:border-blue-300">
                       <Link to="/market-analyses">
                         <TrendingUp className="w-4 h-4" />
-                        <span className="text-xs">Analyser</span>
+                        <span className="text-xs">Läs analyser</span>
                       </Link>
                     </Button>
+                  </div>
+
+                  {/* Progress indicator */}
+                  <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 mb-6 border border-green-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium text-green-700">Din resa mot finansiell frihet</h4>
+                      <span className="text-xs text-green-600 font-medium">68% av målet</span>
+                    </div>
+                    <Progress value={68} className="h-2 mb-2" />
+                    <p className="text-xs text-green-600">Fantastiskt! Du har kommit långt på din sparresa. Fortsätt så här! 🌟</p>
+                  </div>
+
+                  {/* Additional AI suggestions */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/20 dark:to-blue-900/20 rounded-lg p-4 border border-blue-200">
+                      <div className="flex items-start gap-2">
+                        <TrendingUp className="w-4 h-4 text-blue-600 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-blue-700">Marknadsmöjlighet</p>
+                          <p className="text-xs text-blue-600 mt-1">Nordiska banker ser starka just nu. Överväg att öka din exponering med 3-5%.</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-950/20 dark:to-purple-900/20 rounded-lg p-4 border border-purple-200">
+                      <div className="flex items-start gap-2">
+                        <Shield className="w-4 h-4 text-purple-600 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-purple-700">Riskbalans</p>
+                          <p className="text-xs text-purple-600 mt-1">Din portfölj har perfekt riskspridning för dina mål. Bra jobbat!</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Conversational Action Buttons */}
