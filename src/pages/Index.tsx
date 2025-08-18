@@ -287,32 +287,28 @@ const Index = () => {
                       </div>
                     </div>
                   ) : insights.length > 0 ? (
-                    <div className="space-y-4">
-                      {insights.map((insight, index) => (
-                        <div key={index} className="bg-card border rounded-xl p-6 hover:shadow-md transition-shadow">
-                          <div className="flex items-start gap-4">
-                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                              <Brain className="w-5 h-5 text-primary" />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between mb-2">
-                                <p className="font-medium text-foreground">AI-insikt för dig</p>
-                                <Badge variant="secondary" className="text-xs">
-                                  {insight.confidence > 0.8 ? 'Hög tillförlitlighet' : 'Medel tillförlitlighet'}
-                                </Badge>
-                              </div>
-                              <p className="text-muted-foreground mb-3">
-                                {insight.message}
-                              </p>
-                              <Button asChild size="sm" variant="ghost" className="p-0 h-auto text-primary hover:text-primary/80">
-                                <Link to="/ai-chat">
-                                  Diskutera med AI →
-                                </Link>
-                              </Button>
-                            </div>
-                          </div>
+                    <div className="bg-card border rounded-xl p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Brain className="w-5 h-5 text-primary" />
                         </div>
-                      ))}
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="font-medium text-foreground">AI-insikt för dig</p>
+                            <Badge variant="secondary" className="text-xs">
+                              {insights[0]?.confidence > 0.8 ? 'Hög tillförlitlighet' : 'Medel tillförlitlighet'}
+                            </Badge>
+                          </div>
+                          <p className="text-muted-foreground mb-3">
+                            {insights[0]?.message}
+                          </p>
+                          <Button asChild size="sm" variant="ghost" className="p-0 h-auto text-primary hover:text-primary/80">
+                            <Link to="/ai-chat">
+                              Diskutera med AI →
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div className="bg-card border rounded-xl p-6">
