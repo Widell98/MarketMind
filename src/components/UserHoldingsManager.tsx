@@ -245,17 +245,21 @@ const UserHoldingsManager: React.FC = () => {
           const holdingCurrency = holding.currency || 'SEK';
           const quoteCurrency = data.currency || 'USD';
 
-          const convertedToSEK = quoteCurrency === 'USD' && holdingCurrency === 'SEK';
-
+          // Only convert if the quote is in USD and holding is in SEK
+          const needsConversion = quoteCurrency === 'USD' && holdingCurrency === 'SEK';
+          
+          // Use the quote currency if available, otherwise fall back to holding currency
+          const displayCurrency = data.currency || holdingCurrency;
+          
           return {
             symbol: data.symbol || searchTerm,
             name: holding.name || data.name || searchTerm,
-            price: data.price,
-            change: data.change || 0,
+            price: needsConversion ? data.price * exchangeRate : data.price,
+            change: needsConversion ? (data.change || 0) * exchangeRate : (data.change || 0),
             changePercent: data.changePercent || 0,
-            currency: quoteCurrency,
-            priceInSEK: convertedToSEK ? data.price * exchangeRate : data.price,
-            changeInSEK: convertedToSEK ? (data.change || 0) * exchangeRate : (data.change || 0),
+            currency: displayCurrency,
+            priceInSEK: needsConversion ? data.price * exchangeRate : data.price,
+            changeInSEK: needsConversion ? (data.change || 0) * exchangeRate : (data.change || 0),
             hasValidPrice: true,
           };
         } catch (err) {
