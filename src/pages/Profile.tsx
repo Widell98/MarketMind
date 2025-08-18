@@ -139,28 +139,30 @@ const Profile = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-        {/* Profile Header */}
-        <div className="pb-8">
-          <EnhancedProfileHeader 
-            profileData={profileData || user}
-            isOwnProfile={true}
-            onEditClick={() => setIsEditDialogOpen(true)}
-            userStats={stats}
-          />
+      <div className="min-h-screen bg-background">
+        {/* Clean Profile Header */}
+        <div className="bg-card border-b">
+          <div className="max-w-6xl mx-auto px-4 py-8">
+            <EnhancedProfileHeader 
+              profileData={profileData || user}
+              isOwnProfile={true}
+              onEditClick={() => setIsEditDialogOpen(true)}
+              userStats={stats}
+            />
+          </div>
         </div>
 
         {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 pb-8">
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 lg:gap-8">
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
             {/* Left Sidebar */}
-            <div className="xl:col-span-1 space-y-4 lg:space-y-6">
+            <div className="xl:col-span-1 space-y-6">
               <MembershipSection />
               
               {/* Quick Actions Card */}
-              <Card className="border">
+              <Card className="border rounded-xl shadow-sm hover:shadow-md transition-shadow">
                 <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center text-lg">
+                  <CardTitle className="flex items-center text-lg font-medium">
                     <Plus className="w-5 h-5 mr-2 text-primary" />
                     Snabbåtgärder
                   </CardTitle>
@@ -168,7 +170,7 @@ const Profile = () => {
                 <CardContent className="space-y-3">
                   <Button 
                     onClick={() => setIsCreateCaseDialogOpen(true)}
-                    className="w-full justify-between"
+                    className="w-full justify-between bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium"
                     size="sm"
                   >
                     <div className="flex items-center">
@@ -181,7 +183,7 @@ const Profile = () => {
                   <Button 
                     onClick={() => setIsCreateAnalysisDialogOpen(true)}
                     variant="outline"
-                    className="w-full justify-between"
+                    className="w-full justify-between border rounded-lg hover:bg-muted/50 font-medium"
                     size="sm"
                   >
                     <div className="flex items-center">
@@ -194,26 +196,26 @@ const Profile = () => {
               </Card>
 
               {/* Stats Overview */}
-              <Card className="border">
+              <Card className="border rounded-xl shadow-sm">
                 <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center text-lg">
+                  <CardTitle className="flex items-center text-lg font-medium">
                     <BarChart3 className="w-5 h-5 mr-2 text-primary" />
                     Översikt
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="text-center p-3 bg-muted/50 rounded-lg border border-border">
-                      <div className="text-xl font-bold text-foreground">
+                    <div className="text-center p-4 bg-muted/30 rounded-xl border border-border/50">
+                      <div className="text-2xl font-semibold text-foreground">
                         {stats.stockCasesCount}
                       </div>
-                      <div className="text-xs text-muted-foreground">Stock Cases</div>
+                      <div className="text-sm text-muted-foreground">Stock Cases</div>
                     </div>
-                    <div className="text-center p-3 bg-muted/50 rounded-lg border border-border">
-                      <div className="text-xl font-bold text-foreground">
+                    <div className="text-center p-4 bg-muted/30 rounded-xl border border-border/50">
+                      <div className="text-2xl font-semibold text-foreground">
                         {stats.analysesCount}
                       </div>
-                      <div className="text-xs text-muted-foreground">Analyser</div>
+                      <div className="text-sm text-muted-foreground">Analyser</div>
                     </div>
                   </div>
                 </CardContent>
@@ -223,31 +225,34 @@ const Profile = () => {
             {/* Main Content Area */}
             <div className="xl:col-span-3">
               <Tabs defaultValue="content" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted/30 border border-border/50 rounded-lg p-1 shadow-sm">
-                  <TabsTrigger value="content">
+                <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted/20 border border-border/30 rounded-xl p-1 shadow-sm backdrop-blur-sm">
+                  <TabsTrigger value="content" className="rounded-lg font-medium">
                     Innehåll
                   </TabsTrigger>
-                  <TabsTrigger value="riskprofile" className="flex items-center gap-2">
+                  <TabsTrigger value="riskprofile" className="flex items-center gap-2 rounded-lg font-medium">
                     <Brain className="w-4 h-4" />
                     Riskprofil
                   </TabsTrigger>
-                  <TabsTrigger value="activity">
+                  <TabsTrigger value="activity" className="rounded-lg font-medium">
                     Aktivitet
                   </TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="content" className="space-y-8">
                   {/* Stock Cases */}
-                  <Card className="border">
-                    <CardHeader>
+                  <Card className="border rounded-xl shadow-sm">
+                    <CardHeader className="pb-6">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2 text-xl">
-                          <TrendingUp className="w-6 h-6 text-primary" />
+                        <CardTitle className="flex items-center gap-3 text-xl font-semibold">
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <TrendingUp className="w-5 h-5 text-primary" />
+                          </div>
                           Mina Inlägg
                         </CardTitle>
                         <Button 
                           onClick={() => setIsCreateCaseDialogOpen(true)}
                           size="sm"
+                          className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium"
                         >
                           <Plus className="w-4 h-4 mr-2" />
                           Nytt case
@@ -256,12 +261,12 @@ const Profile = () => {
                     </CardHeader>
                     <CardContent>
                       {stockCasesLoading ? (
-                        <div className="text-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                        <div className="text-center py-12">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                           <p className="text-sm text-muted-foreground">Laddar cases...</p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                           {stockCases.filter(c => c.user_id === user.id).map((stockCase) => (
                             <EnhancedStockCaseCard 
                               key={stockCase.id} 
@@ -272,12 +277,15 @@ const Profile = () => {
                             />
                           ))}
                           {stockCases.filter(c => c.user_id === user.id).length === 0 && (
-                            <div className="col-span-full text-center py-8">
-                              <TrendingUp className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                              <h3 className="text-lg font-medium text-foreground mb-2">Inga cases än</h3>
-                              <p className="text-muted-foreground mb-4">Skapa ditt första aktiecase och dela dina investeringsidéer.</p>
+                            <div className="col-span-full text-center py-16">
+                              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                                <TrendingUp className="w-8 h-8 text-primary" />
+                              </div>
+                              <h3 className="text-xl font-semibold text-foreground mb-3">Inga cases än</h3>
+                              <p className="text-muted-foreground mb-6 max-w-md mx-auto">Skapa ditt första aktiecase och dela dina investeringsidéer med communityn.</p>
                               <Button 
                                 onClick={() => setIsCreateCaseDialogOpen(true)}
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium"
                               >
                                 <Plus className="w-4 h-4 mr-2" />
                                 Skapa första case
@@ -290,10 +298,12 @@ const Profile = () => {
                   </Card>
 
                   {/* Analyses */}
-                  <Card className="border">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-xl">
-                        <FileText className="w-6 h-6 text-primary" />
+                  <Card className="border rounded-xl shadow-sm">
+                    <CardHeader className="pb-6">
+                      <CardTitle className="flex items-center gap-3 text-xl font-semibold">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <FileText className="w-5 h-5 text-primary" />
+                        </div>
                         Mina Analyser
                       </CardTitle>
                     </CardHeader>
@@ -354,16 +364,19 @@ const Profile = () => {
       />
 
       <AlertDialog open={!!caseToDelete} onOpenChange={() => setCaseToDelete(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Ta bort aktiecase</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-xl font-semibold">Ta bort aktiecase</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
               Är du säker på att du vill ta bort detta aktiecase? Denna åtgärd kan inte ångras.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
-            <AlertDialogAction onClick={() => caseToDelete && handleDeleteCase(caseToDelete)}>
+            <AlertDialogCancel className="rounded-lg">Avbryt</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => caseToDelete && handleDeleteCase(caseToDelete)}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-lg"
+            >
               Ta bort
             </AlertDialogAction>
           </AlertDialogFooter>
