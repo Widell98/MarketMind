@@ -113,7 +113,7 @@ const StockCaseTimelineViewer: React.FC<StockCaseTimelineViewerProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header with minimize toggle */}
+      {/* Header with version info */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold">Case innehåll</h2>
@@ -123,147 +123,137 @@ const StockCaseTimelineViewer: React.FC<StockCaseTimelineViewerProps> = ({
             </Badge>
           )}
         </div>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => setIsMinimized(!isMinimized)}
-          className="flex items-center gap-2"
-        >
-          {isMinimized ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-          {isMinimized ? 'Visa' : 'Minimera'}
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Badge variant={currentIndex === 0 ? "default" : "secondary"}>
+              {currentVersion?.isOriginal ? 'Original' : currentIndex === 0 ? 'Senaste version' : 'Historisk version'}
+            </Badge>
+            <span className="text-sm text-muted-foreground">
+              {currentVersion && formatRelativeDate(currentVersion.created_at)}
+            </span>
+          </div>
+          
+          {canDelete && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setUpdateToDelete(currentVersion.id)} 
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="w-4 h-4 mr-1" />
+              Ta bort
+            </Button>
+          )}
+        </div>
       </div>
 
-      {!isMinimized && (
-        <div className="space-y-4">
-          {/* Version info and controls */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Badge variant={currentIndex === 0 ? "default" : "secondary"}>
-                {currentVersion?.isOriginal ? 'Original' : currentIndex === 0 ? 'Senaste version' : 'Historisk version'}
-              </Badge>
-              <span className="text-sm text-muted-foreground">
-                {currentVersion && formatRelativeDate(currentVersion.created_at)}
-              </span>
-            </div>
-            
-            {canDelete && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setUpdateToDelete(currentVersion.id)} 
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-              >
-                <Trash2 className="w-4 h-4 mr-1" />
-                Ta bort
-              </Button>
-            )}
-          </div>
-
-          {/* Image carousel */}
-          {currentVersion?.image_url && (
-            <div className="relative group">
-              <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
-                <img 
-                  src={currentVersion.image_url} 
-                  alt={currentVersion.title || ''} 
-                  className="w-full h-full object-cover transition-all duration-300" 
-                />
-                
-                {/* Navigation arrows */}
-                {hasMultipleVersions && (
-                  <>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={goToPrevious}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/70 hover:bg-black/80 text-white border-0"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={goToNext}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/70 hover:bg-black/80 text-white border-0"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </>
-                )}
-
-                {/* Version indicator */}
-                {currentIndex > 0 && (
-                  <div className="absolute top-3 left-3">
-                    <Badge variant="secondary" className="bg-black/70 text-white">
-                      <History className="w-3 h-3 mr-1" />
-                      Historisk
-                    </Badge>
-                  </div>
-                )}
-              </div>
-
-              {/* Dots indicator */}
+      {/* Main image carousel */}
+      {currentVersion?.image_url && (
+        <div className="space-y-3">
+          <div className="relative group">
+            <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
+              <img 
+                src={currentVersion.image_url} 
+                alt={currentVersion.title || ''} 
+                className="w-full h-full object-cover transition-all duration-300" 
+              />
+              
+              {/* Navigation arrows - always visible if multiple versions */}
               {hasMultipleVersions && (
-                <div className="flex justify-center gap-2 mt-3">
-                  {timeline.map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => goToVersion(index)}
-                      className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                        currentIndex === index 
-                          ? 'bg-primary scale-125' 
-                          : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
-                      }`}
-                    />
-                  ))}
+                <>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={goToPrevious}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/80 text-white border-0 opacity-80 hover:opacity-100 transition-opacity"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={goToNext}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/80 text-white border-0 opacity-80 hover:opacity-100 transition-opacity"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </>
+              )}
+
+              {/* Version indicator */}
+              {currentIndex > 0 && (
+                <div className="absolute top-3 left-3">
+                  <Badge variant="secondary" className="bg-black/70 text-white">
+                    <History className="w-3 h-3 mr-1" />
+                    Historisk
+                  </Badge>
+                </div>
+              )}
+
+              {/* Version counter */}
+              {hasMultipleVersions && (
+                <div className="absolute top-3 right-3">
+                  <Badge variant="secondary" className="bg-black/70 text-white">
+                    {currentIndex + 1}/{timeline.length}
+                  </Badge>
                 </div>
               )}
             </div>
-          )}
+          </div>
 
-          {/* Content description */}
-          {currentVersion?.description && (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="prose dark:prose-invert max-w-none">
-                  <p className="whitespace-pre-wrap">
-                    {currentVersion.description}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Version list for quick access */}
+          {/* Dots indicator */}
           {hasMultipleVersions && (
-            <div className="border-t pt-4">
-              <div className="flex items-center gap-2 mb-3">
-                <History className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium text-muted-foreground">Alla versioner</span>
-              </div>
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {timeline.map((version, index) => (
-                  <button
-                    key={version.id}
-                    onClick={() => goToVersion(index)}
-                    className={`flex-shrink-0 px-3 py-2 rounded-md text-xs transition-colors ${
-                      currentIndex === index
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted hover:bg-muted/80'
-                    }`}
-                  >
-                    {version.isOriginal ? 'Original' : `V${timeline.length - index}`}
-                    <span className="block text-[10px] opacity-70 mt-0.5">
-                      {formatRelativeDate(version.created_at)}
-                    </span>
-                  </button>
-                ))}
-              </div>
+            <div className="flex justify-center gap-2">
+              {timeline.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => goToVersion(index)}
+                  className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                    currentIndex === index 
+                      ? 'bg-primary scale-125' 
+                      : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Quick version selector */}
+          {hasMultipleVersions && (
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {timeline.map((version, index) => (
+                <button
+                  key={version.id}
+                  onClick={() => goToVersion(index)}
+                  className={`flex-shrink-0 px-3 py-2 rounded-md text-xs transition-colors ${
+                    currentIndex === index
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted hover:bg-muted/80'
+                  }`}
+                >
+                  {version.isOriginal ? 'Original' : `V${timeline.length - index}`}
+                  <span className="block text-[10px] opacity-70 mt-0.5">
+                    {formatRelativeDate(version.created_at)}
+                  </span>
+                </button>
+              ))}
             </div>
           )}
         </div>
+      )}
+
+      {/* Content description */}
+      {currentVersion?.description && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="prose dark:prose-invert max-w-none">
+              <p className="whitespace-pre-wrap">
+                {currentVersion.description}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Delete Confirmation Dialog */}
