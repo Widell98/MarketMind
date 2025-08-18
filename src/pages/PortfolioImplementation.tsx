@@ -128,7 +128,7 @@ const PortfolioImplementation = () => {
         </div>
       </Layout>;
   }
-  const totalPortfolioValue = performance.totalPortfolioValue + totalCash;
+  const totalPortfolioValue = performance.totalPortfolioValue; // Already includes cash from usePortfolioPerformance
   const investedValue = performance.totalValue;
 
   // Calculate portfolio health metrics - fix the actualHoldings check
