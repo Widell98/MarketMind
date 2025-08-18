@@ -78,6 +78,7 @@ const ChatPortfolioAdvisor = () => {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [showHoldingsInput, setShowHoldingsInput] = useState(false);
   const [localLoading, setLoading] = useState(false);
+  const [conversationStarted, setConversationStarted] = useState(false);
   
   const { generatePortfolioFromConversation, loading } = useConversationalPortfolio();
   const { refetch } = usePortfolio();
@@ -358,13 +359,14 @@ const ChatPortfolioAdvisor = () => {
   }, [messages]);
 
   useEffect(() => {
-    // Start conversation
-    if (messages.length === 0) {
+    // Start conversation only once
+    if (!conversationStarted && messages.length === 0) {
+      setConversationStarted(true);
       const firstQuestion = questions[0];
       addBotMessage(firstQuestion.question, firstQuestion.hasOptions, firstQuestion.options);
       setWaitingForAnswer(true);
     }
-  }, []);
+  }, [conversationStarted, messages.length]);
 
   const addBotMessage = (content: string, hasOptions: boolean = false, options?: Array<{ value: string; label: string }>, hasHoldingsInput: boolean = false) => {
     const message: Message = {
