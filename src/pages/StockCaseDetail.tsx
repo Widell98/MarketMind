@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useUserFollows } from '@/hooks/useUserFollows';
+import { useStockCaseUpdates } from '@/hooks/useStockCaseUpdates';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ToastAction } from '@/components/ui/toast';
-import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Calendar, Building, BarChart3, Eye, Users, AlertTriangle, Target, StopCircle, Brain, ShoppingCart, Plus, UserPlus, PlusCircle, History, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Calendar, Building, BarChart3, Eye, Users, AlertTriangle, Target, StopCircle, Brain, ShoppingCart, Plus, UserPlus, PlusCircle, History, MessageCircle, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
@@ -19,7 +20,7 @@ import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
 import StockCaseComments from '@/components/StockCaseComments';
 import AddStockCaseUpdateDialog from '@/components/AddStockCaseUpdateDialog';
-import StockCaseTimelineViewer from '@/components/StockCaseTimelineViewer';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import type { StockCase } from '@/types/stockCase';
 
 const StockCaseDetail = () => {
@@ -29,12 +30,14 @@ const StockCaseDetail = () => {
   const { user } = useAuth();
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
-  const [selectedVersion, setSelectedVersion] = useState<any>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [updateToDelete, setUpdateToDelete] = useState<string | null>(null);
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL LOGIC
   const { stockCase, loading, error } = useStockCase(id || '');
   const { likeCount, isLiked, toggleLike, loading: likesLoading } = useStockCaseLikes(id || '');
   const { followUser, unfollowUser, isFollowing } = useUserFollows();
+  const { updates, isLoading: updatesLoading, deleteUpdate } = useStockCaseUpdates(id || '');
 
   // Effect to scroll to comments when navigated from "Diskutera" button
   useEffect(() => {
@@ -159,18 +162,74 @@ const StockCaseDetail = () => {
     }
   };
 
-  const handleVersionSelect = (version: any) => {
-    setSelectedVersion(version);
+  // Create timeline of all versions (original + updates)
+  const timeline = [
+    {
+      id: 'original',
+      title: stockCase?.title || '',
+      description: stockCase?.description || '',
+      image_url: stockCase?.image_url || '',
+      created_at: stockCase?.created_at || '',
+      user_id: stockCase?.user_id || '',
+      isOriginal: true
+    },
+    ...(updates || []).map(update => ({
+      ...update,
+      isOriginal: false
+    }))
+  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  // Get current version based on carousel index
+  const currentVersion = timeline[currentImageIndex];
+  const hasMultipleVersions = timeline.length > 1;
+
+  // Format relative date
+  const formatRelativeDate = (dateString: string) => {
+    return formatDistanceToNow(new Date(dateString), {
+      addSuffix: true,
+      locale: sv
+    });
   };
 
-  // Use selected version data or fall back to original stock case
-  const displayData = selectedVersion || {
-    title: stockCase.title,
-    description: stockCase.description,
-    image_url: stockCase.image_url,
-    created_at: stockCase.created_at,
-    isOriginal: true
+  // Carousel navigation
+  const goToPrevious = () => {
+    setCurrentImageIndex(prev => (prev > 0 ? prev - 1 : timeline.length - 1));
   };
+
+  const goToNext = () => {
+    setCurrentImageIndex(prev => (prev < timeline.length - 1 ? prev + 1 : 0));
+  };
+
+  const goToVersion = (index: number) => {
+    setCurrentImageIndex(index);
+  };
+
+  // Delete handler
+  const handleDeleteUpdate = async () => {
+    if (updateToDelete && !timeline.find(v => v.id === updateToDelete)?.isOriginal) {
+      try {
+        await deleteUpdate(updateToDelete);
+        // If we deleted the current version, go to latest
+        if (currentVersion && currentVersion.id === updateToDelete) {
+          setCurrentImageIndex(0);
+        }
+        setUpdateToDelete(null);
+        toast({
+          title: "Uppdatering borttagen",
+          description: "Uppdateringen har tagits bort framgångsrikt"
+        });
+      } catch (error) {
+        console.error('Error deleting update:', error);
+        toast({
+          title: "Fel",
+          description: "Kunde inte ta bort uppdateringen",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const canDeleteCurrent = user && currentVersion && !currentVersion.isOriginal && currentVersion.user_id === user.id;
 
   // Format case description with sections
   const formatCaseDescription = (description: string | null) => {
@@ -344,29 +403,133 @@ const StockCaseDetail = () => {
             )}
           </div>
 
-          {/* Graph Section with Caption */}
-          {displayData.image_url && (
+          {/* Graph Section with Carousel */}
+          {currentVersion?.image_url && (
             <div className="space-y-4">
-              <div className="relative">
+              {/* Version info and controls */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge variant={currentImageIndex === 0 ? "default" : "secondary"}>
+                    {currentVersion?.isOriginal ? 'Original' : currentImageIndex === 0 ? 'Senaste version' : 'Historisk version'}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">
+                    {formatRelativeDate(currentVersion.created_at)}
+                  </span>
+                  {hasMultipleVersions && (
+                    <Badge variant="outline" className="text-xs">
+                      {currentImageIndex + 1} av {timeline.length}
+                    </Badge>
+                  )}
+                </div>
+                
+                {canDeleteCurrent && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setUpdateToDelete(currentVersion.id)} 
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Ta bort version
+                  </Button>
+                )}
+              </div>
+
+              <div className="relative group">
                 <img 
-                  src={displayData.image_url} 
+                  src={currentVersion.image_url} 
                   alt={stockCase.title}
-                  className="w-full h-auto rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition-shadow"
+                  className="w-full h-auto rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300"
                   onClick={() => {
-                    window.open(displayData.image_url, '_blank');
+                    window.open(currentVersion.image_url, '_blank');
                   }}
                 />
+                
+                {/* Navigation arrows */}
+                {hasMultipleVersions && (
+                  <>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={goToPrevious}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/80 text-white border-0 opacity-80 hover:opacity-100 transition-opacity"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={goToNext}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/80 text-white border-0 opacity-80 hover:opacity-100 transition-opacity"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </>
+                )}
+
+                {/* Expand button */}
                 <div className="absolute top-4 right-4">
                   <Button 
                     variant="secondary" 
                     size="sm"
-                    onClick={() => window.open(displayData.image_url, '_blank')}
+                    onClick={() => window.open(currentVersion.image_url, '_blank')}
+                    className="bg-black/70 hover:bg-black/80 text-white border-0"
                   >
                     <Eye className="w-4 h-4 mr-1" />
                     Expandera
                   </Button>
                 </div>
+
+                {/* Version indicator */}
+                {currentImageIndex > 0 && (
+                  <div className="absolute top-4 left-4">
+                    <Badge variant="secondary" className="bg-black/70 text-white">
+                      <History className="w-3 h-3 mr-1" />
+                      Historisk
+                    </Badge>
+                  </div>
+                )}
               </div>
+
+              {/* Dots indicator */}
+              {hasMultipleVersions && (
+                <div className="flex justify-center gap-2">
+                  {timeline.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => goToVersion(index)}
+                      className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                        currentImageIndex === index 
+                          ? 'bg-primary scale-125' 
+                          : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Quick version selector */}
+              {hasMultipleVersions && (
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {timeline.map((version, index) => (
+                    <button
+                      key={version.id}
+                      onClick={() => goToVersion(index)}
+                      className={`flex-shrink-0 px-3 py-2 rounded-md text-xs transition-colors ${
+                        currentImageIndex === index
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted hover:bg-muted/80'
+                      }`}
+                    >
+                      {version.isOriginal ? 'Original' : `V${timeline.length - index}`}
+                      <span className="block text-[10px] opacity-70 mt-0.5">
+                        {formatRelativeDate(version.created_at)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
               
               {/* Graph Caption */}
               <div className="text-center">
@@ -396,13 +559,13 @@ const StockCaseDetail = () => {
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-6">
             {/* Case Description with Structured Sections */}
-            {displayData.description && (
+            {currentVersion?.description && (
               <Card>
                 <CardHeader>
                   <CardTitle>Analys</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {formatCaseDescription(displayData.description)}
+                  {formatCaseDescription(currentVersion.description)}
                 </CardContent>
               </Card>
             )}
@@ -486,25 +649,6 @@ const StockCaseDetail = () => {
                 </CardContent>
               </Card>
             )}
-
-            {/* Version History - moved under case text */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <History className="w-5 h-5" />
-                Versionshistorik
-              </h3>
-              <StockCaseTimelineViewer 
-                stockCaseId={stockCase.id} 
-                originalStockCase={{
-                  title: stockCase.title,
-                  description: stockCase.description,
-                  image_url: stockCase.image_url,
-                  created_at: stockCase.created_at,
-                  user_id: stockCase.user_id
-                }} 
-                onVersionSelect={handleVersionSelect} 
-              />
-            </div>
 
             {/* AI Chat Integration - moved closer to case text */}
             <StockCaseAIChat stockCase={stockCase} />
@@ -657,6 +801,24 @@ const StockCaseDetail = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!updateToDelete} onOpenChange={() => setUpdateToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ta bort uppdatering</AlertDialogTitle>
+            <AlertDialogDescription>
+              Är du säker på att du vill ta bort denna uppdatering? Denna åtgärd kan inte ångras.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteUpdate} className="bg-red-600 hover:bg-red-700">
+              Ta bort
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Update Dialog */}
       <AddStockCaseUpdateDialog 
