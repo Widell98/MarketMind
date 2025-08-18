@@ -4,6 +4,7 @@ import { usePortfolioPerformance } from './usePortfolioPerformance';
 import { useCashHoldings } from './useCashHoldings';
 import { useUserHoldings } from './useUserHoldings';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AIInsight {
   title: string;
@@ -21,27 +22,35 @@ export const useAIInsights = () => {
   const { performance } = usePortfolioPerformance();
   const { totalCash } = useCashHoldings();
   const { actualHoldings } = useUserHoldings();
+  const { user } = useAuth();
 
   const generateInsights = async () => {
     if (!activePortfolio || !actualHoldings) return;
     
     setIsLoading(true);
     try {
-      // Prepare portfolio context for AI analysis
+      // Prepare portfolio context for AI analysis (robust against loading states)
+      const holdingsTotal = (actualHoldings || []).reduce((sum: number, h: any) => sum + (h.current_value || 0), 0);
+      const derivedTotal = performance.totalPortfolioValue > 0
+        ? performance.totalPortfolioValue
+        : holdingsTotal + (totalCash || 0);
+      const safeTotal = derivedTotal > 0 ? derivedTotal : 0;
+      const cashRatio = safeTotal > 0 ? Math.min(1, Math.max(0, (totalCash || 0) / safeTotal)) : 0;
+
       const portfolioContext = {
-        totalValue: performance.totalPortfolioValue + totalCash,
-        cashRatio: totalCash / (performance.totalPortfolioValue + totalCash),
-        holdingsCount: actualHoldings.length,
+        totalValue: safeTotal,
+        cashRatio,
+        holdingsCount: (actualHoldings || []).length,
         performance: {
           totalReturn: performance.totalReturn,
           totalReturnPercentage: performance.totalReturnPercentage,
           dayChange: performance.dayChange,
           dayChangePercentage: performance.dayChangePercentage
         },
-        diversification: calculateDiversification(actualHoldings),
-        topHoldings: actualHoldings.slice(0, 5).map(h => ({
+        diversification: calculateDiversification(actualHoldings || []),
+        topHoldings: (actualHoldings || []).slice(0, 5).map((h: any) => ({
           symbol: h.symbol,
-          percentage: (h.current_value / performance.totalPortfolioValue) * 100
+          percentage: safeTotal > 0 ? (h.current_value / safeTotal) * 100 : 0
         }))
       };
 
@@ -49,7 +58,9 @@ export const useAIInsights = () => {
         body: {
           message: `Analysera denna portfölj och ge 2-3 korta, actionable insikter på svenska. Fokusera på konkreta förbättringar och möjligheter. Portföljdata: ${JSON.stringify(portfolioContext)}`,
           analysisType: 'portfolio_insights',
-          portfolioContext
+          portfolioContext,
+          userId: user?.id,
+          portfolioId: activePortfolio?.id
         }
       });
 
@@ -119,7 +130,11 @@ export const useAIInsights = () => {
     const insights: AIInsight[] = [];
     
     // Cash ratio insight
-    const cashRatio = totalCash / (performance.totalPortfolioValue + totalCash);
+    const holdingsTotalFallback = (actualHoldings || []).reduce((sum: number, h: any) => sum + (h.current_value || 0), 0);
+    const derivedTotalFallback = performance.totalPortfolioValue > 0
+      ? performance.totalPortfolioValue
+      : holdingsTotalFallback + (totalCash || 0);
+    const cashRatio = derivedTotalFallback > 0 ? Math.min(1, Math.max(0, (totalCash || 0) / derivedTotalFallback)) : 0;
     if (cashRatio > 0.2) {
       insights.push({
         title: 'Kontantbalans',
