@@ -286,55 +286,59 @@ const CommunityRecommendations: React.FC = () => {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg font-semibold flex items-center gap-2">
-          <Users className="w-5 h-5 text-blue-600" />
+    <Card className="bg-card/30 backdrop-blur-xl border-border/20 shadow-lg rounded-3xl overflow-hidden">
+      <CardHeader className="pb-6 bg-gradient-to-r from-primary/5 to-blue/5 border-b border-border/20">
+        <CardTitle className="text-xl font-semibold flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <Users className="w-5 h-5 text-primary" />
+          </div>
           Community-rekommenderade Innehav
           {recommendations.length > 0 && (
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 ml-2">
+            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 ml-2 px-3 py-1 rounded-full">
               {recommendations.length} rekommendationer
             </Badge>
           )}
         </CardTitle>
-        <CardDescription className="text-sm text-muted-foreground mt-1">
+        <CardDescription className="text-muted-foreground mt-2 ml-13 leading-relaxed">
           Dina sparade stock-cases och analyser från communityn
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-sm text-muted-foreground">
+      <CardContent className="p-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="text-sm text-muted-foreground font-medium">
             {recommendations.length} sparade rekommendationer
           </div>
           <Button 
             variant="ghost" 
             size="sm"
             onClick={() => navigate('/stock-cases')}
-            className="text-blue-600 hover:text-blue-700"
+            className="text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl font-medium"
           >
             Hitta fler <ArrowRight className="w-3 h-3 ml-1" />
           </Button>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-4">
           {recommendations.slice(0, 6).map((recommendation) => (
             <div 
               key={recommendation.id}
-              className="p-3 border rounded-lg hover:shadow-md transition-all duration-200 cursor-pointer hover:border-blue-200"
+              className="p-5 bg-card/50 backdrop-blur-sm border border-border/30 rounded-2xl hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 cursor-pointer hover:border-primary/30 hover:bg-card/70"
               onClick={() => handleViewItem(recommendation)}
             >
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Star className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                    <h4 className="font-medium text-sm truncate">{getItemTitle(recommendation)}</h4>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Star className="w-4 h-4 text-primary" />
+                    </div>
+                    <h4 className="font-semibold text-base truncate text-foreground">{getItemTitle(recommendation)}</h4>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       {isAIGenerated(recommendation) ? (
-                        <Badge variant="secondary" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                        <Badge variant="secondary" className="text-xs bg-purple/10 text-purple border-purple/20 rounded-full px-2 py-1">
                           <Brain className="w-3 h-3 mr-1" />
                           AI
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                        <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20 rounded-full px-2 py-1">
                           <User className="w-3 h-3 mr-1" />
                           Community
                         </Badge>
@@ -342,55 +346,55 @@ const CommunityRecommendations: React.FC = () => {
                     </div>
                   </div>
                   
-                  <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3 leading-relaxed">
                     {getItemDescription(recommendation)}
                   </p>
 
                   {getCreatorInfo(recommendation) && (
-                    <p className="text-xs text-muted-foreground mb-2">
+                    <p className="text-xs text-muted-foreground mb-3 font-medium">
                       Av: {getCreatorInfo(recommendation)}
                     </p>
                   )}
 
                   {recommendation.tags.length > 0 && (
-                    <div className="flex items-center gap-1 flex-wrap mb-2">
+                    <div className="flex items-center gap-2 flex-wrap mb-4">
                       <Tag className="w-3 h-3 text-muted-foreground" />
                       {recommendation.tags.slice(0, 3).map((tag, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
+                        <Badge key={index} variant="outline" className="text-xs rounded-full px-2 py-1 bg-muted/50 border-muted">
                           {tag}
                         </Badge>
                       ))}
                       {recommendation.tags.length > 3 && (
-                        <span className="text-xs text-muted-foreground">+{recommendation.tags.length - 3}</span>
+                        <span className="text-xs text-muted-foreground font-medium">+{recommendation.tags.length - 3}</span>
                       )}
                     </div>
                   )}
 
                   {/* Action Buttons */}
-                  <div className="flex items-center gap-2 pt-2 border-t">
+                  <div className="flex items-center gap-3 pt-4 border-t border-border/30">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={(e) => handleAddToPortfolio(recommendation, e)}
-                      className="text-xs bg-white hover:bg-green-50 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300 flex-1"
+                      className="text-xs bg-card/50 hover:bg-green/5 text-green hover:text-green/80 border-green/20 hover:border-green/30 flex-1 rounded-xl py-2"
                     >
-                      <ShoppingCart className="w-3 h-3 mr-1" />
+                      <ShoppingCart className="w-3 h-3 mr-2" />
                       Lägg till i portfölj
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={(e) => handleDiscussWithAI(recommendation, e)}
-                      className="text-xs bg-white hover:bg-purple-50 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300 flex-1"
+                      className="text-xs bg-card/50 hover:bg-purple/5 text-purple hover:text-purple/80 border-purple/20 hover:border-purple/30 flex-1 rounded-xl py-2"
                     >
-                      <MessageCircle className="w-3 h-3 mr-1" />
+                      <MessageCircle className="w-3 h-3 mr-2" />
                       Diskutera
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={(e) => handleDeleteRecommendation(recommendation, e)}
-                      className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-xs"
+                      className="text-red hover:text-red/80 hover:bg-red/5 text-xs rounded-xl px-3"
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>
@@ -403,7 +407,7 @@ const CommunityRecommendations: React.FC = () => {
           {recommendations.length > 6 && (
             <Button 
               variant="outline" 
-              className="w-full mt-4"
+              className="w-full mt-6 rounded-2xl py-3 border-primary/20 text-primary hover:bg-primary/5 hover:border-primary/30 font-medium"
               onClick={() => navigate('/discover-opportunities')}
             >
               Visa alla sparade rekommendationer ({recommendations.length})

@@ -527,116 +527,103 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       <UserHoldingsManager />
 
       {/* AI-Recommended Holdings - NOW SECOND with consistent styling */}
-      <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
-        <CardHeader className="pb-4">
+      <Card className="bg-card/30 backdrop-blur-xl border-border/20 shadow-lg rounded-3xl overflow-hidden">
+        <CardHeader className="pb-6 bg-gradient-to-r from-primary/5 to-purple/5 border-b border-border/20">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <Brain className="w-5 h-5 text-purple-600" />
+              <CardTitle className="text-xl font-semibold flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <Brain className="w-5 h-5 text-primary" />
+                </div>
                 AI-Rekommenderade Innehav
                 {allRecommendations.length > 0 && (
-                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 ml-2">
+                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 ml-2 px-3 py-1 rounded-full">
                     {allRecommendations.length} rekommendationer
                   </Badge>
                 )}
               </CardTitle>
-              <CardDescription className="text-sm text-muted-foreground mt-1">
+              <CardDescription className="text-muted-foreground mt-2 ml-13 leading-relaxed">
                 Aktier som AI-advisorn rekommenderar för din portfölj
               </CardDescription>
             </div>
             <div className="flex gap-2">
-              {allRecommendations.length > 0 && <AlertDialog>
+              {allRecommendations.length > 0 && (
+                <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" disabled={isDeletingRecommendations} className="text-destructive hover:text-destructive border-destructive/20 hover:border-destructive/30">
-                      <X className="w-4 h-4 mr-1" />
-                      Rensa alla
+                    <Button variant="outline" size="sm" disabled={isDeletingRecommendations} className="text-red hover:text-red/80 border-red/20 hover:border-red/30 rounded-xl">
+                      {isDeletingRecommendations ? "Rensar..." : "Rensa alla"}
+                      <Trash2 className="w-3 h-3 ml-1" />
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Rensa alla AI-rekommendationer?</AlertDialogTitle>
+                      <AlertDialogTitle>Rensa AI-rekommendationer</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Detta kommer att ta bort alla AI-rekommenderade aktier från din portfölj. 
-                        Dina egna innehav påverkas inte.
-                        <br /><br />
-                        <strong>Denna åtgärd kan inte ångras.</strong>
+                        Är du säker på att du vill ta bort alla AI-rekommendationer från din portfölj? 
+                        Denna åtgärd kan inte ångras.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                      <AlertDialogAction onClick={clearAIRecommendations} disabled={isDeletingRecommendations} className="bg-red-600 hover:bg-red-700">
-                        {isDeletingRecommendations ? "Rensar..." : "Ja, rensa alla"}
+                      <AlertDialogAction onClick={clearAIRecommendations}>
+                        Rensa alla
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
-                </AlertDialog>}
+                </AlertDialog>
+              )}
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <div className="flex items-center justify-center gap-2">
-                <Brain className="w-4 h-4 animate-pulse" />
-                <span>Laddar AI-rekommendationer...</span>
+        <CardContent className="p-8">
+          {allRecommendations.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mx-auto mb-6 shadow-xl">
+                <Brain className="w-10 h-10 text-primary" />
               </div>
-            </div>
-          ) : allRecommendations.length === 0 ? (
-            <div className="text-center py-8">
-              <Brain className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2 text-foreground">Inga AI-rekommendationer ännu</h3>
-              <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
-                Få personliga aktieförslag från AI-advisorn baserat på din riskprofil
+              <h3 className="text-xl font-semibold mb-3 text-foreground">Inga AI-rekommendationer</h3>
+              <p className="text-muted-foreground mb-8 max-w-sm mx-auto leading-relaxed">
+                Du har inga AI-rekommendationer just nu. Gå till AI-chatten för att få personliga investeringsförslag.
               </p>
-              
-              <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg mb-4">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <Sparkles className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium text-blue-700 dark:text-blue-300">
-                    Få AI-rekommendationer
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Chatta med AI:n för att få personaliserade investeringsförslag
-                </p>
-              </div>
-              
               <Button 
                 onClick={handleGetAIRecommendations} 
-                className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                className="px-8 py-3 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                size="lg"
               >
-                <MessageCircle className="w-4 h-4" />
+                <Brain className="w-4 h-4 mr-2" />
                 Få AI-rekommendationer
               </Button>
             </div>
           ) : (
-            <>
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-sm text-muted-foreground">
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div className="text-sm text-muted-foreground font-medium">
                   {allRecommendations.length} AI-rekommendationer
                 </div>
                 <Button 
                   variant="ghost" 
                   size="sm"
                   onClick={handleGetAIRecommendations}
-                  className="text-purple-600 hover:text-purple-700"
+                  className="text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl font-medium"
                 >
                   Få fler <ArrowRight className="w-3 h-3 ml-1" />
                 </Button>
               </div>
-              <div className={`space-y-3 ${allRecommendations.length > 5 ? 'max-h-96 overflow-y-auto' : ''}`}>
+              <div className={`space-y-4 ${allRecommendations.length > 5 ? 'max-h-96 overflow-y-auto pr-2' : ''}`}>
                 {allRecommendations.map((recommendation, index) => (
                   <div 
                     key={recommendation.id || index}
-                    className="p-3 border rounded-lg hover:shadow-md transition-all duration-200"
+                    className="p-5 bg-card/50 backdrop-blur-sm border border-border/30 rounded-2xl hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 hover:border-primary/30 hover:bg-card/70"
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Star className="w-4 h-4 text-purple-600 flex-shrink-0" />
-                          <h4 className="font-medium text-sm truncate">{recommendation.name}</h4>
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <Star className="w-4 h-4 text-primary" />
+                          </div>
+                          <h4 className="font-semibold text-base truncate text-foreground">{recommendation.name}</h4>
                           <div className="flex items-center gap-1 flex-shrink-0">
-                            <Badge variant="secondary" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                            <Badge variant="secondary" className="text-xs bg-purple/10 text-purple border-purple/20 rounded-full px-2 py-1">
                               <Brain className="w-3 h-3 mr-1" />
                               AI
                             </Badge>
@@ -644,51 +631,51 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                         </div>
                         
                         {recommendation.symbol && (
-                          <p className="text-xs text-muted-foreground mb-2">
+                          <p className="text-sm text-muted-foreground mb-3 font-medium">
                             Symbol: {recommendation.symbol}
                           </p>
                         )}
 
                         {recommendation.allocation !== undefined && (
-                          <p className="text-xs text-purple-600 font-medium mb-2">
+                          <p className="text-sm text-primary font-semibold mb-3">
                             {recommendation.allocation}% allokering
                           </p>
                         )}
 
                         {recommendation.sector && (
-                          <div className="flex items-center gap-1 flex-wrap mb-2">
+                          <div className="flex items-center gap-2 flex-wrap mb-4">
                             <Tag className="w-3 h-3 text-muted-foreground" />
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="text-xs rounded-full px-2 py-1 bg-muted/50 border-muted">
                               {recommendation.sector}
                             </Badge>
                           </div>
                         )}
 
                         {/* Action Buttons */}
-                        <div className="flex items-center gap-2 pt-2 border-t">
+                        <div className="flex items-center gap-3 pt-4 border-t border-border/30">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleAddFromRecommendation(recommendation)}
-                            className="text-xs bg-white hover:bg-green-50 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300 flex-1"
+                            className="text-xs bg-card/50 hover:bg-green/5 text-green hover:text-green/80 border-green/20 hover:border-green/30 flex-1 rounded-xl py-2"
                           >
-                            <ShoppingCart className="w-3 h-3 mr-1" />
+                            <ShoppingCart className="w-3 h-3 mr-2" />
                             Lägg till i portfölj
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleStockChat(recommendation.name, recommendation.symbol)}
-                            className="text-xs bg-white hover:bg-purple-50 text-purple-600 hover:text-purple-700 border-purple-200 hover:border-purple-300 flex-1"
+                            className="text-xs bg-card/50 hover:bg-purple/5 text-purple hover:text-purple/80 border-purple/20 hover:border-purple/30 flex-1 rounded-xl py-2"
                           >
-                            <MessageCircle className="w-3 h-3 mr-1" />
+                            <MessageCircle className="w-3 h-3 mr-2" />
                             Diskutera
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteHolding(recommendation.id, recommendation.name)}
-                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-xs"
+                            className="text-red hover:text-red/80 hover:bg-red/5 text-xs rounded-xl px-3"
                           >
                             <Trash2 className="w-3 h-3" />
                           </Button>
@@ -698,7 +685,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                   </div>
                 ))}
               </div>
-            </>
+            </div>
           )}
         </CardContent>
       </Card>
