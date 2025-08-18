@@ -33,6 +33,7 @@ const Discover = () => {
   
   // Case filters
   const [caseFilter, setCaseFilter] = useState('all');
+  const [caseSearchTerm, setCaseSearchTerm] = useState('');
   
   // Analysis filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -60,23 +61,43 @@ const Discover = () => {
     { id: 'value', name: 'Värde', icon: BarChart3 }
   ];
 
-  // Filter cases based on selected category
+  // Filter cases based on selected category and search term
   const getFilteredCases = () => {
-    if (caseFilter === 'trending') return trendingCases;
-    if (caseFilter === 'all') return allStockCases;
+    let cases = [];
     
-    return allStockCases.filter(stockCase => {
-      switch (caseFilter) {
-        case 'growth':
-          return stockCase.sector === 'Technology' || stockCase.sector === 'Healthcare';
-        case 'dividend':
-          return stockCase.dividend_yield && parseFloat(stockCase.dividend_yield) > 3;
-        case 'value':
-          return stockCase.pe_ratio && parseFloat(stockCase.pe_ratio) < 15;
-        default:
-          return true;
-      }
-    });
+    // First apply category filter
+    if (caseFilter === 'trending') {
+      cases = trendingCases;
+    } else if (caseFilter === 'all') {
+      cases = allStockCases;
+    } else {
+      cases = allStockCases.filter(stockCase => {
+        switch (caseFilter) {
+          case 'growth':
+            return stockCase.sector === 'Technology' || stockCase.sector === 'Healthcare';
+          case 'dividend':
+            return stockCase.dividend_yield && parseFloat(stockCase.dividend_yield) > 3;
+          case 'value':
+            return stockCase.pe_ratio && parseFloat(stockCase.pe_ratio) < 15;
+          default:
+            return true;
+        }
+      });
+    }
+    
+    // Then apply search filter
+    if (caseSearchTerm) {
+      const lowerSearchTerm = caseSearchTerm.toLowerCase();
+      cases = cases.filter(stockCase =>
+        stockCase.title.toLowerCase().includes(lowerSearchTerm) ||
+        stockCase.company_name.toLowerCase().includes(lowerSearchTerm) ||
+        stockCase.content?.toLowerCase().includes(lowerSearchTerm) ||
+        stockCase.sector?.toLowerCase().includes(lowerSearchTerm) ||
+        stockCase.tags?.some((tag: string) => tag.toLowerCase().includes(lowerSearchTerm))
+      );
+    }
+    
+    return cases;
   };
 
   // Filter and sort analyses
@@ -211,6 +232,19 @@ const Discover = () => {
                 <PersonalizedRecommendations />
               </>
             )}
+
+            {/* Search Input */}
+            <div className="max-w-md mx-auto mb-6">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Sök efter case, företag, sektorer..."
+                  value={caseSearchTerm}
+                  onChange={(e) => setCaseSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
 
             {/* Category Filter */}
             <div className="flex flex-wrap gap-2 justify-center">
