@@ -296,14 +296,6 @@ const Discover = () => {
 
           {/* Cases Tab */}
           <TabsContent value="cases" className="space-y-8">
-            {/* AI-Powered Recommendations for logged in users */}
-            {user && (
-              <>
-                <AIWeeklyPicks />
-                <PersonalizedAIRecommendations />
-                <PersonalizedRecommendations />
-              </>
-            )}
 
             {/* Enhanced Search and Filters */}
             <EnhancedStockCasesSearch
