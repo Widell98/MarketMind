@@ -20,11 +20,6 @@ const AppSidebar = () => {
     name: 'AI-Assistent',
     href: '/ai-chat',
     icon: Brain
-  }, {
-    name: 'Avancerade Funktioner',
-    href: '/advanced-features',
-    icon: BarChart3,
-    requiresAuth: true
   }];
   const mainNavigation = [{
     name: 'Hem',
