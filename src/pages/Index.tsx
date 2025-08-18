@@ -397,46 +397,46 @@ const Index = () => {
           {/* Enhanced personal welcome for users without portfolio */}
           {user && !hasPortfolio && !loading && <div className="mb-16">
               <Card className="bg-gradient-to-r from-slate-50 to-indigo-50 dark:from-slate-800 dark:to-indigo-900/20 border-slate-200 dark:border-slate-700 shadow-lg">
-                <div className="p-12 text-center bg-background/80 backdrop-blur-sm rounded-2xl">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-r from-emerald-500 to-blue-600 flex items-center justify-center mx-auto mb-6">
-                    <HandHeart className="w-10 h-10 text-white" />
+                <div className="p-16 text-center bg-card/50 backdrop-blur-sm rounded-3xl border shadow-lg">
+                  <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-8">
+                    <HandHeart className="w-10 h-10 text-primary" />
                   </div>
-                  <h3 className="font-semibold text-2xl mb-3">Välkommen hem! 🏠</h3>
-                  <p className="text-muted-foreground mb-8 text-lg leading-relaxed max-w-2xl mx-auto">
+                  <h3 className="font-semibold text-3xl mb-6 text-foreground">Välkommen hem!</h3>
+                  <p className="text-muted-foreground mb-12 text-lg leading-relaxed max-w-2xl mx-auto font-light">
                     Nu ska vi lära känna varandra ordentligt. Tänk på mig som din personliga guide som hjälper dig 
                     bygga den ekonomiska trygghet du drömmer om. Vi tar det i din takt, steg för steg.
                   </p>
                   
                   {/* Personal journey section */}
-                  <div className="bg-white/60 dark:bg-gray-800/60 rounded-xl p-6 mb-8 border border-slate-200 dark:border-slate-700">
-                    <h4 className="font-semibold mb-4 flex items-center justify-center gap-2">
-                      <MapPin className="w-5 h-5 text-emerald-600" />
+                  <div className="bg-card border rounded-2xl p-8 mb-12 shadow-sm">
+                    <h4 className="font-semibold text-lg mb-6 flex items-center justify-center gap-3 text-foreground">
+                      <MapPin className="w-5 h-5 text-primary" />
                       Din personliga resa börjar här
                     </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                      <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/10 p-3 rounded-lg">
-                        <Coffee className="w-4 h-4 text-emerald-600" />
-                        <span className="font-medium">Berätta om dig</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                      <div className="flex flex-col items-center gap-3 bg-primary/5 p-6 rounded-xl border border-primary/10">
+                        <Coffee className="w-6 h-6 text-primary" />
+                        <span className="font-medium text-foreground">Berätta om dig</span>
                       </div>
-                      <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/10 p-3 rounded-lg">
-                        <HandHeart className="w-4 h-4 text-blue-600" />
-                        <span className="font-medium">Vi skapar trygghet</span>
+                      <div className="flex flex-col items-center gap-3 bg-primary/5 p-6 rounded-xl border border-primary/10">
+                        <HandHeart className="w-6 h-6 text-primary" />
+                        <span className="font-medium text-foreground">Vi skapar trygghet</span>
                       </div>
-                      <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-900/10 p-3 rounded-lg">
-                        <Clock className="w-4 h-4 text-purple-600" />
-                        <span className="font-medium">Vi följs åt framåt</span>
+                      <div className="flex flex-col items-center gap-3 bg-primary/5 p-6 rounded-xl border border-primary/10">
+                        <Clock className="w-6 h-6 text-primary" />
+                        <span className="font-medium text-foreground">Vi följs åt framåt</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Button asChild size="lg" className="bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white">
+                    <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-lg">
                       <Link to="/portfolio-advisor">
                         <Coffee className="w-5 h-5 mr-2" />
                         Låt oss lära känna varandra
                       </Link>
                     </Button>
-                    <Button asChild variant="outline" size="lg" className="border-emerald-500 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800">
+                    <Button asChild variant="outline" size="lg" className="hover:bg-muted/50 font-medium px-8 py-4 rounded-xl transition-all duration-300 text-lg">
                       <Link to="/ai-chat">
                         <HandHeart className="w-5 h-5 mr-2" />
                         Bara prata först
