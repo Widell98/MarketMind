@@ -13,6 +13,7 @@ import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+
 const Index = () => {
   const {
     user
@@ -32,6 +33,7 @@ const Index = () => {
   } = useUserHoldings();
   const hasPortfolio = !loading && !!activePortfolio;
   const totalPortfolioValue = performance.totalPortfolioValue + totalCash;
+  
   return <Layout>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 dark:from-gray-950 dark:via-blue-950/20 dark:to-indigo-950/30">
         <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -417,96 +419,9 @@ const Index = () => {
               </Card>
             </div>}
 
-          {/* Main Action Cards - Only 3 focused cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-            
-            {/* Portfolio Management */}
-            <Card className="bg-card border shadow-lg hover:shadow-xl transition-all duration-300 group cursor-pointer">
-              <Link to={user ? hasPortfolio ? "/portfolio-implementation" : "/portfolio-advisor" : "/auth"} className="block p-8">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <BarChart3 className="w-8 h-8 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-foreground">
-                      {user && hasPortfolio ? "Min Portfölj" : "Skapa Portfölj"}
-                    </h3>
-                    <Badge variant="secondary" className="mt-1">
-                      {user && hasPortfolio ? "Aktiv" : "Ny"}
-                    </Badge>
-                  </div>
-                </div>
-                <p className="text-muted-foreground leading-relaxed mb-4">
-                  {user && hasPortfolio ? "Analysera prestanda, optimera allokering och få AI-drivna insikter om din portfölj." : "Låt AI hjälpa dig bygga en diversifierad portfölj baserad på din riskprofil och mål."}
-                </p>
-                <div className="flex items-center text-primary font-medium group-hover:gap-3 transition-all duration-200">
-                  {user && hasPortfolio ? "Analysera portfölj" : "Skapa portfölj"}
-                  <ArrowUpRight className="w-4 h-4 ml-2 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-200" />
-                </div>
-              </Link>
-            </Card>
-
-            {/* AI Advisor */}
-            <Card className="bg-card border shadow-lg hover:shadow-xl transition-all duration-300 group cursor-pointer">
-              <Link to="/ai-chat" className="block p-8">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <Brain className="w-8 h-8 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-foreground">AI-Rådgivare</h3>
-                    <Badge variant="secondary" className="mt-1">
-                      Personlig
-                    </Badge>
-                  </div>
-                </div>
-                <p className="text-muted-foreground leading-relaxed mb-4">
-                  Få personliga investeringsråd, riskanalys och marknadsinsikter från vår AI-assistent.
-                </p>
-                <div className="flex items-center text-primary font-medium group-hover:gap-3 transition-all duration-200">
-                  Prata med AI
-                  <ArrowUpRight className="w-4 h-4 ml-2 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-200" />
-                </div>
-              </Link>
-            </Card>
-
-            {/* Community */}
-            <Card className="bg-card border shadow-lg hover:shadow-xl transition-all duration-300 group cursor-pointer">
-              <Link to="/stock-cases" className="block p-8">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <Users className="w-8 h-8 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-foreground">Community</h3>
-                    <Badge variant="secondary" className="mt-1">
-                      Upptäck
-                    </Badge>
-                  </div>
-                </div>
-                <p className="text-muted-foreground leading-relaxed mb-4">
-                  Upptäck investeringsmöjligheter, följ andra investerare och dela dina egna analyser.
-                </p>
-                <div className="flex items-center text-primary font-medium group-hover:gap-3 transition-all duration-200">
-                  Utforska community
-                  <ArrowUpRight className="w-4 h-4 ml-2 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-200" />
-                </div>
-              </Link>
-            </Card>
-          </div>
-
-          {/* Latest Cases - Simplified */}
-          <div className="mb-16">
-            <CompactLatestCases />
-          </div>
-
-          {/* Smart Navigation */}
-          <div className="mb-16">
-            <IntelligentRouting />
-          </div>
-
         </div>
       </div>
     </Layout>;
 };
+
 export default Index;
