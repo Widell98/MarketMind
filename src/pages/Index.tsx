@@ -2,7 +2,7 @@ import React from 'react';
 import Layout from '@/components/Layout';
 import IntelligentRouting from '@/components/IntelligentRouting';
 import CompactLatestCases from '@/components/CompactLatestCases';
-import { Brain, UserPlus, BarChart3, Users, ArrowUpRight, TrendingUp, Wallet, Shield, MessageCircle, CheckCircle, Star, Heart, Target } from 'lucide-react';
+import { Brain, UserPlus, BarChart3, Users, ArrowUpRight, TrendingUp, Wallet, Shield, MessageCircle, CheckCircle, Star, Heart, Target, Coffee, HandHeart, MapPin, Clock } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -33,14 +33,14 @@ const Index = () => {
   const hasPortfolio = !loading && !!activePortfolio;
   const totalPortfolioValue = performance.totalPortfolioValue + totalCash;
   return <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 dark:from-gray-950 dark:via-blue-950/20 dark:to-indigo-950/30">
         <div className="container mx-auto px-4 py-8 max-w-6xl">
           
           {/* Hero Section - Only show for non-logged in users */}
           {!user && <div className="text-center mb-16">
               <div className="mb-8">
-                <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-6">
-                  <Heart className="w-4 h-4" />
+                <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 px-4 py-2 rounded-full text-sm font-medium mb-6">
+                  <HandHeart className="w-4 h-4" />
                   Redan 1000+ svenskar litar på oss
                 </div>
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6">
@@ -53,117 +53,118 @@ const Index = () => {
                 </p>
               </div>
 
-              {/* Visual element */}
+              {/* Personal story visualization */}
               <div className="mb-10 relative">
-                <div className="bg-gradient-to-r from-primary/10 via-blue-50 to-purple-50 dark:from-primary/20 dark:via-blue-950/20 dark:to-purple-950/20 rounded-2xl p-8 max-w-md mx-auto border border-primary/20">
+                <div className="bg-gradient-to-r from-slate-100 via-blue-50 to-indigo-100 dark:from-slate-800 dark:via-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-8 max-w-md mx-auto border border-slate-200/50 dark:border-slate-700/50 shadow-lg">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-                      <MessageCircle className="w-5 h-5 text-primary-foreground" />
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 flex items-center justify-center">
+                      <Coffee className="w-5 h-5 text-white" />
                     </div>
                     <div className="text-left">
-                      <p className="text-sm font-medium">Du</p>
-                      <p className="text-xs text-muted-foreground">Just nu</p>
+                      <p className="text-sm font-medium">Anna, 34</p>
+                      <p className="text-xs text-muted-foreground">Precis som du</p>
                     </div>
                   </div>
-                  <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-left text-sm">
-                    "Hjälp mig bygga en portfölj för 100 000 kr med låg risk"
+                  <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-left text-sm shadow-sm">
+                    "Hjälp mig bygga en trygg portfölj för min pension. Jag vill sova gott om nätterna."
                   </div>
                   
                   <div className="flex items-center gap-3 mt-4 mb-2">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center">
-                      <Brain className="w-5 h-5 text-white" />
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-emerald-500 to-blue-500 flex items-center justify-center">
+                      <HandHeart className="w-5 h-5 text-white" />
                     </div>
                     <div className="text-left">
-                      <p className="text-sm font-medium">AI-Rådgivaren</p>
-                      <p className="text-xs text-muted-foreground">Svarar direkt</p>
+                      <p className="text-sm font-medium">Din personliga rådgivare</p>
+                      <p className="text-xs text-muted-foreground">Förstår dina behov</p>
                     </div>
                   </div>
-                  <div className="bg-primary/10 rounded-lg p-3 text-left text-sm">
-                    "Perfekt! Låt mig föreslå en balanserad portfölj med 60% aktier och 40% räntor..."
+                  <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3 text-left text-sm border border-emerald-200 dark:border-emerald-800">
+                    "Jag förstår. Låt mig bygga en trygg portfölj med 70% räntor och 30% stabila aktier. Vi tar det steg för steg tillsammans."
                   </div>
                 </div>
               </div>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-                <Button asChild size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200">
+                <Button asChild size="lg" className="bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200">
                   <Link to="/auth">
                     <UserPlus className="w-5 h-5 mr-2" />
                     Kom igång gratis
                   </Link>
                 </Button>
-                <Button asChild variant="outline" size="lg" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground shadow-md hover:shadow-lg transition-all duration-200">
+                <Button asChild variant="outline" size="lg" className="border-emerald-500 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 shadow-md hover:shadow-lg transition-all duration-200">
                   <Link to="/ai-chat">
-                    <Brain className="w-5 h-5 mr-2" />
+                    <MessageCircle className="w-5 h-5 mr-2" />
                     Se hur det fungerar
                   </Link>
                 </Button>
               </div>
 
-              {/* How it works section */}
+              {/* How it works - with storytelling */}
               <div className="max-w-4xl mx-auto mb-16">
-                <h2 className="text-2xl font-bold text-center mb-8">Så här fungerar det</h2>
+                <h2 className="text-2xl font-bold text-center mb-3">Så här hjälper vi dig</h2>
+                <p className="text-center text-muted-foreground mb-8">Tusentals svenskar har redan gjort resan - nu är det din tur</p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                      <Target className="w-8 h-8 text-primary" />
+                  <div className="text-center group">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
+                      <Coffee className="w-8 h-8 text-blue-600" />
                     </div>
-                    <h3 className="font-semibold mb-2">1. Berätta om dina mål</h3>
-                    <p className="text-muted-foreground text-sm">Dela din risknivå, tidshorizont och vad du vill uppnå</p>
+                    <h3 className="font-semibold mb-2">1. Vi lär känna dig</h3>
+                    <p className="text-muted-foreground text-sm">Som att prata med en vän över kaffe - berätta om dina drömmar och oro</p>
                   </div>
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                      <BarChart3 className="w-8 h-8 text-primary" />
+                  <div className="text-center group">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-emerald-100 to-green-100 dark:from-emerald-900/20 dark:to-green-900/20 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
+                      <HandHeart className="w-8 h-8 text-emerald-600" />
                     </div>
-                    <h3 className="font-semibold mb-2">2. AI bygger din portfölj</h3>
-                    <p className="text-muted-foreground text-sm">Få en skräddarsydd portfölj anpassad efter dina behov</p>
+                    <h3 className="font-semibold mb-2">2. Vi skapar din trygghet</h3>
+                    <p className="text-muted-foreground text-sm">En portfölj byggd med omsorg, anpassad efter just din livssituation</p>
                   </div>
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                      <MessageCircle className="w-8 h-8 text-primary" />
+                  <div className="text-center group">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
+                      <Clock className="w-8 h-8 text-purple-600" />
                     </div>
-                    <h3 className="font-semibold mb-2">3. Bolla löpande med rådgivaren</h3>
-                    <p className="text-muted-foreground text-sm">Alltid tillgänglig för frågor och justeringar</p>
+                    <h3 className="font-semibold mb-2">3. Vi följs åt framåt</h3>
+                    <p className="text-muted-foreground text-sm">Din personliga guide genom livets alla förändringar</p>
                   </div>
                 </div>
               </div>
 
-              {/* Trust section */}
-              <div className="bg-gradient-to-r from-primary/5 to-blue-50 dark:from-primary/10 dark:to-blue-950/20 rounded-2xl p-8 mb-16 border border-primary/20">
-                <h2 className="text-2xl font-bold text-center mb-2">Byggt för vanliga sparare</h2>
+              {/* Trust section with warmer colors */}
+              <div className="bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-800 dark:to-blue-900/20 rounded-2xl p-8 mb-16 border border-slate-200 dark:border-slate-700">
+                <h2 className="text-2xl font-bold text-center mb-2">Byggt med kärlek för vanliga svenskar</h2>
                 <p className="text-center text-muted-foreground mb-8">Lika smart som hedgefonderna, men för alla</p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="text-center">
-                    <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center mx-auto mb-3">
-                      <CheckCircle className="w-6 h-6 text-green-600" />
+                    <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center mx-auto mb-3">
+                      <Clock className="w-6 h-6 text-emerald-600" />
                     </div>
-                    <h3 className="font-semibold mb-1">Alltid tillgänglig</h3>
-                    <p className="text-sm text-muted-foreground">24/7 tillgång till din personliga rådgivare</p>
+                    <h3 className="font-semibold mb-1">Finns när du behöver</h3>
+                    <p className="text-sm text-muted-foreground">Vaknar du mitt i natten och oroar dig? Vi finns här</p>
                   </div>
                   <div className="text-center">
                     <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center mx-auto mb-3">
-                      <MessageCircle className="w-6 h-6 text-blue-600" />
+                      <Coffee className="w-6 h-6 text-blue-600" />
                     </div>
-                    <h3 className="font-semibold mb-1">Ingen krånglig finansjargong</h3>
-                    <p className="text-sm text-muted-foreground">Enkla förklaringar på ren svenska</p>
+                    <h3 className="font-semibold mb-1">Pratar ditt språk</h3>
+                    <p className="text-sm text-muted-foreground">Inga krångliga termer - bara ärliga samtal på svenska</p>
                   </div>
                   <div className="text-center">
-                    <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center mx-auto mb-3">
-                      <Heart className="w-6 h-6 text-purple-600" />
+                    <div className="w-12 h-12 rounded-full bg-pink-100 dark:bg-pink-900/20 flex items-center justify-center mx-auto mb-3">
+                      <HandHeart className="w-6 h-6 text-pink-600" />
                     </div>
-                    <h3 className="font-semibold mb-1">Anpassat för dig</h3>
-                    <p className="text-sm text-muted-foreground">Personliga råd baserat på din situation</p>
+                    <h3 className="font-semibold mb-1">Byggt för din framtid</h3>
+                    <p className="text-sm text-muted-foreground">Varje råd handlar om att du ska må bra och sova gott</p>
                   </div>
                 </div>
               </div>
 
-              {/* Final CTA */}
+              {/* Personal final CTA */}
               <div className="text-center">
-                <h3 className="text-xl font-semibold mb-4">Börja chatta med din rådgivare idag</h3>
-                <Button asChild size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200">
+                <h3 className="text-xl font-semibold mb-4">Din finansiella trygghet väntar på dig</h3>
+                <Button asChild size="lg" className="bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200">
                   <Link to="/auth">
-                    <ArrowUpRight className="w-5 h-5 mr-2" />
-                    Kom igång nu
+                    <HandHeart className="w-5 h-5 mr-2" />
+                    Ta första steget idag
                   </Link>
                 </Button>
               </div>
@@ -330,49 +331,52 @@ const Index = () => {
               </Card>
             </div>}
 
-          {/* Personal welcome for logged-in users without portfolio */}
+          {/* Enhanced personal welcome for users without portfolio */}
           {user && !hasPortfolio && !loading && <div className="mb-16">
-              <Card className="bg-gradient-to-r from-primary/5 to-purple-50 dark:from-primary/10 dark:to-purple-950/20 border-primary/20 shadow-lg">
+              <Card className="bg-gradient-to-r from-slate-50 to-indigo-50 dark:from-slate-800 dark:to-indigo-900/20 border-slate-200 dark:border-slate-700 shadow-lg">
                 <div className="p-8 text-center">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-r from-primary to-purple-600 flex items-center justify-center mx-auto mb-6">
-                    <Heart className="w-10 h-10 text-white" />
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-r from-emerald-500 to-blue-600 flex items-center justify-center mx-auto mb-6">
+                    <HandHeart className="w-10 h-10 text-white" />
                   </div>
-                  <h3 className="font-semibold text-2xl mb-3">Hej där! Kul att du är här 👋</h3>
+                  <h3 className="font-semibold text-2xl mb-3">Välkommen hem! 🏠</h3>
                   <p className="text-muted-foreground mb-8 text-lg leading-relaxed max-w-2xl mx-auto">
-                    Låt oss lära känna dig och bygga en portfölj som passar just din situation. 
-                    Jag finns här för att hjälpa dig varje steg på vägen.
+                    Nu ska vi lära känna varandra ordentligt. Tänk på mig som din personliga guide som hjälper dig 
+                    bygga den ekonomiska trygghet du drömmer om. Vi tar det i din takt, steg för steg.
                   </p>
                   
-                  {/* Getting to know you section */}
-                  <div className="bg-white/60 dark:bg-gray-800/60 rounded-xl p-6 mb-8 border border-primary/20">
-                    <h4 className="font-semibold mb-4">Så här kommer vi igång:</h4>
+                  {/* Personal journey section */}
+                  <div className="bg-white/60 dark:bg-gray-800/60 rounded-xl p-6 mb-8 border border-slate-200 dark:border-slate-700">
+                    <h4 className="font-semibold mb-4 flex items-center justify-center gap-2">
+                      <MapPin className="w-5 h-5 text-emerald-600" />
+                      Din personliga resa börjar här
+                    </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                        <span>Berätta om dina mål</span>
+                      <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/10 p-3 rounded-lg">
+                        <Coffee className="w-4 h-4 text-emerald-600" />
+                        <span className="font-medium">Berätta om dig</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                        <span>Hitta din risknivå</span>
+                      <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/10 p-3 rounded-lg">
+                        <HandHeart className="w-4 h-4 text-blue-600" />
+                        <span className="font-medium">Vi skapar trygghet</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                        <span>Bygg din portfölj</span>
+                      <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-900/10 p-3 rounded-lg">
+                        <Clock className="w-4 h-4 text-purple-600" />
+                        <span className="font-medium">Vi följs åt framåt</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Button asChild size="lg" className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white">
+                    <Button asChild size="lg" className="bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white">
                       <Link to="/portfolio-advisor">
-                        <Target className="w-5 h-5 mr-2" />
-                        Låt oss lära känna dig
+                        <Coffee className="w-5 h-5 mr-2" />
+                        Låt oss lära känna varandra
                       </Link>
                     </Button>
-                    <Button asChild variant="outline" size="lg" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground">
+                    <Button asChild variant="outline" size="lg" className="border-emerald-500 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800">
                       <Link to="/ai-chat">
-                        <MessageCircle className="w-5 h-5 mr-2" />
-                        Prata med rådgivaren först
+                        <HandHeart className="w-5 h-5 mr-2" />
+                        Bara prata först
                       </Link>
                     </Button>
                   </div>
