@@ -196,32 +196,16 @@ export const useAIInsights = () => {
     return insights.slice(0, 3);
   };
 
-  // Load from cache or generate if stale
+  // Only load from cache, never auto-generate
   useEffect(() => {
     if (!activePortfolio || !actualHoldings) return;
     const cached = loadCachedInsights();
     if (cached && isCacheFresh(cached.lastUpdated)) {
       setInsights(cached.insights);
       setLastUpdated(new Date(cached.lastUpdated));
-    } else {
-      generateInsights();
     }
+    // No automatic generation - user must manually refresh
   }, [user?.id, activePortfolio?.id, actualHoldings]);
-
-  // Ensure at most one AI refresh per day (auto-refresh if older than 24h)
-  useEffect(() => {
-    if (!lastUpdated) return;
-
-    const interval = setInterval(() => {
-      const now = new Date();
-      const diffMinutes = (now.getTime() - lastUpdated.getTime()) / (1000 * 60);
-      if (diffMinutes > 1440) {
-        generateInsights();
-      }
-    }, 60 * 60 * 1000); // Check every hour
-
-    return () => clearInterval(interval);
-  }, [lastUpdated]);
 
   return {
     insights,
