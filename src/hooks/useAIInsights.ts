@@ -24,6 +24,32 @@ export const useAIInsights = () => {
   const { actualHoldings } = useUserHoldings();
   const { user } = useAuth();
 
+  // Local daily cache per user+portfolio to avoid too many AI requests
+  const getStorageKey = () => (user?.id && activePortfolio?.id) ? `ai_insights_${user.id}_${activePortfolio.id}` : null;
+  const isCacheFresh = (iso: string) => {
+    const ts = new Date(iso).getTime();
+    return Date.now() - ts < 24 * 60 * 60 * 1000; // 24h
+  };
+  const loadCachedInsights = (): { insights: AIInsight[]; lastUpdated: string } | null => {
+    try {
+      const key = getStorageKey();
+      if (!key) return null;
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+  const saveCachedInsights = (insightsToSave: AIInsight[]) => {
+    try {
+      const key = getStorageKey();
+      if (!key) return;
+      const payload = { insights: insightsToSave, lastUpdated: new Date().toISOString() };
+      localStorage.setItem(key, JSON.stringify(payload));
+    } catch {}
+  };
+
   const generateInsights = async () => {
     if (!activePortfolio || !actualHoldings) return;
     
@@ -72,10 +98,13 @@ export const useAIInsights = () => {
       
       setInsights(parsedInsights);
       setLastUpdated(new Date());
+      saveCachedInsights(parsedInsights);
     } catch (error) {
       console.error('Error generating AI insights:', error);
       // Fallback to static insights based on data
-      setInsights(generateFallbackInsights());
+      const fb = generateFallbackInsights();
+      setInsights(fb);
+      saveCachedInsights(fb);
     } finally {
       setIsLoading(false);
     }
@@ -167,24 +196,29 @@ export const useAIInsights = () => {
     return insights.slice(0, 3);
   };
 
-  // Auto-generate insights when portfolio data changes
+  // Load from cache or generate if stale
   useEffect(() => {
-    if (activePortfolio && actualHoldings && !lastUpdated) {
+    if (!activePortfolio || !actualHoldings) return;
+    const cached = loadCachedInsights();
+    if (cached && isCacheFresh(cached.lastUpdated)) {
+      setInsights(cached.insights);
+      setLastUpdated(new Date(cached.lastUpdated));
+    } else {
       generateInsights();
     }
-  }, [activePortfolio, actualHoldings]);
+  }, [user?.id, activePortfolio?.id, actualHoldings]);
 
-  // Refresh insights every 30 minutes
+  // Ensure at most one AI refresh per day (auto-refresh if older than 24h)
   useEffect(() => {
     if (!lastUpdated) return;
-    
+
     const interval = setInterval(() => {
       const now = new Date();
       const diffMinutes = (now.getTime() - lastUpdated.getTime()) / (1000 * 60);
-      if (diffMinutes > 30) {
+      if (diffMinutes > 1440) {
         generateInsights();
       }
-    }, 5 * 60 * 1000); // Check every 5 minutes
+    }, 60 * 60 * 1000); // Check every hour
 
     return () => clearInterval(interval);
   }, [lastUpdated]);
