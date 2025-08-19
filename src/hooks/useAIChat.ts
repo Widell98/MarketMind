@@ -26,7 +26,7 @@ interface ChatSession {
 export const useAIChat = (portfolioId?: string) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { checkUsageLimit, subscription, usage } = useSubscription();
+  const { checkUsageLimit, subscription, usage, fetchUsage } = useSubscription();
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -583,6 +583,10 @@ export const useAIChat = (portfolioId?: string) => {
         console.error('Error incrementing usage:', usageError);
       } else {
         console.log('Usage incremented successfully');
+        // Fetch updated usage from subscription hook
+        if (typeof fetchUsage === 'function') {
+          await fetchUsage();
+        }
       }
 
       const assistantMessage: Message = {
