@@ -44,24 +44,31 @@ const ChatMessage = ({
 
     // Multiple regex patterns to catch different formats
     const patterns = [
-    // Pattern 1: "Förslag: Company Name (TICKER)"
-    /(?:Förslag|Rekommendation|Aktie):\s*([^(]+?)\s*\(([A-Z]{1,6})\)/gi,
-    // Pattern 2: "**Company Name** (TICKER)"
-    /\*\*([^*]+?)\*\*\s*\(([A-Z]{1,6})\)/g,
-    // Pattern 3: "Company Name (TICKER)" - general pattern
-    /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6})\)/g,
-    // Pattern 4: "1. Company Name (TICKER)" - numbered lists
-    /\d+\.\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
-    // Pattern 5: "- Company Name (TICKER)" - bullet points
-    /-\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
-    // Pattern 6: "• Company Name (TICKER)" - bullet points with bullet
-    /•\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
-    // Pattern 7: TICKER followed by company name
-    /([A-Z]{2,6}):\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
-    // Pattern 8: Company name with ticker in brackets at end of sentence
-    /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{3,})\s+\(([A-Z]{1,6})\)(?=[\s.,!?]|$)/g,
-    // Pattern 9: Company (TICKER) - Sektor: SectorName
-    /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6})\)\s*-\s*Sektor:\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g];
+      // Pattern 1: "Förslag: Company Name (TICKER)"
+      /(?:Förslag|Rekommendation|Aktie):\s*([^(]+?)\s*\(([A-Z]{1,6})\)/gi,
+      // Pattern 2: "**Company Name** (TICKER)"
+      /\*\*([^*]+?)\*\*\s*\(([A-Z]{1,6})\)/g,
+      // Pattern 3: "Company Name (TICKER)" - general pattern
+      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6})\)/g,
+      // Pattern 4: "1. Company Name (TICKER)" - numbered lists
+      /\d+\.\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
+      // Pattern 5: "- Company Name (TICKER)" - bullet points
+      /-\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
+      // Pattern 6: "• Company Name (TICKER)" - bullet points with bullet
+      /•\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
+      // Pattern 7: TICKER followed by company name
+      /([A-Z]{2,6}):\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
+      // Pattern 8: Company name with ticker in brackets at end of sentence
+      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{3,})\s+\(([A-Z]{1,6})\)(?=[\s.,!?]|$)/g,
+      // Pattern 9: Company (TICKER) - Sektor: SectorName
+      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6})\)\s*-\s*Sektor:\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
+      // Pattern 10: More flexible numbered/bulleted lists
+      /(?:^\d+\.|\*|-|•)\s*([^(]{2,50}?)\s*\(([A-Z]{1,6})\)/gm,
+      // Pattern 11: Catch any company name in parentheses with ticker
+      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,50}?)\s*\(([A-Z]{1,6})\)(?:\s*-|\s*:|\s*,|\s*\.|\s*$)/g,
+      // Pattern 12: Simple ticker pattern
+      /\b([A-Z]{2,6})\b\s*-\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,50})/g
+    ];
 
     // Get existing holdings symbols to filter out
     const existingSymbols = new Set(actualHoldings.map(holding => holding.symbol?.toUpperCase()).filter(Boolean));
@@ -72,15 +79,21 @@ const ChatMessage = ({
         let name, symbol, sector;
 
         // Handle different capture group orders based on pattern
-        if (patterns.indexOf(pattern) === 6) {
+        const patternIndex = patterns.indexOf(pattern);
+        
+        if (patternIndex === 6) {
           // Pattern 7: TICKER: Company
           symbol = match[1].trim();
           name = match[2].trim();
-        } else if (patterns.indexOf(pattern) === 8) {
+        } else if (patternIndex === 8) {
           // Pattern 9: Company (TICKER) - Sektor: SectorName
           name = match[1].trim();
           symbol = match[2].trim();
-          sector = match[3].trim();
+          sector = match[3]?.trim();
+        } else if (patternIndex === 11) {
+          // Pattern 12: TICKER - Company
+          symbol = match[1].trim();
+          name = match[2].trim();
         } else {
           name = match[1].trim();
           symbol = match[2].trim();
