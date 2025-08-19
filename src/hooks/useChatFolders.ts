@@ -238,7 +238,7 @@ export const useChatFolders = () => {
       loadFolders();
       loadSessions();
     }
-  }, [user, loadFolders, loadSessions]);
+  }, [user]); // Remove loadFolders and loadSessions from dependencies to prevent infinite loop
 
   return {
     folders,
