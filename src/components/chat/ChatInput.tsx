@@ -66,8 +66,8 @@ const ChatInput = memo(({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
-          <div className="relative">
+        <form onSubmit={handleSubmit} className="flex gap-2 sm:gap-3 max-w-4xl mx-auto">
+          <div className="flex-1 relative min-w-0">
             {/* Credits indicator above input */}
             <div className="flex items-center justify-between mb-2 px-1">
               <CreditsIndicator type="ai_message" onUpgrade={() => setShowUpgradeModal(true)} />
@@ -78,31 +78,26 @@ const ChatInput = memo(({
               onChange={(e) => setInput(e.target.value)}
               placeholder={isAtLimit ? "Uppgradera till Premium för fler meddelanden" : "Skriv ditt meddelande här... (kostar 1 credit)"}
               disabled={isLoading || quotaExceeded}
-              className="min-h-[44px] max-h-[200px] bg-background border shadow-sm rounded-xl text-sm sm:text-base px-3 sm:px-4 pb-12 transition-all duration-200 focus:shadow-md resize-none"
+              className="min-h-[40px] max-h-[120px] bg-background border shadow-sm rounded-xl text-sm sm:text-base px-3 sm:px-4 pr-10 transition-all duration-200 focus:shadow-md resize-none"
               style={{ fontSize: '16px' }}
-              rows={2}
+              rows={1}
             />
-            <div className="absolute right-3 top-16 text-muted-foreground pointer-events-none">
+            <div className="absolute right-3 top-[50px] text-muted-foreground pointer-events-none">
               <MessageSquare className="w-4 h-4" />
             </div>
           </div>
-          
-          {/* Send button centered below textarea */}
-          <div className="flex justify-center mt-3">
-            <Button
-              type="submit"
-              disabled={!input.trim() || isLoading || quotaExceeded}
-              size="default"
-              className="h-10 sm:h-11 lg:h-12 px-6 sm:px-8 lg:px-10 bg-primary hover:bg-primary/90 shadow-sm rounded-xl text-sm font-medium transition-all duration-200 hover:shadow-md text-primary-foreground"
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <Send className="w-4 h-4 mr-2" />
-              )}
-              Skicka
-            </Button>
-          </div>
+          <Button
+            type="submit"
+            disabled={!input.trim() || isLoading || quotaExceeded}
+            size="default"
+            className="h-10 sm:h-11 lg:h-12 px-3 sm:px-4 lg:px-4 bg-primary hover:bg-primary/90 shadow-sm rounded-xl text-sm font-medium transition-all duration-200 hover:shadow-md text-primary-foreground flex-shrink-0 self-end"
+          >
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+          </Button>
         </form>
 
         {/* Premium Badge for Premium Users */}
