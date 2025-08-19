@@ -15,6 +15,7 @@ import { useAIInsights } from '@/hooks/useAIInsights';
 import { useFinancialProgress } from '@/hooks/useFinancialProgress';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import MicroTips from '@/components/MicroTips';
 const Index = () => {
   const {
     user
@@ -298,9 +299,7 @@ const Index = () => {
                           </Button>
                         </div>
                       </div>
-                    </div> : <div className="bg-card border rounded-xl p-6">
-                      
-                    </div>}
+                    </div> : <MicroTips userContext={`Användare med ${actualHoldings?.length || 0} innehav och ${totalCash.toLocaleString('sv-SE')} kr i kontanter`} />}
                 </div>
 
                 {/* Portfolio Overview Cards */}
