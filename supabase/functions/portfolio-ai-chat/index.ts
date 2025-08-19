@@ -329,14 +329,8 @@ PORTFÖLJREKOMMENDATIONER:
       }
     }
 
-    // Dynamic model selection based on request complexity
-    let model = 'gpt-5-mini-2025-08-07'; // Default fast model
-    
-    if (isStockAnalysisRequest || isPortfolioOptimizationRequest) {
-      model = 'gpt-5-2025-08-07'; // Use flagship model for complex analysis
-    } else if (message.length > 200 || chatHistory.length > 15) {
-      model = 'gpt-5-2025-08-07'; // Use flagship model for complex conversations
-    }
+    // Force using gpt-4o to avoid streaming restrictions and reduce cost
+    const model = 'gpt-4o';
 
     console.log('Selected model:', model, 'for request type:', {
       isStockAnalysis: isStockAnalysisRequest,
@@ -377,7 +371,7 @@ PORTFÖLJREKOMMENDATIONER:
       body: JSON.stringify({
         model,
         messages,
-        max_completion_tokens: 4000,
+        max_tokens: 2000,
         stream: true,
       }),
     });
