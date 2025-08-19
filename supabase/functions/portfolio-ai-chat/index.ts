@@ -52,47 +52,42 @@ serve(async (req) => {
 
     console.log('Supabase client initialized');
 
-    // Fetch AI memory for this user
-    const { data: aiMemory } = await supabase
-      .from('user_ai_memory')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    // Fetch enhanced context data
-    const { data: riskProfile } = await supabase
-      .from('user_risk_profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const { data: portfolio } = await supabase
-      .from('user_portfolios')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('is_active', true)
-      .maybeSingle();
-
-    const { data: holdings } = await supabase
-      .from('user_holdings')
-      .select('*')
-      .eq('user_id', userId);
-
-    const { data: insights } = await supabase
-      .from('portfolio_insights')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    const { data: recommendations } = await supabase
-      .from('portfolio_recommendations')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(3);
+    // Fetch all user data in parallel for better performance
+    const [
+      { data: aiMemory },
+      { data: riskProfile },
+      { data: portfolio },
+      { data: holdings },
+      { data: subscriber }
+    ] = await Promise.all([
+      supabase
+        .from('user_ai_memory')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle(),
+      supabase
+        .from('user_risk_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from('user_portfolios')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .maybeSingle(),
+      supabase
+        .from('user_holdings')
+        .select('*')
+        .eq('user_id', userId),
+      supabase
+        .from('subscribers')
+        .select('subscribed')
+        .eq('user_id', userId)
+        .maybeSingle()
+    ]);
 
     // ENHANCED INTENT DETECTION FOR PROFILE UPDATES
     const detectProfileUpdates = (message: string) => {
@@ -133,13 +128,6 @@ serve(async (req) => {
     };
 
     const profileChangeDetection = detectProfileUpdates(message);
-
-    // Check subscription status for rate limiting
-    const { data: subscriber } = await supabase
-      .from('subscribers')
-      .select('subscribed')
-      .eq('user_id', userId)
-      .maybeSingle();
 
     const isPremium = subscriber?.subscribed || false;
     console.log('User premium status:', isPremium);
@@ -235,96 +223,33 @@ serve(async (req) => {
       }
     };
 
-    // Build enhanced context with AI memory
-    let contextInfo = `Du är en professionell AI-investeringsrådgivare och aktieanalytiker som ger djupgående analyser och personliga rekommendationer på svenska.`;
+    // Build optimized context - shorter for better performance
+    let contextInfo = `Du är en professionell investeringsrådgivare på svenska. 
 
-    // Add conversation memory context
-    if (aiMemory) {
-      contextInfo += `\n\nPERSONLIGHETSMINNE (anpassa ditt svar baserat på detta):
-- Kommunikationsstil: ${aiMemory.communication_style}
-- Föredragen responslängd: ${aiMemory.preferred_response_length} 
-- Expertis-nivå: ${aiMemory.expertise_level}
-- Totala konversationer: ${aiMemory.total_conversations}`;
+VIKTIGA FORMATERINGSREGLER:
+- Använd ALDRIG slumpmässiga siffror före rubriker
+- Skriv naturligt utan onödig numrering
+- Använd markdown-formattering (**fetstil**) för viktiga begrepp
+- Håll svar koncisa och fokuserade
 
-      if (aiMemory.frequently_asked_topics?.length > 0) {
-        contextInfo += `\n- Ofta diskuterade ämnen: ${aiMemory.frequently_asked_topics.join(', ')}`;
-      }
-      if (aiMemory.favorite_sectors?.length > 0) {
-        contextInfo += `\n- Favoritbranscher: ${aiMemory.favorite_sectors.join(', ')}`;
-      }
-      if (aiMemory.current_goals?.length > 0) {
-        contextInfo += `\n- Aktuella mål: ${aiMemory.current_goals.join(', ')}`;
-      }
+KOMPETENSER:
+1. Aktieanalys med fundamental/teknisk analys, värdering, risker och KÖP/SÄLJ-rekommendation
+2. Portföljrekommendationer med specifika aktier/fonder inklusive ticker: **Företag (SYMBOL)**
+3. Personliga investeringsråd baserat på användarprofil`;
+
+    // Add brief user context if available
+    if (aiMemory?.communication_style) {
+      contextInfo += `\n\nAnpassa svaret: ${aiMemory.communication_style === 'detailed' ? 'Detaljerat' : 'Koncist'} svar.`;
     }
 
-    // Add conversation history context
-    if (chatHistory && chatHistory.length > 0) {
-      const recentHistory = chatHistory.slice(-8);
-      contextInfo += `\n\nSENASTE KONVERSATION (för sammanhang):\n`;
-      recentHistory.forEach((msg: any, index: number) => {
-        contextInfo += `${msg.role === 'user' ? 'Användare' : 'Du'}: ${msg.content.substring(0, 150)}${msg.content.length > 150 ? '...' : ''}\n`;
-      });
-    }
-
-    // Add comprehensive system prompt
-    contextInfo += `
-
-HUVUDKOMPETENSER:
-1. DJUP AKTIEANALYS som en professionell analytiker
-2. PORTFÖLJREKOMMENDATIONER med specifika tillgångar  
-3. MARKNADSINSIKTER och värdering av enskilda aktier
-
-AKTIEANALYS RIKTLINJER:
-När användaren frågar om en specifik aktie, ge en professionell aktieanalys som inkluderar:
-
-**FUNDAMENTAL ANALYS:**
-- Affärsmodell och verksamhet
-- Finansiell prestanda (intäkter, vinst, skuldsättning)
-- Konkurrensposition och marknadsledarskap
-- Ledning och företagsstyrning
-- Framtidsutsikter och tillväxtpotential
-
-**TEKNISK ANALYS:**
-- Kursutveckling senaste tiden
-- Värdering (P/E, P/B, EV/EBITDA etc.)
-- Jämförelse med branschsnitt
-- Support- och motståndsnivåer
-
-**INVESTERINGSSYN:**
-- KÖP/BEHÅLL/SÄLJ rekommendation med motivering
-- Kursmål och tidshorisont
-- Huvudsakliga risker och möjligheter
-- Passar för vilken typ av investerare
-
-PORTFÖLJREKOMMENDATIONER:
-- Ge ENDAST specifika aktie- och fondrekommendationer med EXAKTA namn och symboler
-- ALLA aktier och fonder MÅSTE ha ticker/symbol i parenteser: **Företag (SYMBOL)**
-- Föreslå 5-8 konkreta investeringar med tydliga motiveringar
-- Inkludera svenska aktier, nordiska fonder och relevanta ETF:er`;
-
-    // Only add user profile information for personal advice requests
-    if (isPersonalAdviceRequest || isExchangeRequest || isPortfolioOptimizationRequest) {
-      if (riskProfile) {
-        contextInfo += `\n\nANVÄNDARPROFIL:
-- Ålder: ${riskProfile.age || 'Ej angivet'} år
-- Erfarenhetsnivå: ${riskProfile.investment_experience === 'beginner' ? 'Nybörjare' : riskProfile.investment_experience === 'intermediate' ? 'Mellannivå' : 'Erfaren'}
-- Risktolerans: ${riskProfile.risk_tolerance === 'conservative' ? 'Konservativ' : riskProfile.risk_tolerance === 'moderate' ? 'Måttlig' : 'Aggressiv'}
-- Tidshorisont: ${riskProfile.investment_horizon === 'short' ? 'Kort (1-3 år)' : riskProfile.investment_horizon === 'medium' ? 'Medel (3-7 år)' : 'Lång (7+ år)'}
-- Månatlig budget: ${riskProfile.monthly_investment_amount ? riskProfile.monthly_investment_amount.toLocaleString() + ' SEK' : 'Ej angivet'}`;
-        
-        if (riskProfile.annual_income) {
-          contextInfo += `\n- Årsinkomst: ${riskProfile.annual_income.toLocaleString()} SEK`;
-        }
-      }
-
+    // Add essential user info for personalized advice (optimized)
+    if ((isPersonalAdviceRequest || isExchangeRequest || isPortfolioOptimizationRequest) && riskProfile) {
+      contextInfo += `\n\nPROFIL: ${riskProfile.risk_tolerance === 'conservative' ? 'Konservativ' : riskProfile.risk_tolerance === 'moderate' ? 'Måttlig' : 'Aggressiv'} risk, ${riskProfile.investment_horizon === 'short' ? 'kort' : riskProfile.investment_horizon === 'medium' ? 'medel' : 'lång'} sikt`;
+      
       if (holdings && holdings.length > 0) {
         const actualHoldings = holdings.filter(h => h.holding_type !== 'recommendation');
-        
         if (actualHoldings.length > 0) {
-          contextInfo += `\n\nNUVARANDE INNEHAV (UNDVIK DESSA I KÖP-REKOMMENDATIONER):`;
-          actualHoldings.forEach(holding => {
-            contextInfo += `\n- ${holding.name} (${holding.symbol || 'N/A'})`;
-          });
+          contextInfo += `\nNuvarande: ${actualHoldings.map(h => h.symbol || h.name).slice(0, 5).join(', ')}`;
         }
       }
     }
