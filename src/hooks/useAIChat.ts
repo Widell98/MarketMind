@@ -13,6 +13,8 @@ interface Message {
     analysisType?: string;
     confidence?: number;
     isExchangeRequest?: boolean;
+    profileUpdates?: any;
+    requiresConfirmation?: boolean;
   };
 }
 
@@ -499,122 +501,140 @@ export const useAIChat = (portfolioId?: string) => {
   }, [user, portfolioId, toast]);
 
   const sendMessageToSession = useCallback(async (content: string, sessionId?: string) => {
-    console.log('=== SEND MESSAGE TO SESSION DEBUG ===');
+    console.log('=== SEND MESSAGE TO SESSION ===');
     console.log('Content:', content);
-    console.log('User ID:', user?.id);
+    console.log('Session ID to use:', sessionId || currentSessionId);
     console.log('Portfolio ID:', portfolioId);
-    console.log('Session ID (param):', sessionId);
-    console.log('Current Session ID:', currentSessionId);
     
     const targetSessionId = sessionId || currentSessionId;
     
-    if (!user || !targetSessionId) {
-      console.log('Cannot send message: missing user or session ID');
+    if (!user || !content.trim() || !targetSessionId) {
+      console.log('Missing required data for sending message');
       return;
     }
-
+    
     setIsLoading(true);
-    setQuotaExceeded(false);
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content,
-      timestamp: new Date(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    console.log('Added user message to UI');
-
+    
     try {
-      console.log('=== CALLING EDGE FUNCTION ===');
-      console.log('Function name: portfolio-ai-chat');
+      // Add user message to UI immediately
+      const userMessage: Message = {
+        id: Date.now().toString() + '_user',
+        role: 'user',
+        content: content.trim(),
+        timestamp: new Date()
+      };
       
-      // Detect if this is an exchange request
-      const isExchangeRequest = /(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|amerikanska|svenska|europeiska|asiatiska|aktier|innehav)/i.test(content);
+      setMessages(prev => [...prev, userMessage]);
       
-      console.log('Request payload:', {
-        message: content,
-        userId: user.id,
-        portfolioId,
-        sessionId: targetSessionId,
-        contextType: 'advisory',
-        isExchangeRequest: isExchangeRequest,
-      });
-
+      console.log('Calling Supabase function with chat history...');
+      
+      // Send chat history for context (last 10 messages)
+      const chatHistoryForAPI = messages.slice(-10).map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+      
       const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
         body: {
-          message: content,
+          message: content.trim(),
           userId: user.id,
-          portfolioId,
+          portfolioId: portfolioId,
           sessionId: targetSessionId,
-          contextType: 'advisory',
-        },
+          chatHistory: chatHistoryForAPI, // Include conversation history
+          analysisType: 'general'
+        }
       });
 
-      console.log('=== EDGE FUNCTION RESPONSE ===');
-      console.log('Error:', error);
-      console.log('Data:', data);
-
       if (error) {
-        console.error('AI function error:', error);
-        if (error.message?.includes('quota') || error.message?.includes('429')) {
-          setQuotaExceeded(true);
-          toast({
-            title: "API-kvot överskriden",
-            description: "Du har nått din dagliga gräns för AI-användning. Försök igen senare.",
-            variant: "destructive",
-          });
-          return;
-        }
+        console.error('Supabase function error:', error);
         throw error;
       }
 
-      console.log('AI response received:', data);
+      console.log('Function response data:', data);
 
-      // Increment usage after successful API call
-      console.log('Incrementing AI usage...');
-      const { error: usageError } = await supabase.rpc('increment_ai_usage', {
-        _user_id: user.id,
-        _usage_type: 'ai_message'
-      });
-
-      if (usageError) {
-        console.error('Error incrementing usage:', usageError);
-      } else {
-        console.log('Usage incremented successfully');
-        // Fetch updated usage from subscription hook
-        if (typeof fetchUsage === 'function') {
-          await fetchUsage();
+      if (data.success) {
+        console.log('Message sent successfully');
+        
+        // Check for profile update suggestions
+        if (data.requiresConfirmation && data.detectedProfileUpdates) {
+          // Add AI response with profile update confirmation
+          const aiMessageWithConfirmation: Message = {
+            id: Date.now().toString() + '_ai_confirmation',
+            role: 'assistant',
+            content: data.response,
+            timestamp: new Date(),
+            context: {
+              profileUpdates: data.detectedProfileUpdates,
+              requiresConfirmation: true
+            }
+          };
+          
+          setMessages(prev => [...prev, aiMessageWithConfirmation]);
+        } else {
+          // Regular AI response
+          const aiMessage: Message = {
+            id: Date.now().toString() + '_ai',
+            role: 'assistant',
+            content: data.response,
+            timestamp: new Date(),
+            context: {
+              analysisType: data.analysisType,
+              confidence: data.confidence
+            }
+          };
+          
+          setMessages(prev => [...prev, aiMessage]);
         }
+        
+        // Track usage
+        await fetchUsage();
+        
+      } else {
+        console.error('Function returned error:', data.error);
+        throw new Error(data.error || 'Unknown error occurred');
       }
-
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: data.response,
-        timestamp: new Date(),
-        context: {
-          analysisType: data.analysisType,
-          confidence: data.confidence,
-          isExchangeRequest: data.isExchangeRequest || isExchangeRequest,
-        },
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
-      console.log('Added assistant message to UI');
       
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
         title: "Fel",
-        description: `Kunde inte skicka meddelandet: ${error.message}`,
+        description: "Kunde inte skicka meddelandet. Försök igen.",
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
-  }, [user, portfolioId, currentSessionId, toast]);
+  }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage]);
+
+  // Function to update user profile based on AI-detected changes
+  const updateUserProfile = useCallback(async (profileUpdates: any) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('user_risk_profiles')
+        .update(profileUpdates)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Profil uppdaterad",
+        description: "Din investeringsprofil har uppdaterats baserat på din konversation.",
+      });
+
+      // Send confirmation message to AI
+      const confirmationMessage = `Min profil har uppdaterats: ${Object.entries(profileUpdates).map(([key, value]) => `${key}: ${value}`).join(', ')}`;
+      await sendMessage(confirmationMessage);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte uppdatera profilen. Försök igen.",
+        variant: "destructive",
+      });
+    }
+  }, [user, toast, sendMessage]);
 
   const analyzePortfolio = useCallback(async (analysisType: 'risk' | 'diversification' | 'performance' | 'optimization') => {
     if (!user || !portfolioId) return;
@@ -710,5 +730,6 @@ export const useAIChat = (portfolioId?: string) => {
     editSessionName,
     clearMessages,
     getQuickAnalysis,
+    updateUserProfile,
   };
 };
