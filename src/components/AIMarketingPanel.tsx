@@ -5,9 +5,42 @@ import { Badge } from '@/components/ui/badge';
 import { Brain, Zap, TrendingUp, Target, Sparkles, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 const AIMarketingPanel = () => {
-  return <div className="space-y-6">
+  return (
+    <div className="space-y-6">
       {/* AI Features Card */}
-      
+      <Card className="bg-card/50 backdrop-blur-sm border-border/30 shadow-lg">
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <Brain className="w-5 h-5 text-primary" />
+            </div>
+            <CardTitle className="text-lg">AI-drivna funktioner</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/50 border border-border/20">
+            <TrendingUp className="w-5 h-5 text-primary" />
+            <div>
+              <p className="font-medium text-sm">Marknadsanalys</p>
+              <p className="text-xs text-muted-foreground">Realtidsinsikter</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/50 border border-border/20">
+            <Target className="w-5 h-5 text-primary" />
+            <div>
+              <p className="font-medium text-sm">Portföljoptimering</p>
+              <p className="text-xs text-muted-foreground">AI-rekommendationer</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/50 border border-border/20">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <div>
+              <p className="font-medium text-sm">Personliga råd</p>
+              <p className="text-xs text-muted-foreground">Baserat på din profil</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Upgrade Prompt */}
       <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20 shadow-lg">
@@ -29,6 +62,7 @@ const AIMarketingPanel = () => {
           </div>
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
 };
 export default AIMarketingPanel;
