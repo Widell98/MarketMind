@@ -1121,16 +1121,16 @@ const ChatPortfolioAdvisor = () => {
           {/* Show AI response when complete */}
           {isComplete && portfolioResult && (
             <div className="flex gap-2 sm:gap-3 items-start">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-                <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600" />
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="bg-green-50 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border border-green-200 shadow-sm">
-                  <div className="prose prose-sm max-w-none">
+                <div className="bg-primary/10 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border border-primary/20 shadow-sm">
+                  <div className="prose prose-sm max-w-none text-foreground">
                     {formatAIResponse(portfolioResult.aiResponse)}
                   </div>
                   
-                  <div className="mt-4 pt-4 border-t border-green-200">
+                  <div className="mt-4 pt-4 border-t border-primary/20">
                     <Button 
                       onClick={handleImplementStrategy}
                       className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
