@@ -9,6 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import ChatMessages from './chat/ChatMessages';
 import ChatInput from './chat/ChatInput';
 import ProfileUpdateConfirmation from './ProfileUpdateConfirmation';
+import ProfileContextCard from './chat/ProfileContextCard';
 import ChatFolderSidebar from './chat/ChatFolderSidebar';
 import { LogIn, MessageSquare, Brain, ArrowLeft, Lock, Sparkles, Crown, Menu, PanelLeftClose, PanelLeft } from 'lucide-react';
 import HelpButton from '@/components/HelpButton';
