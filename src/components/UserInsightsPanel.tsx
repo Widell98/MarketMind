@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import CreditsIndicator from '@/components/CreditsIndicator';
 
 interface AIInsight {
   id: string;
@@ -36,7 +37,7 @@ const UserInsightsPanel = () => {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [hasInitialLoad, setHasInitialLoad] = useState(false);
   const { user } = useAuth();
-  const { subscription } = useSubscription();
+  const { subscription, checkUsageLimit } = useSubscription();
   const { toast } = useToast();
 
   const isPremiumUser = subscription?.subscribed;
@@ -81,10 +82,10 @@ const UserInsightsPanel = () => {
       return;
     }
 
-    if (!isPremiumUser) {
+    if (!checkUsageLimit('insights')) {
       toast({
-        title: "Premium krävs",
-        description: "Uppgradera till Premium för att hämta AI-insikter.",
+        title: "Credits slut",
+        description: "Du har förbrukat dina 5 dagliga credits. Uppgradera till Premium för obegränsad användning.",
         variant: "destructive",
       });
       return;
@@ -247,7 +248,7 @@ const UserInsightsPanel = () => {
             <div className="min-w-0 flex-1">
               <CardTitle className="text-base">AI-Insikter & Rekommendationer</CardTitle>
               <CardDescription className="text-xs">
-                {user ? 'Personliga investeringsinsikter' : 'Allmänna marknadsinsikter'}
+                {user ? 'Personliga investeringsinsikter' : 'Allmänna marknadsinsikter'} • Kostar 1 credit
                 {lastUpdated && (
                   <span className="block text-xs text-muted-foreground mt-1">
                     Senast uppdaterad: {lastUpdated}
@@ -256,19 +257,22 @@ const UserInsightsPanel = () => {
               </CardDescription>
             </div>
           </div>
-          <Button
-            size="sm"
-            onClick={handleRefresh}
-            disabled={loading}
-            className="text-xs shrink-0 w-8 h-8 p-0"
-            variant="outline"
-          >
-            {loading ? (
-              <RefreshCw className="w-3 h-3 animate-spin" />
-            ) : (
-              <RefreshCw className="w-3 h-3" />
-            )}
-          </Button>
+          <div className="flex items-center gap-2">
+            <CreditsIndicator type="insights" showUpgrade={false} />
+            <Button
+              size="sm"
+              onClick={handleRefresh}
+              disabled={loading}
+              className="text-xs shrink-0 w-8 h-8 p-0"
+              variant="outline"
+            >
+              {loading ? (
+                <RefreshCw className="w-3 h-3 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3 h-3" />
+              )}
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -301,10 +305,10 @@ const UserInsightsPanel = () => {
           <div className="text-center py-6">
             <Brain className="w-8 h-8 mx-auto mb-3 opacity-50" />
             <p className="text-sm text-muted-foreground mb-3">
-              {hasInitialLoad ? 'Inga AI-insikter tillgängliga' : 'Klicka på uppdatera för att hämta AI-insikter'}
+              {hasInitialLoad ? 'Inga AI-insikter tillgängliga' : 'Klicka på uppdatera för att hämta AI-insikter (kostar 1 credit)'}
             </p>
             <div className="w-full max-w-sm mx-auto">
-              {isPremiumUser && user ? (
+              {checkUsageLimit('insights') && user ? (
                 <Button 
                   size="sm" 
                   onClick={handleRefresh}
@@ -312,13 +316,13 @@ const UserInsightsPanel = () => {
                   className="w-full"
                 >
                   <Brain className="w-3 h-3 mr-2" />
-                  Hämta insikter
+                  Hämta insikter (1 credit)
                 </Button>
               ) : (
                 <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
                   <Crown className="w-5 h-5 mx-auto mb-2 text-blue-600" />
                   <p className="text-xs text-blue-700 font-medium">
-                    {!user ? 'Logga in för AI-insikter' : 'Premium krävs för att hämta AI-insikter'}
+                    {!user ? 'Logga in för AI-insikter' : 'Inga credits kvar idag - Uppgradera till Premium'}
                   </p>
                 </div>
               )}

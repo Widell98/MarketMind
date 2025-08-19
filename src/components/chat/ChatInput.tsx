@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import PremiumUpgradeModal from './PremiumUpgradeModal';
+import CreditsIndicator from '@/components/CreditsIndicator';
 
 interface ChatInputProps {
   input: string;
@@ -67,11 +68,15 @@ const ChatInput = memo(({
 
         <form onSubmit={handleSubmit} className="flex gap-2 sm:gap-3 max-w-4xl mx-auto">
           <div className="flex-1 relative min-w-0">
+            {/* Credits indicator above input */}
+            <div className="flex items-center justify-between mb-2 px-1">
+              <CreditsIndicator type="ai_message" onUpgrade={() => setShowUpgradeModal(true)} />
+            </div>
             <Input
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={isAtLimit ? "Uppgradera för att fortsätta chatta..." : "Skriv din fråga här..."}
+              placeholder={isAtLimit ? "Uppgradera till Premium för fler meddelanden" : "Skriv ditt meddelande här... (kostar 1 credit)"}
               disabled={isLoading || quotaExceeded}
               className="h-10 sm:h-11 lg:h-12 bg-background border shadow-sm rounded-xl text-sm sm:text-base px-3 sm:px-4 pr-10 transition-all duration-200 focus:shadow-md resize-none"
               style={{ fontSize: '16px' }}

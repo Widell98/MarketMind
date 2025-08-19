@@ -2,7 +2,7 @@ import React from 'react';
 import Layout from '@/components/Layout';
 import IntelligentRouting from '@/components/IntelligentRouting';
 import CompactLatestCases from '@/components/CompactLatestCases';
-import { Brain, UserPlus, BarChart3, Users, ArrowUpRight, TrendingUp, Wallet, Shield, MessageCircle, CheckCircle, Star, Heart, Target, Coffee, HandHeart, MapPin, Clock, Zap, DollarSign, MessageSquare, Settings, Building2, RefreshCw } from 'lucide-react';
+import { Brain, UserPlus, BarChart3, Users, ArrowUpRight, TrendingUp, Wallet, Shield, MessageCircle, CheckCircle, Star, Heart, Target, Coffee, HandHeart, MapPin, Clock, Zap, DollarSign, MessageSquare, Settings, Building2, RefreshCw, Crown } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -14,7 +14,8 @@ import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAIInsights } from '@/hooks/useAIInsights';
 import { useFinancialProgress } from '@/hooks/useFinancialProgress';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+import { useSubscription } from '@/hooks/useSubscription';
+import CreditsIndicator from '@/components/CreditsIndicator';
 const Index = () => {
   const {
     user
@@ -37,9 +38,15 @@ const Index = () => {
     isLoading: insightsLoading,
     refreshInsights
   } = useAIInsights();
+  const { subscription, createCheckout } = useSubscription();
   const progressData = useFinancialProgress();
   const hasPortfolio = !loading && !!activePortfolio;
   const totalPortfolioValue = performance.totalPortfolioValue; // Already includes cash
+  const isPremium = subscription?.subscribed;
+
+  const handleUpgrade = () => {
+    createCheckout('premium');
+  };
   return <Layout>
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-12 max-w-6xl">
@@ -287,9 +294,12 @@ const Index = () => {
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-2">
                             <p className="font-medium text-foreground">AI-insikt för dig</p>
-                            <Badge variant="secondary" className="text-xs">
-                              {insights[0]?.confidence > 0.8 ? 'Hög tillförlitlighet' : 'Medel tillförlitlighet'}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="text-xs">
+                                {insights[0]?.confidence > 0.8 ? 'Hög tillförlitlighet' : 'Medel tillförlitlighet'}
+                              </Badge>
+                              <CreditsIndicator type="insights" showUpgrade={false} />
+                            </div>
                           </div>
                           <p className="text-muted-foreground mb-3">
                             {insights[0]?.message}
@@ -308,7 +318,7 @@ const Index = () => {
                               className="text-xs"
                             >
                               <RefreshCw className="w-3 h-3 mr-1" />
-                              Uppdatera
+                              Uppdatera (1 credit)
                             </Button>
                           </div>
                         </div>
@@ -321,8 +331,11 @@ const Index = () => {
                         <div className="flex-1">
                           <p className="font-medium text-foreground mb-1">Få AI-insikter för din portfölj</p>
                           <p className="text-muted-foreground mb-3">
-                            Klicka för att generera personliga investeringsinsikter. Kostar AI-credits.
+                            Klicka för att generera personliga investeringsinsikter. <span className="font-medium text-primary">Kostar 1 credit.</span>
                           </p>
+                          <div className="flex items-center gap-3 mb-3">
+                            <CreditsIndicator type="insights" onUpgrade={handleUpgrade} />
+                          </div>
                           <Button 
                             size="sm" 
                             onClick={refreshInsights}
@@ -330,7 +343,7 @@ const Index = () => {
                             className="text-xs"
                           >
                             <Brain className="w-3 h-3 mr-1" />
-                            Generera insikter
+                            Generera insikter (1 credit)
                           </Button>
                         </div>
                       </div>
