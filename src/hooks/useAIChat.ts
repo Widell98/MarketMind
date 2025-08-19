@@ -534,13 +534,14 @@ export const useAIChat = (portfolioId?: string) => {
         content: msg.content
       }));
       
+      // Handle streaming response using supabase functions
       const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
         body: {
           message: content.trim(),
           userId: user.id,
           portfolioId: portfolioId,
           sessionId: targetSessionId,
-          chatHistory: chatHistoryForAPI, // Include conversation history
+          chatHistory: chatHistoryForAPI,
           analysisType: 'general'
         }
       });
@@ -550,49 +551,122 @@ export const useAIChat = (portfolioId?: string) => {
         throw error;
       }
 
-      console.log('Function response data:', data);
+      console.log('Function response (streaming):', data);
+      
+      // For streaming, we need to handle the response differently
+      // The response should be the streaming data, but supabase.functions.invoke doesn't support streaming
+      // So we'll fallback to using fetch with the correct auth header
+      const supabaseUrl = 'https://qifolopsdeeyrevbuxfl.supabase.co';
+      const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpZm9sb3BzZGVleXJldmJ1eGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5MzY3MjMsImV4cCI6MjA2MzUxMjcyM30.x89y179_8EDl1NwTryhXfUDMzdxrnfomZfRmhmySMhM';
+      
+      const streamResponse = await fetch(`${supabaseUrl}/functions/v1/portfolio-ai-chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+        },
+        body: JSON.stringify({
+          message: content.trim(),
+          userId: user.id,
+          portfolioId: portfolioId,
+          sessionId: targetSessionId,
+          chatHistory: chatHistoryForAPI,
+          analysisType: 'general'
+        })
+      });
 
-      if (data.success) {
-        console.log('Message sent successfully');
-        
-        // Check for profile update suggestions
-        if (data.requiresConfirmation && data.detectedProfileUpdates) {
-          // Add AI response with profile update confirmation
-          const aiMessageWithConfirmation: Message = {
-            id: Date.now().toString() + '_ai_confirmation',
-            role: 'assistant',
-            content: data.response,
-            timestamp: new Date(),
-            context: {
-              profileUpdates: data.detectedProfileUpdates,
-              requiresConfirmation: true
-            }
-          };
-          
-          setMessages(prev => [...prev, aiMessageWithConfirmation]);
-        } else {
-          // Regular AI response
-          const aiMessage: Message = {
-            id: Date.now().toString() + '_ai',
-            role: 'assistant',
-            content: data.response,
-            timestamp: new Date(),
-            context: {
-              analysisType: data.analysisType,
-              confidence: data.confidence
-            }
-          };
-          
-          setMessages(prev => [...prev, aiMessage]);
-        }
-        
-        // Track usage
-        await fetchUsage();
-        
-      } else {
-        console.error('Function returned error:', data.error);
-        throw new Error(data.error || 'Unknown error occurred');
+      if (!streamResponse.ok) {
+        throw new Error(`HTTP error! status: ${streamResponse.status}`);
       }
+
+      console.log('Starting streaming response...');
+      
+      // Create placeholder AI message for streaming
+      const aiMessageId = Date.now().toString() + '_ai';
+      const aiMessage: Message = {
+        id: aiMessageId,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date(),
+        context: {
+          analysisType: 'general',
+          confidence: 0.8
+        }
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
+      
+      // Process streaming response
+      const reader = streamResponse.body?.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedContent = '';
+      let profileUpdates = null;
+      let requiresConfirmation = false;
+      
+      if (reader) {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                if (data === '[DONE]') {
+                  break;
+                }
+                
+                try {
+                  const parsed = JSON.parse(data);
+                  if (parsed.content) {
+                    accumulatedContent += parsed.content;
+                    
+                    // Update message with new content
+                    setMessages(prev => prev.map(msg => 
+                      msg.id === aiMessageId 
+                        ? { ...msg, content: accumulatedContent }
+                        : msg
+                    ));
+                  }
+                  
+                  // Check for profile updates
+                  if (parsed.profileUpdates) {
+                    profileUpdates = parsed.profileUpdates;
+                    requiresConfirmation = parsed.requiresConfirmation;
+                  }
+                } catch (e) {
+                  // Ignore JSON parse errors
+                }
+              }
+            }
+          }
+          
+          // Update final message with profile update context if needed
+          if (requiresConfirmation && profileUpdates) {
+            setMessages(prev => prev.map(msg => 
+              msg.id === aiMessageId 
+                ? { 
+                    ...msg, 
+                    context: {
+                      ...msg.context,
+                      profileUpdates,
+                      requiresConfirmation: true
+                    }
+                  }
+                : msg
+            ));
+          }
+          
+        } finally {
+          reader.releaseLock();
+        }
+      }
+      
+      // Track usage
+      await fetchUsage();
       
     } catch (error) {
       console.error('Error sending message:', error);
