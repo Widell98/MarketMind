@@ -7,6 +7,7 @@ import { useChatFolders } from '@/hooks/useChatFolders';
 import { useGuideSession } from '@/hooks/useGuideSession';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import CreateFolderDialog from './CreateFolderDialog';
+import EditSessionNameDialog from './EditSessionNameDialog';
 
 interface ChatFolderSidebarProps {
   currentSessionId: string | null;
@@ -31,6 +32,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [editingSession, setEditingSession] = useState<{ id: string; name: string } | null>(null);
   const { shouldShowGuide } = useGuideSession();
   
   const {
@@ -70,6 +72,17 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
       newExpanded.add(folderId);
     }
     setExpandedFolders(newExpanded);
+  };
+
+  const handleEditSession = (sessionId: string, sessionName: string) => {
+    setEditingSession({ id: sessionId, name: sessionName });
+  };
+
+  const handleSaveSessionName = (newName: string) => {
+    if (editingSession) {
+      onEditSessionName(editingSession.id, newName);
+      setEditingSession(null);
+    }
   };
 
   const getTodaySessions = (sessionList: any[]) => {
@@ -127,7 +140,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-background border shadow-lg z-50">
-                <DropdownMenuItem onClick={() => onEditSessionName(session.id, session.session_name)}>
+                <DropdownMenuItem onClick={() => handleEditSession(session.id, session.session_name)}>
                   <Edit className="w-4 h-4 mr-2" />
                   Byt namn
                 </DropdownMenuItem>
@@ -285,7 +298,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-background border shadow-lg z-50">
-                            <DropdownMenuItem onClick={() => onEditSessionName(session.id, session.session_name)}>
+                            <DropdownMenuItem onClick={() => handleEditSession(session.id, session.session_name)}>
                               <Edit className="w-4 h-4 mr-2" />
                               Byt namn
                             </DropdownMenuItem>
@@ -320,6 +333,14 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
           )}
         </div>
       </div>
+
+      {/* Edit Session Name Dialog */}
+      <EditSessionNameDialog
+        isOpen={!!editingSession}
+        onClose={() => setEditingSession(null)}
+        currentName={editingSession?.name || ''}
+        onSave={handleSaveSessionName}
+      />
     </div>
   );
 });
