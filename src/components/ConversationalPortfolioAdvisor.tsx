@@ -4,119 +4,113 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Brain, Sparkles } from 'lucide-react';
-import { useLanguage } from '@/contexts/LanguageContext';
 import ChatPortfolioAdvisor from './ChatPortfolioAdvisor';
 
 const ConversationalPortfolioAdvisor = () => {
   const [showChat, setShowChat] = useState(false);
-  const { t } = useLanguage();
 
   if (showChat) {
     return <ChatPortfolioAdvisor />;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 py-16 px-4">
-      <div className="max-w-5xl mx-auto">
-        {/* Hero Section */}
-        <div className="text-center mb-16">
-          <div className="w-24 h-24 mx-auto bg-white rounded-3xl shadow-lg shadow-primary/10 flex items-center justify-center mb-8">
-            <Brain className="w-12 h-12 text-primary" />
+    <div className="max-w-4xl mx-auto">
+      <Card className="bg-card border-border shadow-sm">
+        <CardHeader className="text-center pb-8">
+          <div className="w-20 h-20 mx-auto bg-primary/10 rounded-2xl flex items-center justify-center mb-6">
+            <Brain className="w-10 h-10 text-primary" />
           </div>
-          <h1 className="text-5xl font-bold text-foreground mb-6 tracking-tight">
+          <CardTitle className="text-3xl font-semibold text-foreground mb-3">
             AI Portfolio Advisor
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            {t('portfolioAdvisor.subtitle')}
+          </CardTitle>
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
+            Skapa din personliga investeringsstrategi genom en naturlig chatt-konversation
           </p>
-        </div>
-
-        {/* Feature Cards */}
-        <div className="grid md:grid-cols-2 gap-8 mb-16">
-          <div className="bg-white rounded-3xl p-10 shadow-lg shadow-black/5 border border-border/50 hover:shadow-xl hover:shadow-black/10 transition-all duration-300">
-            <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mb-8">
-              <Sparkles className="w-7 h-7 text-primary" />
+        </CardHeader>
+        
+        <CardContent className="space-y-8 px-8 pb-8">
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="p-6 bg-accent/50 rounded-xl border border-border/50">
+              <h3 className="font-medium text-foreground mb-4 flex items-center gap-3">
+                <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                </div>
+                Chattbaserad konsultation
+              </h3>
+              <ul className="text-muted-foreground space-y-2 text-sm">
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></span>
+                  Naturlig konversation med AI-rådgivare
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></span>
+                  En fråga i taget för bättre fokus
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></span>
+                  Anpassade följdfrågor baserat på dina svar
+                </li>
+              </ul>
             </div>
-            <h3 className="text-2xl font-semibold text-foreground mb-6">
-              {t('portfolioAdvisor.chatConsultation')}
+            
+            <div className="p-6 bg-accent/50 rounded-xl border border-border/50">
+              <h3 className="font-medium text-foreground mb-4 flex items-center gap-3">
+                <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <Brain className="w-4 h-4 text-primary" />
+                </div>
+                Personlig analys
+              </h3>
+              <ul className="text-muted-foreground space-y-2 text-sm">
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></span>
+                  Analyserar dina intressen och mål
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></span>
+                  Föreslår konkreta investeringar
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></span>
+                  Skapar actionable strategi
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="bg-primary/5 p-6 rounded-xl border border-primary/10">
+            <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
+              <span className="text-primary">Så här fungerar det:</span>
             </h3>
-            <ul className="space-y-4 text-muted-foreground">
-              <li className="flex items-start gap-4">
-                <div className="w-2 h-2 bg-primary rounded-full mt-3 flex-shrink-0"></div>
-                <span className="text-base leading-relaxed">{t('portfolioAdvisor.naturalConversation')}</span>
+            <ol className="text-muted-foreground space-y-3 text-sm">
+              <li className="flex items-start gap-3">
+                <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">1</span>
+                Starta en chatt med AI-rådgivaren
               </li>
-              <li className="flex items-start gap-4">
-                <div className="w-2 h-2 bg-primary rounded-full mt-3 flex-shrink-0"></div>
-                <span className="text-base leading-relaxed">{t('portfolioAdvisor.oneQuestionAtTime')}</span>
+              <li className="flex items-start gap-3">
+                <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">2</span>
+                Svara på frågor om dina mål och preferenser
               </li>
-              <li className="flex items-start gap-4">
-                <div className="w-2 h-2 bg-primary rounded-full mt-3 flex-shrink-0"></div>
-                <span className="text-base leading-relaxed">{t('portfolioAdvisor.customFollowUps')}</span>
+              <li className="flex items-start gap-3">
+                <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">3</span>
+                Få en personlig portföljstrategi med konkreta rekommendationer
               </li>
-            </ul>
+              <li className="flex items-start gap-3">
+                <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">4</span>
+                Implementera strategin med våra verktyg
+              </li>
+            </ol>
           </div>
-          
-          <div className="bg-white rounded-3xl p-10 shadow-lg shadow-black/5 border border-border/50 hover:shadow-xl hover:shadow-black/10 transition-all duration-300">
-            <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mb-8">
-              <Brain className="w-7 h-7 text-primary" />
-            </div>
-            <h3 className="text-2xl font-semibold text-foreground mb-6">
-              {t('portfolioAdvisor.personalAnalysis')}
-            </h3>
-            <ul className="space-y-4 text-muted-foreground">
-              <li className="flex items-start gap-4">
-                <div className="w-2 h-2 bg-primary rounded-full mt-3 flex-shrink-0"></div>
-                <span className="text-base leading-relaxed">{t('portfolioAdvisor.analyzeInterests')}</span>
-              </li>
-              <li className="flex items-start gap-4">
-                <div className="w-2 h-2 bg-primary rounded-full mt-3 flex-shrink-0"></div>
-                <span className="text-base leading-relaxed">{t('portfolioAdvisor.suggestInvestments')}</span>
-              </li>
-              <li className="flex items-start gap-4">
-                <div className="w-2 h-2 bg-primary rounded-full mt-3 flex-shrink-0"></div>
-                <span className="text-base leading-relaxed">{t('portfolioAdvisor.createStrategy')}</span>
-              </li>
-            </ul>
-          </div>
-        </div>
 
-        {/* How it works */}
-        <div className="bg-white rounded-3xl p-12 shadow-lg shadow-black/5 border border-border/50 mb-12">
-          <h3 className="text-2xl font-semibold text-foreground mb-10 text-center">
-            {t('portfolioAdvisor.howItWorks')}
-          </h3>
-          <div className="grid md:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-primary text-white rounded-2xl flex items-center justify-center text-xl font-semibold mb-6 mx-auto shadow-lg shadow-primary/20">1</div>
-              <p className="text-muted-foreground leading-relaxed">{t('portfolioAdvisor.step1')}</p>
-            </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-primary text-white rounded-2xl flex items-center justify-center text-xl font-semibold mb-6 mx-auto shadow-lg shadow-primary/20">2</div>
-              <p className="text-muted-foreground leading-relaxed">{t('portfolioAdvisor.step2')}</p>
-            </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-primary text-white rounded-2xl flex items-center justify-center text-xl font-semibold mb-6 mx-auto shadow-lg shadow-primary/20">3</div>
-              <p className="text-muted-foreground leading-relaxed">{t('portfolioAdvisor.step3')}</p>
-            </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-primary text-white rounded-2xl flex items-center justify-center text-xl font-semibold mb-6 mx-auto shadow-lg shadow-primary/20">4</div>
-              <p className="text-muted-foreground leading-relaxed">{t('portfolioAdvisor.step4')}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* CTA Button */}
-        <div className="text-center">
           <Button 
             onClick={() => setShowChat(true)}
-            className="h-16 px-12 text-lg font-semibold rounded-2xl shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/25 transition-all duration-300"
+            className="w-full h-12 text-base font-medium"
             size="lg"
           >
-            {t('portfolioAdvisor.startConsultation')}
-            <Brain className="w-6 h-6 ml-3" />
+            Starta Chatt-konsultation
+            <Brain className="w-5 h-5 ml-2" />
           </Button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

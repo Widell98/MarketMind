@@ -115,23 +115,6 @@ const translations = {
     'portfolio.aiAnalysis': 'AI-Analys',
     'portfolio.updated': 'Uppdaterad',
     
-    // Portfolio Advisor
-    'portfolioAdvisor.subtitle': 'Skapa din personliga investeringsstrategi genom en naturlig chatt-konversation',
-    'portfolioAdvisor.chatConsultation': 'Chattbaserad konsultation',
-    'portfolioAdvisor.naturalConversation': 'Naturlig konversation med AI-rådgivare',
-    'portfolioAdvisor.oneQuestionAtTime': 'En fråga i taget för bättre fokus',
-    'portfolioAdvisor.customFollowUps': 'Anpassade följdfrågor baserat på dina svar',
-    'portfolioAdvisor.personalAnalysis': 'Personlig analys',
-    'portfolioAdvisor.analyzeInterests': 'Analyserar dina intressen och mål',
-    'portfolioAdvisor.suggestInvestments': 'Föreslår konkreta investeringar',
-    'portfolioAdvisor.createStrategy': 'Skapar actionable strategi',
-    'portfolioAdvisor.howItWorks': 'Så här fungerar det:',
-    'portfolioAdvisor.step1': 'Starta en chatt med AI-rådgivaren',
-    'portfolioAdvisor.step2': 'Svara på frågor om dina mål och preferenser',
-    'portfolioAdvisor.step3': 'Få en personlig portföljstrategi med konkreta rekommendationer',
-    'portfolioAdvisor.step4': 'Implementera strategin med våra verktyg',
-    'portfolioAdvisor.startConsultation': 'Starta Chatt-konsultation',
-    
     // Footer
     'footer.copyright': 'All rights reserved.',
     
@@ -241,23 +224,6 @@ const translations = {
     'portfolio.createProfile.button': 'Create profile',
     'portfolio.aiAnalysis': 'AI Analysis',
     'portfolio.updated': 'Updated',
-    
-    // Portfolio Advisor
-    'portfolioAdvisor.subtitle': 'Create your personal investment strategy through natural chat conversation',
-    'portfolioAdvisor.chatConsultation': 'Chat-based consultation',
-    'portfolioAdvisor.naturalConversation': 'Natural conversation with AI advisor',
-    'portfolioAdvisor.oneQuestionAtTime': 'One question at a time for better focus',
-    'portfolioAdvisor.customFollowUps': 'Custom follow-ups based on your answers',
-    'portfolioAdvisor.personalAnalysis': 'Personal analysis',
-    'portfolioAdvisor.analyzeInterests': 'Analyzes your interests and goals',
-    'portfolioAdvisor.suggestInvestments': 'Suggests concrete investments',
-    'portfolioAdvisor.createStrategy': 'Creates actionable strategy',
-    'portfolioAdvisor.howItWorks': 'How it works:',
-    'portfolioAdvisor.step1': 'Start a chat with the AI advisor',
-    'portfolioAdvisor.step2': 'Answer questions about your goals and preferences',
-    'portfolioAdvisor.step3': 'Get a personal portfolio strategy with concrete recommendations',
-    'portfolioAdvisor.step4': 'Implement the strategy with our tools',
-    'portfolioAdvisor.startConsultation': 'Start Chat Consultation',
     
     // Footer
     'footer.copyright': 'All rights reserved.',
