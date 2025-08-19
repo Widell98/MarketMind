@@ -217,7 +217,7 @@ const Index = () => {
                     </div>
                     <div>
                       <h1 className="text-2xl font-semibold text-foreground">
-                        Hej, {user.user_metadata?.first_name || 'there'}!
+                        Hej, {user.user_metadata?.first_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'användare'}!
                       </h1>
                       <p className="text-muted-foreground">
                         Här är din investeringsöversikt för idag
