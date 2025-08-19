@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-export const useUserRole = () => {
+export const useSecureUserRole = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -17,9 +16,7 @@ export const useUserRole = () => {
       }
 
       try {
-        console.log('Checking role for user:', user.id);
-        
-        // Use server-side validation function instead of direct table query
+        // Use server-side validation function instead of client-side query
         const { data, error } = await supabase.rpc('validate_admin_action');
 
         if (error) {
@@ -27,7 +24,6 @@ export const useUserRole = () => {
           setIsAdmin(false);
         } else {
           setIsAdmin(!!data);
-          console.log('User is admin:', !!data);
         }
       } catch (error) {
         console.error('Error checking user role:', error);

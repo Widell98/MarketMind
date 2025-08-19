@@ -1,16 +1,18 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import type { User } from '@supabase/supabase-js';
+import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   loading: boolean;
   signUp: (email: string, password: string, metadata?: any) => Promise<any>;
   signIn: (email: string, password: string) => Promise<any>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<any>;
+  validateSession: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,20 +31,68 @@ interface AuthProviderProps {
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+  // Enhanced session validation
+  const validateSession = async (): Promise<boolean> => {
+    try {
+      if (!session) return false;
+      
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (!currentSession) {
+        setSession(null);
+        setUser(null);
+        return false;
+      }
+      
+      // Check if session is still valid
+      const now = new Date().getTime();
+      const expiresAt = new Date(currentSession.expires_at || 0).getTime();
+      
+      if (now >= expiresAt) {
+        setSession(null);
+        setUser(null);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Session validation error:', error);
+      setSession(null);
+      setUser(null);
+      return false;
+    }
+  };
 
-    // Listen for auth changes
+  useEffect(() => {
+    // Set up auth state listener FIRST
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+      
+      // Log security events for authentication
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        setTimeout(async () => {
+          try {
+            await supabase.rpc('log_security_event', {
+              p_action: event.toLowerCase(),
+              p_resource_type: 'auth_session'
+            });
+          } catch (error) {
+            console.error('Failed to log security event:', error);
+          }
+        }, 0);
+      }
+    });
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
@@ -129,6 +179,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
 
+      // Clear local session state immediately
+      setSession(null);
+      setUser(null);
+
       toast({
         title: "Signed out",
         description: "You have been successfully signed out.",
@@ -171,11 +225,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const value = {
     user,
+    session,
     loading,
     signUp,
     signIn,
     signOut,
     resetPassword,
+    validateSession,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

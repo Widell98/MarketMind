@@ -754,6 +754,39 @@ export type Database = {
         }
         Relationships: []
       }
+      security_audit_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          ip_address: unknown | null
+          resource_id: string | null
+          resource_type: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          resource_id?: string | null
+          resource_type: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          resource_id?: string | null
+          resource_type?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       shared_portfolio_analyses: {
         Row: {
           analysis_id: string
@@ -1586,6 +1619,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sessions: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          ip_address: unknown | null
+          is_active: boolean | null
+          last_activity: string | null
+          session_token: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          is_active?: boolean | null
+          last_activity?: string | null
+          session_token: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          is_active?: boolean | null
+          last_activity?: string | null
+          session_token?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1642,6 +1711,14 @@ export type Database = {
         Args: { _usage_type: string; _user_id: string }
         Returns: boolean
       }
+      log_security_event: {
+        Args: {
+          p_action: string
+          p_resource_id?: string
+          p_resource_type: string
+        }
+        Returns: undefined
+      }
       revoke_user_role: {
         Args: {
           reason?: string
@@ -1664,6 +1741,14 @@ export type Database = {
       }
       user_has_liked_post: {
         Args: { post_id: string; user_id: string }
+        Returns: boolean
+      }
+      validate_admin_action: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      validate_session_security: {
+        Args: { p_session_token: string }
         Returns: boolean
       }
     }
