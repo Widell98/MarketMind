@@ -31,7 +31,8 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
     target_price: '',
     stop_loss: '',
     sector: '',
-    currency: 'SEK'
+    currency: 'SEK',
+    timeframe: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -154,7 +155,8 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
         target_price: '',
         stop_loss: '',
         sector: '',
-        currency: 'SEK'
+        currency: 'SEK',
+        timeframe: ''
       });
       setImageFile(null);
       setImagePreview(null);
@@ -320,6 +322,24 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
                   </p>
                 </div>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="timeframe">Tidsram</Label>
+              <Select value={formData.timeframe} onValueChange={(value) => handleInputChange('timeframe', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Välj tidsram" />
+                </SelectTrigger>
+                <SelectContent className="bg-background border z-50">
+                  <SelectItem value="1M">1M (Månadsvis)</SelectItem>
+                  <SelectItem value="1W">1W (Veckovis)</SelectItem>
+                  <SelectItem value="1D">1D (Dagligen)</SelectItem>
+                  <SelectItem value="4H">4H (4 timmar)</SelectItem>
+                  <SelectItem value="2H">2H (2 timmar)</SelectItem>
+                  <SelectItem value="1H">1H (60 min)</SelectItem>
+                  <SelectItem value="30M">30M (30 min)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {(imagePreview || imageFile) && (
