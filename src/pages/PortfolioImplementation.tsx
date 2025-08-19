@@ -128,7 +128,7 @@ const PortfolioImplementation = () => {
         </div>
       </Layout>;
   }
-  const totalPortfolioValue = performance.totalPortfolioValue; // Already includes cash from usePortfolioPerformance
+  const totalPortfolioValue = performance.totalPortfolioValue + totalCash;
   const investedValue = performance.totalValue;
 
   // Calculate portfolio health metrics - fix the actualHoldings check
@@ -183,9 +183,7 @@ const PortfolioImplementation = () => {
 
           {/* Portfolio Health Score */}
           {user && totalPortfolioValue > 0 && <div className="mb-12">
-              <div className="bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl p-8 shadow-xl">
-                <PortfolioHealthScore totalValue={totalPortfolioValue} diversificationScore={healthMetrics.diversificationScore} riskScore={healthMetrics.riskScore} performanceScore={healthMetrics.performanceScore} cashPercentage={healthMetrics.cashPercentage} />
-              </div>
+              
             </div>}
 
           {/* Portfolio Value Cards */}
