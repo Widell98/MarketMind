@@ -417,10 +417,10 @@ Detta är en komplett portföljanalys. Ge en omfattande strategi med:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: analysisType === 'portfolio_insights' ? 'gpt-5-mini-2025-08-07' : 'gpt-4o',
         messages: messages,
-        max_tokens: 1500,
-        temperature: 0.7,
+        max_completion_tokens: analysisType === 'portfolio_insights' ? 300 : 1500,
+        ...(analysisType !== 'portfolio_insights' && { temperature: 0.7 })
       }),
     });
 

@@ -294,12 +294,9 @@ const Index = () => {
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-2">
                             <p className="font-medium text-foreground">AI-insikt för dig</p>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary" className="text-xs">
-                                {insights[0]?.confidence > 0.8 ? 'Hög tillförlitlighet' : 'Medel tillförlitlighet'}
-                              </Badge>
-                              <CreditsIndicator type="insights" showUpgrade={false} />
-                            </div>
+                            <Badge variant="secondary" className="text-xs">
+                              {insights[0]?.confidence > 0.8 ? 'Hög tillförlitlighet' : 'Medel tillförlitlighet'}
+                            </Badge>
                           </div>
                           <p className="text-muted-foreground mb-3">
                             {insights[0]?.message}
@@ -318,7 +315,7 @@ const Index = () => {
                               className="text-xs"
                             >
                               <RefreshCw className="w-3 h-3 mr-1" />
-                              Uppdatera (1 credit)
+                              Uppdatera
                             </Button>
                           </div>
                         </div>
@@ -331,11 +328,8 @@ const Index = () => {
                         <div className="flex-1">
                           <p className="font-medium text-foreground mb-1">Få AI-insikter för din portfölj</p>
                           <p className="text-muted-foreground mb-3">
-                            Klicka för att generera personliga investeringsinsikter. <span className="font-medium text-primary">Kostar 1 credit.</span>
+                            Klicka för att generera personliga investeringsinsikter. Uppdateras en gång per dag.
                           </p>
-                          <div className="flex items-center gap-3 mb-3">
-                            <CreditsIndicator type="insights" onUpgrade={handleUpgrade} />
-                          </div>
                           <Button 
                             size="sm" 
                             onClick={refreshInsights}
@@ -343,7 +337,7 @@ const Index = () => {
                             className="text-xs"
                           >
                             <Brain className="w-3 h-3 mr-1" />
-                            Generera insikter (1 credit)
+                            Generera insikter
                           </Button>
                         </div>
                       </div>
