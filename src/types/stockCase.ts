@@ -23,6 +23,8 @@ export interface StockCase {
   category_id?: string;
   admin_comment?: string;
   ai_generated?: boolean;
+  currency?: string;
+  timeframe?: string;
   profiles?: {
     username: string;
     display_name: string | null;

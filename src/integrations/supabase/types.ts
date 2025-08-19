@@ -981,6 +981,7 @@ export type Database = {
           status: string | null
           stop_loss: number | null
           target_price: number | null
+          timeframe: string | null
           title: string
           updated_at: string
           user_id: string | null
@@ -1007,6 +1008,7 @@ export type Database = {
           status?: string | null
           stop_loss?: number | null
           target_price?: number | null
+          timeframe?: string | null
           title: string
           updated_at?: string
           user_id?: string | null
@@ -1033,6 +1035,7 @@ export type Database = {
           status?: string | null
           stop_loss?: number | null
           target_price?: number | null
+          timeframe?: string | null
           title?: string
           updated_at?: string
           user_id?: string | null

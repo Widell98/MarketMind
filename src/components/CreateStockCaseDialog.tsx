@@ -132,6 +132,7 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
           stop_loss: formData.stop_loss ? parseFloat(formData.stop_loss) : null,
           sector: formData.sector || null,
           currency: formData.currency,
+          timeframe: formData.timeframe || null,
           image_url: imageUrl,
           user_id: user.id,
           is_public: true,
