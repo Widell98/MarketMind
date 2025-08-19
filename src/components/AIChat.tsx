@@ -72,6 +72,11 @@ const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts 
   const dailyLimit = 5;
   const currentUsage = usage?.ai_messages_count || 0;
   const isPremium = subscription?.subscribed;
+  
+  // Calculate credits for display (same logic as CreditsIndicator)
+  const totalCredits = 5;
+  const usedCredits = currentUsage;
+  const remainingCredits = Math.max(0, totalCredits - usedCredits);
 
   const handleBackToPortfolio = () => {
     navigate('/portfolio-implementation');
@@ -299,7 +304,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts 
               {/* Usage indicator for free users */}
               {!isPremium && (
                 <div className="text-xs text-muted-foreground">
-                  {currentUsage}/{dailyLimit} daily messages
+                  {usedCredits}/{totalCredits} credits använt idag
                 </div>
               )}
             </div>
