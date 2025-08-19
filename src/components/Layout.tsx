@@ -11,6 +11,7 @@ import MobileNavigation from './MobileNavigation';
 import AppSidebar from './AppSidebar';
 import SmartSuggestions from './SmartSuggestions';
 import LanguageToggle from './LanguageToggle';
+import ThemeToggle from './ThemeToggle';
 import { ConversationMemoryProvider } from './AIConversationMemory';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Brain } from 'lucide-react';
@@ -44,6 +45,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </div>
                 
                 <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 flex-shrink-0">
+                  <ThemeToggle />
                   <LanguageToggle />
                   {user ? (
                     <ProfileMenu />
