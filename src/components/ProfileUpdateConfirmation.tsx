@@ -39,7 +39,7 @@ const ProfileUpdateConfirmation: React.FC<ProfileUpdateConfirmationProps> = ({
                      key === 'risk_tolerance' ? 'Risktolerans' :
                      key === 'investment_horizon' ? 'Tidshorisont' : key}:
                   </span>{' '}
-                  <span className="text-blue-700">{value}</span>
+                  <span className="text-blue-700">{String(value)}</span>
                 </div>
               ))}
             </div>

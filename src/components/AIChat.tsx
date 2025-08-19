@@ -8,6 +8,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ChatMessages from './chat/ChatMessages';
 import ChatInput from './chat/ChatInput';
+import ProfileUpdateConfirmation from './ProfileUpdateConfirmation';
 import ChatFolderSidebar from './chat/ChatFolderSidebar';
 import { LogIn, MessageSquare, Brain, ArrowLeft, Lock, Sparkles, Crown, Menu, PanelLeftClose, PanelLeft } from 'lucide-react';
 import HelpButton from '@/components/HelpButton';
@@ -25,6 +26,8 @@ interface Message {
     analysisType?: string;
     confidence?: number;
     isExchangeRequest?: boolean;
+    profileUpdates?: any;
+    requiresConfirmation?: boolean;
   };
 }
 
@@ -57,6 +60,7 @@ const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts 
     editSessionName,
     clearMessages,
     getQuickAnalysis,
+    updateUserProfile,
   } = useAIChat(portfolioId);
 
   const [input, setInput] = useState('');
@@ -378,6 +382,18 @@ const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts 
                   onExamplePrompt={showExamplePrompts ? handleExamplePrompt : undefined}
                   showGuideBot={isGuideSession}
                 />
+                
+                {/* Profile Update Confirmations */}
+                {messages.map((message) => 
+                  message.context?.requiresConfirmation && message.context?.profileUpdates ? (
+                    <ProfileUpdateConfirmation
+                      key={`${message.id}_confirmation`}
+                      profileUpdates={message.context.profileUpdates}
+                      onConfirm={() => updateUserProfile(message.context.profileUpdates)}
+                      onReject={() => console.log('Profile update rejected')}
+                    />
+                  ) : null
+                )}
               </>
             )}
 
