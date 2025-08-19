@@ -2,6 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import ProfileMenu from './ProfileMenu';
 import BreadcrumbNavigation from './Breadcrumb';
@@ -9,12 +10,14 @@ import AIFloatingWidget from './AIFloatingWidget';
 import MobileNavigation from './MobileNavigation';
 import AppSidebar from './AppSidebar';
 import SmartSuggestions from './SmartSuggestions';
+import LanguageToggle from './LanguageToggle';
 import { ConversationMemoryProvider } from './AIConversationMemory';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Brain } from 'lucide-react';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   return (
     <ConversationMemoryProvider>
@@ -41,6 +44,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </div>
                 
                 <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 flex-shrink-0">
+                  <LanguageToggle />
                   {user ? (
                     <ProfileMenu />
                   ) : (
@@ -51,8 +55,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                       asChild
                     >
                       <Link to="/auth">
-                        <span className="hidden sm:inline">Logga in</span>
-                        <span className="sm:hidden">Login</span>
+                        <span className="hidden sm:inline">{t('nav.login')}</span>
+                        <span className="sm:hidden">{t('nav.login')}</span>
                       </Link>
                     </Button>
                   )}
@@ -73,7 +77,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             {/* Footer */}
             <footer className="bg-card border-t border-border py-4 sm:py-6 lg:py-8 mt-auto flex-shrink-0">
               <div className="container-responsive text-center text-xs sm:text-sm lg:text-base text-muted-foreground">
-                © {new Date().getFullYear()} Market Mind. All rights reserved.
+                © {new Date().getFullYear()} Market Mind. {t('footer.copyright')}
               </div>
             </footer>
           </div>
