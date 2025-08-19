@@ -6,6 +6,7 @@ import LoginPromptModal from '@/components/LoginPromptModal';
 import AIMarketingPanel from '@/components/AIMarketingPanel';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,13 +15,9 @@ import { Brain, MessageSquare, Activity, Target, Lightbulb, Zap, PieChart, Trend
 const AIChatPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const {
-    user
-  } = useAuth();
-  const {
-    riskProfile,
-    loading: riskProfileLoading
-  } = useRiskProfile();
+  const { user } = useAuth();
+  const { t } = useLanguage();
+  const { riskProfile, loading: riskProfileLoading } = useRiskProfile();
   const stockName = searchParams.get('stock');
   const message = searchParams.get('message');
   const {
@@ -49,39 +46,39 @@ const AIChatPage = () => {
     }, 100);
   };
   const examplePrompts = [{
-    title: "Portföljanalys",
-    prompt: "Ge mig en komplett analys av min portfölj med rekommendationer för optimering",
+    title: t('aiChat.features.portfolioAnalysis'),
+    prompt: t('aiChat.features.portfolioAnalysisPrompt'),
     icon: <PieChart className="w-4 h-4 sm:w-5 sm:h-5" />,
-    description: "Få en genomgång av din portföljs prestanda och struktur"
+    description: t('aiChat.features.portfolioAnalysisDesc')
   }, {
-    title: "Riskhantering",
-    prompt: "Analysera riskerna i min portfölj och föreslå strategier för bättre diversifiering",
+    title: t('aiChat.features.riskManagement'),
+    prompt: t('aiChat.features.riskManagementPrompt'),
     icon: <Activity className="w-4 h-4 sm:w-5 sm:h-5" />,
-    description: "Identifiera och minimera risker för en mer balanserad portfölj"
+    description: t('aiChat.features.riskManagementDesc')
   }, {
-    title: "Investeringsförslag",
-    prompt: "Vilka aktier och tillgångar borde jag överväga nästa baserat på min profil?",
+    title: t('aiChat.features.investmentSuggestions'),
+    prompt: t('aiChat.features.investmentSuggestionsPrompt'),
     icon: <Zap className="w-4 h-4 sm:w-5 sm:h-5" />,
-    description: "Få personliga rekommendationer baserade på din riskprofil"
+    description: t('aiChat.features.investmentSuggestionsDesc')
   }, {
-    title: "Marknadsinsikter",
-    prompt: "Vad händer på marknaden just nu och hur påverkar det min investeringsstrategi?",
+    title: t('aiChat.features.marketInsights'),
+    prompt: t('aiChat.features.marketInsightsPrompt'),
     icon: <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />,
-    description: "Håll dig uppdaterad med aktuella marknadstrender"
+    description: t('aiChat.features.marketInsightsDesc')
   }];
 
   // Mock chat messages for demo
   const demoMessages = [{
     role: 'assistant',
-    content: 'Hej! Jag är din AI Portfolio Assistent. Jag hjälper dig med investeringsråd, portföljanalys och marknadsinsikter. Vad kan jag hjälpa dig med idag?',
+    content: t('aiChat.demo.assistantGreeting'),
     timestamp: new Date(Date.now() - 300000) // 5 minutes ago
   }, {
     role: 'user',
-    content: 'Gör en analys av tesla',
+    content: t('aiChat.demo.userExample'),
     timestamp: new Date(Date.now() - 240000) // 4 minutes ago
   }, {
     role: 'assistant',
-    content: 'Tesla (TSLA) är definitivt en intressant investering att diskutera! För att ge dig den bästa analysen behöver jag veta mer om din investeringsprofil och mål. Skapa ett konto så kan jag ge dig personliga rekommendationer baserat på din riskprofil.',
+    content: t('aiChat.demo.assistantResponse'),
     timestamp: new Date(Date.now() - 180000) // 3 minutes ago
   }];
 
@@ -93,7 +90,7 @@ const AIChatPage = () => {
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Laddar...</p>
+                <p className="text-muted-foreground">{t('aiChat.loading')}</p>
               </div>
             </div>
           </div>
@@ -110,13 +107,13 @@ const AIChatPage = () => {
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <AlertCircle className="w-8 h-8 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">Riskprofil krävs</h3>
+              <h3 className="text-lg font-semibold mb-2">{t('aiChat.riskProfileRequired')}</h3>
               <p className="text-muted-foreground mb-4">
-                Du behöver skapa en riskprofil för att använda AI-assistenten
+                {t('aiChat.riskProfileDesc')}
               </p>
               <Button onClick={() => navigate('/portfolio-advisor')}>
                 <User className="w-4 h-4 mr-2" />
-                Skapa riskprofil
+                {t('aiChat.createRiskProfile')}
               </Button>
             </Card>
           </div>
@@ -141,10 +138,10 @@ const AIChatPage = () => {
                 </div>
                 
                 <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4 tracking-tight">
-                  AI Portfolio Assistent
+                  {t('aiChat.title')}
                 </h1>
                 <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                  Din intelligenta investeringsrådgivare som hjälper dig att fatta smartare beslut med AI-driven analys
+                  {t('aiChat.subtitle')}
                 </p>
               </div>
             </div>}
@@ -165,13 +162,13 @@ const AIChatPage = () => {
                         <MessageSquare className="w-6 h-6 text-primary" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-semibold text-foreground">Demo Konversation</h3>
-                        <p className="text-muted-foreground">Se hur AI-assistenten fungerar i praktiken</p>
+                        <h3 className="text-xl font-semibold text-foreground">{t('aiChat.demo.title')}</h3>
+                        <p className="text-muted-foreground">{t('aiChat.demo.subtitle')}</p>
                       </div>
                       <div className="ml-auto">
                         <Badge className="bg-primary/20 text-primary border-primary/30 px-3 py-1 rounded-full font-medium">
                           <Zap className="w-3 h-3 mr-1.5" />
-                          Live Demo
+                          {t('aiChat.demo.liveDemo')}
                         </Badge>
                       </div>
                     </div>
@@ -210,16 +207,16 @@ const AIChatPage = () => {
                           </div>
                           <div className="text-center sm:text-left">
                             <h4 className="text-lg font-semibold text-foreground mb-1">
-                              Fortsätt konversationen
+                              {t('aiChat.demo.continueConversation')}
                             </h4>
                             <p className="text-muted-foreground leading-relaxed">
-                              Skapa ett konto för att få personliga AI-råd och portföljanalys
+                              {t('aiChat.demo.loginPrompt')}
                             </p>
                           </div>
                         </div>
                         <Button onClick={() => window.location.href = '/auth'} className="flex-shrink-0 px-8 py-3 rounded-2xl font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105" size="lg">
                           <LogIn className="w-4 h-4 mr-2" />
-                          Logga in / Skapa konto
+                          {t('aiChat.demo.loginButton')}
                         </Button>
                       </div>
                     </div>
@@ -235,7 +232,7 @@ const AIChatPage = () => {
                     <div className="w-10 h-10 rounded-2xl bg-primary/20 flex items-center justify-center">
                       <Lightbulb className="w-5 h-5 text-primary" />
                     </div>
-                    <h3 className="text-xl font-semibold text-foreground">AI-funktioner</h3>
+                    <h3 className="text-xl font-semibold text-foreground">{t('aiChat.features.title')}</h3>
                   </div>
                   
                   <div className="space-y-4">

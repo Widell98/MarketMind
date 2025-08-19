@@ -12,6 +12,7 @@ import CommunityRecommendations from '@/components/CommunityRecommendations';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
@@ -24,27 +25,13 @@ import PortfolioHealthScore from '@/components/PortfolioHealthScore';
 import FloatingActionButton from '@/components/FloatingActionButton';
 import Breadcrumb from '@/components/Breadcrumb';
 const PortfolioImplementation = () => {
-  const {
-    actualHoldings
-  } = useUserHoldings();
-  const {
-    activePortfolio,
-    loading
-  } = usePortfolio();
-  const {
-    user,
-    loading: authLoading
-  } = useAuth();
-  const {
-    riskProfile,
-    loading: riskProfileLoading
-  } = useRiskProfile();
-  const {
-    performance
-  } = usePortfolioPerformance();
-  const {
-    totalCash
-  } = useCashHoldings();
+  const { actualHoldings } = useUserHoldings();
+  const { activePortfolio, loading } = usePortfolio();
+  const { user, loading: authLoading } = useAuth();
+  const { t } = useLanguage();
+  const { riskProfile, loading: riskProfileLoading } = useRiskProfile();
+  const { performance } = usePortfolioPerformance();
+  const { totalCash } = useCashHoldings();
   const navigate = useNavigate();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -100,8 +87,8 @@ const PortfolioImplementation = () => {
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 bg-primary shadow-2xl">
               <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
             </div>
-            <h2 className="text-lg font-semibold mb-2 text-foreground">Laddar din portfölj</h2>
-            <p className="text-sm text-muted-foreground">Hämtar dina investeringsdata...</p>
+            <h2 className="text-lg font-semibold mb-2 text-foreground">{t('portfolio.loading')}</h2>
+            <p className="text-sm text-muted-foreground">{t('portfolio.loadingDesc')}</p>
           </div>
         </div>
       </Layout>;
@@ -117,10 +104,10 @@ const PortfolioImplementation = () => {
                 <Brain className="w-10 h-10 text-primary-foreground" />
               </div>
               <h1 className="text-3xl font-bold mb-4 text-foreground">
-                Skapa din investeringsprofil
+                {t('portfolio.createProfile')}
               </h1>
               <p className="text-lg max-w-2xl mx-auto text-muted-foreground px-4">
-                Låt oss skapa din personliga investeringsstrategi genom en kort konversation
+                {t('portfolio.createProfileDesc')}
               </p>
             </div>
             <ConversationalPortfolioAdvisor />
@@ -162,21 +149,21 @@ const PortfolioImplementation = () => {
               <Brain className="w-10 h-10 text-primary" />
             </div>
             <h1 className="text-4xl font-bold mb-4 text-foreground">
-              Portfolio Analys
+              {t('portfolio.title')}
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Analysera och förstå din investeringsportfölj med AI-driven insikter
+              {t('portfolio.subtitle')}
             </p>
             
             <div className="flex flex-wrap justify-center gap-3 mt-8">
               <Badge className="px-4 py-2 text-sm font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors">
                 <Brain className="w-4 h-4 mr-2" />
-                AI-Analys
+                {t('portfolio.aiAnalysis')}
               </Badge>
               
               {lastUpdated && <Badge className="px-4 py-2 text-sm font-medium bg-muted/50 text-muted-foreground border border-muted/30 hover:bg-muted/70 transition-colors">
                   <Clock className="w-4 h-4 mr-2" />
-                  Uppdaterad {lastUpdated}
+                  {t('portfolio.updated')} {lastUpdated}
                 </Badge>}
             </div>
           </div>
@@ -201,16 +188,16 @@ const PortfolioImplementation = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold text-amber-800 dark:text-amber-200 mb-1">
-                        Skapa din riskprofil
+                        {t('portfolio.riskProfileRequired')}
                       </h3>
                       <p className="text-amber-700 dark:text-amber-300">
-                        Få AI-analys och personliga rekommendationer baserat på din investeringsstil
+                        {t('portfolio.riskProfileRequiredDesc')}
                       </p>
                     </div>
                   </div>
                   <Button onClick={() => navigate('/portfolio-advisor')} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl px-6 py-3 shadow-lg hover:shadow-xl transition-all duration-200">
                     <User className="w-4 h-4 mr-2" />
-                    Skapa profil
+                    {t('portfolio.createProfile.button')}
                   </Button>
                 </div>
               </div>
