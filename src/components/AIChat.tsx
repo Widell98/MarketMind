@@ -219,23 +219,25 @@ const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts 
     }
   };
 
+  const sidebarProps = {
+    currentSessionId: isGuideSession ? 'guide-session' : currentSessionId,
+    onLoadSession: (sessionId: string) => {
+      setIsGuideSession(false);
+      handleLoadSession(sessionId);
+    },
+    onDeleteSession: deleteSession,
+    onEditSessionName: editSessionName,
+    onNewSession: () => {
+      setIsGuideSession(false);
+      handleNewSession();
+    },
+    onLoadGuideSession: handleLoadGuideSession,
+    isLoadingSession: isLoadingSession,
+    className: isMobile ? "w-full" : ""
+  };
+
   const SidebarContent = React.memo(() => (
-    <ChatFolderSidebar
-      currentSessionId={isGuideSession ? 'guide-session' : currentSessionId}
-      onLoadSession={(sessionId) => {
-        setIsGuideSession(false);
-        handleLoadSession(sessionId);
-      }}
-      onDeleteSession={deleteSession}
-      onEditSessionName={editSessionName}
-      onNewSession={() => {
-        setIsGuideSession(false);
-        handleNewSession();
-      }}
-      onLoadGuideSession={handleLoadGuideSession}
-      isLoadingSession={isLoadingSession}
-      className={isMobile ? "w-full" : ""}
-    />
+    <ChatFolderSidebar {...sidebarProps} />
   ));
 
   return (

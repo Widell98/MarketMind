@@ -15,18 +15,25 @@ interface EditSessionNameDialogProps {
 const EditSessionNameDialog = ({ isOpen, onClose, currentName, onSave }: EditSessionNameDialogProps) => {
   const [newName, setNewName] = useState(currentName);
 
-  const handleSave = () => {
+  // Reset the name when dialog opens with a new current name
+  React.useEffect(() => {
+    if (isOpen) {
+      setNewName(currentName);
+    }
+  }, [isOpen, currentName]);
+
+  const handleSave = React.useCallback(() => {
     if (newName.trim() && newName.trim() !== currentName) {
       onSave(newName.trim());
     }
     onClose();
-  };
+  }, [newName, currentName, onSave, onClose]);
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = React.useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSave();
     }
-  };
+  }, [handleSave]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -41,7 +48,7 @@ const EditSessionNameDialog = ({ isOpen, onClose, currentName, onSave }: EditSes
               id="session-name"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               placeholder="Ange nytt chattnamn..."
               autoFocus
             />

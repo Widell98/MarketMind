@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -134,7 +134,7 @@ export const useAIChat = (portfolioId?: string) => {
         variant: "destructive",
       });
     }
-  }, [user, portfolioId, toast, currentSessionId, loadMessages]);
+  }, [user, portfolioId, toast, loadMessages]);
 
   const loadSession = useCallback(async (sessionId: string) => {
     console.log('=== MANUALLY LOADING SESSION ===');
@@ -679,13 +679,16 @@ export const useAIChat = (portfolioId?: string) => {
     setMessages([]);
   }, []);
 
+  // Stabilize the loadSessions reference to prevent infinite loops
+  const stableLoadSessions = useMemo(() => loadSessions, [user, portfolioId, toast, loadMessages]);
+
   // Load sessions when component mounts - but only once!
   useEffect(() => {
     if (user && portfolioId && sessions.length === 0) {
       console.log('Component mounted, loading sessions...');
-      loadSessions();
+      stableLoadSessions();
     }
-  }, [user, portfolioId]); // Removed loadSessions from dependencies to prevent infinite loop
+  }, [user, portfolioId, sessions.length, stableLoadSessions]);
 
   return {
     messages,

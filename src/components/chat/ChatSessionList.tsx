@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Trash2, Edit2 } from 'lucide-react';
 
@@ -18,7 +18,7 @@ interface ChatSessionListProps {
   onEditSession: (session: ChatSession) => void;
 }
 
-const ChatSessionList = ({
+const ChatSessionList = memo(({
   sessions,
   currentSessionId,
   onLoadSession,
@@ -78,6 +78,8 @@ const ChatSessionList = ({
       )}
     </div>
   );
-};
+});
+
+ChatSessionList.displayName = 'ChatSessionList';
 
 export default ChatSessionList;
