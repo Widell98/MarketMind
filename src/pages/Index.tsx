@@ -40,8 +40,8 @@ const Index = () => {
   const hasPortfolio = !loading && !!activePortfolio;
   const totalPortfolioValue = performance.totalPortfolioValue;
   return <Layout>
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-12 max-w-6xl">
+      <div className="min-h-0 bg-background">
+        <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-8 lg:py-12">
           
           {/* Hero Section - Apple-inspired clean design */}
           {!user && <div className="text-center mb-20">
@@ -84,7 +84,7 @@ const Index = () => {
                   Oavsett var du är i livet hjälper vi dig bygga ekonomisk trygghet
                 </p>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 max-w-5xl mx-auto">
                   {/* Example 1: Conservative */}
                   <div className="bg-card border rounded-2xl p-8 hover:shadow-lg transition-all duration-300">
                     <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
@@ -157,7 +157,7 @@ const Index = () => {
                   Tre enkla steg till din personliga investeringsstrategi
                 </p>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-12">
                   <div className="text-center">
                     <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
                       <MessageSquare className="w-8 h-8 text-primary" />
@@ -207,8 +207,8 @@ const Index = () => {
             </div>}
 
           {/* Clean Dashboard for logged-in users */}
-          {user && hasPortfolio && <div className="min-h-screen bg-background">
-              <div className="container mx-auto px-4 py-6 max-w-6xl">
+          {user && hasPortfolio && <div className="min-h-0 bg-background">
+              <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-3 sm:py-6">
                 {/* Clean Header */}
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-4">
@@ -304,7 +304,7 @@ const Index = () => {
                 </div>
 
                 {/* Portfolio Overview Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
                   <div className="bg-card border rounded-xl p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">

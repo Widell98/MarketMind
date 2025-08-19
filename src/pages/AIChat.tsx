@@ -127,8 +127,8 @@ const AIChatPage = () => {
       <LoginPromptModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
       
       {/* Full-height container with gradient background */}
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/[0.02] overflow-hidden">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 h-full max-w-7xl">
+      <div className="min-h-0 bg-gradient-to-br from-background via-background to-primary/[0.02]">
+        <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 xl:px-8 h-full">
           {/* Compact Header Section for logged in users */}
           {user && riskProfile ? <div className="pt-4 pb-2">
               <div className="text-center">
@@ -151,12 +151,12 @@ const AIChatPage = () => {
 
           {/* Content based on authentication status */}
           {user && riskProfile ? (/* Full Chat Interface */
-        <div className="h-[calc(100vh-8rem)]">
+        <div className="h-[calc(100vh-12rem)] sm:h-[calc(100vh-10rem)] lg:h-[calc(100vh-8rem)] min-h-[400px]">
               <AIChat portfolioId={activePortfolio?.id} initialStock={stockName} initialMessage={message} />
             </div>) : (/* Demo Content for non-authenticated users */
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 pb-8">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 pb-4 sm:pb-6 lg:pb-8">
               {/* Demo Chat - Main Content */}
-              <div className="xl:col-span-8">
+              <div className="xl:col-span-8 min-w-0">
                 <div className="bg-white/80 dark:bg-card/80 backdrop-blur-xl border border-white/20 dark:border-border/50 shadow-2xl rounded-3xl overflow-hidden">
                   {/* Chat Header */}
                   <div className="bg-gradient-to-r from-primary/5 to-primary/10 border-b border-border/30 p-6">
@@ -178,7 +178,7 @@ const AIChatPage = () => {
                   </div>
 
                   {/* Demo Messages */}
-                  <div className="p-6 sm:p-8 space-y-8 min-h-[400px] max-h-[500px] overflow-y-auto">
+                  <div className="p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 lg:space-y-8 min-h-[300px] sm:min-h-[400px] max-h-[400px] sm:max-h-[500px] overflow-y-auto">
                     {demoMessages.map((msg, index) => <div key={index} className={`flex items-start gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
                         {/* Avatar */}
                         <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-gradient-to-br from-primary/20 to-primary/30 text-primary'}`}>
@@ -228,7 +228,7 @@ const AIChatPage = () => {
               </div>
 
               {/* Right sidebar - Features & Marketing */}
-              <div className="xl:col-span-4 space-y-6">
+              <div className="xl:col-span-4 space-y-4 sm:space-y-6 min-w-0">
                 {/* AI Features Card */}
                 <div className="bg-white/80 dark:bg-card/80 backdrop-blur-xl border border-white/20 dark:border-border/50 shadow-2xl rounded-3xl p-6 sm:p-8">
                   <div className="flex items-center gap-3 mb-6">

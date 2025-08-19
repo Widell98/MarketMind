@@ -149,8 +149,8 @@ const PortfolioImplementation = () => {
   return <Layout>
       <LoginPromptModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
       
-      <div className="min-h-screen bg-gradient-to-br from-background to-secondary/5">
-        <div className="container mx-auto px-6 py-12 max-w-7xl">
+      <div className="min-h-0 bg-gradient-to-br from-background to-secondary/5">
+        <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4 sm:py-8 lg:py-12">
           {/* Breadcrumb Navigation */}
           <div className="mb-8">
             <Breadcrumb />
@@ -216,8 +216,8 @@ const PortfolioImplementation = () => {
               </div>
             </div>}
 
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
-            <div className="xl:col-span-3 space-y-8">
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+            <div className="xl:col-span-3 space-y-4 sm:space-y-6 lg:space-y-8">
               <div className="bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
                 <PortfolioOverview portfolio={activePortfolio} onQuickChat={handleQuickChat} onActionClick={handleActionClick} />
               </div>
