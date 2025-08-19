@@ -229,7 +229,7 @@ serve(async (req) => {
 VIKTIGA FORMATERINGSREGLER:
 - Använd ALDRIG slumpmässiga siffror före rubriker
 - Skriv naturligt utan onödig numrering
-- Använd markdown-formattering (**fetstil**) för viktiga begrepp
+- Använd markdown-formatering (**fetstil**) för viktiga begrepp
 - Håll svar koncisa och fokuserade
 
 KOMPETENSER:
@@ -237,21 +237,33 @@ KOMPETENSER:
 2. Portföljrekommendationer med specifika aktier/fonder inklusive ticker: **Företag (SYMBOL)**
 3. Personliga investeringsråd baserat på användarprofil`;
 
-    // Add brief user context if available
-    if (aiMemory?.communication_style) {
-      contextInfo += `\n\nAnpassa svaret: ${aiMemory.communication_style === 'detailed' ? 'Detaljerat' : 'Koncist'} svar.`;
-    }
-
-    // Add essential user info for personalized advice (optimized)
-    if ((isPersonalAdviceRequest || isExchangeRequest || isPortfolioOptimizationRequest) && riskProfile) {
-      contextInfo += `\n\nPROFIL: ${riskProfile.risk_tolerance === 'conservative' ? 'Konservativ' : riskProfile.risk_tolerance === 'moderate' ? 'Måttlig' : 'Aggressiv'} risk, ${riskProfile.investment_horizon === 'short' ? 'kort' : riskProfile.investment_horizon === 'medium' ? 'medel' : 'lång'} sikt`;
+    // Always include user's risk profile if available - don't ask for info they already provided
+    if (riskProfile) {
+      contextInfo += `\n\nANVÄNDARENS PROFIL (använd denna info, fråga INTE efter den igen):
+- Risktolerans: ${riskProfile.risk_tolerance === 'conservative' ? 'Konservativ' : riskProfile.risk_tolerance === 'moderate' ? 'Måttlig' : 'Aggressiv'}
+- Investeringshorisont: ${riskProfile.investment_horizon === 'short' ? 'Kort sikt' : riskProfile.investment_horizon === 'medium' ? 'Medellång sikt' : 'Lång sikt'}`;
+      
+      if (riskProfile.monthly_investment_amount) {
+        contextInfo += `\n- Månatligt sparande: ${riskProfile.monthly_investment_amount} SEK`;
+      }
+      
+      if (riskProfile.sector_interests && riskProfile.sector_interests.length > 0) {
+        contextInfo += `\n- Sektorintressen: ${riskProfile.sector_interests.join(', ')}`;
+      }
       
       if (holdings && holdings.length > 0) {
         const actualHoldings = holdings.filter(h => h.holding_type !== 'recommendation');
         if (actualHoldings.length > 0) {
-          contextInfo += `\nNuvarande: ${actualHoldings.map(h => h.symbol || h.name).slice(0, 5).join(', ')}`;
+          contextInfo += `\n- Nuvarande innehav: ${actualHoldings.map(h => h.symbol || h.name).slice(0, 5).join(', ')}`;
         }
       }
+      
+      contextInfo += `\n\nGe ALLTID personliga råd baserat på denna profil. Fråga INTE efter information som redan finns.`;
+    }
+
+    // Add brief user context if available
+    if (aiMemory?.communication_style) {
+      contextInfo += `\n\nAnpassa svaret: ${aiMemory.communication_style === 'detailed' ? 'Detaljerat' : 'Koncist'} svar.`;
     }
 
     // Force using gpt-4o to avoid streaming restrictions and reduce cost
