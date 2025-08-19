@@ -18,6 +18,7 @@
 
     --primary: 216 98% 16%;
     --primary-foreground: 210 40% 98%;
+    --primary-glow: 220 91% 35%;
 
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -25,15 +26,36 @@
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 220 91% 35%;
+    --accent-foreground: 210 40% 98%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 220 91% 35%;
+
+    /* Blue accent system */
+    --blue-50: 210 100% 97%;
+    --blue-100: 212 100% 93%;
+    --blue-200: 213 97% 87%;
+    --blue-300: 216 94% 78%;
+    --blue-400: 220 91% 65%;
+    --blue-500: 220 91% 35%;
+    --blue-600: 216 98% 16%;
+    --blue-700: 214 95% 12%;
+    --blue-800: 213 87% 8%;
+    --blue-900: 214 84% 6%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+    --gradient-blue: linear-gradient(135deg, hsl(var(--blue-500)), hsl(var(--blue-600)));
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--blue-50)));
+
+    /* Shadows */
+    --shadow-blue: 0 10px 30px -10px hsl(var(--blue-500) / 0.3);
+    --shadow-primary: 0 10px 30px -10px hsl(var(--primary) / 0.3);
 
     --radius: 0.5rem;
 
@@ -57,8 +79,9 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 220 91% 65%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --primary-glow: 220 91% 75%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -66,15 +89,36 @@
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 220 91% 65%;
+    --accent-foreground: 222.2 84% 4.9%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --ring: 220 91% 65%;
+
+    /* Blue accent system - dark mode */
+    --blue-50: 214 84% 6%;
+    --blue-100: 213 87% 8%;
+    --blue-200: 214 95% 12%;
+    --blue-300: 216 98% 16%;
+    --blue-400: 220 91% 35%;
+    --blue-500: 220 91% 65%;
+    --blue-600: 216 94% 78%;
+    --blue-700: 213 97% 87%;
+    --blue-800: 212 100% 93%;
+    --blue-900: 210 100% 97%;
+
+    /* Gradients - dark mode */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+    --gradient-blue: linear-gradient(135deg, hsl(var(--blue-500)), hsl(var(--blue-400)));
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--blue-50)));
+
+    /* Shadows - dark mode */
+    --shadow-blue: 0 10px 30px -10px hsl(var(--blue-500) / 0.4);
+    --shadow-primary: 0 10px 30px -10px hsl(var(--primary) / 0.4);
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
