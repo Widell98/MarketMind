@@ -530,7 +530,7 @@ const StockCaseDetail = () => {
               {/* Graph Caption */}
               <div className="text-center">
                 <p className="text-sm text-muted-foreground italic">
-                  Teknisk analys: {stockCase.company_name} – Timeframe: Daily
+                  Teknisk analys: {stockCase.company_name} – Timeframe: {stockCase.timeframe || 'Ej specificerad'}
                   {stockCase.sector && ` • Sektor: ${stockCase.sector}`}
                 </p>
               </div>
