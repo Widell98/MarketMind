@@ -286,6 +286,28 @@ KOMPETENSER:
 
     console.log('TELEMETRY START:', telemetryData);
 
+    // Save user message to database first
+    if (sessionId) {
+      try {
+        await supabase
+          .from('portfolio_chat_history')
+          .insert({
+            user_id: userId,
+            chat_session_id: sessionId,
+            message: message,
+            message_type: 'user',
+            context_data: {
+              analysisType,
+              requestId,
+              timestamp: new Date().toISOString()
+            }
+          });
+        console.log('User message saved to database');
+      } catch (error) {
+        console.error('Error saving user message:', error);
+      }
+    }
+
     // Make streaming request to OpenAI
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',

@@ -516,9 +516,9 @@ export const useAIChat = (portfolioId?: string) => {
     setIsLoading(true);
     
     try {
-      // Add user message to UI immediately
+      // Add user message to UI immediately for better UX
       const userMessage: Message = {
-        id: Date.now().toString() + '_user',
+        id: Date.now().toString() + '_user_temp',
         role: 'user',
         content: content.trim(),
         timestamp: new Date()
@@ -528,34 +528,13 @@ export const useAIChat = (portfolioId?: string) => {
       
       console.log('Calling Supabase function with chat history...');
       
-      // Send chat history for context (last 10 messages)
+      // Send chat history for context (last 10 messages excluding the temp message we just added)
       const chatHistoryForAPI = messages.slice(-10).map(msg => ({
         role: msg.role,
         content: msg.content
       }));
       
-      // Handle streaming response using supabase functions
-      const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
-        body: {
-          message: content.trim(),
-          userId: user.id,
-          portfolioId: portfolioId,
-          sessionId: targetSessionId,
-          chatHistory: chatHistoryForAPI,
-          analysisType: 'general'
-        }
-      });
-
-      if (error) {
-        console.error('Supabase function error:', error);
-        throw error;
-      }
-
-      console.log('Function response (streaming):', data);
-      
-      // For streaming, we need to handle the response differently
-      // The response should be the streaming data, but supabase.functions.invoke doesn't support streaming
-      // So we'll fallback to using fetch with the correct auth header
+      // Handle streaming response using direct fetch for better streaming support
       const supabaseUrl = 'https://qifolopsdeeyrevbuxfl.supabase.co';
       const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpZm9sb3BzZGVleXJldmJ1eGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5MzY3MjMsImV4cCI6MjA2MzUxMjcyM30.x89y179_8EDl1NwTryhXfUDMzdxrnfomZfRmhmySMhM';
       
@@ -582,7 +561,7 @@ export const useAIChat = (portfolioId?: string) => {
       console.log('Starting streaming response...');
       
       // Create placeholder AI message for streaming
-      const aiMessageId = Date.now().toString() + '_ai';
+      const aiMessageId = Date.now().toString() + '_ai_temp';
       const aiMessage: Message = {
         id: aiMessageId,
         role: 'assistant',
@@ -665,6 +644,12 @@ export const useAIChat = (portfolioId?: string) => {
         }
       }
       
+      // After streaming is complete, reload messages from database to get the complete conversation with correct IDs
+      console.log('Streaming complete, reloading messages from database...');
+      setTimeout(() => {
+        loadMessages(targetSessionId);
+      }, 1000);
+      
       // Track usage
       await fetchUsage();
       
@@ -675,10 +660,13 @@ export const useAIChat = (portfolioId?: string) => {
         description: "Kunde inte skicka meddelandet. Försök igen.",
         variant: "destructive",
       });
+      
+      // Remove the temporary user message on error
+      setMessages(prev => prev.filter(msg => !msg.id.includes('_temp')));
     } finally {
       setIsLoading(false);
     }
-  }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage]);
+  }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage, loadMessages]);
 
   // Function to update user profile based on AI-detected changes
   const updateUserProfile = useCallback(async (profileUpdates: any) => {
