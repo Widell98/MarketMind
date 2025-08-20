@@ -17,8 +17,12 @@ import { useFinancialProgress } from '@/hooks/useFinancialProgress';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 const Index = () => {
-  const { user } = useAuth();
-  const { t } = useLanguage();
+  const {
+    user
+  } = useAuth();
+  const {
+    t
+  } = useLanguage();
   const {
     activePortfolio,
     loading
@@ -266,41 +270,7 @@ const Index = () => {
                 </div>
 
                 {/* AI Insights */}
-                <div className="mb-8">
-                  {insightsLoading ? <div className="bg-card border rounded-xl p-6">
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <Brain className="w-5 h-5 text-primary animate-pulse" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="h-4 bg-muted rounded mb-3 animate-pulse"></div>
-                          <div className="h-3 bg-muted rounded w-3/4 animate-pulse"></div>
-                        </div>
-                      </div>
-                    </div> : insights.length > 0 ? <div className="bg-card border rounded-xl p-6 hover:shadow-md transition-shadow">
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <Brain className="w-5 h-5 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="font-medium text-foreground">{t('dashboard.aiInsight')}</p>
-                            <Badge variant="secondary" className="text-xs">
-                              {insights[0]?.confidence > 0.8 ? t('dashboard.highReliability') : t('dashboard.mediumReliability')}
-                            </Badge>
-                          </div>
-                          <p className="text-muted-foreground mb-3">
-                            {insights[0]?.message}
-                          </p>
-                          <Button asChild size="sm" variant="ghost" className="p-0 h-auto text-primary hover:text-primary/80">
-                            
-                          </Button>
-                        </div>
-                      </div>
-                    </div> : <div className="bg-card border rounded-xl p-6">
-                      
-                    </div>}
-                </div>
+                
 
                 {/* Portfolio Overview Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
