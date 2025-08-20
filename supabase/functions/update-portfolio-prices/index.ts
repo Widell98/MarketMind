@@ -138,71 +138,32 @@ serve(async (req) => {
 });
 
 async function fetchStockQuote(symbol: string) {
-  if (!alphaVantageKey) {
-    console.log('No Alpha Vantage key, using mock data');
+  // Use the same multi-source approach as the main fetch-stock-quote function
+  const response = await fetch(
+    `https://qifolopsdeeyrevbuxfl.supabase.co/functions/v1/fetch-stock-quote`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+      },
+      body: JSON.stringify({ symbol })
+    }
+  );
+
+  if (!response.ok) {
+    console.error(`Error calling fetch-stock-quote for ${symbol}: ${response.status}`);
     return getMockQuote(symbol);
   }
 
-  try {
-    const cleanSymbol = symbol.trim().toUpperCase();
-    
-    const response = await fetch(
-      `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${cleanSymbol}&apikey=${alphaVantageKey}`
-    );
-    
-    const data = await response.json();
-    
-    if (data['Error Message']) {
-      return {
-        symbol: cleanSymbol,
-        price: null,
-        hasValidPrice: false,
-        currency: 'USD'
-      };
-    }
-
-    if (data['Note'] && data['Note'].includes('API call frequency')) {
-      console.log(`Rate limit reached for ${cleanSymbol}`);
-      return getMockQuote(cleanSymbol);
-    }
-    
-    if (!data['Global Quote'] || Object.keys(data['Global Quote']).length === 0) {
-      // Try with .ST suffix for Swedish stocks
-      const variations = [cleanSymbol + '.ST', cleanSymbol + '.OL'];
-      
-      for (const variant of variations) {
-        try {
-          const variantResponse = await fetch(
-            `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${variant}&apikey=${alphaVantageKey}`
-          );
-          const variantData = await variantResponse.json();
-          
-          if (variantData['Global Quote'] && Object.keys(variantData['Global Quote']).length > 0) {
-            return parseQuoteData(variantData['Global Quote'], variant);
-          }
-        } catch (error) {
-          console.log(`Error trying variant ${variant}:`, error);
-        }
-      }
-      
-      return {
-        symbol: cleanSymbol,
-        price: null,
-        hasValidPrice: false,
-        currency: 'USD'
-      };
-    }
-    
-    return parseQuoteData(data['Global Quote'], cleanSymbol);
-  } catch (error) {
-    console.error(`Error fetching data for ${symbol}:`, error);
-    return {
-      symbol: symbol,
-      price: null,
-      hasValidPrice: false,
-      currency: 'USD'
-    };
+  const data = await response.json();
+  
+  if (data.error) {
+    console.error(`fetch-stock-quote error for ${symbol}: ${data.error}`);
+    return getMockQuote(symbol);
   }
+
+  return data;
 }
 
 function parseQuoteData(quote: any, symbol: string) {

@@ -48,86 +48,134 @@ async function fetchStockQuote(symbol: string) {
     return getMockQuote(symbol);
   }
 
-  try {
-    // Förbättra symbolrensning
-    const cleanSymbol = symbol.trim().toUpperCase().replace(/[^A-Z0-9\.\-]/g, '');
-    console.log(`Cleaned symbol: ${symbol} -> ${cleanSymbol}`);
-    
-    // Försök med olika varianter direkt från början
-    const variations = [
-      cleanSymbol,
-      cleanSymbol + '.ST', // Stockholm börsen
-      cleanSymbol + '.OL', // Oslo börsen  
-      cleanSymbol + '.CO', // Köpenhamn
-      cleanSymbol + '.HE', // Helsingfors
-      cleanSymbol.replace('.ST', '').replace('.OL', '').replace('.CO', '').replace('.HE', '') // Utan suffix
-    ];
+  // Try multiple data sources with fallback chain
+  const dataSources = [
+    { name: 'Alpha Vantage', func: fetchFromAlphaVantage },
+    { name: 'Yahoo Finance', func: fetchFromYahoo },
+    { name: 'Mock Data', func: getMockQuote }
+  ];
 
-    // Ta bort duplikater
-    const uniqueVariations = [...new Set(variations)];
-    console.log(`Trying variations: ${uniqueVariations.join(', ')}`);
-
-    for (const variant of uniqueVariations) {
-      try {
-        console.log(`Fetching data for: ${variant}`);
-        
-        const response = await fetch(
-          `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${variant}&apikey=${alphaVantageKey}`,
-          { 
-            headers: { 'User-Agent': 'StockTracker/1.0' },
-            signal: AbortSignal.timeout(10000) // 10 sekunder timeout
-          }
-        );
-        
-        if (!response.ok) {
-          console.log(`HTTP error for ${variant}: ${response.status}`);
-          continue;
-        }
-        
-        const data = await response.json();
-        console.log(`Response for ${variant}:`, JSON.stringify(data, null, 2));
-        
-        // Kontrollera rate limit först
-        if (data['Note'] && data['Note'].includes('API call frequency')) {
-          console.log(`Rate limit reached for ${variant}, using mock data`);
-          return getMockQuote(cleanSymbol);
-        }
-        
-        // Kontrollera för fel
-        if (data['Error Message']) {
-          console.log(`Alpha Vantage error for ${variant}: ${data['Error Message']}`);
-          continue; // Försök nästa variant
-        }
-        
-        // Kontrollera om vi har giltig data
-        if (data['Global Quote'] && Object.keys(data['Global Quote']).length > 0) {
-          const quote = data['Global Quote'];
-          const price = parseFloat(quote['05. price'] || '0');
-          
-          if (price > 0 && !isNaN(price)) {
-            console.log(`Successfully found valid price for ${variant}: ${price}`);
-            return parseQuoteData(quote, variant);
-          } else {
-            console.log(`Invalid price data for ${variant}: ${price}`);
-            continue;
-          }
-        }
-        
-        console.log(`No valid quote data for ${variant}`);
-        
-      } catch (fetchError) {
-        console.log(`Fetch error for ${variant}:`, fetchError);
-        continue; // Fortsätt med nästa variant
+  for (const source of dataSources) {
+    try {
+      console.log(`Trying ${source.name} for ${symbol}`);
+      const result = await source.func(symbol);
+      
+      if (result.hasValidPrice && result.price && result.price > 0) {
+        console.log(`✅ ${source.name} successful for ${symbol}: ${result.price} ${result.currency}`);
+        return result;
+      } else {
+        console.log(`❌ ${source.name} failed for ${symbol} - no valid price`);
       }
+    } catch (error) {
+      console.log(`❌ ${source.name} error for ${symbol}:`, error.message);
+    }
+  }
+
+  // Final fallback
+  console.log(`All sources failed for ${symbol}, using mock data`);
+  return getMockQuote(symbol);
+}
+
+async function fetchFromAlphaVantage(symbol: string) {
+  const cleanSymbol = symbol.trim().toUpperCase().replace(/[^A-Z0-9\.\-]/g, '');
+  
+  // Try different symbol variations for different markets
+  const variations = [
+    cleanSymbol,
+    cleanSymbol + '.ST', // Stockholm
+    cleanSymbol + '.OL', // Oslo
+    cleanSymbol + '.CO', // Copenhagen
+    cleanSymbol + '.HE', // Helsinki
+    cleanSymbol.replace(/\.(ST|OL|CO|HE)$/, '') // Remove suffix
+  ];
+
+  const uniqueVariations = [...new Set(variations)];
+  
+  for (const variant of uniqueVariations) {
+    try {
+      const response = await fetch(
+        `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${variant}&apikey=${alphaVantageKey}`,
+        { 
+          headers: { 'User-Agent': 'StockTracker/1.0' },
+          signal: AbortSignal.timeout(8000)
+        }
+      );
+
+      if (!response.ok) continue;
+      
+      const data = await response.json();
+      
+      // Check for rate limit
+      if (data['Note'] && data['Note'].includes('API call frequency')) {
+        throw new Error('Rate limit reached');
+      }
+      
+      // Check for error
+      if (data['Error Message']) continue;
+      
+      // Check for valid data
+      if (data['Global Quote'] && Object.keys(data['Global Quote']).length > 0) {
+        const quote = data['Global Quote'];
+        const price = parseFloat(quote['05. price'] || '0');
+        
+        if (price > 0 && !isNaN(price)) {
+          return parseQuoteData(quote, variant);
+        }
+      }
+    } catch (error) {
+      continue;
+    }
+  }
+  
+  throw new Error('No valid data from Alpha Vantage');
+}
+
+async function fetchFromYahoo(symbol: string) {
+  try {
+    // Convert symbol for Yahoo Finance format
+    let yahooSymbol = symbol.toUpperCase();
+    if (yahooSymbol.includes('.ST')) {
+      yahooSymbol = yahooSymbol.replace('.ST', '.ST');
+    } else if (yahooSymbol.includes('.OL')) {
+      yahooSymbol = yahooSymbol.replace('.OL', '.OL');
     }
     
-    // Om alla varianter misslyckades, returnera mock data som fallback
-    console.log(`All variants failed for ${cleanSymbol}, using mock data as fallback`);
-    return getMockQuote(cleanSymbol);
+    // Simple Yahoo Finance API call (using a free endpoint)
+    const response = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}`,
+      { 
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(5000)
+      }
+    );
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     
+    const data = await response.json();
+    
+    if (data.chart?.result?.[0]?.meta?.regularMarketPrice) {
+      const price = data.chart.result[0].meta.regularMarketPrice;
+      const currency = data.chart.result[0].meta.currency || 'USD';
+      
+      return {
+        symbol: yahooSymbol,
+        price: Math.round(price * 100) / 100,
+        change: null,
+        changePercent: null,
+        volume: null,
+        high: null,
+        low: null,
+        open: null,
+        previousClose: null,
+        lastUpdated: new Date().toISOString(),
+        hasValidPrice: true,
+        currency: currency.toUpperCase()
+      };
+    }
+    
+    throw new Error('No valid price data from Yahoo');
   } catch (error) {
-    console.error(`Unexpected error for ${symbol}:`, error);
-    return getMockQuote(symbol);
+    throw new Error(`Yahoo Finance error: ${error.message}`);
   }
 }
 
