@@ -259,13 +259,15 @@ const CommunityRecommendations: React.FC = () => {
               </p>
             </div>
             
-            <Button 
-              onClick={() => navigate('/stock-cases')} 
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-            >
-              <TrendingUp className="w-4 h-4" />
-              Utforska Stock Cases
-            </Button>
+            <div className="flex justify-center">
+              <Button 
+                onClick={() => navigate('/stock-cases')} 
+                className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              >
+                <Brain className="w-4 h-4" />
+                Utforska Stock Cases
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
