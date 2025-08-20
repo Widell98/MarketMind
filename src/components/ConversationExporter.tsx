@@ -1,22 +1,30 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Download, 
   FileText, 
-  Mail, 
   Share2, 
   Calendar,
   MessageSquare,
-  Filter
+  Loader2
 } from 'lucide-react';
 
+interface Conversation {
+  id: string;
+  session_name: string;
+  created_at: string;
+  messageCount?: number;
+}
+
 interface ConversationExporterProps {
-  conversations?: any[];
+  conversations?: Conversation[];
   currentSessionId?: string;
 }
 
@@ -25,37 +33,61 @@ const ConversationExporter: React.FC<ConversationExporterProps> = ({
   currentSessionId 
 }) => {
   const { toast } = useToast();
-  const [exportFormat, setExportFormat] = useState('pdf');
+  const { user } = useAuth();
+  const [exportFormat, setExportFormat] = useState('json');
   const [selectedConversations, setSelectedConversations] = useState<string[]>([]);
   const [includeMetadata, setIncludeMetadata] = useState(true);
   const [includeAnalysis, setIncludeAnalysis] = useState(true);
   const [dateRange, setDateRange] = useState('all');
   const [isExporting, setIsExporting] = useState(false);
+  const [availableConversations, setAvailableConversations] = useState<Conversation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock conversations data
-  const mockConversations = [
-    {
-      id: '1',
-      name: 'Portfolio Analysis Discussion',
-      date: new Date('2024-01-15'),
-      messageCount: 12,
-      type: 'analysis'
-    },
-    {
-      id: '2', 
-      name: 'Stock Research Session',
-      date: new Date('2024-01-10'),
-      messageCount: 8,
-      type: 'research'
-    },
-    {
-      id: '3',
-      name: 'Risk Assessment Chat',
-      date: new Date('2024-01-05'),
-      messageCount: 15,
-      type: 'risk'
-    }
-  ];
+  // Load conversations from database
+  useEffect(() => {
+    const loadConversations = async () => {
+      if (!user) return;
+      
+      setIsLoading(true);
+      try {
+        const { data: sessions, error } = await supabase
+          .from('ai_chat_sessions')
+          .select('id, session_name, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Get message counts for each session
+        const sessionsWithCounts = await Promise.all(
+          sessions.map(async (session) => {
+            const { count } = await supabase
+              .from('portfolio_chat_history')
+              .select('*', { count: 'exact', head: true })
+              .eq('chat_session_id', session.id);
+            
+            return {
+              ...session,
+              messageCount: count || 0
+            };
+          })
+        );
+
+        setAvailableConversations(sessionsWithCounts);
+      } catch (error) {
+        console.error('Error loading conversations:', error);
+        toast({
+          title: "Fel",
+          description: "Kunde inte ladda konversationer",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadConversations();
+  }, [user, toast]);
 
   const handleConversationToggle = (conversationId: string) => {
     setSelectedConversations(prev => 
@@ -75,13 +107,13 @@ const ConversationExporter: React.FC<ConversationExporterProps> = ({
   };
 
   const getFilteredConversations = () => {
-    let filtered = mockConversations;
+    let filtered = availableConversations;
     
     if (dateRange !== 'all') {
       const now = new Date();
       const daysAgo = dateRange === 'week' ? 7 : dateRange === 'month' ? 30 : 90;
       const cutoffDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
-      filtered = filtered.filter(conv => conv.date >= cutoffDate);
+      filtered = filtered.filter(conv => new Date(conv.created_at) >= cutoffDate);
     }
     
     return filtered;
@@ -97,35 +129,112 @@ const ConversationExporter: React.FC<ConversationExporterProps> = ({
       return;
     }
 
+    if (!user) {
+      toast({
+        title: "Autentiseringsfel",
+        description: "Du måste vara inloggad för att exportera konversationer",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsExporting(true);
 
     try {
-      // Simulate export process
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Fetch conversation data with messages
+      const conversationsWithMessages = await Promise.all(
+        selectedConversations.map(async (sessionId) => {
+          const session = availableConversations.find(c => c.id === sessionId);
+          
+          // Get messages for this session
+          const { data: messages, error } = await supabase
+            .from('portfolio_chat_history')
+            .select('*')
+            .eq('chat_session_id', sessionId)
+            .order('created_at', { ascending: true });
+
+          if (error) throw error;
+
+          return {
+            session: session,
+            messages: messages.map(msg => ({
+              role: msg.message_type,
+              content: msg.message,
+              timestamp: msg.created_at,
+              ...(includeMetadata && {
+                id: msg.id,
+                context: msg.context_data,
+                ...(includeAnalysis && {
+                  confidence: msg.ai_confidence_score,
+                  responseTime: msg.response_time_ms
+                })
+              })
+            }))
+          };
+        })
+      );
 
       // Generate export data
       const exportData = {
-        conversations: selectedConversations,
-        format: exportFormat,
-        metadata: includeMetadata,
-        analysis: includeAnalysis,
-        exportDate: new Date().toISOString(),
-        totalMessages: selectedConversations.reduce((total, id) => {
-          const conv = mockConversations.find(c => c.id === id);
-          return total + (conv?.messageCount || 0);
-        }, 0)
+        exportInfo: {
+          exportDate: new Date().toISOString(),
+          format: exportFormat,
+          totalConversations: selectedConversations.length,
+          totalMessages: conversationsWithMessages.reduce((total, conv) => total + conv.messages.length, 0),
+          includeMetadata,
+          includeAnalysis
+        },
+        conversations: conversationsWithMessages
       };
 
-      // Mock file download
-      const dataStr = JSON.stringify(exportData, null, 2);
-      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+      // Create and download file
+      let fileContent: string;
+      let mimeType: string;
+      let fileExtension: string;
+
+      switch (exportFormat) {
+        case 'json':
+          fileContent = JSON.stringify(exportData, null, 2);
+          mimeType = 'application/json';
+          fileExtension = 'json';
+          break;
+        case 'txt':
+          fileContent = conversationsWithMessages.map(conv => {
+            const header = `=== ${conv.session?.session_name} ===\nSkapad: ${new Date(conv.session?.created_at || '').toLocaleString('sv-SE')}\nAntal meddelanden: ${conv.messages.length}\n\n`;
+            const messages = conv.messages.map(msg => `[${msg.role.toUpperCase()}] ${new Date(msg.timestamp).toLocaleString('sv-SE')}\n${msg.content}\n`).join('\n');
+            return header + messages;
+          }).join('\n\n' + '='.repeat(50) + '\n\n');
+          mimeType = 'text/plain';
+          fileExtension = 'txt';
+          break;
+        case 'csv':
+          const csvHeaders = ['Konversation', 'Datum', 'Roll', 'Meddelande', 'Tidsstämpel'];
+          const csvRows = conversationsWithMessages.flatMap(conv =>
+            conv.messages.map(msg => [
+              `"${conv.session?.session_name || ''}"`,
+              `"${new Date(conv.session?.created_at || '').toLocaleDateString('sv-SE')}"`,
+              `"${msg.role}"`,
+              `"${msg.content.replace(/"/g, '""')}"`,
+              `"${new Date(msg.timestamp).toLocaleString('sv-SE')}"`
+            ])
+          );
+          fileContent = [csvHeaders.join(','), ...csvRows.map(row => row.join(','))].join('\n');
+          mimeType = 'text/csv';
+          fileExtension = 'csv';
+          break;
+        default:
+          throw new Error('Okänt exportformat');
+      }
       
-      const exportFileDefaultName = `conversations_export_${new Date().toISOString().split('T')[0]}.${exportFormat}`;
+      const dataUri = `data:${mimeType};charset=utf-8,${encodeURIComponent(fileContent)}`;
+      const exportFileDefaultName = `konversationer_${new Date().toISOString().split('T')[0]}.${fileExtension}`;
       
       const linkElement = document.createElement('a');
       linkElement.setAttribute('href', dataUri);
       linkElement.setAttribute('download', exportFileDefaultName);
+      document.body.appendChild(linkElement);
       linkElement.click();
+      document.body.removeChild(linkElement);
 
       toast({
         title: "Export slutförd",
@@ -133,6 +242,7 @@ const ConversationExporter: React.FC<ConversationExporterProps> = ({
       });
 
     } catch (error) {
+      console.error('Export error:', error);
       toast({
         title: "Export misslyckades",
         description: "Ett fel uppstod vid export av konversationer",
@@ -204,7 +314,6 @@ const ConversationExporter: React.FC<ConversationExporterProps> = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="pdf">PDF</SelectItem>
                 <SelectItem value="json">JSON</SelectItem>
                 <SelectItem value="csv">CSV</SelectItem>
                 <SelectItem value="txt">Textfil</SelectItem>
@@ -276,32 +385,43 @@ const ConversationExporter: React.FC<ConversationExporterProps> = ({
           </div>
 
           <div className="max-h-40 sm:max-h-48 overflow-y-auto space-y-2 border rounded-lg p-2 sm:p-3">
-            {filteredConversations.map((conversation) => (
-              <div 
-                key={conversation.id}
-                className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded"
-              >
-                <Checkbox 
-                  id={conversation.id}
-                  checked={selectedConversations.includes(conversation.id)}
-                  onCheckedChange={() => handleConversationToggle(conversation.id)}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0" />
-                    <label htmlFor={conversation.id} className="text-xs sm:text-sm font-medium truncate cursor-pointer">
-                      {conversation.name}
-                    </label>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                    <Calendar className="w-3 h-3" />
-                    <span>{conversation.date.toLocaleDateString('sv-SE')}</span>
-                    <span>•</span>
-                    <span>{conversation.messageCount} meddelanden</span>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                <span className="text-sm text-muted-foreground">Laddar konversationer...</span>
+              </div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground text-sm">
+                Inga konversationer hittades
+              </div>
+            ) : (
+              filteredConversations.map((conversation) => (
+                <div 
+                  key={conversation.id}
+                  className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded"
+                >
+                  <Checkbox 
+                    id={conversation.id}
+                    checked={selectedConversations.includes(conversation.id)}
+                    onCheckedChange={() => handleConversationToggle(conversation.id)}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0" />
+                      <label htmlFor={conversation.id} className="text-xs sm:text-sm font-medium truncate cursor-pointer">
+                        {conversation.session_name}
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                      <Calendar className="w-3 h-3" />
+                      <span>{new Date(conversation.created_at).toLocaleDateString('sv-SE')}</span>
+                      <span>•</span>
+                      <span>{conversation.messageCount || 0} meddelanden</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           {selectedConversations.length > 0 && (
