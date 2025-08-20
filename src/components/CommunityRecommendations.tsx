@@ -247,7 +247,6 @@ const CommunityRecommendations: React.FC = () => {
               Utforska stock-cases och analyser från communityn och spara intressanta innehåll för att se det här.
             </p>
             
-            {/* Enhanced CTA with inspiration hint */}
             <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg mb-4">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Sparkles className="w-5 h-5 text-purple-600" />
@@ -260,25 +259,13 @@ const CommunityRecommendations: React.FC = () => {
               </p>
             </div>
             
-            <div className="flex flex-col gap-3">
-              <Button 
-                onClick={() => navigate('/stock-cases')} 
-                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-              >
-                <TrendingUp className="w-4 h-4" />
-                Utforska Stock Cases
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                onClick={() => navigate('/discover-opportunities')} 
-                className="flex items-center gap-2"
-              >
-                <BookOpen className="w-4 h-4" />
-                Upptäck Analyser
-              </Button>
-            </div>
+            <Button 
+              onClick={() => navigate('/stock-cases')} 
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+            >
+              <TrendingUp className="w-4 h-4" />
+              Utforska Stock Cases
+            </Button>
           </div>
         </CardContent>
       </Card>
