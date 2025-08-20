@@ -25,13 +25,30 @@ import PortfolioHealthScore from '@/components/PortfolioHealthScore';
 import FloatingActionButton from '@/components/FloatingActionButton';
 import Breadcrumb from '@/components/Breadcrumb';
 const PortfolioImplementation = () => {
-  const { actualHoldings } = useUserHoldings();
-  const { activePortfolio, loading } = usePortfolio();
-  const { user, loading: authLoading } = useAuth();
-  const { t } = useLanguage();
-  const { riskProfile, loading: riskProfileLoading } = useRiskProfile();
-  const { performance } = usePortfolioPerformance();
-  const { totalCash } = useCashHoldings();
+  const {
+    actualHoldings
+  } = useUserHoldings();
+  const {
+    activePortfolio,
+    loading
+  } = usePortfolio();
+  const {
+    user,
+    loading: authLoading
+  } = useAuth();
+  const {
+    t
+  } = useLanguage();
+  const {
+    riskProfile,
+    loading: riskProfileLoading
+  } = useRiskProfile();
+  const {
+    performance
+  } = usePortfolioPerformance();
+  const {
+    totalCash
+  } = useCashHoldings();
   const navigate = useNavigate();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -151,21 +168,9 @@ const PortfolioImplementation = () => {
             <h1 className="text-4xl font-bold mb-4 text-foreground">
               {t('portfolio.title')}
             </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              {t('portfolio.subtitle')}
-            </p>
             
-            <div className="flex flex-wrap justify-center gap-3 mt-8">
-              <Badge className="px-4 py-2 text-sm font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors">
-                <Brain className="w-4 h-4 mr-2" />
-                {t('portfolio.aiAnalysis')}
-              </Badge>
-              
-              {lastUpdated && <Badge className="px-4 py-2 text-sm font-medium bg-muted/50 text-muted-foreground border border-muted/30 hover:bg-muted/70 transition-colors">
-                  <Clock className="w-4 h-4 mr-2" />
-                  {t('portfolio.updated')} {lastUpdated}
-                </Badge>}
-            </div>
+            
+            
           </div>
 
           {/* Portfolio Health Score */}
