@@ -43,27 +43,11 @@ serve(async (req) => {
 
     console.log('OpenAI API key found, calling API...');
 
-    // Enhance system prompt with micro-template structure
-    const enhancedSystemPrompt = `${systemPrompt}
-
-MIKRO-MALL FÖR SNABBA AKTIESVAR:
-Strukturera VARJE svar enligt denna kompakta mall:
-
-**📊 Tes:** [Huvud-investeringstesen i 1 mening]
-**⚠️ Risk:** [Primär risk att beakta]
-**📈 Nivåer:** [Relevanta kursnivåer om tillgängliga]
-
-Exempel:
-📊 **Tes:** Stark tillväxtaktie inom gaming med global marknadsledning
-⚠️ **Risk:** Regulatorisk osäkerhet och konjunkturkänslighet  
-📈 **Nivåer:** Stöd 1080 SEK, motstånd 1250 SEK
-
-Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
-
+    // Use the provided system prompt directly - no modifications
     const messages = [
       {
         role: 'system',
-        content: enhancedSystemPrompt
+        content: systemPrompt
       },
       {
         role: 'user',

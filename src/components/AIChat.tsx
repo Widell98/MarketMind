@@ -11,8 +11,7 @@ import ChatInput from './chat/ChatInput';
 import ProfileUpdateConfirmation from './ProfileUpdateConfirmation';
 import ProfileContextCard from './chat/ProfileContextCard';
 import ChatFolderSidebar from './chat/ChatFolderSidebar';
-import ResponseLengthToggle from './ui/response-length-toggle';
-import { LogIn, MessageSquare, Brain, ArrowLeft, Lock, Sparkles, Crown, Menu, PanelLeftClose, PanelLeft, AlertCircle, Settings } from 'lucide-react';
+import { LogIn, MessageSquare, Brain, ArrowLeft, Lock, Sparkles, Crown, Menu, PanelLeftClose, PanelLeft } from 'lucide-react';
 import HelpButton from '@/components/HelpButton';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -70,7 +69,6 @@ const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [isGuideSession, setIsGuideSession] = useState(false);
-  const [responseLength, setResponseLength] = useState<'concise' | 'standard' | 'detailed'>('standard');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
@@ -319,82 +317,59 @@ const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts 
             {/* Chat Content */}
             {messages.length === 0 && !isLoading && !isGuideSession ? (
               /* Welcome Screen */
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-3xl mx-auto">
-                <div className="space-y-6">
-                  <div className="text-center space-y-2">
-                    <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                      <Sparkles className="w-8 h-8 text-white" />
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-2xl mx-auto">
+                <h1 className="text-4xl font-medium text-foreground mb-2">
+                  Hej där!
+                </h1>
+                <p className="text-lg text-muted-foreground mb-12">
+                  Fråga mig vad som helst
+                </p>
+
+                {/* Example Prompts Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl">
+                  <Button
+                    variant="outline"
+                    className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border"
+                    onClick={() => handleExamplePrompt("Analysera min portfölj och ge rekommendationer för optimering")}
+                  >
+                    <div>
+                      <div className="text-sm font-medium text-foreground">Analysera min portfölj</div>
+                      <div className="text-xs text-muted-foreground mt-1">Få en genomgång av prestanda och struktur</div>
                     </div>
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                      Din personliga AI-investeringsrådgivare
-                    </h2>
-                    <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto">
-                      Professionella investeringsråd med strukturerade analyser, konkreta rekommendationer och genomförbara åtgärdsplaner.
-                    </p>
-                    <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3 mt-4">
-                      <div className="flex items-center justify-center gap-2 mb-2">
-                        <AlertCircle className="w-4 h-4" />
-                        <span className="font-medium">Utbildningssyfte</span>
-                      </div>
-                      Denna AI-rådgivare ger utbildningsinformation. Konsultera alltid en licensierad finansiell rådgivare för personlig rådgivning.
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border"
+                    onClick={() => handleExamplePrompt("Vilka risker finns i min portfölj och hur kan jag diversifiera bättre?")}
+                  >
+                    <div>
+                      <div className="text-sm font-medium text-foreground">Riskanalys och diversifiering</div>
+                      <div className="text-xs text-muted-foreground mt-1">Identifiera och minimera risker</div>
                     </div>
-                  </div>
+                  </Button>
 
-                  {/* Response Length Setting */}
-                  <div className="border-t pt-4">
-                    <ResponseLengthToggle
-                      value={responseLength}
-                      onChange={setResponseLength}
-                      className="max-w-md mx-auto"
-                    />
-                  </div>
+                  <Button
+                    variant="outline"
+                    className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border"
+                    onClick={() => handleExamplePrompt("Vilka aktier och tillgångar borde jag överväga baserat på min riskprofil?")}
+                  >
+                    <div>
+                      <div className="text-sm font-medium text-foreground">Investeringsförslag</div>
+                      <div className="text-xs text-muted-foreground mt-1">Personliga rekommendationer</div>
+                    </div>
+                  </Button>
 
-                  {/* Example Prompts Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl">
-                    <Button
-                      variant="outline"
-                      className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border"
-                      onClick={() => handleExamplePrompt("Gör en djup portföljanalys med risk/avkastning och konkreta förbättringsförslag")}
-                    >
-                      <div>
-                        <div className="text-sm font-medium text-foreground">Portföljanalys & Optimering</div>
-                        <div className="text-xs text-muted-foreground mt-1">Strukturerad analys med åtgärdsplan</div>
-                      </div>
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border"
-                      onClick={() => handleExamplePrompt("Analysera Investor AB - fundamentalanalys, värdering och köp/sälj-rekommendation")}
-                    >
-                      <div>
-                        <div className="text-sm font-medium text-foreground">Aktieanalys med rekommendation</div>
-                        <div className="text-xs text-muted-foreground mt-1">Professionell analys och råd</div>
-                      </div>
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border"
-                      onClick={() => handleExamplePrompt("Vilka konkreta aktier och fonder passar min riskprofil för rebalansering?")}
-                    >
-                      <div>
-                        <div className="text-sm font-medium text-foreground">Personliga investeringsråd</div>
-                        <div className="text-xs text-muted-foreground mt-1">Skräddarsydda rekommendationer</div>
-                      </div>
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border"
-                      onClick={() => handleExamplePrompt("Marknadsläget idag: hur påverkar det min strategi och vad bör jag göra?")}
-                    >
-                      <div>
-                        <div className="text-sm font-medium text-foreground">Marknadsanalys & Strategi</div>
-                        <div className="text-xs text-muted-foreground mt-1">Aktuella trender och handling</div>
-                      </div>
-                    </Button>
-                  </div>
+                  <Button
+                    variant="outline"
+                    className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border"
+                    onClick={() => handleExamplePrompt("Vad händer på marknaden just nu och hur påverkar det min strategi?")}
+                  >
+                    <div>
+                      <div className="text-sm font-medium text-foreground">Marknadsläget</div>
+                      <div className="text-xs text-muted-foreground mt-1">Aktuella trender och påverkan</div>
+                    </div>
+                  </Button>
                 </div>
               </div>
             ) : (
