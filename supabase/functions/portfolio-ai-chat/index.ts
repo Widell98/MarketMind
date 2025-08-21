@@ -223,48 +223,173 @@ serve(async (req) => {
       }
     };
 
-    // Build optimized context - shorter for better performance
-    let contextInfo = `Du är en professionell investeringsrådgivare på svenska. 
+    // ENHANCED INTENT ROUTING SYSTEM
+    const detectIntent = (message: string) => {
+      const msg = message.toLowerCase();
+      
+      // Stock/Company Analysis Intent
+      if (/(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) && 
+          /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5})/i.test(message)) {
+        return 'stock_analysis';
+      }
+      
+      // Portfolio Rebalancing/Optimization Intent
+      if (/(?:portfölj|portfolio)/i.test(message) && /(?:optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma|rebalansera)/i.test(message)) {
+        return 'portfolio_optimization';
+      }
+      
+      // Buy/Sell Decisions Intent
+      if (/(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|position|handel)/i.test(message)) {
+        return 'buy_sell_decisions';
+      }
+      
+      // Risk/Tax/Strategy Intent  
+      if (/(?:risk|skatteoptimering|strategi|diversifiering|säkerhet|volatilitet)/i.test(message)) {
+        return 'risk_tax_strategy';
+      }
+      
+      // Market Analysis Intent
+      if (/(?:marknad|index|trend|prognos|ekonomi|räntor|inflation|börsen)/i.test(message)) {
+        return 'market_analysis';
+      }
+      
+      return 'general_advice';
+    };
 
-VIKTIGA FORMATERINGSREGLER:
-- Använd ALDRIG slumpmässiga siffror före rubriker
-- Skriv naturligt utan onödig numrering
-- Använd markdown-formatering (**fetstil**) för viktiga begrepp
-- Håll svar koncisa och fokuserade
+    const userIntent = detectIntent(message);
+    console.log('Detected user intent:', userIntent);
 
-KOMPETENSER:
-1. Aktieanalys med fundamental/teknisk analys, värdering, risker och KÖP/SÄLJ-rekommendation
-2. Portföljrekommendationer med specifika aktier/fonder inklusive ticker: **Företag (SYMBOL)**
-3. Personliga investeringsråd baserat på användarprofil`;
+    // Build enhanced context with intent-specific prompts
+    let contextInfo = `Du är en auktoriserad svensk investeringsrådgivare med diskretionär men icke-verkställande behörighet. Du agerar som en personlig finansiell rådgivare som ger professionella investeringsråd.
 
-    // Always include user's risk profile if available - don't ask for info they already provided
+PERSONA & STIL:
+- Professionell men personlig ton som en erfaren rådgivare
+- Basera alla råd på användarens faktiska innehav och riskprofil
+- Ge konkreta, genomförbara rekommendationer
+- Använd svensk finansterminologi och marknadskontext
+- Inkludera alltid DISCLAIMER om utbildningssyfte`;
+
+    // Intent-specific sub-prompts
+    const intentPrompts = {
+      stock_analysis: `
+AKTIEANALYSUPPGIFT:
+- Genomför fundamental och teknisk analys
+- Värdera aktien mot nuvarande kursnivå
+- Bedöm risk/reward-förhållande
+- Ge KÖP/BEHÅLL/SÄLJ-rekommendation med motivering
+- Föreslå kursmål och tidsperspektiv
+- Relatera till användarens befintliga portfölj`,
+
+      portfolio_optimization: `
+PORTFÖLJOPTIMERINGSUPPGIFT:
+- Analysera nuvarande allokering och diversifiering
+- Identifiera överexponering och luckor
+- Föreslå konkreta omviktningar med procentsatser
+- Beakta transaktionskostnader och skatter
+- Ge prioriterad implementationsplan`,
+
+      buy_sell_decisions: `
+KÖP/SÄLJ-BESLUTSUPPGIFT:
+- Analysera timing för förslaget
+- Bedöm inverkan på portföljens risknivå
+- Föreslå positionsstorlek baserat på befintligt innehav
+- Överväg alternativa investeringar
+- Ge konkret handlingsplan med orderstorlek`,
+
+      risk_tax_strategy: `
+RISK- OCH SKATTEOPTIMERINGSUPPGIFT:
+- Analysera portföljens riskprofil vs användarens mål
+- Föreslå skatteeffektiva strategier (ISK vs KF)
+- Bedöm diversifiering över sektorer/geografier
+- Rekommendera riskreducerande åtgärder
+- Förklara skattekonsekvenser av förändringar`,
+
+      market_analysis: `
+MARKNADSANALYSUPPGIFT:
+- Analysera aktuella marknadstrender
+- Bedöm påverkan på användarens portfölj
+- Föreslå defensiva eller offensiva justeringar
+- Ge kortterm vs långsiktig marknadssyn
+- Relatera till svenska och globala marknader`,
+
+      general_advice: `
+ALLMÄN INVESTERINGSRÅDGIVNING:
+- Ge personliga råd baserat på användarens profil
+- Fokusera på långsiktig förmögenhetsutveckling
+- Föreslå konkreta nästa steg
+- Balansera risk och avkastning
+- Inkludera utbildande element`
+    };
+
+    contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
+
+    // Enhanced user context with current holdings and performance
     if (riskProfile) {
-      contextInfo += `\n\nANVÄNDARENS PROFIL (använd denna info, fråga INTE efter den igen):
+      contextInfo += `\n\nANVÄNDARPROFIL (använd denna info, fråga ALDRIG efter den igen):
+- Ålder: ${riskProfile.age || 'Ej angiven'}
 - Risktolerans: ${riskProfile.risk_tolerance === 'conservative' ? 'Konservativ' : riskProfile.risk_tolerance === 'moderate' ? 'Måttlig' : 'Aggressiv'}
-- Investeringshorisont: ${riskProfile.investment_horizon === 'short' ? 'Kort sikt' : riskProfile.investment_horizon === 'medium' ? 'Medellång sikt' : 'Lång sikt'}`;
+- Investeringshorisont: ${riskProfile.investment_horizon === 'short' ? 'Kort (1-3 år)' : riskProfile.investment_horizon === 'medium' ? 'Medellång (3-7 år)' : 'Lång (7+ år)'}
+- Erfarenhetsnivå: ${riskProfile.investment_experience === 'beginner' ? 'Nybörjare' : riskProfile.investment_experience === 'intermediate' ? 'Mellannivå' : 'Erfaren'}`;
       
       if (riskProfile.monthly_investment_amount) {
-        contextInfo += `\n- Månatligt sparande: ${riskProfile.monthly_investment_amount} SEK`;
+        contextInfo += `\n- Månatligt sparande: ${riskProfile.monthly_investment_amount.toLocaleString()} SEK`;
+      }
+      
+      if (riskProfile.annual_income) {
+        contextInfo += `\n- Årsinkomst: ${riskProfile.annual_income.toLocaleString()} SEK`;
       }
       
       if (riskProfile.sector_interests && riskProfile.sector_interests.length > 0) {
         contextInfo += `\n- Sektorintressen: ${riskProfile.sector_interests.join(', ')}`;
       }
       
-      if (holdings && holdings.length > 0) {
-        const actualHoldings = holdings.filter(h => h.holding_type !== 'recommendation');
-        if (actualHoldings.length > 0) {
-          contextInfo += `\n- Nuvarande innehav: ${actualHoldings.map(h => h.symbol || h.name).slice(0, 5).join(', ')}`;
-        }
+      if (riskProfile.investment_goal) {
+        contextInfo += `\n- Investeringsmål: ${riskProfile.investment_goal}`;
       }
-      
-      contextInfo += `\n\nGe ALLTID personliga råd baserat på denna profil. Fråga INTE efter information som redan finns.`;
     }
 
-    // Add brief user context if available
-    if (aiMemory?.communication_style) {
-      contextInfo += `\n\nAnpassa svaret: ${aiMemory.communication_style === 'detailed' ? 'Detaljerat' : 'Koncist'} svar.`;
+    // Add current portfolio context with latest valuations
+    if (holdings && holdings.length > 0) {
+      const actualHoldings = holdings.filter(h => h.holding_type !== 'recommendation');
+      if (actualHoldings.length > 0) {
+        const totalValue = actualHoldings.reduce((sum, h) => sum + (h.current_value || 0), 0);
+        const topHoldings = actualHoldings
+          .sort((a, b) => (b.current_value || 0) - (a.current_value || 0))
+          .slice(0, 5);
+        
+        contextInfo += `\n\nNUVARANDE PORTFÖLJ:
+- Totalt värde: ${totalValue.toLocaleString()} SEK
+- Antal innehav: ${actualHoldings.length}
+- Största positioner: ${topHoldings.map(h => `${h.symbol || h.name} (${((h.current_value || 0) / totalValue * 100).toFixed(1)}%)`).join(', ')}`;
+        
+        if (portfolio) {
+          contextInfo += `\n- Portföljens riskpoäng: ${portfolio.risk_score || 'Ej beräknad'}
+- Förväntad årlig avkastning: ${portfolio.expected_return || 'Ej beräknad'}%`;
+        }
+      }
     }
+
+    // Add response structure requirements
+    contextInfo += `\n\nSVARSSTRUKTUR (OBLIGATORISK):
+Strukturera VARJE svar enligt denna mall:
+
+**Situation & Analys**
+[Kort sammanfattning av situationen/frågan]
+
+**Rekommendation** 
+[Konkreta råd med specifika aktier/fonder och symboler där relevant]
+
+**Risker & Överväganden**
+[Viktiga risker och faktorer att beakta]
+
+**Åtgärder (Checklista)**
+□ [Konkret åtgärd 1]
+□ [Konkret åtgärd 2] 
+□ [Konkret åtgärd 3]
+
+**Disclaimer:** Detta är utbildningssyfte. Konsultera alltid en licensierad rådgivare.
+
+KRITISKT: Avsluta ALLTID med "Åtgärder (Checklista)" - även för allmänna frågor.`;
 
     // Force using gpt-4o to avoid streaming restrictions and reduce cost
     const model = 'gpt-4o';
