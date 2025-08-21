@@ -52,14 +52,31 @@ serve(async (req) => {
         
         // Fetch current price
         const quote = await fetchStockQuote(holding.symbol);
-        
+
+        let effectivePrice: number | null = null;
+        let priceCurrency: string = holding.currency;
+
         if (quote.hasValidPrice && quote.price) {
+          effectivePrice = quote.price;
+          priceCurrency = quote.currency || (holding.symbol.includes('.ST') ? 'SEK' : 'USD');
+        } else {
+          // Fallback: use latest daily close from our history
+          const daily = await getLatestDailyPrice(holding.id);
+          if (daily?.price) {
+            effectivePrice = daily.price;
+            priceCurrency = daily.currency || holding.currency;
+            console.log(`ℹ️ Using daily fallback for ${holding.symbol}: ${effectivePrice} ${priceCurrency} (date ${daily.date})`);
+          }
+        }
+
+        if (effectivePrice != null) {
           // Convert price to holding currency if needed
-          let priceInHoldingCurrency = quote.price;
+          let priceInHoldingCurrency = effectivePrice;
           
-          // If quote is in USD and holding is in SEK, convert (simplified)
-          if (quote.currency === 'USD' && holding.currency === 'SEK') {
-            priceInHoldingCurrency = quote.price * 10.5; // Approximate USD to SEK rate
+          if (priceCurrency === 'USD' && holding.currency === 'SEK') {
+            priceInHoldingCurrency = effectivePrice * 10.5; // Approximate USD to SEK rate
+          } else if (priceCurrency === 'SEK' && holding.currency === 'USD') {
+            priceInHoldingCurrency = effectivePrice / 10.5; // Approximate SEK to USD rate
           }
           
           // Calculate new total value
@@ -98,10 +115,11 @@ serve(async (req) => {
             console.error(`Error recording history for ${holding.symbol}:`, historyError);
           }
 
-          console.log(`✅ Updated ${holding.symbol}: ${priceInHoldingCurrency} ${holding.currency}`);
+          console.log(`✅ Updated ${holding.symbol}: ${Math.round(priceInHoldingCurrency * 100) / 100} ${holding.currency}`);
           updatedCount++;
         } else {
-          console.log(`❌ No valid price for ${holding.symbol}`);
+          // Last resort: no valid price and no daily fallback, skip to conserve API quota
+          console.log(`❌ No valid price or daily fallback for ${holding.symbol} - skipped`);
           errorCount++;
         }
 
@@ -138,44 +156,64 @@ serve(async (req) => {
 });
 
 async function fetchStockQuote(symbol: string) {
-  // Use the same multi-source approach as the main fetch-stock-quote function
-  const response = await fetch(
-    `https://qifolopsdeeyrevbuxfl.supabase.co/functions/v1/fetch-stock-quote`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
-      },
-      body: JSON.stringify({ symbol })
+  try {
+    const response = await fetch(
+      `https://qifolopsdeeyrevbuxfl.supabase.co/functions/v1/fetch-stock-quote`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+        },
+        body: JSON.stringify({ symbol })
+      }
+    );
+
+    if (!response.ok) {
+      console.error(`Error calling fetch-stock-quote for ${symbol}: ${response.status}`);
+      return { symbol, price: null, hasValidPrice: false, currency: symbol.includes('.ST') ? 'SEK' : 'USD' };
     }
-  );
 
-  if (!response.ok) {
-    console.error(`Error calling fetch-stock-quote for ${symbol}: ${response.status}`);
-    return getMockQuote(symbol);
+    const data = await response.json();
+    
+    if (data.error) {
+      console.error(`fetch-stock-quote error for ${symbol}: ${data.error}`);
+      return { symbol, price: null, hasValidPrice: false, currency: symbol.includes('.ST') ? 'SEK' : 'USD' };
+    }
+
+    return data;
+  } catch (err) {
+    console.error(`Exception calling fetch-stock-quote for ${symbol}:`, err);
+    return { symbol, price: null, hasValidPrice: false, currency: symbol.includes('.ST') ? 'SEK' : 'USD' };
   }
-
-  const data = await response.json();
-  
-  if (data.error) {
-    console.error(`fetch-stock-quote error for ${symbol}: ${data.error}`);
-    return getMockQuote(symbol);
-  }
-
-  return data;
 }
 
-function parseQuoteData(quote: any, symbol: string) {
-  const price = parseFloat(quote['05. price'] || '0');
-  const hasValidPrice = price > 0 && !isNaN(price);
-  
-  return {
-    symbol,
-    price: hasValidPrice ? price : null,
-    hasValidPrice,
-    currency: symbol.includes('.ST') ? 'SEK' : 'USD'
-  };
+async function getLatestDailyPrice(holdingId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('portfolio_performance_history')
+      .select('price_per_unit, currency, date')
+      .eq('holding_id', holdingId)
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching daily fallback price:', error);
+      return null;
+    }
+
+    if (!data) return null;
+
+    return {
+      price: Number(data.price_per_unit),
+      currency: data.currency as string,
+      date: data.date as string,
+    };
+  } catch (e) {
+    console.error('Exception in getLatestDailyPrice:', e);
+    return null;
+  }
 }
 
 function getMockQuote(symbol: string) {
