@@ -11,7 +11,7 @@ import ChatInput from './chat/ChatInput';
 import ProfileUpdateConfirmation from './ProfileUpdateConfirmation';
 import ProfileContextCard from './chat/ProfileContextCard';
 import ChatFolderSidebar from './chat/ChatFolderSidebar';
-import ResponseLengthToggle from './ui/response-length-toggle';
+
 import { LogIn, MessageSquare, Brain, ArrowLeft, Lock, Sparkles, Crown, Menu, PanelLeftClose, PanelLeft, AlertCircle, Settings } from 'lucide-react';
 import HelpButton from '@/components/HelpButton';
 import { Button } from '@/components/ui/button';
@@ -78,7 +78,7 @@ const AIChat = ({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [isGuideSession, setIsGuideSession] = useState(false);
-  const [responseLength, setResponseLength] = useState<'concise' | 'standard' | 'detailed'>('standard');
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const {

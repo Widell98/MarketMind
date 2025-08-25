@@ -369,27 +369,17 @@ ALLMÄN INVESTERINGSRÅDGIVNING:
       }
     }
 
-    // Add response structure requirements
-    contextInfo += `\n\nSVARSSTRUKTUR (OBLIGATORISK):
-Strukturera VARJE svar enligt denna mall:
+    // Add flexible response guidelines (not rigid structure)
+    contextInfo += `\n\nSVARSRIKTLINJER:
+- Ge personliga, genomtänkta råd baserat på användarens specifika situation
+- Använd en naturlig, rådgivande ton som en erfaren finansiell rådgivare
+- Inkludera konkreta rekommendationer med motivering
+- Variera ditt sätt att strukturera svar baserat på frågan
+- För komplexa frågor: inkludera analys, rekommendationer och riskbedömning
+- För enkla frågor: ge direkta, användbara svar
+- Avsluta alltid med: "Detta är rådgivning för utbildningssyfte. Konsultera alltid en licensierad rådgivare för personlig rådgivning."
 
-**Situation & Analys**
-[Kort sammanfattning av situationen/frågan]
-
-**Rekommendation** 
-[Konkreta råd med specifika aktier/fonder och symboler där relevant]
-
-**Risker & Överväganden**
-[Viktiga risker och faktorer att beakta]
-
-**Åtgärder (Checklista)**
-□ [Konkret åtgärd 1]
-□ [Konkret åtgärd 2] 
-□ [Konkret åtgärd 3]
-
-**Disclaimer:** Detta är utbildningssyfte. Konsultera alltid en licensierad rådgivare.
-
-KRITISKT: Avsluta ALLTID med "Åtgärder (Checklista)" - även för allmänna frågor.`;
+FOKUS: Kvalitativa, personliga råd som hjälper användaren att fatta informerade investeringsbeslut.`;
 
     // Force using gpt-4o to avoid streaming restrictions and reduce cost
     const model = 'gpt-4o';
