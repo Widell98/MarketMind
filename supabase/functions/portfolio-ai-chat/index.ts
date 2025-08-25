@@ -242,12 +242,7 @@ serve(async (req) => {
       if (/(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|position|handel)/i.test(message)) {
         return 'buy_sell_decisions';
       }
-      
-      // Risk/Tax/Strategy Intent  
-      if (/(?:risk|skatteoptimering|strategi|diversifiering|säkerhet|volatilitet)/i.test(message)) {
-        return 'risk_tax_strategy';
-      }
-      
+       
       // Market Analysis Intent
       if (/(?:marknad|index|trend|prognos|ekonomi|räntor|inflation|börsen)/i.test(message)) {
         return 'market_analysis';
@@ -295,15 +290,7 @@ KÖP/SÄLJ-BESLUTSUPPGIFT:
 - Föreslå positionsstorlek baserat på befintligt innehav
 - Överväg alternativa investeringar
 - Ge konkret handlingsplan med orderstorlek`,
-
-      risk_tax_strategy: `
-RISK- OCH SKATTEOPTIMERINGSUPPGIFT:
-- Analysera portföljens riskprofil vs användarens mål
-- Föreslå skatteeffektiva strategier (ISK vs KF)
-- Bedöm diversifiering över sektorer/geografier
-- Rekommendera riskreducerande åtgärder
-- Förklara skattekonsekvenser av förändringar`,
-
+      
       market_analysis: `
 MARKNADSANALYSUPPGIFT:
 - Analysera aktuella marknadstrender
@@ -369,22 +356,27 @@ ALLMÄN INVESTERINGSRÅDGIVNING:
       }
     }
 
-    // Add flexible response guidelines (not rigid structure) + strict stock formatting
-    contextInfo += `\n\nSVARSRIKTLINJER:
-- Ge personliga, genomtänkta råd baserat på användarens specifika situation
-- Använd en naturlig, rådgivande ton som en erfaren finansiell rådgivare
-- Inkludera konkreta rekommendationer med motivering
-- Variera ditt sätt att strukturera svar baserat på frågan
-- För komplexa frågor: inkludera analys, rekommendationer och riskbedömning
-- För enkla frågor: ge direkta, användbara svar
-- Avsluta alltid med: "Detta är rådgivning för utbildningssyfte. Konsultera alltid en licensierad rådgivare för personlig rådgivning."
+    // Add response structure requirements
+    contextInfo += `\n\nSVARSSTRUKTUR (OBLIGATORISK):
+Strukturera VARJE svar enligt denna mall:
 
-FORMAT FÖR AKTIEREKOMMENDATIONER (KRITISKT):
-- När du nämner en specifik aktie, skriv endast: Namn (TICKER)
-- Skriv aldrig tickern på en egen rad eller upprepa namnet
-- Vid flera förslag: en per rad i formatet Namn (TICKER)
+**Situation & Analys**
+[Kort sammanfattning av situationen/frågan]
 
-FOKUS: Kvalitativa, personliga råd som hjälper användaren att fatta informerade investeringsbeslut.`;
+**Rekommendation** 
+[Konkreta råd med specifika aktier/fonder och symboler där relevant]
+
+**Risker & Överväganden**
+[Viktiga risker och faktorer att beakta]
+
+**Åtgärder (Checklista)**
+□ [Konkret åtgärd 1]
+□ [Konkret åtgärd 2] 
+□ [Konkret åtgärd 3]
+
+**Disclaimer:** Detta är utbildningssyfte. Konsultera alltid en licensierad rådgivare.
+
+KRITISKT: Avsluta ALLTID med "Åtgärder (Checklista)" - även för allmänna frågor.`;
 
     // Force using gpt-4o to avoid streaming restrictions and reduce cost
     const model = 'gpt-4o';
