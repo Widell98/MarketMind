@@ -1728,6 +1728,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      assign_user_role_secure: {
+        Args: {
+          new_role: Database["public"]["Enums"]["app_role"]
+          reason?: string
+          target_user_id: string
+        }
+        Returns: boolean
+      }
       check_usage_limit: {
         Args: { _usage_type: string; _user_id: string }
         Returns: boolean
