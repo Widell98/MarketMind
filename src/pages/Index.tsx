@@ -80,47 +80,7 @@ const Index = () => {
                 </div>
               </div>
 
-              {/* How it works - Clean Apple style */}
-              <div className="max-w-4xl mx-auto mb-20">
-                <h2 className="text-3xl font-semibold text-foreground mb-4">{t('howItWorks.title')}</h2>
-                <p className="text-lg text-muted-foreground mb-16 max-w-2xl mx-auto">
-                  {t('howItWorks.subtitle')}
-                </p>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-12">
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-                      <MessageSquare className="w-8 h-8 text-primary" />
-                    </div>
-                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step1.title')}</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {t('howItWorks.step1.description')}
-                    </p>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-                      <Brain className="w-8 h-8 text-primary" />
-                    </div>
-                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step2.title')}</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {t('howItWorks.step2.description')}
-                    </p>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-                      <BarChart3 className="w-8 h-8 text-primary" />
-                    </div>
-                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step3.title')}</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {t('howItWorks.step3.description')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-            {/* Clean Examples Section */}
+              {/* Clean Examples Section */}
               <div className="mb-20">
                 <h2 className="text-3xl font-semibold text-foreground mb-4">{t('examples.title')}</h2>
                 <p className="text-lg text-muted-foreground mb-12 max-w-2xl mx-auto">
@@ -189,6 +149,30 @@ const Index = () => {
                         {t('examples.dividend.answer')}
                       </p>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* How it works - Clean Apple style */}            
+                  
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                      <Brain className="w-8 h-8 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step2.title')}</h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {t('howItWorks.step2.description')}
+                    </p>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                      <BarChart3 className="w-8 h-8 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step3.title')}</h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {t('howItWorks.step3.description')}
+                    </p>
                   </div>
                 </div>
               </div>
