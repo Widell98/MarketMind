@@ -7,6 +7,7 @@ import { User, Target, TrendingUp, DollarSign, Calendar, PieChart, Brain, BarCha
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import ResetProfileConfirmDialog from '@/components/ResetProfileConfirmDialog';
+import ProfileAIChat from '@/components/ProfileAIChat';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -353,6 +354,9 @@ const UserInvestmentAnalysis = ({
             </div>
           </CardContent>
         </Card>}
+
+      {/* AI Profile Chat */}
+      <ProfileAIChat />
 
       {/* Risk Profile Summary */}
       {riskProfile.sector_interests && riskProfile.sector_interests.length > 0 && <Card className="rounded-2xl shadow-sm border-0 bg-gradient-to-br from-background via-background to-muted/30">
