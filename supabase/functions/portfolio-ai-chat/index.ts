@@ -93,35 +93,98 @@ serve(async (req) => {
     const detectProfileUpdates = (message: string) => {
       const updates: any = {};
       let requiresConfirmation = false;
+      const lowerMessage = message.toLowerCase();
 
-      // Monthly investment amount changes
-      const monthlyMatch = message.match(/(?:spara|investera|satsa|lägga)\s+(\d+(?:\s?\d{3})*)\s*(?:kr|kronor|SEK)/i);
-      if (monthlyMatch) {
-        const amount = parseInt(monthlyMatch[1].replace(/\s/g, ''));
+      // Parse monthly savings changes - more comprehensive
+      const monthlySavingsPattern = /(öka|höja|minska|sänka|ändra).*(?:månad|månads).*(?:sparande|spara|investera).*?(\d+[\s,]*\d*)\s*(?:kr|sek|kronor)/i;
+      const monthlySavingsMatch = message.match(monthlySavingsPattern);
+      
+      if (monthlySavingsMatch) {
+        const action = monthlySavingsMatch[1].toLowerCase();
+        const amount = parseInt(monthlySavingsMatch[2].replace(/[\s,]/g, ''));
+        const currentAmount = riskProfile?.monthly_investment_amount || 0;
+        
+        let newAmount = amount;
+        if (action.includes('öka') || action.includes('höja')) {
+          newAmount = currentAmount + amount;
+        } else if (action.includes('minska') || action.includes('sänka')) {
+          newAmount = Math.max(0, currentAmount - amount);
+        }
+
+        if (newAmount !== currentAmount) {
+          updates.monthly_investment_amount = newAmount;
+          requiresConfirmation = true;
+        }
+      }
+
+      // Direct monthly investment amount
+      const directMonthlyMatch = message.match(/(?:spara|investera|satsa|lägga)\s+(\d+(?:\s?\d{3})*)\s*(?:kr|kronor|SEK).*(?:månad|månads)/i);
+      if (directMonthlyMatch) {
+        const amount = parseInt(directMonthlyMatch[1].replace(/\s/g, ''));
         if (amount > 0 && amount !== riskProfile?.monthly_investment_amount) {
           updates.monthly_investment_amount = amount;
           requiresConfirmation = true;
         }
       }
 
-      // Risk tolerance changes
-      if (/(?:mer|högre|större)\s+risk/i.test(message) && riskProfile?.risk_tolerance !== 'aggressive') {
-        updates.risk_tolerance = 'aggressive';
-        requiresConfirmation = true;
-      }
-      if (/(?:mindre|lägre|säkrare)\s+risk/i.test(message) && riskProfile?.risk_tolerance !== 'conservative') {
-        updates.risk_tolerance = 'conservative';
-        requiresConfirmation = true;
+      // Parse age updates
+      const agePattern = /(?:är|age|ålder).*?(\d{2,3})\s*(?:år|years|old)/i;
+      const ageMatch = message.match(agePattern);
+      
+      if (ageMatch) {
+        const newAge = parseInt(ageMatch[1]);
+        if (newAge >= 18 && newAge <= 100 && newAge !== riskProfile?.age) {
+          updates.age = newAge;
+          requiresConfirmation = true;
+        }
       }
 
-      // Investment horizon changes
-      if (/(?:kort|snabb)\s+sikt/i.test(message) && riskProfile?.investment_horizon !== 'short') {
-        updates.investment_horizon = 'short';
-        requiresConfirmation = true;
+      // Parse income updates
+      const incomePattern = /(årsinkomst|lön|income).*?(\d+[\s,]*\d*)\s*(?:kr|sek|kronor)/i;
+      const incomeMatch = message.match(incomePattern);
+      
+      if (incomeMatch) {
+        const newIncome = parseInt(incomeMatch[2].replace(/[\s,]/g, ''));
+        if (newIncome !== riskProfile?.annual_income) {
+          updates.annual_income = newIncome;
+          requiresConfirmation = true;
+        }
       }
-      if (/(?:lång|långsiktig)\s+sikt/i.test(message) && riskProfile?.investment_horizon !== 'long') {
-        updates.investment_horizon = 'long';
-        requiresConfirmation = true;
+
+      // Risk tolerance updates - enhanced patterns
+      const riskPatterns = [
+        { pattern: /(konservativ|låg risk|säker|försiktig)/i, value: 'conservative' },
+        { pattern: /(måttlig|medel|balanserad|moderate)/i, value: 'moderate' },
+        { pattern: /(aggressiv|hög risk|riskabel|risktagande)/i, value: 'aggressive' }
+      ];
+
+      for (const riskPattern of riskPatterns) {
+        if (lowerMessage.match(riskPattern.pattern) && 
+            (lowerMessage.includes('risk') || lowerMessage.includes('inställning') || 
+            lowerMessage.includes('tolerans')) &&
+            riskPattern.value !== riskProfile?.risk_tolerance) {
+          updates.risk_tolerance = riskPattern.value;
+          requiresConfirmation = true;
+          break;
+        }
+      }
+
+      // Investment horizon updates - enhanced patterns
+      const horizonPatterns = [
+        { pattern: /(kort|1-3|kortsiktig)/i, value: 'short' },
+        { pattern: /(medel|3-7|mellanlång)/i, value: 'medium' },
+        { pattern: /(lång|7\+|långsiktig|över 7)/i, value: 'long' }
+      ];
+
+      for (const horizonPattern of horizonPatterns) {
+        if (lowerMessage.match(horizonPattern.pattern) && 
+            (lowerMessage.includes('horisont') || lowerMessage.includes('sikt') || 
+            lowerMessage.includes('tidshorisont')) &&
+            horizonPattern.value !== riskProfile?.investment_horizon) {
+          updates.investment_horizon = horizonPattern.value;
+          requiresConfirmation = true;
+          break;
+        }
       }
 
       return { updates, requiresConfirmation };
