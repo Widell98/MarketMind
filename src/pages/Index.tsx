@@ -315,36 +315,52 @@ const Index = () => {
                 </div>
 
                 {/* Quick Actions */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                  <Button asChild variant="outline" className="h-auto p-4 hover:bg-muted/50 border-border">
-                    <Link to="/ai-chat" className="flex flex-col items-center gap-2 text-center">
-                      <MessageSquare className="w-6 h-6 text-primary" />
-                      <span className="font-medium">AI Chat</span>
-                      <span className="text-xs text-muted-foreground">Få investeringsråd</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                  <Button asChild variant="outline" className="group h-auto p-6 hover:bg-primary/5 hover:border-primary/20 border-border/60 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 bg-card/50 backdrop-blur-sm rounded-2xl">
+                    <Link to="/ai-chat" className="flex flex-col items-center gap-3 text-center">
+                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 group-hover:scale-105 transition-all duration-300">
+                        <MessageSquare className="w-6 h-6 text-primary" />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="font-semibold text-sm">AI Chat</span>
+                        <span className="text-xs text-muted-foreground leading-relaxed">Få personliga investeringsråd</span>
+                      </div>
                     </Link>
                   </Button>
 
-                  <Button asChild variant="outline" className="h-auto p-4 hover:bg-muted/50 border-border">
-                    <Link to="/market-analyses" className="flex flex-col items-center gap-2 text-center">
-                      <TrendingUp className="w-6 h-6 text-primary" />
-                      <span className="font-medium">Marknadsanalyser</span>
-                      <span className="text-xs text-muted-foreground">Senaste insikter</span>
+                  <Button asChild variant="outline" className="group h-auto p-6 hover:bg-primary/5 hover:border-primary/20 border-border/60 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 bg-card/50 backdrop-blur-sm rounded-2xl">
+                    <Link to="/market-analyses" className="flex flex-col items-center gap-3 text-center">
+                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 group-hover:scale-105 transition-all duration-300">
+                        <TrendingUp className="w-6 h-6 text-primary" />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="font-semibold text-sm">Marknadsanalyser</span>
+                        <span className="text-xs text-muted-foreground leading-relaxed">Djupa marknadsinsikter</span>
+                      </div>
                     </Link>
                   </Button>
 
-                  <Button asChild variant="outline" className="h-auto p-4 hover:bg-muted/50 border-border">
-                    <Link to="/stock-cases" className="flex flex-col items-center gap-2 text-center">
-                      <Building2 className="w-6 h-6 text-primary" />
-                      <span className="font-medium">Stock Cases</span>
-                      <span className="text-xs text-muted-foreground">Utforska företag</span>
+                  <Button asChild variant="outline" className="group h-auto p-6 hover:bg-primary/5 hover:border-primary/20 border-border/60 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 bg-card/50 backdrop-blur-sm rounded-2xl">
+                    <Link to="/stock-cases" className="flex flex-col items-center gap-3 text-center">
+                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 group-hover:scale-105 transition-all duration-300">
+                        <Building2 className="w-6 h-6 text-primary" />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="font-semibold text-sm">Stock Cases</span>
+                        <span className="text-xs text-muted-foreground leading-relaxed">Utforska företag visuellt</span>
+                      </div>
                     </Link>
                   </Button>
 
-                  <Button asChild variant="outline" className="h-auto p-4 hover:bg-muted/50 border-border">
-                    <Link to="/portfolio-advisor" className="flex flex-col items-center gap-2 text-center">
-                      <Settings className="w-6 h-6 text-primary" />
-                      <span className="font-medium">Portföljrådgivare</span>
-                      <span className="text-xs text-muted-foreground">Optimera din portfölj</span>
+                  <Button asChild variant="outline" className="group h-auto p-6 hover:bg-primary/5 hover:border-primary/20 border-border/60 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 bg-card/50 backdrop-blur-sm rounded-2xl">
+                    <Link to="/portfolio-advisor" className="flex flex-col items-center gap-3 text-center">
+                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 group-hover:scale-105 transition-all duration-300">
+                        <Settings className="w-6 h-6 text-primary" />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="font-semibold text-sm">Portföljrådgivare</span>
+                        <span className="text-xs text-muted-foreground leading-relaxed">Optimera din portfölj</span>
+                      </div>
                     </Link>
                   </Button>
                 </div>
