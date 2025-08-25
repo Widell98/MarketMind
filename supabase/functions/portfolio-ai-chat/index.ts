@@ -199,9 +199,9 @@ serve(async (req) => {
     const isExchangeRequest = /(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|amerikanska|svenska|europeiska|asiatiska|aktier|innehav)/i.test(message);
     
     // Check if this is a stock analysis request
-    const isStockAnalysisRequest = /(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) && 
-      /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5}|investor|volvo|ericsson|sandvik|atlas|kinnevik|hex|alfa laval|skf|telia|seb|handelsbanken|nordea|abb|astra|electrolux|husqvarna|getinge|boliden|ssab|stora enso|svenska cellulosa|lund|billerud|holmen|nibe|beijer|essity|kindred|evolution|betsson|net|entertainment|fingerprint|sinch|tobii|xvivo|medivir|orexo|camurus|diamyd|raysearch|elekta|sectra|bactiguard|vitrolife|bioinvent|immunovia|hansa|cantargia|oncopeptides|wilson|therapeutics|solberg|probi|biovica|addlife|duni|traction|embracer|stillfront|paradox|starbreeze|remedy|stillfront|remedy|starbreeze|gaming|saab)/i.test(message);
-     
+   const isStockAnalysisRequest = /(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|information om)/i.test(message) &&
+  /\b[A-Z]{1,5}\b|\baktie|aktien|bolaget|företaget|aktier|stock|share|equity\b/i.test(message);
+
     // Check if user wants personal investment advice/recommendations
     const isPersonalAdviceRequest = /(?:rekommendation|förslag|vad ska jag|bör jag|passar mig|min portfölj|mina intressen|för mig|personlig|skräddarsy|baserat på|investera|köpa|sälja|portföljanalys|investeringsstrategi)/i.test(message);
     const isPortfolioOptimizationRequest = /portfölj/i.test(message) && /optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma/i.test(message);
@@ -324,11 +324,9 @@ PERSONA & STIL:
 - Professionell men konverserande ton, som en erfaren rådgivare som bjuder in till dialog
 - Anpassa svarens längd: ge korta, konkreta svar (2–5 meningar) om frågan är enkel
 - Använd längre strukturerade svar (Situation, Strategi, Risker, Åtgärder) endast när användaren explicit ber om en detaljerad plan
-- Ge alltid exempel på relevanta aktier/fonder med symboler när det är lämpligt
-- Om användaren har kassa eller månadssparande → ge alltid ett allokeringsförslag
+- Ge alltid exempel på relevanta aktier/fonder med ticker när det är lämpligt
 - Använd svensk finansterminologi och marknadskontext
 - Avsluta svar med en öppen fråga för att uppmuntra fortsatt dialog
-- Inkludera alltid en **Disclaimer** om utbildningssyfte
 `;
 
 const intentPrompts = {
@@ -439,8 +437,6 @@ FULL STRUKTUR (när relevant):
 □ [Konkret åtgärd 1]
 □ [Konkret åtgärd 2]
 □ [Konkret åtgärd 3]
-
-**Disclaimer:** Detta är endast i utbildningssyfte. Konsultera alltid en licensierad rådgivare.
 
 VIKTIGT:
 - Ge bara en "Åtgärder (Checklista)" om frågan faktiskt kräver konkreta steg.
