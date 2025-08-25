@@ -161,11 +161,11 @@ const UserInsightsPanel = () => {
 
   const getInsightIcon = (type: string) => {
     switch (type) {
-      case 'opportunity': return <TrendingUp className="w-4 h-4 text-green-600" />;
-      case 'risk_warning': return <AlertTriangle className="w-4 h-4 text-red-600" />;
-      case 'rebalancing': return <Target className="w-4 h-4 text-blue-600" />;
-      case 'recommendation': return <Building2 className="w-4 h-4 text-purple-600" />;
-      default: return <Lightbulb className="w-4 h-4 text-yellow-600" />;
+      case 'opportunity': return <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+      case 'risk_warning': return <AlertTriangle className="w-4 h-4 text-orange-600 dark:text-orange-400" />;
+      case 'rebalancing': return <Target className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+      case 'recommendation': return <Building2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+      default: return <Lightbulb className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
     }
   };
 
@@ -174,34 +174,34 @@ const UserInsightsPanel = () => {
       return (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-purple-600" />
-            <h4 className="font-medium text-sm leading-tight text-purple-800 dark:text-purple-200">
+            <Building2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <h4 className="font-medium text-sm leading-tight text-blue-800 dark:text-blue-200">
               {insight.title}
             </h4>
           </div>
           
           <div className="flex items-center gap-2">
             {insight.isin && (
-              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-600 font-mono">
+              <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 font-mono">
                 {insight.isin}
               </Badge>
             )}
             {insight.key_factors && insight.key_factors.length > 0 && (
               <div className="flex items-center gap-1">
-                <Tag className="w-3 h-3 text-gray-500" />
-                <span className="text-xs text-gray-600 dark:text-gray-400">
+                <Tag className="w-3 h-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
                   {insight.key_factors[0]}
                 </span>
               </div>
             )}
             {insight.fee && (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-muted-foreground">
                 Avgift: {insight.fee}
               </span>
             )}
           </div>
           
-          <p className="text-xs text-muted-foreground leading-relaxed">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             {insight.content}
           </p>
         </div>
@@ -210,25 +210,25 @@ const UserInsightsPanel = () => {
 
     return (
       <>
-        <div className="flex items-start gap-2 mb-2">
+        <div className="flex items-start gap-3 mb-3">
           {getInsightIcon(insight.insight_type)}
           <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-sm leading-tight">{insight.title}</h4>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant="outline" className="text-xs">
+            <h4 className="font-medium text-sm leading-tight mb-2">{insight.title}</h4>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs capitalize">
                 {insight.insight_type.replace('_', ' ')}
               </Badge>
             </div>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground leading-relaxed break-words">
+        <p className="text-sm text-muted-foreground leading-relaxed break-words">
           {insight.content}
         </p>
         {insight.key_factors && insight.key_factors.length > 0 && (
-          <div className="mt-2">
-            <div className="flex flex-wrap gap-1">
+          <div className="mt-3">
+            <div className="flex flex-wrap gap-2">
               {insight.key_factors.slice(0, 3).map((factor, index) => (
-                <Badge key={index} variant="secondary" className="text-xs px-1.5 py-0.5">
+                <Badge key={index} variant="secondary" className="text-xs px-2 py-1">
                   {factor}
                 </Badge>
               ))}
@@ -240,71 +240,79 @@ const UserInsightsPanel = () => {
   };
 
   return (
-    <Card className="h-fit w-full">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <Brain className="w-5 h-5 text-purple-600 shrink-0" />
+    <Card className="h-fit w-full border rounded-xl shadow-sm hover:shadow-md transition-shadow bg-card">
+      <CardHeader className="pb-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center shrink-0">
+              <Brain className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-base">AI-Insikter & Rekommendationer</CardTitle>
-              <CardDescription className="text-xs">
+              <CardTitle className="text-lg font-semibold">AI-Insikter & Rekommendationer</CardTitle>
+              <CardDescription className="text-sm text-muted-foreground mt-1">
                 {user ? 'Personliga investeringsinsikter' : 'Allmänna marknadsinsikter'} • Kostar 1 credit
                 {lastUpdated && (
-                  <span className="block text-xs text-muted-foreground mt-1">
+                  <span className="block text-xs text-muted-foreground mt-2">
                     Senast uppdaterad: {lastUpdated}
                   </span>
                 )}
               </CardDescription>
             </div>
           </div>
-          <div className="flex items-start gap-2 -mt-1">
+          <div className="flex items-start gap-3">
             <CreditsIndicator type="insights" showUpgrade={false} />
             <Button
               size="sm"
               onClick={handleRefresh}
               disabled={loading}
-              className="text-xs shrink-0 w-8 h-8 p-0"
+              className="w-9 h-9 p-0 rounded-lg"
               variant="outline"
             >
               {loading ? (
-                <RefreshCw className="w-3 h-3 animate-spin" />
+                <RefreshCw className="w-4 h-4 animate-spin" />
               ) : (
-                <RefreshCw className="w-3 h-3" />
+                <RefreshCw className="w-4 h-4" />
               )}
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {loading ? (
-          <div className="text-center py-4">
-            <RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin text-purple-600" />
+          <div className="text-center py-8 bg-muted/30 rounded-xl border border-border/50">
+            <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center mx-auto mb-4">
+              <RefreshCw className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400" />
+            </div>
             <p className="text-sm text-muted-foreground">Hämtar AI-insikter...</p>
           </div>
         ) : insights.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {insights.slice(0, 4).map((insight) => (
-              <div key={insight.id} className="p-3 bg-muted/50 rounded-lg border">
+              <div key={insight.id} className="p-6 bg-muted/30 rounded-xl border border-border/50 hover:shadow-sm transition-shadow">
                 {renderInsightContent(insight)}
               </div>
             ))}
             
             {!isPremiumUser && (
-              <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
-                <Crown className="w-5 h-5 mx-auto mb-2 text-blue-600" />
-                <p className="text-xs text-blue-700 mb-2 font-medium">
+              <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/30 rounded-xl border border-blue-200/50 dark:border-blue-800/50">
+                <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mx-auto mb-4">
+                  <Crown className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mb-2 font-medium">
                   Uppgradera till Premium för att uppdatera AI-insikter
                 </p>
-                <p className="text-xs text-blue-600">
+                <p className="text-sm text-blue-600 dark:text-blue-400">
                   Få tillgång till färska AI-analyser och personliga rekommendationer
                 </p>
               </div>
             )}
           </div>
         ) : (
-          <div className="text-center py-6">
-            <Brain className="w-8 h-8 mx-auto mb-3 opacity-50" />
-            <p className="text-sm text-muted-foreground mb-3">
+          <div className="text-center py-12 bg-muted/30 rounded-xl border border-border/50">
+            <div className="w-16 h-16 rounded-xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center mx-auto mb-6">
+              <Brain className="w-8 h-8 text-blue-600/50 dark:text-blue-400/50" />
+            </div>
+            <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">
               {hasInitialLoad ? 'Inga AI-insikter tillgängliga' : 'Klicka på uppdatera för att hämta AI-insikter (kostar 1 credit)'}
             </p>
             <div className="w-full max-w-sm mx-auto">
@@ -313,15 +321,17 @@ const UserInsightsPanel = () => {
                   size="sm" 
                   onClick={handleRefresh}
                   disabled={loading}
-                  className="w-full"
+                  className="w-full rounded-lg"
                 >
-                  <Brain className="w-3 h-3 mr-2" />
+                  <Brain className="w-4 h-4 mr-2" />
                   Hämta insikter (1 credit)
                 </Button>
               ) : (
-                <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
-                  <Crown className="w-5 h-5 mx-auto mb-2 text-blue-600" />
-                  <p className="text-xs text-blue-700 font-medium">
+                <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/30 rounded-xl border border-blue-200/50 dark:border-blue-800/50">
+                  <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mx-auto mb-4">
+                    <Crown className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
                     {!user ? 'Logga in för AI-insikter' : 'Inga credits kvar idag - Uppgradera till Premium'}
                   </p>
                 </div>
