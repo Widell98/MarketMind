@@ -42,56 +42,82 @@ const ChatMessage = ({
   const extractStockSuggestions = (content: string): StockSuggestion[] => {
     const suggestions: StockSuggestion[] = [];
 
-    // Multiple regex patterns to catch different formats
-    const patterns = [
-      // Pattern 1: "Förslag: Company Name (TICKER)"
-      /(?:Förslag|Rekommendation|Aktie):\s*([^(]+?)\s*\(([A-Z]{1,6})\)/gi,
-      // Pattern 2: "**Company Name** (TICKER)"
-      /\*\*([^*]+?)\*\*\s*\(([A-Z]{1,6})\)/g,
-      // Pattern 3: "Company Name (TICKER)" - general pattern
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6})\)/g,
-      // Pattern 4: "1. Company Name (TICKER)" - numbered lists
-      /\d+\.\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
-      // Pattern 5: "- Company Name (TICKER)" - bullet points
-      /-\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
-      // Pattern 6: "• Company Name (TICKER)" - bullet points with bullet
-      /•\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
-      // Pattern 7: TICKER followed by company name
-      /([A-Z]{2,6}):\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
-      // Pattern 8: Company name with ticker in brackets at end of sentence
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{3,})\s+\(([A-Z]{1,6})\)(?=[\s.,!?]|$)/g,
-      // Pattern 9: Company (TICKER) - Sektor: SectorName
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6})\)\s*-\s*Sektor:\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
-      // Pattern 10: More flexible numbered/bulleted lists
-      /(?:^\d+\.|\*|-|•)\s*([^(]{2,50}?)\s*\(([A-Z]{1,6})\)/gm,
-      // Pattern 11: Catch any company name in parentheses with ticker
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,50}?)\s*\(([A-Z]{1,6})\)(?:\s*-|\s*:|\s*,|\s*\.|\s*$)/g,
-      // Pattern 12: Simple ticker pattern
-      /\b([A-Z]{2,6})\b\s*-\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,50})/g
+    // Helper: extract only the "Aktier" section (to avoid ISK/KF, fonder, etc.)
+    const getAktierSection = (text: string): string | null => {
+      const lines = text.split('\n');
+      let start = -1;
+      for (let i = 0; i < lines.length; i++) {
+        const l = lines[i].trim();
+        if (/^(?:[#*\-•]\s*)?Aktier\s*:?$|^\*\*Aktier\*\*:?$|^###?\s*Aktier\s*:?$/i.test(l)) {
+          start = i;
+          break;
+        }
+      }
+      if (start === -1) return null;
+      const collected: string[] = [];
+      for (let i = start + 1; i < lines.length; i++) {
+        const l = lines[i];
+        // Stop when the next major section starts
+        if (/^(?:[#*\-•]\s*)?(Fonder|ETF|ETF:|Fonder:|Skatteeffektiva strategier|Diversifieringstips|Risker|Åtgärder|Checklista)\s*:?\s*$/i.test(l.trim())) {
+          break;
+        }
+        collected.push(l);
+      }
+      const section = collected.join('\n').trim();
+      return section.length ? section : null;
+    };
+
+    // Build regex patterns with support for hyphenated/dotted tickers like SEB-A, BRK.B
+    const TICKER = '([A-Z0-9]{1,6}(?:[-.][A-Z0-9]{1,4})?)';
+    const make = (s: string, flags = 'g') => new RegExp(s, flags);
+
+    const patterns: RegExp[] = [
+      // Förslag/Rekommendation/Aktie: Namn (TICKER)
+      make(`(?:Förslag|Rekommendation|Aktie):\\s*([^()\\\n]+?)\\s*\\(${TICKER}\\)`, 'gi'),
+      // **Namn** (TICKER)
+      make(`\\*\\*([^*]+?)\\*\\*\\s*\\(${TICKER}\\)`, 'g'),
+      // Namn (TICKER) - general
+      make(`([A-ZÅÄÖ][a-zåäöA-Z\\s&\.-]{2,80}?)\\s*\\(${TICKER}\\)`, 'g'),
+      // 1. Namn (TICKER)
+      make(`\\d+\\.\\s*([^()\\\n]+?)\\s*\\(${TICKER}\\)`, 'g'),
+      // - Namn (TICKER) | • Namn (TICKER)
+      make(`(?:^\\*|^-|^•)\\s*([^()\\\n]{2,80}?)\\s*\\(${TICKER}\\)`, 'gm'),
+      // Namn (TICKER) - Sektor: X
+      make(`([A-ZÅÄÖ][a-zåäöA-Z\\s&\.-]{2,80}?)\\s*\\(${TICKER}\\)\\s*-\\s*Sektor:\\s*([A-ZÅÄÖ][a-zåäöA-Z\\s&\.-]+)`, 'g'),
+      // TICKER: Namn
+      make(`([A-Z0-9]{1,6}(?:[-.][A-Z0-9]{1,4})?):\\s*([A-ZÅÄÖ][a-zåäöA-Z\\s&\.-]+)`, 'g'),
+      // TICKER - Namn
+      make(`([A-Z0-9]{1,6}(?:[-.][A-Z0-9]{1,4})?)\\s*-\\s*([A-ZÅÄÖ][a-zåäöA-Z\\s&\.-]{2,80})`, 'g')
     ];
 
-    // Get existing holdings symbols to filter out
-    const existingSymbols = new Set(actualHoldings.map(holding => holding.symbol?.toUpperCase()).filter(Boolean));
-    patterns.forEach(pattern => {
-      let match;
-      const regex = new RegExp(pattern.source, pattern.flags);
-      while ((match = regex.exec(content)) !== null) {
-        let name, symbol, sector;
+    // Symbols and names we never consider as stocks
+    const EXCLUDED_SYMBOLS = new Set(['ISK', 'KF']);
+    const bannedNameRegex = /(investeringssparkonto|kapitalförsäkring|fond|fonder|etf|index|skatt|strategi|diversifiering|tips|portfölj)/i;
 
-        // Handle different capture group orders based on pattern
-        const patternIndex = patterns.indexOf(pattern);
-        
-        if (patternIndex === 6) {
-          // Pattern 7: TICKER: Company
-          symbol = match[1].trim();
-          name = match[2].trim();
-        } else if (patternIndex === 8) {
-          // Pattern 9: Company (TICKER) - Sektor: SectorName
+    // Prefer to scan only the Aktier section
+    const contentToScan = getAktierSection(content) ?? content;
+
+    // Get existing holdings symbols to filter out
+    const existingSymbols = new Set(
+      actualHoldings
+        .map(holding => holding.symbol?.toUpperCase())
+        .filter(Boolean)
+    );
+
+    patterns.forEach((pattern, idx) => {
+      let match: RegExpExecArray | null;
+      const regex = new RegExp(pattern.source, pattern.flags);
+      while ((match = regex.exec(contentToScan)) !== null) {
+        let name: string, symbol: string, sector: string | undefined;
+
+        // capture order differences
+        if (idx === 5) {
+          // Namn (TICKER) - Sektor: X
           name = match[1].trim();
           symbol = match[2].trim();
           sector = match[3]?.trim();
-        } else if (patternIndex === 11) {
-          // Pattern 12: TICKER - Company
+        } else if (idx === 6 || idx === 7) {
+          // TICKER: Namn  OR  TICKER - Namn
           symbol = match[1].trim();
           name = match[2].trim();
         } else {
@@ -99,20 +125,30 @@ const ChatMessage = ({
           symbol = match[2].trim();
         }
 
-        // Clean up the name - remove common prefixes and suffixes
-        name = name.replace(/^(Aktie|Bolag|AB|Inc|Corp|Ltd)[\s:]/i, '').trim();
-        name = name.replace(/[\s:](AB|Inc|Corp|Ltd)$/i, '').trim();
+        // Clean up the name - keep AB but remove generic prefixes/suffixes
+        name = name.replace(/^(Aktie|Bolag|Inc|Corp|Ltd)[\s:]/i, '').trim();
+        name = name.replace(/[\s:](Inc|Corp|Ltd)$/i, '').trim();
 
-        // Validation checks
-        const isValidSuggestion = name.length >= 2 && name.length <= 100 && symbol.length >= 1 && symbol.length <= 6 && !existingSymbols.has(symbol.toUpperCase()) && !suggestions.find(s => s.symbol === symbol.toUpperCase()) &&
-        // Avoid common false positives
-        !name.match(/^(och|eller|samt|med|utan|för|till|från|av|på|i|är|har|kan|ska|måste|borde|skulle)$/i) &&
-        // Ensure it's not just numbers or special characters
-        name.match(/[a-öA-Ö]/) && symbol.match(/^[A-Z]+$/);
+        // Normalize symbol
+        const normSymbol = symbol.toUpperCase();
+
+        // Validation & filtering
+        const isValidSuggestion =
+          name.length >= 2 &&
+          name.length <= 100 &&
+          normSymbol.length >= 1 &&
+          normSymbol.length <= 10 &&
+          !existingSymbols.has(normSymbol) &&
+          !EXCLUDED_SYMBOLS.has(normSymbol) &&
+          !suggestions.find(s => s.symbol === normSymbol) &&
+          !bannedNameRegex.test(name) &&
+          /[a-öA-Ö]/i.test(name) &&
+          /^[A-Z0-9]+(?:[-.][A-Z0-9]+)?$/.test(normSymbol);
+
         if (isValidSuggestion) {
           suggestions.push({
-            name: name,
-            symbol: symbol.toUpperCase(),
+            name,
+            symbol: normSymbol,
             sector: sector || undefined,
             reason: 'AI-rekommendation'
           });
@@ -123,11 +159,10 @@ const ChatMessage = ({
     // Remove duplicates and sort by name
     const uniqueSuggestions = suggestions.reduce((acc, current) => {
       const exists = acc.find(item => item.symbol === current.symbol);
-      if (!exists) {
-        acc.push(current);
-      }
+      if (!exists) acc.push(current);
       return acc;
     }, [] as StockSuggestion[]);
+
     return uniqueSuggestions.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
   };
   const stockSuggestions = message.role === 'assistant' ? extractStockSuggestions(message.content) : [];
