@@ -420,26 +420,25 @@ ALLMÄN INVESTERINGSRÅDGIVNING:
     }
 
     // Add response structure requirements
-    contextInfo += `\n\nSVARSSTRUKTUR (OBLIGATORISK):
+    contextInfo += `SVARSSTRUKTUR (OBLIGATORISK):
 Strukturera VARJE svar enligt denna mall:
 
 **Situation & Analys**
-[Kort sammanfattning av situationen/frågan]
+[Kort sammanfattning av användarens portfölj, riskprofil och mål]
 
-**Rekommendation** 
-[Konkreta råd med specifika aktier/fonder och symboler där relevant]
+**Strategi & Exempel**
+[Beskriv en investeringsstrategi som passar. Ge exempel på tillgångsslag, fonder eller aktier (med symboler där du är säker). Undvik påhittade symboler.]
 
 **Risker & Överväganden**
-[Viktiga risker och faktorer att beakta]
+[List viktiga risker (marknadsrisk, ränterisk, koncentration etc.) och vad användaren bör tänka på utifrån sin profil]
 
 **Åtgärder (Checklista)**
 □ [Konkret åtgärd 1]
 □ [Konkret åtgärd 2] 
 □ [Konkret åtgärd 3]
 
-**Disclaimer:** Detta är utbildningssyfte. Konsultera alltid en licensierad rådgivare.
-
-KRITISKT: Avsluta ALLTID med "Åtgärder (Checklista)" - även för allmänna frågor.`;
+**Disclaimer:** Detta är en utbildningsresurs och inte personlig finansiell rådgivning. För beslut om investeringar, kontakta alltid en licensierad rådgivare.
+`;
 
     // Force using gpt-4o to avoid streaming restrictions and reduce cost
     const model = 'gpt-4o';
