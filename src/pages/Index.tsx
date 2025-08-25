@@ -321,9 +321,9 @@ const Index = () => {
                       <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 group-hover:scale-105 transition-all duration-300">
                         <MessageSquare className="w-6 h-6 text-primary" />
                       </div>
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         <span className="font-semibold text-sm">AI Chat</span>
-                        <span className="text-xs text-muted-foreground leading-relaxed">Få personliga investeringsråd</span>
+                        <span className="text-xs text-muted-foreground leading-relaxed block mt-3">Få personliga investeringsråd</span>
                       </div>
                     </Link>
                   </Button>
@@ -333,9 +333,9 @@ const Index = () => {
                       <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 group-hover:scale-105 transition-all duration-300">
                         <TrendingUp className="w-6 h-6 text-primary" />
                       </div>
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         <span className="font-semibold text-sm">Marknadsanalyser</span>
-                        <span className="text-xs text-muted-foreground leading-relaxed">Djupa marknadsinsikter</span>
+                        <span className="text-xs text-muted-foreground leading-relaxed block mt-3">Djupa marknadsinsikter</span>
                       </div>
                     </Link>
                   </Button>
@@ -345,9 +345,9 @@ const Index = () => {
                       <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 group-hover:scale-105 transition-all duration-300">
                         <Building2 className="w-6 h-6 text-primary" />
                       </div>
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         <span className="font-semibold text-sm">Stock Cases</span>
-                        <span className="text-xs text-muted-foreground leading-relaxed">Utforska företag visuellt</span>
+                        <span className="text-xs text-muted-foreground leading-relaxed block mt-3">Utforska företag visuellt</span>
                       </div>
                     </Link>
                   </Button>
@@ -357,9 +357,9 @@ const Index = () => {
                       <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 group-hover:scale-105 transition-all duration-300">
                         <Settings className="w-6 h-6 text-primary" />
                       </div>
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         <span className="font-semibold text-sm">Portföljrådgivare</span>
-                        <span className="text-xs text-muted-foreground leading-relaxed">Optimera din portfölj</span>
+                        <span className="text-xs text-muted-foreground leading-relaxed block mt-3">Optimera din portfölj</span>
                       </div>
                     </Link>
                   </Button>
