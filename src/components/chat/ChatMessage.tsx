@@ -42,40 +42,53 @@ const ChatMessage = ({
   const extractStockSuggestions = (content: string): StockSuggestion[] => {
     const suggestions: StockSuggestion[] = [];
 
-    // Multiple regex patterns to catch different formats
+    // Exclusions for non-stock items and common account/fund terms
+    const bannedSymbols = new Set([
+      'ISK', 'KF', 'PPM', 'AP7'
+    ]);
+    const bannedNameRegex = /(Investeringssparkonto|Kapitalförsäkring|Fond(er)?|Index(nära)?|ETF(er)?|Sparkonto)/i;
+
+    // Multiple regex patterns to catch different formats (supports hyphen/dot tickers like SEB-A, BRK.B)
     const patterns = [
       // Pattern 1: "Förslag: Company Name (TICKER)"
-      /(?:Förslag|Rekommendation|Aktie):\s*([^(]+?)\s*\(([A-Z]{1,6})\)/gi,
+      /(?:Förslag|Rekommendation|Aktie):\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/gi,
       // Pattern 2: "**Company Name** (TICKER)"
-      /\*\*([^*]+?)\*\*\s*\(([A-Z]{1,6})\)/g,
+      /\*\*([^*]+?)\*\*\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
       // Pattern 3: "Company Name (TICKER)" - general pattern
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6})\)/g,
+      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
       // Pattern 4: "1. Company Name (TICKER)" - numbered lists
-      /\d+\.\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
+      /\d+\.\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
       // Pattern 5: "- Company Name (TICKER)" - bullet points
-      /-\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
+      /-\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
       // Pattern 6: "• Company Name (TICKER)" - bullet points with bullet
-      /•\s*([^(]+?)\s*\(([A-Z]{1,6})\)/g,
+      /•\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
       // Pattern 7: TICKER followed by company name
-      /([A-Z]{2,6}):\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
+      /([A-Z]{2,6}(?:[-.][A-Z]{1,3})?):\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
       // Pattern 8: Company name with ticker in brackets at end of sentence
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{3,})\s+\(([A-Z]{1,6})\)(?=[\s.,!?]|$)/g,
+      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{3,})\s+\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)(?=[\s.,!?]|$)/g,
       // Pattern 9: Company (TICKER) - Sektor: SectorName
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6})\)\s*-\s*Sektor:\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
+      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)\s*-\s*Sektor:\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
       // Pattern 10: More flexible numbered/bulleted lists
-      /(?:^\d+\.|\*|-|•)\s*([^(]{2,50}?)\s*\(([A-Z]{1,6})\)/gm,
+      /(?:^\d+\.|\*|-|•)\s*([^()\n]{2,50}?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/gm,
       // Pattern 11: Catch any company name in parentheses with ticker
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,50}?)\s*\(([A-Z]{1,6})\)(?:\s*-|\s*:|\s*,|\s*\.|\s*$)/g,
+      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,50}?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)(?:\s*-|\s*:|\s*,|\s*\.|\s*$)/g,
       // Pattern 12: Simple ticker pattern
-      /\b([A-Z]{2,6})\b\s*-\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,50})/g
+      /\b([A-Z]{2,6}(?:[-.][A-Z]{1,3})?)\b\s*-\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,50})/g
     ];
 
     // Get existing holdings symbols to filter out
-    const existingSymbols = new Set(actualHoldings.map(holding => holding.symbol?.toUpperCase()).filter(Boolean));
+    const existingSymbols = new Set(
+      actualHoldings.map(holding => holding.symbol?.toUpperCase()).filter(Boolean)
+    );
+
+    // Prefer parsing only the "Aktier:" section if present; otherwise parse entire content
+    const aktierSection = content.match(/(?:^|\n)\s*Aktier\s*:\s*([\s\S]*?)(?:\n\s*\n|(?:^|\n)\s*[A-ZÅÄÖa-zåäö\s]+:\s*|$)/);
+    const contentToParse = aktierSection ? aktierSection[1] : content;
+
     patterns.forEach(pattern => {
       let match;
       const regex = new RegExp(pattern.source, pattern.flags);
-      while ((match = regex.exec(content)) !== null) {
+      while ((match = regex.exec(contentToParse)) !== null) {
         let name, symbol, sector;
 
         // Handle different capture group orders based on pattern
@@ -104,11 +117,19 @@ const ChatMessage = ({
         name = name.replace(/[\s:](AB|Inc|Corp|Ltd)$/i, '').trim();
 
         // Validation checks
-        const isValidSuggestion = name.length >= 2 && name.length <= 100 && symbol.length >= 1 && symbol.length <= 6 && !existingSymbols.has(symbol.toUpperCase()) && !suggestions.find(s => s.symbol === symbol.toUpperCase()) &&
-        // Avoid common false positives
-        !name.match(/^(och|eller|samt|med|utan|för|till|från|av|på|i|är|har|kan|ska|måste|borde|skulle)$/i) &&
-        // Ensure it's not just numbers or special characters
-        name.match(/[a-öA-Ö]/) && symbol.match(/^[A-Z]+$/);
+        const symbolValid = /^[A-Z]{1,6}(?:[-.][A-Z]{1,3})?$/.test(symbol);
+        const isValidSuggestion =
+          name.length >= 2 &&
+          name.length <= 100 &&
+          symbolValid &&
+          !existingSymbols.has(symbol.toUpperCase()) &&
+          !bannedSymbols.has(symbol.toUpperCase()) &&
+          !bannedNameRegex.test(name) &&
+          !suggestions.find(s => s.symbol === symbol.toUpperCase()) &&
+          // Avoid common false positives
+          !name.match(/^(och|eller|samt|med|utan|för|till|från|av|på|i|är|har|kan|ska|måste|borde|skulle)$/i) &&
+          // Ensure it's not just numbers or special characters
+          !!name.match(/[a-öA-Ö]/);
         if (isValidSuggestion) {
           suggestions.push({
             name: name,
