@@ -513,18 +513,18 @@ export const useAIChat = (portfolioId?: string) => {
       return;
     }
     
+    // Add user message to UI IMMEDIATELY for faster UX (before any async operations)
+    const userMessage: Message = {
+      id: Date.now().toString() + '_user_temp',
+      role: 'user',
+      content: content.trim(),
+      timestamp: new Date()
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
     
     try {
-      // Add user message to UI immediately for better UX
-      const userMessage: Message = {
-        id: Date.now().toString() + '_user_temp',
-        role: 'user',
-        content: content.trim(),
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, userMessage]);
       
       console.log('Calling Supabase function with chat history...');
       

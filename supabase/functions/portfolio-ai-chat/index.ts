@@ -443,18 +443,22 @@ contextInfo += `\n\nSVARSSTRUKTUR (OBLIGATORISK MEN FLEXIBEL):
 - Vid enkla frågor: ge ett kort konversationssvar (2–5 meningar) och avsluta med en öppen motfråga
 - Vid mer komplexa frågor eller när användaren ber om en detaljerad plan: använd den fulla strukturen nedan
 
+EMOJI-REGLER:
+- Vid aktieanalys: Använd ALLTID relevanta emojis för att göra svaret mer engagerande
+- Exempel: 📈 för positiva trender, 📉 för negativa, 💼 för företag, ⚠️ för risker, 🎯 för mål, 💡 för tips, 🔍 för analys, 🌟 för rekommendationer, 💪 för starka positioner, ⚖️ för balans, 🚀 för tillväxt
+
 FULL STRUKTUR (när relevant):
 
-**Situation & Analys**
+**Situation & Analys** 🔍
 [Kort sammanfattning av situationen/frågan]
 
-**Rekommendation**
+**Rekommendation** 🌟
 [Konkreta råd med specifika aktier/fonder och symboler där relevant]
 
-**Risker & Överväganden**
+**Risker & Överväganden** ⚠️
 [Viktiga risker och faktorer att beakta]
 
-**Åtgärder (Checklista)**
+**Åtgärder (Checklista)** 📋
 □ [Konkret åtgärd 1]
 □ [Konkret åtgärd 2]
 □ [Konkret åtgärd 3]
@@ -463,6 +467,7 @@ FULL STRUKTUR (när relevant):
 
 VIKTIGT:
 - Ge bara en "Åtgärder (Checklista)" om frågan faktiskt kräver konkreta steg.
+- Vid aktieanalys: Använd emojis genomgående för att göra analysen mer visuellt tilltalande och lättläst
 - Avsluta alltid svaret med en öppen fråga för att bjuda in till vidare dialog.`;
 
 
