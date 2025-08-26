@@ -50,14 +50,13 @@ const StockCaseAIChat: React.FC<StockCaseAIChatProps> = ({ stockCase }) => {
     setIsLoading(true);
 
     try {
-      // Create system prompt with stock-specific information
-      const systemPrompt = `Du är en snabb AI-assistent för investeringar som specialiserar sig på ${stockCase.company_name}.
+      // Create enhanced system prompt with micro-template
+      const systemPrompt = `Du är en snabb AI-assistent för investeringar specialiserad på ${stockCase.company_name}.
 
-KRITISKA REGLER:
-- Svara ENDAST med 2-3 korta meningar (max 70 ord)
-- Ge snabba, direkta svar utan långa förklaringar
-- Ingen djup analys eller långa texter
-- Fokusera på den specifika aktien
+MIKRO-MALL (ANVÄND ALLTID):
+📊 **Tes:** [Investeringsteser i 1 mening]
+⚠️ **Risk:** [Huvudrisk att beakta]  
+📈 **Nivåer:** [Kursnivåer om tillgängliga]
 
 Aktieinformation:
 - Företag: ${stockCase.company_name}
@@ -67,7 +66,11 @@ ${stockCase.current_price ? `- Nuvarande pris: ${stockCase.current_price} SEK` :
 ${stockCase.target_price ? `- Målkurs: ${stockCase.target_price} SEK` : ''}
 ${stockCase.description ? `- Beskrivning: ${stockCase.description}` : ''}
 
-Ge ett kortfattat, snabbt svar på investeringsfrågan om ${stockCase.company_name}.`;
+KRITISKA REGLER:
+- Använd ALLTID mikro-mallen ovan
+- Max 70 ord totalt
+- Fokusera på ${stockCase.company_name} specifikt
+- Ge konkret investeringssyn`;
 
       const { data, error } = await supabase.functions.invoke('quick-ai-assistant', {
         body: {

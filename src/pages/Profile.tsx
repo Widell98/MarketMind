@@ -140,10 +140,10 @@ const Profile = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-0 bg-background">
         {/* Clean Profile Header */}
         <div className="bg-card border-b">
-          <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6 lg:py-8">
             <EnhancedProfileHeader 
               profileData={profileData || user}
               isOwnProfile={true}
@@ -154,8 +154,8 @@ const Profile = () => {
         </div>
 
         {/* Main Content */}
-        <div className="max-w-6xl mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+        <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6 lg:py-8">
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             {/* Left Sidebar */}
             <div className="xl:col-span-1 space-y-6">
               <MembershipSection />
@@ -270,7 +270,7 @@ const Profile = () => {
                           <p className="text-sm text-muted-foreground">Laddar cases...</p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
                           {stockCases.filter(c => c.user_id === user.id).map((stockCase) => (
                             <EnhancedStockCaseCard 
                               key={stockCase.id} 

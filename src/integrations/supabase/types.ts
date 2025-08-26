@@ -1149,6 +1149,66 @@ export type Database = {
         }
         Relationships: []
       }
+      user_ai_memory: {
+        Row: {
+          communication_style: string | null
+          created_at: string
+          current_goals: Json | null
+          expertise_level: string | null
+          favorite_sectors: Json | null
+          frequently_asked_topics: Json | null
+          id: string
+          investment_philosophy: string | null
+          last_interaction: string | null
+          preferred_companies: Json | null
+          preferred_interaction_times: Json | null
+          preferred_response_length: string | null
+          risk_comfort_patterns: Json | null
+          total_conversations: number | null
+          typical_session_length: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          communication_style?: string | null
+          created_at?: string
+          current_goals?: Json | null
+          expertise_level?: string | null
+          favorite_sectors?: Json | null
+          frequently_asked_topics?: Json | null
+          id?: string
+          investment_philosophy?: string | null
+          last_interaction?: string | null
+          preferred_companies?: Json | null
+          preferred_interaction_times?: Json | null
+          preferred_response_length?: string | null
+          risk_comfort_patterns?: Json | null
+          total_conversations?: number | null
+          typical_session_length?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          communication_style?: string | null
+          created_at?: string
+          current_goals?: Json | null
+          expertise_level?: string | null
+          favorite_sectors?: Json | null
+          frequently_asked_topics?: Json | null
+          id?: string
+          investment_philosophy?: string | null
+          last_interaction?: string | null
+          preferred_companies?: Json | null
+          preferred_interaction_times?: Json | null
+          preferred_response_length?: string | null
+          risk_comfort_patterns?: Json | null
+          total_conversations?: number | null
+          typical_session_length?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_ai_usage: {
         Row: {
           ai_messages_count: number
@@ -1661,6 +1721,14 @@ export type Database = {
     }
     Functions: {
       assign_user_role: {
+        Args: {
+          new_role: Database["public"]["Enums"]["app_role"]
+          reason?: string
+          target_user_id: string
+        }
+        Returns: boolean
+      }
+      assign_user_role_secure: {
         Args: {
           new_role: Database["public"]["Enums"]["app_role"]
           reason?: string

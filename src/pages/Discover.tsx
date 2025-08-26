@@ -142,7 +142,8 @@ const Discover = () => {
       }
     });
 
-    return filtered;
+    // Limit to 6 cases per page
+    return filtered.slice(0, 6);
   }, [allStockCases, caseSearchTerm, selectedSector, performanceFilter, caseSortBy, caseSortOrder]);
 
   // Get available sectors
@@ -280,7 +281,7 @@ const Discover = () => {
               {/* Cases Grid */}
               <div className="space-y-6">
                 {stockCasesLoading ? (
-                  <div className={`grid gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+                  <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-2' : 'grid-cols-1'}`}>
                     {[...Array(6)].map((_, i) => (
                       <Card key={i} className="animate-pulse border rounded-2xl">
                         <CardContent className="p-6">
@@ -292,7 +293,7 @@ const Discover = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className={`grid gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+                  <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-2' : 'grid-cols-1'}`}>
                     {getFilteredCases.map(stockCase => (
                       <StockCaseCard 
                         key={stockCase.id} 
@@ -371,7 +372,7 @@ const Discover = () => {
                 {/* All Analyses Tab */}
                 <TabsContent value="all" className="space-y-6">
                   {analysesLoading ? (
-                    <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'space-y-6'}`}>
+                     <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6' : 'space-y-4 sm:space-y-6'}`}>
                       {[...Array(5)].map((_, i) => (
                         <Card key={i} className="animate-pulse border rounded-2xl">
                           <CardContent className="p-6">
@@ -383,7 +384,7 @@ const Discover = () => {
                       ))}
                     </div>
                   ) : filteredAnalyses.length > 0 ? (
-                    <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'space-y-6'}`}>
+                    <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6' : 'space-y-4 sm:space-y-6'}`}>
                       {filteredAnalyses.map(analysis => (
                         <EnhancedAnalysisCard 
                           key={analysis.id} 

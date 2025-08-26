@@ -2,36 +2,36 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Home, MessageSquare, TrendingUp, BarChart3, Lock, Brain, Sparkles, User, Settings, HelpCircle } from 'lucide-react';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import HelpButton from '@/components/HelpButton';
 const AppSidebar = () => {
   const location = useLocation();
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
+  const { t } = useLanguage();
   const aiNavigation = [{
-    name: 'Smart Portfölj',
+    name: t('nav.portfolio'),
     href: '/portfolio-implementation',
     icon: BarChart3,
     requiresAuth: true
   }, {
-    name: 'AI-Assistent',
+    name: t('nav.aiChat'),
     href: '/ai-chat',
     icon: Brain
   }];
   const mainNavigation = [{
-    name: 'Hem',
+    name: t('nav.home'),
     href: '/',
     icon: Home
   }, {
-    name: 'Upptäck',
+    name: t('nav.discover'),
     href: '/discover',
     icon: Sparkles
   }];
   const userNavigation = [{
-    name: 'Profil',
+    name: t('nav.profile'),
     href: '/profile',
     icon: User,
     requiresAuth: true
@@ -61,7 +61,7 @@ const AppSidebar = () => {
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-semibold text-primary flex items-center gap-2">
             <Home className="w-4 h-4" />
-            Huvudmeny
+            {t('nav.mainMenu')}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -74,7 +74,7 @@ const AppSidebar = () => {
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-semibold text-primary flex items-center gap-2">
             <Brain className="w-4 h-4" />
-            AI-Verktyg
+            {t('nav.aiTools')}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -87,7 +87,7 @@ const AppSidebar = () => {
         {user && <SidebarGroup className="mt-auto">
             <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
               <User className="w-4 h-4" />
-              Konto
+              {t('nav.account')}
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
