@@ -7,7 +7,6 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
@@ -20,9 +19,6 @@ const Index = () => {
   const {
     user
   } = useAuth();
-  const {
-    t
-  } = useLanguage();
   const {
     activePortfolio,
     loading
@@ -44,8 +40,8 @@ const Index = () => {
   const hasPortfolio = !loading && !!activePortfolio;
   const totalPortfolioValue = performance.totalPortfolioValue;
   return <Layout>
-      <div className="min-h-0 bg-background">
-        <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-8 lg:py-12">
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-12 max-w-6xl">
           
           {/* Hero Section - Apple-inspired clean design */}
           {!user && <div className="text-center mb-20">
@@ -56,25 +52,26 @@ const Index = () => {
                 </div>
                 
                 <h1 className="text-5xl sm:text-6xl lg:text-7xl font-medium text-foreground mb-8 leading-tight tracking-tight">
-                  {t('hero.title1')}
+                  Din personliga
                   <br />
-                  <span className="text-primary">{t('hero.title2')}</span>
+                  <span className="text-primary">finansiella rådgivare</span>
                 </h1>
                 
                 <p className="text-xl text-muted-foreground leading-relaxed mb-12 max-w-2xl mx-auto font-light">
-                  {t('hero.subtitle')}
+                  Optimera din portfölj, förstå marknaden och få stöd i osäkra tider. 
+                  Enkelt, tryggt, smart.
                 </p>
                 
                 {/* Clean CTA Buttons */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
                   <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-lg">
                     <Link to="/auth">
-                      {t('hero.cta.start')}
+                      Kom igång gratis
                     </Link>
                   </Button>
                   <Button asChild variant="ghost" size="lg" className="text-primary hover:bg-primary/5 font-medium px-8 py-4 rounded-xl transition-all duration-300 text-lg">
                     <Link to="/ai-chat">
-                      {t('hero.cta.demo')}
+                      Se hur det fungerar →
                     </Link>
                   </Button>
                 </div>
@@ -82,29 +79,29 @@ const Index = () => {
 
               {/* Clean Examples Section */}
               <div className="mb-20">
-                <h2 className="text-3xl font-semibold text-foreground mb-4">{t('examples.title')}</h2>
+                <h2 className="text-3xl font-semibold text-foreground mb-4">Personliga råd för alla</h2>
                 <p className="text-lg text-muted-foreground mb-12 max-w-2xl mx-auto">
-                  {t('examples.subtitle')}
+                  Oavsett var du är i livet hjälper vi dig bygga ekonomisk trygghet
                 </p>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 max-w-5xl mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
                   {/* Example 1: Conservative */}
                   <div className="bg-card border rounded-2xl p-8 hover:shadow-lg transition-all duration-300">
                     <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
                       <Shield className="w-6 h-6 text-primary" />
                     </div>
                     <div className="mb-4">
-                      <p className="font-semibold text-foreground">{t('examples.conservative.name')}</p>
-                      <p className="text-sm text-muted-foreground">{t('examples.conservative.type')}</p>
+                      <p className="font-semibold text-foreground">Anna, 45</p>
+                      <p className="text-sm text-muted-foreground">Konservativ investerare</p>
                     </div>
                     <div className="bg-muted/50 rounded-xl p-4 mb-4 text-left">
                       <p className="text-sm text-muted-foreground italic">
-                        {t('examples.conservative.question')}
+                        "Hjälp mig bygga en trygg portfölj för min pension. Jag vill sova gott om nätterna."
                       </p>
                     </div>
                     <div className="bg-primary/5 rounded-xl p-4 text-left border border-primary/20">
                       <p className="text-sm text-primary font-medium">
-                        {t('examples.conservative.answer')}
+                        "Perfekt! 70% räntor och 30% stabila aktier för trygghet."
                       </p>
                     </div>
                   </div>
@@ -115,17 +112,17 @@ const Index = () => {
                       <TrendingUp className="w-6 h-6 text-primary" />
                     </div>
                     <div className="mb-4">
-                      <p className="font-semibold text-foreground">{t('examples.aggressive.name')}</p>
-                      <p className="text-sm text-muted-foreground">{t('examples.aggressive.type')}</p>
+                      <p className="font-semibold text-foreground">Erik, 26</p>
+                      <p className="text-sm text-muted-foreground">Aggressiv investerare</p>
                     </div>
                     <div className="bg-muted/50 rounded-xl p-4 mb-4 text-left">
                       <p className="text-sm text-muted-foreground italic">
-                        {t('examples.aggressive.question')}
+                        "Jag är ung och vill maximera tillväxten. Kan ta höga risker!"
                       </p>
                     </div>
                     <div className="bg-primary/5 rounded-xl p-4 text-left border border-primary/20">
                       <p className="text-sm text-primary font-medium">
-                        {t('examples.aggressive.answer')}
+                        "Utmärkt! 90% tillväxtaktier för långsiktig hög avkastning!"
                       </p>
                     </div>
                   </div>
@@ -136,17 +133,17 @@ const Index = () => {
                       <DollarSign className="w-6 h-6 text-primary" />
                     </div>
                     <div className="mb-4">
-                      <p className="font-semibold text-foreground">{t('examples.dividend.name')}</p>
-                      <p className="text-sm text-muted-foreground">{t('examples.dividend.type')}</p>
+                      <p className="font-semibold text-foreground">Gunnar, 62</p>
+                      <p className="text-sm text-muted-foreground">Utdelningsfokus</p>
                     </div>
                     <div className="bg-muted/50 rounded-xl p-4 mb-4 text-left">
                       <p className="text-sm text-muted-foreground italic">
-                        {t('examples.dividend.question')}
+                        "Jag vill ha regelbunden inkomst från utdelningar."
                       </p>
                     </div>
                     <div className="bg-primary/5 rounded-xl p-4 text-left border border-primary/20">
                       <p className="text-sm text-primary font-medium">
-                        {t('examples.dividend.answer')}
+                        "Klart! Utdelningsaktier med 4-6% direktavkastning!"
                       </p>
                     </div>
                   </div>
@@ -155,19 +152,19 @@ const Index = () => {
 
               {/* How it works - Clean Apple style */}
               <div className="max-w-4xl mx-auto mb-20">
-                <h2 className="text-3xl font-semibold text-foreground mb-4">{t('howItWorks.title')}</h2>
+                <h2 className="text-3xl font-semibold text-foreground mb-4">Så enkelt är det</h2>
                 <p className="text-lg text-muted-foreground mb-16 max-w-2xl mx-auto">
-                  {t('howItWorks.subtitle')}
+                  Tre enkla steg till din personliga investeringsstrategi
                 </p>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-12">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
                   <div className="text-center">
                     <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
                       <MessageSquare className="w-8 h-8 text-primary" />
                     </div>
-                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step1.title')}</h3>
+                    <h3 className="text-xl font-semibold mb-3 text-foreground">Berätta om dig</h3>
                     <p className="text-muted-foreground leading-relaxed">
-                      {t('howItWorks.step1.description')}
+                      Vi lär känna dina mål, riskprofil och drömmar i en enkel konversation
                     </p>
                   </div>
                   
@@ -175,9 +172,9 @@ const Index = () => {
                     <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
                       <Brain className="w-8 h-8 text-primary" />
                     </div>
-                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step2.title')}</h3>
+                    <h3 className="text-xl font-semibold mb-3 text-foreground">AI skapar din plan</h3>
                     <p className="text-muted-foreground leading-relaxed">
-                      {t('howItWorks.step2.description')}
+                      Avancerad AI bygger en personlig portfölj baserad på dina behov
                     </p>
                   </div>
                   
@@ -185,9 +182,9 @@ const Index = () => {
                     <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
                       <BarChart3 className="w-8 h-8 text-primary" />
                     </div>
-                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step3.title')}</h3>
+                    <h3 className="text-xl font-semibold mb-3 text-foreground">Följ din utveckling</h3>
                     <p className="text-muted-foreground leading-relaxed">
-                      {t('howItWorks.step3.description')}
+                      Löpande uppföljning och anpassning när ditt liv förändras
                     </p>
                   </div>
                 </div>
@@ -196,22 +193,22 @@ const Index = () => {
               {/* Final CTA - Apple style */}
               <div className="max-w-2xl mx-auto text-center">
                 <h3 className="text-2xl font-semibold text-foreground mb-4">
-                  {t('finalCta.title')}
+                  Redo att börja din resa?
                 </h3>
                 <p className="text-lg text-muted-foreground mb-8">
-                  {t('finalCta.subtitle')}
+                  Tusentals svenskar har redan tagit steget. Nu är det din tur.
                 </p>
                 <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-lg">
                   <Link to="/auth">
-                    {t('hero.cta.final')}
+                    Kom igång gratis idag
                   </Link>
                 </Button>
               </div>
             </div>}
 
           {/* Clean Dashboard for logged-in users */}
-          {user && hasPortfolio && <div className="min-h-0 bg-background">
-              <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-3 sm:py-6">
+          {user && hasPortfolio && <div className="min-h-screen bg-background">
+              <div className="container mx-auto px-4 py-6 max-w-6xl">
                 {/* Clean Header */}
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-4">
@@ -220,10 +217,10 @@ const Index = () => {
                     </div>
                     <div>
                       <h1 className="text-2xl font-semibold text-foreground">
-                        {t('dashboard.greeting')}, {user.user_metadata?.first_name || user.user_metadata?.full_name || user.email?.split('@')[0] || t('common.user')}!
+                        Hej, {user.user_metadata?.first_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'användare'}!
                       </h1>
                       <p className="text-muted-foreground">
-                        {t('dashboard.subtitle')}
+                        Här är din investeringsöversikt för idag
                       </p>
                     </div>
                   </div>
@@ -270,21 +267,55 @@ const Index = () => {
                 </div>
 
                 {/* AI Insights */}
-                
+                <div className="mb-8">
+                  {insightsLoading ? <div className="bg-card border rounded-xl p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Brain className="w-5 h-5 text-primary animate-pulse" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="h-4 bg-muted rounded mb-3 animate-pulse"></div>
+                          <div className="h-3 bg-muted rounded w-3/4 animate-pulse"></div>
+                        </div>
+                      </div>
+                    </div> : insights.length > 0 ? <div className="bg-card border rounded-xl p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Brain className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="font-medium text-foreground">AI-insikt för dig</p>
+                            <Badge variant="secondary" className="text-xs">
+                              {insights[0]?.confidence > 0.8 ? 'Hög tillförlitlighet' : 'Medel tillförlitlighet'}
+                            </Badge>
+                          </div>
+                          <p className="text-muted-foreground mb-3">
+                            {insights[0]?.message}
+                          </p>
+                          <Button asChild size="sm" variant="ghost" className="p-0 h-auto text-primary hover:text-primary/80">
+                            
+                          </Button>
+                        </div>
+                      </div>
+                    </div> : <div className="bg-card border rounded-xl p-6">
+                      
+                    </div>}
+                </div>
 
                 {/* Portfolio Overview Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                   <div className="bg-card border rounded-xl p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                         <Star className="w-4 h-4 text-primary" />
                       </div>
-                      <span className="font-medium text-foreground">{t('dashboard.totalSavings')}</span>
+                      <span className="font-medium text-foreground">Totalt sparande</span>
                     </div>
                     <p className="text-3xl font-bold text-primary mb-2">
                       {totalPortfolioValue.toLocaleString('sv-SE')} kr
                     </p>
-                    <p className="text-sm text-green-600 font-medium">{t('dashboard.onTrack')}</p>
+                    <p className="text-sm text-green-600 font-medium">↗ På väg mot dina mål</p>
                   </div>
 
                   <div className="bg-card border rounded-xl p-6 hover:shadow-md transition-shadow">
@@ -292,12 +323,12 @@ const Index = () => {
                       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                         <BarChart3 className="w-4 h-4 text-primary" />
                       </div>
-                      <span className="font-medium text-foreground">{t('dashboard.holdings')}</span>
+                      <span className="font-medium text-foreground">Innehav</span>
                     </div>
                     <p className="text-3xl font-bold text-primary mb-2">
                       {actualHoldings?.length || 0}
                     </p>
-                    <p className="text-sm text-muted-foreground">{t('dashboard.balancedSpread')}</p>
+                    <p className="text-sm text-muted-foreground">Välbalanserad spridning</p>
                   </div>
 
                   <div className="bg-card border rounded-xl p-6 hover:shadow-md transition-shadow">
@@ -388,7 +419,7 @@ const Index = () => {
 
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-lg">
-                      <Link to="/portfolio-advisor?direct=true">
+                      <Link to="/portfolio-advisor">
                         <Coffee className="w-5 h-5 mr-2" />
                         Låt oss lära känna varandra
                       </Link>

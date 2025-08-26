@@ -1,6 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,15 +7,7 @@ import { Brain, Sparkles } from 'lucide-react';
 import ChatPortfolioAdvisor from './ChatPortfolioAdvisor';
 
 const ConversationalPortfolioAdvisor = () => {
-  const [searchParams] = useSearchParams();
   const [showChat, setShowChat] = useState(false);
-
-  useEffect(() => {
-    // Check if direct parameter is present to skip intro
-    if (searchParams.get('direct') === 'true') {
-      setShowChat(true);
-    }
-  }, [searchParams]);
 
   if (showChat) {
     return <ChatPortfolioAdvisor />;

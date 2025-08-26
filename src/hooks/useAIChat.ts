@@ -13,8 +13,6 @@ interface Message {
     analysisType?: string;
     confidence?: number;
     isExchangeRequest?: boolean;
-    profileUpdates?: any;
-    requiresConfirmation?: boolean;
   };
 }
 
@@ -501,202 +499,122 @@ export const useAIChat = (portfolioId?: string) => {
   }, [user, portfolioId, toast]);
 
   const sendMessageToSession = useCallback(async (content: string, sessionId?: string) => {
-    console.log('=== SEND MESSAGE TO SESSION ===');
+    console.log('=== SEND MESSAGE TO SESSION DEBUG ===');
     console.log('Content:', content);
-    console.log('Session ID to use:', sessionId || currentSessionId);
+    console.log('User ID:', user?.id);
     console.log('Portfolio ID:', portfolioId);
+    console.log('Session ID (param):', sessionId);
+    console.log('Current Session ID:', currentSessionId);
     
     const targetSessionId = sessionId || currentSessionId;
     
-    if (!user || !content.trim() || !targetSessionId) {
-      console.log('Missing required data for sending message');
+    if (!user || !targetSessionId) {
+      console.log('Cannot send message: missing user or session ID');
       return;
     }
-    
+
     setIsLoading(true);
-    
+    setQuotaExceeded(false);
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    console.log('Added user message to UI');
+
     try {
-      // Add user message to UI immediately for better UX
-      const userMessage: Message = {
-        id: Date.now().toString() + '_user_temp',
-        role: 'user',
-        content: content.trim(),
-        timestamp: new Date()
-      };
+      console.log('=== CALLING EDGE FUNCTION ===');
+      console.log('Function name: portfolio-ai-chat');
       
-      setMessages(prev => [...prev, userMessage]);
+      // Detect if this is an exchange request
+      const isExchangeRequest = /(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|amerikanska|svenska|europeiska|asiatiska|aktier|innehav)/i.test(content);
       
-      console.log('Calling Supabase function with chat history...');
-      
-      // Send chat history for context (last 10 messages excluding the temp message we just added)
-      const chatHistoryForAPI = messages.slice(-10).map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }));
-      
-      // Handle streaming response using direct fetch for better streaming support
-      const supabaseUrl = 'https://qifolopsdeeyrevbuxfl.supabase.co';
-      const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpZm9sb3BzZGVleXJldmJ1eGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5MzY3MjMsImV4cCI6MjA2MzUxMjcyM30.x89y179_8EDl1NwTryhXfUDMzdxrnfomZfRmhmySMhM';
-      
-      const streamResponse = await fetch(`${supabaseUrl}/functions/v1/portfolio-ai-chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-        },
-        body: JSON.stringify({
-          message: content.trim(),
-          userId: user.id,
-          portfolioId: portfolioId,
-          sessionId: targetSessionId,
-          chatHistory: chatHistoryForAPI,
-          analysisType: 'general'
-        })
+      console.log('Request payload:', {
+        message: content,
+        userId: user.id,
+        portfolioId,
+        sessionId: targetSessionId,
+        contextType: 'advisory',
+        isExchangeRequest: isExchangeRequest,
       });
 
-      if (!streamResponse.ok) {
-        throw new Error(`HTTP error! status: ${streamResponse.status}`);
+      const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
+        body: {
+          message: content,
+          userId: user.id,
+          portfolioId,
+          sessionId: targetSessionId,
+          contextType: 'advisory',
+        },
+      });
+
+      console.log('=== EDGE FUNCTION RESPONSE ===');
+      console.log('Error:', error);
+      console.log('Data:', data);
+
+      if (error) {
+        console.error('AI function error:', error);
+        if (error.message?.includes('quota') || error.message?.includes('429')) {
+          setQuotaExceeded(true);
+          toast({
+            title: "API-kvot överskriden",
+            description: "Du har nått din dagliga gräns för AI-användning. Försök igen senare.",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw error;
       }
 
-      console.log('Starting streaming response...');
-      
-      // Create placeholder AI message for streaming
-      const aiMessageId = Date.now().toString() + '_ai_temp';
-      const aiMessage: Message = {
-        id: aiMessageId,
-        role: 'assistant',
-        content: '',
-        timestamp: new Date(),
-        context: {
-          analysisType: 'general',
-          confidence: 0.8
-        }
-      };
-      
-      setMessages(prev => [...prev, aiMessage]);
-      
-      // Process streaming response
-      const reader = streamResponse.body?.getReader();
-      const decoder = new TextDecoder();
-      let accumulatedContent = '';
-      let profileUpdates = null;
-      let requiresConfirmation = false;
-      
-      if (reader) {
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
-            
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6);
-                if (data === '[DONE]') {
-                  break;
-                }
-                
-                try {
-                  const parsed = JSON.parse(data);
-                  if (parsed.content) {
-                    accumulatedContent += parsed.content;
-                    
-                    // Update message with new content
-                    setMessages(prev => prev.map(msg => 
-                      msg.id === aiMessageId 
-                        ? { ...msg, content: accumulatedContent }
-                        : msg
-                    ));
-                  }
-                  
-                  // Check for profile updates
-                  if (parsed.profileUpdates) {
-                    profileUpdates = parsed.profileUpdates;
-                    requiresConfirmation = parsed.requiresConfirmation;
-                  }
-                } catch (e) {
-                  // Ignore JSON parse errors
-                }
-              }
-            }
-          }
-          
-          // Update final message with profile update context if needed
-          if (requiresConfirmation && profileUpdates) {
-            setMessages(prev => prev.map(msg => 
-              msg.id === aiMessageId 
-                ? { 
-                    ...msg, 
-                    context: {
-                      ...msg.context,
-                      profileUpdates,
-                      requiresConfirmation: true
-                    }
-                  }
-                : msg
-            ));
-          }
-          
-        } finally {
-          reader.releaseLock();
+      console.log('AI response received:', data);
+
+      // Increment usage after successful API call
+      console.log('Incrementing AI usage...');
+      const { error: usageError } = await supabase.rpc('increment_ai_usage', {
+        _user_id: user.id,
+        _usage_type: 'ai_message'
+      });
+
+      if (usageError) {
+        console.error('Error incrementing usage:', usageError);
+      } else {
+        console.log('Usage incremented successfully');
+        // Fetch updated usage from subscription hook
+        if (typeof fetchUsage === 'function') {
+          await fetchUsage();
         }
       }
-      
-      // After streaming is complete, reload messages from database to get the complete conversation with correct IDs
-      console.log('Streaming complete, reloading messages from database...');
-      setTimeout(() => {
-        loadMessages(targetSessionId);
-      }, 1000);
-      
-      // Track usage
-      await fetchUsage();
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: data.response,
+        timestamp: new Date(),
+        context: {
+          analysisType: data.analysisType,
+          confidence: data.confidence,
+          isExchangeRequest: data.isExchangeRequest || isExchangeRequest,
+        },
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+      console.log('Added assistant message to UI');
       
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
         title: "Fel",
-        description: "Kunde inte skicka meddelandet. Försök igen.",
+        description: `Kunde inte skicka meddelandet: ${error.message}`,
         variant: "destructive",
       });
-      
-      // Remove the temporary user message on error
-      setMessages(prev => prev.filter(msg => !msg.id.includes('_temp')));
     } finally {
       setIsLoading(false);
     }
-  }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage, loadMessages]);
-
-  // Function to update user profile based on AI-detected changes
-  const updateUserProfile = useCallback(async (profileUpdates: any) => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('user_risk_profiles')
-        .update(profileUpdates)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Profil uppdaterad",
-        description: "Din investeringsprofil har uppdaterats baserat på din konversation.",
-      });
-
-      // Send confirmation message to AI
-      const confirmationMessage = `Min profil har uppdaterats: ${Object.entries(profileUpdates).map(([key, value]) => `${key}: ${value}`).join(', ')}`;
-      await sendMessage(confirmationMessage);
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast({
-        title: "Fel",
-        description: "Kunde inte uppdatera profilen. Försök igen.",
-        variant: "destructive",
-      });
-    }
-  }, [user, toast, sendMessage]);
+  }, [user, portfolioId, currentSessionId, toast]);
 
   const analyzePortfolio = useCallback(async (analysisType: 'risk' | 'diversification' | 'performance' | 'optimization') => {
     if (!user || !portfolioId) return;
@@ -792,6 +710,5 @@ export const useAIChat = (portfolioId?: string) => {
     editSessionName,
     clearMessages,
     getQuickAnalysis,
-    updateUserProfile,
   };
 };

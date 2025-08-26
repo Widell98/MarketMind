@@ -12,7 +12,6 @@ import CommunityRecommendations from '@/components/CommunityRecommendations';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAuth } from '@/contexts/AuthContext';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
@@ -36,9 +35,6 @@ const PortfolioImplementation = () => {
     user,
     loading: authLoading
   } = useAuth();
-  const {
-    t
-  } = useLanguage();
   const {
     riskProfile,
     loading: riskProfileLoading
@@ -104,8 +100,8 @@ const PortfolioImplementation = () => {
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 bg-primary shadow-2xl">
               <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
             </div>
-            <h2 className="text-lg font-semibold mb-2 text-foreground">{t('portfolio.loading')}</h2>
-            <p className="text-sm text-muted-foreground">{t('portfolio.loadingDesc')}</p>
+            <h2 className="text-lg font-semibold mb-2 text-foreground">Laddar din portfölj</h2>
+            <p className="text-sm text-muted-foreground">Hämtar dina investeringsdata...</p>
           </div>
         </div>
       </Layout>;
@@ -121,10 +117,10 @@ const PortfolioImplementation = () => {
                 <Brain className="w-10 h-10 text-primary-foreground" />
               </div>
               <h1 className="text-3xl font-bold mb-4 text-foreground">
-                {t('portfolio.createProfile')}
+                Skapa din investeringsprofil
               </h1>
               <p className="text-lg max-w-2xl mx-auto text-muted-foreground px-4">
-                {t('portfolio.createProfileDesc')}
+                Låt oss skapa din personliga investeringsstrategi genom en kort konversation
               </p>
             </div>
             <ConversationalPortfolioAdvisor />
@@ -153,8 +149,8 @@ const PortfolioImplementation = () => {
   return <Layout>
       <LoginPromptModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
       
-      <div className="min-h-0 bg-gradient-to-br from-background to-secondary/5">
-        <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4 sm:py-8 lg:py-12">
+      <div className="min-h-screen bg-gradient-to-br from-background to-secondary/5">
+        <div className="container mx-auto px-6 py-12 max-w-7xl">
           {/* Breadcrumb Navigation */}
           <div className="mb-8">
             <Breadcrumb />
@@ -166,11 +162,23 @@ const PortfolioImplementation = () => {
               <Brain className="w-10 h-10 text-primary" />
             </div>
             <h1 className="text-4xl font-bold mb-4 text-foreground">
-              {t('portfolio.title')}
+              Portfolio Analys
             </h1>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Analysera och förstå din investeringsportfölj med AI-driven insikter
+            </p>
             
-            
-            
+            <div className="flex flex-wrap justify-center gap-3 mt-8">
+              <Badge className="px-4 py-2 text-sm font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors">
+                <Brain className="w-4 h-4 mr-2" />
+                AI-Analys
+              </Badge>
+              
+              {lastUpdated && <Badge className="px-4 py-2 text-sm font-medium bg-muted/50 text-muted-foreground border border-muted/30 hover:bg-muted/70 transition-colors">
+                  <Clock className="w-4 h-4 mr-2" />
+                  Uppdaterad {lastUpdated}
+                </Badge>}
+            </div>
           </div>
 
           {/* Portfolio Health Score */}
@@ -193,23 +201,23 @@ const PortfolioImplementation = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold text-amber-800 dark:text-amber-200 mb-1">
-                        {t('portfolio.riskProfileRequired')}
+                        Skapa din riskprofil
                       </h3>
                       <p className="text-amber-700 dark:text-amber-300">
-                        {t('portfolio.riskProfileRequiredDesc')}
+                        Få AI-analys och personliga rekommendationer baserat på din investeringsstil
                       </p>
                     </div>
                   </div>
                   <Button onClick={() => navigate('/portfolio-advisor')} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl px-6 py-3 shadow-lg hover:shadow-xl transition-all duration-200">
                     <User className="w-4 h-4 mr-2" />
-                    {t('portfolio.createProfile.button')}
+                    Skapa profil
                   </Button>
                 </div>
               </div>
             </div>}
 
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
-            <div className="xl:col-span-3 space-y-4 sm:space-y-6 lg:space-y-8">
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+            <div className="xl:col-span-3 space-y-8">
               <div className="bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
                 <PortfolioOverview portfolio={activePortfolio} onQuickChat={handleQuickChat} onActionClick={handleActionClick} />
               </div>

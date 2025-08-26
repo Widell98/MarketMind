@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,9 +17,6 @@ interface CreateStockCaseDialogProps {
   onClose: () => void;
   onSuccess?: () => void;
 }
-
-const STORAGE_KEY = 'create-stock-case-draft';
-const IMAGE_STORAGE_KEY = 'create-stock-case-image-draft';
 
 const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({ 
   isOpen, 
@@ -44,45 +41,11 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
   const { toast } = useToast();
   const { uploadImage } = useStockCaseOperations();
 
-  // Load saved draft when dialog opens
-  useEffect(() => {
-    if (isOpen) {
-      const savedData = localStorage.getItem(STORAGE_KEY);
-      const savedImage = localStorage.getItem(IMAGE_STORAGE_KEY);
-      
-      if (savedData) {
-        try {
-          const parsedData = JSON.parse(savedData);
-          setFormData(parsedData);
-        } catch (error) {
-          console.error('Error loading saved draft:', error);
-        }
-      }
-      
-      if (savedImage) {
-        setImagePreview(savedImage);
-      }
-    }
-  }, [isOpen]);
-
-  // Save draft to localStorage
-  const saveDraft = (data: typeof formData) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  };
-
-  // Clear saved draft
-  const clearDraft = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(IMAGE_STORAGE_KEY);
-  };
-
   const handleInputChange = (field: string, value: string) => {
-    const newFormData = {
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [field]: value
-    };
-    setFormData(newFormData);
-    saveDraft(newFormData);
+    }));
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,10 +75,7 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
       
       const reader = new FileReader();
       reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setImagePreview(result);
-        // Save image to localStorage as base64
-        localStorage.setItem(IMAGE_STORAGE_KEY, result);
+        setImagePreview(e.target?.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -124,7 +84,6 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
   const removeImage = () => {
     setImageFile(null);
     setImagePreview(null);
-    localStorage.removeItem(IMAGE_STORAGE_KEY);
     const fileInput = document.getElementById('image-upload') as HTMLInputElement;
     if (fileInput) {
       fileInput.value = '';
@@ -157,19 +116,9 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
     try {
       let imageUrl = null;
       
-      // Handle image upload if file is selected or if we have a saved image
+      // Handle image upload if file is selected
       if (imageFile) {
         imageUrl = await uploadImage(imageFile);
-      } else if (imagePreview && !imageFile) {
-        // Convert base64 back to File for upload
-        try {
-          const response = await fetch(imagePreview);
-          const blob = await response.blob();
-          const file = new File([blob], 'saved-image.jpg', { type: blob.type });
-          imageUrl = await uploadImage(file);
-        } catch (error) {
-          console.error('Error converting saved image:', error);
-        }
       }
 
       const { error } = await supabase
@@ -198,8 +147,7 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
         description: "Ditt aktiecase har skapats framgångsrikt",
       });
 
-      // Clear saved draft and reset form
-      clearDraft();
+      // Reset form
       setFormData({
         title: '',
         company_name: '',

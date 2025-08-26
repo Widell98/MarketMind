@@ -413,13 +413,7 @@
   
   /* Responsive container with mobile-first approach */
   .container-responsive {
-    @apply w-full mx-auto px-2 sm:px-4 md:px-6 lg:px-8;
-    max-width: 1400px;
-  }
-  
-  .container-mobile {
-    @apply w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8;
-    max-width: 1400px;
+    @apply container-mobile;
   }
   
   /* Mobile-optimized form layouts with better focus */

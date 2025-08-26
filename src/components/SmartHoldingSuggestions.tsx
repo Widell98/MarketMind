@@ -49,29 +49,12 @@ const SmartHoldingSuggestions: React.FC<SmartHoldingSuggestionsProps> = ({
     const stored = localStorage.getItem('dismissedSuggestions');
     return stored ? new Set(JSON.parse(stored)) : new Set();
   });
-  
-  // Check if suggestions should be shown (cooldown period)
-  const shouldShowSuggestions = () => {
-    const lastShown = localStorage.getItem(`suggestions_shown_${holdingId}`);
-    if (!lastShown) return true;
-    
-    const cooldownHours = 8; // Show suggestions max once per 8 hours
-    const timeDiff = Date.now() - parseInt(lastShown);
-    return timeDiff > cooldownHours * 60 * 60 * 1000;
-  };
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!shouldShowSuggestions()) {
-      setSuggestions([]);
-      return;
-    }
-
     const generateAdvancedSuggestions = () => {
       const generatedSuggestions: SmartSuggestion[] = [];
 
-      // Only show critical suggestions (priority 1 and 2)
-      
       // Concentration risk analysis
       if (portfolioPercentage > 15 && holdingType === 'stock') {
         generatedSuggestions.push({
@@ -90,8 +73,44 @@ const SmartHoldingSuggestions: React.FC<SmartHoldingSuggestionsProps> = ({
         });
       }
 
-      // Cash deployment - only for very large amounts
-      if (holdingType === 'cash' && currentValue > 100000) {
+      // Sector diversification
+      if (sector && portfolioPercentage > 10) {
+        generatedSuggestions.push({
+          id: `${holdingId}_sector_diversity`,
+          type: 'diversify',
+          confidence: 'medium',
+          title: 'Sektordiversifiering behövs',
+          description: `Stor exponering mot ${sector}-sektorn. Överväg diversifiering.`,
+          detailedAnalysis: `Du har en betydande exponering mot ${sector}-sektorn. Olika sektorer presterar olika i olika marknadsförhållanden. Genom att sprida dina investeringar över fler sektorer minskar du risken för att hela portföljen påverkas negativt av problem i en specifik bransch.`,
+          impact: 'positive',
+          priority: 2,
+          riskLevel: 'medium',
+          potentialReturn: 'Stabilare avkastning',
+          timeframe: 'medium',
+          marketCondition: 'Särskilt viktigt vid sektorspecifika nedgångar'
+        });
+      }
+
+      // Growth opportunity
+      if (portfolioPercentage < 5 && currentValue > 10000 && holdingType === 'stock') {
+        generatedSuggestions.push({
+          id: `${holdingId}_growth_opportunity`,
+          type: 'buy_more',
+          confidence: 'medium',
+          title: 'Tillväxtmöjlighet identifierad',
+          description: 'Stark fundamental analys och tekniska indikatorer tyder på uppsida.',
+          detailedAnalysis: `${holdingName} visar starka fundamentala värden och teknisk momentum. Positionen är för närvarande underallokeraad i din portfölj. Marknadssentimentet är positivt och analytikers konsensus pekar på uppsida de kommande kvartalen.`,
+          impact: 'positive',
+          priority: 2,
+          riskLevel: 'medium',
+          potentialReturn: '15-25% över 12 månader',
+          timeframe: 'medium',
+          marketCondition: 'Gynnsamt vid fortsatt bull market'
+        });
+      }
+
+      // Cash deployment
+      if (holdingType === 'cash' && currentValue > 50000) {
         generatedSuggestions.push({
           id: `${holdingId}_cash_deployment`,
           type: 'rebalance',
@@ -108,13 +127,43 @@ const SmartHoldingSuggestions: React.FC<SmartHoldingSuggestionsProps> = ({
         });
       }
 
-      const filteredSuggestions = generatedSuggestions.filter(s => !dismissedSuggestions.has(s.id));
-      setSuggestions(filteredSuggestions);
-      
-      // Mark suggestions as shown if any are displayed
-      if (filteredSuggestions.length > 0) {
-        localStorage.setItem(`suggestions_shown_${holdingId}`, Date.now().toString());
+      // Hold recommendation for stable positions
+      if (portfolioPercentage >= 5 && portfolioPercentage <= 15 && holdingType === 'stock') {
+        generatedSuggestions.push({
+          id: `${holdingId}_optimal_hold`,
+          type: 'hold',
+          confidence: 'high',
+          title: 'Optimal allokering',
+          description: 'Nuvarande position är väl balanserad inom rekommenderade ramar.',
+          detailedAnalysis: `${holdingName} utgör ${portfolioPercentage.toFixed(1)}% av din portfölj, vilket är inom det optimala spannet på 5-15% för enskilda aktier. Positionen bidrar till diversifiering utan att skapa överdriven koncentrationsrisk. Fortsätt att hålla och övervaka utvecklingen.`,
+          impact: 'neutral',
+          priority: 3,
+          riskLevel: 'low',
+          potentialReturn: 'Följer marknaden',
+          timeframe: 'long',
+          marketCondition: 'Stabil i alla marknadslägen'
+        });
       }
+
+      // Monitor for volatility
+      if (holdingType === 'stock' && portfolioPercentage > 8) {
+        generatedSuggestions.push({
+          id: `${holdingId}_monitor`,
+          type: 'monitor',
+          confidence: 'medium',
+          title: 'Aktiv övervakning rekommenderas',
+          description: 'Betydande position som kräver regelbunden uppföljning.',
+          detailedAnalysis: `Med en allokering på ${portfolioPercentage.toFixed(1)}% representerar ${holdingName} en betydande del av din portfölj. Övervaka kvartalsrapporter, analytiker-upgrades/downgrades, och sektorspecifika nyheter. Sätt upp prisalarmer vid ±10% för att få notifikationer om stora rörelser.`,
+          impact: 'neutral',
+          priority: 4,
+          riskLevel: 'medium',
+          potentialReturn: 'Förebygger förluster',
+          timeframe: 'short',
+          marketCondition: 'Kritiskt vid marknadsvolatilitet'
+        });
+      }
+
+      setSuggestions(generatedSuggestions.filter(s => !dismissedSuggestions.has(s.id)));
     };
 
     generateAdvancedSuggestions();
@@ -170,6 +219,12 @@ const SmartHoldingSuggestions: React.FC<SmartHoldingSuggestionsProps> = ({
           onAction={handleSuggestionAction}
         />
       ))}
+      
+      {suggestions.length > 3 && (
+        <Button variant="ghost" size="sm" className="w-full text-xs h-6 text-muted-foreground">
+          +{suggestions.length - 3} fler
+        </Button>
+      )}
     </div>
   );
 };
