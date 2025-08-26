@@ -93,98 +93,35 @@ serve(async (req) => {
     const detectProfileUpdates = (message: string) => {
       const updates: any = {};
       let requiresConfirmation = false;
-      const lowerMessage = message.toLowerCase();
 
-      // Parse monthly savings changes - more comprehensive
-      const monthlySavingsPattern = /(öka|höja|minska|sänka|ändra).*(?:månad|månads).*(?:sparande|spara|investera).*?(\d+[\s,]*\d*)\s*(?:kr|sek|kronor)/i;
-      const monthlySavingsMatch = message.match(monthlySavingsPattern);
-      
-      if (monthlySavingsMatch) {
-        const action = monthlySavingsMatch[1].toLowerCase();
-        const amount = parseInt(monthlySavingsMatch[2].replace(/[\s,]/g, ''));
-        const currentAmount = riskProfile?.monthly_investment_amount || 0;
-        
-        let newAmount = amount;
-        if (action.includes('öka') || action.includes('höja')) {
-          newAmount = currentAmount + amount;
-        } else if (action.includes('minska') || action.includes('sänka')) {
-          newAmount = Math.max(0, currentAmount - amount);
-        }
-
-        if (newAmount !== currentAmount) {
-          updates.monthly_investment_amount = newAmount;
-          requiresConfirmation = true;
-        }
-      }
-
-      // Direct monthly investment amount
-      const directMonthlyMatch = message.match(/(?:spara|investera|satsa|lägga)\s+(\d+(?:\s?\d{3})*)\s*(?:kr|kronor|SEK).*(?:månad|månads)/i);
-      if (directMonthlyMatch) {
-        const amount = parseInt(directMonthlyMatch[1].replace(/\s/g, ''));
+      // Monthly investment amount changes
+      const monthlyMatch = message.match(/(?:spara|investera|satsa|lägga)\s+(\d+(?:\s?\d{3})*)\s*(?:kr|kronor|SEK)/i);
+      if (monthlyMatch) {
+        const amount = parseInt(monthlyMatch[1].replace(/\s/g, ''));
         if (amount > 0 && amount !== riskProfile?.monthly_investment_amount) {
           updates.monthly_investment_amount = amount;
           requiresConfirmation = true;
         }
       }
 
-      // Parse age updates
-      const agePattern = /(?:är|age|ålder).*?(\d{2,3})\s*(?:år|years|old)/i;
-      const ageMatch = message.match(agePattern);
-      
-      if (ageMatch) {
-        const newAge = parseInt(ageMatch[1]);
-        if (newAge >= 18 && newAge <= 100 && newAge !== riskProfile?.age) {
-          updates.age = newAge;
-          requiresConfirmation = true;
-        }
+      // Risk tolerance changes
+      if (/(?:mer|högre|större)\s+risk/i.test(message) && riskProfile?.risk_tolerance !== 'aggressive') {
+        updates.risk_tolerance = 'aggressive';
+        requiresConfirmation = true;
+      }
+      if (/(?:mindre|lägre|säkrare)\s+risk/i.test(message) && riskProfile?.risk_tolerance !== 'conservative') {
+        updates.risk_tolerance = 'conservative';
+        requiresConfirmation = true;
       }
 
-      // Parse income updates
-      const incomePattern = /(årsinkomst|lön|income).*?(\d+[\s,]*\d*)\s*(?:kr|sek|kronor)/i;
-      const incomeMatch = message.match(incomePattern);
-      
-      if (incomeMatch) {
-        const newIncome = parseInt(incomeMatch[2].replace(/[\s,]/g, ''));
-        if (newIncome !== riskProfile?.annual_income) {
-          updates.annual_income = newIncome;
-          requiresConfirmation = true;
-        }
+      // Investment horizon changes
+      if (/(?:kort|snabb)\s+sikt/i.test(message) && riskProfile?.investment_horizon !== 'short') {
+        updates.investment_horizon = 'short';
+        requiresConfirmation = true;
       }
-
-      // Risk tolerance updates - enhanced patterns
-      const riskPatterns = [
-        { pattern: /(konservativ|låg risk|säker|försiktig)/i, value: 'conservative' },
-        { pattern: /(måttlig|medel|balanserad|moderate)/i, value: 'moderate' },
-        { pattern: /(aggressiv|hög risk|riskabel|risktagande)/i, value: 'aggressive' }
-      ];
-
-      for (const riskPattern of riskPatterns) {
-        if (lowerMessage.match(riskPattern.pattern) && 
-            (lowerMessage.includes('risk') || lowerMessage.includes('inställning') || 
-            lowerMessage.includes('tolerans')) &&
-            riskPattern.value !== riskProfile?.risk_tolerance) {
-          updates.risk_tolerance = riskPattern.value;
-          requiresConfirmation = true;
-          break;
-        }
-      }
-
-      // Investment horizon updates - enhanced patterns
-      const horizonPatterns = [
-        { pattern: /(kort|1-3|kortsiktig)/i, value: 'short' },
-        { pattern: /(medel|3-7|mellanlång)/i, value: 'medium' },
-        { pattern: /(lång|7\+|långsiktig|över 7)/i, value: 'long' }
-      ];
-
-      for (const horizonPattern of horizonPatterns) {
-        if (lowerMessage.match(horizonPattern.pattern) && 
-            (lowerMessage.includes('horisont') || lowerMessage.includes('sikt') || 
-            lowerMessage.includes('tidshorisont')) &&
-            horizonPattern.value !== riskProfile?.investment_horizon) {
-          updates.investment_horizon = horizonPattern.value;
-          requiresConfirmation = true;
-          break;
-        }
+      if (/(?:lång|långsiktig)\s+sikt/i.test(message) && riskProfile?.investment_horizon !== 'long') {
+        updates.investment_horizon = 'long';
+        requiresConfirmation = true;
       }
 
       return { updates, requiresConfirmation };
@@ -199,9 +136,9 @@ serve(async (req) => {
     const isExchangeRequest = /(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|amerikanska|svenska|europeiska|asiatiska|aktier|innehav)/i.test(message);
     
     // Check if this is a stock analysis request
-   const isStockAnalysisRequest = /(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|information om)/i.test(message) &&
-  /\b[A-Z]{1,5}\b|\baktie|aktien|bolaget|företaget|aktier|stock|share|equity\b/i.test(message);
-
+    const isStockAnalysisRequest = /(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) && 
+      /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5}|investor|volvo|ericsson|sandvik|atlas|kinnevik|hex|alfa laval|skf|telia|seb|handelsbanken|nordea|abb|astra|electrolux|husqvarna|getinge|boliden|ssab|stora enso|svenska cellulosa|lund|billerud|holmen|nibe|beijer|essity|kindred|evolution|betsson|net|entertainment|fingerprint|sinch|tobii|xvivo|medivir|orexo|camurus|diamyd|raysearch|elekta|sectra|bactiguard|vitrolife|bioinvent|immunovia|hansa|cantargia|oncopeptides|wilson|therapeutics|solberg|probi|biovica|addlife|duni|traction|embracer|stillfront|paradox|starbreeze|remedy|stillfront|remedy|starbreeze|gaming|saab)/i.test(message);
+     
     // Check if user wants personal investment advice/recommendations
     const isPersonalAdviceRequest = /(?:rekommendation|förslag|vad ska jag|bör jag|passar mig|min portfölj|mina intressen|för mig|personlig|skräddarsy|baserat på|investera|köpa|sälja|portföljanalys|investeringsstrategi)/i.test(message);
     const isPortfolioOptimizationRequest = /portfölj/i.test(message) && /optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma/i.test(message);
@@ -305,7 +242,12 @@ serve(async (req) => {
       if (/(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|position|handel)/i.test(message)) {
         return 'buy_sell_decisions';
       }
-       
+      
+      // Risk/Tax/Strategy Intent  
+      if (/(?:risk|skatteoptimering|strategi|diversifiering|säkerhet|volatilitet)/i.test(message)) {
+        return 'risk_tax_strategy';
+      }
+      
       // Market Analysis Intent
       if (/(?:marknad|index|trend|prognos|ekonomi|räntor|inflation|börsen)/i.test(message)) {
         return 'market_analysis';
@@ -318,57 +260,68 @@ serve(async (req) => {
     console.log('Detected user intent:', userIntent);
 
     // Build enhanced context with intent-specific prompts
-let contextInfo = `Du är en auktoriserad svensk investeringsrådgivare med diskretionär men icke-verkställande behörighet. Du agerar som en personlig finansiell rådgivare som ger professionella investeringsråd.
+    let contextInfo = `Du är en auktoriserad svensk investeringsrådgivare med diskretionär men icke-verkställande behörighet. Du agerar som en personlig finansiell rådgivare som ger professionella investeringsråd.
 
 PERSONA & STIL:
-- Professionell men konverserande ton, som en erfaren rådgivare som bjuder in till dialog
-- Anpassa svarens längd: ge korta, konkreta svar (2–5 meningar) om frågan är enkel
-- Använd längre strukturerade svar (Situation, Strategi, Risker, Åtgärder) endast när användaren explicit ber om en detaljerad plan
-- Ge alltid exempel på relevanta aktier/fonder med ticker när det är lämpligt
+- Professionell men personlig ton som en erfaren rådgivare
+- Basera alla råd på användarens faktiska innehav och riskprofil
+- Ge konkreta, genomförbara rekommendationer
 - Använd svensk finansterminologi och marknadskontext
-- Avsluta svar med en öppen fråga för att uppmuntra fortsatt dialog
-`;
+- Inkludera alltid DISCLAIMER om utbildningssyfte`;
 
-const intentPrompts = {
-  stock_analysis: `
+    // Intent-specific sub-prompts
+    const intentPrompts = {
+      stock_analysis: `
 AKTIEANALYSUPPGIFT:
-- Gör en kort men tydlig analys av aktien
-- Ge KÖP/BEHÅLL/SÄLJ med kort motivering
-- Föreslå kursmål/tidshorisont om relevant
-- Relatera till användarens portfölj`,
+- Genomför fundamental och teknisk analys
+- Värdera aktien mot nuvarande kursnivå
+- Bedöm risk/reward-förhållande
+- Ge KÖP/BEHÅLL/SÄLJ-rekommendation med motivering
+- Föreslå kursmål och tidsperspektiv
+- Relatera till användarens befintliga portfölj`,
 
-  portfolio_optimization: `
+      portfolio_optimization: `
 PORTFÖLJOPTIMERINGSUPPGIFT:
+- Analysera nuvarande allokering och diversifiering
 - Identifiera överexponering och luckor
-- Föreslå omviktningar med procentsatser
-- Om kassa eller månadssparande finns: inkludera allokeringsförslag
-- Ge enklare prioriteringssteg, men inte hela planen direkt`,
+- Föreslå konkreta omviktningar med procentsatser
+- Beakta transaktionskostnader och skatter
+- Ge prioriterad implementationsplan`,
 
-  buy_sell_decisions: `
+      buy_sell_decisions: `
 KÖP/SÄLJ-BESLUTSUPPGIFT:
-- Bedöm om tidpunkten är lämplig
-- Ange för- och nackdelar
-- Föreslå positionsstorlek i procent
-- Avsluta med en fråga tillbaka till användaren`,
+- Analysera timing för förslaget
+- Bedöm inverkan på portföljens risknivå
+- Föreslå positionsstorlek baserat på befintligt innehav
+- Överväg alternativa investeringar
+- Ge konkret handlingsplan med orderstorlek`,
 
-  market_analysis: `
+      risk_tax_strategy: `
+RISK- OCH SKATTEOPTIMERINGSUPPGIFT:
+- Analysera portföljens riskprofil vs användarens mål
+- Föreslå skatteeffektiva strategier (ISK vs KF)
+- Bedöm diversifiering över sektorer/geografier
+- Rekommendera riskreducerande åtgärder
+- Förklara skattekonsekvenser av förändringar`,
+
+      market_analysis: `
 MARKNADSANALYSUPPGIFT:
-- Analysera trender kortfattat
-- Beskriv påverkan på användarens portfölj
-- Ge 1–2 möjliga justeringar
-- Avsluta med fråga om användaren vill ha en djupare analys`,
+- Analysera aktuella marknadstrender
+- Bedöm påverkan på användarens portfölj
+- Föreslå defensiva eller offensiva justeringar
+- Ge kortterm vs långsiktig marknadssyn
+- Relatera till svenska och globala marknader`,
 
-  general_advice: `
+      general_advice: `
 ALLMÄN INVESTERINGSRÅDGIVNING:
-- Ge råd i 2–4 meningar
-- Inkludera exempel (aktie, fond eller allokering)
-- Avsluta med öppen fråga för att driva dialog`
-};
+- Ge personliga råd baserat på användarens profil
+- Fokusera på långsiktig förmögenhetsutveckling
+- Föreslå konkreta nästa steg
+- Balansera risk och avkastning
+- Inkludera utbildande element`
+    };
 
-contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
-
-// … här behåller du riskProfile och holdings-delen som du redan har …
-
+    contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
 
     // Enhanced user context with current holdings and performance
     if (riskProfile) {
@@ -416,18 +369,14 @@ contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
       }
     }
 
-// Add response structure requirements
-contextInfo += `\n\nSVARSSTRUKTUR (OBLIGATORISK MEN FLEXIBEL):
-- Anpassa svar efter frågans komplexitet
-- Vid enkla frågor: ge ett kort konversationssvar (2–5 meningar) och avsluta med en öppen motfråga
-- Vid mer komplexa frågor eller när användaren ber om en detaljerad plan: använd den fulla strukturen nedan
-
-FULL STRUKTUR (när relevant):
+    // Add response structure requirements
+    contextInfo += `\n\nSVARSSTRUKTUR (OBLIGATORISK):
+Strukturera VARJE svar enligt denna mall:
 
 **Situation & Analys**
 [Kort sammanfattning av situationen/frågan]
 
-**Rekommendation**
+**Rekommendation** 
 [Konkreta råd med specifika aktier/fonder och symboler där relevant]
 
 **Risker & Överväganden**
@@ -435,13 +384,12 @@ FULL STRUKTUR (när relevant):
 
 **Åtgärder (Checklista)**
 □ [Konkret åtgärd 1]
-□ [Konkret åtgärd 2]
+□ [Konkret åtgärd 2] 
 □ [Konkret åtgärd 3]
 
-VIKTIGT:
-- Ge bara en "Åtgärder (Checklista)" om frågan faktiskt kräver konkreta steg.
-- Avsluta alltid svaret med en öppen fråga för att bjuda in till vidare dialog.`;
+**Disclaimer:** Detta är utbildningssyfte. Konsultera alltid en licensierad rådgivare.
 
+KRITISKT: Avsluta ALLTID med "Åtgärder (Checklista)" - även för allmänna frågor.`;
 
     // Force using gpt-4o to avoid streaming restrictions and reduce cost
     const model = 'gpt-4o';

@@ -11,13 +11,14 @@ import ChatInput from './chat/ChatInput';
 import ProfileUpdateConfirmation from './ProfileUpdateConfirmation';
 import ProfileContextCard from './chat/ProfileContextCard';
 import ChatFolderSidebar from './chat/ChatFolderSidebar';
-
+import ResponseLengthToggle from './ui/response-length-toggle';
 import { LogIn, MessageSquare, Brain, ArrowLeft, Lock, Sparkles, Crown, Menu, PanelLeftClose, PanelLeft, AlertCircle, Settings } from 'lucide-react';
 import HelpButton from '@/components/HelpButton';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -31,32 +32,22 @@ interface Message {
     requiresConfirmation?: boolean;
   };
 }
+
 interface AIChatProps {
   portfolioId?: string;
   initialStock?: string | null;
   initialMessage?: string | null;
   showExamplePrompts?: boolean;
 }
-const AIChat = ({
-  portfolioId,
-  initialStock,
-  initialMessage,
-  showExamplePrompts = true
-}: AIChatProps) => {
-  const {
-    user
-  } = useAuth();
-  const {
-    riskProfile
-  } = useRiskProfile();
-  const {
-    usage,
-    subscription
-  } = useSubscription();
+
+const AIChat = ({ portfolioId, initialStock, initialMessage, showExamplePrompts = true }: AIChatProps) => {
+  const { user } = useAuth();
+  const { riskProfile } = useRiskProfile();
+  const { usage, subscription } = useSubscription();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const {
-    messages,
+
+  const { messages,
     sessions,
     currentSessionId,
     isLoading,
@@ -71,74 +62,69 @@ const AIChat = ({
     editSessionName,
     clearMessages,
     getQuickAnalysis,
-    updateUserProfile
+    updateUserProfile,
   } = useAIChat(portfolioId);
+
   const [input, setInput] = useState('');
   const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [isGuideSession, setIsGuideSession] = useState(false);
-  
+  const [responseLength, setResponseLength] = useState<'concise' | 'standard' | 'detailed'>('standard');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
   const location = useLocation();
+
   const dailyLimit = 5;
   const currentUsage = usage?.ai_messages_count || 0;
   const isPremium = subscription?.subscribed;
-
+  
   // Calculate credits for display (same logic as CreditsIndicator)
   const totalCredits = 5;
   const usedCredits = currentUsage;
   const remainingCredits = Math.max(0, totalCredits - usedCredits);
+
   const handleBackToPortfolio = () => {
     navigate('/portfolio-implementation');
   };
+
   const handlePremiumClick = () => {
-    navigate('/profile', {
-      state: {
-        activeTab: 'membership'
-      }
-    });
+    navigate('/profile', { state: { activeTab: 'membership' } });
   };
+
   useEffect(() => {
     // Auto-scroll when messages change
-    messagesEndRef.current?.scrollIntoView({
-      behavior: 'smooth'
-    });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
   useEffect(() => {
     // Handle initial stock and message from URL parameters - but only once
     if (initialStock && initialMessage && !hasProcessedInitialMessage) {
       console.log('Processing initial chat session for stock:', initialStock);
       createNewSession(initialStock);
-
+      
       // Pre-fill the input with the initial message instead of sending it
       const decodedMessage = decodeURIComponent(initialMessage);
       setInput(decodedMessage);
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
+      
       setHasProcessedInitialMessage(true);
     }
   }, [initialStock, initialMessage, hasProcessedInitialMessage, createNewSession]);
+
   useEffect(() => {
     // Handle navigation state for creating new sessions - always create new session when requested
     if (location.state?.createNewSession) {
-      const {
-        sessionName,
-        initialMessage
-      } = location.state;
-      console.log('Navigation state detected - creating new session:', {
-        sessionName,
-        initialMessage
-      });
-
+      const { sessionName, initialMessage } = location.state;
+      
+      console.log('Navigation state detected - creating new session:', { sessionName, initialMessage });
+      
       // Always create a new session when explicitly requested
       createNewSession(sessionName);
-
+      
       // Pre-fill the input with the initial message instead of sending it
       if (initialMessage) {
         setInput(initialMessage);
@@ -146,18 +132,16 @@ const AIChat = ({
           inputRef.current?.focus();
         }, 100);
       }
-
+      
       // Clear the state to prevent re-triggering
       window.history.replaceState({}, document.title);
     }
   }, [location.state, createNewSession]);
+
   useEffect(() => {
     const handleCreateStockChat = (event: CustomEvent) => {
-      const {
-        sessionName,
-        message
-      } = event.detail;
-
+      const { sessionName, message } = event.detail;
+      
       // Create new session and pre-fill input instead of auto-sending
       createNewSession(sessionName);
       setInput(message);
@@ -165,40 +149,44 @@ const AIChat = ({
         inputRef.current?.focus();
       }, 100);
     };
+
     const handleExamplePrompt = (event: CustomEvent) => {
-      const {
-        message
-      } = event.detail;
+      const { message } = event.detail;
       setInput(message);
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
     };
+
     const handlePrefillChatInput = (event: CustomEvent) => {
-      const {
-        message
-      } = event.detail;
+      const { message } = event.detail;
       setInput(message);
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
     };
+
     window.addEventListener('createStockChat', handleCreateStockChat as EventListener);
     window.addEventListener('sendExamplePrompt', handleExamplePrompt as EventListener);
     window.addEventListener('prefillChatInput', handlePrefillChatInput as EventListener);
+
     return () => {
       window.removeEventListener('createStockChat', handleCreateStockChat as EventListener);
       window.removeEventListener('sendExamplePrompt', handleExamplePrompt as EventListener);
       window.removeEventListener('prefillChatInput', handlePrefillChatInput as EventListener);
     };
   }, [createNewSession]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading || !user) return;
+
     const messageToSend = input.trim();
     setInput('');
+    
     await sendMessage(messageToSend);
   };
+
   const handleNewSession = async () => {
     if (!user) return;
     await createNewSession();
@@ -208,12 +196,14 @@ const AIChat = ({
       setSidebarOpen(false);
     }
   };
+
   const handleLoadSession = async (sessionId: string) => {
     await loadSession(sessionId);
     if (isMobile) {
       setSidebarOpen(false);
     }
   };
+
   const handleExamplePrompt = (prompt: string) => {
     // Exit guide session when user starts using AI chat
     if (isGuideSession) {
@@ -231,6 +221,7 @@ const AIChat = ({
       }, 100);
     }
   };
+
   const handleLoadGuideSession = () => {
     // Clear regular chat and show guide
     setIsGuideSession(true);
@@ -239,6 +230,7 @@ const AIChat = ({
       setSidebarOpen(false);
     }
   };
+
   const sidebarProps = {
     currentSessionId: isGuideSession ? 'guide-session' : currentSessionId,
     onLoadSession: (sessionId: string) => {
@@ -255,13 +247,21 @@ const AIChat = ({
     isLoadingSession: isLoadingSession,
     className: isMobile ? "w-full" : ""
   };
-  const SidebarContent = React.memo(() => <ChatFolderSidebar {...sidebarProps} />);
-  return <div className="flex h-full bg-background overflow-hidden">
-      {user ? <>
+
+  const SidebarContent = React.memo(() => (
+    <ChatFolderSidebar {...sidebarProps} />
+  ));
+
+  return (
+    <div className="flex h-full bg-background overflow-hidden">
+      {user ? (
+        <>
           {/* Desktop Sidebar - Clean and minimal */}
-          {!isMobile && !desktopSidebarCollapsed && <div className="w-72 bg-background border-r border-border">
+          {!isMobile && !desktopSidebarCollapsed && (
+            <div className="w-72 bg-background border-r border-border">
               <SidebarContent />
-            </div>}
+            </div>
+          )}
 
           {/* Main Chat Area */}
           <div className="flex-1 flex flex-col bg-background">
@@ -269,7 +269,8 @@ const AIChat = ({
             <div className="flex items-center justify-between p-4 border-b border-border">
               <div className="flex items-center gap-3">
                 {/* Mobile Menu Button */}
-                {isMobile && <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                {isMobile && (
+                  <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
                     <SheetTrigger asChild>
                       <Button variant="ghost" size="sm">
                         <Menu className="w-4 h-4" />
@@ -278,64 +279,116 @@ const AIChat = ({
                     <SheetContent side="left" className="w-72 p-0">
                       <SidebarContent />
                     </SheetContent>
-                  </Sheet>}
+                  </Sheet>
+                )}
                 
                 {/* Desktop Sidebar Toggle Button */}
-                {!isMobile && <Button onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)} variant="ghost" size="sm" className="hover:bg-muted/50">
-                    {desktopSidebarCollapsed ? <PanelLeft className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
-                  </Button>}
+                {!isMobile && (
+                  <Button
+                    onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
+                    variant="ghost"
+                    size="sm"
+                    className="hover:bg-muted/50"
+                  >
+                    {desktopSidebarCollapsed ? (
+                      <PanelLeft className="w-4 h-4" />
+                    ) : (
+                      <PanelLeftClose className="w-4 h-4" />
+                    )}
+                  </Button>
+                )}
 
-                <Button onClick={handleNewSession} variant="ghost" size="sm" className="text-sm text-muted-foreground hover:text-foreground">
+                <Button
+                  onClick={handleNewSession}
+                  variant="ghost"
+                  size="sm"
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
                   New chat
                 </Button>
               </div>
 
               {/* Usage indicator for free users */}
-              {!isPremium && <div className="text-xs text-muted-foreground">
+              {!isPremium && (
+                <div className="text-xs text-muted-foreground">
                   {usedCredits}/{totalCredits} credits använt idag
-                </div>}
+                </div>
+              )}
             </div>
 
             {/* Chat Content */}
-            {messages.length === 0 && !isLoading && !isGuideSession ? (/* Welcome Screen */
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-3xl mx-auto">
+            {messages.length === 0 && !isLoading && !isGuideSession ? (
+              /* Welcome Screen */
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-3xl mx-auto">
                 <div className="space-y-6">
                   <div className="text-center space-y-2">
                     <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                       <Sparkles className="w-8 h-8 text-white" />
                     </div>
-                    
-                    
-                    
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      Din personliga AI-investeringsrådgivare
+                    </h2>
+                    <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto">
+                      Professionella investeringsråd med strukturerade analyser, konkreta rekommendationer och genomförbara åtgärdsplaner.
+                    </p>
+                    <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3 mt-4">
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <AlertCircle className="w-4 h-4" />
+                        <span className="font-medium">Utbildningssyfte</span>
+                      </div>
+                      Denna AI-rådgivare ger utbildningsinformation. Konsultera alltid en licensierad finansiell rådgivare för personlig rådgivning.
+                    </div>
                   </div>
 
                   {/* Response Length Setting */}
-                  
+                  <div className="border-t pt-4">
+                    <ResponseLengthToggle
+                      value={responseLength}
+                      onChange={setResponseLength}
+                      className="max-w-md mx-auto"
+                    />
+                  </div>
 
                   {/* Example Prompts Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl">
-                    <Button variant="outline" className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border" onClick={() => handleExamplePrompt("Gör en djup portföljanalys med risk/avkastning och konkreta förbättringsförslag")}>
+                    <Button
+                      variant="outline"
+                      className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border"
+                      onClick={() => handleExamplePrompt("Gör en djup portföljanalys med risk/avkastning och konkreta förbättringsförslag")}
+                    >
                       <div>
                         <div className="text-sm font-medium text-foreground">Portföljanalys & Optimering</div>
                         <div className="text-xs text-muted-foreground mt-1">Strukturerad analys med åtgärdsplan</div>
                       </div>
                     </Button>
 
-                    <Button variant="outline" className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border" onClick={() => handleExamplePrompt("Analysera Investor AB - fundamentalanalys, värdering och köp/sälj-rekommendation")}>
+                    <Button
+                      variant="outline"
+                      className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border"
+                      onClick={() => handleExamplePrompt("Analysera Investor AB - fundamentalanalys, värdering och köp/sälj-rekommendation")}
+                    >
                       <div>
                         <div className="text-sm font-medium text-foreground">Aktieanalys med rekommendation</div>
                         <div className="text-xs text-muted-foreground mt-1">Professionell analys och råd</div>
                       </div>
                     </Button>
 
-                    <Button variant="outline" className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border" onClick={() => handleExamplePrompt("Vilka konkreta aktier och fonder passar min riskprofil för rebalansering?")}>
+                    <Button
+                      variant="outline"
+                      className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border"
+                      onClick={() => handleExamplePrompt("Vilka konkreta aktier och fonder passar min riskprofil för rebalansering?")}
+                    >
                       <div>
                         <div className="text-sm font-medium text-foreground">Personliga investeringsråd</div>
                         <div className="text-xs text-muted-foreground mt-1">Skräddarsydda rekommendationer</div>
                       </div>
                     </Button>
 
-                    <Button variant="outline" className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border" onClick={() => handleExamplePrompt("Marknadsläget idag: hur påverkar det min strategi och vad bör jag göra?")}>
+                    <Button
+                      variant="outline"
+                      className="h-auto p-4 text-left justify-start hover:bg-muted/50 border-border"
+                      onClick={() => handleExamplePrompt("Marknadsläget idag: hur påverkar det min strategi och vad bör jag göra?")}
+                    >
                       <div>
                         <div className="text-sm font-medium text-foreground">Marknadsanalys & Strategi</div>
                         <div className="text-xs text-muted-foreground mt-1">Aktuella trender och handling</div>
@@ -343,25 +396,56 @@ const AIChat = ({
                     </Button>
                   </div>
                 </div>
-              </div>) : (/* Chat Messages */
-        <>
-                <ChatMessages messages={messages} isLoading={isLoading} isLoadingSession={isLoadingSession} messagesEndRef={messagesEndRef} onExamplePrompt={showExamplePrompts ? handleExamplePrompt : undefined} showGuideBot={isGuideSession} />
+              </div>
+            ) : (
+              /* Chat Messages */
+              <>
+                <ChatMessages
+                  messages={messages}
+                  isLoading={isLoading}
+                  isLoadingSession={isLoadingSession}
+                  messagesEndRef={messagesEndRef}
+                  onExamplePrompt={showExamplePrompts ? handleExamplePrompt : undefined}
+                  showGuideBot={isGuideSession}
+                />
                 
                 {/* Profile Update Confirmations */}
-                {messages.map(message => message.context?.requiresConfirmation && message.context?.profileUpdates ? <ProfileUpdateConfirmation key={`${message.id}_confirmation`} profileUpdates={message.context.profileUpdates} onConfirm={() => updateUserProfile(message.context.profileUpdates)} onReject={() => console.log('Profile update rejected')} /> : null)}
-              </>)}
+                {messages.map((message) => 
+                  message.context?.requiresConfirmation && message.context?.profileUpdates ? (
+                    <ProfileUpdateConfirmation
+                      key={`${message.id}_confirmation`}
+                      profileUpdates={message.context.profileUpdates}
+                      onConfirm={() => updateUserProfile(message.context.profileUpdates)}
+                      onReject={() => console.log('Profile update rejected')}
+                    />
+                  ) : null
+                )}
+              </>
+            )}
 
             {/* Chat Input - Always visible when user is logged in and not in guide session */}
-            {!isGuideSession && <div className="border-t border-border bg-background p-4">
-                <ChatInput input={input} setInput={setInput} onSubmit={handleSubmit} isLoading={isLoading} quotaExceeded={quotaExceeded} inputRef={inputRef} />
-              </div>}
+            {!isGuideSession && (
+              <div className="border-t border-border bg-background p-4">
+                <ChatInput
+                  input={input}
+                  setInput={setInput}
+                  onSubmit={handleSubmit}
+                  isLoading={isLoading}
+                  quotaExceeded={quotaExceeded}
+                  inputRef={inputRef}
+                />
+              </div>
+            )}
           </div>
-        </> : <>
+        </>
+      ) : (
+        <>
           {/* Show dimmed chat interface in background */}
           <div className="flex-1 overflow-hidden opacity-30 pointer-events-none relative">
             <div className="flex h-full">
               {/* Demo Sidebar - Hidden on mobile */}
-              {!isMobile && <div className="w-80 border-r bg-background p-4">
+              {!isMobile && (
+                <div className="w-80 border-r bg-background p-4">
                   <h3 className="font-semibold mb-4">AI Chattar</h3>
                   <div className="space-y-2">
                     <div className="p-2 bg-muted rounded-lg">
@@ -373,7 +457,8 @@ const AIChat = ({
                       <div className="text-xs text-muted-foreground">Igår</div>
                     </div>
                   </div>
-                </div>}
+                </div>
+              )}
               
               {/* Demo Chat */}
               <div className="flex-1 flex flex-col">
@@ -399,7 +484,11 @@ const AIChat = ({
                 {/* Demo input area */}
                 <div className="border-t p-3 md:p-4">
                   <div className="flex gap-2">
-                    <input className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="Skriv ditt meddelande här..." disabled />
+                    <input 
+                      className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm" 
+                      placeholder="Skriv ditt meddelande här..."
+                      disabled
+                    />
                     <Button disabled size={isMobile ? "sm" : "default"}>Skicka</Button>
                   </div>
                 </div>
@@ -442,7 +531,11 @@ const AIChat = ({
                   </div>
                 </div>
 
-                <Button onClick={() => window.location.href = '/auth'} className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white font-medium" size="lg">
+                <Button 
+                  onClick={() => window.location.href = '/auth'} 
+                  className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white font-medium"
+                  size="lg"
+                >
                   <LogIn className="w-4 h-4 mr-2" />
                   Logga in för att fortsätta
                 </Button>
@@ -453,7 +546,10 @@ const AIChat = ({
               </div>
             </Card>
           </div>
-        </>}
-    </div>;
+        </>
+      )}
+    </div>
+  );
 };
+
 export default AIChat;

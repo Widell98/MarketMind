@@ -195,82 +195,83 @@ const UserInvestmentAnalysis = ({
   };
   const aiStrategy = activePortfolio?.asset_allocation?.ai_strategy || '';
   const conversationData = activePortfolio?.asset_allocation?.conversation_data || {};
-  return <div className="space-y-8">
+  return <div className="space-y-6">
       <ResetProfileConfirmDialog isOpen={showResetDialog} onClose={() => setShowResetDialog(false)} onConfirm={handleResetProfile} />
 
+      {/* Header Section */}
+      
+
       {/* Profile Summary */}
-      <Card className="border rounded-xl shadow-sm hover:shadow-md transition-shadow bg-card">
-        <CardHeader className="pb-6">
-          <CardTitle className="flex items-center gap-3 text-xl font-semibold">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <User className="w-5 h-5 text-primary" />
-            </div>
+      <Card className="rounded-2xl shadow-sm border-0 bg-gradient-to-br from-background via-background to-muted/30">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <User className="w-5 h-5 text-primary" />
             Din Investeringsprofil
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-            <div className="flex items-center gap-4 p-6 bg-muted/30 rounded-xl border border-border/50">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-primary" />
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="flex items-center gap-3 p-4 bg-card rounded-xl border shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Ålder</p>
-                <p className="text-lg font-semibold text-foreground">{riskProfile.age || 'Ej angiven'} år</p>
+                <p className="text-sm font-medium text-muted-foreground">Ålder</p>
+                <p className="font-semibold text-foreground">{riskProfile.age || 'Ej angiven'} år</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-4 p-6 bg-muted/30 rounded-xl border border-border/50">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-primary" />
+            <div className="flex items-center gap-3 p-4 bg-card rounded-xl border shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Erfarenhetsnivå</p>
-                <p className="text-lg font-semibold text-foreground">{getExperienceLabel(riskProfile.investment_experience || '')}</p>
+                <p className="text-sm font-medium text-muted-foreground">Erfarenhetsnivå</p>
+                <p className="font-semibold text-foreground">{getExperienceLabel(riskProfile.investment_experience || '')}</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-4 p-6 bg-muted/30 rounded-xl border border-border/50">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <BarChart3 className="w-6 h-6 text-primary" />
+            <div className="flex items-center gap-3 p-4 bg-card rounded-xl border shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Risktolerans</p>
-                <p className="text-lg font-semibold text-foreground">{getRiskToleranceLabel(riskProfile.risk_tolerance || '')}</p>
+                <p className="text-sm font-medium text-muted-foreground">Risktolerans</p>
+                <p className="font-semibold text-foreground">{getRiskToleranceLabel(riskProfile.risk_tolerance || '')}</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-4 p-6 bg-muted/30 rounded-xl border border-border/50">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Target className="w-6 h-6 text-primary" />
+            <div className="flex items-center gap-3 p-4 bg-card rounded-xl border shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                <Target className="w-5 h-5 text-orange-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Tidshorisont</p>
-                <p className="text-lg font-semibold text-foreground">{getInvestmentHorizonLabel(riskProfile.investment_horizon || '')}</p>
+                <p className="text-sm font-medium text-muted-foreground">Tidshorisont</p>
+                <p className="font-semibold text-foreground">{getInvestmentHorizonLabel(riskProfile.investment_horizon || '')}</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-4 p-6 bg-muted/30 rounded-xl border border-border/50">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-primary" />
+            <div className="flex items-center gap-3 p-4 bg-card rounded-xl border shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Månadssparande</p>
-                <p className="text-lg font-semibold text-foreground">
+                <p className="text-sm font-medium text-muted-foreground">Månadssparande</p>
+                <p className="font-semibold text-foreground">
                   {riskProfile.monthly_investment_amount ? `${riskProfile.monthly_investment_amount.toLocaleString()} SEK` : 'Ej angiven'}
                 </p>
               </div>
             </div>
             
-            <div className="flex items-center gap-4 p-6 bg-muted/30 rounded-xl border border-border/50">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <PieChart className="w-6 h-6 text-primary" />
+            <div className="flex items-center gap-3 p-4 bg-card rounded-xl border shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
+                <PieChart className="w-5 h-5 text-indigo-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Riskkomfort</p>
-                <div className="flex items-center gap-3">
-                  <Progress value={(riskProfile.risk_comfort_level || 0) * 10} className="h-2 w-20" />
-                  <span className="text-lg font-semibold text-foreground">{riskProfile.risk_comfort_level || 0}/10</span>
+                <p className="text-sm font-medium text-muted-foreground">Riskkomfort</p>
+                <div className="flex items-center gap-2">
+                  <Progress value={(riskProfile.risk_comfort_level || 0) * 10} className="h-2 w-16" />
+                  <span className="text-sm font-semibold text-foreground">{riskProfile.risk_comfort_level || 0}/10</span>
                 </div>
               </div>
             </div>
@@ -279,20 +280,18 @@ const UserInvestmentAnalysis = ({
       </Card>
 
       {/* AI-Generated Strategy */}
-      {aiStrategy && <Card className="border rounded-xl shadow-sm hover:shadow-md transition-shadow bg-card">
-          <CardHeader className="pb-6">
-            <CardTitle className="flex items-center gap-3 text-xl font-semibold">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Brain className="w-5 h-5 text-primary" />
-              </div>
+      {aiStrategy && <Card className="rounded-2xl shadow-sm border-0 bg-gradient-to-br from-background via-background to-green-50/50 dark:to-green-950/20">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <Brain className="w-5 h-5 text-green-600" />
               AI-Genererad Investeringsstrategi
-              <Badge className="bg-primary/10 text-primary border-primary/20 rounded-lg font-medium">
+              <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
                 Personlig Analys
               </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="prose prose-sm max-w-none text-foreground p-8 bg-muted/30 rounded-xl border border-border/50">
+            <div className="prose prose-sm max-w-none text-foreground p-6 bg-card rounded-xl border shadow-sm">
               <div className="text-sm leading-relaxed">
                 {formatAIStrategy(aiStrategy)}
               </div>
@@ -301,55 +300,53 @@ const UserInvestmentAnalysis = ({
         </Card>}
 
       {/* Conversation Context */}
-      {conversationData && Object.keys(conversationData).length > 0 && <Card className="border rounded-xl shadow-sm hover:shadow-md transition-shadow bg-card">
-          <CardHeader className="pb-6">
-            <CardTitle className="flex items-center gap-3 text-xl font-semibold">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-primary" />
-              </div>
+      {conversationData && Object.keys(conversationData).length > 0 && <Card className="rounded-2xl shadow-sm border-0 bg-gradient-to-br from-background via-background to-purple-50/50 dark:to-purple-950/20">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <CheckCircle className="w-5 h-5 text-purple-600" />
               Dina Svar från Konsultationen
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4">
-              {conversationData.isBeginnerInvestor !== undefined && <div className="flex justify-between items-center p-6 bg-muted/30 rounded-xl border border-border/50">
-                  <span className="font-semibold text-foreground">Erfarenhetsnivå:</span>
-                  <Badge variant={conversationData.isBeginnerInvestor ? "secondary" : "default"} className="rounded-lg font-medium">
+            <div className="grid gap-3">
+              {conversationData.isBeginnerInvestor !== undefined && <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
+                  <span className="font-medium text-foreground">Erfarenhetsnivå:</span>
+                  <Badge variant={conversationData.isBeginnerInvestor ? "secondary" : "default"}>
                     {conversationData.isBeginnerInvestor ? 'Nybörjare' : 'Erfaren'}
                   </Badge>
                 </div>}
               
-              {conversationData.investmentGoal && <div className="flex justify-between items-center p-6 bg-muted/30 rounded-xl border border-border/50">
-                  <span className="font-semibold text-foreground">Investeringsmål:</span>
-                  <span className="text-sm text-muted-foreground font-medium capitalize">
+              {conversationData.investmentGoal && <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
+                  <span className="font-medium text-foreground">Investeringsmål:</span>
+                  <span className="text-sm text-muted-foreground capitalize">
                     {conversationData.investmentGoal}
                   </span>
                 </div>}
               
-              {conversationData.timeHorizon && <div className="flex justify-between items-center p-6 bg-muted/30 rounded-xl border border-border/50">
-                  <span className="font-semibold text-foreground">Tidshorisont:</span>
-                  <span className="text-sm text-muted-foreground font-medium capitalize">
+              {conversationData.timeHorizon && <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
+                  <span className="font-medium text-foreground">Tidshorisont:</span>
+                  <span className="text-sm text-muted-foreground capitalize">
                     {conversationData.timeHorizon}
                   </span>
                 </div>}
               
-              {conversationData.riskTolerance && <div className="flex justify-between items-center p-6 bg-muted/30 rounded-xl border border-border/50">
-                  <span className="font-semibold text-foreground">Risktolerans:</span>
-                  <span className="text-sm text-muted-foreground font-medium capitalize">
+              {conversationData.riskTolerance && <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
+                  <span className="font-medium text-foreground">Risktolerans:</span>
+                  <span className="text-sm text-muted-foreground capitalize">
                     {conversationData.riskTolerance}
                   </span>
                 </div>}
               
-              {conversationData.investmentStyle && <div className="flex justify-between items-center p-6 bg-muted/30 rounded-xl border border-border/50">
-                  <span className="font-semibold text-foreground">Investeringsstil:</span>
-                  <span className="text-sm text-muted-foreground font-medium capitalize">
+              {conversationData.investmentStyle && <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
+                  <span className="font-medium text-foreground">Investeringsstil:</span>
+                  <span className="text-sm text-muted-foreground capitalize">
                     {conversationData.investmentStyle}
                   </span>
                 </div>}
               
-              {conversationData.hasCurrentPortfolio !== undefined && <div className="flex justify-between items-center p-6 bg-muted/30 rounded-xl border border-border/50">
-                  <span className="font-semibold text-foreground">Befintlig portfölj:</span>
-                  <Badge variant={conversationData.hasCurrentPortfolio ? "default" : "secondary"} className="rounded-lg font-medium">
+              {conversationData.hasCurrentPortfolio !== undefined && <div className="flex justify-between items-center p-4 bg-card rounded-xl border shadow-sm">
+                  <span className="font-medium text-foreground">Befintlig portfölj:</span>
+                  <Badge variant={conversationData.hasCurrentPortfolio ? "default" : "secondary"}>
                     {conversationData.hasCurrentPortfolio ? 'Ja' : 'Nej'}
                   </Badge>
                 </div>}
@@ -358,18 +355,16 @@ const UserInvestmentAnalysis = ({
         </Card>}
 
       {/* Risk Profile Summary */}
-      {riskProfile.sector_interests && riskProfile.sector_interests.length > 0 && <Card className="border rounded-xl shadow-sm hover:shadow-md transition-shadow bg-card">
-          <CardHeader className="pb-6">
-            <CardTitle className="flex items-center gap-3 text-xl font-semibold">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-primary" />
-              </div>
+      {riskProfile.sector_interests && riskProfile.sector_interests.length > 0 && <Card className="rounded-2xl shadow-sm border-0 bg-gradient-to-br from-background via-background to-muted/30">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <TrendingUp className="w-5 h-5 text-primary" />
               Sektorintressen
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-3">
-              {riskProfile.sector_interests.map((sector, index) => <Badge key={index} variant="outline" className="capitalize px-4 py-2 rounded-lg font-medium border-primary/20 text-primary hover:bg-primary/10">
+            <div className="flex flex-wrap gap-2">
+              {riskProfile.sector_interests.map((sector, index) => <Badge key={index} variant="outline" className="capitalize px-3 py-1">
                   {sector}
                 </Badge>)}
             </div>

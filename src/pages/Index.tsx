@@ -80,47 +80,7 @@ const Index = () => {
                 </div>
               </div>
 
-              {/* How it works - Clean Apple style */}
-              <div className="max-w-4xl mx-auto mb-20">
-                <h2 className="text-3xl font-semibold text-foreground mb-4">{t('howItWorks.title')}</h2>
-                <p className="text-lg text-muted-foreground mb-16 max-w-2xl mx-auto">
-                  {t('howItWorks.subtitle')}
-                </p>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-12">
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-                      <MessageSquare className="w-8 h-8 text-primary" />
-                    </div>
-                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step1.title')}</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {t('howItWorks.step1.description')}
-                    </p>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-                      <Brain className="w-8 h-8 text-primary" />
-                    </div>
-                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step2.title')}</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {t('howItWorks.step2.description')}
-                    </p>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-                      <BarChart3 className="w-8 h-8 text-primary" />
-                    </div>
-                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step3.title')}</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {t('howItWorks.step3.description')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-            {/* Clean Examples Section */}
+              {/* Clean Examples Section */}
               <div className="mb-20">
                 <h2 className="text-3xl font-semibold text-foreground mb-4">{t('examples.title')}</h2>
                 <p className="text-lg text-muted-foreground mb-12 max-w-2xl mx-auto">
@@ -189,6 +149,46 @@ const Index = () => {
                         {t('examples.dividend.answer')}
                       </p>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* How it works - Clean Apple style */}
+              <div className="max-w-4xl mx-auto mb-20">
+                <h2 className="text-3xl font-semibold text-foreground mb-4">{t('howItWorks.title')}</h2>
+                <p className="text-lg text-muted-foreground mb-16 max-w-2xl mx-auto">
+                  {t('howItWorks.subtitle')}
+                </p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-12">
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                      <MessageSquare className="w-8 h-8 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step1.title')}</h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {t('howItWorks.step1.description')}
+                    </p>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                      <Brain className="w-8 h-8 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step2.title')}</h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {t('howItWorks.step2.description')}
+                    </p>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                      <BarChart3 className="w-8 h-8 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step3.title')}</h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {t('howItWorks.step3.description')}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -315,52 +315,36 @@ const Index = () => {
                 </div>
 
                 {/* Quick Actions */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  <Button asChild variant="outline" className="group h-auto p-6 hover:bg-primary/5 hover:border-primary/20 border-border/60 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 bg-card/50 backdrop-blur-sm rounded-2xl">
-                    <Link to="/ai-chat" className="flex flex-col items-center gap-3 text-center">
-                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 group-hover:scale-105 transition-all duration-300">
-                        <MessageSquare className="w-6 h-6 text-primary" />
-                      </div>
-                      <div className="space-y-2">
-                        <span className="font-semibold text-sm">AI Chat</span>
-                        <span className="text-xs text-muted-foreground leading-relaxed block mt-3">Få personliga investeringsråd</span>
-                      </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                  <Button asChild variant="outline" className="h-auto p-4 hover:bg-muted/50 border-border">
+                    <Link to="/ai-chat" className="flex flex-col items-center gap-2 text-center">
+                      <MessageSquare className="w-6 h-6 text-primary" />
+                      <span className="font-medium">AI Chat</span>
+                      <span className="text-xs text-muted-foreground">Få investeringsråd</span>
                     </Link>
                   </Button>
 
-                  <Button asChild variant="outline" className="group h-auto p-6 hover:bg-primary/5 hover:border-primary/20 border-border/60 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 bg-card/50 backdrop-blur-sm rounded-2xl">
-                    <Link to="/market-analyses" className="flex flex-col items-center gap-3 text-center">
-                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 group-hover:scale-105 transition-all duration-300">
-                        <TrendingUp className="w-6 h-6 text-primary" />
-                      </div>
-                      <div className="space-y-2">
-                        <span className="font-semibold text-sm">Marknadsanalyser</span>
-                        <span className="text-xs text-muted-foreground leading-relaxed block mt-3">Djupa marknadsinsikter</span>
-                      </div>
+                  <Button asChild variant="outline" className="h-auto p-4 hover:bg-muted/50 border-border">
+                    <Link to="/market-analyses" className="flex flex-col items-center gap-2 text-center">
+                      <TrendingUp className="w-6 h-6 text-primary" />
+                      <span className="font-medium">Marknadsanalyser</span>
+                      <span className="text-xs text-muted-foreground">Senaste insikter</span>
                     </Link>
                   </Button>
 
-                  <Button asChild variant="outline" className="group h-auto p-6 hover:bg-primary/5 hover:border-primary/20 border-border/60 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 bg-card/50 backdrop-blur-sm rounded-2xl">
-                    <Link to="/stock-cases" className="flex flex-col items-center gap-3 text-center">
-                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 group-hover:scale-105 transition-all duration-300">
-                        <Building2 className="w-6 h-6 text-primary" />
-                      </div>
-                      <div className="space-y-2">
-                        <span className="font-semibold text-sm">Stock Cases</span>
-                        <span className="text-xs text-muted-foreground leading-relaxed block mt-3">Utforska företag visuellt</span>
-                      </div>
+                  <Button asChild variant="outline" className="h-auto p-4 hover:bg-muted/50 border-border">
+                    <Link to="/stock-cases" className="flex flex-col items-center gap-2 text-center">
+                      <Building2 className="w-6 h-6 text-primary" />
+                      <span className="font-medium">Stock Cases</span>
+                      <span className="text-xs text-muted-foreground">Utforska företag</span>
                     </Link>
                   </Button>
 
-                  <Button asChild variant="outline" className="group h-auto p-6 hover:bg-primary/5 hover:border-primary/20 border-border/60 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 bg-card/50 backdrop-blur-sm rounded-2xl">
-                    <Link to="/portfolio-advisor" className="flex flex-col items-center gap-3 text-center">
-                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 group-hover:scale-105 transition-all duration-300">
-                        <Settings className="w-6 h-6 text-primary" />
-                      </div>
-                      <div className="space-y-2">
-                        <span className="font-semibold text-sm">Portföljrådgivare</span>
-                        <span className="text-xs text-muted-foreground leading-relaxed block mt-3">Optimera din portfölj</span>
-                      </div>
+                  <Button asChild variant="outline" className="h-auto p-4 hover:bg-muted/50 border-border">
+                    <Link to="/portfolio-advisor" className="flex flex-col items-center gap-2 text-center">
+                      <Settings className="w-6 h-6 text-primary" />
+                      <span className="font-medium">Portföljrådgivare</span>
+                      <span className="text-xs text-muted-foreground">Optimera din portfölj</span>
                     </Link>
                   </Button>
                 </div>
