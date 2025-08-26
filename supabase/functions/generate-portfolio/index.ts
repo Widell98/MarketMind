@@ -377,7 +377,8 @@ function parseAIRecommendations(text: string): Array<{name: string, symbol?: str
   
   for (const line of lines) {
     // Look for pattern: **Name (SYMBOL)**: Description. Allokering: XX%
-    const match = line.match(/\*\*([^(]+)\s*\(([^)]+)\)\*\*:.*?Allokering:\s*(\d+)%/i);
+   const match = line.match(/\*\*([^(]+)\s*\(([^)]+)\)\*\*.*?Allokering[: ]?\s*(\d+)%/i);
+
     if (match) {
       const name = match[1].trim();
       const symbol = match[2].trim();
