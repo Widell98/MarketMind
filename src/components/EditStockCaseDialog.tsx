@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useStockCaseOperations } from '@/hooks/useStockCaseOperations';
 import { Upload, TrendingUp, X } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface StockCase {
   id: string;
@@ -20,6 +21,8 @@ interface StockCase {
   sector: string | null;
   currency: string | null;
   image_url: string | null;
+  target_reached: boolean | null;
+  stop_loss_hit: boolean | null;
 }
 
 interface EditStockCaseDialogProps {
@@ -45,6 +48,8 @@ const EditStockCaseDialog: React.FC<EditStockCaseDialogProps> = ({
     sector: '',
     currency: 'SEK'
   });
+  const [targetReached, setTargetReached] = useState(false);
+  const [stopLossHit, setStopLossHit] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -64,6 +69,8 @@ const EditStockCaseDialog: React.FC<EditStockCaseDialogProps> = ({
         sector: stockCase.sector || '',
         currency: stockCase.currency || 'SEK'
       });
+      setTargetReached(stockCase.target_reached || false);
+      setStopLossHit(stockCase.stop_loss_hit || false);
       setImagePreview(stockCase.image_url || null);
     }
   }, [stockCase]);
@@ -150,7 +157,9 @@ const EditStockCaseDialog: React.FC<EditStockCaseDialogProps> = ({
         stop_loss: formData.stop_loss ? parseFloat(formData.stop_loss) : null,
         sector: formData.sector || null,
         currency: formData.currency,
-        image_url: imageUrl
+        image_url: imageUrl,
+        target_reached: targetReached,
+        stop_loss_hit: stopLossHit
       };
 
       await updateStockCase(stockCase.id, updateData);
@@ -350,6 +359,42 @@ const EditStockCaseDialog: React.FC<EditStockCaseDialogProps> = ({
                 </Button>
               </div>
             )}
+          </div>
+
+          {/* Case Status Section */}
+          <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Case Status
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="target-reached" 
+                  checked={targetReached}
+                  onCheckedChange={(checked) => {
+                    setTargetReached(checked as boolean);
+                    if (checked) setStopLossHit(false); // Only one can be true
+                  }}
+                />
+                <Label htmlFor="target-reached" className="text-sm font-medium cursor-pointer">
+                  🎯 Målkurs nådd
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="stop-loss-hit" 
+                  checked={stopLossHit}
+                  onCheckedChange={(checked) => {
+                    setStopLossHit(checked as boolean);
+                    if (checked) setTargetReached(false); // Only one can be true
+                  }}
+                />
+                <Label htmlFor="stop-loss-hit" className="text-sm font-medium cursor-pointer">
+                  ⚠️ Stoploss taget
+                </Label>
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">

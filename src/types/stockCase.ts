@@ -25,6 +25,8 @@ export interface StockCase {
   ai_generated?: boolean;
   currency?: string;
   timeframe?: string;
+  target_reached?: boolean;
+  stop_loss_hit?: boolean;
   profiles?: {
     username: string;
     display_name: string | null;

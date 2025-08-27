@@ -96,8 +96,21 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
   const performance = calculatePerformance();
   const PerformanceIcon = performance > 0 ? TrendingUp : performance < 0 ? TrendingDown : null;
 
+  // Determine card styling based on case status
+  const getCardClassNames = () => {
+    let baseClasses = "h-full flex flex-col hover:shadow-lg transition-all duration-200 group cursor-pointer border-border bg-card";
+    
+    if (stockCase.target_reached) {
+      baseClasses += " border-green-500/50 bg-gradient-to-br from-green-50/80 to-card dark:from-green-950/30 dark:to-card shadow-green-500/20";
+    } else if (stockCase.stop_loss_hit) {
+      baseClasses += " border-red-500/50 bg-gradient-to-br from-red-50/80 to-card dark:from-red-950/30 dark:to-card shadow-red-500/20";
+    }
+    
+    return baseClasses;
+  };
+
   return (
-    <Card className="h-full flex flex-col hover:shadow-lg transition-all duration-200 group cursor-pointer border-border bg-card" onClick={() => onViewDetails(stockCase.id)}>
+    <Card className={getCardClassNames()} onClick={() => onViewDetails(stockCase.id)}>
       <CardHeader className="pb-3">
         {/* Header with profile info */}
         <div className="flex items-start justify-between mb-3">
@@ -226,6 +239,18 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
             >
               {stockCase.status || 'active'}
             </Badge>
+            
+            {stockCase.target_reached && (
+              <Badge className="bg-green-500 text-white text-xs">
+                🎯 Målkurs nådd
+              </Badge>
+            )}
+            
+            {stockCase.stop_loss_hit && (
+              <Badge className="bg-red-500 text-white text-xs">
+                ⚠️ Stoploss taget
+              </Badge>
+            )}
             
             {stockCase.sector && (
               <Badge variant="outline" className="text-xs">
