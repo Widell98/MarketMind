@@ -1013,7 +1013,9 @@ export type Database = {
           sector: string | null
           status: string | null
           stop_loss: number | null
+          stop_loss_hit: boolean
           target_price: number | null
+          target_reached: boolean
           timeframe: string | null
           title: string
           updated_at: string
@@ -1040,7 +1042,9 @@ export type Database = {
           sector?: string | null
           status?: string | null
           stop_loss?: number | null
+          stop_loss_hit?: boolean
           target_price?: number | null
+          target_reached?: boolean
           timeframe?: string | null
           title: string
           updated_at?: string
@@ -1067,7 +1071,9 @@ export type Database = {
           sector?: string | null
           status?: string | null
           stop_loss?: number | null
+          stop_loss_hit?: boolean
           target_price?: number | null
+          target_reached?: boolean
           timeframe?: string | null
           title?: string
           updated_at?: string
