@@ -106,7 +106,15 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
         <CardContent className="pt-0">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {holdings.map((holding) => {
-              const holdingPercentage = totalValue > 0 ? (holding.current_value / totalValue) * groupPercentage : 0;
+              // Hämta prisinfo och beräkna värdet baserat på antal * pris (fallback: current_value)
+              const priceInfo = getPriceForHolding(holding);
+              const computedValue = holding.quantity && priceInfo?.price
+                ? holding.quantity * priceInfo.price
+                : holding.current_value;
+
+              const holdingPercentage = totalValue > 0 
+                ? (computedValue / totalValue) * groupPercentage 
+                : 0;
               
               // Use swipeable cards on mobile, regular cards on desktop
               if (isMobile) {
@@ -115,7 +123,7 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
                     key={holding.id}
                     holding={holding}
                     portfolioPercentage={holdingPercentage}
-                    currentPrice={getPriceForHolding(holding)}
+                    currentPrice={priceInfo}
                     onDiscuss={onDiscuss}
                     onEdit={onEdit}
                     onDelete={onDelete}
@@ -129,7 +137,7 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
                   key={holding.id}
                   holding={holding}
                   portfolioPercentage={holdingPercentage}
-                  currentPrice={getPriceForHolding(holding)}
+                  currentPrice={priceInfo}
                   onDiscuss={onDiscuss}
                   onEdit={onEdit}
                   onDelete={onDelete}

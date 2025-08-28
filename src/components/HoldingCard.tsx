@@ -68,6 +68,16 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   const Icon = getHoldingIcon();
   const isCash = holding.holding_type === 'cash';
 
+  // Beräkna totalvärde som antal * aktuellt pris när pris finns, annars fallback till current_value
+  const calculatedValue = !isCash && holding.quantity && currentPrice?.price
+    ? holding.quantity * currentPrice.price
+    : holding.current_value;
+
+  // Visa valuta från priset om vi använder det, annars innehavets valuta
+  const displayCurrency = !isCash && holding.quantity && currentPrice?.price
+    ? currentPrice.currency
+    : holding.currency;
+
   const handleSuggestionAction = (suggestionId: string, action: string) => {
     console.log(`Suggestion ${suggestionId} ${action}`);
     // Handle suggestion actions here
@@ -127,7 +137,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
             <div>
               <span className="text-muted-foreground">Värde:</span>
               <div className="font-semibold text-foreground">
-                {formatCurrency(holding.current_value, holding.currency)}
+                {formatCurrency(calculatedValue, displayCurrency)}
               </div>
             </div>
 
