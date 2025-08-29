@@ -326,19 +326,24 @@ const UserHoldingsManager: React.FC = () => {
       return priceByName;
     }
     
-    // Return null if no valid price found
+    // Return error information if price fetch failed for this holding
+    const failedPrice = prices.find(p => 
+      (holding.symbol && p.symbol === holding.symbol) ||
+      (p.name && holding.name && p.name.toLowerCase().includes(holding.name.toLowerCase()))
+    );
+    
+    if (failedPrice && !failedPrice.hasValidPrice) {
+      return failedPrice;
+    }
+    
+    // Return null if no price found at all
     return null;
   };
 
   useEffect(() => {
+    // Only fetch prices once when user logs in to the page
     if (user && actualHoldings.length > 0) {
       fetchPrices();
-      
-      const interval = setInterval(() => {
-        fetchPrices();
-      }, 1800000);
-
-      return () => clearInterval(interval);
     }
   }, [user, actualHoldings]);
 
@@ -517,7 +522,7 @@ const UserHoldingsManager: React.FC = () => {
 
               {lastUpdated && (
                 <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
-                  Priser uppdaterade: {lastUpdated} | Uppdateras automatiskt var 30:e minut
+                  Priser uppdaterade: {lastUpdated} | Priser uppdateras vid inloggning
                 </div>
               )}
             </>

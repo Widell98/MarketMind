@@ -182,7 +182,9 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                 {!currentPrice.hasValidPrice && (
                   <div className="flex items-center gap-1 mt-1 text-amber-600">
                     <AlertTriangle className="w-3 h-3" />
-                    <span className="text-xs">Pris saknas</span>
+                    <span className="text-xs">
+                      {(currentPrice as any).errorMessage || 'Kontrollera ticker-symbol'}
+                    </span>
                   </div>
                 )}
               </div>
