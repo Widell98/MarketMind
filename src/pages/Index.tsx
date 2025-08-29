@@ -294,7 +294,7 @@ const Index = () => {
                   </div>
                   <h3 className="font-semibold text-3xl mb-6 text-foreground">Välkommen hem!</h3>
                   <p className="text-muted-foreground mb-12 text-lg leading-relaxed max-w-2xl mx-auto font-light">
-                    Nu ska vi lära känna varandra ordentligt. Tänk på mig som din personliga guide som hjälper dig 
+                    Nu ska vi lära känna varandra ordentligt. Tänk på mig som din personliga ai-rådgivare som hjälper dig 
                     bygga den ekonomiska trygghet du drömmer om. Vi tar det i din takt, steg för steg.
                   </p>
                   
@@ -328,9 +328,9 @@ const Index = () => {
                       </Link>
                     </Button>
                     <Button asChild variant="outline" size="lg" className="hover:bg-muted/50 font-medium px-8 py-4 rounded-xl transition-all duration-300 text-lg">
-                      <Link to="/ai-chat">
+                      <Link to="/discover">
                         <HandHeart className="w-5 h-5 mr-2" />
-                        Bara prata först
+                        Utforska mer
                       </Link>
                     </Button>
                   </div>
