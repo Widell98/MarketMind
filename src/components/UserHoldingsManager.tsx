@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import HoldingsGroupSection from '@/components/HoldingsGroupSection';
 import AddHoldingDialog from '@/components/AddHoldingDialog';
+import EditHoldingDialog from '@/components/EditHoldingDialog';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
@@ -96,6 +97,8 @@ const UserHoldingsManager: React.FC = () => {
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddHoldingDialog, setShowAddHoldingDialog] = useState(false);
+  const [showEditHoldingDialog, setShowEditHoldingDialog] = useState(false);
+  const [editingHolding, setEditingHolding] = useState<any>(null);
   
   // Price data state
   const [prices, setPrices] = useState<StockPrice[]>([]);
@@ -150,7 +153,26 @@ const UserHoldingsManager: React.FC = () => {
     await deleteCashHolding(id);
   };
 
-  const { addHolding } = useUserHoldings();
+  const { addHolding, updateHolding } = useUserHoldings();
+
+  const handleEditHolding = (id: string) => {
+    const holding = actualHoldings.find(h => h.id === id);
+    if (holding) {
+      setEditingHolding(holding);
+      setShowEditHoldingDialog(true);
+    }
+  };
+
+  const handleUpdateHolding = async (holdingData: any) => {
+    if (!editingHolding) return false;
+    
+    const success = await updateHolding(editingHolding.id, holdingData);
+    if (success) {
+      setShowEditHoldingDialog(false);
+      setEditingHolding(null);
+    }
+    return success;
+  };
 
   const handleAddHolding = async (holdingData: any) => {
     const success = await addHolding(holdingData);
@@ -514,7 +536,7 @@ const UserHoldingsManager: React.FC = () => {
                       if (cash) {
                         setEditingCash({ id: cash.id, amount: cash.current_value });
                       }
-                    } : undefined}
+                    } : handleEditHolding}
                     onDelete={group.key === 'cash' ? handleDeleteCash : handleDeleteHolding}
                   />
                 ))}
@@ -607,6 +629,17 @@ const UserHoldingsManager: React.FC = () => {
         isOpen={showAddHoldingDialog}
         onClose={() => setShowAddHoldingDialog(false)}
         onAdd={handleAddHolding}
+      />
+
+      {/* Edit Holding Dialog */}
+      <EditHoldingDialog
+        isOpen={showEditHoldingDialog}
+        onClose={() => {
+          setShowEditHoldingDialog(false);
+          setEditingHolding(null);
+        }}
+        onSave={handleUpdateHolding}
+        holding={editingHolding}
       />
     </>
   );

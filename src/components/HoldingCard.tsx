@@ -204,15 +204,27 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
           {/* Actions */}
           <div className="flex gap-2 pt-2">
             {!isCash && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                onClick={() => onDiscuss(holding.name, holding.symbol)}
-              >
-                <MessageSquare className="w-4 h-4 mr-1" />
-                Diskutera
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  onClick={() => onDiscuss(holding.name, holding.symbol)}
+                >
+                  <MessageSquare className="w-4 h-4 mr-1" />
+                  Diskutera
+                </Button>
+                {onEdit && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                    onClick={() => onEdit(holding.id)}
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                )}
+              </>
             )}
             
             {isCash && onEdit && (
