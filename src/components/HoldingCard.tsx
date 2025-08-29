@@ -26,6 +26,8 @@ interface HoldingCardProps {
     purchase_price?: number;
     sector?: string;
     currency: string;
+    current_price_per_unit?: number;
+    price_currency?: string;
   };
   portfolioPercentage: number;
   currentPrice?: {
@@ -68,15 +70,17 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   const Icon = getHoldingIcon();
   const isCash = holding.holding_type === 'cash';
 
-  // Beräkna totalvärde som antal * aktuellt pris när pris finns, annars fallback till current_value
-  const calculatedValue = !isCash && holding.quantity && currentPrice?.price
-    ? holding.quantity * currentPrice.price
+  // Use stored price in original currency if available, otherwise fallback to current price
+  const effectivePrice = holding.current_price_per_unit || currentPrice?.price;
+  const effectiveCurrency = holding.price_currency || currentPrice?.currency || holding.currency;
+  
+  // Calculate individual value in original currency
+  const calculatedValue = !isCash && holding.quantity && effectivePrice
+    ? holding.quantity * effectivePrice
     : holding.current_value;
 
-  // Visa valuta från priset om vi använder det, annars innehavets valuta
-  const displayCurrency = !isCash && holding.quantity && currentPrice?.price
-    ? currentPrice.currency
-    : holding.currency;
+  // Always show price and value in original currency
+  const displayCurrency = effectiveCurrency;
 
   const handleSuggestionAction = (suggestionId: string, action: string) => {
     console.log(`Suggestion ${suggestionId} ${action}`);
@@ -150,15 +154,15 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
               </div>
             )}
 
-            {!isCash && currentPrice && (
+            {!isCash && (effectivePrice || currentPrice) && (
               <div className="col-span-2">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Aktuellt pris:</span>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">
-                      {formatCurrency(currentPrice.price, currentPrice.currency)}
+                      {formatCurrency(effectivePrice || currentPrice?.price || 0, effectiveCurrency)}
                     </span>
-                    {currentPrice.hasValidPrice && (
+                    {currentPrice?.hasValidPrice && (
                       <div className="flex items-center gap-1">
                         {currentPrice.changePercent >= 0 ? (
                           <TrendingUp className="w-3 h-3 text-green-600" />
@@ -179,11 +183,11 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                     )}
                   </div>
                 </div>
-                {!currentPrice.hasValidPrice && (
+                {(!effectivePrice && !currentPrice?.hasValidPrice) && (
                   <div className="flex items-center gap-1 mt-1 text-amber-600">
                     <AlertTriangle className="w-3 h-3" />
                     <span className="text-xs">
-                      {(currentPrice as any).errorMessage || 'Kontrollera ticker-symbol'}
+                      {(currentPrice as any)?.errorMessage || 'Kontrollera ticker-symbol'}
                     </span>
                   </div>
                 )}
