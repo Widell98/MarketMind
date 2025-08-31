@@ -109,16 +109,59 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         throw new Error(`Failed to send message. Status: ${response.status}`);
       }
 
-      const data = await response.json();
-      if (data && data.response) {
-        console.log('Extracting stock recommendations from AI response:', data.response);
-        setAiResponse(data.response);
-        const recommendations = extractRecommendations(data.response);
+      // Handle streaming response
+      if (response.headers.get('content-type')?.includes('text/event-stream')) {
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error('No response body');
+        }
+
+        let fullResponse = '';
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') {
+                break;
+              }
+
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.content) {
+                  fullResponse += parsed.content;
+                  setAiResponse(fullResponse); // Update response in real-time
+                }
+              } catch (e) {
+                // Ignore JSON parse errors
+              }
+            }
+          }
+        }
+
+        console.log('Extracting stock recommendations from AI response:', fullResponse);
+        const recommendations = extractRecommendations(fullResponse);
         setAiRecommendations(recommendations);
       } else {
-        console.warn('No response received from AI.');
-        setAiResponse('Inget svar mottaget från AI.');
-        setAiRecommendations([]);
+        // Handle regular JSON response as fallback
+        const data = await response.json();
+        if (data && data.response) {
+          console.log('Extracting stock recommendations from AI response:', data.response);
+          setAiResponse(data.response);
+          const recommendations = extractRecommendations(data.response);
+          setAiRecommendations(recommendations);
+        } else {
+          console.warn('No response received from AI.');
+          setAiResponse('Inget svar mottaget från AI.');
+          setAiRecommendations([]);
+        }
       }
     } catch (error: any) {
       console.error('Error sending message:', error);
