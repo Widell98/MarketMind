@@ -362,6 +362,25 @@ ${response}`;
       return;
     }
 
+    // Frontend validation before sending to backend
+    if (riskProfile.age !== null && (riskProfile.age < 18 || riskProfile.age > 100)) {
+      toast({
+        title: "Ogiltig ålder",
+        description: "Åldern måste vara mellan 18 och 100 år. Vänligen justera din ålder ovan.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (riskProfile.monthly_investment_amount !== null && riskProfile.monthly_investment_amount < 0) {
+      toast({
+        title: "Ogiltigt belopp",
+        description: "Månadssparande måste vara ett positivt tal.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!aiResponse || aiRecommendations.length === 0) {
       toast({
         title: "Fel",
@@ -407,8 +426,57 @@ ${response}`;
           }
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error during completion:', error);
+      
+      // Enhanced error handling for specific validation errors
+      if (error.message && error.message.includes('Age must be between 18 and 100')) {
+        toast({
+          title: "Ålder utanför giltigt intervall",
+          description: "Åldern måste vara mellan 18 och 100 år. Vänligen justera din ålder ovan och försök igen.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (error.message && error.message.includes('Invalid monthly investment amount')) {
+        toast({
+          title: "Ogiltigt månadsbelopp",  
+          description: "Månadssparandet måste vara ett positivt tal. Vänligen justera beloppet ovan.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (error.message && error.message.includes('Invalid risk tolerance')) {
+        toast({
+          title: "Ogiltig risknivå",
+          description: "Vänligen välj en giltig risknivå från listan.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (error.message && error.message.includes('Invalid investment horizon')) {
+        toast({
+          title: "Ogiltig placeringshorisont",
+          description: "Vänligen välj en giltig placeringshorisont från listan.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Generic error handling for other validation errors
+      if (error.code === 'P0001' || (error.message && error.message.includes('must be'))) {
+        toast({
+          title: "Valideringsfel",
+          description: `${error.message || 'Vänligen kontrollera dina uppgifter och försök igen.'}`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Generic error for unknown issues
       toast({
         title: "Fel",
         description: "Ett oväntat fel uppstod. Försök igen senare.",
