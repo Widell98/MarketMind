@@ -124,6 +124,7 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
           if (done) break;
 
           const chunk = decoder.decode(value);
+          if (!chunk) continue;
           const lines = chunk.split('\n');
 
           for (const line of lines) {
