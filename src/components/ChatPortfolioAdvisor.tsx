@@ -921,6 +921,9 @@ const ChatPortfolioAdvisor = () => {
   };
 
   const formatAIResponse = (content: string) => {
+    if (!content || typeof content !== 'string') {
+      return <div className="text-muted-foreground">Inget svar mottaget från AI.</div>;
+    }
     const sections = content.split(/###|\*\*/).filter(section => section.trim());
     
     return (
