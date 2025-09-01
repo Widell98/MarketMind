@@ -109,69 +109,100 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         throw new Error(`Failed to send message. Status: ${response.status}`);
       }
 
-      // Handle streaming response
-      if (response.headers.get('content-type')?.includes('text/event-stream')) {
-        const reader = response.body?.getReader();
-        if (!reader) {
-          throw new Error('No response body');
-        }
-
-        let fullResponse = '';
+      // Enhanced streaming response handling with better error recovery
+      if (response.body) {
+        console.log('Processing streaming response...');
+        const reader = response.body.getReader();
         const decoder = new TextDecoder();
+        let fullResponse = '';
+        let chunkCount = 0;
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value);
-          if (!chunk) continue;
-          const lines = chunk.split('\n');
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') {
-                break;
-              }
-
-              try {
-                const parsed = JSON.parse(data);
-                if (parsed.content) {
-                  fullResponse += parsed.content;
-                  setAiResponse(fullResponse); // Update response in real-time
-                }
-              } catch (e) {
-                // Ignore JSON parse errors
-              }
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              console.log(`Streaming complete. Total chunks: ${chunkCount}, Response length: ${fullResponse.length}`);
+              break;
+            }
+            
+            const chunk = decoder.decode(value, { stream: true });
+            if (chunk.trim()) {
+              fullResponse += chunk;
+              chunkCount++;
+              // Update UI with streaming response
+              setAiResponse(fullResponse);
+              console.log(`Chunk ${chunkCount}: ${chunk.length} characters`);
             }
           }
-        }
 
-        console.log('Extracting stock recommendations from AI response:', fullResponse);
-        const recommendations = extractRecommendations(fullResponse);
-        setAiRecommendations(recommendations);
+          // Validate final response
+          if (fullResponse.trim().length > 0) {
+            console.log('Final AI response received:', fullResponse.substring(0, 200) + '...');
+            console.log('Extracting stock recommendations from AI response');
+            const recommendations = extractRecommendations(fullResponse);
+            setAiRecommendations(recommendations);
+            
+            // Show success message
+            toast({
+              title: "AI-analys slutförd",
+              description: "Dina personliga investeringsrekommendationer är redo!",
+              variant: "default",
+            });
+          } else {
+            throw new Error('Empty streaming response received');
+          }
+        } catch (streamError) {
+          console.error('Streaming error:', streamError);
+          throw streamError;
+        }
       } else {
         // Handle regular JSON response as fallback
+        console.log('Processing JSON response...');
         const data = await response.json();
-        if (data && data.response) {
-          console.log('Extracting stock recommendations from AI response:', data.response);
+        if (data && data.response && data.response.trim().length > 0) {
+          console.log('JSON response received:', data.response.substring(0, 200) + '...');
           setAiResponse(data.response);
           const recommendations = extractRecommendations(data.response);
           setAiRecommendations(recommendations);
+          
+          toast({
+            title: "AI-analys slutförd",
+            description: "Dina personliga investeringsrekommendationer är redo!",
+            variant: "default",
+          });
         } else {
-          console.warn('No response received from AI.');
-          setAiResponse('Inget svar mottaget från AI.');
-          setAiRecommendations([]);
+          throw new Error('No valid response received from AI service');
         }
       }
     } catch (error: any) {
       console.error('Error sending message:', error);
-      toast({
-        title: "Något gick fel",
-        description: "Kunde inte kommunicera med AI-tjänsten. Försök igen senare.",
-        variant: "destructive",
-      });
-      setAiResponse(`Fel vid kommunikation med AI: ${error.message}`);
+      
+      // Enhanced error handling with fallback message
+      const errorMessage = error.message || 'Unknown error occurred';
+      
+      if (errorMessage.includes('Empty streaming response')) {
+        setAiResponse('AI-tjänsten svarade inte som förväntat. Vänligen försök igen eller kontakta support om problemet kvarstår.');
+        toast({
+          title: "Ingen AI-respons mottagen",
+          description: "AI-tjänsten svarade inte korrekt. Försök igen om ett ögonblick.",
+          variant: "destructive",
+        });
+      } else if (errorMessage.includes('No valid response')) {
+        setAiResponse('AI-tjänsten kunde inte generera en giltig respons. Kontrollera dina inställningar och försök igen.');
+        toast({
+          title: "Ogiltig AI-respons",
+          description: "AI-tjänsten returnerade en ogiltig respons. Försök igen.",
+          variant: "destructive",
+        });
+      } else {
+        setAiResponse(`Ett tekniskt fel uppstod: ${errorMessage}. Vänligen försök igen senare.`);
+        toast({
+          title: "Kommunikationsfel",
+          description: "Kunde inte kommunicera med AI-tjänsten. Kontrollera din internetanslutning och försök igen.",
+          variant: "destructive",
+        });
+      }
+      
       setAiRecommendations([]);
     } finally {
       setLoading(false);
