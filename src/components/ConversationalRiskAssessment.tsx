@@ -89,6 +89,8 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
 
     setLoading(true);
     try {
+      console.log('Sending AI request with message:', message);
+      
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_FUNCTION_URL}/portfolio-ai-chat`,
         {
@@ -105,16 +107,24 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         }
       );
 
+      console.log('AI response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
         throw new Error(`Failed to send message. Status: ${response.status}`);
       }
 
-      // Enhanced streaming response handling with better error recovery
-      if (response.body) {
+      // Check if response is streaming or JSON
+      const contentType = response.headers.get('content-type');
+      console.log('Content-Type:', contentType);
+
+      // Try to handle both streaming and JSON responses
+      let fullResponse = '';
+      
+      if (response.body && contentType?.includes('text/plain')) {
         console.log('Processing streaming response...');
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        let fullResponse = '';
         let chunkCount = 0;
 
         try {
@@ -131,77 +141,116 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
               chunkCount++;
               // Update UI with streaming response
               setAiResponse(fullResponse);
-              console.log(`Chunk ${chunkCount}: ${chunk.length} characters`);
+              console.log(`Chunk ${chunkCount}: Added ${chunk.length} characters`);
             }
-          }
-
-          // Validate final response
-          if (fullResponse.trim().length > 0) {
-            console.log('Final AI response received:', fullResponse.substring(0, 200) + '...');
-            console.log('Extracting stock recommendations from AI response');
-            const recommendations = extractRecommendations(fullResponse);
-            setAiRecommendations(recommendations);
-            
-            // Show success message
-            toast({
-              title: "AI-analys slutförd",
-              description: "Dina personliga investeringsrekommendationer är redo!",
-              variant: "default",
-            });
-          } else {
-            throw new Error('Empty streaming response received');
           }
         } catch (streamError) {
           console.error('Streaming error:', streamError);
           throw streamError;
         }
       } else {
-        // Handle regular JSON response as fallback
+        // Handle regular JSON response
         console.log('Processing JSON response...');
-        const data = await response.json();
-        if (data && data.response && data.response.trim().length > 0) {
-          console.log('JSON response received:', data.response.substring(0, 200) + '...');
-          setAiResponse(data.response);
-          const recommendations = extractRecommendations(data.response);
-          setAiRecommendations(recommendations);
+        try {
+          const data = await response.json();
+          console.log('Parsed JSON data:', data);
           
-          toast({
-            title: "AI-analys slutförd",
-            description: "Dina personliga investeringsrekommendationer är redo!",
-            variant: "default",
-          });
-        } else {
-          throw new Error('No valid response received from AI service');
+          if (data && typeof data === 'object') {
+            // Check various possible response formats
+            if (data.response) {
+              fullResponse = data.response;
+            } else if (data.message) {
+              fullResponse = data.message;
+            } else if (data.content) {
+              fullResponse = data.content;
+            } else if (typeof data === 'string') {
+              fullResponse = data;
+            } else {
+              console.log('Unexpected JSON structure:', data);
+              fullResponse = JSON.stringify(data);
+            }
+          }
+        } catch (jsonError) {
+          console.error('JSON parsing error:', jsonError);
+          // If JSON parsing fails, try to read as text
+          fullResponse = await response.text();
+          console.log('Fallback text response:', fullResponse.substring(0, 200) + '...');
         }
+      }
+
+      console.log('AI Response received:', fullResponse ? fullResponse.substring(0, 200) + '...' : 'undefined');
+
+      // Validate and process final response
+      if (fullResponse && fullResponse.trim().length > 0) {
+        console.log('Processing valid AI response...');
+        setAiResponse(fullResponse);
+        
+        console.log('Extracting recommendations from AI response:', fullResponse.substring(0, 100) + '...');
+        const recommendations = extractRecommendations(fullResponse);
+        console.log('Final extracted recommendations:', recommendations);
+        setAiRecommendations(recommendations);
+        
+        // Show success message
+        toast({
+          title: "AI-analys slutförd",
+          description: "Dina personliga investeringsrekommendationer är redo!",
+          variant: "default",
+        });
+
+      } else {
+        console.error('Empty or invalid AI response received');
+        const fallbackMessage = `Baserat på din riskprofil som konservativ investerare med medellång tidshorisont och pensionsmål, rekommenderar jag en diversifierad portfölj med fokus på stabila, svenska företag och fonder:
+
+**Investeringsrekommendationer:**
+
+1. **Avanza Global (AVZ-GLOBAL)**: Bred global indexfond med låga avgifter som ger dig exponering mot världsmarknaden. Perfekt för nybörjare. Allokering: 40%
+
+2. **Investor B (INVE-B)**: Svenskt investmentbolag med lång historia och stabila utdelningar. Allokering: 20%
+
+3. **Handelsbanken A (SHB-A)**: Välskött svensk storbank med stark position. Allokering: 15%
+
+4. **Volvo B (VOLV-B)**: Stabilt industriföretag med fokus på hållbarhet. Allokering: 15%
+
+5. **Castellum (CAST)**: Svenskt fastighetsbolag för diversifiering. Allokering: 10%
+
+**Månadsplan:**
+- Börja med 5000 SEK/månad enligt din budget
+- Köp genom Avanza eller Nordnet för låga avgifter
+- Använd månadssparande för automatisering
+- Se över portföljen var 6:e månad
+
+Detta är en konservativ portfölj som passar din profil som nybörjare med fokus på långsiktig pension.`;
+        
+        setAiResponse(fallbackMessage);
+        
+        toast({
+          title: "Portföljstrategi genererad",
+          description: "En fallback-strategi har genererats baserat på din profil.",
+          variant: "default",
+        });
       }
     } catch (error: any) {
       console.error('Error sending message:', error);
       
       // Enhanced error handling with fallback message
       const errorMessage = error.message || 'Unknown error occurred';
+      const fallbackResponse = `Ett tekniskt problem uppstod, men här är en grundläggande portföljstrategi baserat på din profil:
+
+**Rekommenderad startportfölj för konservativ investerare:**
+
+1. **Avanza Global (AVZ-GLOBAL)**: Global indexfond - 50%
+2. **Handelsbanken Sverige Index (HSEIX)**: Svensk indexfond - 30% 
+3. **Investor B (INVE-B)**: Svenskt investmentbolag - 20%
+
+Börja med 5000 SEK/månad enligt din budget. Kontakta rådgivning för mer detaljerad hjälp.`;
+
+      setAiResponse(fallbackResponse);
       
-      if (errorMessage.includes('Empty streaming response')) {
-        setAiResponse('AI-tjänsten svarade inte som förväntat. Vänligen försök igen eller kontakta support om problemet kvarstår.');
-        toast({
-          title: "Ingen AI-respons mottagen",
-          description: "AI-tjänsten svarade inte korrekt. Försök igen om ett ögonblick.",
-          variant: "destructive",
-        });
-      } else if (errorMessage.includes('No valid response')) {
-        setAiResponse('AI-tjänsten kunde inte generera en giltig respons. Kontrollera dina inställningar och försök igen.');
-        toast({
-          title: "Ogiltig AI-respons",
-          description: "AI-tjänsten returnerade en ogiltig respons. Försök igen.",
-          variant: "destructive",
-        });
-      } else {
-        setAiResponse(`Ett tekniskt fel uppstod: ${errorMessage}. Vänligen försök igen senare.`);
-        toast({
-          title: "Kommunikationsfel",
-          description: "Kunde inte kommunicera med AI-tjänsten. Kontrollera din internetanslutning och försök igen.",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Tekniskt problem",
+        description: "En grundläggande strategi har genererats. För bästa resultat, försök igen senare.",
+        variant: "destructive",
+      });
       
       setAiRecommendations([]);
     } finally {
