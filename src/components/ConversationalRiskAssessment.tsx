@@ -489,22 +489,36 @@ ${response}`;
       // Use the enhanced conversational portfolio hook
       const result = await generatePortfolioFromConversation(conversationData);
 
-      if (result) {
+      if (result && result.aiResponse) {
+        // Show the AI-generated portfolio strategy to user
+        setAiResponse(`🎉 Din personliga portföljstrategi är klar!
+
+${result.aiResponse}
+
+Din kompletta portfölj har sparats och du kan implementera rekommendationerna direkt.`);
+
         toast({
-          title: "Profil skapad",
-          description: "Din riskprofil och AI-rekommendationer har sparats.",
+          title: "Portföljstrategi skapad!",
+          description: "Din personliga investeringsstrategi är nu redo och visas ovan.",
         });
 
-        onComplete();
-        
-        // Navigate to portfolio implementation with the generated data
-        navigate('/portfolio-implementation', { 
-          state: { 
-            portfolio: result.portfolio,
-            aiResponse: result.aiResponse,
-            recommendations: result.stockRecommendations
-          }
+        // Wait a bit for user to see the response, then navigate
+        setTimeout(() => {
+          navigate('/portfolio-implementation', { 
+            state: { 
+              portfolio: result.portfolio,
+              aiResponse: result.aiResponse,
+              recommendations: result.stockRecommendations
+            }
+          });
+        }, 3000);
+      } else {
+        toast({
+          title: "Profil skapad",
+          description: "Din riskprofil har sparats men ingen AI-rekommendation kunde genereras.",
+          variant: "destructive"
         });
+        onComplete();
       }
     } catch (error: any) {
       console.error('Error during completion:', error);
