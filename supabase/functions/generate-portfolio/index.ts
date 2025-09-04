@@ -130,6 +130,19 @@ MIN KVALITETSGARANTI:
       if (riskProfile.market_crash_reaction) {
         contextInfo += `\n- Reaktion på börskrasch: ${riskProfile.market_crash_reaction}`;
       }
+
+      // Add conversational context if available
+      if (riskProfile.expectations) {
+        contextInfo += `\n- Förväntningar: "${riskProfile.expectations}"`;
+      }
+      
+      if (riskProfile.concerns) {
+        contextInfo += `\n- Oro/bekymmer: "${riskProfile.concerns}"`;
+      }
+      
+      if (riskProfile.financial_situation) {
+        contextInfo += `\n- Ekonomisk situation: "${riskProfile.financial_situation}"`;
+      }
     }
 
     if (existingSymbols.size > 0) {
@@ -190,14 +203,14 @@ EXEMPEL PÅ HUR JAG PRATAR:
 - Min risktolerans: ${riskProfile.risk_tolerance === 'conservative' ? 'Jag vill ha det ganska säkert' : riskProfile.risk_tolerance === 'moderate' ? 'Jag kan tåla viss risk för bättre avkastning' : 'Jag vågar satsa för högre avkastning'}
 - Mitt mål: ${riskProfile.investment_goal === 'retirement' ? 'Spara till pension' : riskProfile.investment_goal === 'wealth' ? 'Bygga förmögenhet långsiktigt' : riskProfile.investment_goal === 'house' ? 'Spara till bostad' : 'Allmän förmögenhetsuppbyggnad'}
 - Min tidshorisont: ${riskProfile.investment_horizon === 'short' ? 'Några år framöver' : riskProfile.investment_horizon === 'medium' ? 'Mellan 5-10 år' : riskProfile.investment_horizon === 'long' ? 'Mycket långsiktigt, 10+ år' : 'Långsiktigt sparande'}
-- Min erfarenhet: ${riskProfile.investment_experience === 'beginner' ? 'Jag är helt ny på detta' : riskProfile.investment_experience === 'intermediate' ? 'Jag har någon erfarenhet' : 'Jag har investerat tidigare'}
+- Min erfarenhet: ${riskProfile.investment_experience === 'beginner' ? 'Jag är helt ny på detta' : riskProfile.investment_experience === 'intermediate' ? 'Jag har någon erfarenhet' : 'Jag har investerat tidigare'}${riskProfile.expectations ? `\n- Mina förväntningar: "${riskProfile.expectations}"` : ''}${riskProfile.concerns ? `\n- Det som oroar mig: "${riskProfile.concerns}"` : ''}
 
 💰 Min ekonomiska situation:
 - Nuvarande portföljvärde: ${riskProfile.current_portfolio_value || 0} SEK
 - Min komfortnivå med risk: ${riskProfile.risk_comfort_level || 5}/10 (där 10 är att jag inte bryr mig om svängningar)
 - Sektorer jag är intresserad av: ${riskProfile.sector_interests && riskProfile.sector_interests.length > 0 ? riskProfile.sector_interests.join(', ') : 'Alla typer av investeringar'}
 
-Anna, baserat på allt detta - kan du skapa min personliga portfölj? Jag vill ha konkreta aktier och fonder som jag kan köpa på Avanza eller Nordnet, och jag vill förstå varför du väljer just dessa för mig.
+Anna, baserat på vad vi pratat om - kan du skapa min personliga portfölj? Jag vill ha konkreta aktier och fonder som jag kan köpa på Avanza eller Nordnet, och jag vill förstå varför du väljer just dessa för mig.${riskProfile.concerns ? ` Tänk speciellt på mina bekymmer om ${riskProfile.concerns.toLowerCase()}.` : ''}${riskProfile.expectations ? ` Och hjälp mig uppnå det jag hoppas på: ${riskProfile.expectations.toLowerCase()}.` : ''}
 
 Tack så mycket för hjälpen! 😊`;
 
