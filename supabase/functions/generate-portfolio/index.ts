@@ -364,60 +364,35 @@ function parseAIRecommendations(text: string): Array<{name: string, symbol?: str
   const stocks: Array<{name: string, symbol?: string, allocation: number, sector?: string}> = [];
   const lines = text.split('\n');
   
-  // Define invalid patterns that should be filtered out (extended list)
-  const invalidPatterns = [
-    /^(erfarenhet|ålder|investeringsstil|risktolerans|tidshorisont|månatligt)/i,
-    /^(diversifiering|rebalansering|skatteoptimering|strategi|optimering)/i,
-    /^(riskprofil|investeringsmål|portföljstrategi|allokeringsstrategi)/i,
-    /^(metod|teknik|approach|filosofi|princip|analys|situation)/i,
-    /^(månadsplan|uppföljning|implementation|risker|möjligheter)/i,
-    /^(riskspridning|dollar cost averaging|dca|automatisk)/i,
-    /^(pensionssparande|pension|buffert|emergency|sparande)/i,
-    /^(skatteeffektivt|avdrag|isk|kapitalförsäkring)/i,
-    /^(marknadsanalys|timing|teknisk analys|fundamental)/i,
-    /^(växling|byte|ändring|justering|omfördelning)/i
-  ];
-  
-  // Define valid ticker patterns to ensure we only get real investments
-  const validTickerPatterns = [
-    /^[A-Z]{2,6}(-[A-Z])?$/, // Standard tickers like EVO, SHB-A
-    /^XACT/, // XACT ETFs
-    /^(AVANZA|SPILTAN|LÄNSFÖRSÄKRINGAR)/, // Valid fund prefixes
-    /^[A-Z]+\s*(GLOBAL|SWEDEN|EUROPE|INDEX)$/i // Fund patterns
-  ];
+  console.log('Parsing AI recommendations from text:', text.substring(0, 500));
   
   for (const line of lines) {
-    // Look for pattern: **Name (SYMBOL)**: Description. Allokering: XX%
-   const match = line.match(/\*\*([^(]+)\s*\(([^)]+)\)\*\*.*?Allokering[: ]?\s*(\d+)%/i);
+    console.log('Processing line:', line);
+    
+    // Look for numbered list pattern: 1. **Name (SYMBOL)**: Description. Din del av portföljen: XX%
+    let match = line.match(/^\d+\.\s*\*\*([^(]+)\s*\(([^)]+)\)\*\*.*?(?:Din del av portföljen|Allokering)[: ]?\s*(\d+)%/i);
+    
+    // Also try the original pattern: **Name (SYMBOL)**: Description. Allokering: XX%
+    if (!match) {
+      match = line.match(/\*\*([^(]+)\s*\(([^)]+)\)\*\*.*?(?:Allokering|Din del av portföljen)[: ]?\s*(\d+)%/i);
+    }
 
     if (match) {
       const name = match[1].trim();
       const symbol = match[2].trim();
       const allocation = parseInt(match[3]);
       
-      // Skip if name matches invalid patterns
-      const isInvalidName = invalidPatterns.some(pattern => pattern.test(name));
-      if (isInvalidName) {
-        console.log(`Filtering out invalid recommendation (invalid name): ${name}`);
-        continue;
-      }
-      
-      // Skip if symbol doesn't match valid patterns
-      const isValidTicker = validTickerPatterns.some(pattern => pattern.test(symbol));
-      if (!isValidTicker && !name.toLowerCase().includes('fond') && !name.toLowerCase().includes('index')) {
-        console.log(`Filtering out invalid recommendation (invalid ticker): ${name} (${symbol})`);
-        continue;
-      }
+      console.log(`Found potential match: ${name} (${symbol}) - ${allocation}%`);
       
       // Skip if allocation is unrealistic
-      if (allocation < 1 || allocation > 40) {
+      if (allocation < 1 || allocation > 50) {
         console.log(`Filtering out unrealistic allocation: ${name} (${allocation}%)`);
         continue;
       }
       
-      // Skip if name is too generic or strategic
-      if (name.length < 3 || /^(strategi|metod|approach|teknik)$/i.test(name)) {
-        console.log(`Filtering out generic name: ${name}`);
+      // Skip if name is too short
+      if (name.length < 2) {
+        console.log(`Filtering out short name: ${name}`);
         continue;
       }
       
@@ -425,7 +400,7 @@ function parseAIRecommendations(text: string): Array<{name: string, symbol?: str
       let sector = 'Allmän';
       if (name.toLowerCase().includes('bank') || symbol.includes('SHB')) {
         sector = 'Bank';
-      } else if (name.toLowerCase().includes('fastighet') || symbol.includes('CAST')) {
+      } else if (name.toLowerCase().includes('fastighet') || name.toLowerCase().includes('fastighetsfond')) {
         sector = 'Fastighet';
       } else if (name.toLowerCase().includes('industri') || name.toLowerCase().includes('investor')) {
         sector = 'Investmentbolag';
@@ -433,7 +408,15 @@ function parseAIRecommendations(text: string): Array<{name: string, symbol?: str
         sector = 'Teknik';
       } else if (name.toLowerCase().includes('global') || name.toLowerCase().includes('world') || name.toLowerCase().includes('index')) {
         sector = 'Indexfond';
+      } else if (name.toLowerCase().includes('tesla')) {
+        sector = 'Teknik';
+      } else if (name.toLowerCase().includes('hexagon')) {
+        sector = 'Teknik';
+      } else if (name.toLowerCase().includes('spiltan')) {
+        sector = 'Investmentbolag';
       }
+      
+      console.log(`Adding valid recommendation: ${name} (${symbol}) - ${allocation}% - ${sector}`);
       
       stocks.push({
         name,
