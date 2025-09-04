@@ -2,7 +2,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
-import EnhancedConversationalPortfolioAdvisor from '@/components/EnhancedConversationalPortfolioAdvisor';
+import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolioAdvisor';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -65,7 +65,7 @@ const PortfolioAdvisor = () => {
     <Layout>
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
-          <EnhancedConversationalPortfolioAdvisor />
+          <ConversationalPortfolioAdvisor />
         </div>
       </div>
     </Layout>
