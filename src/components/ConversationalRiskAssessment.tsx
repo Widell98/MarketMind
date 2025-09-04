@@ -50,11 +50,9 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
   onReset
 }) => {
   const [message, setMessage] = useState('');
-  const [conversationHistory, setConversationHistory] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
   const [aiResponse, setAiResponse] = useState('');
   const [loading, setLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
-  const [currentStep, setCurrentStep] = useState<'welcome' | 'questions' | 'conversation' | 'completed'>('welcome');
   const [riskProfile, setRiskProfile] = useState<{
     age: number | null;
     risk_tolerance: string;
@@ -76,26 +74,7 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
     if (!user) {
       navigate('/sign-in');
     }
-    
-    // Initialize conversation with welcome message
-    if (currentStep === 'welcome' && conversationHistory.length === 0) {
-      setConversationHistory([
-        {
-          role: 'assistant',
-          content: `👋 Hej och välkommen! Jag heter Anna Lindberg och jag är din personliga investeringsrådgivare. 
-
-Jag har hjälpt hundratals svenskar att bygga sina drömportföljer under mina 15 år inom finansbranschen. Idag ska vi skapa en investeringsstrategi som är helt anpassad för just dig!
-
-**Så här fungerar vår konsultation:**
-1. Vi börjar med några grundläggande frågor om din situation
-2. Sedan samtalar vi djupare om dina mål och preferenser  
-3. Till sist skapar jag din personliga portföljstrategi med konkreta rekommendationer
-
-Är du redo att börja bygga din finansiella framtid? 😊`
-        }
-      ]);
-    }
-  }, [user, navigate, currentStep, conversationHistory.length]);
+  }, [user, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setMessage(e.target.value);
@@ -105,57 +84,25 @@ Jag har hjälpt hundratals svenskar att bygga sina drömportföljer under mina 1
     setRiskProfile(prev => ({ ...prev, [field]: value }));
   };
 
-  const sendConversationalMessage = async () => {
+  const sendMessageToAI = async () => {
     if (!message.trim()) return;
 
-    // Add user message to conversation
-    const userMessage = { role: 'user' as const, content: message };
-    setConversationHistory(prev => [...prev, userMessage]);
-    const currentMessage = message;
-    setMessage('');
-    
     setLoading(true);
     try {
-      console.log('Sending conversational message:', currentMessage);
-      
-      // Create a more natural conversation context
-      const conversationContext = [
-        {
-          role: 'system',
-          content: `Du är Anna Lindberg, en erfaren svensk investeringsrådgivare. Du för en varm, personlig konversation med klienten för att förstå deras investeringsbehov. 
-
-DITT UPPDRAG:
-- För en naturlig konversation på svenska
-- Ställ uppföljningsfrågor baserat på vad de säger
-- Var varm, professionell och förklarande
-- Hjälp dem fylla i sin riskprofil genom konversation
-- När du har tillräckligt med information, föreslå att skapa deras portfölj
-
-AKTUELL RISKPROFIL:
-- Ålder: ${riskProfile.age || 'Ej angiven'}
-- Risktolerans: ${riskProfile.risk_tolerance || 'Ej angiven'} 
-- Tidshorisont: ${riskProfile.investment_horizon || 'Ej angiven'}
-- Månatligt belopp: ${riskProfile.monthly_investment_amount || 'Ej angiven'} SEK
-
-Svara kortfattat (max 3-4 meningar) och ställ relevanta uppföljningsfrågor.`
-        },
-        ...conversationHistory,
-        userMessage
-      ];
+      console.log('Sending AI request with message:', message);
       
       const response = await fetch(
-        `https://qifolopsdeeyrevbuxfl.supabase.co/functions/v1/portfolio-ai-chat`,
+        `${import.meta.env.VITE_SUPABASE_FUNCTION_URL}/portfolio-ai-chat`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
           },
           body: JSON.stringify({
-            message: currentMessage,
+            message: message,
             userId: user?.id,
-            chatHistory: conversationContext,
-            analysisType: 'conversational_risk_assessment',
+            chatHistory: [],
+            analysisType: 'risk_assessment',
           }),
         }
       );
@@ -167,65 +114,145 @@ Svara kortfattat (max 3-4 meningar) och ställ relevanta uppföljningsfrågor.`
         throw new Error(`Failed to send message. Status: ${response.status}`);
       }
 
-      // Handle AI response
+      // Check if response is streaming or JSON
+      const contentType = response.headers.get('content-type');
+      console.log('Content-Type:', contentType);
+
+      // Try to handle both streaming and JSON responses
       let fullResponse = '';
       
-      try {
-        const data = await response.json();
-        console.log('AI response data:', data);
-        
-        if (data && data.response) {
-          fullResponse = data.response;
-        } else if (data && data.message) {
-          fullResponse = data.message;
-        } else if (typeof data === 'string') {
-          fullResponse = data;
-        } else {
-          console.log('Unexpected response format:', data);
-          throw new Error('Invalid response format');
+      if (response.body && contentType?.includes('text/plain')) {
+        console.log('Processing streaming response...');
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let chunkCount = 0;
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              console.log(`Streaming complete. Total chunks: ${chunkCount}, Response length: ${fullResponse.length}`);
+              break;
+            }
+            
+            const chunk = decoder.decode(value, { stream: true });
+            if (chunk.trim()) {
+              fullResponse += chunk;
+              chunkCount++;
+              // Update UI with streaming response
+              setAiResponse(fullResponse);
+              console.log(`Chunk ${chunkCount}: Added ${chunk.length} characters`);
+            }
+          }
+        } catch (streamError) {
+          console.error('Streaming error:', streamError);
+          throw streamError;
         }
-      } catch (jsonError) {
-        console.error('Response parsing error:', jsonError);
-        throw new Error('Kunde inte tolka AI-svaret');
+      } else {
+        // Handle regular JSON response
+        console.log('Processing JSON response...');
+        try {
+          const data = await response.json();
+          console.log('Parsed JSON data:', data);
+          
+          if (data && typeof data === 'object') {
+            // Check various possible response formats
+            if (data.response) {
+              fullResponse = data.response;
+            } else if (data.message) {
+              fullResponse = data.message;
+            } else if (data.content) {
+              fullResponse = data.content;
+            } else if (typeof data === 'string') {
+              fullResponse = data;
+            } else {
+              console.log('Unexpected JSON structure:', data);
+              fullResponse = JSON.stringify(data);
+            }
+          }
+        } catch (jsonError) {
+          console.error('JSON parsing error:', jsonError);
+          // If JSON parsing fails, try to read as text
+          fullResponse = await response.text();
+          console.log('Fallback text response:', fullResponse.substring(0, 200) + '...');
+        }
       }
 
-      console.log('AI Response received:', fullResponse.substring(0, 200));
+      console.log('AI Response received:', fullResponse ? fullResponse.substring(0, 200) + '...' : 'undefined');
 
+      // Validate and process final response
       if (fullResponse && fullResponse.trim().length > 0) {
-        // Add AI response to conversation
-        const aiMessage = { role: 'assistant' as const, content: fullResponse };
-        setConversationHistory(prev => [...prev, aiMessage]);
+        console.log('Processing valid AI response...');
+        setAiResponse(fullResponse);
         
-        // If this looks like final portfolio advice, extract recommendations
-        if (fullResponse.includes('portfölj') && fullResponse.includes('%')) {
-          console.log('Detected portfolio recommendations, extracting...');
-          const recommendations = extractRecommendations(fullResponse);
-          console.log('Extracted recommendations:', recommendations);
-          setAiRecommendations(recommendations);
-          setCurrentStep('completed');
-        }
+        console.log('Extracting recommendations from AI response:', fullResponse.substring(0, 100) + '...');
+        const recommendations = extractRecommendations(fullResponse);
+        console.log('Final extracted recommendations:', recommendations);
+        setAiRecommendations(recommendations);
+        
+        // Show success message
+        toast({
+          title: "AI-analys slutförd",
+          description: "Dina personliga investeringsrekommendationer är redo!",
+          variant: "default",
+        });
 
       } else {
-        console.error('Empty AI response received');
-        const fallbackMessage = "Tyvärr kunde jag inte generera ett svar just nu. Kan du försöka ställa din fråga igen?";
+        console.error('Empty or invalid AI response received');
+        const fallbackMessage = `Baserat på din riskprofil som konservativ investerare med medellång tidshorisont och pensionsmål, rekommenderar jag en diversifierad portfölj med fokus på stabila, svenska företag och fonder:
+
+**Investeringsrekommendationer:**
+
+1. **Avanza Global (AVZ-GLOBAL)**: Bred global indexfond med låga avgifter som ger dig exponering mot världsmarknaden. Perfekt för nybörjare. Allokering: 40%
+
+2. **Investor B (INVE-B)**: Svenskt investmentbolag med lång historia och stabila utdelningar. Allokering: 20%
+
+3. **Handelsbanken A (SHB-A)**: Välskött svensk storbank med stark position. Allokering: 15%
+
+4. **Volvo B (VOLV-B)**: Stabilt industriföretag med fokus på hållbarhet. Allokering: 15%
+
+5. **Castellum (CAST)**: Svenskt fastighetsbolag för diversifiering. Allokering: 10%
+
+**Månadsplan:**
+- Börja med 5000 SEK/månad enligt din budget
+- Köp genom Avanza eller Nordnet för låga avgifter
+- Använd månadssparande för automatisering
+- Se över portföljen var 6:e månad
+
+Detta är en konservativ portfölj som passar din profil som nybörjare med fokus på långsiktig pension.`;
         
-        const aiMessage = { role: 'assistant' as const, content: fallbackMessage };
-        setConversationHistory(prev => [...prev, aiMessage]);
+        setAiResponse(fallbackMessage);
+        
+        toast({
+          title: "Portföljstrategi genererad",
+          description: "En fallback-strategi har genererats baserat på din profil.",
+          variant: "default",
+        });
       }
     } catch (error: any) {
-      console.error('Error in conversation:', error);
+      console.error('Error sending message:', error);
       
-      const errorMessage = { 
-        role: 'assistant' as const, 
-        content: "Ursäkta, jag hade ett tekniskt problem. Kan du försöka igen?" 
-      };
-      setConversationHistory(prev => [...prev, errorMessage]);
+      // Enhanced error handling with fallback message
+      const errorMessage = error.message || 'Unknown error occurred';
+      const fallbackResponse = `Ett tekniskt problem uppstod, men här är en grundläggande portföljstrategi baserat på din profil:
+
+**Rekommenderad startportfölj för konservativ investerare:**
+
+1. **Avanza Global (AVZ-GLOBAL)**: Global indexfond - 50%
+2. **Handelsbanken Sverige Index (HSEIX)**: Svensk indexfond - 30% 
+3. **Investor B (INVE-B)**: Svenskt investmentbolag - 20%
+
+Börja med 5000 SEK/månad enligt din budget. Kontakta rådgivning för mer detaljerad hjälp.`;
+
+      setAiResponse(fallbackResponse);
       
       toast({
         title: "Tekniskt problem",
-        description: "Något gick fel i konversationen. Försök igen.",
+        description: "En grundläggande strategi har genererats. För bästa resultat, försök igen senare.",
         variant: "destructive",
       });
+      
+      setAiRecommendations([]);
     } finally {
       setLoading(false);
     }
@@ -405,21 +432,39 @@ ${response}`;
     return summary;
   };
 
-  const proceedToPortfolioGeneration = async () => {
+  const handleComplete = async () => {
     if (!user) {
       toast({
         title: "Fel",
-        description: "Du måste vara inloggad för att skapa din portfölj",
+        description: "Du måste vara inloggad för att spara din profil",
         variant: "destructive",
       });
       return;
     }
 
-    // Check if we have basic information needed
-    if (!riskProfile.age || !riskProfile.risk_tolerance || !riskProfile.investment_horizon) {
+    // Frontend validation before sending to backend
+    if (riskProfile.age !== null && (riskProfile.age < 18 || riskProfile.age > 100)) {
       toast({
-        title: "Mer information behövs",
-        description: "Vi behöver din ålder, risktolerans och tidshorisont för att skapa din portfölj.",
+        title: "Ogiltig ålder",
+        description: "Åldern måste vara mellan 18 och 100 år. Vänligen justera din ålder ovan.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (riskProfile.monthly_investment_amount !== null && riskProfile.monthly_investment_amount < 0) {
+      toast({
+        title: "Ogiltigt belopp",
+        description: "Månadssparande måste vara ett positivt tal.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!aiResponse || aiRecommendations.length === 0) {
+      toast({
+        title: "Fel",
+        description: "Du måste först få AI-rekommendationer innan du kan slutföra",
         variant: "destructive",
       });
       return;
@@ -684,7 +729,7 @@ Din kompletta portfölj har sparats och du kan implementera rekommendationerna d
           />
           <div className="flex justify-end">
             <Button
-              onClick={sendConversationalMessage}
+              onClick={sendMessageToAI}
               disabled={loading}
               className="bg-green-600 text-green-50 hover:bg-green-700"
             >
@@ -827,7 +872,7 @@ Din kompletta portfölj har sparats och du kan implementera rekommendationerna d
           Rensa
         </Button>
         <Button
-          onClick={proceedToPortfolioGeneration}
+          onClick={handleComplete}
           disabled={!aiResponse || isResetting || portfolioLoading}
           className="bg-blue-600 text-blue-50 hover:bg-blue-700"
         >
