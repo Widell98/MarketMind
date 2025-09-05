@@ -92,7 +92,7 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
       console.log('Sending AI request with message:', message);
       
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_FUNCTION_URL}/portfolio-ai-chat`,
+        'https://qifolopsdeeyrevbuxfl.supabase.co/functions/v1/portfolio-ai-chat',
         {
           method: 'POST',
           headers: {
