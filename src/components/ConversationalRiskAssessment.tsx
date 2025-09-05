@@ -91,91 +91,31 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
     try {
       console.log('Sending AI request with message:', message);
       
-      const response = await fetch(
-        'https://qifolopsdeeyrevbuxfl.supabase.co/functions/v1/portfolio-ai-chat',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            message: message,
-            userId: user?.id,
-            chatHistory: [],
-            analysisType: 'risk_assessment',
-          }),
-        }
-      );
+      const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
+        body: {
+          message,
+          userId: user?.id,
+          chatHistory: [],
+          analysisType: 'risk_assessment',
+          stream: false,
+        },
+      });
 
-      console.log('AI response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
-      if (!response.ok) {
-        throw new Error(`Failed to send message. Status: ${response.status}`);
+      if (error) {
+        console.error('AI function error:', error);
+        throw new Error(error.message || 'Edge function error');
       }
 
-      // Check if response is streaming or JSON
-      const contentType = response.headers.get('content-type');
-      console.log('Content-Type:', contentType);
-
-      // Try to handle both streaming and JSON responses
+      // Handle JSON response
       let fullResponse = '';
-      
-      if (response.body && contentType?.includes('text/plain')) {
-        console.log('Processing streaming response...');
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let chunkCount = 0;
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) {
-              console.log(`Streaming complete. Total chunks: ${chunkCount}, Response length: ${fullResponse.length}`);
-              break;
-            }
-            
-            const chunk = decoder.decode(value, { stream: true });
-            if (chunk.trim()) {
-              fullResponse += chunk;
-              chunkCount++;
-              // Update UI with streaming response
-              setAiResponse(fullResponse);
-              console.log(`Chunk ${chunkCount}: Added ${chunk.length} characters`);
-            }
-          }
-        } catch (streamError) {
-          console.error('Streaming error:', streamError);
-          throw streamError;
-        }
-      } else {
-        // Handle regular JSON response
-        console.log('Processing JSON response...');
-        try {
-          const data = await response.json();
-          console.log('Parsed JSON data:', data);
-          
-          if (data && typeof data === 'object') {
-            // Check various possible response formats
-            if (data.response) {
-              fullResponse = data.response;
-            } else if (data.message) {
-              fullResponse = data.message;
-            } else if (data.content) {
-              fullResponse = data.content;
-            } else if (typeof data === 'string') {
-              fullResponse = data;
-            } else {
-              console.log('Unexpected JSON structure:', data);
-              fullResponse = JSON.stringify(data);
-            }
-          }
-        } catch (jsonError) {
-          console.error('JSON parsing error:', jsonError);
-          // If JSON parsing fails, try to read as text
-          fullResponse = await response.text();
-          console.log('Fallback text response:', fullResponse.substring(0, 200) + '...');
-        }
+      const payload: any = data;
+      if (payload && typeof payload === 'object') {
+        if (payload.response) fullResponse = payload.response;
+        else if (payload.message) fullResponse = payload.message;
+        else if (payload.content) fullResponse = payload.content;
+        else fullResponse = JSON.stringify(payload);
+      } else if (typeof payload === 'string') {
+        fullResponse = payload;
       }
 
       console.log('AI Response received:', fullResponse ? fullResponse.substring(0, 200) + '...' : 'undefined');
