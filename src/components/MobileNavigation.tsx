@@ -9,7 +9,8 @@ import {
   TrendingUp, 
   BarChart3,
   Lock,
-  Brain
+  Brain,
+  Search
 } from 'lucide-react';
 
 const MobileNavigation = () => {
@@ -20,6 +21,7 @@ const MobileNavigation = () => {
     { name: 'Hem', href: '/', icon: Home },
     { name: 'AI-Chat', href: '/ai-chat', icon: Brain, priority: true },
     { name: 'Aktiefall', href: '/stock-cases', icon: TrendingUp },
+    { name: 'Upptäck', href: '/discover', icon: Search },
     { name: 'Portfölj', href: '/portfolio-implementation', icon: BarChart3, requiresAuth: true },
   ];
 

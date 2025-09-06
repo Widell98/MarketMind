@@ -67,11 +67,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </header>
             
             {/* Main content */}
-            <main className="flex-1 container-responsive py-2 sm:py-4 lg:py-6 min-h-0 max-w-full overflow-auto">
+            <main className="flex-1 container-responsive py-2 sm:py-4 lg:py-6 min-h-0 max-w-full overflow-auto pb-20 md:pb-6">
               <div className="mb-2 sm:mb-4">
                 <BreadcrumbNavigation />
               </div>
-              <div className="max-w-full overflow-hidden">
+              <div className="max-w-full overflow-hidden px-1 sm:px-0">
                 {children}
               </div>
             </main>
