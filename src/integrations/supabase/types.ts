@@ -1013,9 +1013,7 @@ export type Database = {
           sector: string | null
           status: string | null
           stop_loss: number | null
-          stop_loss_hit: boolean
           target_price: number | null
-          target_reached: boolean
           timeframe: string | null
           title: string
           updated_at: string
@@ -1042,9 +1040,7 @@ export type Database = {
           sector?: string | null
           status?: string | null
           stop_loss?: number | null
-          stop_loss_hit?: boolean
           target_price?: number | null
-          target_reached?: boolean
           timeframe?: string | null
           title: string
           updated_at?: string
@@ -1071,9 +1067,7 @@ export type Database = {
           sector?: string | null
           status?: string | null
           stop_loss?: number | null
-          stop_loss_hit?: boolean
           target_price?: number | null
-          target_reached?: boolean
           timeframe?: string | null
           title?: string
           updated_at?: string
@@ -1319,14 +1313,12 @@ export type Database = {
           allocation: number | null
           created_at: string
           currency: string | null
-          current_price_per_unit: number | null
           current_value: number | null
           holding_type: string
           id: string
           is_cash: boolean | null
           market: string | null
           name: string
-          price_currency: string | null
           purchase_date: string | null
           purchase_price: number | null
           quantity: number | null
@@ -1339,14 +1331,12 @@ export type Database = {
           allocation?: number | null
           created_at?: string
           currency?: string | null
-          current_price_per_unit?: number | null
           current_value?: number | null
           holding_type: string
           id?: string
           is_cash?: boolean | null
           market?: string | null
           name: string
-          price_currency?: string | null
           purchase_date?: string | null
           purchase_price?: number | null
           quantity?: number | null
@@ -1359,14 +1349,12 @@ export type Database = {
           allocation?: number | null
           created_at?: string
           currency?: string | null
-          current_price_per_unit?: number | null
           current_value?: number | null
           holding_type?: string
           id?: string
           is_cash?: boolean | null
           market?: string | null
           name?: string
-          price_currency?: string | null
           purchase_date?: string | null
           purchase_price?: number | null
           quantity?: number | null

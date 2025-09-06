@@ -240,15 +240,9 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
     }
 
     const openAIData = await openAIResponse.json();
-    const aiRecommendations = openAIData.choices?.[0]?.message?.content;
+    const aiRecommendations = openAIData.choices[0].message.content;
     
-    console.log('OpenAI full response:', JSON.stringify(openAIData, null, 2));
     console.log('AI recommendations received:', aiRecommendations);
-    
-    if (!aiRecommendations) {
-      console.error('No AI recommendations received from OpenAI');
-      throw new Error('No AI response received from OpenAI');
-    }
 
     // Parse AI recommendations into structured format
     const recommendedStocks = parseAIRecommendations(aiRecommendations);
@@ -321,16 +315,11 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
       }
     }
 
-    console.log('Returning response with AI recommendations:', aiRecommendations?.substring(0, 200));
-    
     return new Response(JSON.stringify({
       success: true,
       portfolio: portfolio,
       aiRecommendations: aiRecommendations,
-      aiResponse: aiRecommendations, // Add this for compatibility
-      response: aiRecommendations, // Add this for compatibility 
-      confidence: calculateConfidence(recommendedStocks, riskProfile),
-      recommendedStocks: recommendedStocks
+      confidence: calculateConfidence(recommendedStocks, riskProfile)
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

@@ -223,6 +223,20 @@ const ChatPortfolioAdvisor = () => {
       ]
     },
     {
+      id: 'portfolioSize',
+      question: 'Ungefär hur stor är din nuvarande portfölj? (skriv summan i kronor)',
+      key: 'portfolioSize',
+      hasOptions: false,
+      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio === true,
+      processAnswer: (answer: string) => {
+        const amount = parseInt(answer.replace(/[^\d]/g, ''));
+        if (amount < 100000) return 'small';
+        if (amount < 500000) return 'medium';
+        if (amount < 1000000) return 'large';
+        return 'very_large';
+      }
+    },
+    {
       id: 'investmentStyle',
       question: 'Vilken investeringsstil föredrar du?',
       key: 'investmentStyle',
@@ -921,9 +935,6 @@ const ChatPortfolioAdvisor = () => {
   };
 
   const formatAIResponse = (content: string) => {
-    if (!content || typeof content !== 'string') {
-      return <div className="text-muted-foreground">Inget svar mottaget från AI.</div>;
-    }
     const sections = content.split(/###|\*\*/).filter(section => section.trim());
     
     return (

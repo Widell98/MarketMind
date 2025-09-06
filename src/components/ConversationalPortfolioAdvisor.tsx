@@ -38,7 +38,7 @@ const ConversationalPortfolioAdvisor = () => {
         </CardHeader>
         
         <CardContent className="space-y-8 px-8 pb-8">
-          <div className="grid md:grid-cols-2 gap-6 bg-blue-50/50 rounded-xl p-6 border border-blue-100/30">
+          <div className="grid md:grid-cols-2 gap-6">
             <div className="p-6 bg-accent/50 rounded-xl border border-border/50">
               <h3 className="font-medium text-foreground mb-4 flex items-center gap-3">
                 <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">

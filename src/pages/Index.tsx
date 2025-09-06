@@ -121,10 +121,92 @@ const Index = () => {
               </div>
 
             {/* Clean Examples Section */}
-              
+              <div className="mb-20">
+                <h2 className="text-3xl font-semibold text-foreground mb-4">{t('examples.title')}</h2>
+                <p className="text-lg text-muted-foreground mb-12 max-w-2xl mx-auto">
+                  {t('examples.subtitle')}
+                </p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 max-w-5xl mx-auto">
+                  {/* Example 1: Conservative */}
+                  <div className="bg-card border rounded-2xl p-8 hover:shadow-lg transition-all duration-300">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                      <Shield className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="mb-4">
+                      <p className="font-semibold text-foreground">{t('examples.conservative.name')}</p>
+                      <p className="text-sm text-muted-foreground">{t('examples.conservative.type')}</p>
+                    </div>
+                    <div className="bg-muted/50 rounded-xl p-4 mb-4 text-left">
+                      <p className="text-sm text-muted-foreground italic">
+                        {t('examples.conservative.question')}
+                      </p>
+                    </div>
+                    <div className="bg-primary/5 rounded-xl p-4 text-left border border-primary/20">
+                      <p className="text-sm text-primary font-medium">
+                        {t('examples.conservative.answer')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Example 2: Aggressive */}
+                  <div className="bg-card border rounded-2xl p-8 hover:shadow-lg transition-all duration-300">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                      <TrendingUp className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="mb-4">
+                      <p className="font-semibold text-foreground">{t('examples.aggressive.name')}</p>
+                      <p className="text-sm text-muted-foreground">{t('examples.aggressive.type')}</p>
+                    </div>
+                    <div className="bg-muted/50 rounded-xl p-4 mb-4 text-left">
+                      <p className="text-sm text-muted-foreground italic">
+                        {t('examples.aggressive.question')}
+                      </p>
+                    </div>
+                    <div className="bg-primary/5 rounded-xl p-4 text-left border border-primary/20">
+                      <p className="text-sm text-primary font-medium">
+                        {t('examples.aggressive.answer')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Example 3: Dividend-focused */}
+                  <div className="bg-card border rounded-2xl p-8 hover:shadow-lg transition-all duration-300">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                      <DollarSign className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="mb-4">
+                      <p className="font-semibold text-foreground">{t('examples.dividend.name')}</p>
+                      <p className="text-sm text-muted-foreground">{t('examples.dividend.type')}</p>
+                    </div>
+                    <div className="bg-muted/50 rounded-xl p-4 mb-4 text-left">
+                      <p className="text-sm text-muted-foreground italic">
+                        {t('examples.dividend.question')}
+                      </p>
+                    </div>
+                    <div className="bg-primary/5 rounded-xl p-4 text-left border border-primary/20">
+                      <p className="text-sm text-primary font-medium">
+                        {t('examples.dividend.answer')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* Final CTA - Apple style */}
-              
+              <div className="max-w-2xl mx-auto text-center">
+                <h3 className="text-2xl font-semibold text-foreground mb-4">
+                  {t('finalCta.title')}
+                </h3>
+                <p className="text-lg text-muted-foreground mb-8">
+                  {t('finalCta.subtitle')}
+                </p>
+                <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-lg">
+                  <Link to="/auth">
+                    {t('hero.cta.final')}
+                  </Link>
+                </Button>
+              </div>
             </div>}
 
           {/* Clean Dashboard for logged-in users */}
@@ -294,7 +376,7 @@ const Index = () => {
                   </div>
                   <h3 className="font-semibold text-3xl mb-6 text-foreground">Välkommen hem!</h3>
                   <p className="text-muted-foreground mb-12 text-lg leading-relaxed max-w-2xl mx-auto font-light">
-                    Nu ska vi lära känna varandra ordentligt. Tänk på mig som din personliga ai-rådgivare som hjälper dig 
+                    Nu ska vi lära känna varandra ordentligt. Tänk på mig som din personliga guide som hjälper dig 
                     bygga den ekonomiska trygghet du drömmer om. Vi tar det i din takt, steg för steg.
                   </p>
                   
@@ -328,9 +410,9 @@ const Index = () => {
                       </Link>
                     </Button>
                     <Button asChild variant="outline" size="lg" className="hover:bg-muted/50 font-medium px-8 py-4 rounded-xl transition-all duration-300 text-lg">
-                      <Link to="/discover">
+                      <Link to="/ai-chat">
                         <HandHeart className="w-5 h-5 mr-2" />
-                        Utforska mer
+                        Bara prata först
                       </Link>
                     </Button>
                   </div>

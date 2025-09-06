@@ -34,7 +34,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import HoldingsGroupSection from '@/components/HoldingsGroupSection';
 import AddHoldingDialog from '@/components/AddHoldingDialog';
-import EditHoldingDialog from '@/components/EditHoldingDialog';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
@@ -97,8 +96,6 @@ const UserHoldingsManager: React.FC = () => {
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddHoldingDialog, setShowAddHoldingDialog] = useState(false);
-  const [showEditHoldingDialog, setShowEditHoldingDialog] = useState(false);
-  const [editingHolding, setEditingHolding] = useState<any>(null);
   
   // Price data state
   const [prices, setPrices] = useState<StockPrice[]>([]);
@@ -153,26 +150,7 @@ const UserHoldingsManager: React.FC = () => {
     await deleteCashHolding(id);
   };
 
-  const { addHolding, updateHolding } = useUserHoldings();
-
-  const handleEditHolding = (id: string) => {
-    const holding = actualHoldings.find(h => h.id === id);
-    if (holding) {
-      setEditingHolding(holding);
-      setShowEditHoldingDialog(true);
-    }
-  };
-
-  const handleUpdateHolding = async (holdingData: any) => {
-    if (!editingHolding) return false;
-    
-    const success = await updateHolding(editingHolding.id, holdingData);
-    if (success) {
-      setShowEditHoldingDialog(false);
-      setEditingHolding(null);
-    }
-    return success;
-  };
+  const { addHolding } = useUserHoldings();
 
   const handleAddHolding = async (holdingData: any) => {
     const success = await addHolding(holdingData);
@@ -348,24 +326,19 @@ const UserHoldingsManager: React.FC = () => {
       return priceByName;
     }
     
-    // Return error information if price fetch failed for this holding
-    const failedPrice = prices.find(p => 
-      (holding.symbol && p.symbol === holding.symbol) ||
-      (p.name && holding.name && p.name.toLowerCase().includes(holding.name.toLowerCase()))
-    );
-    
-    if (failedPrice && !failedPrice.hasValidPrice) {
-      return failedPrice;
-    }
-    
-    // Return null if no price found at all
+    // Return null if no valid price found
     return null;
   };
 
   useEffect(() => {
-    // Only fetch prices once when user logs in to the page
     if (user && actualHoldings.length > 0) {
       fetchPrices();
+      
+      const interval = setInterval(() => {
+        fetchPrices();
+      }, 1800000);
+
+      return () => clearInterval(interval);
     }
   }, [user, actualHoldings]);
 
@@ -536,7 +509,7 @@ const UserHoldingsManager: React.FC = () => {
                       if (cash) {
                         setEditingCash({ id: cash.id, amount: cash.current_value });
                       }
-                    } : handleEditHolding}
+                    } : undefined}
                     onDelete={group.key === 'cash' ? handleDeleteCash : handleDeleteHolding}
                   />
                 ))}
@@ -544,7 +517,7 @@ const UserHoldingsManager: React.FC = () => {
 
               {lastUpdated && (
                 <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
-                  Priser uppdaterade: {lastUpdated} | Priser uppdateras vid inloggning
+                  Priser uppdaterade: {lastUpdated} | Uppdateras automatiskt var 30:e minut
                 </div>
               )}
             </>
@@ -629,17 +602,6 @@ const UserHoldingsManager: React.FC = () => {
         isOpen={showAddHoldingDialog}
         onClose={() => setShowAddHoldingDialog(false)}
         onAdd={handleAddHolding}
-      />
-
-      {/* Edit Holding Dialog */}
-      <EditHoldingDialog
-        isOpen={showEditHoldingDialog}
-        onClose={() => {
-          setShowEditHoldingDialog(false);
-          setEditingHolding(null);
-        }}
-        onSave={handleUpdateHolding}
-        holding={editingHolding}
       />
     </>
   );

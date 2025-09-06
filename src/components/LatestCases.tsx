@@ -245,22 +245,6 @@ const StockCaseCard = ({ stockCase }: { stockCase: any }) => {
   };
 
   const getStatusBadge = (status: string, performance: number | null) => {
-    // Priority: target_reached/stop_loss_hit over general status
-    if (stockCase.target_reached) {
-      return (
-        <Badge className="bg-green-500 text-white text-xs">
-          🎯 Målkurs nådd
-        </Badge>
-      );
-    }
-    if (stockCase.stop_loss_hit) {
-      return (
-        <Badge className="bg-red-500 text-white text-xs">
-          ⚠️ Stoploss taget
-        </Badge>
-      );
-    }
-    
     if (status === 'winner') {
       return (
         <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800">
@@ -284,22 +268,9 @@ const StockCaseCard = ({ stockCase }: { stockCase: any }) => {
     );
   };
 
-  // Determine card styling based on case status
-  const getCardClassNames = () => {
-    let baseClasses = "border-0 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group overflow-hidden";
-    
-    if (stockCase.target_reached) {
-      baseClasses += " border border-green-500/50 bg-gradient-to-br from-green-50/80 to-card dark:from-green-950/30 dark:to-card shadow-green-500/20";
-    } else if (stockCase.stop_loss_hit) {
-      baseClasses += " border border-red-500/50 bg-gradient-to-br from-red-50/80 to-card dark:from-red-950/30 dark:to-card shadow-red-500/20";
-    }
-    
-    return baseClasses;
-  };
-
   return (
     <Card 
-      className={getCardClassNames()}
+      className="border-0 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group overflow-hidden"
       onClick={handleCardClick}
     >
       {/* Image - Same style as StockCasesFeed */}

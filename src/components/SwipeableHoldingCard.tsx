@@ -40,13 +40,6 @@ const SwipeableHoldingCard: React.FC<SwipeableHoldingCardProps> = ({
       color: 'bg-blue-600',
       action: () => onEdit(holding.id)
     }] : []),
-    ...(!isCash && onEdit ? [{
-      id: 'edit',
-      label: 'Redigera',
-      icon: Edit2,
-      color: 'bg-blue-600',
-      action: () => onEdit(holding.id)
-    }] : []),
     ...(!isCash ? [{
       id: 'discuss',
       label: 'Diskutera',
