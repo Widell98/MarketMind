@@ -70,23 +70,33 @@ serve(async (req) => {
         }
 
         if (effectivePrice != null) {
-          // Convert price to holding currency if needed
-          let priceInHoldingCurrency = effectivePrice;
+          // Store price in original currency and calculate SEK value for portfolio totals
+          const priceInOriginalCurrency = effectivePrice;
           
-          if (priceCurrency === 'USD' && holding.currency === 'SEK') {
-            priceInHoldingCurrency = effectivePrice * 10.5; // Approximate USD to SEK rate
-          } else if (priceCurrency === 'SEK' && holding.currency === 'USD') {
-            priceInHoldingCurrency = effectivePrice / 10.5; // Approximate SEK to USD rate
+          // Convert to SEK for portfolio calculations using currency utils
+          let priceInSEK = effectivePrice;
+          if (priceCurrency === 'USD') {
+            priceInSEK = effectivePrice * 10.5; // USD to SEK
+          } else if (priceCurrency === 'EUR') {
+            priceInSEK = effectivePrice * 11.4; // EUR to SEK
+          } else if (priceCurrency === 'GBP') {
+            priceInSEK = effectivePrice * 13.2; // GBP to SEK
+          } else if (priceCurrency === 'NOK') {
+            priceInSEK = effectivePrice * 0.95; // NOK to SEK
+          } else if (priceCurrency === 'DKK') {
+            priceInSEK = effectivePrice * 1.53; // DKK to SEK
           }
           
-          // Calculate new total value
-          const newTotalValue = priceInHoldingCurrency * (holding.quantity || 0);
+          // Calculate total value in SEK for portfolio calculations
+          const totalValueInSEK = priceInSEK * (holding.quantity || 0);
           
-          // Update holding in database
+          // Update holding in database with both original price and SEK value
           const { error: updateError } = await supabase
             .from('user_holdings')
             .update({
-              current_value: Math.round(newTotalValue * 100) / 100,
+              current_price_per_unit: Math.round(priceInOriginalCurrency * 10000) / 10000, // Store original price
+              price_currency: priceCurrency, // Store original currency
+              current_value: Math.round(totalValueInSEK * 100) / 100, // Store SEK value for portfolio totals
               updated_at: new Date().toISOString()
             })
             .eq('id', holding.id);
@@ -97,25 +107,25 @@ serve(async (req) => {
             continue;
           }
 
-          // Record performance history
+          // Record performance history in original currency
           const { error: historyError } = await supabase
             .from('portfolio_performance_history')
             .upsert({
               user_id: holding.user_id,
               holding_id: holding.id,
-              date: new Date().toISOString().split('T')[0], // Today's date
-              price_per_unit: Math.round(priceInHoldingCurrency * 100) / 100,
-              total_value: Math.round(newTotalValue * 100) / 100,
-              currency: holding.currency
+              date: new Date().toISOString().split('T')[0],
+              price_per_unit: priceInOriginalCurrency,
+              total_value: totalValueInSEK, // Store SEK value for consistent portfolio calculations
+              currency: priceCurrency // Store original currency
             }, {
-              onConflict: 'holding_id,date'
+              onConflict: 'user_id,holding_id,date'
             });
 
           if (historyError) {
             console.error(`Error recording history for ${holding.symbol}:`, historyError);
           }
 
-          console.log(`✅ Updated ${holding.symbol}: ${Math.round(priceInHoldingCurrency * 100) / 100} ${holding.currency}`);
+          console.log(`✅ Updated ${holding.symbol}: ${Math.round(priceInOriginalCurrency * 100) / 100} ${priceCurrency}`);
           updatedCount++;
         } else {
           // Last resort: no valid price and no daily fallback, skip to conserve API quota

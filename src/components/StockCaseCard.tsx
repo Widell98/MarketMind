@@ -39,6 +39,20 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
   } = useStockCaseFollows(stockCase.id);
   const navigate = useNavigate();
   const isOwner = user && stockCase.user_id === user.id;
+  
+  // Determine card styling based on case status
+  const getCardClassNames = () => {
+    let baseClasses = "h-full flex flex-col hover:shadow-lg transition-shadow duration-200 group cursor-pointer border-border bg-card";
+    
+    if (stockCase.target_reached) {
+      baseClasses += " border-green-500/50 bg-gradient-to-br from-green-50/80 to-card dark:from-green-950/30 dark:to-card shadow-green-500/20";
+    } else if (stockCase.stop_loss_hit) {
+      baseClasses += " border-red-500/50 bg-gradient-to-br from-red-50/80 to-card dark:from-red-950/30 dark:to-card shadow-red-500/20";
+    }
+    
+    return baseClasses;
+  };
+  
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -89,7 +103,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
     navigate('/profile');
   };
   const performance = calculatePerformance();
-  return <Card className="h-full flex flex-col hover:shadow-lg transition-shadow duration-200 group cursor-pointer" onClick={() => onViewDetails(stockCase.id)}>
+  return <Card className={getCardClassNames()} onClick={() => onViewDetails(stockCase.id)}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
@@ -97,6 +111,19 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
               <Badge variant="secondary" className={`${getStatusColor(stockCase.status || 'active')} text-white text-xs`}>
                 {stockCase.status || 'active'}
               </Badge>
+              
+              {stockCase.target_reached && (
+                <Badge className="bg-green-500 text-white text-xs">
+                  🎯 Målkurs nådd
+                </Badge>
+              )}
+              
+              {stockCase.stop_loss_hit && (
+                <Badge className="bg-red-500 text-white text-xs">
+                  ⚠️ Stoploss taget
+                </Badge>
+              )}
+              
               <Badge variant="outline" className="text-xs">
                 {stockCase.case_categories?.name || stockCase.sector || 'General'}
               </Badge>
