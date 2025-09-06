@@ -35,6 +35,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   {/* Sidebar trigger for desktop */}
                   <SidebarTrigger className="hidden md:flex flex-shrink-0" />
                   
+                  {/* Mobile navigation trigger */}
+                  <MobileNavigation />
+                  
                   <Link to="/" className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground flex items-center min-w-0 flex-shrink-0">
                     <div className="mr-2 w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center transform rotate-3 hover:rotate-0 transition-transform duration-300 flex-shrink-0">
                       <Brain className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-primary-foreground" />
@@ -67,7 +70,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </header>
             
             {/* Main content */}
-            <main className="flex-1 container-responsive py-2 sm:py-4 lg:py-6 min-h-0 max-w-full overflow-auto pb-20 md:pb-6">
+            <main className="flex-1 container-responsive py-2 sm:py-4 lg:py-6 min-h-0 max-w-full overflow-auto">
               <div className="mb-2 sm:mb-4">
                 <BreadcrumbNavigation />
               </div>
@@ -89,9 +92,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
           {/* Smart AI Suggestions */}
           <SmartSuggestions />
-
-          {/* Mobile navigation */}
-          <MobileNavigation />
         </div>
       </SidebarProvider>
     </ConversationMemoryProvider>
