@@ -456,13 +456,11 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
         return null;
       }
 
-      // Generate AI response with enhanced prompt
-      const { data: aiResponse, error: aiError } = await supabase.functions.invoke('portfolio-ai-chat', {
+      // Generate AI response with enhanced risk profile using proper endpoint
+      const { data: aiResponse, error: aiError } = await supabase.functions.invoke('generate-portfolio', {
         body: {
-          message: enhancedPrompt,
-          userId: user.id,
-          analysisType: 'portfolio_generation',
-          conversationData
+          riskProfileId: riskProfile.id,
+          userId: user.id
         }
       });
 
@@ -476,11 +474,22 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
         return null;
       }
 
-      console.log('AI Response received:', aiResponse.response);
+      console.log('Response from generate-portfolio:', aiResponse);
+      console.log('AI Response received:', aiResponse.aiRecommendations || aiResponse.aiResponse || aiResponse.response);
+
+      // Extract AI response from multiple possible fields for compatibility
+      const aiRecommendationText = aiResponse.aiRecommendations || aiResponse.aiResponse || aiResponse.response || '';
+      
+      console.log('Extracting recommendations from AI response:', aiRecommendationText?.substring(0, 100));
 
       // Extract stock recommendations from AI response
-      const stockRecommendations = extractStockRecommendations(aiResponse.response || '');
-      console.log('Extracted stock recommendations:', stockRecommendations);
+      const stockRecommendations = extractStockRecommendations(aiRecommendationText);
+      console.log('Final extracted recommendations:', stockRecommendations);
+
+      if (stockRecommendations.length === 0) {
+        console.warn('No stock recommendations extracted, but continuing with portfolio creation');
+        // Don't throw error, just show the AI response to user
+      }
 
       // Save stock recommendations to user_holdings table
       if (stockRecommendations.length > 0) {
@@ -513,7 +522,7 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
       // Create enhanced asset allocation with all conversation data and AI analysis
       const assetAllocation = {
         conversation_data: JSON.parse(JSON.stringify(conversationData)),
-        ai_strategy: aiResponse.response,
+        ai_strategy: aiRecommendationText,
         ai_prompt_used: enhancedPrompt,
         stock_recommendations: stockRecommendations,
         risk_profile_summary: {
@@ -527,7 +536,7 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
         analysis_metadata: {
           created_at: new Date().toISOString(),
           prompt_length: enhancedPrompt.length,
-          response_length: aiResponse.response?.length || 0,
+          response_length: aiRecommendationText?.length || 0,
           ai_model: 'gpt-4o',
           analysis_type: 'comprehensive_portfolio_strategy'
         }
@@ -568,8 +577,8 @@ Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska s
       });
 
       return {
-        aiResponse: aiResponse.response,
-        portfolio,
+        aiResponse: aiRecommendationText,
+        portfolio: aiResponse.portfolio || portfolio,
         riskProfile,
         enhancedPrompt,
         stockRecommendations

@@ -21,7 +21,7 @@ serve(async (req) => {
     const requestBody = await req.json();
     console.log('Request body received:', JSON.stringify(requestBody, null, 2));
     
-    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData } = requestBody;
+    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData, stream } = requestBody;
 
     console.log('Portfolio AI Chat function called with:', { 
       message: message?.substring(0, 50) + '...', 
@@ -525,7 +525,67 @@ VIKTIGT:
       }
     }
 
-    // Make streaming request to OpenAI
+    // If the client requests non-streaming, return JSON instead of SSE
+    if (stream === false) {
+      const nonStreamResp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          max_tokens: 2000,
+          stream: false,
+        }),
+      });
+
+      if (!nonStreamResp.ok) {
+        const errorBody = await nonStreamResp.text();
+        console.error('OpenAI API error response:', errorBody);
+        console.error('TELEMETRY ERROR:', { ...telemetryData, error: errorBody });
+        throw new Error(`OpenAI API error: ${nonStreamResp.status} - ${errorBody}`);
+      }
+
+      const nonStreamData = await nonStreamResp.json();
+      const aiMessage = nonStreamData.choices?.[0]?.message?.content || '';
+
+      // Update AI memory and optionally save to chat history
+      await updateAIMemory(supabase, userId, message, aiMessage, aiMemory);
+      if (sessionId && aiMessage) {
+        await supabase
+          .from('portfolio_chat_history')
+          .insert({
+            user_id: userId,
+            chat_session_id: sessionId,
+            message: aiMessage,
+            message_type: 'assistant',
+            context_data: {
+              analysisType,
+              model,
+              requestId,
+              hasMarketData: !!marketDataContext,
+              profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+              requiresConfirmation: profileChangeDetection.requiresConfirmation,
+              confidence: 0.8
+            }
+          });
+      }
+
+      console.log('TELEMETRY COMPLETE:', { ...telemetryData, responseLength: aiMessage.length, completed: true });
+
+      return new Response(
+        JSON.stringify({
+          response: aiMessage,
+          requiresConfirmation: profileChangeDetection.requiresConfirmation,
+          profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Default: streaming SSE response
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -549,7 +609,7 @@ VIKTIGT:
 
     // Return streaming response
     const encoder = new TextEncoder();
-    const stream = new ReadableStream({
+    const streamResp = new ReadableStream({
       async start(controller) {
         try {
           const reader = response.body?.getReader();
@@ -632,7 +692,7 @@ VIKTIGT:
       }
     });
 
-    return new Response(stream, {
+    return new Response(streamResp, {
       headers: {
         ...corsHeaders,
         'Content-Type': 'text/event-stream',

@@ -69,40 +69,58 @@ serve(async (req) => {
     }
 
     // Enhanced system persona for initial portfolio advisor
-    let contextInfo = `Du är en licensierad och auktoriserad svensk investeringsrådgivare med över 15 års erfarenhet av att skapa personliga investeringsportföljer. Du arbetar enligt svensk finanslagstiftning och MiFID II-reglerna.
+// Enhanced system persona for initial portfolio advisor
+let contextInfo = `Du är en licensierad och auktoriserad svensk investeringsrådgivare 
+med över 15 års erfarenhet av att bygga skräddarsydda portföljer. 
+Du arbetar enligt svensk finanslagstiftning och MiFID II-reglerna och 
+fokuserar alltid på att skapa trygghet och långsiktigt värde för klienten.
 
-DITT UPPDRAG SOM RÅDGIVARE:
-Som din personliga investeringsrådgivare ska jag skapa en skräddarsydd portfölj baserat på din unika situation, mål och riskprofil. Jag kommer att rekommendera konkreta investeringar som är tillgängliga på svenska mäklarplattformar som Avanza och Nordnet.
-
-PORTFÖLJSKAPANDE ENLIGT SVENSKA STANDARDER:
-- Skapa en KOMPLETT portfölj med 6-8 specifika investeringar
-- Alla rekommendationer MÅSTE ha korrekt ticker/symbol: **Företag (TICKER)**
-- Endast investeringar tillgängliga på svenska marknaden
+DITT UPPDRAG:
+- Bygg en komplett portfölj baserad på användarens riskprofil, horisont och mål
+- Portföljen ska bestå av **6–8 unika investeringar**
+- Endast investeringar tillgängliga via svenska plattformar (Avanza, Nordnet)
+- Alltid korrekt ticker-symbol: **Företag (TICKER)**
 - Balansera mellan svenska aktier, nordiska fonder och globala ETF:er
-- Anpassa efter svensk skattelagstiftning (ISK/KF-optimering)
+- Anpassa rekommendationer för ISK/KF-optimering
+- Summera allokeringar till exakt **100%**
 
-OBLIGATORISK REKOMMENDATIONSFORMAT:
-**Exakt företagsnamn (TICKER)**: Professionell analys av varför denna investering är rätt för dig, inklusive fundamental analys, riskbedömning och hur den passar din profil. Rekommenderad allokering: XX%
+OBLIGATORISKT FORMAT FÖR VARJE INVESTERING:
+### Exakt företagsnamn (TICKER)
+- **Analys:** Varför denna investering passar användaren (fundamental analys + riskbedömning)
+- **Roll i portföljen:** Hur den kompletterar helheten
+- **Rekommenderad allokering:** XX%
 
-KONKRETA EXEMPEL PÅ KORREKT FORMAT:
-**Investor AB (INVE-B)**: Svenskt investmentbolag med diversifierad portfölj av kvalitetsbolag. Ger dig exponering mot industriföretag och tillväxtbolag med erfaren förvaltning. Historiskt stabila utdelningar. Allokering: 15%
+KONKRETA EXEMPEL:
+### Investor AB (INVE-B)
+- **Analys:** Svenskt investmentbolag med diversifierad portfölj och stark historik
+- **Roll i portföljen:** Basexponering mot stabila svenska storbolag
+- **Allokering:** 15%
 
-**Spiltan Aktiefond Investmentbolag**: Aktivt förvaltad fond som fokuserar på nordiska investmentbolag. Låg avgift (0,6%) och stark historisk avkastning. Passar din risktolerans perfekt. Allokering: 20%
+### Spiltan Aktiefond Investmentbolag
+- **Analys:** Aktivt förvaltad fond med fokus på nordiska investmentbolag, låg avgift
+- **Roll i portföljen:** Diversifiering och långsiktig stabilitet
+- **Allokering:** 20%
 
-**XACT OMXS30 (XACT30)**: Svenskt indexföljare som speglar de 30 största bolagen på Stockholmsbörsen. Bred exponering mot svensk storbolagsmarknad med minimal avgift. Allokering: 25%
+### XACT OMXS30 (XACT30)
+- **Analys:** Indexfond som speglar Stockholmsbörsens 30 största bolag
+- **Roll i portföljen:** Kostnadseffektiv bred bas
+- **Allokering:** 25%
 
-FÖRBJUDET ATT REKOMMENDERA:
-- Allmänna strategier utan specifika investeringar  
-- Diversifiering som "rekommendation"
-- Generella råd utan konkreta ticker-symboler
-- Icke-investerbara koncept eller metoder
+FÖRBJUDET:
+- Generella råd utan tickers
+- Att repetera samma investering flera gånger
+- Allmän diversifiering som "råd"
+- Icke-investerbara koncept
 
 KVALITETSKRAV:
-- Endast investeringar med verifierbara ticker-symboler
-- Variera sektorer baserat på klientens preferenser
-- Anpassa risknivå till klientens profil exakt
-- Summera allokeringar till exakt 100%
-- Unika rekommendationer för varje klient - aldrig standardmallar`;
+- Alla investeringar ska vara verifierbara med tickers
+- Variera sektorer och ge en balanserad portfölj
+- Anpassa risknivån exakt till användarens profil
+- Avsluta alltid med en **öppen fråga** som bjuder in till vidare dialog
+
+**Disclaimer:** Alla råd är endast i utbildningssyfte. Konsultera alltid en licensierad rådgivare innan du fattar beslut.
+`;
+
 
     // Add detailed user profile information
     if (riskProfile) {
@@ -240,9 +258,15 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
     }
 
     const openAIData = await openAIResponse.json();
-    const aiRecommendations = openAIData.choices[0].message.content;
+    const aiRecommendations = openAIData.choices?.[0]?.message?.content;
     
+    console.log('OpenAI full response:', JSON.stringify(openAIData, null, 2));
     console.log('AI recommendations received:', aiRecommendations);
+    
+    if (!aiRecommendations) {
+      console.error('No AI recommendations received from OpenAI');
+      throw new Error('No AI response received from OpenAI');
+    }
 
     // Parse AI recommendations into structured format
     const recommendedStocks = parseAIRecommendations(aiRecommendations);
@@ -315,11 +339,16 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
       }
     }
 
+    console.log('Returning response with AI recommendations:', aiRecommendations?.substring(0, 200));
+    
     return new Response(JSON.stringify({
       success: true,
       portfolio: portfolio,
       aiRecommendations: aiRecommendations,
-      confidence: calculateConfidence(recommendedStocks, riskProfile)
+      aiResponse: aiRecommendations, // Add this for compatibility
+      response: aiRecommendations, // Add this for compatibility 
+      confidence: calculateConfidence(recommendedStocks, riskProfile),
+      recommendedStocks: recommendedStocks
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -351,9 +380,10 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
 
 function parseAIRecommendations(text: string): Array<{name: string, symbol?: string, allocation: number, sector?: string}> {
   const stocks: Array<{name: string, symbol?: string, allocation: number, sector?: string}> = [];
-  const lines = text.split('\n');
-  
-  // Define invalid patterns that should be filtered out (extended list)
+  const lines = text.split('\n').map(l => l.trim());
+
+  const isBlank = (s: string) => !s || /^\s*$/.test(s);
+
   const invalidPatterns = [
     /^(erfarenhet|ålder|investeringsstil|risktolerans|tidshorisont|månatligt)/i,
     /^(diversifiering|rebalansering|skatteoptimering|strategi|optimering)/i,
@@ -366,73 +396,90 @@ function parseAIRecommendations(text: string): Array<{name: string, symbol?: str
     /^(marknadsanalys|timing|teknisk analys|fundamental)/i,
     /^(växling|byte|ändring|justering|omfördelning)/i
   ];
-  
-  // Define valid ticker patterns to ensure we only get real investments
-  const validTickerPatterns = [
-    /^[A-Z]{2,6}(-[A-Z])?$/, // Standard tickers like EVO, SHB-A
-    /^XACT/, // XACT ETFs
-    /^(AVANZA|SPILTAN|LÄNSFÖRSÄKRINGAR)/, // Valid fund prefixes
-    /^[A-Z]+\s*(GLOBAL|SWEDEN|EUROPE|INDEX)$/i // Fund patterns
-  ];
-  
-  for (const line of lines) {
-    // Look for pattern: **Name (SYMBOL)**: Description. Allokering: XX%
-   const match = line.match(/\*\*([^(]+)\s*\(([^)]+)\)\*\*.*?Allokering[: ]?\s*(\d+)%/i);
 
-    if (match) {
-      const name = match[1].trim();
-      const symbol = match[2].trim();
-      const allocation = parseInt(match[3]);
-      
-      // Skip if name matches invalid patterns
-      const isInvalidName = invalidPatterns.some(pattern => pattern.test(name));
-      if (isInvalidName) {
-        console.log(`Filtering out invalid recommendation (invalid name): ${name}`);
-        continue;
-      }
-      
-      // Skip if symbol doesn't match valid patterns
-      const isValidTicker = validTickerPatterns.some(pattern => pattern.test(symbol));
-      if (!isValidTicker && !name.toLowerCase().includes('fond') && !name.toLowerCase().includes('index')) {
-        console.log(`Filtering out invalid recommendation (invalid ticker): ${name} (${symbol})`);
-        continue;
-      }
-      
-      // Skip if allocation is unrealistic
-      if (allocation < 1 || allocation > 40) {
-        console.log(`Filtering out unrealistic allocation: ${name} (${allocation}%)`);
-        continue;
-      }
-      
-      // Skip if name is too generic or strategic
-      if (name.length < 3 || /^(strategi|metod|approach|teknik)$/i.test(name)) {
-        console.log(`Filtering out generic name: ${name}`);
-        continue;
-      }
-      
-      // Determine sector based on name or symbol
-      let sector = 'Allmän';
-      if (name.toLowerCase().includes('bank') || symbol.includes('SHB')) {
-        sector = 'Bank';
-      } else if (name.toLowerCase().includes('fastighet') || symbol.includes('CAST')) {
-        sector = 'Fastighet';
-      } else if (name.toLowerCase().includes('industri') || name.toLowerCase().includes('investor')) {
-        sector = 'Investmentbolag';
-      } else if (name.toLowerCase().includes('gaming') || name.toLowerCase().includes('evolution')) {
-        sector = 'Teknik';
-      } else if (name.toLowerCase().includes('global') || name.toLowerCase().includes('world') || name.toLowerCase().includes('index')) {
-        sector = 'Indexfond';
-      }
-      
-      stocks.push({
-        name,
-        symbol,
-        allocation,
-        sector
-      });
+  const tickerPatterns: RegExp[] = [
+    /^[A-Z0-9]{1,8}([-.][A-Z0-9]{1,4})?$/,
+    /^XACT[A-Z0-9-]*$/i,
+    /^(SPILTAN|LÄNSFÖRSÄKRINGAR|LAN(S|S)FÖRSÄKRINGAR|AVANZA|SEB|HANDELSBANKEN)/i
+  ];
+  const isValidTicker = (sym?: string) => !!sym && tickerPatterns.some(p => p.test(sym.trim().toUpperCase()));
+
+  const inferSector = (name: string, symbol?: string) => {
+    const n = name.toLowerCase();
+    const s = (symbol || '').toUpperCase();
+    if (n.includes('bank') || /SHB|SEB|NDA/.test(s)) return 'Bank';
+    if (n.includes('fastighet') || /CAST/.test(s)) return 'Fastighet';
+    if (n.includes('investor') || n.includes('investment')) return 'Investmentbolag';
+    if (n.includes('global') || n.includes('world') || n.includes('index')) return 'Indexfond';
+    if (n.includes('tech') || n.includes('teknik') || /NVDA|AAPL|MSFT/.test(s)) return 'Teknik';
+    return 'Allmän';
+  };
+
+  const seen = new Set<string>();
+  const pushItem = (name: string, symbol: string | undefined, allocation: number) => {
+    if (!name || allocation <= 0 || allocation > 100) return;
+    if (invalidPatterns.some(p => p.test(name))) return;
+    if (name.length < 2) return;
+
+    if (symbol && !isValidTicker(symbol)) {
+      const lower = name.toLowerCase();
+      const looksLikeFund = lower.includes('fond') || lower.includes('etf');
+      if (!looksLikeFund) return;
+      symbol = undefined;
+    }
+
+    const key = `${name.toLowerCase()}|${(symbol || '').toUpperCase()}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    stocks.push({
+      name: name.trim(),
+      symbol: symbol?.trim(),
+      allocation: Math.round(allocation),
+      sector: inferSector(name, symbol)
+    });
+  };
+
+  for (const line of lines) {
+    if (isBlank(line)) continue;
+    const inline = line.match(/\*\*?\s*([^(\n]+?)\s*\(([^)]+)\)\s*\*\*?.*?(Rekommenderad\s+allokering|Allokering)[:\s]*([0-9]{1,3})%/i);
+    if (inline) {
+      const name = inline[1].trim();
+      const symbol = inline[2].trim();
+      const allocation = parseInt(inline[5], 10);
+      pushItem(name, symbol, allocation);
     }
   }
-  
+
+  let currentName: string | undefined;
+  let currentSymbol: string | undefined;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (isBlank(line)) continue;
+
+    const header = line.match(/^#{2,4}\s*([^#(]+?)\s*\(([^)]+)\)\s*$/);
+    if (header) {
+      currentName = header[1].trim();
+      currentSymbol = header[2].trim();
+      continue;
+    }
+
+    const headerNoTicker = line.match(/^#{2,4}\s*([^#(]+?)\s*$/);
+    if (headerNoTicker) {
+      currentName = headerNoTicker[1].trim();
+      currentSymbol = undefined;
+      continue;
+    }
+
+    const alloc = line.match(/^(?:[-*]\s*)?\*{0,2}(Rekommenderad\s+allokering|Allokering)\*{0,2}[:\s]*([0-9]{1,3})%/i);
+    if (alloc && currentName) {
+      const allocation = parseInt(alloc[2], 10);
+      pushItem(currentName, currentSymbol, allocation);
+      currentName = undefined;
+      currentSymbol = undefined;
+    }
+  }
+
   console.log(`Parsed ${stocks.length} valid recommendations from AI response`);
   return stocks;
 }
