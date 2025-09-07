@@ -38,7 +38,7 @@ export const useAIChat = (portfolioId?: string) => {
   const [isLoadingSession, setIsLoadingSession] = useState(false);
 
   const loadMessages = useCallback(async (sessionId: string) => {
-    if (!user || !portfolioId) return;
+    if (!user) return;
     
     console.log('=== LOADING MESSAGES ===');
     console.log('Session ID:', sessionId);
@@ -89,10 +89,10 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoadingSession(false);
     }
-  }, [user, portfolioId, toast]);
+  }, [user, toast]);
 
   const loadSessions = useCallback(async () => {
-    if (!user || !portfolioId) return;
+    if (!user) return;
     
     console.log('=== LOADING SESSIONS ===');
     console.log('User ID:', user.id);
@@ -136,7 +136,7 @@ export const useAIChat = (portfolioId?: string) => {
         variant: "destructive",
       });
     }
-  }, [user, portfolioId, toast, loadMessages]);
+  }, [user, toast, loadMessages]);
 
   const loadSession = useCallback(async (sessionId: string) => {
     console.log('=== MANUALLY LOADING SESSION ===');
@@ -164,8 +164,8 @@ export const useAIChat = (portfolioId?: string) => {
     console.log('Custom name:', customName);
     console.log('Should send initial message:', shouldSendInitialMessage);
     
-    if (!user || !portfolioId) {
-      console.log('Cannot create session: missing user or portfolio');
+    if (!user) {
+      console.log('Cannot create session: missing user');
       return;
     }
     
@@ -236,7 +236,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, portfolioId, toast]);
+  }, [user, toast]);
 
   const deleteSession = useCallback(async (sessionId: string) => {
     if (!user) {
@@ -435,8 +435,8 @@ export const useAIChat = (portfolioId?: string) => {
     console.log('Portfolio ID:', portfolioId);
     console.log('Message to send:', messageContent);
     
-    if (!user || !portfolioId) {
-      console.log('Cannot create session: missing user or portfolio');
+    if (!user) {
+      console.log('Cannot create session: missing user');
       return;
     }
     
@@ -498,7 +498,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, portfolioId, toast]);
+  }, [user, toast]);
 
   const sendMessageToSession = useCallback(async (content: string, sessionId?: string) => {
     console.log('=== SEND MESSAGE TO SESSION ===');
@@ -770,11 +770,11 @@ export const useAIChat = (portfolioId?: string) => {
 
   // Load sessions when component mounts - but only once!
   useEffect(() => {
-    if (user && portfolioId && !hasInitialized) {
+    if (user && !hasInitialized) {
       console.log('Component mounted, loading sessions...');
       loadSessions();
     }
-  }, [user, portfolioId, hasInitialized, loadSessions]);
+  }, [user, hasInitialized, loadSessions]);
 
   return {
     messages,
