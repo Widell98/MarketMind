@@ -269,15 +269,27 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
     }
 
     // Parse AI recommendations into structured format
-    const recommendedStocks = parseAIRecommendations(aiRecommendations);
+    let recommendedStocks = parseAIRecommendations(aiRecommendations);
     
     console.log('Parsed recommended stocks:', recommendedStocks);
 
     // Validate that we have actual recommendations
     if (recommendedStocks.length === 0) {
       console.error('No valid recommendations parsed from AI response');
-      throw new Error('Failed to generate valid portfolio recommendations');
+      console.log('Attempting fallback extraction from headings...');
+      const fallback = fallbackFromHeadings(aiRecommendations);
+      if (fallback.length > 0) {
+        recommendedStocks = fallback;
+        console.log('Fallback extraction produced recommendations:', recommendedStocks);
+      }
     }
+
+    if (recommendedStocks.length === 0) {
+      console.error('Fallback parsing also returned 0 items. Using safe defaults based on risk profile');
+      recommendedStocks = defaultRecommendations(riskProfile);
+      console.log('Default recommendations applied:', recommendedStocks);
+    }
+
 
     // Create portfolio record
     const portfolioData = {
@@ -341,6 +353,9 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
 
     console.log('Returning response with AI recommendations:', aiRecommendations?.substring(0, 200));
     
+    const monthly = riskProfile.monthly_investment_amount || 0;
+    const savingsAdvice = `Sparrekommendation: Sätt av ${monthly ? monthly.toLocaleString() + ' SEK/mån' : 'ett fast belopp varje månad'} enligt allokeringen ovan. Börja med en bred bas (t.ex. global indexfond), fyll på regelbundet och rebalansera årligen.`;
+    
     return new Response(JSON.stringify({
       success: true,
       portfolio: portfolio,
@@ -348,7 +363,8 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
       aiResponse: aiRecommendations, // Add this for compatibility
       response: aiRecommendations, // Add this for compatibility 
       confidence: calculateConfidence(recommendedStocks, riskProfile),
-      recommendedStocks: recommendedStocks
+      recommendedStocks: recommendedStocks,
+      savingsAdvice
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -471,7 +487,7 @@ function parseAIRecommendations(text: string): Array<{name: string, symbol?: str
       continue;
     }
 
-    const alloc = line.match(/^(?:[-*]\s*)?\*{0,2}(Rekommenderad\s+allokering|Allokering)\*{0,2}[:\s]*([0-9]{1,3})%/i);
+    const alloc = line.match(/(?:^|[-*]\s*)(?:\*\*)?(Rekommenderad\s+allokering|Allokering)(?:\*\*)?[:：]?\s*([0-9]{1,3})%/i);
     if (alloc && currentName) {
       const allocation = parseInt(alloc[2], 10);
       pushItem(currentName, currentSymbol, allocation);
@@ -568,3 +584,103 @@ function calculateConfidence(stocks: Array<any>, riskProfile: any): number {
   
   return Math.min(confidence, 1.0);
 }
+
+// --- Fallback helpers to guarantee a usable response ---
+function detectSector(name: string, symbol?: string) {
+  const n = name.toLowerCase();
+  const s = (symbol || '').toUpperCase();
+  if (n.includes('bank') || /SHB|SEB|NDA/.test(s)) return 'Bank';
+  if (n.includes('fastighet') || /CAST|SBB/.test(s)) return 'Fastighet';
+  if (n.includes('investor') || n.includes('investment')) return 'Investmentbolag';
+  if (n.includes('global') || n.includes('world') || n.includes('index')) return 'Indexfond';
+  if (n.includes('tech') || n.includes('teknik') || /NVDA|AAPL|MSFT|EVO/.test(s)) return 'Teknik';
+  return 'Allmän';
+}
+
+function ensureSum100(items: Array<{ allocation: number }>) {
+  // Round allocations and fix total to 100
+  let total = items.reduce((acc, it) => acc + Math.round(it.allocation), 0);
+  items.forEach(it => (it.allocation = Math.round(it.allocation)));
+  const diff = 100 - total;
+  if (items.length > 0 && diff !== 0) {
+    items[items.length - 1].allocation = Math.max(0, items[items.length - 1].allocation + diff);
+  }
+}
+
+function fallbackFromHeadings(text: string): Array<{name: string, symbol?: string, allocation: number, sector?: string}> {
+  const results: Array<{name: string, symbol?: string, allocation: number, sector?: string}> = [];
+  const headingRegex = /^#{2,4}\s*([^#\n]+?)(?:\s*\(([^)]+)\))?\s*$/gmi;
+  const allocRegex = /(Rekommenderad\s+allokering|Allokering)\s*[:：]?\s*([0-9]{1,3})\s*%/i;
+
+  const lines = text.split('\n');
+  let currentIndex: number | null = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const line = raw.trim();
+    const h = headingRegex.exec(line);
+    // Reset lastIndex for global regex to allow line-by-line check
+    headingRegex.lastIndex = 0;
+    if (h) {
+      const name = h[1].trim();
+      const symbol = h[2]?.trim();
+      results.push({ name, symbol, allocation: 0, sector: detectSector(name, symbol) });
+      currentIndex = results.length - 1;
+      continue;
+    }
+
+    if (currentIndex != null) {
+      const a = line.match(allocRegex);
+      if (a) {
+        const pct = Math.min(100, Math.max(0, parseInt(a[2], 10)));
+        results[currentIndex].allocation = pct;
+        currentIndex = null; // move on to next block
+      }
+    }
+  }
+
+  // If some items have no allocation, spread remaining equally
+  const assigned = results.reduce((sum, r) => sum + (r.allocation || 0), 0);
+  const unallocated = Math.max(0, 100 - assigned);
+  const noAlloc = results.filter(r => !r.allocation);
+  if (noAlloc.length > 0) {
+    const each = Math.floor(unallocated / noAlloc.length) || (results.length ? Math.floor(100 / results.length) : 0);
+    noAlloc.forEach(r => (r.allocation = each));
+  }
+  ensureSum100(results);
+
+  // Keep 6-8 items max
+  return results.filter(r => r.name && r.allocation > 0).slice(0, 8);
+}
+
+function defaultRecommendations(riskProfile: any): Array<{name: string, symbol?: string, allocation: number, sector?: string}> {
+  // Simple defaults tuned by risk tolerance
+  const rt = (riskProfile?.risk_tolerance || 'moderate').toLowerCase();
+  let base: Array<{name: string, symbol?: string, allocation: number, sector?: string}> = [
+    { name: 'Länsförsäkringar Global Indexnära', allocation: 40, sector: 'Indexfond' },
+    { name: 'Spiltan Aktiefond Investmentbolag', allocation: 25, sector: 'Investmentbolag' },
+    { name: 'XACT OMXS30', symbol: 'XACT30', allocation: 20, sector: 'Indexfond' },
+    { name: 'Handelsbanken A', symbol: 'SHB-A', allocation: 15, sector: 'Bank' },
+  ];
+
+  if (rt === 'aggressive') {
+    base = [
+      { name: 'Länsförsäkringar Global Indexnära', allocation: 30, sector: 'Indexfond' },
+      { name: 'Spiltan Aktiefond Investmentbolag', allocation: 25, sector: 'Investmentbolag' },
+      { name: 'Swedbank Robur Ny Teknik A', allocation: 20, sector: 'Teknik' },
+      { name: 'XACT OMXS30', symbol: 'XACT30', allocation: 15, sector: 'Indexfond' },
+      { name: 'Handelsbanken A', symbol: 'SHB-A', allocation: 10, sector: 'Bank' },
+    ];
+  } else if (rt === 'conservative') {
+    base = [
+      { name: 'Länsförsäkringar Global Indexnära', allocation: 45, sector: 'Indexfond' },
+      { name: 'Spiltan Aktiefond Investmentbolag', allocation: 25, sector: 'Investmentbolag' },
+      { name: 'XACT OMXS30', symbol: 'XACT30', allocation: 15, sector: 'Indexfond' },
+      { name: 'Handelsbanken A', symbol: 'SHB-A', allocation: 15, sector: 'Bank' },
+    ];
+  }
+
+  ensureSum100(base);
+  return base;
+}
+
