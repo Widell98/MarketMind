@@ -62,6 +62,13 @@ serve(async (req) => {
       });
     }
 
+    // Fetch user AI memory for deeper personalization
+    const { data: aiMemory } = await supabase
+      .from('user_ai_memory')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
     // Call OpenAI API for personalized recommendations
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
@@ -150,6 +157,15 @@ KVALITETSKRAV:
       }
     }
 
+    // Add AI memory to personalize further
+    if (aiMemory) {
+      const favSectors = Array.isArray(aiMemory.favorite_sectors) && aiMemory.favorite_sectors.length ? aiMemory.favorite_sectors.join(', ') : null;
+      const prefCompanies = Array.isArray(aiMemory.preferred_companies) && aiMemory.preferred_companies.length ? aiMemory.preferred_companies.join(', ') : null;
+      const style = aiMemory.communication_style || null;
+      const respLen = aiMemory.preferred_response_length || null;
+      contextInfo += `\n\nAI-MINNEN OCH PREFERENSER:${favSectors ? `\n- Favoritsektorer: ${favSectors}` : ''}${prefCompanies ? `\n- Föredragna bolag: ${prefCompanies}` : ''}${style ? `\n- Kommunikationsstil: ${style}` : ''}${respLen ? `\n- Föredragen svarslängd: ${respLen}` : ''}`;
+    }
+
     if (existingSymbols.size > 0) {
       contextInfo += `\n\nNUVARANDE INNEHAV (UNDVIK DESSA I REKOMMENDATIONER):`;
       Array.from(existingSymbols).forEach(symbol => {
@@ -194,12 +210,16 @@ Kort analys av klientens situation och investeringsprofil
 - Nyckeltal att följa upp
 - När portföljen bör justeras
 
+**7. PERSONLIG SPARREKOMMENDATION**
+- 3–5 konkreta steg och en enkel månadsplan baserat på användarens profil och preferenser
+
 VIKTIGA RÅDGIVARKRAV:
 - Varje investering MÅSTE ha verifierbar ticker/symbol
 - Anpassa efter svensk ISK/KF-lagstiftning
-- Motivera varje val utifrån klientens specifika profil
+- Motivera varje val utifrån klientens specifika profil och AI-minnen
 - Totala allokeringen ska vara exakt 100%
 - Endast investeringar tillgängliga på svenska plattformar
+- Svar ska vara UNIKT för denna användare; återanvänd inte mallar eller standardsvar
 
 EXEMPEL PÅ PROFESSIONELL REKOMMENDATION:
 **Handelsbanken A (SHB-A)**: Stabil svensk storbank med stark kapitalbas och konservativ riskprofil. Passar din preferens för svenska kvalitetsbolag och ger stadig direktavkastning (~4%). Utmärkt kärninnehav för långsiktigt sparande. Rekommenderad allokering: 12%`;
@@ -233,7 +253,7 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage }
         ],
-        temperature: 0.7,
+        temperature: 0.85,
         max_tokens: 2000,
       }),
     });
@@ -353,9 +373,6 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
 
     console.log('Returning response with AI recommendations:', aiRecommendations?.substring(0, 200));
     
-    const monthly = riskProfile.monthly_investment_amount || 0;
-    const savingsAdvice = `Sparrekommendation: Sätt av ${monthly ? monthly.toLocaleString() + ' SEK/mån' : 'ett fast belopp varje månad'} enligt allokeringen ovan. Börja med en bred bas (t.ex. global indexfond), fyll på regelbundet och rebalansera årligen.`;
-    
     return new Response(JSON.stringify({
       success: true,
       portfolio: portfolio,
@@ -363,8 +380,7 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
       aiResponse: aiRecommendations, // Add this for compatibility
       response: aiRecommendations, // Add this for compatibility 
       confidence: calculateConfidence(recommendedStocks, riskProfile),
-      recommendedStocks: recommendedStocks,
-      savingsAdvice
+      recommendedStocks: recommendedStocks
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
