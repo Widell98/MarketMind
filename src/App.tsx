@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import StockCases from "./pages/StockCases";
 import StockCaseDetail from "./pages/StockCaseDetail";
@@ -37,37 +38,39 @@ function App() {
             <TooltipProvider>
               <Toaster />
               <Sonner />
-              <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/stock-cases" element={<StockCases />} />
-              <Route path="/stock-cases/:id" element={<StockCaseDetail />} />
-              <Route path="/analysis/:id" element={<AnalysisDetail />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/profile/:userId" element={<UserProfile />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/auth/reset-password" element={<ResetPassword />} />
-              <Route path="/portfolio-implementation" element={<PortfolioImplementation />} />
-              <Route path="/portfolio-advisor" element={<PortfolioAdvisor />} />
-              <Route path="/ai-chat" element={<AIChat />} />
-              <Route path="/learning" element={<Learning />} />
-              <Route path="/social" element={<SocialIndex />} />
-              <Route path="/admin/stock-cases" element={<AdminStockCases />} />
-              <Route path="/advanced-features" element={<AdvancedFeatures />} />
-              <Route path="/discover" element={<Discover />} />
-              {/* Legacy routes for backwards compatibility */}
-              <Route path="/discover-opportunities" element={<Discover />} />
-              <Route path="/market-analyses" element={<Discover />} />
-              <Route path="/watchlist" element={<Watchlist />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </LanguageProvider>
-  </ThemeProvider>
-</QueryClientProvider>
-);
+              <ErrorBoundary>
+                <BrowserRouter>
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/stock-cases" element={<StockCases />} />
+                    <Route path="/stock-cases/:id" element={<StockCaseDetail />} />
+                    <Route path="/analysis/:id" element={<AnalysisDetail />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/profile/:userId" element={<UserProfile />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/auth/reset-password" element={<ResetPassword />} />
+                    <Route path="/portfolio-implementation" element={<PortfolioImplementation />} />
+                    <Route path="/portfolio-advisor" element={<PortfolioAdvisor />} />
+                    <Route path="/ai-chat" element={<AIChat />} />
+                    <Route path="/learning" element={<Learning />} />
+                    <Route path="/social" element={<SocialIndex />} />
+                    <Route path="/admin/stock-cases" element={<AdminStockCases />} />
+                    <Route path="/advanced-features" element={<AdvancedFeatures />} />
+                    <Route path="/discover" element={<Discover />} />
+                    {/* Legacy routes for backwards compatibility */}
+                    <Route path="/discover-opportunities" element={<Discover />} />
+                    <Route path="/market-analyses" element={<Discover />} />
+                    <Route path="/watchlist" element={<Watchlist />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </BrowserRouter>
+              </ErrorBoundary>
+            </TooltipProvider>
+          </AuthProvider>
+        </LanguageProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
 }
 
 export default App;
