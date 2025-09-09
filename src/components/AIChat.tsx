@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAIChat } from '@/hooks/useAIChat';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -199,7 +199,7 @@ const AIChat = ({
     setInput('');
     await sendMessage(messageToSend);
   };
-  const handleNewSession = async () => {
+  const handleNewSession = useCallback(async () => {
     if (!user) return;
     await createNewSession();
     setInput('');
@@ -207,13 +207,13 @@ const AIChat = ({
     if (isMobile) {
       setSidebarOpen(false);
     }
-  };
-  const handleLoadSession = async (sessionId: string) => {
+  }, [user, createNewSession, isMobile]);
+  const handleLoadSession = useCallback(async (sessionId: string) => {
     await loadSession(sessionId);
     if (isMobile) {
       setSidebarOpen(false);
     }
-  };
+  }, [loadSession, isMobile]);
   const handleExamplePrompt = (prompt: string) => {
     // Exit guide session when user starts using AI chat
     if (isGuideSession) {
@@ -231,15 +231,15 @@ const AIChat = ({
       }, 100);
     }
   };
-  const handleLoadGuideSession = () => {
+  const handleLoadGuideSession = useCallback(() => {
     // Clear regular chat and show guide
     setIsGuideSession(true);
     clearMessages();
     if (isMobile) {
       setSidebarOpen(false);
     }
-  };
-  const sidebarProps = {
+  }, [clearMessages, isMobile]);
+  const sidebarProps = useMemo(() => ({
     currentSessionId: isGuideSession ? 'guide-session' : currentSessionId,
     onLoadSession: (sessionId: string) => {
       setIsGuideSession(false);
@@ -253,14 +253,13 @@ const AIChat = ({
     },
     onLoadGuideSession: handleLoadGuideSession,
     isLoadingSession: isLoadingSession,
-    className: isMobile ? "w-full" : ""
-  };
-  const SidebarContent = React.memo(() => <ChatFolderSidebar {...sidebarProps} />);
+    className: isMobile ? "w-full" : "",
+  }), [isGuideSession, currentSessionId, handleLoadSession, deleteSession, editSessionName, handleNewSession, handleLoadGuideSession, isLoadingSession, isMobile]);
   return <div className="flex h-full bg-background overflow-hidden">
       {user ? <>
           {/* Desktop Sidebar - Clean and minimal */}
           {!isMobile && !desktopSidebarCollapsed && <div className="w-72 bg-background border-r border-border">
-              <SidebarContent />
+              <ChatFolderSidebar {...sidebarProps} />
             </div>}
 
           {/* Main Chat Area */}
@@ -276,7 +275,7 @@ const AIChat = ({
                       </Button>
                     </SheetTrigger>
                     <SheetContent side="left" className="w-72 p-0">
-                      <SidebarContent />
+                      <ChatFolderSidebar {...sidebarProps} />
                     </SheetContent>
                   </Sheet>}
                 

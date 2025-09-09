@@ -25,6 +25,15 @@ const AIChatPage = () => {
   } = usePortfolio();
   const [showLoginModal, setShowLoginModal] = useState(false);
 
+  useEffect(() => {
+    if (stockName || message) {
+      const params = new URLSearchParams(searchParams);
+      params.delete('stock');
+      params.delete('message');
+      navigate(`/ai-chat${params.toString() ? `?${params.toString()}` : ''}`, { replace: true });
+    }
+  }, [stockName, message, navigate, searchParams]);
+
   // Redirect to portfolio advisor if no risk profile exists
   useEffect(() => {
     if (user && !riskProfileLoading && !riskProfile) {

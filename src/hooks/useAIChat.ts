@@ -31,11 +31,23 @@ export const useAIChat = (portfolioId?: string) => {
   const { checkUsageLimit, subscription, usage, fetchUsage } = useSubscription();
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('ai-chat-current-session');
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [quotaExceeded, setQuotaExceeded] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (currentSessionId) {
+      localStorage.setItem('ai-chat-current-session', currentSessionId);
+    } else {
+      localStorage.removeItem('ai-chat-current-session');
+    }
+  }, [currentSessionId]);
 
   const loadMessages = useCallback(async (sessionId: string) => {
     if (!user) return;
@@ -768,13 +780,17 @@ export const useAIChat = (portfolioId?: string) => {
   // Stabilize the loadSessions reference to prevent infinite loops - but only call once
   const hasInitialized = useMemo(() => sessions.length > 0, [sessions.length]);
 
-  // Load sessions when component mounts - but only once!
+  // Load sessions and restore last session on mount
   useEffect(() => {
-    if (user && !hasInitialized) {
+    if (!user) return;
+    if (currentSessionId && messages.length === 0) {
+      loadMessages(currentSessionId);
+    }
+    if (!hasInitialized) {
       console.log('Component mounted, loading sessions...');
       loadSessions();
     }
-  }, [user, hasInitialized, loadSessions]);
+  }, [user, currentSessionId, messages.length, hasInitialized, loadSessions, loadMessages]);
 
   return {
     messages,
