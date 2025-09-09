@@ -1791,6 +1791,10 @@ export type Database = {
         Args: { _usage_type: string; _user_id: string }
         Returns: boolean
       }
+      invalidate_suspicious_sessions: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
       log_security_event: {
         Args: {
           p_action: string
