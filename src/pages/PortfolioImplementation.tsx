@@ -210,13 +210,13 @@ const PortfolioImplementation = () => {
 
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             <div className="xl:col-span-3 space-y-4 sm:space-y-6 lg:space-y-8">
-              <div className="relative bg-gradient-to-br from-blue-50/80 via-white/70 to-blue-100/60 dark:from-blue-100/10 dark:via-card/70 dark:to-blue-200/5 backdrop-blur-xl border border-blue-200/30 dark:border-blue-400/20 rounded-3xl shadow-xl shadow-blue-500/10 overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-primary"></div>
+              <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
                 <PortfolioOverview portfolio={activePortfolio} onQuickChat={handleQuickChat} onActionClick={handleActionClick} />
               </div>
               
-              <div className="relative bg-gradient-to-br from-blue-50/80 via-white/70 to-blue-100/60 dark:from-blue-100/10 dark:via-card/70 dark:to-blue-200/5 backdrop-blur-xl border border-blue-200/30 dark:border-blue-400/20 rounded-3xl shadow-xl shadow-blue-500/10 overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-primary"></div>
+              <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
                 <CommunityRecommendations />
               </div>
             </div>
