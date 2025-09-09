@@ -156,7 +156,7 @@ Ge ett kortfattat, snabbt svar på investeringsfrågan.`;
 
   if (!isOpen) {
     return (
-      <div className="fixed bottom-20 right-6 md:bottom-6 md:right-6 z-50">
+      <div className="fixed bottom-20 right-6 md:bottom-6 md:right-6 z-50 hidden md:block">
         <Button
           onClick={() => setIsOpen(true)}
           className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-r from-primary to-blue-600 hover:scale-105 shadow-lg"
@@ -171,7 +171,7 @@ Ge ett kortfattat, snabbt svar på investeringsfrågan.`;
   }
 
   return (
-    <div className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50">
+    <div className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 hidden md:block">
       <Card className={cn('shadow-2xl border-2 border-primary/20 transition-all duration-300', isMinimized ? 'w-72 md:w-80 h-14 md:h-16' : 'w-80 md:w-96 h-[450px] md:h-[500px]')}>
         <div className="bg-gradient-to-r from-primary to-blue-600 text-white p-2 md:p-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
