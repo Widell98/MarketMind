@@ -70,7 +70,10 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </header>
             
             {/* Main content */}
-            <main className="flex-1 container-responsive py-2 sm:py-4 lg:py-6 min-h-0 max-w-full overflow-auto">
+            <main
+              className="flex-1 container-responsive py-2 sm:py-4 lg:py-6 min-h-0 max-w-full overflow-y-scroll"
+              style={{ scrollbarGutter: 'stable' }}
+            >
               <div className="mb-2 sm:mb-4">
                 <BreadcrumbNavigation />
               </div>

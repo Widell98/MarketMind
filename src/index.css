@@ -131,11 +131,13 @@
 }
 
 @layer base {
-  * {
-    @apply border-border;
+  *,
+  *::before,
+  *::after {
+    @apply box-border;
   }
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground font-sans overflow-y-scroll;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading font-semibold;
@@ -263,7 +265,7 @@
     background-color: hsla(var(--primary), 0.2) !important;
     color: hsl(var(--primary)) !important;
     border-radius: 0.5rem;
-    margin: 2px;
+    box-shadow: 0 0 0 3px hsla(var(--primary), 0.15) !important;
   }
 
   /* Mobile expanded chat overlay */
