@@ -4,27 +4,32 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Users, 
-  Brain, 
-  ExternalLink, 
-  User,
-  BookOpen,
-  TrendingUp,
-  Tag,
-  ArrowRight,
-  Sparkles,
-  Trash2,
-  ShoppingCart,
-  MessageCircle,
-  Star
-} from 'lucide-react';
+import { Users, Brain, ArrowRight, Sparkles, LayoutGrid, List as ListIcon } from 'lucide-react';
+import RecommendationCard from '@/components/RecommendationCard';
 import { useCommunityRecommendations, CommunityRecommendation } from '@/hooks/useCommunityRecommendations';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { useUserHoldings } from '@/hooks/useUserHoldings';
+import { useUserHoldings, UserHolding } from '@/hooks/useUserHoldings';
 import AddHoldingDialog from '@/components/AddHoldingDialog';
+
+declare global {
+  interface Window {
+    refreshCommunityRecommendations?: () => void;
+  }
+}
+
+interface SelectedStock {
+  name: string;
+  symbol: string;
+  sector: string;
+  market: string;
+  currency: string;
+}
+
+interface SelectedRecommendation extends CommunityRecommendation {
+  stockInfo: SelectedStock;
+}
 
 const CommunityRecommendations: React.FC = () => {
   const { recommendations, loading, refetch } = useCommunityRecommendations();
@@ -33,13 +38,14 @@ const CommunityRecommendations: React.FC = () => {
   const { toast } = useToast();
   const { addHolding } = useUserHoldings();
   const [isAddHoldingOpen, setIsAddHoldingOpen] = useState(false);
-  const [selectedRecommendation, setSelectedRecommendation] = useState<CommunityRecommendation | null>(null);
+  const [selectedRecommendation, setSelectedRecommendation] = useState<SelectedRecommendation | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   // Expose refetch function globally so SaveOpportunityButton can use it
   React.useEffect(() => {
-    (window as any).refreshCommunityRecommendations = refetch;
+    window.refreshCommunityRecommendations = refetch;
     return () => {
-      delete (window as any).refreshCommunityRecommendations;
+      delete window.refreshCommunityRecommendations;
     };
   }, [refetch]);
 
@@ -51,9 +57,9 @@ const CommunityRecommendations: React.FC = () => {
     }
   };
 
-  const handleAddToPortfolio = async (recommendation: CommunityRecommendation, e: React.MouseEvent) => {
+  const handleAddToPortfolio = async (recommendation: CommunityRecommendation, e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    
+
     if (!user) {
       toast({
         title: "Inloggning krävs",
@@ -63,34 +69,34 @@ const CommunityRecommendations: React.FC = () => {
       return;
     }
 
-    // Extract stock information and prepare for dialog
-    let stockName = '';
-    let stockSymbol = '';
-    let sector = '';
+    const stockName = recommendation.stock_case
+      ? recommendation.stock_case.company_name
+      : recommendation.analysis?.title || '';
 
-    if (recommendation.stock_case) {
-      stockName = recommendation.stock_case.company_name;
-      stockSymbol = recommendation.stock_case.title;
-      sector = recommendation.stock_case.sector || 'Okänd';
-    } else if (recommendation.analysis) {
-      stockName = recommendation.analysis.title;
-      sector = 'Analys';
-    }
+    const stockSymbol = recommendation.stock_case
+      ? recommendation.stock_case.title
+      : (recommendation.analysis?.title || stockName).toUpperCase().substring(0, 4);
+
+    const sector = recommendation.stock_case
+      ? recommendation.stock_case.sector || 'Okänd'
+      : 'Analys';
 
     setSelectedRecommendation({
       ...recommendation,
       stockInfo: {
         name: stockName,
-        symbol: stockSymbol || stockName.toUpperCase().substring(0, 4),
-        sector: sector,
+        symbol: stockSymbol,
+        sector,
         market: 'Stockholm',
         currency: 'SEK'
       }
-    } as any);
+    });
     setIsAddHoldingOpen(true);
   };
 
-  const handleAddHolding = async (holdingData: any) => {
+  const handleAddHolding = async (
+    holdingData: Omit<UserHolding, 'id' | 'user_id' | 'created_at' | 'updated_at'>
+  ) => {
     try {
       await addHolding(holdingData);
       
@@ -114,7 +120,7 @@ const CommunityRecommendations: React.FC = () => {
     }
   };
 
-  const handleDiscussWithAI = (recommendation: CommunityRecommendation, e: React.MouseEvent) => {
+  const handleDiscussWithAI = (recommendation: CommunityRecommendation, e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     
     let contextData = {};
@@ -137,7 +143,7 @@ const CommunityRecommendations: React.FC = () => {
     navigate('/ai-chat', { state: { contextData } });
   };
 
-  const handleDeleteRecommendation = async (recommendation: CommunityRecommendation, e: React.MouseEvent) => {
+  const handleDeleteRecommendation = async (recommendation: CommunityRecommendation, e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     
     if (!user) {
@@ -174,12 +180,6 @@ const CommunityRecommendations: React.FC = () => {
     }
   };
 
-  const getItemIcon = (recommendation: CommunityRecommendation) => {
-    if (recommendation.stock_case) {
-      return recommendation.stock_case.ai_generated ? <Brain className="w-4 h-4" /> : <User className="w-4 h-4" />;
-    }
-    return recommendation.analysis?.ai_generated ? <Brain className="w-4 h-4" /> : <BookOpen className="w-4 h-4" />;
-  };
 
   const getItemTitle = (recommendation: CommunityRecommendation) => {
     if (recommendation.stock_case) {
@@ -301,112 +301,91 @@ const CommunityRecommendations: React.FC = () => {
           <div className="text-sm text-muted-foreground font-medium">
             {recommendations.length} sparade rekommendationer
           </div>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={() => navigate('/stock-cases')}
-            className="text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl font-medium"
-          >
-            Hitta fler <ArrowRight className="w-3 h-3 ml-1" />
-          </Button>
-        </div>
-        <div className={`space-y-4 ${recommendations.length > 5 ? 'max-h-96 overflow-y-auto pr-2' : ''}`}>
-          {recommendations.slice(0, 6).map((recommendation) => (
-            <div 
-              key={recommendation.id}
-              className="p-5 bg-card/50 backdrop-blur-sm border border-border/30 rounded-2xl hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 hover:border-primary/30 hover:bg-card/70 cursor-pointer"
-              onClick={() => handleViewItem(recommendation)}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Star className="w-4 h-4 text-primary" />
-                    </div>
-                    <h4 className="font-semibold text-base truncate text-foreground">{getItemTitle(recommendation)}</h4>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      {isAIGenerated(recommendation) ? (
-                        <Badge variant="secondary" className="text-xs bg-primary/10 text-primary border-primary/20 rounded-full px-2 py-1">
-                          <Brain className="w-3 h-3 mr-1" />
-                          AI
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-xs rounded-full px-2 py-1 bg-muted/50 border-muted">
-                          <User className="w-3 h-3 mr-1" />
-                          Community
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <p className="text-sm text-muted-foreground mb-3 leading-relaxed line-clamp-2">
-                    {getItemDescription(recommendation)}
-                  </p>
-
-                  {getCreatorInfo(recommendation) && (
-                    <p className="text-sm text-muted-foreground mb-3 font-medium">
-                      Av: {getCreatorInfo(recommendation)}
-                    </p>
-                  )}
-
-                  {recommendation.tags.length > 0 && (
-                    <div className="flex items-center gap-2 flex-wrap mb-4">
-                      <Tag className="w-3 h-3 text-muted-foreground" />
-                      {recommendation.tags.slice(0, 3).map((tag, index) => (
-                        <Badge key={index} variant="outline" className="text-xs rounded-full px-2 py-1 bg-muted/50 border-muted">
-                          {tag}
-                        </Badge>
-                      ))}
-                      {recommendation.tags.length > 3 && (
-                        <span className="text-xs text-muted-foreground">+{recommendation.tags.length - 3}</span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-3 pt-4 border-t border-border/30">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => handleAddToPortfolio(recommendation, e)}
-                      className="text-xs bg-card/50 hover:bg-primary/5 text-primary hover:text-primary/80 border-primary/20 hover:border-primary/30 flex-1 rounded-xl py-2"
-                    >
-                      <ShoppingCart className="w-3 h-3 mr-2" />
-                      Lägg till i portfölj
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => handleDiscussWithAI(recommendation, e)}
-                      className="text-xs bg-card/50 hover:bg-primary/5 text-primary hover:text-primary/80 border-primary/20 hover:border-primary/30 flex-1 rounded-xl py-2"
-                    >
-                      <MessageCircle className="w-3 h-3 mr-2" />
-                      Diskutera
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => handleDeleteRecommendation(recommendation, e)}
-                      className="text-destructive hover:text-destructive/80 hover:bg-destructive/5 text-xs rounded-xl px-3"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setViewMode('list')}
+                className={viewMode === 'list' ? 'text-primary' : 'text-muted-foreground'}
+              >
+                <ListIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setViewMode('grid')}
+                className={viewMode === 'grid' ? 'text-primary' : 'text-muted-foreground'}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
             </div>
-          ))}
-          
-          {recommendations.length > 6 && (
-            <Button 
-              variant="outline" 
-              className="w-full mt-6 rounded-xl py-3 bg-card/50 hover:bg-primary/5 text-primary hover:text-primary/80 border-primary/20 hover:border-primary/30"
-              onClick={() => navigate('/discover-opportunities')}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/stock-cases')}
+              className="text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl font-medium"
             >
-              Visa alla sparade rekommendationer ({recommendations.length})
+              Hitta fler <ArrowRight className="w-3 h-3 ml-1" />
             </Button>
-          )}
+          </div>
         </div>
+        {viewMode === 'grid' ? (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {recommendations.slice(0, 6).map((recommendation) => (
+                <RecommendationCard
+                  key={recommendation.id}
+                  title={getItemTitle(recommendation)}
+                  description={getItemDescription(recommendation)}
+                  tags={recommendation.tags}
+                  isAI={isAIGenerated(recommendation)}
+                  author={getCreatorInfo(recommendation) || undefined}
+                  onAdd={(e) => handleAddToPortfolio(recommendation, e)}
+                  onDiscuss={(e) => handleDiscussWithAI(recommendation, e)}
+                  onDelete={(e) => handleDeleteRecommendation(recommendation, e)}
+                  onClick={() => handleViewItem(recommendation)}
+                />
+              ))}
+            </div>
+            {recommendations.length > 6 && (
+              <Button
+                variant="outline"
+                className="w-full mt-6 rounded-xl py-3 bg-card/50 hover:bg-primary/5 text-primary hover:text-primary/80 border-primary/20 hover:border-primary/30"
+                onClick={() => navigate('/discover-opportunities')}
+              >
+                Visa alla sparade rekommendationer ({recommendations.length})
+              </Button>
+            )}
+          </>
+        ) : (
+          <div className={`space-y-4 ${recommendations.length > 5 ? 'max-h-96 overflow-y-auto pr-2' : ''}`}>
+            {recommendations.slice(0, 6).map((recommendation) => (
+              <RecommendationCard
+                key={recommendation.id}
+                title={getItemTitle(recommendation)}
+                description={getItemDescription(recommendation)}
+                tags={recommendation.tags}
+                isAI={isAIGenerated(recommendation)}
+                author={getCreatorInfo(recommendation) || undefined}
+                onAdd={(e) => handleAddToPortfolio(recommendation, e)}
+                onDiscuss={(e) => handleDiscussWithAI(recommendation, e)}
+                onDelete={(e) => handleDeleteRecommendation(recommendation, e)}
+                onClick={() => handleViewItem(recommendation)}
+              />
+            ))}
+
+            {recommendations.length > 6 && (
+              <Button
+                variant="outline"
+                className="w-full mt-6 rounded-xl py-3 bg-card/50 hover:bg-primary/5 text-primary hover:text-primary/80 border-primary/20 hover:border-primary/30"
+                onClick={() => navigate('/discover-opportunities')}
+              >
+                Visa alla sparade rekommendationer ({recommendations.length})
+              </Button>
+            )}
+          </div>
+        )}
       </CardContent>
 
       <AddHoldingDialog
@@ -416,7 +395,7 @@ const CommunityRecommendations: React.FC = () => {
           setSelectedRecommendation(null);
         }}
         onAdd={handleAddHolding}
-        initialData={(selectedRecommendation as any)?.stockInfo}
+        initialData={selectedRecommendation?.stockInfo}
       />
     </Card>
   );
