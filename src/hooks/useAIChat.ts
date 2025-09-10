@@ -28,7 +28,7 @@ interface ChatSession {
 export const useAIChat = (portfolioId?: string) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { checkUsageLimit, subscription, usage, fetchUsage } = useSubscription();
+  const { checkUsageLimit, subscription, usage, fetchUsage, incrementUsage } = useSubscription();
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -37,15 +37,17 @@ export const useAIChat = (portfolioId?: string) => {
   const [quotaExceeded, setQuotaExceeded] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
 
-  const loadMessages = useCallback(async (sessionId: string) => {
+  const loadMessages = useCallback(async (sessionId: string, skipClear = false) => {
     if (!user) return;
-    
+
     console.log('=== LOADING MESSAGES ===');
     console.log('Session ID:', sessionId);
     console.log('User ID:', user.id);
-    
-    setIsLoadingSession(true);
-    
+
+    if (!skipClear) {
+      setIsLoadingSession(true);
+    }
+
     try {
       const { data, error } = await supabase
         .from('portfolio_chat_history')
@@ -71,14 +73,18 @@ export const useAIChat = (portfolioId?: string) => {
 
       console.log('Formatted messages:', formattedMessages);
       console.log('Setting messages to state...');
-      
-      // Clear messages first, then set new ones
-      setMessages([]);
-      setTimeout(() => {
+
+      if (skipClear) {
         setMessages(formattedMessages);
-        console.log('Messages set to state:', formattedMessages.length);
-      }, 50);
-      
+      } else {
+        // Clear messages first, then set new ones
+        setMessages([]);
+        setTimeout(() => {
+          setMessages(formattedMessages);
+          console.log('Messages set to state:', formattedMessages.length);
+        }, 50);
+      }
+
     } catch (error) {
       console.error('Error loading messages:', error);
       toast({
@@ -87,7 +93,9 @@ export const useAIChat = (portfolioId?: string) => {
         variant: "destructive",
       });
     } finally {
-      setIsLoadingSession(false);
+      if (!skipClear) {
+        setIsLoadingSession(false);
+      }
     }
   }, [user, toast]);
 
@@ -660,7 +668,7 @@ export const useAIChat = (portfolioId?: string) => {
       // After streaming is complete, reload messages from database to get the complete conversation with correct IDs
       console.log('Streaming complete, reloading messages from database...');
       setTimeout(() => {
-        loadMessages(targetSessionId);
+        loadMessages(targetSessionId, true);
       }, 1000);
 
       // Track usage
@@ -668,9 +676,11 @@ export const useAIChat = (portfolioId?: string) => {
         _user_id: user.id,
         _usage_type: 'ai_message'
       });
-      if (usageError) console.error('Usage tracking failed:', usageError);
-
-      await fetchUsage();
+      if (usageError) {
+        console.error('Usage tracking failed:', usageError);
+      } else {
+        incrementUsage('ai_message');
+      }
       
     } catch (error) {
       console.error('Error sending message:', error);
@@ -685,7 +695,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage, loadMessages]);
+  }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage, incrementUsage, loadMessages]);
 
   // Function to update user profile based on AI-detected changes
   const updateUserProfile = useCallback(async (profileUpdates: any) => {
