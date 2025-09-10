@@ -5,12 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
+import {
   Package,
   Plus,
   Banknote,
   Search,
-  Filter
+  LayoutGrid,
+  Table as TableIcon
 } from 'lucide-react';
 import {
   Dialog,
@@ -33,6 +34,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import HoldingsGroupSection from '@/components/HoldingsGroupSection';
+import HoldingsTable from '@/components/HoldingsTable';
 import AddHoldingDialog from '@/components/AddHoldingDialog';
 import EditHoldingDialog from '@/components/EditHoldingDialog';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
@@ -99,6 +101,7 @@ const UserHoldingsManager: React.FC = () => {
   const [showAddHoldingDialog, setShowAddHoldingDialog] = useState(false);
   const [showEditHoldingDialog, setShowEditHoldingDialog] = useState(false);
   const [editingHolding, setEditingHolding] = useState<any>(null);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   
   // Price data state
   const [prices, setPrices] = useState<StockPrice[]>([]);
@@ -449,6 +452,8 @@ const UserHoldingsManager: React.FC = () => {
     )
   })).filter(group => group.holdings.length > 0);
 
+  const filteredHoldings = filteredGroups.flatMap(group => group.holdings);
+
   return (
     <>
       <Card className="h-fit">
@@ -506,8 +511,8 @@ const UserHoldingsManager: React.FC = () => {
                     Lägg till kassa
                   </Button>
                 </div>
-                
-                <div className="flex gap-2 flex-1 max-w-md">
+
+                <div className="flex gap-2 flex-1 max-w-md items-center">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
@@ -517,30 +522,49 @@ const UserHoldingsManager: React.FC = () => {
                       className="pl-10"
                     />
                   </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="icon"
+                      variant={viewMode === 'cards' ? 'default' : 'outline'}
+                      onClick={() => setViewMode('cards')}
+                    >
+                      <LayoutGrid className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant={viewMode === 'table' ? 'default' : 'outline'}
+                      onClick={() => setViewMode('table')}
+                    >
+                      <TableIcon className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
 
-              {/* Holdings Groups */}
-              <div className="space-y-4">
-                {filteredGroups.map((group) => (
-                  <HoldingsGroupSection
-                    key={group.key}
-                    title={group.title}
-                    holdings={group.holdings}
-                    totalValue={group.totalValue}
-                    groupPercentage={group.percentage}
-                    getPriceForHolding={getPriceForHolding}
-                    onDiscuss={handleDiscussHolding}
-                    onEdit={group.key === 'cash' ? (id: string) => {
-                      const cash = group.holdings.find(h => h.id === id);
-                      if (cash) {
-                        setEditingCash({ id: cash.id, amount: cash.current_value });
-                      }
-                    } : handleEditHolding}
-                    onDelete={group.key === 'cash' ? handleDeleteCash : handleDeleteHolding}
-                  />
-                ))}
-              </div>
+              {viewMode === 'cards' ? (
+                <div className="space-y-4">
+                  {filteredGroups.map((group) => (
+                    <HoldingsGroupSection
+                      key={group.key}
+                      title={group.title}
+                      holdings={group.holdings}
+                      totalValue={group.totalValue}
+                      groupPercentage={group.percentage}
+                      getPriceForHolding={getPriceForHolding}
+                      onDiscuss={handleDiscussHolding}
+                      onEdit={group.key === 'cash' ? (id: string) => {
+                        const cash = group.holdings.find(h => h.id === id);
+                        if (cash) {
+                          setEditingCash({ id: cash.id, amount: cash.current_value });
+                        }
+                      } : handleEditHolding}
+                      onDelete={group.key === 'cash' ? handleDeleteCash : handleDeleteHolding}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <HoldingsTable holdings={filteredHoldings} getPriceForHolding={getPriceForHolding} />
+              )}
 
               {lastUpdated && (
                 <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
