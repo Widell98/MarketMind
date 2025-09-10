@@ -9,7 +9,6 @@ import BreadcrumbNavigation from './Breadcrumb';
 import AIFloatingWidget from './AIFloatingWidget';
 import MobileNavigation from './MobileNavigation';
 import AppSidebar from './AppSidebar';
-import SmartSuggestions from './SmartSuggestions';
 import LanguageToggle from './LanguageToggle';
 import ThemeToggle from './ThemeToggle';
 import { ConversationMemoryProvider } from './AIConversationMemory';
@@ -92,9 +91,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
           {/* AI Floating Widget - available on all pages */}
           <AIFloatingWidget />
-
-          {/* Smart AI Suggestions */}
-          <SmartSuggestions />
         </div>
       </SidebarProvider>
     </ConversationMemoryProvider>
