@@ -63,6 +63,28 @@ export const useConversationalPortfolio = () => {
 
     console.log('Extracting recommendations from AI response:', aiResponse);
 
+    try {
+      const parsed = JSON.parse(aiResponse);
+      const recs = Array.isArray(parsed) ? parsed : parsed.recommendations;
+      if (Array.isArray(recs)) {
+        recs.forEach((rec: any) => {
+          if (rec && rec.name) {
+            recommendations.push({
+              name: rec.name,
+              symbol: rec.symbol,
+              sector: rec.sector,
+              reasoning: rec.reasoning,
+              allocation: rec.allocation,
+              isin: rec.isin
+            });
+          }
+        });
+        return recommendations.slice(0, 10);
+      }
+    } catch (e) {
+      console.warn('AI response not valid JSON, using regex fallback');
+    }
+
     // Enhanced patterns for parsing AI recommendations with numbered lists
     const patterns = [
       // Pattern: 1. **Company Name (SYMBOL)**: Description... Allokering: XX%
@@ -381,7 +403,15 @@ KRITISKT VIKTIGT:
 1. **Företagsnamn (SYMBOL)**: Detaljerad beskrivning. Allokering: XX%
 2. **Fondnamn (FONDKOD)**: Detaljerad beskrivning. Allokering: XX%
 
-Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska som är perfekt anpassad för användarens specifika situation, erfarenhetsnivå och psykologiska profil.`;
+Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska som är perfekt anpassad för användarens specifika situation, erfarenhetsnivå och psykologiska profil.
+
+SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
+{
+  "recommendations": [
+    { "name": "", "symbol": "", "sector": "", "reasoning": "", "allocation": 0 }
+  ],
+  "summary": ""
+}`;
 
     return prompt;
   };

@@ -715,7 +715,22 @@ const ChatPortfolioAdvisor = () => {
 
   const extractStockRecommendationsFromAI = (aiResponse: string) => {
     console.log('Extracting stock recommendations from AI response:', aiResponse);
-    
+
+    try {
+      const parsed = JSON.parse(aiResponse);
+      const recs = Array.isArray(parsed) ? parsed : parsed.recommendations;
+      if (Array.isArray(recs)) {
+        return recs.map((rec: any) => ({
+          name: rec.name,
+          symbol: rec.symbol,
+          sector: rec.sector,
+          expected_price: rec.expected_price
+        })).slice(0, 8);
+      }
+    } catch (e) {
+      console.warn('AI response not valid JSON, using regex extraction');
+    }
+
     // Look for common patterns in AI responses that indicate stock recommendations
     const patterns = [
       // Pattern for "Rekommenderade aktier:" followed by list
