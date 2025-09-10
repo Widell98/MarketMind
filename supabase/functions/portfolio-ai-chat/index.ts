@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { ensureStockSuggestions } from './stockSuggestions.js';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -468,9 +469,9 @@ FULL STRUKTUR (när relevant):
 VIKTIGT:
 - Ge bara en "Åtgärder (Checklista)" om frågan faktiskt kräver konkreta steg.
 - Vid aktieanalys: Använd emojis genomgående för att göra analysen mer visuellt tilltalande och lättläst
-- När du ger specifika aktierekommendationer, lägg även till en rad i slutet på formatet:
+- Varje gång ett bolag eller en ticker nämns, avsluta svaret med en rad i slutet på formatet:
 Aktieförslag: [{"name": "Bolag", "ticker": "TICKER", "reason": "Kort motivering"}]
-Om inga förslag ges, skriv: Aktieförslag: [].
+Om inga bolag eller tickers nämns, skriv: Aktieförslag: [].
 - Avsluta alltid svaret med en öppen fråga för att bjuda in till vidare dialog.`;
 
 
@@ -552,7 +553,9 @@ Om inga förslag ges, skriv: Aktieförslag: [].
       }
 
       const nonStreamData = await nonStreamResp.json();
-      const aiMessage = nonStreamData.choices?.[0]?.message?.content || '';
+      let aiMessage = nonStreamData.choices?.[0]?.message?.content || '';
+      const { message: ensuredMessage, suggestions } = await ensureStockSuggestions(supabase, message, aiMessage);
+      aiMessage = ensuredMessage;
 
       // Update AI memory and optionally save to chat history
       await updateAIMemory(supabase, userId, message, aiMessage, aiMemory);
@@ -571,7 +574,8 @@ Om inga förslag ges, skriv: Aktieförslag: [].
               hasMarketData: !!marketDataContext,
               profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
               requiresConfirmation: profileChangeDetection.requiresConfirmation,
-              confidence: 0.8
+              confidence: 0.8,
+              stockSuggestions: suggestions
             }
           });
       }
@@ -582,7 +586,8 @@ Om inga förslag ges, skriv: Aktieförslag: [].
         JSON.stringify({
           response: aiMessage,
           requiresConfirmation: profileChangeDetection.requiresConfirmation,
-          profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null
+          profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+          stockSuggestions: suggestions
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -633,16 +638,20 @@ Om inga förslag ges, skriv: Aktieförslag: [].
               if (line.startsWith('data: ')) {
                 const data = line.slice(6);
                 if (data === '[DONE]') {
+                  const { message: finalMessage, suggestions } = await ensureStockSuggestions(supabase, message, aiMessage);
+                  const appendContent = finalMessage.slice(aiMessage.length);
+                  aiMessage = finalMessage;
+
                   // Update AI memory
                   await updateAIMemory(supabase, userId, message, aiMessage, aiMemory);
-                  
+
                   // Send final telemetry
-                  console.log('TELEMETRY COMPLETE:', { 
-                    ...telemetryData, 
+                  console.log('TELEMETRY COMPLETE:', {
+                    ...telemetryData,
                     responseLength: aiMessage.length,
-                    completed: true 
+                    completed: true
                   });
-                  
+
                   // Save complete message to database
                   if (sessionId && aiMessage) {
                     await supabase
@@ -659,11 +668,17 @@ Om inga förslag ges, skriv: Aktieförslag: [].
                           hasMarketData: !!marketDataContext,
                           profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
                           requiresConfirmation: profileChangeDetection.requiresConfirmation,
-                          confidence: 0.8
+                          confidence: 0.8,
+                          stockSuggestions: suggestions
                         }
                       });
                   }
-                  
+
+                  const finalPayload = appendContent
+                    ? { content: appendContent, stockSuggestions: suggestions, done: true }
+                    : { stockSuggestions: suggestions, done: true };
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(finalPayload)}\n\n`));
+
                   controller.close();
                   return;
                 }
