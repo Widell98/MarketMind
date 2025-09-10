@@ -1,30 +1,28 @@
-import React, { ReactNode } from "react";
-
-interface ErrorBoundaryProps {
-  children: ReactNode;
-}
+import { Component, ErrorInfo, PropsWithChildren } from "react";
 
 interface ErrorBoundaryState {
   hasError: boolean;
   error?: Error;
 }
 
-class ErrorBoundary extends React.Component<
-  ErrorBoundaryProps,
-  ErrorBoundaryState
-> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false };
-  }
+type ErrorBoundaryProps = PropsWithChildren<Record<string, never>>;
+
+/**
+ * Simple error logging function, can be replaced with Sentry/LogRocket/etc.
+ */
+function logError(error: Error, info: ErrorInfo) {
+  console.error("ErrorBoundary caught an error:", error, info);
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Optional error logging
-    console.error("ErrorBoundary caught an error", error, errorInfo);
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    logError(error, info);
   }
 
   handleReset = () => {
@@ -53,3 +51,4 @@ class ErrorBoundary extends React.Component<
 }
 
 export default ErrorBoundary;
+

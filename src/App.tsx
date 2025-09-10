@@ -24,6 +24,7 @@ import SocialIndex from "./pages/SocialIndex";
 import AdminStockCases from "./pages/AdminStockCases";
 import AdvancedFeatures from "./pages/AdvancedFeatures";
 import Discover from "./pages/Discover";
+import MarketAnalyses from "./pages/MarketAnalyses";
 import Watchlist from "./pages/Watchlist";
 import NotFound from "./pages/NotFound";
 
