@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -281,7 +281,7 @@ const Auth = () => {
           )}
         </CardContent>
         <CardFooter className="text-center text-sm text-muted-foreground">
-          By continuing, you agree to Market Mentor's Terms of Service and Privacy Policy.
+          <Link to="/terms">Terms of Service</Link> and <Link to="/privacy">Privacy Policy</Link>
         </CardFooter>
       </Card>
     </div>
