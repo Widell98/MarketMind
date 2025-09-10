@@ -60,7 +60,7 @@ function App() {
                     <Route path="/discover" element={<Discover />} />
                     {/* Legacy routes for backwards compatibility */}
                     <Route path="/discover-opportunities" element={<Discover />} />
-                    <Route path="/market-analyses" element={<MarketAnalyses />} />
+                    <Route path="/market-analyses" element={<Discover />} />
                     <Route path="/watchlist" element={<Watchlist />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
