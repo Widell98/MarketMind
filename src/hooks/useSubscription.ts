@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -24,7 +24,7 @@ export const useSubscription = () => {
   const [usage, setUsage] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const checkSubscription = async () => {
+  const checkSubscription = useCallback(async () => {
     if (!user) {
       setSubscription({ subscribed: false, subscription_tier: 'free' });
       return;
@@ -32,30 +32,30 @@ export const useSubscription = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke('check-subscription');
-      
+
       if (error) {
         console.error('Subscription check error:', error);
         // Vid fel, sätt gratis plan som fallback
         setSubscription({ subscribed: false, subscription_tier: 'free' });
         return;
       }
-      
+
       // Säkerställ att vi alltid har en giltig subscription tier
       const subscriptionData = {
         subscribed: data?.subscribed || false,
         subscription_tier: data?.subscription_tier || 'free',
         subscription_end: data?.subscription_end
       };
-      
+
       setSubscription(subscriptionData);
     } catch (error) {
       console.error('Error checking subscription:', error);
       // Vid fel, sätt gratis plan som fallback
       setSubscription({ subscribed: false, subscription_tier: 'free' });
     }
-  };
+  }, [user]);
 
-  const fetchUsage = async () => {
+  const fetchUsage = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -68,14 +68,14 @@ export const useSubscription = () => {
       if (error) {
         console.error('Usage fetch error:', error);
       }
-      
+
       const usageData = data && data.length > 0 ? data[0] : {
         ai_messages_count: 0,
         analysis_count: 0,
         insights_count: 0,
         predictive_analysis_count: 0,
       };
-      
+
       setUsage(usageData);
     } catch (error) {
       console.error('Error fetching usage:', error);
@@ -86,7 +86,7 @@ export const useSubscription = () => {
         predictive_analysis_count: 0,
       });
     }
-  };
+  }, [user]);
 
   const createCheckout = async (tier: 'premium' | 'pro') => {
     if (!user) {
@@ -168,6 +168,12 @@ export const useSubscription = () => {
     return Math.max(0, limit - currentUsage);
   };
 
+  const incrementUsage = (_type: string) => {
+    setUsage(prev =>
+      prev ? { ...prev, ai_messages_count: prev.ai_messages_count + 1 } : prev
+    );
+  };
+
   useEffect(() => {
     if (user) {
       Promise.all([checkSubscription(), fetchUsage()]).finally(() => {
@@ -184,7 +190,36 @@ export const useSubscription = () => {
       });
       setLoading(false);
     }
-  }, [user]);
+  }, [user, checkSubscription, fetchUsage]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchUsage();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const now = new Date();
+    const nextMidnight = new Date(now);
+    nextMidnight.setHours(24, 0, 0, 0);
+    const msUntilMidnight = nextMidnight.getTime() - now.getTime();
+
+    let intervalId: ReturnType<typeof setInterval> | undefined;
+    const timeoutId = setTimeout(() => {
+      fetchUsage();
+      intervalId = setInterval(fetchUsage, 24 * 60 * 60 * 1000);
+    }, msUntilMidnight);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearTimeout(timeoutId);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [user, fetchUsage]);
 
   return {
     subscription,
@@ -196,5 +231,6 @@ export const useSubscription = () => {
     openCustomerPortal,
     checkUsageLimit,
     getRemainingUsage,
+    incrementUsage,
   };
 };

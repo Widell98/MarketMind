@@ -28,7 +28,7 @@ interface ChatSession {
 export const useAIChat = (portfolioId?: string) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { checkUsageLimit, subscription, usage, fetchUsage } = useSubscription();
+  const { checkUsageLimit, subscription, usage, fetchUsage, incrementUsage } = useSubscription();
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -668,9 +668,11 @@ export const useAIChat = (portfolioId?: string) => {
         _user_id: user.id,
         _usage_type: 'ai_message'
       });
-      if (usageError) console.error('Usage tracking failed:', usageError);
-
-      await fetchUsage();
+      if (usageError) {
+        console.error('Usage tracking failed:', usageError);
+      } else {
+        incrementUsage('ai_message');
+      }
       
     } catch (error) {
       console.error('Error sending message:', error);
@@ -685,7 +687,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage, loadMessages]);
+  }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage, incrementUsage, loadMessages]);
 
   // Function to update user profile based on AI-detected changes
   const updateUserProfile = useCallback(async (profileUpdates: any) => {
