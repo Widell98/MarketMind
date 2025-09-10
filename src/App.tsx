@@ -27,6 +27,8 @@ import Discover from "./pages/Discover";
 import MarketAnalyses from "./pages/MarketAnalyses";
 import Watchlist from "./pages/Watchlist";
 import NotFound from "./pages/NotFound";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +63,8 @@ function App() {
                     {/* Legacy routes for backwards compatibility */}
                     <Route path="/discover-opportunities" element={<Discover />} />
                     <Route path="/market-analyses" element={<Discover />} />
+                    <Route path="/terms" element={<Terms />} />
+                    <Route path="/privacy" element={<Privacy />} />
                     <Route path="/watchlist" element={<Watchlist />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
