@@ -91,9 +91,11 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
     try {
       console.log('Sending AI request with message:', message);
       
+      const jsonPrompt = `${message}\n\nSvara ENDAST med giltig JSON med fältet \"recommendations\" som en array av objekt {name, symbol, sector, reasoning, allocation}`;
+
       const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
         body: {
-          message,
+          message: jsonPrompt,
           userId: user?.id,
           chatHistory: [],
           analysisType: 'risk_assessment',
@@ -200,11 +202,34 @@ Börja med 5000 SEK/månad enligt din budget. Kontakta rådgivning för mer deta
 
   const extractRecommendations = (text: string): RecommendedStock[] => {
     if (!text) return [];
-    
+
     console.log('Extracting stock recommendations from AI response:', text);
-    
+
     const recommendations: RecommendedStock[] = [];
-    
+
+    try {
+      const parsed = JSON.parse(text);
+      const recs = Array.isArray(parsed) ? parsed : parsed.recommendations;
+      if (Array.isArray(recs)) {
+        recs.forEach((rec: any) => {
+          if (rec && rec.name) {
+            recommendations.push({
+              name: rec.name,
+              symbol: rec.symbol,
+              allocation: rec.allocation,
+              sector: rec.sector,
+              reasoning: rec.reasoning,
+              isin: rec.isin,
+              fee: rec.fee
+            });
+          }
+        });
+        return recommendations.slice(0, 10);
+      }
+    } catch (e) {
+      console.warn('AI response not valid JSON, using regex fallback');
+    }
+
     // Enhanced patterns to match various recommendation formats
     const patterns = [
       // Pattern 1: **Company Name (Symbol)**: Description with percentage
