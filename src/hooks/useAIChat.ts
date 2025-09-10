@@ -415,6 +415,7 @@ export const useAIChat = (portfolioId?: string) => {
         description: `Du har använt alla dina ${dailyLimit} gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.`,
         variant: "destructive",
       });
+      setQuotaExceeded(true);
       return;
     }
 
@@ -554,6 +555,18 @@ export const useAIChat = (portfolioId?: string) => {
         })
       });
 
+      if (streamResponse.status === 429) {
+        setQuotaExceeded(true);
+        toast({
+          title: "Daglig gräns nådd",
+          description: "Du har använt alla dina 5 gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.",
+          variant: "destructive",
+        });
+        setMessages(prev => prev.filter(msg => !msg.id.includes('_temp')));
+        await fetchUsage();
+        return;
+      }
+
       if (!streamResponse.ok) {
         throw new Error(`HTTP error! status: ${streamResponse.status}`);
       }
@@ -649,8 +662,14 @@ export const useAIChat = (portfolioId?: string) => {
       setTimeout(() => {
         loadMessages(targetSessionId);
       }, 1000);
-      
+
       // Track usage
+      const { error: usageError } = await supabase.rpc('increment_ai_usage', {
+        _user_id: user.id,
+        _usage_type: 'ai_message'
+      });
+      if (usageError) console.error('Usage tracking failed:', usageError);
+
       await fetchUsage();
       
     } catch (error) {

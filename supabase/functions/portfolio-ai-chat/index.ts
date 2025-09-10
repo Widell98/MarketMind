@@ -53,6 +53,17 @@ serve(async (req) => {
 
     console.log('Supabase client initialized');
 
+    const { data: allowed } = await supabase.rpc('check_usage_limit', {
+      _user_id: userId,
+      _usage_type: 'ai_message'
+    });
+    if (!allowed) {
+      return new Response(
+        JSON.stringify({ error: 'quota_exceeded' }),
+        { status: 429, headers: corsHeaders }
+      );
+    }
+
     // Fetch all user data in parallel for better performance
     const [
       { data: aiMemory },
@@ -582,6 +593,11 @@ Om inga bolag eller tickers nämns, skriv: Aktieförslag: [].
 
       console.log('TELEMETRY COMPLETE:', { ...telemetryData, responseLength: aiMessage.length, completed: true });
 
+      await supabase.rpc('increment_ai_usage', {
+        _user_id: userId,
+        _usage_type: 'ai_message'
+      });
+
       return new Response(
         JSON.stringify({
           response: aiMessage,
@@ -673,6 +689,11 @@ Om inga bolag eller tickers nämns, skriv: Aktieförslag: [].
                         }
                       });
                   }
+
+                  await supabase.rpc('increment_ai_usage', {
+                    _user_id: userId,
+                    _usage_type: 'ai_message'
+                  });
 
                   const finalPayload = appendContent
                     ? { content: appendContent, stockSuggestions: suggestions, done: true }
