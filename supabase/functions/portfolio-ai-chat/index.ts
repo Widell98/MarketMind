@@ -468,6 +468,9 @@ FULL STRUKTUR (när relevant):
 VIKTIGT:
 - Ge bara en "Åtgärder (Checklista)" om frågan faktiskt kräver konkreta steg.
 - Vid aktieanalys: Använd emojis genomgående för att göra analysen mer visuellt tilltalande och lättläst
+- När du ger specifika aktierekommendationer, lägg även till en rad i slutet på formatet:
+Aktieförslag: [{"name": "Bolag", "ticker": "TICKER", "reason": "Kort motivering"}]
+Om inga förslag ges, skriv: Aktieförslag: [].
 - Avsluta alltid svaret med en öppen fråga för att bjuda in till vidare dialog.`;
 
 

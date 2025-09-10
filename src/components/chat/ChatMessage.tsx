@@ -38,118 +38,31 @@ const ChatMessage = ({
 
   // Parse markdown formatting - replaced with secure version
 
-  // Enhanced stock suggestion extraction with more comprehensive patterns
+  // Extract stock suggestions from a JSON array in the message
   const extractStockSuggestions = (content: string): StockSuggestion[] => {
-    const suggestions: StockSuggestion[] = [];
+    const jsonMatch = content.match(/Aktieförslag:\s*(\[[\s\S]*\])/);
+    if (!jsonMatch) return [];
 
-    // Exclusions for non-stock items and common account/fund terms
-    const bannedSymbols = new Set([
-      'ISK', 'KF', 'PPM', 'AP7'
-    ]);
-    const bannedNameRegex = /(Investeringssparkonto|Kapitalförsäkring|Fond(er)?|Index(nära)?|ETF(er)?|Sparkonto)/i;
+    try {
+      const parsed = JSON.parse(jsonMatch[1]);
+      if (!Array.isArray(parsed)) return [];
 
-    // Multiple regex patterns to catch different formats (supports hyphen/dot tickers like SEB-A, BRK.B)
-    const patterns = [
-      // Pattern 1: "Förslag: Company Name (TICKER)"
-      /(?:Förslag|Rekommendation|Aktie):\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/gi,
-      // Pattern 2: "**Company Name** (TICKER)"
-      /\*\*([^*]+?)\*\*\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
-      // Pattern 3: "Company Name (TICKER)" - general pattern
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
-      // Pattern 4: "1. Company Name (TICKER)" - numbered lists
-      /\d+\.\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
-      // Pattern 5: "- Company Name (TICKER)" - bullet points
-      /-\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
-      // Pattern 6: "• Company Name (TICKER)" - bullet points with bullet
-      /•\s*([^()\n]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/g,
-      // Pattern 7: TICKER followed by company name
-      /([A-Z]{2,6}(?:[-.][A-Z]{1,3})?):\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
-      // Pattern 8: Company name with ticker in brackets at end of sentence
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{3,})\s+\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)(?=[\s.,!?]|$)/g,
-      // Pattern 9: Company (TICKER) - Sektor: SectorName
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)\s*-\s*Sektor:\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]+)/g,
-      // Pattern 10: More flexible numbered/bulleted lists
-      /(?:^\d+\.|\*|-|•)\s*([^()\n]{2,50}?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)/gm,
-      // Pattern 11: Catch any company name in parentheses with ticker
-      /([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,50}?)\s*\(([A-Z]{1,6}(?:[-.][A-Z]{1,3})?)\)(?:\s*-|\s*:|\s*,|\s*\.|\s*$)/g,
-      // Pattern 12: Simple ticker pattern
-      /\b([A-Z]{2,6}(?:[-.][A-Z]{1,3})?)\b\s*-\s*([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,50})/g
-    ];
+      const existingSymbols = new Set(
+        actualHoldings.map(holding => holding.symbol?.toUpperCase()).filter(Boolean)
+      );
 
-    // Get existing holdings symbols to filter out
-    const existingSymbols = new Set(
-      actualHoldings.map(holding => holding.symbol?.toUpperCase()).filter(Boolean)
-    );
-
-    // Prefer parsing only the "Aktier:" section if present; otherwise parse entire content
-    const aktierSection = content.match(/(?:^|\n)\s*Aktier\s*:\s*([\s\S]*?)(?:\n\s*\n|(?:^|\n)\s*[A-ZÅÄÖa-zåäö\s]+:\s*|$)/);
-    const contentToParse = aktierSection ? aktierSection[1] : content;
-
-    patterns.forEach(pattern => {
-      let match;
-      const regex = new RegExp(pattern.source, pattern.flags);
-      while ((match = regex.exec(contentToParse)) !== null) {
-        let name, symbol, sector;
-
-        // Handle different capture group orders based on pattern
-        const patternIndex = patterns.indexOf(pattern);
-        
-        if (patternIndex === 6) {
-          // Pattern 7: TICKER: Company
-          symbol = match[1].trim();
-          name = match[2].trim();
-        } else if (patternIndex === 8) {
-          // Pattern 9: Company (TICKER) - Sektor: SectorName
-          name = match[1].trim();
-          symbol = match[2].trim();
-          sector = match[3]?.trim();
-        } else if (patternIndex === 11) {
-          // Pattern 12: TICKER - Company
-          symbol = match[1].trim();
-          name = match[2].trim();
-        } else {
-          name = match[1].trim();
-          symbol = match[2].trim();
-        }
-
-        // Clean up the name - remove common prefixes and suffixes
-        name = name.replace(/^(Aktie|Bolag|AB|Inc|Corp|Ltd)[\s:]/i, '').trim();
-        name = name.replace(/[\s:](AB|Inc|Corp|Ltd)$/i, '').trim();
-
-        // Validation checks
-        const symbolValid = /^[A-Z]{1,6}(?:[-.][A-Z]{1,3})?$/.test(symbol);
-        const isValidSuggestion =
-          name.length >= 2 &&
-          name.length <= 100 &&
-          symbolValid &&
-          !existingSymbols.has(symbol.toUpperCase()) &&
-          !bannedSymbols.has(symbol.toUpperCase()) &&
-          !bannedNameRegex.test(name) &&
-          !suggestions.find(s => s.symbol === symbol.toUpperCase()) &&
-          // Avoid common false positives
-          !name.match(/^(och|eller|samt|med|utan|för|till|från|av|på|i|är|har|kan|ska|måste|borde|skulle)$/i) &&
-          // Ensure it's not just numbers or special characters
-          !!name.match(/[a-öA-Ö]/);
-        if (isValidSuggestion) {
-          suggestions.push({
-            name: name,
-            symbol: symbol.toUpperCase(),
-            sector: sector || undefined,
-            reason: 'AI-rekommendation'
-          });
-        }
-      }
-    });
-
-    // Remove duplicates and sort by name
-    const uniqueSuggestions = suggestions.reduce((acc, current) => {
-      const exists = acc.find(item => item.symbol === current.symbol);
-      if (!exists) {
-        acc.push(current);
-      }
-      return acc;
-    }, [] as StockSuggestion[]);
-    return uniqueSuggestions.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+      return parsed
+        .filter((item: any) => item?.name && item?.ticker)
+        .map((item: any) => ({
+          name: String(item.name).trim(),
+          symbol: String(item.ticker).toUpperCase(),
+          reason: item.reason || 'AI-rekommendation',
+        }))
+        .filter(item => !existingSymbols.has(item.symbol));
+    } catch (error) {
+      console.error('Error parsing stock suggestions JSON:', error);
+      return [];
+    }
   };
   const stockSuggestions = message.role === 'assistant' ? extractStockSuggestions(message.content) : [];
   const handleAddStock = async (suggestion: StockSuggestion) => {
@@ -184,41 +97,45 @@ const ChatMessage = ({
 
   // Format message content
   const formatMessageContent = (content: string) => {
-    return content.split('\n').map((line, index) => {
-      if (line.trim() === '') return <br key={index} />;
+    return content
+      .split('\n')
+      .map((line, index) => {
+        if (line.startsWith('Aktieförslag:')) return null;
+        if (line.trim() === '') return <br key={index} />;
 
-      // Handle headers
-      if (line.startsWith('###')) {
-        return <h3 key={index} className="font-semibold text-sm sm:text-base mt-3 mb-2 text-gray-900 dark:text-gray-100 leading-tight" dangerouslySetInnerHTML={{
-          __html: parseMarkdownSafely(line.replace('###', '').trim())
-        }} />;
-      }
-      if (line.startsWith('##')) {
-        return <h2 key={index} className="font-semibold text-base sm:text-lg mt-4 mb-2 text-gray-900 dark:text-gray-100 leading-tight" dangerouslySetInnerHTML={{
-          __html: parseMarkdownSafely(line.replace('##', '').trim())
-        }} />;
-      }
+        // Handle headers
+        if (line.startsWith('###')) {
+          return <h3 key={index} className="font-semibold text-sm sm:text-base mt-3 mb-2 text-gray-900 dark:text-gray-100 leading-tight" dangerouslySetInnerHTML={{
+            __html: parseMarkdownSafely(line.replace('###', '').trim())
+          }} />;
+        }
+        if (line.startsWith('##')) {
+          return <h2 key={index} className="font-semibold text-base sm:text-lg mt-4 mb-2 text-gray-900 dark:text-gray-100 leading-tight" dangerouslySetInnerHTML={{
+            __html: parseMarkdownSafely(line.replace('##', '').trim())
+          }} />;
+        }
 
-      // Handle lists
-      if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
-        return <li key={index} className="ml-3 sm:ml-4 text-xs sm:text-sm text-gray-800 dark:text-gray-200 leading-relaxed mb-1" dangerouslySetInnerHTML={{
-          __html: parseMarkdownSafely(line.trim().substring(1).trim())
-        }} />;
-      }
+        // Handle lists
+        if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
+          return <li key={index} className="ml-3 sm:ml-4 text-xs sm:text-sm text-gray-800 dark:text-gray-200 leading-relaxed mb-1" dangerouslySetInnerHTML={{
+            __html: parseMarkdownSafely(line.trim().substring(1).trim())
+          }} />;
+        }
 
-      // Handle numbered lists
-      if (/^\d+\./.test(line.trim())) {
-        return <li key={index} className="ml-3 sm:ml-4 text-xs sm:text-sm text-gray-800 dark:text-gray-200 leading-relaxed mb-1 list-decimal" dangerouslySetInnerHTML={{
-          __html: parseMarkdownSafely(line.trim().replace(/^\d+\.\s*/, ''))
-        }} />;
-      }
+        // Handle numbered lists
+        if (/^\d+\./.test(line.trim())) {
+          return <li key={index} className="ml-3 sm:ml-4 text-xs sm:text-sm text-gray-800 dark:text-gray-200 leading-relaxed mb-1 list-decimal" dangerouslySetInnerHTML={{
+            __html: parseMarkdownSafely(line.trim().replace(/^\d+\.\s*/, ''))
+          }} />;
+        }
 
-      // Handle regular text with markdown
-      const parsedContent = parseMarkdownSafely(line);
-      return <p key={index} className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 mb-2 leading-relaxed break-words" dangerouslySetInnerHTML={{
-        __html: parsedContent
-      }} />;
-    });
+        // Handle regular text with markdown
+        const parsedContent = parseMarkdownSafely(line);
+        return <p key={index} className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 mb-2 leading-relaxed break-words" dangerouslySetInnerHTML={{
+          __html: parsedContent
+        }} />;
+      })
+      .filter(Boolean);
   };
   return <div className={`flex gap-3 sm:gap-4 items-start w-full ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
       {message.role === 'assistant' ? <>
