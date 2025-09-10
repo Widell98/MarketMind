@@ -7,9 +7,11 @@ interface ErrorBoundaryState {
 
 type ErrorBoundaryProps = PropsWithChildren<Record<string, never>>;
 
+/**
+ * Simple error logging function, can be replaced with Sentry/LogRocket/etc.
+ */
 function logError(error: Error, info: ErrorInfo) {
-  // Replace with real error reporting service if desired
-  console.error("ErrorBoundary caught an error", error, info);
+  console.error("ErrorBoundary caught an error:", error, info);
 }
 
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
@@ -49,3 +51,4 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 }
 
 export default ErrorBoundary;
+
