@@ -10,7 +10,7 @@
  * @returns {Promise<{message: string, suggestions: StockSuggestion[]}>}
  */
 export const ensureStockSuggestions = async (supabase, userMessage, aiMessage) => {
-  const tickerRegex = /(\b[A-Z]{2,5}\b)(?![^\[]*\])/g;
+  const tickerRegex = /\b([A-Z0-9]{1,5}(?:[.-][A-Z0-9]{1,2})?)\b(?![^\[]*\])/g;
 
   const extractTickers = (text) => {
     const tickers = new Set();
@@ -41,11 +41,12 @@ export const ensureStockSuggestions = async (supabase, userMessage, aiMessage) =
     (s) => aiTickers.has(s.ticker) || !userTickers.has(s.ticker)
   );
 
-  const tickers = new Set();
-  aiTickers.forEach((t) => tickers.add(t));
-  suggestions.forEach((s) => tickers.add(s.ticker));
+  const candidateTickers = new Set([
+    ...aiTickers,
+    ...suggestions.map((s) => s.ticker),
+  ]);
 
-  if (tickers.size === 0) {
+  if (candidateTickers.size === 0) {
     const line = 'Aktieförslag: []';
     return {
       message: suggestionsMatch
@@ -58,18 +59,39 @@ export const ensureStockSuggestions = async (supabase, userMessage, aiMessage) =
   const { data } = await supabase
     .from('stock_symbols')
     .select('symbol,name')
-    .in('symbol', Array.from(tickers));
+    .in('symbol', Array.from(candidateTickers));
 
   const nameMap = new Map();
+  const validTickers = new Set();
   if (data) {
     for (const row of data) {
-      nameMap.set(row.symbol.toUpperCase(), row.name);
+      const symbol = row.symbol.toUpperCase();
+      validTickers.add(symbol);
+      nameMap.set(symbol, row.name);
     }
   }
 
-  const finalSuggestions = Array.from(tickers).map((t) => {
+  suggestions = suggestions.filter((s) => validTickers.has(s.ticker));
+
+  if (validTickers.size === 0) {
+    const line = 'Aktieförslag: []';
+    return {
+      message: suggestionsMatch
+        ? aiMessage.replace(suggestionsMatch[0], line)
+        : `${aiMessage.trim()}\n\n${line}`,
+      suggestions: [],
+    };
+  }
+
+  const finalSuggestions = Array.from(validTickers).map((t) => {
     const existing = suggestions.find((s) => s.ticker === t);
-    return existing || { name: nameMap.get(t) || t, ticker: t, reason: existing?.reason || '' };
+    return (
+      existing || {
+        name: nameMap.get(t) || t,
+        ticker: t,
+        reason: existing?.reason || '',
+      }
+    );
   });
 
   const line = `Aktieförslag: ${JSON.stringify(finalSuggestions)}`;
