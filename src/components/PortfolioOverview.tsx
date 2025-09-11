@@ -13,7 +13,6 @@ import { useNavigate } from 'react-router-dom';
 import AddHoldingDialog from './AddHoldingDialog';
 import EditHoldingDialog from './EditHoldingDialog';
 import UserHoldingsManager from './UserHoldingsManager';
-import SectorAllocationChart from './SectorAllocationChart';
 interface PortfolioOverviewProps {
   portfolio: any;
   onQuickChat?: (message: string) => void;
@@ -73,49 +72,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   console.log('Filtered database recommendations:', allRecommendations);
 
   // Calculate portfolio exposure data
-  const calculateExposureData = () => {
-    const allHoldings = [...actualHoldings, ...allRecommendations];
-
-    // Sector exposure
-    const sectorExposure: {
-      [key: string]: number;
-    } = {};
-    // Market exposure (based on currency and market info)
-    const marketExposure: {
-      [key: string]: number;
-    } = {};
-    allHoldings.forEach(holding => {
-      const value = holding.current_value || holding.purchase_price || 100; // Default value for recommendations
-
-      // Sector distribution
-      const sector = holding.sector || 'Övrigt';
-      sectorExposure[sector] = (sectorExposure[sector] || 0) + value;
-
-      // Market distribution (based on currency and available market data)
-      let market = 'Sverige'; // Default
-      if (holding.currency === 'USD') market = 'USA';else if (holding.currency === 'EUR') market = 'Europa';else if (holding.market) market = holding.market;
-      marketExposure[market] = (marketExposure[market] || 0) + value;
-    });
-
-    // Convert to chart data
-    const totalValue = Object.values(sectorExposure).reduce((sum, val) => sum + val, 0);
-    const sectorData = Object.entries(sectorExposure).map(([sector, value]) => ({
-      name: sector,
-      value: value,
-      percentage: totalValue > 0 ? Math.round(value / totalValue * 100) : 0
-    })).sort((a, b) => b.value - a.value);
-    const marketData = Object.entries(marketExposure).map(([market, value]) => ({
-      name: market,
-      value: value,
-      percentage: totalValue > 0 ? Math.round(value / totalValue * 100) : 0
-    })).sort((a, b) => b.value - a.value);
-    return {
-      sectorData,
-      marketData,
-      totalValue
-    };
-  };
-  const exposureData = calculateExposureData();
 
   // Color palettes for charts
 
@@ -516,9 +472,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       </div>;
   }
   return <div className="space-y-6">
-      {/* Sector Allocation Chart */}
-      <SectorAllocationChart data={exposureData.sectorData} />
-
       {/* User's Current Holdings with integrated prices and cash management - NOW FIRST */}
       <UserHoldingsManager />
 

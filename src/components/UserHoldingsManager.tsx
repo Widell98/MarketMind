@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,8 @@ import {
   Banknote,
   Search,
   LayoutGrid,
-  Table as TableIcon
+  Table as TableIcon,
+  PieChart
 } from 'lucide-react';
 import {
   Dialog,
@@ -37,6 +38,7 @@ import HoldingsGroupSection from '@/components/HoldingsGroupSection';
 import HoldingsTable from '@/components/HoldingsTable';
 import AddHoldingDialog from '@/components/AddHoldingDialog';
 import EditHoldingDialog from '@/components/EditHoldingDialog';
+import SectorAllocationChart from './SectorAllocationChart';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
@@ -78,7 +80,7 @@ interface TransformedHolding {
 }
 
 const UserHoldingsManager: React.FC = () => {
-  const { actualHoldings, loading, deleteHolding } = useUserHoldings();
+  const { actualHoldings, loading, deleteHolding, recommendations, addHolding, updateHolding } = useUserHoldings();
   const { performance } = usePortfolioPerformance();
   const { 
     cashHoldings, 
@@ -102,6 +104,23 @@ const UserHoldingsManager: React.FC = () => {
   const [showEditHoldingDialog, setShowEditHoldingDialog] = useState(false);
   const [editingHolding, setEditingHolding] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [showSectorChart, setShowSectorChart] = useState(false);
+
+  const sectorData = useMemo(() => {
+    const allHoldings = [...actualHoldings, ...(recommendations || [])];
+    const sectorExposure: { [key: string]: number } = {};
+    allHoldings.forEach(holding => {
+      const value = holding.current_value || holding.purchase_price || 100;
+      const sector = holding.sector || 'Övrigt';
+      sectorExposure[sector] = (sectorExposure[sector] || 0) + value;
+    });
+    const totalValue = Object.values(sectorExposure).reduce((sum, val) => sum + val, 0);
+    return Object.entries(sectorExposure).map(([sector, value]) => ({
+      name: sector,
+      value,
+      percentage: totalValue > 0 ? Math.round((value / totalValue) * 100) : 0
+    })).sort((a, b) => b.value - a.value);
+  }, [actualHoldings, recommendations]);
   
   // Price data state
   const [prices, setPrices] = useState<StockPrice[]>([]);
@@ -156,7 +175,6 @@ const UserHoldingsManager: React.FC = () => {
     await deleteCashHolding(id);
   };
 
-  const { addHolding, updateHolding } = useUserHoldings();
 
   const handleEditHolding = (id: string) => {
     const holding = actualHoldings.find(h => h.id === id);
@@ -460,7 +478,13 @@ const UserHoldingsManager: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Package className="w-5 h-5 text-blue-600" />
-            Dina Innehav
+            <span className="flex items-center gap-2">
+              Dina Innehav
+              <PieChart
+                className="w-4 h-4 text-blue-600 cursor-pointer"
+                onClick={() => setShowSectorChart(true)}
+              />
+            </span>
           </CardTitle>
           <CardDescription>
             {loading || cashLoading
@@ -575,6 +599,12 @@ const UserHoldingsManager: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={showSectorChart} onOpenChange={setShowSectorChart}>
+        <DialogContent className="max-w-md sm:max-w-lg">
+          <SectorAllocationChart data={sectorData} />
+        </DialogContent>
+      </Dialog>
 
       {/* Add Cash Dialog */}
       <Dialog open={showAddCashDialog} onOpenChange={setShowAddCashDialog}>
