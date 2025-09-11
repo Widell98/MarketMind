@@ -25,6 +25,7 @@ import HoldingsGroupSection from '@/components/HoldingsGroupSection';
 import HoldingsTable from '@/components/HoldingsTable';
 import AddHoldingDialog from '@/components/AddHoldingDialog';
 import EditHoldingDialog from '@/components/EditHoldingDialog';
+import SectorAllocationChart from '@/components/SectorAllocationChart';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
@@ -56,7 +57,11 @@ interface TransformedHolding {
   sector?: string;
 }
 
-const UserHoldingsManager: React.FC = () => {
+interface UserHoldingsManagerProps {
+  sectorData: { name: string; value: number; percentage: number }[];
+}
+
+const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData }) => {
   const { actualHoldings, loading, deleteHolding, recommendations, addHolding, updateHolding } = useUserHoldings();
   const { performance } = usePortfolioPerformance();
   const { 
@@ -476,80 +481,86 @@ const UserHoldingsManager: React.FC = () => {
               </div>
             </div>
           ) : (
-            <>
-              {/* Action Bar */}
-              <div className="flex flex-col sm:flex-row gap-4 pb-4 border-b border-border">
-                <div className="flex gap-2">
-                  <Button size="sm" className="flex items-center gap-2" onClick={() => setShowAddHoldingDialog(true)}>
-                    <Plus className="w-4 h-4" />
-                    Lägg till innehav
-                  </Button>
-                  <Button size="sm" variant="outline" className="flex items-center gap-2" onClick={() => setShowAddCashDialog(true)}>
-                    <Banknote className="w-4 h-4" />
-                    Lägg till kassa
-                  </Button>
+            <div className="flex flex-col lg:flex-row gap-6">
+              <div className="flex-1 space-y-4">
+                {/* Action Bar */}
+                <div className="flex flex-col sm:flex-row gap-4 pb-4 border-b border-border">
+                  <div className="flex gap-2">
+                    <Button size="sm" className="flex items-center gap-2" onClick={() => setShowAddHoldingDialog(true)}>
+                      <Plus className="w-4 h-4" />
+                      Lägg till innehav
+                    </Button>
+                    <Button size="sm" variant="outline" className="flex items-center gap-2" onClick={() => setShowAddCashDialog(true)}>
+                      <Banknote className="w-4 h-4" />
+                      Lägg till kassa
+                    </Button>
+                  </div>
+
+                  <div className="flex gap-2 flex-1 max-w-md items-center">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Sök innehav..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="icon"
+                        variant={viewMode === 'cards' ? 'default' : 'outline'}
+                        onClick={() => setViewMode('cards')}
+                      >
+                        <LayoutGrid className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant={viewMode === 'table' ? 'default' : 'outline'}
+                        onClick={() => setViewMode('table')}
+                      >
+                        <TableIcon className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex gap-2 flex-1 max-w-md items-center">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Sök innehav..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
+                {viewMode === 'cards' ? (
+                  <div className="space-y-4">
+                    {filteredGroups.map((group) => (
+                      <HoldingsGroupSection
+                        key={group.key}
+                        title={group.title}
+                        holdings={group.holdings}
+                        totalValue={group.totalValue}
+                        groupPercentage={group.percentage}
+                        getPriceForHolding={getPriceForHolding}
+                        onDiscuss={handleDiscussHolding}
+                        onEdit={group.key === 'cash' ? (id: string) => {
+                          const cash = group.holdings.find(h => h.id === id);
+                          if (cash) {
+                            setEditingCash({ id: cash.id, amount: cash.current_value });
+                          }
+                        } : handleEditHolding}
+                        onDelete={group.key === 'cash' ? handleDeleteCash : handleDeleteHolding}
+                      />
+                    ))}
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="icon"
-                      variant={viewMode === 'cards' ? 'default' : 'outline'}
-                      onClick={() => setViewMode('cards')}
-                    >
-                      <LayoutGrid className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant={viewMode === 'table' ? 'default' : 'outline'}
-                      onClick={() => setViewMode('table')}
-                    >
-                      <TableIcon className="w-4 h-4" />
-                    </Button>
+                ) : (
+                  <HoldingsTable holdings={filteredHoldings} getPriceForHolding={getPriceForHolding} />
+                )}
+
+                {lastUpdated && (
+                  <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
+                    Priser uppdaterade: {lastUpdated} | Priser uppdateras vid inloggning
                   </div>
-                </div>
+                )}
               </div>
 
-              {viewMode === 'cards' ? (
-                <div className="space-y-4">
-                  {filteredGroups.map((group) => (
-                    <HoldingsGroupSection
-                      key={group.key}
-                      title={group.title}
-                      holdings={group.holdings}
-                      totalValue={group.totalValue}
-                      groupPercentage={group.percentage}
-                      getPriceForHolding={getPriceForHolding}
-                      onDiscuss={handleDiscussHolding}
-                      onEdit={group.key === 'cash' ? (id: string) => {
-                        const cash = group.holdings.find(h => h.id === id);
-                        if (cash) {
-                          setEditingCash({ id: cash.id, amount: cash.current_value });
-                        }
-                      } : handleEditHolding}
-                      onDelete={group.key === 'cash' ? handleDeleteCash : handleDeleteHolding}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <HoldingsTable holdings={filteredHoldings} getPriceForHolding={getPriceForHolding} />
-              )}
-
-              {lastUpdated && (
-                <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
-                  Priser uppdaterade: {lastUpdated} | Priser uppdateras vid inloggning
-                </div>
-              )}
-            </>
+              <div className="lg:w-1/3">
+                <SectorAllocationChart data={sectorData} />
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

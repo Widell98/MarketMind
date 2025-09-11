@@ -13,7 +13,6 @@ import { useNavigate } from 'react-router-dom';
 import AddHoldingDialog from './AddHoldingDialog';
 import EditHoldingDialog from './EditHoldingDialog';
 import UserHoldingsManager from './UserHoldingsManager';
-import SectorAllocationChart from './SectorAllocationChart';
 interface PortfolioOverviewProps {
   portfolio: any;
   onQuickChat?: (message: string) => void;
@@ -505,10 +504,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       </div>;
   }
   return <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-2">
-        <UserHoldingsManager />
-        <SectorAllocationChart data={exposureData.sectorData} />
-      </div>
+      <UserHoldingsManager sectorData={exposureData.sectorData} />
 
       {/* AI-Recommended Holdings - NOW SECOND with consistent styling */}
       <Card className="bg-card/30 backdrop-blur-xl border-border/20 shadow-lg rounded-3xl overflow-hidden">
