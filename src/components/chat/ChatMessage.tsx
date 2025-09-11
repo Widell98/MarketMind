@@ -21,6 +21,7 @@ interface ChatMessageProps {
       analysisType?: string;
       confidence?: number;
       isExchangeRequest?: boolean;
+      stockSuggestions?: StockSuggestion[];
     };
   };
 }
