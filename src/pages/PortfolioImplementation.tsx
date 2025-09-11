@@ -2,10 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import PortfolioOverview from '@/components/PortfolioOverview';
-import UserInsightsPanel from '@/components/UserInsightsPanel';
 import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolioAdvisor';
-import UserInvestmentAnalysis from '@/components/UserInvestmentAnalysis';
-import SubscriptionCard from '@/components/SubscriptionCard';
 import LoginPromptModal from '@/components/LoginPromptModal';
 import PortfolioValueCards from '@/components/PortfolioValueCards';
 import CommunityRecommendations from '@/components/CommunityRecommendations';
@@ -16,12 +13,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Brain, TrendingUp, Target, BarChart3, Activity, AlertCircle, User, MessageSquare, Clock } from 'lucide-react';
-import PortfolioHealthScore from '@/components/PortfolioHealthScore';
+import { Brain, AlertCircle, User } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
 import Breadcrumb from '@/components/Breadcrumb';
 const PortfolioImplementation = () => {
@@ -208,22 +201,15 @@ const PortfolioImplementation = () => {
               </div>
             </div>}
 
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
-            <div className="xl:col-span-3 space-y-4 sm:space-y-6 lg:space-y-8">
-              <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
-                <PortfolioOverview portfolio={activePortfolio} onQuickChat={handleQuickChat} onActionClick={handleActionClick} />
-              </div>
-              
-              <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
-                <CommunityRecommendations />
-              </div>
+          <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
+              <PortfolioOverview portfolio={activePortfolio} onQuickChat={handleQuickChat} onActionClick={handleActionClick} />
             </div>
-            <div className="xl:col-span-1">
-              <div className="bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
-                <UserInsightsPanel />
-              </div>
+
+            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
+              <CommunityRecommendations />
             </div>
           </div>
         </div>

@@ -2,16 +2,10 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { TrendingUp, TrendingDown, BarChart3, PieChart, Activity, Target, Zap, Brain, AlertTriangle, Shield, Plus, Edit3, MessageCircle, Settings, ChevronDown, ChevronUp, Info, Star, User, Globe, Building2, X, ShoppingCart, Edit, Trash2, LogIn, ArrowRight, Sparkles, Tag } from 'lucide-react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { TrendingUp, TrendingDown, BarChart3, Activity, Target, Zap, Brain, AlertTriangle, Shield, Plus, Edit3, MessageCircle, Settings, ChevronDown, ChevronUp, Info, Star, User, Globe, Building2, X, ShoppingCart, Edit, Trash2, LogIn, ArrowRight, Sparkles, Tag } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioInsights } from '@/hooks/usePortfolioInsights';
-import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import AddHoldingDialog from './AddHoldingDialog';
 import EditHoldingDialog from './EditHoldingDialog';
 import UserHoldingsManager from './UserHoldingsManager';
+import SectorAllocationChart from './SectorAllocationChart';
 interface PortfolioOverviewProps {
   portfolio: any;
   onQuickChat?: (message: string) => void;
@@ -123,8 +118,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   const exposureData = calculateExposureData();
 
   // Color palettes for charts
-  const sectorColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316'];
-  const marketColors = ['#1E40AF', '#059669', '#D97706', '#DC2626', '#7C3AED'];
 
   // Helper function to get insight icon based on type
   const getInsightIcon = (type: string) => {
@@ -523,6 +516,9 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       </div>;
   }
   return <div className="space-y-6">
+      {/* Sector Allocation Chart */}
+      <SectorAllocationChart data={exposureData.sectorData} />
+
       {/* User's Current Holdings with integrated prices and cash management - NOW FIRST */}
       <UserHoldingsManager />
 
