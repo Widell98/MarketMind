@@ -38,33 +38,46 @@ const ChatMessage = ({
 
   // Parse markdown formatting - replaced with secure version
 
-  // Extract stock suggestions from a JSON array in the message
-  const extractStockSuggestions = (content: string): StockSuggestion[] => {
+  // Extract stock suggestions from message content
+  const extractStockSuggestionsFromContent = (content: string) => {
     const jsonMatch = content.match(/Aktieförslag:\s*(\[[\s\S]*\])/);
     if (!jsonMatch) return [];
 
     try {
       const parsed = JSON.parse(jsonMatch[1]);
-      if (!Array.isArray(parsed)) return [];
-
-      const existingSymbols = new Set(
-        actualHoldings.map(holding => holding.symbol?.toUpperCase()).filter(Boolean)
-      );
-
-      return parsed
-        .filter((item: any) => item?.name && item?.ticker)
-        .map((item: any) => ({
-          name: String(item.name).trim(),
-          symbol: String(item.ticker).toUpperCase(),
-          reason: item.reason || 'AI-rekommendation',
-        }))
-        .filter(item => !existingSymbols.has(item.symbol));
+      return Array.isArray(parsed) ? parsed : [];
     } catch (error) {
       console.error('Error parsing stock suggestions JSON:', error);
       return [];
     }
   };
-  const stockSuggestions = message.role === 'assistant' ? extractStockSuggestions(message.content) : [];
+
+  // Normalize stock suggestions to consistent format
+  const normalizeStockSuggestions = (suggestions: unknown[]): StockSuggestion[] => {
+    const existingSymbols = new Set(
+      actualHoldings.map(holding => holding.symbol?.toUpperCase()).filter(Boolean)
+    );
+
+    return (Array.isArray(suggestions) ? suggestions : [])
+      .filter(
+        (item): item is { name: unknown; ticker?: unknown; symbol?: unknown; reason?: unknown } =>
+          typeof item === 'object' && item !== null &&
+          'name' in item &&
+          ('ticker' in item || 'symbol' in item)
+      )
+      .map(item => ({
+        name: String(item.name).trim(),
+        symbol: String((item.symbol ?? item.ticker) as string).toUpperCase(),
+        reason: item.reason ? String(item.reason) : 'AI-rekommendation'
+      }))
+      .filter(item => !existingSymbols.has(item.symbol));
+  };
+
+  const rawSuggestions = message.role === 'assistant'
+    ? message.context?.stockSuggestions ?? extractStockSuggestionsFromContent(message.content)
+    : [];
+
+  const stockSuggestions = normalizeStockSuggestions(rawSuggestions);
   const handleAddStock = async (suggestion: StockSuggestion) => {
     try {
       const success = await addHolding({
