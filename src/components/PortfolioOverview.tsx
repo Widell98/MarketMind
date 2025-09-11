@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import AddHoldingDialog from './AddHoldingDialog';
 import EditHoldingDialog from './EditHoldingDialog';
 import UserHoldingsManager from './UserHoldingsManager';
+import SectorAllocationChart from './SectorAllocationChart';
 interface PortfolioOverviewProps {
   portfolio: any;
   onQuickChat?: (message: string) => void;
@@ -72,6 +73,38 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   console.log('Filtered database recommendations:', allRecommendations);
 
   // Calculate portfolio exposure data
+  const calculateExposureData = () => {
+    const allHoldings = [...actualHoldings, ...allRecommendations];
+
+    const sectorExposure: { [key: string]: number } = {};
+    const marketExposure: { [key: string]: number } = {};
+    allHoldings.forEach(holding => {
+      const value = holding.current_value || holding.purchase_price || 100;
+
+      const sector = holding.sector || 'Övrigt';
+      sectorExposure[sector] = (sectorExposure[sector] || 0) + value;
+
+      let market = 'Sverige';
+      if (holding.currency === 'USD') market = 'USA';
+      else if (holding.currency === 'EUR') market = 'Europa';
+      else if (holding.market) market = holding.market;
+      marketExposure[market] = (marketExposure[market] || 0) + value;
+    });
+
+    const totalValue = Object.values(sectorExposure).reduce((sum, val) => sum + val, 0);
+    const sectorData = Object.entries(sectorExposure).map(([sector, value]) => ({
+      name: sector,
+      value,
+      percentage: totalValue > 0 ? Math.round((value / totalValue) * 100) : 0
+    })).sort((a, b) => b.value - a.value);
+    const marketData = Object.entries(marketExposure).map(([market, value]) => ({
+      name: market,
+      value,
+      percentage: totalValue > 0 ? Math.round((value / totalValue) * 100) : 0
+    })).sort((a, b) => b.value - a.value);
+    return { sectorData, marketData, totalValue };
+  };
+  const exposureData = calculateExposureData();
 
   // Color palettes for charts
 
@@ -472,8 +505,10 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       </div>;
   }
   return <div className="space-y-6">
-      {/* User's Current Holdings with integrated prices and cash management - NOW FIRST */}
-      <UserHoldingsManager />
+      <div className="grid gap-6 md:grid-cols-2">
+        <UserHoldingsManager />
+        <SectorAllocationChart data={exposureData.sectorData} />
+      </div>
 
       {/* AI-Recommended Holdings - NOW SECOND with consistent styling */}
       <Card className="bg-card/30 backdrop-blur-xl border-border/20 shadow-lg rounded-3xl overflow-hidden">
