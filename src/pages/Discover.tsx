@@ -149,7 +149,7 @@ const Discover: React.FC = () => {
 
           <div className="space-y-6">
             {stockCasesLoading ? (
-              <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-2' : 'grid-cols-1'}`}>
+              <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
                 {[...Array(6)].map((_, i) => (
                   <Card key={i} className="animate-pulse border rounded-2xl">
                     <CardContent className="p-6">
@@ -161,7 +161,7 @@ const Discover: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-2' : 'grid-cols-1'}`}>
+              <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
                 {getFilteredCases.map((stockCase) => (
                   <StockCaseCard
                     key={stockCase.id}
