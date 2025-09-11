@@ -236,21 +236,21 @@ const UserInsightsPanel = () => {
   };
   return <Card className="h-fit w-full border rounded-xl shadow-sm hover:shadow-md transition-shadow bg-card">
       <CardHeader className="pb-4 sm:pb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3 sm:gap-4">
           <div className="min-w-0 flex-1">
             <CardTitle className="text-base sm:text-lg font-semibold leading-tight">
               AI-Insikter & Rekommendationer
             </CardTitle>
           </div>
-          <div className="flex items-center justify-end gap-2 sm:gap-3">
+          <div className="flex items-center justify-end gap-2 sm:gap-3 flex-shrink-0">
             <div className="hidden sm:block">
               <CreditsIndicator type="insights" showUpgrade={false} />
             </div>
-            <Button 
-              size="sm" 
-              onClick={handleRefresh} 
-              disabled={loading} 
-              className="h-8 sm:h-9 w-8 sm:w-9 p-0 rounded-lg touch-manipulation" 
+            <Button
+              size="sm"
+              onClick={handleRefresh}
+              disabled={loading}
+              className="h-8 sm:h-9 w-8 sm:w-9 p-0 rounded-lg touch-manipulation flex-shrink-0"
               variant="outline"
             >
               {loading ? <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}

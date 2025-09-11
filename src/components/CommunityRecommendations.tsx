@@ -123,7 +123,7 @@ const CommunityRecommendations: React.FC = () => {
   const handleDiscussWithAI = (recommendation: CommunityRecommendation, e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     
-    let contextData = {};
+    let contextData: Record<string, unknown> = {};
     if (recommendation.stock_case) {
       contextData = {
         type: 'stock_case',

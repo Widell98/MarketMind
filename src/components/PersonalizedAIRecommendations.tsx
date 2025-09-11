@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -30,17 +30,20 @@ interface SelectedStock {
 
 const PersonalizedAIRecommendations = () => {
   const { user } = useAuth();
-  const { latestCases, loading } = useLatestStockCases(4);
+  const { latestCases, loading } = useLatestStockCases(6);
   const navigate = useNavigate();
   const { addHolding } = useUserHoldings();
   const { toast } = useToast();
   const [isAddHoldingOpen, setIsAddHoldingOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState<SelectedStock | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [personalizedCases, setPersonalizedCases] = useState<StockCase[]>([]);
 
   // In the future, this will use actual AI recommendations based on user portfolio
   // For now, we'll show latest cases with personalization context
-  const personalizedCases = latestCases.slice(0, 4) as StockCase[];
+  useEffect(() => {
+    setPersonalizedCases(latestCases.slice(0, 6) as StockCase[]);
+  }, [latestCases]);
   const handleAddToPortfolio = (stockCase: StockCase, e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     
@@ -80,15 +83,16 @@ const PersonalizedAIRecommendations = () => {
     });
   };
 
-  const handleDeleteRecommendation = (stockCase: StockCase, e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleDeleteRecommendation = (
+    stockCase: StockCase,
+    e: React.MouseEvent<HTMLButtonElement>
+  ) => {
     e.stopPropagation();
-    
-    // For AI recommendations, we could implement removal from recommendations list
-    // For now, we'll show a toast that this feature could be implemented
+
+    setPersonalizedCases((prev) => prev.filter((c) => c.id !== stockCase.id));
     toast({
-      title: "Funktionen kommer snart",
-      description: "Möjligheten att ta bort AI-rekommendationer kommer i en framtida uppdatering.",
-      variant: "default"
+      title: 'Rekommendation borttagen',
+      description: 'Rekommendationen har tagits bort från listan.'
     });
   };
 
@@ -187,104 +191,128 @@ const PersonalizedAIRecommendations = () => {
   }
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold flex items-center gap-2">
-            <Brain className="w-5 h-5 text-blue-600" />
-            AI-Rekommenderade Innehav
-            {personalizedCases.length > 0 && (
-              <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 ml-2">
-                {personalizedCases.length} rekommendationer
-              </Badge>
-            )}
-          </CardTitle>
-          <CardDescription className="text-sm text-muted-foreground mt-1">
-            Personaliserade investeringsförslag baserade på din profil
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-sm text-muted-foreground">
-              {personalizedCases.length} AI-rekommendationer
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setViewMode('list')}
-                  className={viewMode === 'list' ? 'text-purple-600' : 'text-muted-foreground'}
-                >
-                  <ListIcon className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setViewMode('grid')}
-                  className={viewMode === 'grid' ? 'text-purple-600' : 'text-muted-foreground'}
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </Button>
+  <>
+    <Card className="bg-card/30 backdrop-blur-xl border-border/20 shadow-lg rounded-3xl overflow-hidden">
+      <CardHeader className="pb-6 bg-gradient-to-r from-primary/5 to-purple/5 border-b border-border/20">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-xl font-semibold flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <Brain className="w-5 h-5 text-primary" />
               </div>
+              AI-Rekommenderade Innehav
+              {personalizedCases.length > 0 && (
+                <Badge
+                  variant="outline"
+                  className="bg-primary/10 text-primary border-primary/20 ml-2 px-3 py-1 rounded-full"
+                >
+                  {personalizedCases.length} rekommendationer
+                </Badge>
+              )}
+            </CardTitle>
+            <CardDescription className="text-muted-foreground mt-2 ml-13 leading-relaxed">
+              Personaliserade investeringsförslag baserade på din profil
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="p-8">
+        {/* Header: antal och vy-val */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="text-sm text-muted-foreground font-medium">
+            {personalizedCases.length} AI-rekommendationer
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
-                size="sm"
-                onClick={() => navigate('/ai-chat')}
-                className="text-purple-600 hover:text-purple-700"
+                size="icon"
+                onClick={() => setViewMode('list')}
+                className={viewMode === 'list' ? 'text-primary' : 'text-muted-foreground'}
               >
-                Få fler <ArrowRight className="w-3 h-3 ml-1" />
+                <ListIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setViewMode('grid')}
+                className={viewMode === 'grid' ? 'text-primary' : 'text-muted-foreground'}
+              >
+                <LayoutGrid className="h-4 w-4" />
               </Button>
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/ai-chat')}
+              className="text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl font-medium"
+            >
+              Få fler <ArrowRight className="w-3 h-3 ml-1" />
+            </Button>
           </div>
-          {viewMode === 'grid' ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {personalizedCases.map((stockCase) => (
-                <RecommendationCard
-                  key={stockCase.id}
-                  title={stockCase.company_name}
-                  description={stockCase.description || stockCase.title}
-                  tags={stockCase.sector ? [stockCase.sector] : []}
-                  isAI={true}
-                  author={stockCase.profiles ? stockCase.profiles.display_name || stockCase.profiles.username : undefined}
-                  onAdd={(e) => handleAddToPortfolio(stockCase, e)}
-                  onDiscuss={(e) => handleDiscussWithAI(stockCase, e)}
-                  onDelete={(e) => handleDeleteRecommendation(stockCase, e)}
-                  onClick={() => handleViewDetails(stockCase)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className={`space-y-3 ${personalizedCases.length > 5 ? 'max-h-96 overflow-y-auto pr-2' : ''}`}>
-              {personalizedCases.map((stockCase) => (
-                <RecommendationCard
-                  key={stockCase.id}
-                  title={stockCase.company_name}
-                  description={stockCase.description || stockCase.title}
-                  tags={stockCase.sector ? [stockCase.sector] : []}
-                  isAI={true}
-                  author={stockCase.profiles ? stockCase.profiles.display_name || stockCase.profiles.username : undefined}
-                  onAdd={(e) => handleAddToPortfolio(stockCase, e)}
-                  onDiscuss={(e) => handleDiscussWithAI(stockCase, e)}
-                  onDelete={(e) => handleDeleteRecommendation(stockCase, e)}
-                  onClick={() => handleViewDetails(stockCase)}
-                />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
 
-      <AddHoldingDialog
-        isOpen={isAddHoldingOpen}
-        onClose={() => {
-          setIsAddHoldingOpen(false);
-          setSelectedStock(null);
-        }}
-        onAdd={handleAddHolding}
-        initialData={selectedStock}
-      />
-    </>
-  );
-};
+        {/* Grid- eller listvy */}
+        {viewMode === 'grid' ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {personalizedCases.slice(0, 6).map((stockCase) => (
+              <RecommendationCard
+                key={stockCase.id}
+                title={stockCase.company_name}
+                description={stockCase.description || stockCase.title}
+                tags={stockCase.sector ? [stockCase.sector] : []}
+                isAI
+                author={stockCase.profiles ? stockCase.profiles.display_name || stockCase.profiles.username : undefined}
+                onAdd={(e) => handleAddToPortfolio(stockCase, e)}
+                onDiscuss={(e) => handleDiscussWithAI(stockCase, e)}
+                onDelete={(e) => handleDeleteRecommendation(stockCase, e)}
+                onClick={() => handleViewDetails(stockCase)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className={`space-y-3 ${personalizedCases.length > 5 ? 'max-h-96 overflow-y-auto pr-2' : ''}`}>
+            {personalizedCases.slice(0, 6).map((stockCase) => (
+              <RecommendationCard
+                key={stockCase.id}
+                title={stockCase.company_name}
+                description={stockCase.description || stockCase.title}
+                tags={stockCase.sector ? [stockCase.sector] : []}
+                isAI
+                author={stockCase.profiles ? stockCase.profiles.display_name || stockCase.profiles.username : undefined}
+                onAdd={(e) => handleAddToPortfolio(stockCase, e)}
+                onDiscuss={(e) => handleDiscussWithAI(stockCase, e)}
+                onDelete={(e) => handleDeleteRecommendation(stockCase, e)}
+                onClick={() => handleViewDetails(stockCase)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Visa alla-knapp */}
+        {personalizedCases.length > 6 && (
+          <Button
+            variant="outline"
+            className="w-full mt-6 rounded-xl py-3 bg-card/50 hover:bg-primary/5 text-primary hover:text-primary/80 border-primary/20 hover:border-primary/30"
+            onClick={() => navigate('/ai-chat')}
+          >
+            Visa alla AI-rekommendationer ({personalizedCases.length})
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+
+    <AddHoldingDialog
+      isOpen={isAddHoldingOpen}
+      onClose={() => {
+        setIsAddHoldingOpen(false);
+        setSelectedStock(null);
+      }}
+      onAdd={handleAddHolding}
+      initialData={selectedStock}
+    />
+  </>
+);
+
 export default PersonalizedAIRecommendations;
