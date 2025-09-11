@@ -11,7 +11,8 @@ import {
   Banknote,
   Search,
   LayoutGrid,
-  Table as TableIcon
+  Table as TableIcon,
+  PieChart
 } from 'lucide-react';
 import {
   Dialog,
@@ -37,6 +38,7 @@ import HoldingsGroupSection from '@/components/HoldingsGroupSection';
 import HoldingsTable from '@/components/HoldingsTable';
 import AddHoldingDialog from '@/components/AddHoldingDialog';
 import EditHoldingDialog from '@/components/EditHoldingDialog';
+import SectorAllocationChart from '@/components/SectorAllocationChart';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
@@ -102,6 +104,7 @@ const UserHoldingsManager: React.FC = () => {
   const [showEditHoldingDialog, setShowEditHoldingDialog] = useState(false);
   const [editingHolding, setEditingHolding] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [isSectorDialogOpen, setIsSectorDialogOpen] = useState(false);
   
   // Price data state
   const [prices, setPrices] = useState<StockPrice[]>([]);
@@ -407,6 +410,19 @@ const UserHoldingsManager: React.FC = () => {
     ...transformedCashHoldings
   ];
 
+  const sectorTotals: Record<string, number> = {};
+  transformedActualHoldings.forEach(holding => {
+    const sector = holding.sector || 'Övrigt';
+    const value = Number(holding.current_value) || 0;
+    sectorTotals[sector] = (sectorTotals[sector] || 0) + value;
+  });
+  const totalSectorValue = Object.values(sectorTotals).reduce((sum, val) => sum + val, 0);
+  const sectorChartData = Object.entries(sectorTotals).map(([name, value]) => ({
+    name,
+    value,
+    percentage: totalSectorValue > 0 ? Math.round((value / totalSectorValue) * 100) : 0,
+  }));
+
   // Group holdings by type
   const groupHoldings = () => {
     const groups = {
@@ -461,6 +477,10 @@ const UserHoldingsManager: React.FC = () => {
           <CardTitle className="flex items-center gap-2">
             <Package className="w-5 h-5 text-blue-600" />
             Dina Innehav
+            <PieChart
+              className="ml-auto w-5 h-5 flex-shrink-0 cursor-pointer"
+              onClick={() => setIsSectorDialogOpen(true)}
+            />
           </CardTitle>
           <CardDescription>
             {loading || cashLoading
@@ -575,6 +595,16 @@ const UserHoldingsManager: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Sector Allocation Dialog */}
+      <Dialog open={isSectorDialogOpen} onOpenChange={setIsSectorDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Sektorexponering</DialogTitle>
+          </DialogHeader>
+          <SectorAllocationChart data={sectorChartData} />
+        </DialogContent>
+      </Dialog>
 
       {/* Add Cash Dialog */}
       <Dialog open={showAddCashDialog} onOpenChange={setShowAddCashDialog}>
