@@ -15,6 +15,7 @@ import {
   ResponsiveContainer,
   LabelList,
 } from 'recharts'
+import type { LegendProps } from 'recharts'
 import { formatCurrency } from '@/utils/currencyUtils'
 import { Building2 } from 'lucide-react'
 
@@ -23,31 +24,31 @@ interface SectorAllocationChartProps {
 }
 
 const COLORS = [
-  '#93C5FD',
-  '#6EE7B7',
-  '#FCD34D',
-  '#FDBA74',
-  '#FCA5A5',
-  '#C4B5FD',
-  '#67E8F9',
-  '#A3E635',
+  '#dbeafe',
+  '#bfdbfe',
+  '#93c5fd',
+  '#60a5fa',
+  '#3b82f6',
+  '#2563eb',
+  '#1d4ed8',
+  '#1e40af',
 ]
 
 const SectorAllocationChart: React.FC<SectorAllocationChartProps> = ({ data }) => {
   const totalValue = data.reduce((sum, item) => sum + item.value, 0)
 
   return (
-    <Card className="bg-card/30 backdrop-blur-xl border-border/20 shadow-lg rounded-2xl">
-      <CardHeader className="p-3 sm:p-4 md:p-6 pb-0">
-        <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-          <Building2 className="w-5 h-5 text-primary" />
+    <Card className="rounded-3xl shadow-sm border border-border/40 bg-white dark:bg-gray-900">
+      <CardHeader className="p-8 pb-0">
+        <CardTitle className="flex items-center gap-2 text-xl font-semibold text-blue-700">
+          <Building2 className="w-6 h-6 text-blue-600" />
           Sektorexponering
         </CardTitle>
         <CardDescription className="text-sm text-muted-foreground">
           Totalt värde: {formatCurrency(totalValue)}
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
+      <CardContent className="p-8 pt-0">
         <div className="h-64">
           <ResponsiveContainer>
             <RechartsPieChart>
@@ -55,8 +56,8 @@ const SectorAllocationChart: React.FC<SectorAllocationChartProps> = ({ data }) =
                 data={data}
                 dataKey="value"
                 nameKey="name"
-                innerRadius="60%"
-                outerRadius="80%"
+                innerRadius="65%"
+                outerRadius="85%"
                 paddingAngle={2}
                 labelLine={false}
               >
@@ -66,30 +67,32 @@ const SectorAllocationChart: React.FC<SectorAllocationChartProps> = ({ data }) =
                 <LabelList
                   dataKey="percentage"
                   position="inside"
-                  offset={0}
-                  style={{ fill: '#fff', fontSize: 12, fontWeight: 500 }}
+                  style={{ fill: '#fff', fontSize: 12, fontWeight: 600 }}
                   formatter={(value: number) => `${value}%`}
                 />
               </Pie>
-              <Tooltip formatter={(value: number) => formatCurrency(value)} />
+              <Tooltip formatter={(value: number) => formatCurrency(Number(value))} />
               <Legend
                 verticalAlign="bottom"
-                content={({ payload }) => (
-                  <ul className="flex flex-wrap justify-center gap-4 text-sm">
-                    {payload?.map((item, index) => (
-                      <li key={index} className="flex items-center gap-2">
-                        <span
-                          className="block w-2 h-2 rounded-full"
-                          style={{ backgroundColor: item.color }}
-                        />
-                        <span className="text-muted-foreground">{item.value}</span>
-                        <span className="font-medium">
-                          {item.payload.percentage}%
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                content={(props: LegendProps) => {
+                  const payload = props.payload || []
+                  return (
+                    <ul className="flex flex-wrap justify-center gap-4 pt-6 text-sm">
+                      {payload.map((item, index) => (
+                        <li key={index} className="flex items-center gap-2">
+                          <span
+                            className="block w-3 h-3 rounded-full"
+                            style={{ backgroundColor: item.color }}
+                          />
+                          <span className="text-muted-foreground">{item.value}</span>
+                          <span className="font-medium text-blue-600">
+                            {item.payload?.percentage}%
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )
+                }}
               />
             </RechartsPieChart>
           </ResponsiveContainer>
