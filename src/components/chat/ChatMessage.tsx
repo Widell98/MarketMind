@@ -5,12 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { parseMarkdownSafely } from '@/utils/sanitizer';
-interface StockSuggestion {
-  symbol: string;
-  name: string;
-  sector?: string;
-  reason?: string;
-}
+import type { StockSuggestion } from '@/types/chat';
 interface ChatMessageProps {
   message: {
     id: string;
@@ -94,7 +89,7 @@ const ChatMessage = ({
         current_value: 0,
         purchase_price: 0,
         currency: 'SEK',
-        sector: suggestion.sector || 'Okänd',
+        sector: 'Okänd',
         market: 'Swedish'
       });
       if (success) {

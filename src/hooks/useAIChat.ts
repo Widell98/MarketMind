@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
+import type { StockSuggestion } from '@/types/chat';
 
 interface Message {
   id: string;
@@ -15,7 +16,7 @@ interface Message {
       isExchangeRequest?: boolean;
       profileUpdates?: Record<string, unknown>;
       requiresConfirmation?: boolean;
-      stockSuggestions?: { symbol: string; name: string; reason?: string }[];
+      stockSuggestions?: StockSuggestion[];
     };
 }
 
@@ -76,7 +77,7 @@ export const useAIChat = (portfolioId?: string) => {
               isExchangeRequest: message.context_data.isExchangeRequest,
               profileUpdates: message.context_data.profileUpdates,
               requiresConfirmation: message.context_data.requiresConfirmation,
-              stockSuggestions: message.context_data.stockSuggestions
+              stockSuggestions: message.context_data.stockSuggestions as StockSuggestion[] | undefined
             }
           : undefined,
       }));
@@ -612,7 +613,7 @@ export const useAIChat = (portfolioId?: string) => {
       let accumulatedContent = '';
       let profileUpdates = null;
       let requiresConfirmation = false;
-      let stockSuggestions: { symbol: string; name: string; reason?: string }[] | null = null;
+      let stockSuggestions: StockSuggestion[] | null = null;
       
       if (reader) {
         try {
