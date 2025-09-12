@@ -11,7 +11,8 @@ import {
   Banknote,
   Search,
   LayoutGrid,
-  Table as TableIcon
+  Table as TableIcon,
+  PieChart as PieChartIcon
 } from 'lucide-react';
 import {
   Dialog,
@@ -19,38 +20,18 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  DialogTitle
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import HoldingsGroupSection from '@/components/HoldingsGroupSection';
 import HoldingsTable from '@/components/HoldingsTable';
 import AddHoldingDialog from '@/components/AddHoldingDialog';
 import EditHoldingDialog from '@/components/EditHoldingDialog';
+import SectorAllocationChart from '@/components/SectorAllocationChart';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { 
-  Trash2,
-  MessageSquare,
-  Edit2,
-  Wallet,
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle
-} from 'lucide-react';
 
 interface StockPrice {
   symbol: string;
@@ -77,8 +58,12 @@ interface TransformedHolding {
   sector?: string;
 }
 
-const UserHoldingsManager: React.FC = () => {
-  const { actualHoldings, loading, deleteHolding } = useUserHoldings();
+interface UserHoldingsManagerProps {
+  sectorData?: { name: string; value: number; percentage: number }[];
+}
+
+const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = [] }) => {
+  const { actualHoldings, loading, deleteHolding, recommendations, addHolding, updateHolding } = useUserHoldings();
   const { performance } = usePortfolioPerformance();
   const { 
     cashHoldings, 
@@ -102,6 +87,7 @@ const UserHoldingsManager: React.FC = () => {
   const [showEditHoldingDialog, setShowEditHoldingDialog] = useState(false);
   const [editingHolding, setEditingHolding] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [isChartOpen, setIsChartOpen] = useState(false);
   
   // Price data state
   const [prices, setPrices] = useState<StockPrice[]>([]);
@@ -156,7 +142,6 @@ const UserHoldingsManager: React.FC = () => {
     await deleteCashHolding(id);
   };
 
-  const { addHolding, updateHolding } = useUserHoldings();
 
   const handleEditHolding = (id: string) => {
     const holding = actualHoldings.find(h => h.id === id);
@@ -458,14 +443,20 @@ const UserHoldingsManager: React.FC = () => {
     <>
       <Card className="h-fit">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="w-5 h-5 text-blue-600" />
-            Dina Innehav
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Package className="w-5 h-5 text-blue-600" />
+              <span>Dina Innehav</span>
+            </span>
+            <PieChartIcon
+              className="w-5 h-5 text-blue-600 cursor-pointer"
+              onClick={() => setIsChartOpen(true)}
+            />
           </CardTitle>
           <CardDescription>
             {loading || cashLoading
               ? "Laddar dina innehav..."
-              : allHoldings.length > 0 
+              : allHoldings.length > 0
                 ? `Analysera dina investeringar och kassapositioner (${allHoldings.length} st)`
                 : "Lägg till dina befintliga aktier, fonder och kassapositioner för bättre portföljanalys"
             }
@@ -498,7 +489,7 @@ const UserHoldingsManager: React.FC = () => {
               </div>
             </div>
           ) : (
-            <>
+            <div className="space-y-4">
               {/* Action Bar */}
               <div className="flex flex-col sm:flex-row gap-4 pb-4 border-b border-border">
                 <div className="flex gap-2">
@@ -571,10 +562,21 @@ const UserHoldingsManager: React.FC = () => {
                   Priser uppdaterade: {lastUpdated} | Priser uppdateras vid inloggning
                 </div>
               )}
-            </>
+            </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Sector Allocation Dialog */}
+      <Dialog open={isChartOpen} onOpenChange={setIsChartOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sektorexponering</DialogTitle>
+            <DialogDescription>Fördelning över olika industrisektorer</DialogDescription>
+          </DialogHeader>
+          <SectorAllocationChart data={sectorData} />
+        </DialogContent>
+      </Dialog>
 
       {/* Add Cash Dialog */}
       <Dialog open={showAddCashDialog} onOpenChange={setShowAddCashDialog}>
