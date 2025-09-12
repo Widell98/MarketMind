@@ -9,13 +9,14 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
-  context?: {
-    analysisType?: string;
-    confidence?: number;
-    isExchangeRequest?: boolean;
-    profileUpdates?: any;
-    requiresConfirmation?: boolean;
-  };
+    context?: {
+      analysisType?: string;
+      confidence?: number;
+      isExchangeRequest?: boolean;
+      profileUpdates?: Record<string, unknown>;
+      requiresConfirmation?: boolean;
+      stockSuggestions?: { symbol: string; name: string; reason?: string }[];
+    };
 }
 
 interface ChatSession {
@@ -68,7 +69,16 @@ export const useAIChat = (portfolioId?: string) => {
         role: message.message_type === 'user' ? 'user' : 'assistant',
         content: message.message,
         timestamp: new Date(message.created_at),
-        context: message.context_data as any,
+        context: message.context_data
+          ? {
+              analysisType: message.context_data.analysisType,
+              confidence: message.context_data.confidence,
+              isExchangeRequest: message.context_data.isExchangeRequest,
+              profileUpdates: message.context_data.profileUpdates,
+              requiresConfirmation: message.context_data.requiresConfirmation,
+              stockSuggestions: message.context_data.stockSuggestions
+            }
+          : undefined,
       }));
 
       console.log('Formatted messages:', formattedMessages);
@@ -602,6 +612,7 @@ export const useAIChat = (portfolioId?: string) => {
       let accumulatedContent = '';
       let profileUpdates = null;
       let requiresConfirmation = false;
+      let stockSuggestions: { symbol: string; name: string; reason?: string }[] | null = null;
       
       if (reader) {
         try {
@@ -637,17 +648,21 @@ export const useAIChat = (portfolioId?: string) => {
                     profileUpdates = parsed.profileUpdates;
                     requiresConfirmation = parsed.requiresConfirmation;
                   }
+
+                  if (parsed.stockSuggestions) {
+                    stockSuggestions = parsed.stockSuggestions;
+                  }
                 } catch (e) {
                   // Ignore JSON parse errors
                 }
               }
             }
           }
-          
+
           // Update final message with profile update context if needed
           if (requiresConfirmation && profileUpdates) {
-            setMessages(prev => prev.map(msg => 
-              msg.id === aiMessageId 
+            setMessages(prev => prev.map(msg =>
+              msg.id === aiMessageId
                 ? { 
                     ...msg, 
                     context: {
@@ -659,7 +674,21 @@ export const useAIChat = (portfolioId?: string) => {
                 : msg
             ));
           }
-          
+
+          if (stockSuggestions) {
+            setMessages(prev => prev.map(msg =>
+              msg.id === aiMessageId
+                ? {
+                    ...msg,
+                    context: {
+                      ...msg.context,
+                      stockSuggestions
+                    }
+                  }
+                : msg
+            ));
+          }
+
         } finally {
           reader.releaseLock();
         }
@@ -698,7 +727,7 @@ export const useAIChat = (portfolioId?: string) => {
   }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage, incrementUsage, loadMessages]);
 
   // Function to update user profile based on AI-detected changes
-  const updateUserProfile = useCallback(async (profileUpdates: any) => {
+  const updateUserProfile = useCallback(async (profileUpdates: Record<string, unknown>) => {
     if (!user) return;
 
     try {
@@ -715,7 +744,7 @@ export const useAIChat = (portfolioId?: string) => {
       });
 
       // Send confirmation message to AI
-      const confirmationMessage = `Min profil har uppdaterats: ${Object.entries(profileUpdates).map(([key, value]) => `${key}: ${value}`).join(', ')}`;
+      const confirmationMessage = `Min profil har uppdaterats: ${Object.entries(profileUpdates).map(([key, value]) => `${key}: ${String(value)}`).join(', ')}`;
       await sendMessage(confirmationMessage);
     } catch (error) {
       console.error('Error updating profile:', error);

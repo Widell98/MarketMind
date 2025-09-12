@@ -74,9 +74,14 @@ const ChatMessage = ({
       .filter(item => !existingSymbols.has(item.symbol));
   };
 
-  const rawSuggestions = message.role === 'assistant'
-    ? message.context?.stockSuggestions ?? extractStockSuggestionsFromContent(message.content)
-    : [];
+  let rawSuggestions: unknown[] = [];
+  if (message.role === 'assistant') {
+    if (message.context?.stockSuggestions !== undefined) {
+      rawSuggestions = message.context.stockSuggestions;
+    } else {
+      rawSuggestions = extractStockSuggestionsFromContent(message.content);
+    }
+  }
 
   const stockSuggestions = normalizeStockSuggestions(rawSuggestions);
   const handleAddStock = async (suggestion: StockSuggestion) => {
