@@ -11,7 +11,8 @@ import {
   Banknote,
   Search,
   LayoutGrid,
-  Table as TableIcon
+  Table as TableIcon,
+  PieChart as PieChartIcon
 } from 'lucide-react';
 import {
   Dialog,
@@ -58,10 +59,10 @@ interface TransformedHolding {
 }
 
 interface UserHoldingsManagerProps {
-  sectorData: { name: string; value: number; percentage: number }[];
+  sectorData?: { name: string; value: number; percentage: number }[];
 }
 
-const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData }) => {
+const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = [] }) => {
   const { actualHoldings, loading, deleteHolding, recommendations, addHolding, updateHolding } = useUserHoldings();
   const { performance } = usePortfolioPerformance();
   const { 
@@ -86,6 +87,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData })
   const [showEditHoldingDialog, setShowEditHoldingDialog] = useState(false);
   const [editingHolding, setEditingHolding] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [isChartOpen, setIsChartOpen] = useState(false);
   
   // Price data state
   const [prices, setPrices] = useState<StockPrice[]>([]);
@@ -441,14 +443,20 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData })
     <>
       <Card className="h-fit">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="w-5 h-5 text-blue-600" />
-            <span>Dina Innehav</span>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Package className="w-5 h-5 text-blue-600" />
+              <span>Dina Innehav</span>
+            </span>
+            <PieChartIcon
+              className="w-5 h-5 text-blue-600 cursor-pointer"
+              onClick={() => setIsChartOpen(true)}
+            />
           </CardTitle>
           <CardDescription>
             {loading || cashLoading
               ? "Laddar dina innehav..."
-              : allHoldings.length > 0 
+              : allHoldings.length > 0
                 ? `Analysera dina investeringar och kassapositioner (${allHoldings.length} st)`
                 : "Lägg till dina befintliga aktier, fonder och kassapositioner för bättre portföljanalys"
             }
@@ -481,89 +489,94 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData })
               </div>
             </div>
           ) : (
-            <div className="flex flex-col lg:flex-row gap-6">
-              <div className="flex-1 space-y-4">
-                {/* Action Bar */}
-                <div className="flex flex-col sm:flex-row gap-4 pb-4 border-b border-border">
-                  <div className="flex gap-2">
-                    <Button size="sm" className="flex items-center gap-2" onClick={() => setShowAddHoldingDialog(true)}>
-                      <Plus className="w-4 h-4" />
-                      Lägg till innehav
-                    </Button>
-                    <Button size="sm" variant="outline" className="flex items-center gap-2" onClick={() => setShowAddCashDialog(true)}>
-                      <Banknote className="w-4 h-4" />
-                      Lägg till kassa
-                    </Button>
-                  </div>
-
-                  <div className="flex gap-2 flex-1 max-w-md items-center">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Sök innehav..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="icon"
-                        variant={viewMode === 'cards' ? 'default' : 'outline'}
-                        onClick={() => setViewMode('cards')}
-                      >
-                        <LayoutGrid className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant={viewMode === 'table' ? 'default' : 'outline'}
-                        onClick={() => setViewMode('table')}
-                      >
-                        <TableIcon className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
+            <div className="space-y-4">
+              {/* Action Bar */}
+              <div className="flex flex-col sm:flex-row gap-4 pb-4 border-b border-border">
+                <div className="flex gap-2">
+                  <Button size="sm" className="flex items-center gap-2" onClick={() => setShowAddHoldingDialog(true)}>
+                    <Plus className="w-4 h-4" />
+                    Lägg till innehav
+                  </Button>
+                  <Button size="sm" variant="outline" className="flex items-center gap-2" onClick={() => setShowAddCashDialog(true)}>
+                    <Banknote className="w-4 h-4" />
+                    Lägg till kassa
+                  </Button>
                 </div>
 
-                {viewMode === 'cards' ? (
-                  <div className="space-y-4">
-                    {filteredGroups.map((group) => (
-                      <HoldingsGroupSection
-                        key={group.key}
-                        title={group.title}
-                        holdings={group.holdings}
-                        totalValue={group.totalValue}
-                        groupPercentage={group.percentage}
-                        getPriceForHolding={getPriceForHolding}
-                        onDiscuss={handleDiscussHolding}
-                        onEdit={group.key === 'cash' ? (id: string) => {
-                          const cash = group.holdings.find(h => h.id === id);
-                          if (cash) {
-                            setEditingCash({ id: cash.id, amount: cash.current_value });
-                          }
-                        } : handleEditHolding}
-                        onDelete={group.key === 'cash' ? handleDeleteCash : handleDeleteHolding}
-                      />
-                    ))}
+                <div className="flex gap-2 flex-1 max-w-md items-center">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Sök innehav..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
                   </div>
-                ) : (
-                  <HoldingsTable holdings={filteredHoldings} getPriceForHolding={getPriceForHolding} />
-                )}
-
-                {lastUpdated && (
-                  <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
-                    Priser uppdaterade: {lastUpdated} | Priser uppdateras vid inloggning
+                  <div className="flex gap-2">
+                    <Button
+                      size="icon"
+                      variant={viewMode === 'cards' ? 'default' : 'outline'}
+                      onClick={() => setViewMode('cards')}
+                    >
+                      <LayoutGrid className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant={viewMode === 'table' ? 'default' : 'outline'}
+                      onClick={() => setViewMode('table')}
+                    >
+                      <TableIcon className="w-4 h-4" />
+                    </Button>
                   </div>
-                )}
+                </div>
               </div>
 
-              <div className="lg:w-1/3">
-                <SectorAllocationChart data={sectorData} />
-              </div>
+              {viewMode === 'cards' ? (
+                <div className="space-y-4">
+                  {filteredGroups.map((group) => (
+                    <HoldingsGroupSection
+                      key={group.key}
+                      title={group.title}
+                      holdings={group.holdings}
+                      totalValue={group.totalValue}
+                      groupPercentage={group.percentage}
+                      getPriceForHolding={getPriceForHolding}
+                      onDiscuss={handleDiscussHolding}
+                      onEdit={group.key === 'cash' ? (id: string) => {
+                        const cash = group.holdings.find(h => h.id === id);
+                        if (cash) {
+                          setEditingCash({ id: cash.id, amount: cash.current_value });
+                        }
+                      } : handleEditHolding}
+                      onDelete={group.key === 'cash' ? handleDeleteCash : handleDeleteHolding}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <HoldingsTable holdings={filteredHoldings} getPriceForHolding={getPriceForHolding} />
+              )}
+
+              {lastUpdated && (
+                <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
+                  Priser uppdaterade: {lastUpdated} | Priser uppdateras vid inloggning
+                </div>
+              )}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Sector Allocation Dialog */}
+      <Dialog open={isChartOpen} onOpenChange={setIsChartOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sektorexponering</DialogTitle>
+            <DialogDescription>Fördelning över olika industrisektorer</DialogDescription>
+          </DialogHeader>
+          <SectorAllocationChart data={sectorData} />
+        </DialogContent>
+      </Dialog>
 
       {/* Add Cash Dialog */}
       <Dialog open={showAddCashDialog} onOpenChange={setShowAddCashDialog}>
