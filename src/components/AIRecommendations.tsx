@@ -28,7 +28,7 @@ interface SelectedStock {
   currency: string;
 }
 
-const PersonalizedAIRecommendations = () => {
+const AIRecommendations = () => {
   const { user } = useAuth();
   const { latestCases, loading } = useLatestStockCases(6);
   const navigate = useNavigate();
@@ -272,7 +272,7 @@ const PersonalizedAIRecommendations = () => {
             ))}
           </div>
         ) : (
-          <div className={`space-y-3 ${personalizedCases.length > 5 ? 'max-h-96 overflow-y-auto pr-2' : ''}`}>
+          <div className="space-y-4 max-h-96 overflow-y-auto">
             {personalizedCases.slice(0, 6).map((stockCase) => (
               <RecommendationCard
                 key={stockCase.id}
@@ -301,9 +301,9 @@ const PersonalizedAIRecommendations = () => {
           </Button>
         )}
       </CardContent>
-    </Card>
+  </Card>
 
-    <AddHoldingDialog
+  <AddHoldingDialog
       isOpen={isAddHoldingOpen}
       onClose={() => {
         setIsAddHoldingOpen(false);
@@ -313,6 +313,7 @@ const PersonalizedAIRecommendations = () => {
       initialData={selectedStock}
     />
   </>
-);
+  );
+};
 
-export default PersonalizedAIRecommendations;
+export default AIRecommendations;
