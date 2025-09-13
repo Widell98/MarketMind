@@ -6,6 +6,7 @@ import ConversationalPortfolioAdvisor from '@/components/ConversationalPortfolio
 import LoginPromptModal from '@/components/LoginPromptModal';
 import PortfolioValueCards from '@/components/PortfolioValueCards';
 import CommunityRecommendations from '@/components/CommunityRecommendations';
+import PersonalizedAIRecommendations from '@/components/PersonalizedAIRecommendations';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAuth } from '@/contexts/AuthContext';
@@ -207,10 +208,8 @@ const PortfolioImplementation = () => {
               <PortfolioOverview portfolio={activePortfolio} onQuickChat={handleQuickChat} onActionClick={handleActionClick} />
             </div>
 
-            <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
-              <CommunityRecommendations />
-            </div>
+            <PersonalizedAIRecommendations />
+            <CommunityRecommendations />
           </div>
         </div>
       </div>
