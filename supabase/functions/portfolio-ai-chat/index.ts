@@ -1,7 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import { ensureStockSuggestions } from './stockSuggestions.js';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -52,17 +51,6 @@ serve(async (req) => {
     );
 
     console.log('Supabase client initialized');
-
-    const { data: allowed } = await supabase.rpc('check_usage_limit', {
-      _user_id: userId,
-      _usage_type: 'ai_message'
-    });
-    if (!allowed) {
-      return new Response(
-        JSON.stringify({ error: 'quota_exceeded' }),
-        { status: 429, headers: corsHeaders }
-      );
-    }
 
     // Fetch all user data in parallel for better performance
     const [
@@ -210,17 +198,34 @@ serve(async (req) => {
     // Check if this is a stock exchange request
     const isExchangeRequest = /(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|amerikanska|svenska|europeiska|asiatiska|aktier|innehav)/i.test(message);
     
-    // Check if this is a stock analysis request
+    // Enhanced stock detection - detect both analysis requests AND stock mentions
+    const stockMentionPatterns = [
+      // Direct stock mentions with company names
+      /(?:investor|volvo|ericsson|sandvik|atlas|kinnevik|hex|alfa laval|skf|telia|seb|handelsbanken|nordea|abb|astra|electrolux|husqvarna|getinge|boliden|ssab|stora enso|svenska cellulosa|lund|billerud|holmen|nibe|beijer|essity|kindred|evolution|betsson|net entertainment|fingerprint|sinch|tobii|xvivo|medivir|orexo|camurus|diamyd|raysearch|elekta|sectra|bactiguard|vitrolife|bioinvent|immunovia|hansa|cantargia|oncopeptides|wilson therapeutics|solberg|probi|biovica|addlife|duni|traction|embracer|stillfront|paradox|starbreeze|remedy|gaming|saab|h&m|hennes|mauritz|getinge|elekta|assa abloy|atlas copco|epiroc|trelleborg|lifco|indutrade|fagerhult|munters|sweco|ramboll|hexagon|addtech|bufab|nolato|elanders)/i,
+      // Ticker symbols (2-6 characters)
+      /\b([A-Z]{2,6})(?:\s|$)/g,
+      // Company mentions in investment context
+      /(?:köpa|sälja|investera|aktier?|bolag|företag)\s+(?:i\s+)?([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,30})/gi,
+      // "aktie + company name" patterns
+      /(?:aktien?|bolaget)\s+([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,30})/gi,
+      // Direct questions about companies
+      /(?:vad tycker du om|hur ser du på|bra aktie|dålig aktie|köpvärd|sälj)\s+([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,30})/gi
+    ];
+    
     const isStockAnalysisRequest = /(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) && 
-      /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5}|investor|volvo|ericsson|sandvik|atlas|kinnevik|hex|alfa laval|skf|telia|seb|handelsbanken|nordea|abb|astra|electrolux|husqvarna|getinge|boliden|ssab|stora enso|svenska cellulosa|lund|billerud|holmen|nibe|beijer|essity|kindred|evolution|betsson|net|entertainment|fingerprint|sinch|tobii|xvivo|medivir|orexo|camurus|diamyd|raysearch|elekta|sectra|bactiguard|vitrolife|bioinvent|immunovia|hansa|cantargia|oncopeptides|wilson|therapeutics|solberg|probi|biovica|addlife|duni|traction|embracer|stillfront|paradox|starbreeze|remedy|stillfront|remedy|starbreeze|gaming|saab)/i.test(message);
+      /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity)/i.test(message);
+      
+    // Check for stock mentions in user message
+    const stockMentionsInMessage = stockMentionPatterns.some(pattern => pattern.test(message));
+    const isStockMentionRequest = stockMentionsInMessage || isStockAnalysisRequest;
      
     // Check if user wants personal investment advice/recommendations
     const isPersonalAdviceRequest = /(?:rekommendation|förslag|vad ska jag|bör jag|passar mig|min portfölj|mina intressen|för mig|personlig|skräddarsy|baserat på|investera|köpa|sälja|portföljanalys|investeringsstrategi)/i.test(message);
     const isPortfolioOptimizationRequest = /portfölj/i.test(message) && /optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma/i.test(message);
 
-    // Fetch real-time market data if stock analysis request
+    // Fetch real-time market data if stock analysis or stock mention request
     let marketDataContext = '';
-    if (isStockAnalysisRequest) {
+    if (isStockMentionRequest) {
       try {
         const { data: marketData } = await supabase.functions.invoke('fetch-market-data');
         if (marketData) {
@@ -302,9 +307,10 @@ serve(async (req) => {
     const detectIntent = (message: string) => {
       const msg = message.toLowerCase();
       
-      // Stock/Company Analysis Intent
-      if (/(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) && 
-          /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5})/i.test(message)) {
+      // Stock/Company Analysis Intent - enhanced to catch more stock mentions
+      if (isStockMentionRequest || 
+          (/(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) && 
+          /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5})/i.test(message))) {
         return 'stock_analysis';
       }
       
@@ -346,7 +352,17 @@ PERSONA & STIL:
 const intentPrompts = {
   stock_analysis: `
 AKTIEANALYSUPPGIFT:
-Svara alltid i en strukturerad analys med följande sektioner (kortfattat men tydligt):
+Om användaren nämner specifika aktier eller företag - GE ALLTID KONKRETA AKTIEFÖRSLAG!
+
+**VIKTIGT: När du rekommenderar aktier, använd ALLTID denna exakta format så att systemet kan fånga upp dem:**
+**Företagsnamn (TICKER)** - Kort motivering
+
+Exempel:
+**Evolution AB (EVO)** - Stark position inom online gaming
+**Investor AB (INVE-B)** - Diversifierat investmentbolag  
+**Volvo AB (VOLV-B)** - Stabil lastbilstillverkare
+
+Svara i följande struktur (kortfattat men tydligt):
 
 🏢 FÖRETAGSÖVERSIKT
 [Beskriv bolaget, dess affärsmodell, styrkor och marknadsposition]
@@ -359,12 +375,13 @@ Svara alltid i en strukturerad analys med följande sektioner (kortfattat men ty
 
 🎯 INVESTERINGSREKOMMENDATION
 [Ge KÖP/BEHÅLL/SÄLJ med tydlig motivering, samt ev. kursmål och tidshorisont]
+[Inkludera ALLTID relaterade aktieförslag i formatet **Företag (TICKER)**]
 
 ⚠️ RISKER & MÖJLIGHETER
 [List de största riskerna och möjligheterna kopplat till aktien]
 
-💡 SLUTSATS
-[Sammanfatta med tydligt fokus på vilken typ av investerare aktien passar]
+💡 SLUTSATS & RELATERADE FÖRSLAG
+[Sammanfatta och ge 2-3 relaterade aktieförslag i formatet **Företag (TICKER)**]
 
 Avsluta alltid med en **öppen fråga** för att bjuda in till dialog.
 Inkludera en **Disclaimer** om att råden är i utbildningssyfte.`,
@@ -394,8 +411,12 @@ MARKNADSANALYSUPPGIFT:
   general_advice: `
 ALLMÄN INVESTERINGSRÅDGIVNING:
 - Ge råd i 2–4 meningar
-- Inkludera exempel (aktie, fond eller allokering)
-- Avsluta med öppen fråga för att driva dialog`
+- Inkludera ALLTID konkreta aktieförslag i formatet **Företagsnamn (TICKER)** när relevant
+- Anpassa förslag till användarens riskprofil och intressen
+- Avsluta med öppen fråga för att driva dialog
+
+**VIKTIGT: Använd ALLTID denna exakta format för aktieförslag:**
+**Företagsnamn (TICKER)** - Kort motivering`
 };
 
 contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
@@ -480,9 +501,6 @@ FULL STRUKTUR (när relevant):
 VIKTIGT:
 - Ge bara en "Åtgärder (Checklista)" om frågan faktiskt kräver konkreta steg.
 - Vid aktieanalys: Använd emojis genomgående för att göra analysen mer visuellt tilltalande och lättläst
-- Varje gång ett bolag eller en ticker nämns, avsluta svaret med en rad i slutet på formatet:
-Aktieförslag: [{"name": "Bolag", "ticker": "TICKER", "reason": "Kort motivering"}]
-Om inga bolag eller tickers nämns, skriv: Aktieförslag: [].
 - Avsluta alltid svaret med en öppen fråga för att bjuda in till vidare dialog.`;
 
 
@@ -564,9 +582,7 @@ Om inga bolag eller tickers nämns, skriv: Aktieförslag: [].
       }
 
       const nonStreamData = await nonStreamResp.json();
-      let aiMessage = nonStreamData.choices?.[0]?.message?.content || '';
-      const { message: ensuredMessage, suggestions } = await ensureStockSuggestions(supabase, message, aiMessage);
-      aiMessage = ensuredMessage;
+      const aiMessage = nonStreamData.choices?.[0]?.message?.content || '';
 
       // Update AI memory and optionally save to chat history
       await updateAIMemory(supabase, userId, message, aiMessage, aiMemory);
@@ -585,25 +601,18 @@ Om inga bolag eller tickers nämns, skriv: Aktieförslag: [].
               hasMarketData: !!marketDataContext,
               profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
               requiresConfirmation: profileChangeDetection.requiresConfirmation,
-              confidence: 0.8,
-              stockSuggestions: suggestions
+              confidence: 0.8
             }
           });
       }
 
       console.log('TELEMETRY COMPLETE:', { ...telemetryData, responseLength: aiMessage.length, completed: true });
 
-      await supabase.rpc('increment_ai_usage', {
-        _user_id: userId,
-        _usage_type: 'ai_message'
-      });
-
       return new Response(
         JSON.stringify({
           response: aiMessage,
           requiresConfirmation: profileChangeDetection.requiresConfirmation,
-          profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
-          stockSuggestions: suggestions
+          profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -654,20 +663,16 @@ Om inga bolag eller tickers nämns, skriv: Aktieförslag: [].
               if (line.startsWith('data: ')) {
                 const data = line.slice(6);
                 if (data === '[DONE]') {
-                  const { message: finalMessage, suggestions } = await ensureStockSuggestions(supabase, message, aiMessage);
-                  const appendContent = finalMessage.slice(aiMessage.length);
-                  aiMessage = finalMessage;
-
                   // Update AI memory
                   await updateAIMemory(supabase, userId, message, aiMessage, aiMemory);
-
+                  
                   // Send final telemetry
-                  console.log('TELEMETRY COMPLETE:', {
-                    ...telemetryData,
+                  console.log('TELEMETRY COMPLETE:', { 
+                    ...telemetryData, 
                     responseLength: aiMessage.length,
-                    completed: true
+                    completed: true 
                   });
-
+                  
                   // Save complete message to database
                   if (sessionId && aiMessage) {
                     await supabase
@@ -684,22 +689,11 @@ Om inga bolag eller tickers nämns, skriv: Aktieförslag: [].
                           hasMarketData: !!marketDataContext,
                           profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
                           requiresConfirmation: profileChangeDetection.requiresConfirmation,
-                          confidence: 0.8,
-                          stockSuggestions: suggestions
+                          confidence: 0.8
                         }
                       });
                   }
-
-                  await supabase.rpc('increment_ai_usage', {
-                    _user_id: userId,
-                    _usage_type: 'ai_message'
-                  });
-
-                  const finalPayload = appendContent
-                    ? { content: appendContent, stockSuggestions: suggestions, done: true }
-                    : { stockSuggestions: suggestions, done: true };
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(finalPayload)}\n\n`));
-
+                  
                   controller.close();
                   return;
                 }
