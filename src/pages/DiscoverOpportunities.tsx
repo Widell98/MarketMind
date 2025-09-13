@@ -8,7 +8,7 @@ import { Sparkles, TrendingUp, Target, Bookmark, Filter, BarChart3, MessageCircl
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import PersonalizedRecommendations from '@/components/PersonalizedRecommendations';
-import PersonalizedAIRecommendations from '@/components/PersonalizedAIRecommendations';
+import AIRecommendations from '@/components/AIRecommendations';
 import AIWeeklyPicks from '@/components/AIWeeklyPicks';
 import SavedOpportunitiesSection from '@/components/SavedOpportunitiesSection';
 import StockCaseCard from '@/components/StockCaseCard';
@@ -153,7 +153,7 @@ const DiscoverOpportunities = () => {
                 <AIWeeklyPicks />
 
                 {/* Personalized AI Recommendations */}
-                <PersonalizedAIRecommendations />
+                <AIRecommendations />
 
                 {/* Original Personalized Recommendations */}
                 <PersonalizedRecommendations />
