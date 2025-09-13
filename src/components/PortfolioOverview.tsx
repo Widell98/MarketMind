@@ -377,16 +377,17 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </Card>
       </div>;
   }
-  return <div className="space-y-6">
+  return (
+    <div className="space-y-6">
       <UserHoldingsManager sectorData={exposureData.sectorData} />
 
       <AIRecommendations />
 
       {/* Quick Actions - NOW THIRD */}
-      
+
 
       {/* Sector Exposure - NOW FOURTH */}
-      
+
 
       {/* AI Insights from Database - NOW FIFTH */}
       {insights.length > 0 && <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">

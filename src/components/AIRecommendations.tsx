@@ -301,9 +301,9 @@ const AIRecommendations = () => {
           </Button>
         )}
       </CardContent>
-    </Card>
+  </Card>
 
-    <AddHoldingDialog
+  <AddHoldingDialog
       isOpen={isAddHoldingOpen}
       onClose={() => {
         setIsAddHoldingOpen(false);
@@ -313,6 +313,7 @@ const AIRecommendations = () => {
       initialData={selectedStock}
     />
   </>
-);
+  );
+};
 
 export default AIRecommendations;
