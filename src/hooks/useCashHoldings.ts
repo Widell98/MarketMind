@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { convertToSEK } from '@/utils/currencyUtils';
 
 export interface CashHolding {
   id: string;
@@ -11,6 +12,7 @@ export interface CashHolding {
   currency: string;
   created_at: string;
   updated_at: string;
+  valueSek: number;
 }
 
 export const useCashHoldings = () => {
@@ -57,13 +59,14 @@ export const useCashHoldings = () => {
         current_value: item.current_value || 0,
         currency: item.currency || 'SEK',
         created_at: item.created_at,
-        updated_at: item.updated_at
+        updated_at: item.updated_at,
+        valueSek: convertToSEK(item.current_value || 0, item.currency)
       }));
 
       setCashHoldings(cashData);
       
       // Calculate total cash
-      const total = cashData.reduce((sum, holding) => sum + holding.current_value, 0);
+      const total = cashData.reduce((sum, holding) => sum + holding.valueSek, 0);
       setTotalCash(total);
       
     } catch (error) {

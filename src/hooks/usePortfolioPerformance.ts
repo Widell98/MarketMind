@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { convertToSEK } from '@/utils/currencyUtils';
 
 export interface PerformanceData {
   totalValue: number;
@@ -131,8 +132,11 @@ export const usePortfolioPerformance = () => {
       const securities = allHoldings.filter(h => !h.is_cash && h.holding_type !== 'recommendation');
       const cashHoldings = allHoldings.filter(h => h.is_cash);
 
-      // Calculate total cash
-      const totalCash = cashHoldings.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
+      // Calculate total cash in SEK
+      const totalCash = cashHoldings.reduce(
+        (sum, holding) => sum + convertToSEK(holding.current_value || 0, holding.currency),
+        0
+      );
 
       // Get yesterday's performance data for day change calculation
       const yesterday = new Date();
@@ -152,14 +156,17 @@ export const usePortfolioPerformance = () => {
       const holdingsPerf: HoldingPerformance[] = [];
 
       securities.forEach(holding => {
-        const currentValue = holding.current_value || 0;
-        const purchasePrice = holding.purchase_price || 0;
+        const currentValue = convertToSEK(holding.current_value || 0, holding.currency);
+        const purchasePrice = convertToSEK(holding.purchase_price || 0, holding.currency);
         const quantity = holding.quantity || 0;
         const investedValue = purchasePrice * quantity;
 
         // Find yesterday's value for this holding
         const yesterdayHolding = yesterdayData?.find(d => d.holding_id === holding.id);
-        const yesterdayValue = yesterdayHolding?.total_value || currentValue;
+        const yesterdayValue =
+          yesterdayHolding?.total_value !== undefined && yesterdayHolding?.total_value !== null
+            ? convertToSEK(yesterdayHolding.total_value, holding.currency)
+            : currentValue;
 
         const profit = currentValue - investedValue;
         const profitPercentage = investedValue > 0 ? (profit / investedValue) * 100 : 0;
