@@ -16,6 +16,9 @@ export interface UserHolding {
   sector?: string;
   market?: string;
   currency: string;
+  current_price_per_unit?: number;
+  price_currency?: string;
+  change_percent?: number;
   created_at: string;
   updated_at: string;
   allocation?: number;
@@ -74,6 +77,9 @@ export const useUserHoldings = () => {
           sector: item.sector,
           market: item.market,
           currency: item.currency,
+          current_price_per_unit: item.current_price_per_unit || undefined,
+          price_currency: item.price_currency || undefined,
+          change_percent: item.change_percent || undefined,
           created_at: item.created_at,
           updated_at: item.updated_at,
           allocation: item.allocation ? Number(item.allocation) : undefined

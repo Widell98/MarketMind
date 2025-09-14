@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { google } from 'https://esm.sh/googleapis@118.0.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,7 +10,8 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const alphaVantageKey = Deno.env.get('ALPHA_VANTAGE_API_KEY');
+const googleServiceAccount = Deno.env.get('GOOGLE_SERVICE_ACCOUNT');
+const googleSheetId = Deno.env.get('GOOGLE_SHEET_ID');
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -19,220 +21,71 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting portfolio price updates...');
-    
-    // Get all holdings that need price updates (only stocks with symbols)
-    const { data: holdings, error: holdingsError } = await supabase
-      .from('user_holdings')
-      .select('*')
-      .not('symbol', 'is', null)
-      .in('holding_type', ['stock', 'crypto'])
-      .neq('holding_type', 'recommendation');
-
-    if (holdingsError) {
-      console.error('Error fetching holdings:', holdingsError);
-      throw holdingsError;
+    if (!googleServiceAccount || !googleSheetId) {
+      throw new Error('Missing Google Sheets configuration');
     }
 
-    console.log(`Found ${holdings?.length || 0} holdings to update`);
+    const credentials = JSON.parse(googleServiceAccount);
+    if (credentials.private_key) {
+      credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+    }
 
-    let updatedCount = 0;
-    let errorCount = 0;
+    const auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+    });
 
-    // Process holdings in batches to avoid rate limits
-    for (const holding of holdings || []) {
-      try {
-        // Skip if no symbol
-        if (!holding.symbol) {
-          console.log(`Skipping ${holding.name} - no symbol`);
-          continue;
-        }
+    const sheets = google.sheets({ version: 'v4', auth });
 
-        console.log(`Updating price for ${holding.symbol}...`);
-        
-        // Fetch current price
-        const quote = await fetchStockQuote(holding.symbol);
+    const sheetRes = await sheets.spreadsheets.values.get({
+      spreadsheetId: googleSheetId,
+      range: 'Top 1000!B2:F',
+    });
 
-        let effectivePrice: number | null = null;
-        let priceCurrency: string = holding.currency;
+    const rows = sheetRes.data.values || [];
+    let updated = 0;
+    let errors = 0;
 
-        if (quote.hasValidPrice && quote.price) {
-          effectivePrice = quote.price;
-          priceCurrency = quote.currency || (holding.symbol.includes('.ST') ? 'SEK' : 'USD');
-        } else {
-          // Fallback: use latest daily close from our history
-          const daily = await getLatestDailyPrice(holding.id);
-          if (daily?.price) {
-            effectivePrice = daily.price;
-            priceCurrency = daily.currency || holding.currency;
-            console.log(`ℹ️ Using daily fallback for ${holding.symbol}: ${effectivePrice} ${priceCurrency} (date ${daily.date})`);
-          }
-        }
+    for (const row of rows) {
+      const [symbol, , currency, priceStr, changeStr] = row;
+      const price = parseFloat(priceStr);
+      const changePercent = changeStr ? parseFloat(changeStr.replace('%', '')) : NaN;
 
-        if (effectivePrice != null) {
-          // Store price in original currency and calculate SEK value for portfolio totals
-          const priceInOriginalCurrency = effectivePrice;
-          
-          // Convert to SEK for portfolio calculations using currency utils
-          let priceInSEK = effectivePrice;
-          if (priceCurrency === 'USD') {
-            priceInSEK = effectivePrice * 10.5; // USD to SEK
-          } else if (priceCurrency === 'EUR') {
-            priceInSEK = effectivePrice * 11.4; // EUR to SEK
-          } else if (priceCurrency === 'GBP') {
-            priceInSEK = effectivePrice * 13.2; // GBP to SEK
-          } else if (priceCurrency === 'NOK') {
-            priceInSEK = effectivePrice * 0.95; // NOK to SEK
-          } else if (priceCurrency === 'DKK') {
-            priceInSEK = effectivePrice * 1.53; // DKK to SEK
-          }
-          
-          // Calculate total value in SEK for portfolio calculations
-          const totalValueInSEK = priceInSEK * (holding.quantity || 0);
-          
-          // Update holding in database with both original price and SEK value
-          const { error: updateError } = await supabase
-            .from('user_holdings')
-            .update({
-              current_price_per_unit: Math.round(priceInOriginalCurrency * 10000) / 10000, // Store original price
-              price_currency: priceCurrency, // Store original currency
-              current_value: Math.round(totalValueInSEK * 100) / 100, // Store SEK value for portfolio totals
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', holding.id);
+      if (!symbol || isNaN(price)) {
+        continue;
+      }
 
-          if (updateError) {
-            console.error(`Error updating ${holding.symbol}:`, updateError);
-            errorCount++;
-            continue;
-          }
+      const { error } = await supabase
+        .from('user_holdings')
+        .upsert({
+          symbol,
+          current_price_per_unit: price,
+          price_currency: currency || 'USD',
+          change_percent: isNaN(changePercent) ? null : changePercent,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'symbol' });
 
-          // Record performance history in original currency
-          const { error: historyError } = await supabase
-            .from('portfolio_performance_history')
-            .upsert({
-              user_id: holding.user_id,
-              holding_id: holding.id,
-              date: new Date().toISOString().split('T')[0],
-              price_per_unit: priceInOriginalCurrency,
-              total_value: totalValueInSEK, // Store SEK value for consistent portfolio calculations
-              currency: priceCurrency // Store original currency
-            }, {
-              onConflict: 'user_id,holding_id,date'
-            });
-
-          if (historyError) {
-            console.error(`Error recording history for ${holding.symbol}:`, historyError);
-          }
-
-          console.log(`✅ Updated ${holding.symbol}: ${Math.round(priceInOriginalCurrency * 100) / 100} ${priceCurrency}`);
-          updatedCount++;
-        } else {
-          // Last resort: no valid price and no daily fallback, skip to conserve API quota
-          console.log(`❌ No valid price or daily fallback for ${holding.symbol} - skipped`);
-          errorCount++;
-        }
-
-        // Rate limiting - wait between requests
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-      } catch (error) {
-        console.error(`Error processing ${holding.symbol}:`, error);
-        errorCount++;
+      if (error) {
+        console.error(`Error updating ${symbol}:`, error);
+        errors++;
+      } else {
+        updated++;
       }
     }
 
-    console.log(`Portfolio update completed: ${updatedCount} updated, ${errorCount} errors`);
-
-    return new Response(JSON.stringify({
-      success: true,
-      updated: updatedCount,
-      errors: errorCount,
-      message: `Updated ${updatedCount} holdings`
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-
+    return new Response(
+      JSON.stringify({ updated, errors }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
   } catch (error) {
     console.error('Portfolio update error:', error);
-    return new Response(JSON.stringify({
-      success: false,
-      error: error.message
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
+    );
   }
 });
 
-async function fetchStockQuote(symbol: string) {
-  try {
-    const response = await fetch(
-      `https://qifolopsdeeyrevbuxfl.supabase.co/functions/v1/fetch-stock-quote`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
-        },
-        body: JSON.stringify({ symbol })
-      }
-    );
-
-    if (!response.ok) {
-      console.error(`Error calling fetch-stock-quote for ${symbol}: ${response.status}`);
-      return { symbol, price: null, hasValidPrice: false, currency: symbol.includes('.ST') ? 'SEK' : 'USD' };
-    }
-
-    const data = await response.json();
-    
-    if (data.error) {
-      console.error(`fetch-stock-quote error for ${symbol}: ${data.error}`);
-      return { symbol, price: null, hasValidPrice: false, currency: symbol.includes('.ST') ? 'SEK' : 'USD' };
-    }
-
-    return data;
-  } catch (err) {
-    console.error(`Exception calling fetch-stock-quote for ${symbol}:`, err);
-    return { symbol, price: null, hasValidPrice: false, currency: symbol.includes('.ST') ? 'SEK' : 'USD' };
-  }
-}
-
-async function getLatestDailyPrice(holdingId: string) {
-  try {
-    const { data, error } = await supabase
-      .from('portfolio_performance_history')
-      .select('price_per_unit, currency, date')
-      .eq('holding_id', holdingId)
-      .order('date', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Error fetching daily fallback price:', error);
-      return null;
-    }
-
-    if (!data) return null;
-
-    return {
-      price: Number(data.price_per_unit),
-      currency: data.currency as string,
-      date: data.date as string,
-    };
-  } catch (e) {
-    console.error('Exception in getLatestDailyPrice:', e);
-    return null;
-  }
-}
-
-function getMockQuote(symbol: string) {
-  const basePrice = Math.random() * 200 + 50;
-  
-  return {
-    symbol,
-    price: Math.round(basePrice * 100) / 100,
-    hasValidPrice: true,
-    currency: symbol.includes('.ST') ? 'SEK' : 'USD'
-  };
-}

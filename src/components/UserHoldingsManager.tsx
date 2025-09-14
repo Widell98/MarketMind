@@ -75,6 +75,9 @@ interface TransformedHolding {
   quantity?: number;
   purchase_price?: number;
   sector?: string;
+  current_price_per_unit?: number;
+  price_currency?: string;
+  change_percent?: number;
 }
 
 const UserHoldingsManager: React.FC = () => {
@@ -329,39 +332,57 @@ const UserHoldingsManager: React.FC = () => {
 
   const getPriceForHolding = (holding: any) => {
     if (holding.holding_type === 'cash') return null;
-    
-    // Try to match by symbol first (most reliable)
-    if (holding.symbol) {
-      const priceBySymbol = prices.find(p => 
-        p.symbol === holding.symbol
+
+    // Prefer fetched prices if available
+    if (prices.length > 0) {
+      if (holding.symbol) {
+        const priceBySymbol = prices.find(p => p.symbol === holding.symbol);
+        if (priceBySymbol && priceBySymbol.hasValidPrice) {
+          return {
+            ...priceBySymbol,
+            changePercent: holding.change_percent ?? priceBySymbol.changePercent
+          };
+        }
+      }
+
+      const priceByName = prices.find(p =>
+        p.name && holding.name &&
+        (p.name.toLowerCase().includes(holding.name.toLowerCase()) ||
+          holding.name.toLowerCase().includes(p.name.toLowerCase()))
       );
-      if (priceBySymbol && priceBySymbol.hasValidPrice) {
-        return priceBySymbol;
+
+      if (priceByName && priceByName.hasValidPrice) {
+        return {
+          ...priceByName,
+          changePercent: holding.change_percent ?? priceByName.changePercent
+        };
+      }
+
+      const failedPrice = prices.find(p =>
+        (holding.symbol && p.symbol === holding.symbol) ||
+        (p.name && holding.name && p.name.toLowerCase().includes(holding.name.toLowerCase()))
+      );
+
+      if (failedPrice && !failedPrice.hasValidPrice) {
+        return failedPrice;
       }
     }
-    
-    // Fallback to matching by name (less reliable but better than nothing)
-    const priceByName = prices.find(p => 
-      p.name && holding.name && 
-      p.name.toLowerCase().includes(holding.name.toLowerCase()) ||
-      holding.name.toLowerCase().includes(p.name.toLowerCase())
-    );
-    
-    if (priceByName && priceByName.hasValidPrice) {
-      return priceByName;
+
+    // Fallback to stored price in database
+    if (holding.current_price_per_unit) {
+      return {
+        symbol: holding.symbol || '',
+        name: holding.name,
+        price: holding.current_price_per_unit,
+        change: holding.change_percent ? (holding.current_price_per_unit * holding.change_percent) / 100 : 0,
+        changePercent: holding.change_percent || 0,
+        currency: holding.price_currency || holding.currency,
+        priceInSEK: 0,
+        changeInSEK: 0,
+        hasValidPrice: true,
+      };
     }
-    
-    // Return error information if price fetch failed for this holding
-    const failedPrice = prices.find(p => 
-      (holding.symbol && p.symbol === holding.symbol) ||
-      (p.name && holding.name && p.name.toLowerCase().includes(holding.name.toLowerCase()))
-    );
-    
-    if (failedPrice && !failedPrice.hasValidPrice) {
-      return failedPrice;
-    }
-    
-    // Return null if no price found at all
+
     return null;
   };
 
@@ -387,7 +408,10 @@ const UserHoldingsManager: React.FC = () => {
     symbol: holding.symbol,
     quantity: holding.quantity,
     purchase_price: holding.purchase_price,
-    sector: holding.sector
+    sector: holding.sector,
+    current_price_per_unit: holding.current_price_per_unit,
+    price_currency: holding.price_currency,
+    change_percent: holding.change_percent
   }));
 
   const transformedCashHoldings: TransformedHolding[] = uniqueCashHoldings.map(cash => ({

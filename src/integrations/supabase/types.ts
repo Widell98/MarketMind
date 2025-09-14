@@ -1320,6 +1320,7 @@ export type Database = {
           created_at: string
           currency: string | null
           current_price_per_unit: number | null
+          change_percent: number | null
           current_value: number | null
           holding_type: string
           id: string
@@ -1340,6 +1341,7 @@ export type Database = {
           created_at?: string
           currency?: string | null
           current_price_per_unit?: number | null
+          change_percent?: number | null
           current_value?: number | null
           holding_type: string
           id?: string
@@ -1360,6 +1362,7 @@ export type Database = {
           created_at?: string
           currency?: string | null
           current_price_per_unit?: number | null
+          change_percent?: number | null
           current_value?: number | null
           holding_type?: string
           id?: string
