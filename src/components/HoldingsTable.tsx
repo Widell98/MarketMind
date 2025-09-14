@@ -8,6 +8,7 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { TrendingUp, TrendingDown } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface Holding {
   id: string;
@@ -76,9 +77,17 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, getPriceForHold
                     ) : (
                       <TrendingDown className="w-4 h-4 text-red-600" />
                     )}
-                    <span className={priceInfo.changePercent >= 0 ? 'text-green-600' : 'text-red-600'}>
-                      {priceInfo.changePercent >= 0 ? '+' : ''}{priceInfo.changePercent.toFixed(2)}%
-                    </span>
+                    <Badge
+                      variant="outline"
+                      className={`text-xs ${
+                        priceInfo.changePercent >= 0
+                          ? 'text-green-700 border-green-200 bg-green-50'
+                          : 'text-red-700 border-red-200 bg-red-50'
+                      }`}
+                    >
+                      {priceInfo.changePercent >= 0 ? '+' : ''}
+                      {priceInfo.changePercent.toFixed(2)}%
+                    </Badge>
                   </div>
                 ) : '-'}
               </TableCell>
