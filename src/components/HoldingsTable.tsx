@@ -7,6 +7,7 @@ import {
   TableBody,
   TableCell,
 } from '@/components/ui/table';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 
 interface Holding {
   id: string;
@@ -42,6 +43,7 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, getPriceForHold
           <TableHead>Symbol</TableHead>
           <TableHead>Typ</TableHead>
           <TableHead>Värde</TableHead>
+          <TableHead>Dagens ändring</TableHead>
           <TableHead>Antal</TableHead>
           <TableHead>Vinst/Förlust</TableHead>
         </TableRow>
@@ -66,6 +68,20 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, getPriceForHold
               <TableCell>{holding.symbol || '-'}</TableCell>
               <TableCell className="capitalize">{holding.holding_type}</TableCell>
               <TableCell>{formatCurrency(value, displayCurrency)}</TableCell>
+              <TableCell>
+                {priceInfo?.changePercent !== undefined ? (
+                  <div className="flex items-center gap-1">
+                    {priceInfo.changePercent >= 0 ? (
+                      <TrendingUp className="w-4 h-4 text-green-600" />
+                    ) : (
+                      <TrendingDown className="w-4 h-4 text-red-600" />
+                    )}
+                    <span className={priceInfo.changePercent >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {priceInfo.changePercent >= 0 ? '+' : ''}{priceInfo.changePercent.toFixed(2)}%
+                    </span>
+                  </div>
+                ) : '-'}
+              </TableCell>
               <TableCell>{holding.quantity ?? '-'}</TableCell>
               <TableCell className={profitLoss === undefined ? '' : profitLoss >= 0 ? 'text-green-600' : 'text-red-600'}>
                 {profitLoss !== undefined ? formatCurrency(profitLoss, displayCurrency) : '-'}
