@@ -20,7 +20,7 @@ export const useAIInsights = () => {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
   const { activePortfolio } = usePortfolio();
-  const { performance } = usePortfolioPerformance();
+  const { performance, loading: performanceLoading } = usePortfolioPerformance();
   const { totalCash } = useCashHoldings();
   const { actualHoldings } = useUserHoldings();
   const { user } = useAuth();
@@ -52,8 +52,8 @@ export const useAIInsights = () => {
   };
 
   const generateInsights = async () => {
-    if (!activePortfolio || !actualHoldings) return;
-    
+    if (!activePortfolio || !actualHoldings || performanceLoading || !performance) return;
+
     setIsLoading(true);
     try {
       // Prepare portfolio context for AI analysis (robust against loading states)
@@ -173,7 +173,7 @@ export const useAIInsights = () => {
     const holdingsTotalFallback = (actualHoldings || []).reduce((sum: number, h: any) => {
       return sum + convertToSEK(h.current_value || 0, h.currency || 'SEK');
     }, 0);
-    const derivedTotalFallback = performance.totalPortfolioValue > 0
+    const derivedTotalFallback = performance && performance.totalPortfolioValue > 0
       ? performance.totalPortfolioValue
       : holdingsTotalFallback + (totalCash || 0);
     const cashRatio = derivedTotalFallback > 0 ? Math.min(1, Math.max(0, (totalCash || 0) / derivedTotalFallback)) : 0;
@@ -197,7 +197,7 @@ export const useAIInsights = () => {
     }
 
     // Performance insight
-    if (performance.totalReturnPercentage > 5) {
+    if (performance && performance.totalReturnPercentage > 5) {
       insights.push({
         title: 'Stark utveckling',
         message: `Din portfölj har utvecklats bra med +${performance.totalReturnPercentage.toFixed(1)}% avkastning.`,

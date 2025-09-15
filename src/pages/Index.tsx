@@ -42,7 +42,7 @@ const Index = () => {
   } = useAIInsights();
   const progressData = useFinancialProgress();
   const hasPortfolio = !loading && !!activePortfolio;
-  const totalPortfolioValue = performance.totalPortfolioValue;
+  const totalPortfolioValue = performance?.totalPortfolioValue ?? 0;
   return <Layout>
       <div className="min-h-0 bg-background">
         <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-8 lg:py-12">

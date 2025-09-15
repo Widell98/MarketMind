@@ -31,6 +31,16 @@ export const useFinancialProgress = (): ProgressData => {
       };
     }
 
+    if (!performance) {
+      return {
+        percentage: 0,
+        title: 'Din investeringsresa',
+        description: 'Laddar portföljdata...',
+        nextStep: 'Hämtar portföljvärden',
+        color: 'blue'
+      };
+    }
+
     const totalValue = performance.totalPortfolioValue;
     const investedValue = performance.totalValue + totalCash;
     const hasHoldings = actualHoldings && actualHoldings.length > 0;

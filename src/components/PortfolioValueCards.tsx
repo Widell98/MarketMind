@@ -4,9 +4,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { TrendingUp, Wallet, DollarSign, BarChart3 } from 'lucide-react';
 
 interface PortfolioValueCardsProps {
-  totalPortfolioValue: number;
-  totalInvestedValue: number;
-  totalCashValue: number;
+  totalPortfolioValue?: number | null;
+  totalInvestedValue?: number | null;
+  totalCashValue?: number | null;
   loading?: boolean;
 }
 
@@ -16,7 +16,11 @@ const PortfolioValueCards: React.FC<PortfolioValueCardsProps> = ({
   totalCashValue,
   loading = false
 }) => {
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount?: number | null) => {
+    if (amount === null || amount === undefined || Number.isNaN(amount)) {
+      return '--';
+    }
+
     return new Intl.NumberFormat('sv-SE', {
       style: 'currency',
       currency: 'SEK',

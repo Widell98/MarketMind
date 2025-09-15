@@ -30,20 +30,22 @@ export interface HoldingPerformance {
   dayChangePercentage: number;
 }
 
+const createEmptyPerformance = (): PerformanceData => ({
+  totalValue: 0,
+  totalInvested: 0,
+  totalReturn: 0,
+  totalReturnPercentage: 0,
+  dayChange: 0,
+  dayChangePercentage: 0,
+  totalCash: 0,
+  totalPortfolioValue: 0,
+  cashPercentage: 0,
+  investedPercentage: 0,
+  lastUpdated: new Date().toISOString()
+});
+
 export const usePortfolioPerformance = () => {
-  const [performance, setPerformance] = useState<PerformanceData>({
-    totalValue: 0,
-    totalInvested: 0,
-    totalReturn: 0,
-    totalReturnPercentage: 0,
-    dayChange: 0,
-    dayChangePercentage: 0,
-    totalCash: 0,
-    totalPortfolioValue: 0,
-    cashPercentage: 0,
-    investedPercentage: 0,
-    lastUpdated: new Date().toISOString()
-  });
+  const [performance, setPerformance] = useState<PerformanceData | null>(null);
   const [holdingsPerformance, setHoldingsPerformance] = useState<HoldingPerformance[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -92,6 +94,8 @@ export const usePortfolioPerformance = () => {
 
   const calculatePerformance = async () => {
     if (!user) {
+      setPerformance(createEmptyPerformance());
+      setHoldingsPerformance([]);
       setLoading(false);
       return;
     }
@@ -107,23 +111,13 @@ export const usePortfolioPerformance = () => {
 
       if (holdingsError) {
         console.error('Error fetching holdings:', holdingsError);
+        setPerformance(createEmptyPerformance());
+        setHoldingsPerformance([]);
         return;
       }
 
       if (!allHoldings || allHoldings.length === 0) {
-        setPerformance({
-          totalValue: 0,
-          totalInvested: 0,
-          totalReturn: 0,
-          totalReturnPercentage: 0,
-          dayChange: 0,
-          dayChangePercentage: 0,
-          totalCash: 0,
-          totalPortfolioValue: 0,
-          cashPercentage: 0,
-          investedPercentage: 0,
-          lastUpdated: new Date().toISOString()
-        });
+        setPerformance(createEmptyPerformance());
         setHoldingsPerformance([]);
         return;
       }
@@ -202,7 +196,7 @@ export const usePortfolioPerformance = () => {
       const cashPercentage = totalPortfolioValue > 0 ? (totalCash / totalPortfolioValue) * 100 : 0;
       const investedPercentage = totalPortfolioValue > 0 ? (totalValue / totalPortfolioValue) * 100 : 0;
 
-      setPerformance({
+      const result: PerformanceData = {
         totalValue: Math.round(totalValue * 100) / 100,
         totalInvested: Math.round(totalInvested * 100) / 100,
         totalReturn: Math.round(totalReturn * 100) / 100,
@@ -214,12 +208,15 @@ export const usePortfolioPerformance = () => {
         cashPercentage: Math.round(cashPercentage * 100) / 100,
         investedPercentage: Math.round(investedPercentage * 100) / 100,
         lastUpdated: new Date().toISOString()
-      });
+      };
+
+      setPerformance(result);
 
       setHoldingsPerformance(holdingsPerf);
 
     } catch (error) {
       console.error('Error calculating performance:', error);
+      setPerformance(prev => prev ?? createEmptyPerformance());
     } finally {
       setLoading(false);
     }

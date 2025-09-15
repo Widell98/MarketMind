@@ -37,7 +37,7 @@ const RealTimePortfolioData: React.FC = () => {
     return 'text-gray-600';
   };
 
-  if (loading) {
+  if (loading || !performance) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center p-8">

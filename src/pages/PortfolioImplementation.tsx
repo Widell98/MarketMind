@@ -56,6 +56,10 @@ const PortfolioImplementation = () => {
     setShowOnboarding(false);
   }, [user, activePortfolio, loading]);
   useEffect(() => {
+    if (!performance) {
+      return;
+    }
+
     // Set last updated time
     setLastUpdated(new Date().toLocaleTimeString('sv-SE', {
       hour: '2-digit',
@@ -87,7 +91,7 @@ const PortfolioImplementation = () => {
   };
 
   // Show loading while portfolio is loading
-  if (loading || riskProfileLoading || perfLoading) {
+  if (loading || riskProfileLoading || perfLoading || !performance) {
     return <Layout>
         <div className="min-h-screen flex items-center justify-center p-4">
           <div className="text-center p-6 bg-white dark:bg-gray-800 backdrop-blur-lg border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl w-full max-w-sm mx-auto">
@@ -169,7 +173,12 @@ const PortfolioImplementation = () => {
 
           {/* Portfolio Value Cards */}
           <div className="mb-12">
-            <PortfolioValueCards totalPortfolioValue={totalPortfolioValue} totalInvestedValue={performance.totalValue} totalCashValue={performance.totalCash} loading={loading || perfLoading} />
+            <PortfolioValueCards
+              totalPortfolioValue={totalPortfolioValue}
+              totalInvestedValue={performance.totalValue}
+              totalCashValue={performance.totalCash}
+              loading={loading || perfLoading}
+            />
           </div>
 
           {/* Risk Profile Required Alert */}

@@ -42,7 +42,7 @@ export const usePortfolioContext = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user && actualHoldings && cashHoldings) {
+    if (user && actualHoldings && cashHoldings && performance) {
       calculatePortfolioContext();
     }
   }, [user, actualHoldings, cashHoldings, performance]);
@@ -50,6 +50,10 @@ export const usePortfolioContext = () => {
   const calculatePortfolioContext = () => {
     try {
       setLoading(true);
+
+      if (!performance) {
+        return;
+      }
 
       // Calculate sector exposure
       const sectorMap = new Map<string, { value: number; count: number }>();
