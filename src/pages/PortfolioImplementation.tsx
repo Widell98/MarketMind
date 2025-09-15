@@ -12,14 +12,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
-import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { Button } from '@/components/ui/button';
 import { Brain, AlertCircle, User } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
 import Breadcrumb from '@/components/Breadcrumb';
 const PortfolioImplementation = () => {
   const {
-    actualHoldings
+    actualHoldings,
+    loading: holdingsLoading
   } = useUserHoldings();
   const {
     activePortfolio,
@@ -37,15 +37,14 @@ const PortfolioImplementation = () => {
     loading: riskProfileLoading
   } = useRiskProfile();
   const {
-    performance
+    performance,
+    loading: performanceLoading
   } = usePortfolioPerformance();
-  const {
-    totalCash
-  } = useCashHoldings();
   const navigate = useNavigate();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [portfolioReady, setPortfolioReady] = useState(false);
   useEffect(() => {
     // Only show login modal if auth has finished loading and user is not authenticated
     if (!authLoading && !user) {
@@ -64,7 +63,27 @@ const PortfolioImplementation = () => {
       hour: '2-digit',
       minute: '2-digit'
     }));
-  }, [performance, totalCash]);
+  }, [performance]);
+
+  useEffect(() => {
+    if (holdingsLoading || performanceLoading) {
+      setPortfolioReady(false);
+      return;
+    }
+
+    if (!actualHoldings || actualHoldings.length === 0) {
+      setPortfolioReady(true);
+      return;
+    }
+
+    const hasPortfolioValue =
+      performance.totalPortfolioValue > 0 ||
+      performance.totalValue > 0 ||
+      performance.totalInvested > 0 ||
+      performance.totalCash > 0;
+
+    setPortfolioReady(hasPortfolioValue);
+  }, [actualHoldings, holdingsLoading, performance, performanceLoading]);
   const handleQuickChat = (message: string) => {
     if (!riskProfile) {
       return;
@@ -125,8 +144,9 @@ const PortfolioImplementation = () => {
         </div>
       </Layout>;
   }
-  const totalPortfolioValue = performance.totalPortfolioValue;
-  const investedValue = performance.totalInvested;
+  const totalPortfolioValue = portfolioReady ? performance.totalPortfolioValue : 0;
+  const investedValue = portfolioReady ? performance.totalInvested : 0;
+  const cashValue = portfolioReady ? performance.totalCash : 0;
 
   // Calculate portfolio health metrics - fix the actualHoldings check
   const calculateHealthMetrics = () => {
@@ -134,10 +154,10 @@ const PortfolioImplementation = () => {
     const uniqueSectors = actualHoldings && actualHoldings.length > 0 ? new Set(actualHoldings.filter(h => h.sector).map(h => h.sector)).size : 0;
     return {
       diversificationScore: Math.min(100, uniqueSectors / Math.max(1, totalHoldings) * 100 + 20),
-      riskScore: Math.max(20, 100 - totalCash / Math.max(1, totalPortfolioValue) * 200),
+      riskScore: Math.max(20, 100 - cashValue / Math.max(1, totalPortfolioValue) * 200),
       performanceScore: 75,
       // Mock performance score
-      cashPercentage: totalPortfolioValue > 0 ? totalCash / totalPortfolioValue * 100 : 0
+      cashPercentage: totalPortfolioValue > 0 ? cashValue / totalPortfolioValue * 100 : 0
     };
   };
   const healthMetrics = calculateHealthMetrics();
@@ -173,7 +193,13 @@ const PortfolioImplementation = () => {
 
           {/* Portfolio Value Cards */}
           <div className="mb-12">
-            <PortfolioValueCards totalPortfolioValue={totalPortfolioValue} totalInvestedValue={performance.totalInvested} totalCashValue={totalCash} loading={loading} />
+            {!portfolioReady ? (
+              <div className="flex justify-center py-6 text-muted-foreground">
+                Laddar portföljvärde...
+              </div>
+            ) : (
+              <PortfolioValueCards totalPortfolioValue={totalPortfolioValue} totalInvestedValue={investedValue} totalCashValue={cashValue} loading={loading} />
+            )}
           </div>
 
           {/* Risk Profile Required Alert */}
