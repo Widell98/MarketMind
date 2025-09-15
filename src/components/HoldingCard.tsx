@@ -14,6 +14,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import SmartHoldingSuggestions from './SmartHoldingSuggestions';
+import { convertToSEK, formatCurrency } from '@/utils/currencyUtils';
 
 interface HoldingCardProps {
   holding: {
@@ -52,15 +53,6 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   onDelete,
   showAISuggestions = true
 }) => {
-  const formatCurrency = (amount: number, currency = 'SEK') => {
-    return new Intl.NumberFormat('sv-SE', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
-
   const getHoldingIcon = () => {
     if (holding.holding_type === 'cash') return Wallet;
     if (holding.holding_type === 'stock') return Building2;
@@ -81,6 +73,9 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
 
   // Always show price and value in original currency
   const displayCurrency = effectiveCurrency;
+
+  // Converted value in SEK for consistent portfolio calculations
+  const valueSek = convertToSEK(calculatedValue, displayCurrency);
 
   const handleSuggestionAction = (suggestionId: string, action: string) => {
     console.log(`Suggestion ${suggestionId} ${action}`);
@@ -142,6 +137,11 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
               <span className="text-muted-foreground">Värde:</span>
               <div className="font-semibold text-foreground">
                 {formatCurrency(calculatedValue, displayCurrency)}
+                {displayCurrency !== 'SEK' && (
+                  <div className="text-xs text-muted-foreground">
+                    {formatCurrency(valueSek, 'SEK')}
+                  </div>
+                )}
               </div>
             </div>
 

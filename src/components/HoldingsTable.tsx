@@ -7,6 +7,7 @@ import {
   TableBody,
   TableCell,
 } from '@/components/ui/table';
+import { convertToSEK, formatCurrency } from '@/utils/currencyUtils';
 
 interface Holding {
   id: string;
@@ -25,15 +26,6 @@ interface HoldingsTableProps {
 }
 
 const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, getPriceForHolding }) => {
-  const formatCurrency = (amount: number, currency = 'SEK') => {
-    return new Intl.NumberFormat('sv-SE', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   return (
     <Table>
       <TableHeader>
@@ -59,16 +51,38 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, getPriceForHold
 
           const profitLoss = purchaseValue !== undefined ? value - purchaseValue : undefined;
           const displayCurrency = priceInfo?.currency || holding.currency;
+          const valueSek = convertToSEK(value, displayCurrency);
+          const profitLossSek = profitLoss !== undefined ? convertToSEK(profitLoss, displayCurrency) : undefined;
 
           return (
             <TableRow key={holding.id}>
               <TableCell className="font-medium">{holding.name}</TableCell>
               <TableCell>{holding.symbol || '-'}</TableCell>
               <TableCell className="capitalize">{holding.holding_type}</TableCell>
-              <TableCell>{formatCurrency(value, displayCurrency)}</TableCell>
+              <TableCell>
+                <div>
+                  {formatCurrency(value, displayCurrency)}
+                  {displayCurrency !== 'SEK' && (
+                    <div className="text-xs text-muted-foreground">
+                      {formatCurrency(valueSek, 'SEK')}
+                    </div>
+                  )}
+                </div>
+              </TableCell>
               <TableCell>{holding.quantity ?? '-'}</TableCell>
               <TableCell className={profitLoss === undefined ? '' : profitLoss >= 0 ? 'text-green-600' : 'text-red-600'}>
-                {profitLoss !== undefined ? formatCurrency(profitLoss, displayCurrency) : '-'}
+                {profitLoss !== undefined ? (
+                  <div>
+                    {formatCurrency(profitLoss, displayCurrency)}
+                    {displayCurrency !== 'SEK' && (
+                      <div className="text-xs text-muted-foreground">
+                        {formatCurrency(profitLossSek || 0, 'SEK')}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  '-'
+                )}
               </TableCell>
             </TableRow>
           );

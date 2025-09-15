@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import EditHoldingDialog from './EditHoldingDialog';
 import UserHoldingsManager from './UserHoldingsManager';
 import AIRecommendations from './AIRecommendations';
+import { convertToSEK } from '@/utils/currencyUtils';
 interface PortfolioOverviewProps {
   portfolio: any;
   onQuickChat?: (message: string) => void;
@@ -51,15 +52,16 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     const marketExposure: { [key: string]: number } = {};
     allHoldings.forEach(holding => {
       const value = holding.current_value || holding.purchase_price || 100;
+      const valueSek = convertToSEK(value, holding.currency);
 
       const sector = holding.sector || 'Övrigt';
-      sectorExposure[sector] = (sectorExposure[sector] || 0) + value;
+      sectorExposure[sector] = (sectorExposure[sector] || 0) + valueSek;
 
       let market = 'Sverige';
       if (holding.currency === 'USD') market = 'USA';
       else if (holding.currency === 'EUR') market = 'Europa';
       else if (holding.market) market = holding.market;
-      marketExposure[market] = (marketExposure[market] || 0) + value;
+      marketExposure[market] = (marketExposure[market] || 0) + valueSek;
     });
 
     const totalValue = Object.values(sectorExposure).reduce((sum, val) => sum + val, 0);
@@ -109,15 +111,6 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       default:
         return 'border-gray-200 bg-gray-50';
     }
-  };
-  const formatCurrency = (amount: number | null | undefined, currency: string = 'SEK') => {
-    if (!amount) return '0 kr';
-    return new Intl.NumberFormat('sv-SE', {
-      style: 'currency',
-      currency: currency === 'SEK' ? 'SEK' : 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
   };
   const getHoldingTypeColor = (type: string) => {
     const colors = {
