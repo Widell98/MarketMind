@@ -9,7 +9,6 @@ import HoldingCard from './HoldingCard';
 interface SwipeableHoldingCardProps {
   holding: any;
   portfolioPercentage: number;
-  currentPrice?: any;
   onDiscuss: (name: string, symbol?: string) => void;
   onEdit?: (id: string) => void;
   onDelete: (id: string, name: string) => void;
@@ -19,7 +18,6 @@ interface SwipeableHoldingCardProps {
 const SwipeableHoldingCard: React.FC<SwipeableHoldingCardProps> = ({
   holding,
   portfolioPercentage,
-  currentPrice,
   onDiscuss,
   onEdit,
   onDelete,
@@ -185,7 +183,6 @@ const SwipeableHoldingCard: React.FC<SwipeableHoldingCardProps> = ({
         <HoldingCard
           holding={holding}
           portfolioPercentage={portfolioPercentage}
-          currentPrice={currentPrice}
           onDiscuss={onDiscuss}
           onEdit={onEdit}
           onDelete={onDelete}

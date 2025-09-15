@@ -11,6 +11,8 @@ export interface UserHolding {
   symbol?: string;
   quantity?: number;
   current_value?: number;
+  current_price_per_unit?: number;
+  price_currency?: string;
   purchase_price?: number;
   purchase_date?: string;
   sector?: string;
@@ -69,6 +71,8 @@ export const useUserHoldings = () => {
           symbol: item.symbol,
           quantity: item.quantity,
           current_value: item.current_value,
+          current_price_per_unit: item.current_price_per_unit ?? undefined,
+          price_currency: item.price_currency ?? undefined,
           purchase_price: item.purchase_price,
           purchase_date: item.purchase_date,
           sector: item.sector,
