@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
+import { getNormalizedValue } from '@/utils/currencyUtils';
 
 export interface PortfolioContext {
   totalValue: number;
@@ -55,7 +56,7 @@ export const usePortfolioContext = () => {
       
       actualHoldings.forEach(holding => {
         const sector = holding.sector || 'Övriga';
-        const value = holding.current_value || 0;
+        const value = getNormalizedValue(holding);
         
         if (sectorMap.has(sector)) {
           const existing = sectorMap.get(sector)!;
@@ -68,12 +69,14 @@ export const usePortfolioContext = () => {
         }
       });
 
-      const sectorExposure = Array.from(sectorMap.entries()).map(([sector, data]) => ({
-        sector,
-        value: data.value,
-        percentage: performance.totalValue > 0 ? (data.value / performance.totalValue) * 100 : 0,
-        holdingsCount: data.count
-      })).sort((a, b) => b.value - a.value);
+      const sectorExposure = Array.from(sectorMap.entries())
+        .map(([sector, data]) => ({
+          sector,
+          value: data.value,
+          percentage: performance.totalValue > 0 ? (data.value / performance.totalValue) * 100 : 0,
+          holdingsCount: data.count
+        }))
+        .sort((a, b) => b.value - a.value);
 
       // Calculate liquidity analysis
       const cashRatio = performance.totalPortfolioValue > 0 ? (totalCash / performance.totalPortfolioValue) * 100 : 0;
@@ -89,21 +92,24 @@ export const usePortfolioContext = () => {
       const recommendedCashLevel = Math.max(5, Math.min(15, performance.totalPortfolioValue * 0.1));
 
       // Prepare holdings data for AI context
-      const securityHoldings = actualHoldings.map(holding => ({
-        name: holding.name,
-        symbol: holding.symbol,
-        sector: holding.sector,
-        value: holding.current_value || 0,
-        percentage: performance.totalPortfolioValue > 0 ? ((holding.current_value || 0) / performance.totalPortfolioValue) * 100 : 0,
-        type: 'security' as const
-      }));
+      const securityHoldings = actualHoldings.map(holding => {
+        const value = getNormalizedValue(holding);
+        return {
+          name: holding.name,
+          symbol: holding.symbol,
+          sector: holding.sector,
+          value,
+          percentage: performance.totalPortfolioValue > 0 ? (value / performance.totalPortfolioValue) * 100 : 0,
+          type: 'security' as const
+        };
+      });
 
       const cashHoldingsData = cashHoldings.map(holding => ({
         name: holding.name,
         symbol: undefined,
         sector: 'Kassa',
-        value: holding.current_value,
-        percentage: performance.totalPortfolioValue > 0 ? (holding.current_value / performance.totalPortfolioValue) * 100 : 0,
+        value: holding.valueSek,
+        percentage: performance.totalPortfolioValue > 0 ? (holding.valueSek / performance.totalPortfolioValue) * 100 : 0,
         type: 'cash' as const
       }));
 
