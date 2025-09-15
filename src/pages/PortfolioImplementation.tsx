@@ -12,7 +12,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
-import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { Button } from '@/components/ui/button';
 import { Brain, AlertCircle, User } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
@@ -39,9 +38,6 @@ const PortfolioImplementation = () => {
   const {
     performance
   } = usePortfolioPerformance();
-  const {
-    totalCash
-  } = useCashHoldings();
   const navigate = useNavigate();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -64,7 +60,7 @@ const PortfolioImplementation = () => {
       hour: '2-digit',
       minute: '2-digit'
     }));
-  }, [performance, totalCash]);
+  }, [performance]);
   const handleQuickChat = (message: string) => {
     if (!riskProfile) {
       return;
@@ -133,10 +129,10 @@ const PortfolioImplementation = () => {
     const uniqueSectors = actualHoldings && actualHoldings.length > 0 ? new Set(actualHoldings.filter(h => h.sector).map(h => h.sector)).size : 0;
     return {
       diversificationScore: Math.min(100, uniqueSectors / Math.max(1, totalHoldings) * 100 + 20),
-      riskScore: Math.max(20, 100 - totalCash / Math.max(1, totalPortfolioValue) * 200),
+      riskScore: Math.max(20, 100 - performance.totalCash / Math.max(1, totalPortfolioValue) * 200),
       performanceScore: 75,
       // Mock performance score
-      cashPercentage: totalPortfolioValue > 0 ? totalCash / totalPortfolioValue * 100 : 0
+      cashPercentage: totalPortfolioValue > 0 ? performance.totalCash / totalPortfolioValue * 100 : 0
     };
   };
   const healthMetrics = calculateHealthMetrics();
@@ -172,7 +168,7 @@ const PortfolioImplementation = () => {
 
           {/* Portfolio Value Cards */}
           <div className="mb-12">
-            <PortfolioValueCards totalPortfolioValue={totalPortfolioValue} totalInvestedValue={performance.totalValue} totalCashValue={totalCash} loading={loading} />
+            <PortfolioValueCards totalPortfolioValue={totalPortfolioValue} totalInvestedValue={performance.totalValue} totalCashValue={performance.totalCash} loading={loading} />
           </div>
 
           {/* Risk Profile Required Alert */}
