@@ -31,9 +31,10 @@ export const useFinancialProgress = (): ProgressData => {
       };
     }
 
-    const totalValue = performance.totalPortfolioValue + totalCash;
+    const totalValue = performance.totalPortfolioValue;
+    const investedValue = performance.totalValue + totalCash;
     const hasHoldings = actualHoldings && actualHoldings.length > 0;
-    const hasInvested = performance.totalPortfolioValue > 0;
+    const hasInvested = investedValue > totalCash;
     const hasCash = totalCash > 0;
     const isWellDiversified = actualHoldings && actualHoldings.length >= 5;
     const hasGoodBalance = totalCash / totalValue < 0.3; // Less than 30% cash
