@@ -47,7 +47,9 @@ const PortfolioKeyMetrics: React.FC<PortfolioKeyMetricsProps> = ({ portfolio }) 
 
     // Filter actual holdings only
     const realHoldings = actualHoldings.filter(h => h.holding_type !== 'recommendation');
-    const totalValue = calculateTotalPortfolioValue(realHoldings);
+    const totalValue = !performanceLoading && performance
+      ? performance.totalPortfolioValue
+      : calculateTotalPortfolioValue(realHoldings);
     
     // Calculate total invested amount
     let totalInvested = 0;
@@ -133,7 +135,7 @@ const PortfolioKeyMetrics: React.FC<PortfolioKeyMetricsProps> = ({ portfolio }) 
 
   // Use performance data from the hook when available
   const displayMetrics = !performanceLoading && performance ? {
-    totalValue: performance.totalValue,
+    totalValue: performance.totalPortfolioValue,
     totalInvested: performance.totalInvested,
     totalReturn: performance.totalReturn,
     totalReturnPercentage: performance.totalReturnPercentage,

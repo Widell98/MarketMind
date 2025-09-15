@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { convertCurrency } from '@/utils/currencyUtils';
 
 export interface PerformanceData {
   totalValue: number;
@@ -145,42 +146,95 @@ export const usePortfolioPerformance = () => {
         .eq('user_id', user.id)
         .eq('date', yesterdayStr);
 
-      // Calculate securities performance
+      const yesterdayValueMap = new Map<string, number>();
+      yesterdayData?.forEach(entry => {
+        if (entry?.holding_id) {
+          const entryValue = typeof entry.total_value === 'number' ? entry.total_value : 0;
+          yesterdayValueMap.set(entry.holding_id, entryValue);
+        }
+      });
+
+      const holdingsResults = await Promise.all(
+        securities.map(async holding => {
+          const quantity = Number(holding.quantity) || 0;
+          const purchasePrice = Number(holding.purchase_price) || 0;
+          const investedValue = purchasePrice * quantity;
+          const fallbackValue = typeof holding.current_value === 'number'
+            ? holding.current_value
+            : investedValue;
+
+          let currentValue = fallbackValue || 0;
+
+          if (holding.symbol && quantity > 0) {
+            try {
+              const { data, error } = await supabase.functions.invoke('fetch-stock-quote', {
+                body: { symbol: holding.symbol }
+              });
+
+              if (!error && data && typeof data.price === 'number') {
+                const quote = data as { price?: number; currency?: string; hasValidPrice?: boolean };
+
+                if (quote.hasValidPrice !== false && typeof quote.price === 'number') {
+                  const quoteCurrency = (quote.currency || holding.currency || 'SEK').toUpperCase();
+                  const targetCurrency = (holding.currency || quoteCurrency).toUpperCase();
+
+                  let normalizedPrice = quote.price;
+
+                  if (quoteCurrency !== targetCurrency) {
+                    normalizedPrice = convertCurrency(quote.price, quoteCurrency, targetCurrency);
+                  }
+
+                  currentValue = normalizedPrice * quantity;
+                }
+              }
+            } catch (priceError) {
+              console.error(`Error fetching price for ${holding.symbol}:`, priceError);
+            }
+          }
+
+          if (!Number.isFinite(currentValue)) {
+            currentValue = typeof fallbackValue === 'number' ? fallbackValue : 0;
+          }
+
+          currentValue = Math.round(currentValue * 100) / 100;
+
+          const yesterdayValue = yesterdayValueMap.get(holding.id) ?? currentValue;
+          const profit = currentValue - investedValue;
+          const profitPercentage = investedValue > 0 ? (profit / investedValue) * 100 : 0;
+          const dayChange = currentValue - yesterdayValue;
+          const dayChangePercentage = yesterdayValue > 0 ? (dayChange / yesterdayValue) * 100 : 0;
+
+          return {
+            performance: {
+              id: holding.id,
+              name: holding.name,
+              symbol: holding.symbol,
+              currentValue,
+              investedValue,
+              profit,
+              profitPercentage,
+              dayChange,
+              dayChangePercentage
+            } as HoldingPerformance,
+            totals: {
+              currentValue,
+              investedValue,
+              yesterdayValue
+            }
+          };
+        })
+      );
+
       let totalValue = 0;
       let totalInvested = 0;
       let totalYesterdayValue = 0;
       const holdingsPerf: HoldingPerformance[] = [];
 
-      securities.forEach(holding => {
-        const currentValue = holding.current_value || 0;
-        const purchasePrice = holding.purchase_price || 0;
-        const quantity = holding.quantity || 0;
-        const investedValue = purchasePrice * quantity;
-
-        // Find yesterday's value for this holding
-        const yesterdayHolding = yesterdayData?.find(d => d.holding_id === holding.id);
-        const yesterdayValue = yesterdayHolding?.total_value || currentValue;
-
-        const profit = currentValue - investedValue;
-        const profitPercentage = investedValue > 0 ? (profit / investedValue) * 100 : 0;
-        const dayChange = currentValue - yesterdayValue;
-        const dayChangePercentage = yesterdayValue > 0 ? (dayChange / yesterdayValue) * 100 : 0;
-
-        holdingsPerf.push({
-          id: holding.id,
-          name: holding.name,
-          symbol: holding.symbol,
-          currentValue,
-          investedValue,
-          profit,
-          profitPercentage,
-          dayChange,
-          dayChangePercentage
-        });
-
-        totalValue += currentValue;
-        totalInvested += investedValue;
-        totalYesterdayValue += yesterdayValue;
+      holdingsResults.forEach(result => {
+        holdingsPerf.push(result.performance);
+        totalValue += result.totals.currentValue;
+        totalInvested += result.totals.investedValue;
+        totalYesterdayValue += result.totals.yesterdayValue;
       });
 
       const totalReturn = totalValue - totalInvested;
