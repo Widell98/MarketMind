@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import EditHoldingDialog from './EditHoldingDialog';
 import UserHoldingsManager from './UserHoldingsManager';
 import AIRecommendations from './AIRecommendations';
+import { getNormalizedValue } from '@/utils/currencyUtils';
 interface PortfolioOverviewProps {
   portfolio: any;
   onQuickChat?: (message: string) => void;
@@ -50,7 +51,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     const sectorExposure: { [key: string]: number } = {};
     const marketExposure: { [key: string]: number } = {};
     allHoldings.forEach(holding => {
-      const value = holding.current_value || holding.purchase_price || 100;
+      const value = getNormalizedValue(holding) || 0;
 
       const sector = holding.sector || 'Övrigt';
       sectorExposure[sector] = (sectorExposure[sector] || 0) + value;
