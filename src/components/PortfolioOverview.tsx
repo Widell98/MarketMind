@@ -51,8 +51,8 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     const sectorExposure: { [key: string]: number } = {};
     const marketExposure: { [key: string]: number } = {};
     allHoldings.forEach(holding => {
-      const value = holding.current_value || holding.purchase_price || 100;
-      const valueSek = convertToSEK(value, holding.currency);
+      const value = (holding.current_price_per_unit || holding.purchase_price || 0) * (holding.quantity || 0);
+      const valueSek = convertToSEK(value, holding.price_currency || holding.currency);
 
       const sector = holding.sector || 'Övrigt';
       sectorExposure[sector] = (sectorExposure[sector] || 0) + valueSek;
