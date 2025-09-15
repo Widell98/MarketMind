@@ -17,13 +17,19 @@ import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { formatCurrency } from '@/utils/currencyUtils';
 
 const RealTimePortfolioData: React.FC = () => {
-  const { 
-    performance, 
-    holdingsPerformance, 
-    loading, 
-    updating, 
-    updatePrices 
+  const {
+    performance,
+    holdingsPerformance,
+    loading,
+    updating,
+    updatePrices,
+    refetch
   } = usePortfolioPerformance();
+
+  const handleUpdatePrices = async () => {
+    await updatePrices();
+    await refetch();
+  };
 
   const getChangeIcon = (change: number) => {
     if (change > 0) return <TrendingUp className="w-4 h-4 text-green-600" />;
@@ -62,8 +68,8 @@ const RealTimePortfolioData: React.FC = () => {
               Senast uppdaterad: {new Date(performance.lastUpdated).toLocaleString('sv-SE')}
             </CardDescription>
           </div>
-          <Button 
-            onClick={updatePrices} 
+          <Button
+            onClick={handleUpdatePrices}
             disabled={updating}
             variant="outline"
             size="sm"

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -49,51 +49,14 @@ export const usePortfolioPerformance = () => {
   const [holdingsPerformance, setHoldingsPerformance] = useState<HoldingPerformance[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasInitialLoad = useRef(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (user) {
-      calculatePerformance();
-      // Set up realtime updates
-      const channel = supabase
-        .channel('portfolio-updates')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'user_holdings',
-            filter: `user_id=eq.${user.id}`
-          },
-          () => {
-            console.log('Holdings updated, recalculating performance...');
-            calculatePerformance();
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'portfolio_performance_history',
-            filter: `user_id=eq.${user.id}`
-          },
-          () => {
-            console.log('Performance history updated, recalculating performance...');
-            calculatePerformance();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [user]);
-
-  const calculatePerformance = async () => {
+  const calculatePerformance = useCallback(async () => {
     if (!user) {
+      hasInitialLoad.current = false;
       setPerformance(createEmptyPerformance());
       setHoldingsPerformance([]);
       setLoading(false);
@@ -101,7 +64,9 @@ export const usePortfolioPerformance = () => {
     }
 
     try {
-      setLoading(true);
+      if (!hasInitialLoad.current) {
+        setLoading(true);
+      }
 
       // Get all holdings (both securities and cash)
       const { data: allHoldings, error: holdingsError } = await supabase
@@ -111,12 +76,14 @@ export const usePortfolioPerformance = () => {
 
       if (holdingsError) {
         console.error('Error fetching holdings:', holdingsError);
+        hasInitialLoad.current = true;
         setPerformance(createEmptyPerformance());
         setHoldingsPerformance([]);
         return;
       }
 
       if (!allHoldings || allHoldings.length === 0) {
+        hasInitialLoad.current = true;
         setPerformance(createEmptyPerformance());
         setHoldingsPerformance([]);
         return;
@@ -213,6 +180,7 @@ export const usePortfolioPerformance = () => {
       setPerformance(result);
 
       setHoldingsPerformance(holdingsPerf);
+      hasInitialLoad.current = true;
 
     } catch (error) {
       console.error('Error calculating performance:', error);
@@ -220,7 +188,76 @@ export const usePortfolioPerformance = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  const scheduleRecalculation = useCallback(() => {
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+
+    debounceTimeout.current = setTimeout(() => {
+      calculatePerformance();
+    }, 300);
+  }, [calculatePerformance]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    hasInitialLoad.current = false;
+    calculatePerformance();
+
+    // Set up realtime updates
+    const channel = supabase
+      .channel('portfolio-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_holdings',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          console.log('Holdings updated, scheduling performance recalculation...');
+          scheduleRecalculation();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'portfolio_performance_history',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          console.log('Performance history updated, scheduling performance recalculation...');
+          scheduleRecalculation();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'symbol_prices'
+        },
+        () => {
+          console.log('Symbol prices updated, scheduling performance recalculation...');
+          scheduleRecalculation();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [user, calculatePerformance, scheduleRecalculation]);
 
   const updatePrices = async () => {
     if (!user || updating) return;
