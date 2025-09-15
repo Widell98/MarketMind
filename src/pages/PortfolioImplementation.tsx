@@ -36,7 +36,8 @@ const PortfolioImplementation = () => {
     loading: riskProfileLoading
   } = useRiskProfile();
   const {
-    performance
+    performance,
+    loading: perfLoading
   } = usePortfolioPerformance();
   const navigate = useNavigate();
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -86,7 +87,7 @@ const PortfolioImplementation = () => {
   };
 
   // Show loading while portfolio is loading
-  if (loading || riskProfileLoading) {
+  if (loading || riskProfileLoading || perfLoading) {
     return <Layout>
         <div className="min-h-screen flex items-center justify-center p-4">
           <div className="text-center p-6 bg-white dark:bg-gray-800 backdrop-blur-lg border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl w-full max-w-sm mx-auto">
@@ -168,7 +169,7 @@ const PortfolioImplementation = () => {
 
           {/* Portfolio Value Cards */}
           <div className="mb-12">
-            <PortfolioValueCards totalPortfolioValue={totalPortfolioValue} totalInvestedValue={performance.totalValue} totalCashValue={performance.totalCash} loading={loading} />
+            <PortfolioValueCards totalPortfolioValue={totalPortfolioValue} totalInvestedValue={performance.totalValue} totalCashValue={performance.totalCash} loading={loading || perfLoading} />
           </div>
 
           {/* Risk Profile Required Alert */}
