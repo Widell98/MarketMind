@@ -35,7 +35,7 @@ const PortfolioValueCards: React.FC<PortfolioValueCardsProps> = ({
       iconColor: "text-primary"
     },
     {
-      title: "Investerat Värde",
+      title: "Aktier & Fonder",
       value: totalInvestedValue,
       icon: TrendingUp,
       bgColor: "bg-blue-50 dark:bg-blue-950/20",

@@ -126,7 +126,6 @@ const PortfolioImplementation = () => {
       </Layout>;
   }
   const totalPortfolioValue = performance.totalPortfolioValue;
-  const investedValue = performance.totalValue;
 
   // Calculate portfolio health metrics - fix the actualHoldings check
   const calculateHealthMetrics = () => {
@@ -173,7 +172,7 @@ const PortfolioImplementation = () => {
 
           {/* Portfolio Value Cards */}
           <div className="mb-12">
-            <PortfolioValueCards totalPortfolioValue={totalPortfolioValue} totalInvestedValue={investedValue} totalCashValue={totalCash} loading={loading} />
+            <PortfolioValueCards totalPortfolioValue={totalPortfolioValue} totalInvestedValue={performance.totalValue} totalCashValue={totalCash} loading={loading} />
           </div>
 
           {/* Risk Profile Required Alert */}
