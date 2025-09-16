@@ -16,6 +16,8 @@ interface Holding {
   purchase_price?: number;
   sector?: string;
   currency: string;
+  current_price_per_unit?: number;
+  price_currency?: string;
 }
 
 interface HoldingsGroupSectionProps {
@@ -25,7 +27,6 @@ interface HoldingsGroupSectionProps {
   groupPercentage: number;
   isCollapsible?: boolean;
   defaultExpanded?: boolean;
-  getPriceForHolding: (holding: Holding) => any;
   onDiscuss: (name: string, symbol?: string) => void;
   onEdit?: (id: string) => void;
   onDelete: (id: string, name: string) => void;
@@ -38,7 +39,6 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
   groupPercentage,
   isCollapsible = true,
   defaultExpanded = true,
-  getPriceForHolding,
   onDiscuss,
   onEdit,
   onDelete
@@ -106,16 +106,14 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
         <CardContent className="pt-0">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {holdings.map((holding) => {
-              // Hämta prisinfo och beräkna värdet baserat på antal * pris (fallback: current_value)
-              const priceInfo = getPriceForHolding(holding);
-              const computedValue = holding.quantity && priceInfo?.price
-                ? holding.quantity * priceInfo.price
-                : holding.current_value;
-
-              const holdingPercentage = totalValue > 0 
-                ? (computedValue / totalValue) * groupPercentage 
+              const computedValue = typeof holding.current_value === 'number'
+                ? holding.current_value
                 : 0;
-              
+
+              const holdingPercentage = totalValue > 0
+                ? (computedValue / totalValue) * groupPercentage
+                : 0;
+
               // Use swipeable cards on mobile, regular cards on desktop
               if (isMobile) {
                 return (
@@ -123,7 +121,6 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
                     key={holding.id}
                     holding={holding}
                     portfolioPercentage={holdingPercentage}
-                    currentPrice={priceInfo}
                     onDiscuss={onDiscuss}
                     onEdit={onEdit}
                     onDelete={onDelete}
@@ -137,7 +134,6 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
                   key={holding.id}
                   holding={holding}
                   portfolioPercentage={holdingPercentage}
-                  currentPrice={priceInfo}
                   onDiscuss={onDiscuss}
                   onEdit={onEdit}
                   onDelete={onDelete}

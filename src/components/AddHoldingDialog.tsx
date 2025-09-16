@@ -17,10 +17,71 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { RefreshCw, TrendingUp } from 'lucide-react';
 import { UserHolding } from '@/hooks/useUserHoldings';
-import { useRealTimePricing } from '@/hooks/useRealTimePricing';
+import { supabase } from '@/integrations/supabase/client';
+
+type SheetTicker = {
+  name: string;
+  symbol: string;
+};
+
+const useSheetTickers = () => {
+  const [tickers, setTickers] = useState<SheetTicker[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchTickers = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const { data, error: invokeError } = await supabase.functions.invoke('list-sheet-tickers');
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (invokeError) {
+          setError(invokeError.message ?? 'Kunde inte hämta tickers.');
+          setTickers([]);
+          return;
+        }
+
+        const list = Array.isArray(data?.tickers)
+          ? (data.tickers as SheetTicker[])
+          : [];
+
+        setTickers(
+          list.map((item) => ({
+            symbol: item.symbol,
+            name: item.name ?? item.symbol,
+          })),
+        );
+      } catch (err) {
+        if (!isMounted) {
+          return;
+        }
+        setError(err instanceof Error ? err.message : 'Kunde inte hämta tickers.');
+        setTickers([]);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchTickers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  return { tickers, isLoading, error };
+};
 
 interface AddHoldingDialogProps {
   isOpen: boolean;
@@ -29,12 +90,13 @@ interface AddHoldingDialogProps {
   initialData?: any;
 }
 
-const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({ 
-  isOpen, 
-  onClose, 
+const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
+  isOpen,
+  onClose,
   onAdd,
-  initialData 
+  initialData
 }) => {
+  const { tickers, isLoading: tickersLoading, error: tickersError } = useSheetTickers();
   const [formData, setFormData] = useState({
     name: initialData?.name || '',
     symbol: initialData?.symbol || '',
@@ -47,9 +109,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     currency: initialData?.currency || 'SEK'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [fetchingPrice, setFetchingPrice] = useState(false);
-  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
-  const { validateAndPriceHolding, getCurrentPrice } = useRealTimePricing();
+  const [symbolError, setSymbolError] = useState<string | null>(null);
 
   // Update form data when initialData changes
   useEffect(() => {
@@ -73,48 +133,47 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       ...prev,
       [field]: value
     }));
-  };
-
-  const fetchCurrentPrice = async () => {
-    if (!formData.symbol.trim()) return;
-    
-    setFetchingPrice(true);
-    const price = await getCurrentPrice(formData.symbol.trim(), formData.currency);
-    setCurrentPrice(price);
-    
-    if (price && !formData.purchase_price) {
-      setFormData(prev => ({
-        ...prev,
-        purchase_price: price.toString()
-      }));
+    if (field === 'symbol' && symbolError) {
+      setSymbolError(null);
     }
-    setFetchingPrice(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
+    const normalizedSymbol = formData.symbol.trim().toUpperCase();
+    const symbolMatches = tickers.some((ticker) => ticker.symbol.toUpperCase() === normalizedSymbol);
+
+    if (!normalizedSymbol || !symbolMatches) {
+      setSymbolError('Tickern finns inte i Google Sheets. Välj en ticker från listan.');
+      return;
+    }
+
     setIsSubmitting(true);
-    
-    let holdingData = {
+
+    const quantity = formData.quantity ? parseFloat(formData.quantity) : undefined;
+    const purchasePrice = formData.purchase_price ? parseFloat(formData.purchase_price) : undefined;
+
+    const holdingData: Omit<UserHolding, 'id' | 'user_id' | 'created_at' | 'updated_at'> = {
       name: formData.name.trim(),
-      symbol: formData.symbol.trim() || undefined,
+      symbol: normalizedSymbol,
       holding_type: formData.holding_type as UserHolding['holding_type'],
-      quantity: formData.quantity ? parseFloat(formData.quantity) : undefined,
-      purchase_price: formData.purchase_price ? parseFloat(formData.purchase_price) : undefined,
+      quantity,
+      purchase_price: purchasePrice,
       purchase_date: formData.purchase_date || undefined,
       sector: formData.sector.trim() || undefined,
       market: formData.market.trim() || undefined,
       currency: formData.currency || 'SEK'
     };
 
-    // Get real-time pricing and calculate current value
-    const pricedData = await validateAndPriceHolding(holdingData);
-    holdingData = { ...holdingData, ...pricedData };
+    if (quantity !== undefined && purchasePrice !== undefined) {
+      const calculatedValue = Math.round(quantity * purchasePrice * 100) / 100;
+      holdingData.current_value = calculatedValue;
+    }
 
     const success = await onAdd(holdingData);
-    
+
     if (success) {
       // Reset form
       setFormData({
@@ -128,9 +187,10 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         market: '',
         currency: 'SEK'
       });
+      setSymbolError(null);
       onClose();
     }
-    
+
     setIsSubmitting(false);
   };
 
@@ -147,6 +207,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         market: '',
         currency: 'SEK'
       });
+      setSymbolError(null);
       onClose();
     }
   };
@@ -182,12 +243,35 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
               <Label htmlFor="symbol">Symbol</Label>
               <Input
                 id="symbol"
+                list="sheet-tickers"
                 value={formData.symbol}
                 onChange={(e) => handleInputChange('symbol', e.target.value)}
-                placeholder="t.ex. VOLV-B"
+                placeholder={tickersLoading ? 'Hämtar tickers...' : 't.ex. VOLV-B'}
+                required
               />
+              {symbolError && (
+                <p className="text-sm text-destructive">{symbolError}</p>
+              )}
+              {tickersError && (
+                <p className="text-sm text-muted-foreground">{tickersError}</p>
+              )}
             </div>
           </div>
+          <datalist id="sheet-tickers">
+            {tickers.map((ticker) => {
+              const label = ticker.name && ticker.name !== ticker.symbol
+                ? `${ticker.name} (${ticker.symbol})`
+                : ticker.symbol;
+
+              return (
+                <option
+                  key={ticker.symbol}
+                  value={ticker.symbol}
+                  label={label}
+                />
+              );
+            })}
+          </datalist>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
