@@ -230,7 +230,9 @@ export const usePortfolioPerformance = () => {
     try {
       setUpdating(true);
 
-      const { data, error } = await supabase.functions.invoke('update-portfolio-prices');
+      const { data, error } = await supabase.functions.invoke('update-portfolio-prices', {
+        body: { userId: user.id },
+      });
 
       if (error) {
         throw error;
