@@ -1,69 +1,47 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import { google } from 'https://esm.sh/googleapis@118.0.0?target=deno';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Supabase-klient med lazy init
 let supabaseClient: ReturnType<typeof createClient> | null = null;
-
 const getSupabaseClient = () => {
-  if (supabaseClient) {
-    return supabaseClient;
-  }
-
-  const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error('Missing Supabase configuration');
-  }
-
+  if (supabaseClient) return supabaseClient;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !supabaseServiceKey) throw new Error("Missing Supabase configuration");
   supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
   return supabaseClient;
 };
-const googleServiceAccount = Deno.env.get('GOOGLE_SERVICE_ACCOUNT');
-const googleSheetId = Deno.env.get('GOOGLE_SHEET_ID');
 
-const normalizeValue = (value?: string | null) => {
-  if (!value) return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
+// === Hjälpfunktioner ===
+const normalizeValue = (v?: string | null) => (v?.trim()?.length ? v.trim() : null);
+const normalizeSymbol = (v?: string | null) => normalizeValue(v)?.toUpperCase() ?? null;
+const normalizeName = (v?: string | null) => normalizeValue(v)?.toUpperCase() ?? null;
+
+const parsePrice = (v?: string | null) => {
+  if (!v) return null;
+  const num = parseFloat(v.replace(/\s/g, "").replace(",", "."));
+  return Number.isFinite(num) ? num : null;
 };
 
-const normalizeSymbol = (value?: string | null) => {
-  const normalized = normalizeValue(value);
-  return normalized ? normalized.toUpperCase() : null;
-};
-
-const normalizeName = (value?: string | null) => {
-  const normalized = normalizeValue(value);
-  return normalized ? normalized.toUpperCase() : null;
-};
-
-const parsePrice = (value?: string | null) => {
-  if (!value) return null;
-  const normalized = value.replace(/\s/g, '').replace(',', '.');
-  const price = parseFloat(normalized);
-  return Number.isFinite(price) ? price : null;
+const parseChangePercent = (v?: string | null) => {
+  if (!v) return null;
+  const num = parseFloat(v.replace(/\s/g, "").replace("%", "").replace(",", "."));
+  return Number.isFinite(num) ? num : null;
 };
 
 const getSymbolVariants = (symbol: string | null) => {
   if (!symbol) return [];
-  const variants = new Set<string>();
-  variants.add(symbol);
-
-  if (symbol.endsWith('.ST')) {
-    variants.add(symbol.replace(/\.ST$/, ''));
-  } else {
-    variants.add(`${symbol}.ST`);
-  }
-
-  return Array.from(variants);
+  const variants = new Set<string>([symbol]);
+  if (symbol.endsWith(".ST")) variants.add(symbol.replace(/\.ST$/, ""));
+  else variants.add(`${symbol}.ST`);
+  return [...variants];
 };
 
 const EXCHANGE_RATES: Record<string, number> = {
@@ -80,75 +58,40 @@ const EXCHANGE_RATES: Record<string, number> = {
 };
 
 const convertToSEK = (amount: number, currency?: string | null) => {
-  if (!Number.isFinite(amount)) {
-    return null;
-  }
-
-  const normalizedCurrency = currency?.toUpperCase();
-
-  if (!normalizedCurrency || normalizedCurrency === 'SEK') {
-    return amount;
-  }
-
-  const rate = EXCHANGE_RATES[normalizedCurrency];
-
-  if (typeof rate !== 'number') {
-    console.warn(`Missing exchange rate for currency: ${normalizedCurrency}`);
-    return null;
-  }
-
-  return amount * rate;
+  if (!Number.isFinite(amount)) return null;
+  const c = currency?.toUpperCase();
+  if (!c || c === "SEK") return amount;
+  const rate = EXCHANGE_RATES[c];
+  return typeof rate === "number" ? amount * rate : null;
 };
 
-const parseChangePercent = (value?: string | null) => {
-  if (!value) return null;
-
-  const normalized = value
-    .replace(/\s/g, '')
-    .replace('%', '')
-    .replace(',', '.');
-
-  const parsed = parseFloat(normalized);
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
+// === Edge Function ===
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    if (!googleServiceAccount || !googleSheetId) {
-      throw new Error('Missing Google Sheets configuration');
-    }
-
     const supabase = getSupabaseClient();
 
-    const credentials = JSON.parse(googleServiceAccount);
-    if (credentials.private_key) {
-      credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
-    }
+    // Hämta CSV från Google Sheets (ändra output till csv)
+    const csvUrl =
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvOPfg5tZjaFqCu7b3Li80oPEEuje4tQTcnr6XjxCW_ItVbOGWCvfQfFvWDXRH544MkBKeI1dPyzJG/pub?output=csv";
+    const res = await fetch(csvUrl);
+    if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
+    const csvText = await res.text();
 
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-    });
-
-    const sheets = google.sheets({ version: 'v4', auth });
-
-    const sheetRes = await sheets.spreadsheets.values.get({
-      spreadsheetId: googleSheetId,
-      range: 'Top 1000!B2:H',
-    });
-
-    const rows = sheetRes.data.values || [];
+    // Parsning av CSV → rader
+    const rows = csvText.split("\n").map((r) => r.split(","));
     const timestamp = new Date().toISOString();
     let updated = 0;
     let errors = 0;
     const unmatched: Array<{ symbol?: string; name?: string }> = [];
 
     for (const row of rows) {
-      const [company, rawSymbol, , rawCurrency, rawPrice, , rawChange] = row;
+      // Anpassa index efter din CSV-struktur (B2:H tidigare)
+      const [company, rawSymbol, , rawCurrency, rawPrice, , rawChange] = row.map((c) =>
+        c.trim()
+      );
+
       const rawSymbolValue = normalizeValue(rawSymbol);
       const rawNameValue = normalizeValue(company);
       const normalizedSymbol = normalizeSymbol(rawSymbolValue);
@@ -159,121 +102,79 @@ serve(async (req) => {
       const dailyChangePct = parseChangePercent(rawChange);
 
       let resolvedPrice = price;
-      let priceCurrency = originalCurrency ?? 'SEK';
+      let priceCurrency = originalCurrency ?? "SEK";
 
       if (price !== null) {
-        const convertedPrice = convertToSEK(price, originalCurrency ?? 'SEK');
-
-        if (convertedPrice !== null) {
-          resolvedPrice = convertedPrice;
-          priceCurrency = 'SEK';
-        } else {
-          resolvedPrice = price;
-          priceCurrency = originalCurrency ?? 'SEK';
+        const converted = convertToSEK(price, originalCurrency ?? "SEK");
+        if (converted !== null) {
+          resolvedPrice = converted;
+          priceCurrency = "SEK";
         }
       }
 
-      if ((!normalizedSymbol && !normalizedName) || resolvedPrice === null || resolvedPrice <= 0) {
+      if ((!normalizedSymbol && !normalizedName) || resolvedPrice === null || resolvedPrice <= 0)
         continue;
-      }
 
+      // Hitta matchande innehav i Supabase
       const symbolVariants = getSymbolVariants(normalizedSymbol);
-
-      const selectQuery = supabase
-        .from('user_holdings')
-        .select('id, quantity', { count: 'exact' })
-        .neq('holding_type', 'cash');
+      const query = supabase.from("user_holdings").select("id, quantity").neq("holding_type", "cash");
 
       if (symbolVariants.length > 0 && namePattern) {
-        selectQuery.or([
-          ...symbolVariants.map((variant) => `symbol.ilike.${variant}`),
-          `name.ilike.${namePattern}`,
-        ].join(','));
-      } else if (symbolVariants.length > 1) {
-        selectQuery.or(symbolVariants.map((variant) => `symbol.ilike.${variant}`).join(','));
-      } else if (symbolVariants.length === 1) {
-        selectQuery.ilike('symbol', symbolVariants[0]);
-      } else if (namePattern) {
-        selectQuery.ilike('name', namePattern);
-      } else {
-        continue;
-      }
-
-      const { data: matchingHoldings, error: selectError } = await selectQuery;
-
-      if (selectError) {
-        console.error(
-          `Error selecting holdings for ${normalizedSymbol ?? normalizedName ?? 'unknown'}:`,
-          selectError,
+        query.or(
+          [...symbolVariants.map((v) => `symbol.ilike.${v}`), `name.ilike.${namePattern}`].join(",")
         );
+      } else if (symbolVariants.length > 1) {
+        query.or(symbolVariants.map((v) => `symbol.ilike.${v}`).join(","));
+      } else if (symbolVariants.length === 1) {
+        query.ilike("symbol", symbolVariants[0]);
+      } else if (namePattern) {
+        query.ilike("name", namePattern);
+      } else continue;
+
+      const { data: holdings, error: selectErr } = await query;
+      if (selectErr) {
+        console.error(`Error selecting holdings for ${normalizedSymbol ?? normalizedName}:`, selectErr);
         errors++;
         continue;
       }
 
-      if (!matchingHoldings || matchingHoldings.length === 0) {
-        unmatched.push({
-          symbol: rawSymbolValue ?? undefined,
-          name: rawNameValue ?? undefined,
-        });
-        console.warn(
-          `No holdings matched for symbol ${rawSymbolValue ?? normalizedSymbol ?? 'N/A'} or name ${rawNameValue ?? normalizedName ?? 'N/A'}`,
-        );
+      if (!holdings || holdings.length === 0) {
+        unmatched.push({ symbol: rawSymbolValue ?? undefined, name: rawNameValue ?? undefined });
+        console.warn(`No holdings matched for ${normalizedSymbol ?? rawSymbolValue}`);
         continue;
       }
 
-      for (const holding of matchingHoldings) {
-        const quantityValue = typeof holding.quantity === 'number'
+      for (const holding of holdings) {
+        const q = Number.isFinite(holding.quantity)
           ? holding.quantity
-          : parseFloat(String(holding.quantity ?? '').replace(',', '.'));
+          : parseFloat(String(holding.quantity ?? "").replace(",", "."));
+        const quantity = Number.isFinite(q) ? q : 0;
+        const computedValue = quantity * (resolvedPrice ?? 0);
 
-        const resolvedQuantity = Number.isFinite(quantityValue) ? quantityValue : 0;
-        const computedValue = resolvedQuantity * (resolvedPrice ?? 0);
-
-        const updatePayload: Record<string, unknown> = {
+        const payload: Record<string, unknown> = {
           current_price_per_unit: resolvedPrice,
           price_currency: priceCurrency,
           current_value: computedValue,
           updated_at: timestamp,
         };
+        if (dailyChangePct !== null) payload.daily_change_pct = dailyChangePct;
 
-        if (dailyChangePct !== null) {
-          updatePayload.daily_change_pct = dailyChangePct;
-        }
-
-        const { error: updateError } = await supabase
-          .from('user_holdings')
-          .update(updatePayload)
-          .eq('id', holding.id);
-
-        if (updateError) {
-          console.error(
-            `Error updating holding ${holding.id} for ${normalizedSymbol ?? normalizedName ?? 'unknown'}:`,
-            updateError,
-          );
+        const { error: updateErr } = await supabase.from("user_holdings").update(payload).eq("id", holding.id);
+        if (updateErr) {
+          console.error(`Error updating holding ${holding.id}:`, updateErr);
           errors++;
-          continue;
-        }
-
-        updated += 1;
+        } else updated++;
       }
     }
 
+    return new Response(JSON.stringify({ success: true, updated, errors, unmatched }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    console.error("Portfolio update error:", err);
     return new Response(
-      JSON.stringify({ success: true, updated, errors, unmatched }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
-  } catch (error) {
-    console.error('Portfolio update error:', error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      },
+      JSON.stringify({ success: false, error: err instanceof Error ? err.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
-

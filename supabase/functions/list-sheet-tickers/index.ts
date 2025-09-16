@@ -1,58 +1,46 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { google } from 'https://esm.sh/googleapis@118.0.0?target=deno';
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const googleServiceAccount = Deno.env.get('GOOGLE_SERVICE_ACCOUNT');
-const googleSheetId = Deno.env.get('GOOGLE_SHEET_ID');
-
+// === Hjälpfunktion för normalisering ===
 const normalizeValue = (value?: string | null) => {
   if (!value) return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 };
 
+// === Din publicerade Google Sheets som CSV ===
+const CSV_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvOPfg5tZjaFqCu7b3Li80oPEEuje4tQTcnr6XjxCW_ItVbOGWCvfQfFvWDXRH544MkBKeI1dPyzJG/pub?output=csv";
+
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    if (!googleServiceAccount || !googleSheetId) {
-      throw new Error('Missing Google Sheets configuration');
-    }
+    // Hämta CSV-data från Google Sheets
+    const res = await fetch(CSV_URL);
+    if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
+    const csvText = await res.text();
 
-    const credentials = JSON.parse(googleServiceAccount);
-    if (credentials.private_key) {
-      credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
-    }
+    // Parsning av CSV till rader
+    const rows = csvText
+      .split("\n")
+      .map((r) => r.split(",").map((c) => c.trim()))
+      .filter((r) => r.length >= 2); // Minst två kolumner (namn, symbol)
 
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-    });
-
-    const sheets = google.sheets({ version: 'v4', auth });
-
-    const sheetRes = await sheets.spreadsheets.values.get({
-      spreadsheetId: googleSheetId,
-      range: 'Top 1000!B2:C',
-    });
-
-    const rows = sheetRes.data.values || [];
     const tickerMap = new Map<string, { name: string | null; symbol: string }>();
 
     for (const row of rows) {
       const [rawName, rawSymbol] = row;
       const normalizedSymbol = normalizeValue(rawSymbol)?.toUpperCase();
-      if (!normalizedSymbol) {
-        continue;
-      }
+      if (!normalizedSymbol) continue;
 
       const normalizedName = normalizeValue(rawName);
       tickerMap.set(normalizedSymbol, {
@@ -66,21 +54,17 @@ serve(async (req) => {
       name: name ?? symbol,
     }));
 
-    return new Response(
-      JSON.stringify({ success: true, tickers }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
+    return new Response(JSON.stringify({ success: true, tickers }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error) {
-    console.error('Sheet ticker listing error:', error);
+    console.error("Sheet ticker listing error:", error);
     return new Response(
       JSON.stringify({
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      },
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
