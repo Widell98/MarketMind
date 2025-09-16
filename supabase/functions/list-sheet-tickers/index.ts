@@ -7,16 +7,15 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// === Hjälpfunktion för normalisering ===
+// Din publicerade CSV-URL
+const CSV_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvOPfg5tZjaFqCu7b3Li80oPEEuje4tQTcnr6XjxCW_ItVbOGWCvfQfFvWDXRH544MkBKeI1dPyzJG/pub?output=csv";
+
 const normalizeValue = (value?: string | null) => {
   if (!value) return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 };
-
-// === Din publicerade Google Sheets som CSV ===
-const CSV_URL =
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvOPfg5tZjaFqCu7b3Li80oPEEuje4tQTcnr6XjxCW_ItVbOGWCvfQfFvWDXRH544MkBKeI1dPyzJG/pub?output=csv";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -24,41 +23,62 @@ serve(async (req) => {
   }
 
   try {
-    // Hämta CSV-data från Google Sheets
     const res = await fetch(CSV_URL);
     if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
     const csvText = await res.text();
 
-    // Parsning av CSV till rader
-    const rows = csvText
-      .split("\n")
-      .map((r) => r.split(",").map((c) => c.trim()))
-      .filter((r) => r.length >= 2); // Minst två kolumner (namn, symbol)
+    // Splitta rader och kolumner
+    const [headerLine, ...lines] = csvText.split("\n").filter((l) => l.trim() !== "");
+    const headers = headerLine.split(",").map((h) => h.trim());
 
-    const tickerMap = new Map<string, { name: string | null; symbol: string }>();
+    const companyIdx = headers.findIndex((h) => /company/i.test(h));
+    const tickerIdx = headers.findIndex((h) => /ticker/i.test(h));
+    const currencyIdx = headers.findIndex((h) => /currency/i.test(h));
+    const priceIdx = headers.findIndex((h) => /price/i.test(h));
 
-    for (const row of rows) {
-      const [rawName, rawSymbol] = row;
-      const normalizedSymbol = normalizeValue(rawSymbol)?.toUpperCase();
-      if (!normalizedSymbol) continue;
+    if (companyIdx === -1 || tickerIdx === -1 || priceIdx === -1) {
+      throw new Error("CSV saknar nödvändiga kolumner (Company, Ticker, Price).");
+    }
 
-      const normalizedName = normalizeValue(rawName);
-      tickerMap.set(normalizedSymbol, {
-        symbol: normalizedSymbol,
-        name: normalizedName ?? null,
+    const tickerMap = new Map<
+      string,
+      { name: string; symbol: string; currency: string | null; price: number | null }
+    >();
+
+    for (const line of lines) {
+      const cols = line.split(",").map((c) => c.trim());
+      if (cols.length <= priceIdx) continue;
+
+      const rawName = normalizeValue(cols[companyIdx]);
+      const rawSymbol = normalizeValue(cols[tickerIdx]);
+      const rawCurrency = normalizeValue(cols[currencyIdx]);
+      const rawPrice = normalizeValue(cols[priceIdx]);
+
+      if (!rawSymbol || !rawPrice) continue;
+
+      // Ta bort ev. "STO:" prefix
+      const cleanedSymbol = rawSymbol.includes(":")
+        ? rawSymbol.split(":")[1].toUpperCase()
+        : rawSymbol.toUpperCase();
+
+      const price = parseFloat(rawPrice.replace(/\s/g, "").replace(",", "."));
+      if (isNaN(price)) continue;
+
+      tickerMap.set(cleanedSymbol, {
+        symbol: cleanedSymbol,
+        name: rawName ?? cleanedSymbol,
+        currency: rawCurrency ?? null,
+        price,
       });
     }
 
-    const tickers = Array.from(tickerMap.values()).map(({ symbol, name }) => ({
-      symbol,
-      name: name ?? symbol,
-    }));
+    const tickers = Array.from(tickerMap.values());
 
     return new Response(JSON.stringify({ success: true, tickers }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("Sheet ticker listing error:", error);
+    console.error("Sheet parsing error:", error);
     return new Response(
       JSON.stringify({
         success: false,
