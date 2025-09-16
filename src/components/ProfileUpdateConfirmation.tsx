@@ -5,8 +5,8 @@ import { CheckCircle, X, User } from 'lucide-react';
 
 interface ProfileUpdateConfirmationProps {
   profileUpdates: any;
-  onConfirm: () => void;
-  onReject: () => void;
+  onConfirm: () => void | Promise<void>;
+  onReject: () => void | Promise<void>;
 }
 
 const ProfileUpdateConfirmation: React.FC<ProfileUpdateConfirmationProps> = ({

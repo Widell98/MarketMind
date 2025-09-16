@@ -697,8 +697,43 @@ export const useAIChat = (portfolioId?: string) => {
     }
   }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage, incrementUsage, loadMessages]);
 
+  const dismissProfileUpdatePrompt = useCallback(async (messageId: string) => {
+    const targetMessage = messages.find(msg => msg.id === messageId);
+
+    if (!targetMessage || !targetMessage.context) {
+      return;
+    }
+
+    const updatedContext = {
+      ...targetMessage.context,
+      requiresConfirmation: false,
+    };
+
+    setMessages(prev => prev.map(msg =>
+      msg.id === messageId
+        ? {
+            ...msg,
+            context: updatedContext,
+          }
+        : msg
+    ));
+
+    try {
+      const { error } = await supabase
+        .from('portfolio_chat_history')
+        .update({ context_data: updatedContext })
+        .eq('id', messageId);
+
+      if (error) {
+        console.error('Error updating message context:', error);
+      }
+    } catch (error) {
+      console.error('Error dismissing profile update prompt:', error);
+    }
+  }, [messages]);
+
   // Function to update user profile based on AI-detected changes
-  const updateUserProfile = useCallback(async (profileUpdates: any) => {
+  const updateUserProfile = useCallback(async (profileUpdates: any, sourceMessageId?: string) => {
     if (!user) return;
 
     try {
@@ -708,6 +743,10 @@ export const useAIChat = (portfolioId?: string) => {
         .eq('user_id', user.id);
 
       if (error) throw error;
+
+      if (sourceMessageId) {
+        await dismissProfileUpdatePrompt(sourceMessageId);
+      }
 
       toast({
         title: "Profil uppdaterad",
@@ -725,7 +764,7 @@ export const useAIChat = (portfolioId?: string) => {
         variant: "destructive",
       });
     }
-  }, [user, toast, sendMessage]);
+  }, [user, toast, sendMessage, dismissProfileUpdatePrompt]);
 
   const analyzePortfolio = useCallback(async (analysisType: 'risk' | 'diversification' | 'performance' | 'optimization') => {
     if (!user || !portfolioId) return;
@@ -821,6 +860,7 @@ export const useAIChat = (portfolioId?: string) => {
     editSessionName,
     clearMessages,
     getQuickAnalysis,
+    dismissProfileUpdatePrompt,
     updateUserProfile,
   };
 };
