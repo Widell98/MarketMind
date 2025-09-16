@@ -5,17 +5,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 interface StockQuote {
-  symbol: string;
-  price: number;
-  change: number;
-  changePercent: number;
-  volume: number;
-  high: number;
-  low: number;
-  open: number;
-  previousClose: number;
+  symbol: string | null;
+  name?: string;
+  price: number | null;
+  change: number | null;
+  changePercent: number | null;
+  volume: number | null;
+  high: number | null;
+  low: number | null;
+  open: number | null;
+  previousClose: number | null;
   lastUpdated: string;
-  currency?: string;
+  currency?: string | null;
+  hasValidPrice: boolean;
+  error?: string;
 }
 
 interface HistoricalData {
@@ -42,28 +45,39 @@ export const useRealTimeMarketData = () => {
   const [portfolioPerformance, setPortfolioPerformance] = useState<PortfolioPerformance | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [exchangeRate, setExchangeRate] = useState<number>(10.5);
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const fetchExchangeRate = useCallback(async (): Promise<number> => {
+  const fetchExchangeRate = useCallback(async (): Promise<number | null> => {
     try {
       const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
       const data = await response.json();
-      const rate = data.rates?.SEK || 10.5;
-      setExchangeRate(rate);
-      return rate;
-    } catch (err) {
-      console.warn('Failed to fetch exchange rate, using default:', err);
-      return exchangeRate;
-    }
-  }, [exchangeRate]);
+      const rate = data.rates?.SEK;
 
-  const convertToSEK = useCallback((amount: number, fromCurrency: string, rate: number): number => {
-    if (fromCurrency === 'USD') {
-      return amount * rate;
+      if (typeof rate === 'number') {
+        setExchangeRate(rate);
+        return rate;
+      }
+
+      throw new Error('SEK rate missing in exchange response');
+    } catch (err) {
+      console.warn('Failed to fetch exchange rate:', err);
+      setExchangeRate(null);
+      return null;
     }
-    return amount; // Assume SEK if not USD
+  }, []);
+
+  const convertToSEK = useCallback((amount: number | null, fromCurrency: string, rate: number | null): number | null => {
+    if (amount === null) {
+      return null;
+    }
+
+    if (fromCurrency === 'USD') {
+      return rate ? amount * rate : null;
+    }
+
+    return amount;
   }, []);
 
   const fetchStockQuote = useCallback(async (symbol: string): Promise<StockQuote | null> => {
@@ -73,10 +87,13 @@ export const useRealTimeMarketData = () => {
       });
 
       if (error) throw error;
-      return {
-        ...data,
-        currency: data.currency || 'USD'
-      };
+      const quote = data as StockQuote;
+
+      if (!quote.hasValidPrice || quote.price === null) {
+        console.warn(`Yahoo Finance saknar pris för ${symbol}:`, quote.error);
+      }
+
+      return quote;
     } catch (err) {
       console.error(`Error fetching quote for ${symbol}:`, err);
       return null;
@@ -130,38 +147,44 @@ export const useRealTimeMarketData = () => {
       let dailyChange = 0;
 
       quoteResults.forEach(({ symbol, quote }) => {
-        if (quote) {
+        if (quote && quote.hasValidPrice && quote.price !== null) {
           newQuotes[symbol] = quote;
-          
-          // Find the holding for this symbol
+          if (quote.symbol && quote.symbol !== symbol) {
+            newQuotes[quote.symbol] = quote;
+          }
+
           const holding = holdings.find(h => h.symbol === symbol);
           if (holding && holding.quantity) {
             const holdingCurrency = holding.currency || 'SEK';
-            const quoteCurrency = quote.currency || 'USD';
-            
-            // Convert all values to SEK for consistent calculation
-            let priceInSEK = quote.price;
-            let changeInSEK = quote.change;
-            let purchasePriceInSEK = holding.purchase_price || quote.price;
+            const quoteCurrency = quote.currency || 'SEK';
 
-            if (quoteCurrency === 'USD') {
-              priceInSEK = convertToSEK(quote.price, 'USD', currentRate);
-              changeInSEK = convertToSEK(quote.change, 'USD', currentRate);
-            }
+            const priceInSEK = convertToSEK(quote.price, quoteCurrency, currentRate);
+            const changeInSEK = convertToSEK(quote.change, quoteCurrency, currentRate) ?? 0;
+            const purchasePriceInSEK = convertToSEK(
+              holding.purchase_price ?? quote.price,
+              holdingCurrency,
+              currentRate
+            );
 
-            if (holdingCurrency === 'USD' && quoteCurrency === 'SEK') {
-              // If holding is in USD but quote is in SEK, convert purchase price
-              purchasePriceInSEK = convertToSEK(holding.purchase_price || (quote.price / currentRate), 'USD', currentRate);
+            if (priceInSEK === null || purchasePriceInSEK === null) {
+              console.warn(`Saknar växelkurs för ${symbol}, hoppar över värdeberäkning.`);
+              return;
             }
 
             const currentValue = priceInSEK * holding.quantity;
             const costBasis = purchasePriceInSEK * holding.quantity;
             const dailyChangeValue = changeInSEK * holding.quantity;
-            
+
             totalValue += currentValue;
             totalCost += costBasis;
             dailyChange += dailyChangeValue;
           }
+        } else if (quote && !quote.hasValidPrice) {
+          toast({
+            title: 'Pris saknas',
+            description: `Kunde inte hämta pris för ${symbol} från Yahoo Finance.`,
+            variant: 'destructive',
+          });
         }
       });
 

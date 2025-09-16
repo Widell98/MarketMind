@@ -34,16 +34,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
 interface StockPrice {
-  symbol: string;
+  symbol: string | null;
   name: string;
-  price: number;
-  change: number;
-  changePercent: number;
-  currency: string;
-  priceInSEK: number;
-  changeInSEK: number;
+  price: number | null;
+  change: number | null;
+  changePercent: number | null;
+  currency: string | null;
   hasValidPrice: boolean;
   errorMessage?: string;
+  lastUpdated?: string;
 }
 
 interface TransformedHolding {
@@ -93,7 +92,6 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
   const [prices, setPrices] = useState<StockPrice[]>([]);
   const [pricesLoading, setPricesLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const [exchangeRate, setExchangeRate] = useState<number>(10.5);
 
   const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
     console.log(`Deleting holding: ${holdingName} (${holdingId})`);
@@ -170,36 +168,35 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
     return success;
   };
 
-  const formatCurrency = (amount: number, currency = 'SEK', showCurrency = true) => {
-    const currencyCode = currency === 'SEK' ? 'SEK' : 'USD';
-    const formatter = new Intl.NumberFormat('sv-SE', {
-      style: showCurrency ? 'currency' : 'decimal',
-      currency: currencyCode,
-      minimumFractionDigits: currency === 'SEK' ? 0 : 2,
-      maximumFractionDigits: currency === 'SEK' ? 2 : 2,
-    });
-    return formatter.format(amount);
+  const formatCurrency = (amount: number | null, currency: string | null = 'SEK') => {
+    if (amount === null) {
+      return '–';
+    }
+
+    const currencyCode = currency || 'SEK';
+
+    try {
+      const formatter = new Intl.NumberFormat('sv-SE', {
+        style: 'currency',
+        currency: currencyCode,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+
+      return formatter.format(amount);
+    } catch (error) {
+      console.warn('Failed to format currency value', error);
+      return `${amount.toFixed(2)} ${currencyCode}`;
+    }
   };
 
-  const formatPercentage = (percent: number) => {
+  const formatPercentage = (percent: number | null) => {
+    if (percent === null || Number.isNaN(percent)) {
+      return '–';
+    }
+
     const sign = percent >= 0 ? '+' : '';
     return `${sign}${percent.toFixed(2)}%`;
-  };
-
-  const fetchExchangeRate = async () => {
-    try {
-      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-      const data = await response.json();
-      if (data.rates && data.rates.SEK) {
-        const newRate = data.rates.SEK;
-        if (Math.abs(newRate - exchangeRate) / exchangeRate > 0.01) {
-          setExchangeRate(newRate);
-          console.log(`Updated exchange rate: ${newRate.toFixed(2)} SEK/USD`);
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to fetch exchange rate:', error);
-    }
   };
 
   const fetchPrices = async () => {
@@ -207,12 +204,10 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
 
     setPricesLoading(true);
     try {
-      await fetchExchangeRate();
-
       const symbolsToFetch = actualHoldings.map((holding) => {
         // Förbered symbol baserat på valutan och marknaden
         let searchTerm = holding.symbol || holding.name;
-        
+
         // Om användaren valt SEK som valuta för en svensk aktie, säkerställ att vi använder .ST
         if (holding.currency === 'SEK' && searchTerm && !searchTerm.includes('.')) {
           // För svenska aktier, lägg till .ST-suffix om det inte redan finns
@@ -229,14 +224,12 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
         try {
           if (!searchTerm) {
             return {
-              symbol: 'N/A',
+              symbol: null,
               name: holding.name || 'Okänt innehav',
-              price: 0,
-              change: 0,
-              changePercent: 0,
-              currency: 'SEK',
-              priceInSEK: 0,
-              changeInSEK: 0,
+              price: null,
+              change: null,
+              changePercent: null,
+              currency: holding.currency || null,
               hasValidPrice: false,
               errorMessage: 'Ingen giltig ticker-symbol angiven',
             };
@@ -246,51 +239,63 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
             body: { symbol: searchTerm },
           });
 
-          if (error || !data || typeof data.price !== 'number') {
+          if (error || !data) {
             return {
               symbol: searchTerm,
               name: holding.name || searchTerm,
-              price: 0,
-              change: 0,
-              changePercent: 0,
-              currency: holding.currency || 'SEK',
-              priceInSEK: 0,
-              changeInSEK: 0,
+              price: null,
+              change: null,
+              changePercent: null,
+              currency: holding.currency || null,
               hasValidPrice: false,
               errorMessage: 'Pris kunde inte hämtas',
             };
           }
 
-          const holdingCurrency = holding.currency || 'SEK';
-          const quoteCurrency = data.currency || 'USD';
+          const quote = data as {
+            symbol: string | null;
+            name?: string;
+            price: number | null;
+            change: number | null;
+            changePercent: number | null;
+            currency: string | null;
+            hasValidPrice: boolean;
+            error?: string;
+            lastUpdated?: string;
+          };
 
-          // Only convert if the quote is in USD and holding is in SEK
-          const needsConversion = quoteCurrency === 'USD' && holdingCurrency === 'SEK';
-          
-          // Use the quote currency if available, otherwise fall back to holding currency
-          const displayCurrency = data.currency || holdingCurrency;
-          
+          if (!quote.hasValidPrice || quote.price === null) {
+            return {
+              symbol: quote.symbol || searchTerm,
+              name: holding.name || quote.name || searchTerm,
+              price: null,
+              change: null,
+              changePercent: null,
+              currency: quote.currency || holding.currency || null,
+              hasValidPrice: false,
+              errorMessage: quote.error || 'Pris kunde inte hämtas från Yahoo Finance',
+              lastUpdated: quote.lastUpdated,
+            };
+          }
+
           return {
-            symbol: data.symbol || searchTerm,
-            name: holding.name || data.name || searchTerm,
-            price: needsConversion ? data.price * exchangeRate : data.price,
-            change: needsConversion ? (data.change || 0) * exchangeRate : (data.change || 0),
-            changePercent: data.changePercent || 0,
-            currency: displayCurrency,
-            priceInSEK: needsConversion ? data.price * exchangeRate : data.price,
-            changeInSEK: needsConversion ? (data.change || 0) * exchangeRate : (data.change || 0),
+            symbol: quote.symbol || searchTerm,
+            name: holding.name || quote.name || searchTerm,
+            price: quote.price,
+            change: quote.change,
+            changePercent: quote.changePercent,
+            currency: quote.currency || holding.currency || null,
             hasValidPrice: true,
+            lastUpdated: quote.lastUpdated,
           };
         } catch (err) {
           return {
             symbol: searchTerm,
             name: holding.name || searchTerm,
-            price: 0,
-            change: 0,
-            changePercent: 0,
-            currency: holding.currency || 'SEK',
-            priceInSEK: 0,
-            changeInSEK: 0,
+            price: null,
+            change: null,
+            changePercent: null,
+            currency: holding.currency || null,
             hasValidPrice: false,
             errorMessage: 'Tekniskt fel vid prisinhämtning',
           };
@@ -317,14 +322,14 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
     
     // Try to match by symbol first (most reliable)
     if (holding.symbol) {
-      const priceBySymbol = prices.find(p => 
-        p.symbol === holding.symbol
+      const priceBySymbol = prices.find(p =>
+        p.symbol && p.symbol.toUpperCase() === holding.symbol?.toUpperCase()
       );
       if (priceBySymbol && priceBySymbol.hasValidPrice) {
         return priceBySymbol;
       }
     }
-    
+
     // Fallback to matching by name (less reliable but better than nothing)
     const priceByName = prices.find(p => 
       p.name && holding.name && 
@@ -337,8 +342,8 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
     }
     
     // Return error information if price fetch failed for this holding
-    const failedPrice = prices.find(p => 
-      (holding.symbol && p.symbol === holding.symbol) ||
+    const failedPrice = prices.find(p =>
+      (holding.symbol && p.symbol && p.symbol.toUpperCase() === holding.symbol.toUpperCase()) ||
       (p.name && holding.name && p.name.toLowerCase().includes(holding.name.toLowerCase()))
     );
     
