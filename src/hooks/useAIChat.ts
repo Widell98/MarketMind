@@ -697,9 +697,98 @@ export const useAIChat = (portfolioId?: string) => {
     }
   }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage, incrementUsage, loadMessages]);
 
+  const dismissProfileUpdatePrompt = useCallback(async (messageId: string) => {
+    const targetMessage = messages.find(msg => msg.id === messageId);
+
+    if (!targetMessage || !targetMessage.context) {
+      return;
+    }
+
+    const updatedContext = {
+      ...targetMessage.context,
+      requiresConfirmation: false,
+    };
+
+    setMessages(prev => prev.map(msg =>
+      msg.id === messageId
+        ? {
+            ...msg,
+            context: updatedContext,
+          }
+        : msg
+    ));
+
+    try {
+      const { error } = await supabase
+        .from('portfolio_chat_history')
+        .update({ context_data: updatedContext })
+        .eq('id', messageId);
+
+      if (error) {
+        console.error('Error updating message context:', error);
+      }
+    } catch (error) {
+      console.error('Error dismissing profile update prompt:', error);
+    }
+  }, [messages]);
+
   // Function to update user profile based on AI-detected changes
-  const updateUserProfile = useCallback(async (profileUpdates: any) => {
+  const updateUserProfile = useCallback(async (profileUpdates: any, sourceMessageId?: string) => {
     if (!user) return;
+
+    const keyLabels: Record<string, string> = {
+      monthly_investment_amount: 'Månadssparande',
+      risk_tolerance: 'Risktolerans',
+      investment_horizon: 'Tidshorisont',
+      liquid_capital: 'Likvidt kapital',
+      emergency_buffer_months: 'Buffert (månader)',
+      preferred_stock_count: 'Önskat antal aktier',
+      housing_situation: 'Bostadssituation',
+      has_loans: 'Har lån'
+    };
+
+    const housingSituationLabels: Record<string, string> = {
+      owns_no_loan: 'Äger bostad utan lån',
+      owns_with_loan: 'Äger bostad med lån',
+      rents: 'Hyr bostad',
+      lives_with_parents: 'Bor hos föräldrar'
+    };
+
+    const riskToleranceLabels: Record<string, string> = {
+      conservative: 'Konservativ',
+      moderate: 'Måttlig',
+      aggressive: 'Aggressiv'
+    };
+
+    const investmentHorizonLabels: Record<string, string> = {
+      short: 'Kort (1-3 år)',
+      medium: 'Medel (3-7 år)',
+      long: 'Lång (7+ år)'
+    };
+
+    const formatValue = (key: string, value: any) => {
+      if (key === 'housing_situation') {
+        return housingSituationLabels[String(value)] ?? String(value);
+      }
+
+      if (key === 'risk_tolerance') {
+        return riskToleranceLabels[String(value)] ?? String(value);
+      }
+
+      if (key === 'investment_horizon') {
+        return investmentHorizonLabels[String(value)] ?? String(value);
+      }
+
+      if (typeof value === 'boolean') {
+        return value ? 'Ja' : 'Nej';
+      }
+
+      if (typeof value === 'number' && !Number.isNaN(value)) {
+        return value.toLocaleString('sv-SE');
+      }
+
+      return String(value);
+    };
 
     try {
       const { error } = await supabase
@@ -709,14 +798,84 @@ export const useAIChat = (portfolioId?: string) => {
 
       if (error) throw error;
 
+      if (sourceMessageId) {
+        await dismissProfileUpdatePrompt(sourceMessageId);
+      }
+
       toast({
         title: "Profil uppdaterad",
         description: "Din investeringsprofil har uppdaterats baserat på din konversation.",
       });
 
-      // Send confirmation message to AI
-      const confirmationMessage = `Min profil har uppdaterats: ${Object.entries(profileUpdates).map(([key, value]) => `${key}: ${value}`).join(', ')}`;
-      await sendMessage(confirmationMessage);
+      const summary = Object.entries(profileUpdates)
+        .map(([key, value]) => `${keyLabels[key] ?? key}: ${formatValue(key, value)}`)
+        .join(', ');
+
+      const confirmationMessage = summary
+        ? `Jag har uppdaterat din profil med följande ändringar: ${summary}.`
+        : 'Jag har uppdaterat din profil.';
+
+      if (currentSessionId) {
+        const { data: insertedMessage, error: insertError } = await supabase
+          .from('portfolio_chat_history')
+          .insert({
+            user_id: user.id,
+            chat_session_id: currentSessionId,
+            message: confirmationMessage,
+            message_type: 'assistant',
+            context_data: {
+              analysisType: 'profile_update_confirmation',
+              requiresConfirmation: false
+            }
+          })
+          .select()
+          .maybeSingle();
+
+        if (insertError) {
+          console.error('Error saving confirmation message:', insertError);
+        }
+
+        if (insertedMessage) {
+          setMessages(prev => [
+            ...prev,
+            {
+              id: insertedMessage.id,
+              role: 'assistant',
+              content: insertedMessage.message,
+              timestamp: new Date(insertedMessage.created_at),
+              context: insertedMessage.context_data as any
+            }
+          ]);
+        } else {
+          setMessages(prev => [
+            ...prev,
+            {
+              id: `${Date.now()}_profile_update_confirmation`,
+              role: 'assistant',
+              content: confirmationMessage,
+              timestamp: new Date(),
+              context: {
+                analysisType: 'profile_update_confirmation',
+                requiresConfirmation: false
+              }
+            }
+          ]);
+        }
+      } else {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: `${Date.now()}_profile_update_confirmation`,
+            role: 'assistant',
+            content: confirmationMessage,
+            timestamp: new Date(),
+            context: {
+              analysisType: 'profile_update_confirmation',
+              requiresConfirmation: false
+            }
+          }
+        ]);
+      }
     } catch (error) {
       console.error('Error updating profile:', error);
       toast({
@@ -725,7 +884,7 @@ export const useAIChat = (portfolioId?: string) => {
         variant: "destructive",
       });
     }
-  }, [user, toast, sendMessage]);
+  }, [user, currentSessionId, dismissProfileUpdatePrompt, toast]);
 
   const analyzePortfolio = useCallback(async (analysisType: 'risk' | 'diversification' | 'performance' | 'optimization') => {
     if (!user || !portfolioId) return;
@@ -821,6 +980,7 @@ export const useAIChat = (portfolioId?: string) => {
     editSessionName,
     clearMessages,
     getQuickAnalysis,
+    dismissProfileUpdatePrompt,
     updateUserProfile,
   };
 };

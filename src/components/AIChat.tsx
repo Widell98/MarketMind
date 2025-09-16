@@ -71,6 +71,7 @@ const AIChat = ({
     editSessionName,
     clearMessages,
     getQuickAnalysis,
+    dismissProfileUpdatePrompt,
     updateUserProfile
   } = useAIChat(portfolioId);
   const [input, setInput] = useState('');
@@ -347,7 +348,20 @@ const AIChat = ({
                 <ChatMessages messages={messages} isLoading={isLoading} isLoadingSession={isLoadingSession} messagesEndRef={messagesEndRef} onExamplePrompt={showExamplePrompts ? handleExamplePrompt : undefined} showGuideBot={isGuideSession} />
                 
                 {/* Profile Update Confirmations */}
-                {messages.map(message => message.context?.requiresConfirmation && message.context?.profileUpdates ? <ProfileUpdateConfirmation key={`${message.id}_confirmation`} profileUpdates={message.context.profileUpdates} onConfirm={() => updateUserProfile(message.context.profileUpdates)} onReject={() => console.log('Profile update rejected')} /> : null)}
+                {messages.map(message => {
+                  const profileUpdates = message.context?.profileUpdates;
+
+                  if (!message.context?.requiresConfirmation || !profileUpdates) {
+                    return null;
+                  }
+
+                  return <ProfileUpdateConfirmation
+                      key={`${message.id}_confirmation`}
+                      profileUpdates={profileUpdates}
+                      onConfirm={() => updateUserProfile(profileUpdates, message.id)}
+                      onReject={() => dismissProfileUpdatePrompt(message.id)}
+                    />;
+                })}
               </>)}
 
             {/* Chat Input - Always visible when user is logged in and not in guide session */}

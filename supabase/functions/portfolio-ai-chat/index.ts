@@ -95,6 +95,11 @@ serve(async (req) => {
       let requiresConfirmation = false;
       const lowerMessage = message.toLowerCase();
 
+      const parseNumber = (value: string) => {
+        const numeric = value.replace(/[^\d]/g, '');
+        return numeric ? parseInt(numeric, 10) : NaN;
+      };
+
       // Parse monthly savings changes - more comprehensive
       const monthlySavingsPattern = /(öka|höja|minska|sänka|ändra).*(?:månad|månads).*(?:sparande|spara|investera).*?(\d+[\s,]*\d*)\s*(?:kr|sek|kronor)/i;
       const monthlySavingsMatch = message.match(monthlySavingsPattern);
@@ -127,10 +132,56 @@ serve(async (req) => {
         }
       }
 
+      // Parse liquid capital / savings on accounts
+      const liquidCapitalPatterns = [
+        /(?:likvidt? kapital|tillgängligt kapital|kassa|sparkonto|kontanter|på kontot|i banken).*?(\d[\d\s.,]*)\s*(?:kr|kronor|sek)?/i,
+        /(\d[\d\s.,]*)\s*(?:kr|kronor|sek)?.*?(?:likvidt? kapital|tillgängligt kapital|kassa|sparkonto|kontanter|på kontot|i banken)/i
+      ];
+
+      for (const pattern of liquidCapitalPatterns) {
+        const match = message.match(pattern);
+        if (match) {
+          const amount = parseNumber(match[1]);
+          if (!Number.isNaN(amount) && amount > 0 && amount !== riskProfile?.liquid_capital) {
+            updates.liquid_capital = amount;
+            requiresConfirmation = true;
+          }
+          break;
+        }
+      }
+
+      // Parse emergency buffer in months
+      const emergencyBufferPatterns = [
+        /(?:buffert|nödfond|akutfond|trygghetsbuffert).*?(\d+(?:[.,]\d+)?)\s*(?:månader|mån|months?)/i,
+        /(\d+(?:[.,]\d+)?)\s*(?:månader|mån)\s*(?:buffert|nödfond|akutfond)/i
+      ];
+
+      for (const pattern of emergencyBufferPatterns) {
+        const match = message.match(pattern);
+        if (match) {
+          const bufferMonths = Math.round(parseFloat(match[1].replace(',', '.')));
+          if (!Number.isNaN(bufferMonths) && bufferMonths > 0 && bufferMonths !== riskProfile?.emergency_buffer_months) {
+            updates.emergency_buffer_months = bufferMonths;
+            requiresConfirmation = true;
+          }
+          break;
+        }
+      }
+
+      // Parse preferred number of stocks/holdings
+      const preferredStockMatch = message.match(/(?:vill|önskar|föredrar|siktar på|tänker|ska|max|högst|upp till|äga|ha)\s*(?:ha|ägna|äga)?\s*(?:max|högst|upp till)?\s*(\d+(?:[.,]\d+)?)\s*(?:aktier|bolag|innehav)/i);
+      if (preferredStockMatch) {
+        const preferredCount = Math.round(parseFloat(preferredStockMatch[1].replace(',', '.')));
+        if (!Number.isNaN(preferredCount) && preferredCount > 0 && preferredCount !== riskProfile?.preferred_stock_count) {
+          updates.preferred_stock_count = preferredCount;
+          requiresConfirmation = true;
+        }
+      }
+
       // Parse age updates
       const agePattern = /(?:är|age|ålder).*?(\d{2,3})\s*(?:år|years|old)/i;
       const ageMatch = message.match(agePattern);
-      
+
       if (ageMatch) {
         const newAge = parseInt(ageMatch[1]);
         if (newAge >= 18 && newAge <= 100 && newAge !== riskProfile?.age) {
@@ -159,8 +210,8 @@ serve(async (req) => {
       ];
 
       for (const riskPattern of riskPatterns) {
-        if (lowerMessage.match(riskPattern.pattern) && 
-            (lowerMessage.includes('risk') || lowerMessage.includes('inställning') || 
+        if (lowerMessage.match(riskPattern.pattern) &&
+            (lowerMessage.includes('risk') || lowerMessage.includes('inställning') ||
             lowerMessage.includes('tolerans')) &&
             riskPattern.value !== riskProfile?.risk_tolerance) {
           updates.risk_tolerance = riskPattern.value;
@@ -177,13 +228,62 @@ serve(async (req) => {
       ];
 
       for (const horizonPattern of horizonPatterns) {
-        if (lowerMessage.match(horizonPattern.pattern) && 
-            (lowerMessage.includes('horisont') || lowerMessage.includes('sikt') || 
+        if (lowerMessage.match(horizonPattern.pattern) &&
+            (lowerMessage.includes('horisont') || lowerMessage.includes('sikt') ||
             lowerMessage.includes('tidshorisont')) &&
             horizonPattern.value !== riskProfile?.investment_horizon) {
           updates.investment_horizon = horizonPattern.value;
           requiresConfirmation = true;
           break;
+        }
+      }
+
+      // Housing situation detection with loan status cues
+      let detectedHousing: string | null = null;
+
+      const mentionsNoLoan = lowerMessage.includes('utan lån') || lowerMessage.includes('skuldfri') ||
+        lowerMessage.includes('utan bolån') || lowerMessage.includes('inget bolån');
+
+      if (/(?:hyr|hyresrätt)/.test(lowerMessage)) {
+        detectedHousing = 'rents';
+      } else if (/bor hos (?:mina?|föräldrar)/.test(lowerMessage)) {
+        detectedHousing = 'lives_with_parents';
+      } else if (/(?:bostadsrätt|äg[er]?\s+(?:en\s+)?lägenhet|äg[er]?\s+(?:ett\s+)?hus|äg[er]?\s+(?:en\s+)?villa|äg[er]?\s+(?:ett\s+)?radhus|villa|radhus|egna hem)/.test(lowerMessage)) {
+        detectedHousing = mentionsNoLoan ? 'owns_no_loan' : 'owns_with_loan';
+      } else if (/bolån/.test(lowerMessage) && /(villa|hus|radhus|bostad|bostadsrätt)/.test(lowerMessage)) {
+        detectedHousing = mentionsNoLoan ? 'owns_no_loan' : 'owns_with_loan';
+      }
+
+      if (detectedHousing && detectedHousing !== riskProfile?.housing_situation) {
+        updates.housing_situation = detectedHousing;
+        requiresConfirmation = true;
+      }
+
+      // Loan detection (true/false)
+      const loanIndicators = [/bolån/, /studielån/, /privatlån/, /billån/, /låneskulder/, /har lån/, /lån på huset/, /lånet/, /lån kvar/];
+      const loanNegativeIndicators = [/utan lån/, /skuldfri/, /inga lån/, /lånefri/, /helt skuldfri/, /utan bolån/, /inget lån/, /inget bolån/];
+
+      const sanitizedLoanMessage = lowerMessage
+        .replace(/utan\s+bolån/g, '')
+        .replace(/utan\s+lån/g, '')
+        .replace(/inga\s+lån/g, '')
+        .replace(/inget\s+lån/g, '')
+        .replace(/inget\s+bolån/g, '')
+        .replace(/skuldfri/g, '')
+        .replace(/lånefri/g, '');
+
+      const hasPositiveLoan = loanIndicators.some(pattern => pattern.test(sanitizedLoanMessage));
+      const hasNegativeLoan = loanNegativeIndicators.some(pattern => pattern.test(lowerMessage));
+
+      if (hasPositiveLoan) {
+        if (riskProfile?.has_loans !== true) {
+          updates.has_loans = true;
+          requiresConfirmation = true;
+        }
+      } else if (hasNegativeLoan) {
+        if (riskProfile?.has_loans !== false) {
+          updates.has_loans = false;
+          requiresConfirmation = true;
         }
       }
 
