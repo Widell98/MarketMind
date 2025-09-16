@@ -219,42 +219,94 @@ serve(async (req) => {
     if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
     const csvText = await res.text();
 
-    // Parsning av CSV → rader
-    const rows = csvText.split("\n").map((r) => r.split(","));
+    const csvLines = csvText
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    if (csvLines.length === 0) {
+      console.warn("Price sheet returned no data rows.");
+      return new Response(
+        JSON.stringify({ success: true, updated: 0, errors: 0, unmatched: [] }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const [rawHeaderLine, ...dataLines] = csvLines;
+    const headerLine = rawHeaderLine.replace(/^\uFEFF/, "");
+    const headers = headerLine.split(",").map((h) => h.trim());
+
+    const findColumnIndex = (pattern: RegExp) => headers.findIndex((header) => pattern.test(header));
+
+    const companyIdx = findColumnIndex(/company/i);
+    const tickerIdx = findColumnIndex(/ticker/i);
+    const currencyIdx = findColumnIndex(/currency/i);
+    const priceIdx = findColumnIndex(/price/i);
+    const changeIdx = findColumnIndex(/change/i);
+
+    if (tickerIdx === -1 || priceIdx === -1) {
+      throw new Error("CSV saknar nödvändiga kolumner (Ticker, Price).");
+    }
+
     const timestamp = new Date().toISOString();
     let updated = 0;
     let errors = 0;
     const unmatched: Array<{ symbol?: string; name?: string }> = [];
 
-    for (const row of rows) {
-      // Anpassa index efter din CSV-struktur (B2:H tidigare)
-      const [company, rawSymbol, , rawCurrency, rawPrice, , rawChange] = row.map((c) =>
-        c.trim()
-      );
+    const getColumnValue = (cols: string[], idx: number) => {
+      if (idx < 0 || idx >= cols.length) return null;
+      const value = cols[idx]?.trim();
+      return normalizeValue(value ?? null);
+    };
 
-      const rawSymbolValue = normalizeValue(rawSymbol);
-      const rawNameValue = normalizeValue(company);
+    for (const [rowIndex, line] of dataLines.entries()) {
+      const columns = line.split(",").map((c) => c.trim());
+      if (columns.length === 0) continue;
+
+      const rawSymbolValue = getColumnValue(columns, tickerIdx);
+      const rawNameValue = getColumnValue(columns, companyIdx);
+      const rawCurrencyValue = getColumnValue(columns, currencyIdx);
+      const rawPriceValue = getColumnValue(columns, priceIdx);
+      const rawChangeValue = getColumnValue(columns, changeIdx);
+
+      if (!rawSymbolValue && !rawNameValue) {
+        console.debug(`Skipping sheet row ${rowIndex + 2}: missing symbol and company.`);
+        continue;
+      }
+
+      if (rawPriceValue === null) {
+        console.debug(`Skipping sheet row ${rowIndex + 2}: missing price.`);
+        continue;
+      }
+
       const normalizedSymbol = normalizeSymbol(rawSymbolValue);
       const cleanedSymbol = cleanSheetSymbol(rawSymbolValue);
       const normalizedName = normalizeName(rawNameValue);
       const namePattern = normalizedName ? `${normalizedName}%` : null;
-      const price = parsePrice(rawPrice);
-      const originalCurrency = normalizeValue(rawCurrency)?.toUpperCase() || null;
-      const dailyChangePct = parseChangePercent(rawChange);
+      const price = parsePrice(rawPriceValue);
+
+      if (price === null || price <= 0) {
+        console.debug(`Skipping sheet row ${rowIndex + 2}: invalid price "${rawPriceValue}".`);
+        continue;
+      }
+
+      const originalCurrency = rawCurrencyValue?.toUpperCase() ?? null;
+      const dailyChangePct = rawChangeValue ? parseChangePercent(rawChangeValue) : null;
 
       let resolvedPrice = price;
       let priceCurrency = originalCurrency ?? "SEK";
 
-      if (price !== null) {
-        const converted = convertToSEK(price, originalCurrency ?? "SEK");
-        if (converted !== null) {
-          resolvedPrice = converted;
-          priceCurrency = "SEK";
-        }
+      const converted = convertToSEK(price, originalCurrency ?? "SEK");
+      if (converted !== null) {
+        resolvedPrice = converted;
+        priceCurrency = "SEK";
       }
 
-      if ((!normalizedSymbol && !normalizedName) || resolvedPrice === null || resolvedPrice <= 0)
+      if (!normalizedSymbol && !normalizedName) continue;
+      if (resolvedPrice === null || resolvedPrice <= 0) {
+        console.debug(`Skipping sheet row ${rowIndex + 2}: failed to resolve price.`);
         continue;
+      }
 
       // Hitta matchande innehav
       const symbolVariantSet = new Set<string>(getSymbolVariants(cleanedSymbol));
