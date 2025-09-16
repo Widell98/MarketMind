@@ -33,6 +33,16 @@ const useSheetTickers = () => {
   useEffect(() => {
     let isMounted = true;
 
+    const setDiagnosticsError = (baseMessage: string) => {
+      const guidance = [
+        'Kontrollera att edge-funktionen "list-sheet-tickers" körs lokalt via `supabase functions serve list-sheet-tickers` eller är deployad.',
+        'Verifiera att miljövariablerna GOOGLE_SERVICE_ACCOUNT och GOOGLE_SHEET_ID är satta i Supabase-projektet.',
+        'Bekräfta att Supabase-klienten använder rätt projekt-URL och anon key.',
+      ].join(' ');
+
+      setError(`${baseMessage} ${guidance}`);
+    };
+
     const fetchTickers = async () => {
       setIsLoading(true);
       setError(null);
@@ -45,7 +55,8 @@ const useSheetTickers = () => {
         }
 
         if (invokeError) {
-          setError(invokeError.message ?? 'Kunde inte hämta tickers.');
+          console.error('Failed to reach list-sheet-tickers edge function:', invokeError);
+          setDiagnosticsError(invokeError.message ?? 'Kunde inte hämta tickers.');
           setTickers([]);
           return;
         }
@@ -53,6 +64,10 @@ const useSheetTickers = () => {
         const list = Array.isArray(data?.tickers)
           ? (data.tickers as SheetTicker[])
           : [];
+
+        if (list.length === 0) {
+          console.warn('list-sheet-tickers edge function returned an empty list.');
+        }
 
         setTickers(
           list.map((item) => ({
@@ -64,7 +79,9 @@ const useSheetTickers = () => {
         if (!isMounted) {
           return;
         }
-        setError(err instanceof Error ? err.message : 'Kunde inte hämta tickers.');
+        console.error('Unexpected error when fetching Google Sheets tickers:', err);
+        const baseMessage = err instanceof Error ? err.message : 'Kunde inte hämta tickers.';
+        setDiagnosticsError(baseMessage);
         setTickers([]);
       } finally {
         if (isMounted) {
