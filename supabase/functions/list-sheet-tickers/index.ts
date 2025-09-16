@@ -12,8 +12,19 @@ const CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvOPfg5tZjaFqCu7b3Li80oPEEuje4tQTcnr6XjxCW_ItVbOGWCvfQfFvWDXRH544MkBKeI1dPyzJG/pub?output=csv";
 
 const normalizeValue = (value?: string | null) => {
-  if (!value) return null;
-  const trimmed = value.trim();
+  if (typeof value !== "string") return null;
+  let trimmed = value.trim();
+  if (!trimmed.length) return null;
+
+  const startsWithDouble = trimmed.startsWith('"');
+  const endsWithDouble = trimmed.endsWith('"');
+  const startsWithSingle = trimmed.startsWith("'");
+  const endsWithSingle = trimmed.endsWith("'");
+
+  if ((startsWithDouble && endsWithDouble) || (startsWithSingle && endsWithSingle)) {
+    trimmed = trimmed.slice(1, -1).trim();
+  }
+
   return trimmed.length > 0 ? trimmed : null;
 };
 

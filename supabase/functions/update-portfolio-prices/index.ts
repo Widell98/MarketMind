@@ -20,7 +20,22 @@ const getSupabaseClient = () => {
 };
 
 // === Hjälpfunktioner ===
-const normalizeValue = (v?: string | null) => (v?.trim()?.length ? v.trim() : null);
+const normalizeValue = (v?: string | null) => {
+  if (typeof v !== "string") return null;
+  let trimmed = v.trim();
+  if (!trimmed.length) return null;
+
+  const startsWithDouble = trimmed.startsWith('"');
+  const endsWithDouble = trimmed.endsWith('"');
+  const startsWithSingle = trimmed.startsWith("'");
+  const endsWithSingle = trimmed.endsWith("'");
+
+  if ((startsWithDouble && endsWithDouble) || (startsWithSingle && endsWithSingle)) {
+    trimmed = trimmed.slice(1, -1).trim();
+  }
+
+  return trimmed.length > 0 ? trimmed : null;
+};
 const normalizeSymbol = (v?: string | null) => normalizeValue(v)?.toUpperCase() ?? null;
 const normalizeName = (v?: string | null) => normalizeValue(v)?.toUpperCase() ?? null;
 
