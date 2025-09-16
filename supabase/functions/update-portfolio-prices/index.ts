@@ -1,6 +1,17 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import {
+  cleanSheetSymbol,
+  findHeaderIndex,
+  getSymbolVariants,
+  normalizeName,
+  normalizeSymbol,
+  normalizeValue,
+  parseChangePercent,
+  parseCsv,
+  parsePrice,
+} from "../_shared/sheet-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,45 +31,6 @@ const getSupabaseClient = () => {
 };
 
 // === Hjälpfunktioner ===
-const normalizeValue = (v?: string | null) => {
-  if (typeof v !== "string") return null;
-  let trimmed = v.trim();
-  if (!trimmed.length) return null;
-
-  const startsWithDouble = trimmed.startsWith('"');
-  const endsWithDouble = trimmed.endsWith('"');
-  const startsWithSingle = trimmed.startsWith("'");
-  const endsWithSingle = trimmed.endsWith("'");
-
-  if ((startsWithDouble && endsWithDouble) || (startsWithSingle && endsWithSingle)) {
-    trimmed = trimmed.slice(1, -1).trim();
-  }
-
-  return trimmed.length > 0 ? trimmed : null;
-};
-const normalizeSymbol = (v?: string | null) => normalizeValue(v)?.toUpperCase() ?? null;
-const normalizeName = (v?: string | null) => normalizeValue(v)?.toUpperCase() ?? null;
-
-const cleanSheetSymbol = (symbol?: string | null) => {
-  const normalized = normalizeSymbol(symbol);
-  if (!normalized) return null;
-  const colonIndex = normalized.indexOf(":");
-  if (colonIndex < 0) return normalized;
-  const withoutPrefix = normalized.slice(colonIndex + 1);
-  return withoutPrefix.length > 0 ? withoutPrefix : normalized;
-};
-
-const parsePrice = (v?: string | null) => {
-  if (!v) return null;
-  const num = parseFloat(v.replace(/\s/g, "").replace(",", "."));
-  return Number.isFinite(num) ? num : null;
-};
-
-const parseChangePercent = (v?: string | null) => {
-  if (!v) return null;
-  const num = parseFloat(v.replace(/\s/g, "").replace("%", "").replace(",", "."));
-  return Number.isFinite(num) ? num : null;
-};
 
 const parseQuantityValue = (value: unknown) => {
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
@@ -79,14 +51,6 @@ type ScopedHolding = {
   cleanedSymbol: string | null;
   normalizedName: string | null;
   quantity: number;
-};
-
-const getSymbolVariants = (symbol: string | null) => {
-  if (!symbol) return [];
-  const variants = new Set<string>([symbol]);
-  if (symbol.endsWith(".ST")) variants.add(symbol.replace(/\.ST$/, ""));
-  else variants.add(`${symbol}.ST`);
-  return [...variants];
 };
 
 const EXCHANGE_RATES: Record<string, number> = {
@@ -234,12 +198,9 @@ serve(async (req) => {
     if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
     const csvText = await res.text();
 
-    const csvLines = csvText
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
+    const rows = parseCsv(csvText);
 
-    if (csvLines.length === 0) {
+    if (rows.length === 0) {
       console.warn("Price sheet returned no data rows.");
       return new Response(
         JSON.stringify({ success: true, updated: 0, errors: 0, unmatched: [] }),
@@ -247,17 +208,22 @@ serve(async (req) => {
       );
     }
 
-    const [rawHeaderLine, ...dataLines] = csvLines;
-    const headerLine = rawHeaderLine.replace(/^\uFEFF/, "");
-    const headers = headerLine.split(",").map((h) => h.trim());
+    const [headerRow, ...dataRows] = rows;
+    const headers = headerRow.map((cell) => normalizeValue(cell) ?? cell ?? "");
 
-    const findColumnIndex = (pattern: RegExp) => headers.findIndex((header) => pattern.test(header));
-
-    const companyIdx = findColumnIndex(/company/i);
-    const tickerIdx = findColumnIndex(/ticker/i);
-    const currencyIdx = findColumnIndex(/currency/i);
-    const priceIdx = findColumnIndex(/price/i);
-    const changeIdx = findColumnIndex(/change/i);
+    const companyIdx = findHeaderIndex(headers, "company", "name", "bolag", "företag");
+    const tickerIdx = findHeaderIndex(headers, "ticker", "symbol");
+    const currencyIdx = findHeaderIndex(headers, "currency", "valuta");
+    const priceIdx = findHeaderIndex(headers, "price", "pris", "last price", "senaste pris");
+    const changeIdx = findHeaderIndex(
+      headers,
+      "change %",
+      "change pct",
+      "change percent",
+      "förändring %",
+      "förändring",
+      "change",
+    );
 
     if (tickerIdx === -1 || priceIdx === -1) {
       throw new Error("CSV saknar nödvändiga kolumner (Ticker, Price).");
@@ -268,21 +234,17 @@ serve(async (req) => {
     let errors = 0;
     const unmatched: Array<{ symbol?: string; name?: string }> = [];
 
-    const getColumnValue = (cols: string[], idx: number) => {
-      if (idx < 0 || idx >= cols.length) return null;
-      const value = cols[idx]?.trim();
-      return normalizeValue(value ?? null);
-    };
+    const getColumnValue = (row: string[], idx: number) =>
+      idx >= 0 && idx < row.length ? normalizeValue(row[idx]) : null;
 
-    for (const [rowIndex, line] of dataLines.entries()) {
-      const columns = line.split(",").map((c) => c.trim());
-      if (columns.length === 0) continue;
+    for (const [rowIndex, row] of dataRows.entries()) {
+      if (!row || row.length === 0) continue;
 
-      const rawSymbolValue = getColumnValue(columns, tickerIdx);
-      const rawNameValue = getColumnValue(columns, companyIdx);
-      const rawCurrencyValue = getColumnValue(columns, currencyIdx);
-      const rawPriceValue = getColumnValue(columns, priceIdx);
-      const rawChangeValue = getColumnValue(columns, changeIdx);
+      const rawSymbolValue = getColumnValue(row, tickerIdx);
+      const rawNameValue = companyIdx >= 0 ? getColumnValue(row, companyIdx) : null;
+      const rawCurrencyValue = currencyIdx >= 0 ? getColumnValue(row, currencyIdx) : null;
+      const rawPriceValue = getColumnValue(row, priceIdx);
+      const rawChangeValue = changeIdx >= 0 ? getColumnValue(row, changeIdx) : null;
 
       if (!rawSymbolValue && !rawNameValue) {
         console.debug(`Skipping sheet row ${rowIndex + 2}: missing symbol and company.`);
