@@ -17,14 +17,15 @@ interface Holding {
   symbol?: string;
   quantity?: number;
   purchase_price?: number;
+  current_price_per_unit?: number;
+  price_currency?: string;
 }
 
 interface HoldingsTableProps {
   holdings: Holding[];
-  getPriceForHolding: (holding: Holding) => any;
 }
 
-const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, getPriceForHolding }) => {
+const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings }) => {
   const formatCurrency = (amount: number, currency = 'SEK') => {
     return new Intl.NumberFormat('sv-SE', {
       style: 'currency',
@@ -48,17 +49,16 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, getPriceForHold
       </TableHeader>
       <TableBody>
         {holdings.map((holding) => {
-          const priceInfo = getPriceForHolding(holding);
-          const value = holding.quantity && priceInfo?.price
-            ? holding.quantity * priceInfo.price
-            : holding.current_value;
+          const value = typeof holding.current_value === 'number'
+            ? holding.current_value
+            : 0;
 
           const purchaseValue = holding.purchase_price && holding.quantity
             ? holding.purchase_price * holding.quantity
             : undefined;
 
           const profitLoss = purchaseValue !== undefined ? value - purchaseValue : undefined;
-          const displayCurrency = priceInfo?.currency || holding.currency;
+          const displayCurrency = holding.price_currency || holding.currency || 'SEK';
 
           return (
             <TableRow key={holding.id}>

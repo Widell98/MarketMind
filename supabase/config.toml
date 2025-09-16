@@ -1,14 +1,12 @@
-
 project_id = "qifolopsdeeyrevbuxfl"
 
 [auth]
 enabled = true
-external_url = "https://qifolopsdeeyrevbuxfl.supabase.co/auth/v1"
-external_redirect_url = "https://id-preview--f3bdb396-b2bb-4755-9f8f-5bc2c9217c55.lovable.app/auth/callback"
+# external_url och external_redirect_url tas bort – dessa hanteras via Dashboard eller miljövariabler
 
 [storage]
 enabled = true
-external_url = "https://qifolopsdeeyrevbuxfl.supabase.co/storage/v1"
+# external_url tas bort – hanteras automatiskt av CLI/dashboard
 
 [functions.generate-portfolio]
 verify_jwt = false

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,9 @@ import {
   Search,
   LayoutGrid,
   Table as TableIcon,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 import {
   Dialog,
@@ -31,20 +33,6 @@ import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-
-interface StockPrice {
-  symbol: string;
-  name: string;
-  price: number;
-  change: number;
-  changePercent: number;
-  currency: string;
-  priceInSEK: number;
-  changeInSEK: number;
-  hasValidPrice: boolean;
-  errorMessage?: string;
-}
 
 interface TransformedHolding {
   id: string;
@@ -56,6 +44,8 @@ interface TransformedHolding {
   quantity?: number;
   purchase_price?: number;
   sector?: string;
+  current_price_per_unit?: number;
+  price_currency?: string;
 }
 
 interface UserHoldingsManagerProps {
@@ -64,7 +54,7 @@ interface UserHoldingsManagerProps {
 
 const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = [] }) => {
   const { actualHoldings, loading, deleteHolding, recommendations, addHolding, updateHolding } = useUserHoldings();
-  const { performance } = usePortfolioPerformance();
+  const { performance, updatePrices, updating } = usePortfolioPerformance();
   const { 
     cashHoldings, 
     totalCash, 
@@ -89,12 +79,6 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [isChartOpen, setIsChartOpen] = useState(false);
   
-  // Price data state
-  const [prices, setPrices] = useState<StockPrice[]>([]);
-  const [pricesLoading, setPricesLoading] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const [exchangeRate, setExchangeRate] = useState<number>(10.5);
-
   const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
     console.log(`Deleting holding: ${holdingName} (${holdingId})`);
     const success = await deleteHolding(holdingId);
@@ -170,210 +154,37 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
     return success;
   };
 
-  const formatCurrency = (amount: number, currency = 'SEK', showCurrency = true) => {
-    const currencyCode = currency === 'SEK' ? 'SEK' : 'USD';
-    const formatter = new Intl.NumberFormat('sv-SE', {
-      style: showCurrency ? 'currency' : 'decimal',
-      currency: currencyCode,
-      minimumFractionDigits: currency === 'SEK' ? 0 : 2,
-      maximumFractionDigits: currency === 'SEK' ? 2 : 2,
-    });
-    return formatter.format(amount);
-  };
-
-  const formatPercentage = (percent: number) => {
-    const sign = percent >= 0 ? '+' : '';
-    return `${sign}${percent.toFixed(2)}%`;
-  };
-
-  const fetchExchangeRate = async () => {
-    try {
-      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-      const data = await response.json();
-      if (data.rates && data.rates.SEK) {
-        const newRate = data.rates.SEK;
-        if (Math.abs(newRate - exchangeRate) / exchangeRate > 0.01) {
-          setExchangeRate(newRate);
-          console.log(`Updated exchange rate: ${newRate.toFixed(2)} SEK/USD`);
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to fetch exchange rate:', error);
-    }
-  };
-
-  const fetchPrices = async () => {
-    if (!user || actualHoldings.length === 0) return;
-
-    setPricesLoading(true);
-    try {
-      await fetchExchangeRate();
-
-      const symbolsToFetch = actualHoldings.map((holding) => {
-        // Förbered symbol baserat på valutan och marknaden
-        let searchTerm = holding.symbol || holding.name;
-        
-        // Om användaren valt SEK som valuta för en svensk aktie, säkerställ att vi använder .ST
-        if (holding.currency === 'SEK' && searchTerm && !searchTerm.includes('.')) {
-          // För svenska aktier, lägg till .ST-suffix om det inte redan finns
-          searchTerm = `${searchTerm}.ST`;
-        }
-        
-        return {
-          searchTerm,
-          holding,
-        };
-      });
-
-      const pricePromises = symbolsToFetch.map(async ({ searchTerm, holding }) => {
-        try {
-          if (!searchTerm) {
-            return {
-              symbol: 'N/A',
-              name: holding.name || 'Okänt innehav',
-              price: 0,
-              change: 0,
-              changePercent: 0,
-              currency: 'SEK',
-              priceInSEK: 0,
-              changeInSEK: 0,
-              hasValidPrice: false,
-              errorMessage: 'Ingen giltig ticker-symbol angiven',
-            };
-          }
-
-          const { data, error } = await supabase.functions.invoke('fetch-stock-quote', {
-            body: { symbol: searchTerm },
-          });
-
-          if (error || !data || typeof data.price !== 'number') {
-            return {
-              symbol: searchTerm,
-              name: holding.name || searchTerm,
-              price: 0,
-              change: 0,
-              changePercent: 0,
-              currency: holding.currency || 'SEK',
-              priceInSEK: 0,
-              changeInSEK: 0,
-              hasValidPrice: false,
-              errorMessage: 'Pris kunde inte hämtas',
-            };
-          }
-
-          const holdingCurrency = holding.currency || 'SEK';
-          const quoteCurrency = data.currency || 'USD';
-
-          // Only convert if the quote is in USD and holding is in SEK
-          const needsConversion = quoteCurrency === 'USD' && holdingCurrency === 'SEK';
-          
-          // Use the quote currency if available, otherwise fall back to holding currency
-          const displayCurrency = data.currency || holdingCurrency;
-          
-          return {
-            symbol: data.symbol || searchTerm,
-            name: holding.name || data.name || searchTerm,
-            price: needsConversion ? data.price * exchangeRate : data.price,
-            change: needsConversion ? (data.change || 0) * exchangeRate : (data.change || 0),
-            changePercent: data.changePercent || 0,
-            currency: displayCurrency,
-            priceInSEK: needsConversion ? data.price * exchangeRate : data.price,
-            changeInSEK: needsConversion ? (data.change || 0) * exchangeRate : (data.change || 0),
-            hasValidPrice: true,
-          };
-        } catch (err) {
-          return {
-            symbol: searchTerm,
-            name: holding.name || searchTerm,
-            price: 0,
-            change: 0,
-            changePercent: 0,
-            currency: holding.currency || 'SEK',
-            priceInSEK: 0,
-            changeInSEK: 0,
-            hasValidPrice: false,
-            errorMessage: 'Tekniskt fel vid prisinhämtning',
-          };
-        }
-      });
-
-      const results = await Promise.all(pricePromises);
-      setPrices(results);
-      setLastUpdated(
-        new Date().toLocaleTimeString('sv-SE', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-      );
-    } catch (err) {
-      console.error('Fel vid hämtning av priser:', err);
-    } finally {
-      setPricesLoading(false);
-    }
-  };
-
-  const getPriceForHolding = (holding: any) => {
-    if (holding.holding_type === 'cash') return null;
-    
-    // Try to match by symbol first (most reliable)
-    if (holding.symbol) {
-      const priceBySymbol = prices.find(p => 
-        p.symbol === holding.symbol
-      );
-      if (priceBySymbol && priceBySymbol.hasValidPrice) {
-        return priceBySymbol;
-      }
-    }
-    
-    // Fallback to matching by name (less reliable but better than nothing)
-    const priceByName = prices.find(p => 
-      p.name && holding.name && 
-      p.name.toLowerCase().includes(holding.name.toLowerCase()) ||
-      holding.name.toLowerCase().includes(p.name.toLowerCase())
-    );
-    
-    if (priceByName && priceByName.hasValidPrice) {
-      return priceByName;
-    }
-    
-    // Return error information if price fetch failed for this holding
-    const failedPrice = prices.find(p => 
-      (holding.symbol && p.symbol === holding.symbol) ||
-      (p.name && holding.name && p.name.toLowerCase().includes(holding.name.toLowerCase()))
-    );
-    
-    if (failedPrice && !failedPrice.hasValidPrice) {
-      return failedPrice;
-    }
-    
-    // Return null if no price found at all
-    return null;
-  };
-
-  useEffect(() => {
-    // Only fetch prices once when user logs in to the page
-    if (user && actualHoldings.length > 0) {
-      fetchPrices();
-    }
-  }, [user, actualHoldings]);
-
   // Prepare holdings data for grouping - fix type issues
   const uniqueCashHoldings = cashHoldings.filter(cash => 
     !actualHoldings.some(holding => holding.id === cash.id)
   );
 
   // Transform all holdings to match the TransformedHolding interface
-  const transformedActualHoldings: TransformedHolding[] = actualHoldings.map(holding => ({
-    id: holding.id,
-    name: holding.name,
-    holding_type: holding.holding_type || 'stock',
-    current_value: holding.current_value || 0,
-    currency: holding.currency || 'SEK',
-    symbol: holding.symbol,
-    quantity: holding.quantity,
-    purchase_price: holding.purchase_price,
-    sector: holding.sector
-  }));
+  const transformedActualHoldings: TransformedHolding[] = actualHoldings.map(holding => {
+    const pricePerUnit = typeof holding.current_price_per_unit === 'number'
+      ? holding.current_price_per_unit
+      : undefined;
+
+    const currentValue = typeof holding.current_value === 'number'
+      ? holding.current_value
+      : 0;
+
+    const resolvedCurrency = holding.price_currency || holding.currency || 'SEK';
+
+    return {
+      id: holding.id,
+      name: holding.name,
+      holding_type: holding.holding_type || 'stock',
+      current_value: currentValue,
+      currency: resolvedCurrency,
+      symbol: holding.symbol,
+      quantity: holding.quantity,
+      purchase_price: holding.purchase_price,
+      sector: holding.sector,
+      current_price_per_unit: pricePerUnit,
+      price_currency: resolvedCurrency
+    };
+  });
 
   const transformedCashHoldings: TransformedHolding[] = uniqueCashHoldings.map(cash => ({
     id: cash.id,
@@ -384,7 +195,9 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
     symbol: undefined,
     quantity: undefined,
     purchase_price: undefined,
-    sector: undefined
+    sector: undefined,
+    current_price_per_unit: undefined,
+    price_currency: 'SEK'
   }));
 
   const allHoldings = [
@@ -492,7 +305,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
             <div className="space-y-4">
               {/* Action Bar */}
               <div className="flex flex-col sm:flex-row gap-4 pb-4 border-b border-border">
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button size="sm" className="flex items-center gap-2" onClick={() => setShowAddHoldingDialog(true)}>
                     <Plus className="w-4 h-4" />
                     Lägg till innehav
@@ -500,6 +313,20 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                   <Button size="sm" variant="outline" className="flex items-center gap-2" onClick={() => setShowAddCashDialog(true)}>
                     <Banknote className="w-4 h-4" />
                     Lägg till kassa
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    onClick={() => updatePrices()}
+                    disabled={updating}
+                  >
+                    {updating ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    {updating ? 'Uppdaterar...' : 'Uppdatera priser'}
                   </Button>
                 </div>
 
@@ -541,7 +368,6 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                       holdings={group.holdings}
                       totalValue={group.totalValue}
                       groupPercentage={group.percentage}
-                      getPriceForHolding={getPriceForHolding}
                       onDiscuss={handleDiscussHolding}
                       onEdit={group.key === 'cash' ? (id: string) => {
                         const cash = group.holdings.find(h => h.id === id);
@@ -554,12 +380,12 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                   ))}
                 </div>
               ) : (
-                <HoldingsTable holdings={filteredHoldings} getPriceForHolding={getPriceForHolding} />
+                <HoldingsTable holdings={filteredHoldings} />
               )}
 
-              {lastUpdated && (
+              {allHoldings.length > 0 && (
                 <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
-                  Priser uppdaterade: {lastUpdated} | Priser uppdateras vid inloggning
+                  Priserna hämtas från Google Sheets-integrationen och uppdateras där.
                 </div>
               )}
             </div>
