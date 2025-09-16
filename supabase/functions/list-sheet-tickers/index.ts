@@ -41,7 +41,7 @@ serve(async (req) => {
 
     const sheetRes = await sheets.spreadsheets.values.get({
       spreadsheetId: googleSheetId,
-      range: 'Top 1000!A2:B',
+      range: 'Top 1000!B2:C',
     });
 
     const rows = sheetRes.data.values || [];

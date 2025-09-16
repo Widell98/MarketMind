@@ -66,6 +66,52 @@ const getSymbolVariants = (symbol: string | null) => {
   return Array.from(variants);
 };
 
+const EXCHANGE_RATES: Record<string, number> = {
+  SEK: 1,
+  USD: 10.5,
+  EUR: 11.4,
+  GBP: 13.2,
+  NOK: 0.95,
+  DKK: 1.53,
+  JPY: 0.07,
+  CHF: 11.8,
+  CAD: 7.8,
+  AUD: 7.0,
+};
+
+const convertToSEK = (amount: number, currency?: string | null) => {
+  if (!Number.isFinite(amount)) {
+    return null;
+  }
+
+  const normalizedCurrency = currency?.toUpperCase();
+
+  if (!normalizedCurrency || normalizedCurrency === 'SEK') {
+    return amount;
+  }
+
+  const rate = EXCHANGE_RATES[normalizedCurrency];
+
+  if (typeof rate !== 'number') {
+    console.warn(`Missing exchange rate for currency: ${normalizedCurrency}`);
+    return null;
+  }
+
+  return amount * rate;
+};
+
+const parseChangePercent = (value?: string | null) => {
+  if (!value) return null;
+
+  const normalized = value
+    .replace(/\s/g, '')
+    .replace('%', '')
+    .replace(',', '.');
+
+  const parsed = parseFloat(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -92,7 +138,7 @@ serve(async (req) => {
 
     const sheetRes = await sheets.spreadsheets.values.get({
       spreadsheetId: googleSheetId,
-      range: 'Top 1000!A2:E',
+      range: 'Top 1000!B2:H',
     });
 
     const rows = sheetRes.data.values || [];
@@ -102,16 +148,32 @@ serve(async (req) => {
     const unmatched: Array<{ symbol?: string; name?: string }> = [];
 
     for (const row of rows) {
-      const [company, rawSymbol, , rawCurrency, rawPrice] = row;
+      const [company, rawSymbol, , rawCurrency, rawPrice, , rawChange] = row;
       const rawSymbolValue = normalizeValue(rawSymbol);
       const rawNameValue = normalizeValue(company);
       const normalizedSymbol = normalizeSymbol(rawSymbolValue);
       const normalizedName = normalizeName(rawNameValue);
       const namePattern = normalizedName ? `${normalizedName}%` : null;
       const price = parsePrice(rawPrice);
-      const priceCurrency = normalizeValue(rawCurrency)?.toUpperCase() || 'SEK';
+      const originalCurrency = normalizeValue(rawCurrency)?.toUpperCase() || null;
+      const dailyChangePct = parseChangePercent(rawChange);
 
-      if ((!normalizedSymbol && !normalizedName) || price === null || price <= 0) {
+      let resolvedPrice = price;
+      let priceCurrency = originalCurrency ?? 'SEK';
+
+      if (price !== null) {
+        const convertedPrice = convertToSEK(price, originalCurrency ?? 'SEK');
+
+        if (convertedPrice !== null) {
+          resolvedPrice = convertedPrice;
+          priceCurrency = 'SEK';
+        } else {
+          resolvedPrice = price;
+          priceCurrency = originalCurrency ?? 'SEK';
+        }
+      }
+
+      if ((!normalizedSymbol && !normalizedName) || resolvedPrice === null || resolvedPrice <= 0) {
         continue;
       }
 
@@ -165,16 +227,22 @@ serve(async (req) => {
           : parseFloat(String(holding.quantity ?? '').replace(',', '.'));
 
         const resolvedQuantity = Number.isFinite(quantityValue) ? quantityValue : 0;
-        const computedValue = resolvedQuantity * price;
+        const computedValue = resolvedQuantity * (resolvedPrice ?? 0);
+
+        const updatePayload: Record<string, unknown> = {
+          current_price_per_unit: resolvedPrice,
+          price_currency: priceCurrency,
+          current_value: computedValue,
+          updated_at: timestamp,
+        };
+
+        if (dailyChangePct !== null) {
+          updatePayload.daily_change_pct = dailyChangePct;
+        }
 
         const { error: updateError } = await supabase
           .from('user_holdings')
-          .update({
-            current_price_per_unit: price,
-            price_currency: priceCurrency,
-            current_value: computedValue,
-            updated_at: timestamp,
-          })
+          .update(updatePayload)
           .eq('id', holding.id);
 
         if (updateError) {

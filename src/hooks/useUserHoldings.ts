@@ -13,6 +13,7 @@ export interface UserHolding {
   current_value?: number;
   current_price_per_unit?: number;
   price_currency?: string;
+  daily_change_pct?: number | null;
   purchase_price?: number;
   purchase_date?: string;
   sector?: string;
@@ -73,6 +74,7 @@ export const useUserHoldings = () => {
           current_value: item.current_value,
           current_price_per_unit: item.current_price_per_unit ?? undefined,
           price_currency: item.price_currency ?? undefined,
+          daily_change_pct: item.daily_change_pct ?? null,
           purchase_price: item.purchase_price,
           purchase_date: item.purchase_date,
           sector: item.sector,
