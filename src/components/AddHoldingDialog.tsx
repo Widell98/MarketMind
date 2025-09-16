@@ -18,9 +18,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, TrendingUp } from 'lucide-react';
+import { RefreshCw, TrendingUp, Search as SearchIcon } from 'lucide-react';
 import { UserHolding } from '@/hooks/useUserHoldings';
 import { useRealTimePricing } from '@/hooks/useRealTimePricing';
+import TickerSearch from '@/components/TickerSearch';
 
 interface AddHoldingDialogProps {
   isOpen: boolean;
@@ -180,12 +181,35 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
             </div>
             <div className="space-y-2">
               <Label htmlFor="symbol">Symbol</Label>
-              <Input
-                id="symbol"
-                value={formData.symbol}
-                onChange={(e) => handleInputChange('symbol', e.target.value)}
-                placeholder="t.ex. VOLV-B"
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  id="symbol"
+                  value={formData.symbol}
+                  onChange={(e) => handleInputChange('symbol', e.target.value.toUpperCase())}
+                  placeholder="t.ex. VOLV-B"
+                  className="flex-1"
+                />
+                <TickerSearch
+                  initialQuery={formData.symbol || formData.name}
+                  onSelect={(result) => {
+                    handleInputChange('symbol', result.symbol.toUpperCase());
+                    handleInputChange('name', result.name);
+                    if (result.currency) {
+                      handleInputChange('currency', result.currency);
+                    }
+                  }}
+                >
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9"
+                    title="Sök ticker"
+                  >
+                    <SearchIcon className="w-4 h-4" />
+                  </Button>
+                </TickerSearch>
+              </div>
             </div>
           </div>
 

@@ -19,6 +19,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { UserHolding } from '@/hooks/useUserHoldings';
+import { Search as SearchIcon } from 'lucide-react';
+import TickerSearch from '@/components/TickerSearch';
 
 interface EditHoldingDialogProps {
   isOpen: boolean;
@@ -110,14 +112,38 @@ const EditHoldingDialog: React.FC<EditHoldingDialogProps> = ({
                 required
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="symbol">Symbol</Label>
-              <Input
-                id="symbol"
-                value={formData.symbol}
-                onChange={(e) => setFormData({ ...formData, symbol: e.target.value })}
-                placeholder="AAPL"
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  id="symbol"
+                  value={formData.symbol}
+                  onChange={(e) => setFormData({ ...formData, symbol: e.target.value.toUpperCase() })}
+                  placeholder="AAPL"
+                  className="flex-1"
+                />
+                <TickerSearch
+                  initialQuery={formData.symbol || formData.name}
+                  onSelect={(result) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      symbol: result.symbol.toUpperCase(),
+                      name: result.name,
+                      currency: result.currency || prev.currency,
+                    }))
+                  }
+                >
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9"
+                    title="Sök ticker"
+                  >
+                    <SearchIcon className="w-4 h-4" />
+                  </Button>
+                </TickerSearch>
+              </div>
             </div>
           </div>
 

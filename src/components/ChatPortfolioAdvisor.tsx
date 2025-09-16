@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Send, User, Bot, CheckCircle, TrendingUp, Plus, Trash2, Check } from 'lucide-react';
+import { Brain, Send, User, Bot, CheckCircle, TrendingUp, Plus, Trash2, Check, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationalPortfolio } from '@/hooks/useConversationalPortfolio';
 import { usePortfolio } from '@/hooks/usePortfolio';
@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
+import TickerSearch from '@/components/TickerSearch';
 
 interface Message {
   id: string;
@@ -1030,12 +1031,31 @@ const ChatPortfolioAdvisor = () => {
                                   className="text-xs sm:text-sm"
                                   required
                                 />
-                                <Input
-                                  placeholder="Symbol (t.ex. AAPL)"
-                                  value={holding.symbol}
-                                  onChange={(e) => updateHolding(holding.id, 'symbol', e.target.value.toUpperCase())}
-                                  className="text-xs sm:text-sm"
-                                />
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    placeholder="Symbol (t.ex. AAPL)"
+                                    value={holding.symbol}
+                                    onChange={(e) => updateHolding(holding.id, 'symbol', e.target.value.toUpperCase())}
+                                    className="text-xs sm:text-sm flex-1"
+                                  />
+                                  <TickerSearch
+                                    initialQuery={holding.symbol || holding.name}
+                                    onSelect={(result) => {
+                                      updateHolding(holding.id, 'symbol', result.symbol.toUpperCase());
+                                      updateHolding(holding.id, 'name', result.name);
+                                    }}
+                                  >
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      title="Sök ticker"
+                                    >
+                                      <Search className="w-3 h-3" />
+                                    </Button>
+                                  </TickerSearch>
+                                </div>
                                 <Input
                                   type="number"
                                   placeholder="Antal *"
