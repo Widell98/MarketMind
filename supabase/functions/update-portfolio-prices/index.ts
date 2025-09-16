@@ -24,6 +24,15 @@ const normalizeValue = (v?: string | null) => (v?.trim()?.length ? v.trim() : nu
 const normalizeSymbol = (v?: string | null) => normalizeValue(v)?.toUpperCase() ?? null;
 const normalizeName = (v?: string | null) => normalizeValue(v)?.toUpperCase() ?? null;
 
+const cleanSheetSymbol = (symbol?: string | null) => {
+  const normalized = normalizeSymbol(symbol);
+  if (!normalized) return null;
+  const colonIndex = normalized.indexOf(":");
+  if (colonIndex < 0) return normalized;
+  const withoutPrefix = normalized.slice(colonIndex + 1);
+  return withoutPrefix.length > 0 ? withoutPrefix : normalized;
+};
+
 const parsePrice = (v?: string | null) => {
   if (!v) return null;
   const num = parseFloat(v.replace(/\s/g, "").replace(",", "."));
@@ -95,6 +104,7 @@ serve(async (req) => {
       const rawSymbolValue = normalizeValue(rawSymbol);
       const rawNameValue = normalizeValue(company);
       const normalizedSymbol = normalizeSymbol(rawSymbolValue);
+      const cleanedSymbol = cleanSheetSymbol(rawSymbolValue);
       const normalizedName = normalizeName(rawNameValue);
       const namePattern = normalizedName ? `${normalizedName}%` : null;
       const price = parsePrice(rawPrice);
@@ -116,7 +126,11 @@ serve(async (req) => {
         continue;
 
       // Hitta matchande innehav i Supabase
-      const symbolVariants = getSymbolVariants(normalizedSymbol);
+      const symbolVariantSet = new Set<string>(getSymbolVariants(cleanedSymbol));
+      if (normalizedSymbol && normalizedSymbol !== cleanedSymbol) {
+        symbolVariantSet.add(normalizedSymbol);
+      }
+      const symbolVariants = [...symbolVariantSet];
       const query = supabase.from("user_holdings").select("id, quantity").neq("holding_type", "cash");
 
       if (symbolVariants.length > 0 && namePattern) {
