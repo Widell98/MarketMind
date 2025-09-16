@@ -62,8 +62,8 @@ const RealTimePortfolioData: React.FC = () => {
               Senast uppdaterad: {new Date(performance.lastUpdated).toLocaleString('sv-SE')}
             </CardDescription>
           </div>
-          <Button 
-            onClick={updatePrices} 
+          <Button
+            onClick={() => updatePrices()}
             disabled={updating}
             variant="outline"
             size="sm"

@@ -29,6 +29,12 @@ export interface HoldingPerformance {
   dayChangePercentage: number;
 }
 
+interface PriceUpdateSummary {
+  updated: number;
+  errors: number;
+  unmatched: Array<{ symbol?: string; name?: string }>;
+}
+
 export const usePortfolioPerformance = () => {
   const [performance, setPerformance] = useState<PerformanceData>({
     totalValue: 0,
@@ -216,37 +222,69 @@ export const usePortfolioPerformance = () => {
     }
   };
 
-  const updatePrices = async () => {
-    if (!user || updating) return;
+  const updatePrices = async (): Promise<PriceUpdateSummary | null> => {
+    if (!user || updating) {
+      return null;
+    }
 
     try {
       setUpdating(true);
-      
+
       const { data, error } = await supabase.functions.invoke('update-portfolio-prices');
-      
+
       if (error) {
         throw error;
       }
 
-      if (data?.success) {
-        toast({
-          title: "Priser uppdaterade",
-          description: `${data.updated} innehav uppdaterades`,
-        });
-        
-        // Recalculate performance after update
-        await calculatePerformance();
-      } else {
-        throw new Error(data?.error || 'Unknown error');
+      const success = data?.success ?? false;
+      const updatedCount = typeof data?.updated === 'number' ? data.updated : 0;
+      const errorCount = typeof data?.errors === 'number' ? data.errors : 0;
+      const unmatched = Array.isArray(data?.unmatched) ? data.unmatched : [];
+
+      if (!success) {
+        throw new Error(data?.error || 'Kunde inte uppdatera priserna');
       }
+
+      const descriptionParts: string[] = [];
+
+      if (updatedCount > 0) {
+        descriptionParts.push(`${updatedCount} innehav uppdaterades`);
+      }
+
+      if (unmatched.length > 0) {
+        descriptionParts.push(`${unmatched.length} innehav kunde inte matchas`);
+      }
+
+      if (errorCount > 0) {
+        descriptionParts.push(`${errorCount} fel uppstod`);
+      }
+
+      if (unmatched.length > 0) {
+        console.warn('Holdings not matched with Google Sheets data:', unmatched);
+      }
+
+      toast({
+        title: updatedCount > 0 ? "Priser uppdaterade" : "Inga priser uppdaterades",
+        description: descriptionParts.join(' · ') || 'Inga innehav matchade Google Sheets-datan.',
+        variant: updatedCount === 0 && (errorCount > 0 || unmatched.length > 0) ? 'destructive' : 'default',
+      });
+
+      await calculatePerformance();
+
+      return {
+        updated: updatedCount,
+        errors: errorCount,
+        unmatched,
+      };
 
     } catch (error) {
       console.error('Error updating prices:', error);
       toast({
         title: "Fel vid prisuppdatering",
-        description: "Kunde inte uppdatera priserna",
+        description: error instanceof Error ? error.message : "Kunde inte uppdatera priserna",
         variant: "destructive",
       });
+      return null;
     } finally {
       setUpdating(false);
     }

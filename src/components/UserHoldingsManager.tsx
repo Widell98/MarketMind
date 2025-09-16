@@ -12,7 +12,9 @@ import {
   Search,
   LayoutGrid,
   Table as TableIcon,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 import {
   Dialog,
@@ -52,7 +54,7 @@ interface UserHoldingsManagerProps {
 
 const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = [] }) => {
   const { actualHoldings, loading, deleteHolding, recommendations, addHolding, updateHolding } = useUserHoldings();
-  const { performance } = usePortfolioPerformance();
+  const { performance, updatePrices, updating } = usePortfolioPerformance();
   const { 
     cashHoldings, 
     totalCash, 
@@ -302,7 +304,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
             <div className="space-y-4">
               {/* Action Bar */}
               <div className="flex flex-col sm:flex-row gap-4 pb-4 border-b border-border">
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button size="sm" className="flex items-center gap-2" onClick={() => setShowAddHoldingDialog(true)}>
                     <Plus className="w-4 h-4" />
                     Lägg till innehav
@@ -310,6 +312,20 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                   <Button size="sm" variant="outline" className="flex items-center gap-2" onClick={() => setShowAddCashDialog(true)}>
                     <Banknote className="w-4 h-4" />
                     Lägg till kassa
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    onClick={() => updatePrices()}
+                    disabled={updating}
+                  >
+                    {updating ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    {updating ? 'Uppdaterar...' : 'Uppdatera priser'}
                   </Button>
                 </div>
 
