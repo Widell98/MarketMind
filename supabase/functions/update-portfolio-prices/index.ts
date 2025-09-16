@@ -6,14 +6,28 @@ import { google } from 'https://esm.sh/googleapis@118.0.0';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+let supabaseClient: ReturnType<typeof createClient> | null = null;
+
+const getSupabaseClient = () => {
+  if (supabaseClient) {
+    return supabaseClient;
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Missing Supabase configuration');
+  }
+
+  supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+  return supabaseClient;
+};
 const googleServiceAccount = Deno.env.get('GOOGLE_SERVICE_ACCOUNT');
 const googleSheetId = Deno.env.get('GOOGLE_SHEET_ID');
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const normalizeValue = (value?: string | null) => {
   if (!value) return null;
@@ -61,6 +75,8 @@ serve(async (req) => {
     if (!googleServiceAccount || !googleSheetId) {
       throw new Error('Missing Google Sheets configuration');
     }
+
+    const supabase = getSupabaseClient();
 
     const credentials = JSON.parse(googleServiceAccount);
     if (credentials.private_key) {
