@@ -14,6 +14,55 @@ const ProfileUpdateConfirmation: React.FC<ProfileUpdateConfirmationProps> = ({
   onConfirm,
   onReject
 }) => {
+  const keyLabels: Record<string, string> = {
+    monthly_investment_amount: 'Månadssparande',
+    risk_tolerance: 'Risktolerans',
+    investment_horizon: 'Tidshorisont',
+    liquid_capital: 'Likvidt kapital',
+    emergency_buffer_months: 'Buffert (månader)',
+    preferred_stock_count: 'Önskat antal aktier',
+    housing_situation: 'Bostadssituation',
+    has_loans: 'Har lån'
+  };
+
+  const housingSituationLabels: Record<string, string> = {
+    owns_no_loan: 'Äger bostad utan lån',
+    owns_with_loan: 'Äger bostad med lån',
+    rents: 'Hyr bostad',
+    lives_with_parents: 'Bor hos föräldrar'
+  };
+
+  const riskToleranceLabels: Record<string, string> = {
+    conservative: 'Konservativ',
+    moderate: 'Måttlig',
+    aggressive: 'Aggressiv'
+  };
+
+  const investmentHorizonLabels: Record<string, string> = {
+    short: 'Kort (1-3 år)',
+    medium: 'Medel (3-7 år)',
+    long: 'Lång (7+ år)'
+  };
+
+  const formatValue = (key: string, value: any) => {
+    if (key === 'housing_situation') {
+      return housingSituationLabels[String(value)] ?? String(value);
+    }
+    if (key === 'risk_tolerance') {
+      return riskToleranceLabels[String(value)] ?? String(value);
+    }
+    if (key === 'investment_horizon') {
+      return investmentHorizonLabels[String(value)] ?? String(value);
+    }
+    if (typeof value === 'boolean') {
+      return value ? 'Ja' : 'Nej';
+    }
+    if (typeof value === 'number' && !Number.isNaN(value)) {
+      return value.toLocaleString('sv-SE');
+    }
+    return String(value);
+  };
+
   return (
     <Card className="border-blue-200 bg-blue-50 my-2">
       <CardContent className="p-4">
@@ -30,16 +79,14 @@ const ProfileUpdateConfirmation: React.FC<ProfileUpdateConfirmationProps> = ({
             <p className="text-sm text-blue-700 mb-3">
               Jag upptäckte förändringar i dina preferenser baserat på vår konversation:
             </p>
-            
+
             <div className="space-y-1 mb-4">
               {Object.entries(profileUpdates).map(([key, value]) => (
                 <div key={key} className="text-sm">
                   <span className="font-medium text-blue-800">
-                    {key === 'monthly_investment_amount' ? 'Månadssparande' : 
-                     key === 'risk_tolerance' ? 'Risktolerans' :
-                     key === 'investment_horizon' ? 'Tidshorisont' : key}:
+                    {keyLabels[key] ?? key}:
                   </span>{' '}
-                  <span className="text-blue-700">{String(value)}</span>
+                  <span className="text-blue-700">{formatValue(key, value)}</span>
                 </div>
               ))}
             </div>
