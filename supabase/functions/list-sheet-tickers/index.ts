@@ -11,10 +11,9 @@ import {
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-// Din publicerade CSV-URL
 const CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvOPfg5tZjaFqCu7b3Li80oPEEuje4tQTcnr6XjxCW_ItVbOGWCvfQfFvWDXRH544MkBKeI1dPyzJG/pub?output=csv";
 
@@ -23,15 +22,18 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // ✅ Tillåt både GET och POST
+  if (req.method !== "GET" && req.method !== "POST") {
+    return new Response("Only GET or POST supported", { status: 405, headers: corsHeaders });
+  }
+
   try {
     const res = await fetch(CSV_URL);
     if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
     const csvText = await res.text();
 
     const rows = parseCsv(csvText);
-    if (rows.length === 0) {
-      throw new Error("CSV saknar data.");
-    }
+    if (rows.length === 0) throw new Error("CSV saknar data.");
 
     const [headerRow, ...dataRows] = rows;
     const headers = headerRow.map((cell) => normalizeValue(cell) ?? cell ?? "");
@@ -76,6 +78,10 @@ serve(async (req) => {
 
     const tickers = Array.from(tickerMap.values());
 
+    // 🖨️ Logga tickers i serverns konsol
+    console.log("Fetched tickers:", tickers);
+
+    // ✅ Returnera tickers som JSON
     return new Response(JSON.stringify({ success: true, tickers }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
