@@ -27,15 +27,15 @@ const ThemeToggle = () => {
   if (!mounted) {
     return (
       <div className="flex items-center">
-        <div className="hidden sm:block h-8 w-16 animate-pulse rounded-full bg-muted/60" />
-        <div className="sm:hidden h-10 w-10 animate-pulse rounded-full bg-muted/60" />
+        <div className="hidden h-8 w-16 animate-pulse rounded-full bg-muted/60 sm:block" />
+        <div className="h-9 w-9 animate-pulse rounded-full bg-muted/60 sm:hidden" />
       </div>
     );
   }
 
   return (
     <div className="flex items-center">
-      <div className="hidden sm:flex items-center gap-2 rounded-full border border-border/60 bg-card/80 px-2 py-1 shadow-sm backdrop-blur-sm">
+      <div className="hidden items-center gap-2 rounded-full border border-border/60 bg-card/80 px-2 py-1 shadow-sm transition-colors supports-[backdrop-filter]:backdrop-blur-sm sm:flex">
         <Sun
           className={`h-4 w-4 transition-colors ${
             isDark ? 'text-muted-foreground/70' : 'text-amber-500'
@@ -55,12 +55,14 @@ const ThemeToggle = () => {
       </div>
       <Button
         type="button"
-        variant="ghost"
+        variant="outline"
         size="icon"
         aria-label={isDark ? 'Aktivera ljust läge' : 'Aktivera mörkt läge'}
+        aria-pressed={isDark}
         onClick={handleButtonClick}
-        className="sm:hidden h-10 w-10 rounded-full border border-border/60 bg-card/80 text-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-primary hover:text-primary-foreground"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-full border-border/60 bg-card/90 text-foreground shadow-sm transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:hidden"
       >
+        <span className="sr-only">{isDark ? 'Aktivera ljust läge' : 'Aktivera mörkt läge'}</span>
         {isDark ? (
           <Sun className="h-5 w-5 text-amber-400" />
         ) : (

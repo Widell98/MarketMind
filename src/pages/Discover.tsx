@@ -1,27 +1,20 @@
 import React, { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Sparkles, Camera, PenTool, Filter, TrendingUp, Target, BarChart3, Search, BookOpen, Plus, Users } from 'lucide-react';
+import { Sparkles, Camera, PenTool, BookOpen, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 
-// Components from existing pages
-import PersonalizedRecommendations from '@/components/PersonalizedRecommendations';
-import PersonalizedAIRecommendations from '@/components/PersonalizedAIRecommendations';
-import AIWeeklyPicks from '@/components/AIWeeklyPicks';
 import StockCaseCard from '@/components/StockCaseCard';
 import EnhancedAnalysisCard from '@/components/EnhancedAnalysisCard';
 import EnhancedAnalysesSearch from '@/components/EnhancedAnalysesSearch';
 import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
-import CreateAnalysisDialog from '@/components/CreateAnalysisDialog';
+import { Analysis } from '@/types/analysis';
 
 // Hooks
 import { useStockCases } from '@/hooks/useStockCases';
-import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
 import { useAnalyses } from '@/hooks/useAnalyses';
 import { useFollowingAnalyses } from '@/hooks/useFollowingAnalyses';
 const Discover = () => {
@@ -49,18 +42,11 @@ const Discover = () => {
   const [viewMode, setViewMode] = useState('grid');
   const [analysisSubTab, setAnalysisSubTab] = useState('all');
 
-  // Dialog states
-  const [isCreateAnalysisDialogOpen, setIsCreateAnalysisDialogOpen] = useState(false);
-
   // Data hooks
   const {
     stockCases: allStockCases,
     loading: stockCasesLoading
   } = useStockCases(false);
-  const {
-    trendingCases,
-    loading: trendingLoading
-  } = useTrendingStockCases(12);
   const {
     data: analyses,
     isLoading: analysesLoading
@@ -215,50 +201,45 @@ const Discover = () => {
   const handleDeleteAnalysis = async (id: string) => {
     console.log('Delete analysis:', id);
   };
-  const handleEditAnalysis = (analysis: any) => {
+  const handleEditAnalysis = (analysis: Analysis) => {
     console.log('Edit analysis:', analysis);
   };
-  return <Layout>
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
-          {/* Clean Header - Apple style */}
-          <div className="text-center space-y-6 mb-12">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-primary" />
-              </div>
+  return (
+    <Layout>
+      <div className="w-full pb-12">
+        <div className="mx-auto w-full max-w-6xl space-y-8 px-1 sm:px-4 lg:px-0">
+          <section className="rounded-3xl border border-border/60 bg-card/70 p-6 text-center shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:p-10">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 sm:h-14 sm:w-14">
+              <Sparkles className="h-6 w-6 text-primary" />
             </div>
-            <h1 className="text-4xl sm:text-5xl font-semibold text-foreground tracking-tight">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
               Upptäck & Utforska
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto font-light leading-relaxed">
-              Hitta inspiration genom visuella aktiecase och djupa marknadsanalyser
+            <p className="mx-auto mt-3 max-w-2xl text-base text-muted-foreground sm:text-lg">
+              Hitta inspiration genom visuella aktiecase och djupa marknadsanalyser.
             </p>
-          </div>
+          </section>
 
-          {/* Clean Tabs - Apple style */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 max-w-sm mx-auto mb-12 bg-muted/50 p-1 rounded-xl h-auto border">
-              <TabsTrigger 
-                value="cases" 
-                className="flex items-center gap-2 rounded-lg py-3 px-6 font-medium transition-all duration-300 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary text-sm"
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6 sm:space-y-8">
+            <TabsList className="grid w-full grid-cols-2 gap-2 rounded-2xl border border-border/80 bg-muted/40 p-1.5 sm:mx-auto sm:max-w-md sm:gap-3 sm:p-2">
+              <TabsTrigger
+                value="cases"
+                className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm sm:py-3 sm:text-base"
               >
-                <Camera className="w-4 h-4" />
-                Stock Cases
+                <Camera className="h-4 w-4" />
+                Case
               </TabsTrigger>
-              <TabsTrigger 
-                value="analyses" 
-                className="flex items-center gap-2 rounded-lg py-3 px-6 font-medium transition-all duration-300 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary text-sm"
+              <TabsTrigger
+                value="analyses"
+                className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm sm:py-3 sm:text-base"
               >
-                <PenTool className="w-4 h-4" />
+                <PenTool className="h-4 w-4" />
                 Analyser
               </TabsTrigger>
             </TabsList>
 
-            {/* Cases Tab */}
-            <TabsContent value="cases" className="space-y-8">
-              {/* Clean Search */}
-              <div className="bg-card border rounded-2xl p-6">
+            <TabsContent value="cases" className="space-y-6 sm:space-y-8">
+              <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">
                 <EnhancedStockCasesSearch
                   searchTerm={caseSearchTerm}
                   onSearchChange={setCaseSearchTerm}
@@ -278,47 +259,48 @@ const Discover = () => {
                 />
               </div>
 
-              {/* Cases Grid */}
-              <div className="space-y-6">
+              <div className="space-y-5 sm:space-y-6">
                 {stockCasesLoading ? (
-                  <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-2' : 'grid-cols-1'}`}>
+                  <div className={`grid gap-4 sm:gap-5 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-2' : 'grid-cols-1'}`}>
                     {[...Array(6)].map((_, i) => (
-                      <Card key={i} className="animate-pulse border rounded-2xl">
-                        <CardContent className="p-6">
-                          <div className="h-4 bg-muted rounded mb-3"></div>
-                          <div className="h-4 bg-muted rounded w-2/3 mb-6"></div>
-                          <div className="h-32 bg-muted rounded-xl"></div>
+                      <Card key={i} className="animate-pulse rounded-2xl border border-border/60 bg-card/70">
+                        <CardContent className="space-y-4 p-5 sm:p-6">
+                          <div className="h-4 w-3/4 rounded bg-muted" />
+                          <div className="h-4 w-1/2 rounded bg-muted" />
+                          <div className="h-32 rounded-xl bg-muted" />
                         </CardContent>
                       </Card>
                     ))}
                   </div>
                 ) : (
-                  <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-2' : 'grid-cols-1'}`}>
+                  <div className={`grid gap-4 sm:gap-5 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-2' : 'grid-cols-1'}`}>
                     {getFilteredCases.map(stockCase => (
-                      <StockCaseCard 
-                        key={stockCase.id} 
-                        stockCase={stockCase} 
-                        onViewDetails={handleViewStockCaseDetails} 
-                        onDelete={handleDeleteStockCase} 
+                      <StockCaseCard
+                        key={stockCase.id}
+                        stockCase={stockCase}
+                        onViewDetails={handleViewStockCaseDetails}
+                        onDelete={handleDeleteStockCase}
                       />
                     ))}
                   </div>
                 )}
 
                 {!stockCasesLoading && getFilteredCases.length === 0 && (
-                  <div className="text-center py-16">
-                    <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-6">
-                      <Camera className="w-8 h-8 text-muted-foreground" />
+                  <div className="rounded-3xl border border-dashed border-border/70 bg-background/60 px-6 py-16 text-center shadow-inner sm:px-10">
+                    <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+                      <Camera className="h-8 w-8 text-muted-foreground" />
                     </div>
-                    <h3 className="text-xl font-semibold mb-3 text-foreground">
-                      {caseSearchTerm ? "Inga case matchar din sökning" : "Inga case hittades"}
+                    <h3 className="mb-3 text-xl font-semibold text-foreground">
+                      {caseSearchTerm ? 'Inga case matchar din sökning' : 'Inga case hittades'}
                     </h3>
-                    <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-                      {caseSearchTerm ? "Prova att ändra dina sökord eller rensa sökningen" : "Kom tillbaka senare för nya case"}
+                    <p className="mx-auto mb-8 max-w-md text-sm text-muted-foreground sm:text-base">
+                      {caseSearchTerm
+                        ? 'Prova att justera dina sökkriterier eller rensa filtren.'
+                        : 'Kom tillbaka senare för nya case från communityt.'}
                     </p>
                     {caseSearchTerm && (
-                      <Button 
-                        onClick={() => setCaseSearchTerm('')} 
+                      <Button
+                        onClick={() => setCaseSearchTerm('')}
                         variant="outline"
                         className="rounded-xl border-border hover:bg-muted/50"
                       >
@@ -330,10 +312,8 @@ const Discover = () => {
               </div>
             </TabsContent>
 
-            {/* Analyses Tab */}
-            <TabsContent value="analyses" className="space-y-8">
-              {/* Clean Search */}
-              <div className="bg-card border rounded-2xl p-6">
+            <TabsContent value="analyses" className="space-y-6 sm:space-y-8">
+              <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">
                 <EnhancedAnalysesSearch
                   searchTerm={searchTerm}
                   onSearchChange={setSearchTerm}
@@ -350,66 +330,66 @@ const Discover = () => {
                 />
               </div>
 
-              {/* Analysis Sub-tabs */}
-              <Tabs value={analysisSubTab} onValueChange={setAnalysisSubTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 max-w-sm mx-auto mb-8 bg-muted/50 p-1 rounded-xl h-auto border">
-                  <TabsTrigger 
-                    value="all" 
-                    className="flex items-center gap-2 rounded-lg py-2 px-4 font-medium transition-all duration-300 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary text-sm"
+              <Tabs value={analysisSubTab} onValueChange={setAnalysisSubTab} className="w-full space-y-5 sm:space-y-6">
+                <TabsList className="grid w-full grid-cols-2 gap-2 rounded-2xl border border-border/80 bg-muted/40 p-1.5 sm:mx-auto sm:max-w-md sm:gap-3 sm:p-2">
+                  <TabsTrigger
+                    value="all"
+                    className="flex items-center justify-center gap-2 rounded-xl py-2 text-sm font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm sm:py-2.5"
                   >
-                    <Sparkles className="w-4 h-4" />
+                    <Sparkles className="h-4 w-4" />
                     Upptäck
                   </TabsTrigger>
-                  <TabsTrigger 
-                    value="following" 
-                    className="flex items-center gap-2 rounded-lg py-2 px-4 font-medium transition-all duration-300 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary text-sm"
+                  <TabsTrigger
+                    value="following"
+                    className="flex items-center justify-center gap-2 rounded-xl py-2 text-sm font-medium transition-all duration-200 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm sm:py-2.5"
                   >
-                    <Users className="w-4 h-4" />
+                    <Users className="h-4 w-4" />
                     Följer
                   </TabsTrigger>
                 </TabsList>
 
-                {/* All Analyses Tab */}
-                <TabsContent value="all" className="space-y-6">
+                <TabsContent value="all" className="space-y-5 sm:space-y-6">
                   {analysesLoading ? (
-                     <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6' : 'space-y-4 sm:space-y-6'}`}>
+                    <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:gap-6' : 'space-y-4 sm:space-y-5 lg:space-y-6'}`}>
                       {[...Array(5)].map((_, i) => (
-                        <Card key={i} className="animate-pulse border rounded-2xl">
-                          <CardContent className="p-6">
-                            <div className="h-4 bg-muted rounded mb-3"></div>
-                            <div className="h-4 bg-muted rounded w-2/3 mb-6"></div>
-                            <div className="h-20 bg-muted rounded-xl"></div>
+                        <Card key={i} className="animate-pulse rounded-2xl border border-border/60 bg-card/70">
+                          <CardContent className="space-y-4 p-5 sm:p-6">
+                            <div className="h-4 w-3/4 rounded bg-muted" />
+                            <div className="h-4 w-1/2 rounded bg-muted" />
+                            <div className="h-20 rounded-xl bg-muted" />
                           </CardContent>
                         </Card>
                       ))}
                     </div>
                   ) : filteredAnalyses.length > 0 ? (
-                    <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6' : 'space-y-4 sm:space-y-6'}`}>
+                    <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:gap-6' : 'space-y-4 sm:space-y-5 lg:space-y-6'}`}>
                       {filteredAnalyses.map(analysis => (
-                        <EnhancedAnalysisCard 
-                          key={analysis.id} 
-                          analysis={analysis} 
-                          onViewDetails={handleViewAnalysisDetails} 
-                          onDelete={handleDeleteAnalysis} 
-                          onEdit={handleEditAnalysis} 
-                          showProfileActions={true} 
+                        <EnhancedAnalysisCard
+                          key={analysis.id}
+                          analysis={analysis}
+                          onViewDetails={handleViewAnalysisDetails}
+                          onDelete={handleDeleteAnalysis}
+                          onEdit={handleEditAnalysis}
+                          showProfileActions
                         />
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-16">
-                      <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-6">
-                        <BookOpen className="w-8 h-8 text-muted-foreground" />
+                    <div className="rounded-3xl border border-dashed border-border/70 bg-background/60 px-6 py-16 text-center shadow-inner sm:px-10">
+                      <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+                        <BookOpen className="h-8 w-8 text-muted-foreground" />
                       </div>
-                      <h3 className="text-xl font-semibold mb-3 text-foreground">
-                        {searchTerm || selectedType ? "Inga analyser matchar dina filter" : "Inga analyser hittades"}
+                      <h3 className="mb-3 text-xl font-semibold text-foreground">
+                        {searchTerm || selectedType ? 'Inga analyser matchar dina filter' : 'Inga analyser hittades'}
                       </h3>
-                      <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-                        {searchTerm || selectedType ? "Prova att ändra dina sökkriterier eller filter" : "Var den första att dela en marknadsanalys!"}
+                      <p className="mx-auto mb-8 max-w-md text-sm text-muted-foreground sm:text-base">
+                        {searchTerm || selectedType
+                          ? 'Prova att ändra dina sökkriterier eller återställ filtren.'
+                          : 'Var den första att dela en marknadsanalys!'}
                       </p>
                       {searchTerm && (
-                        <Button 
-                          onClick={() => setSearchTerm('')} 
+                        <Button
+                          onClick={() => setSearchTerm('')}
                           variant="outline"
                           className="rounded-xl border-border hover:bg-muted/50"
                         >
@@ -420,54 +400,61 @@ const Discover = () => {
                   )}
                 </TabsContent>
 
-                {/* Following Analyses Tab */}
-                <TabsContent value="following" className="space-y-6">
+                <TabsContent value="following" className="space-y-5 sm:space-y-6">
                   {followingAnalysesLoading ? (
-                    <div className="space-y-6">
+                    <div className="space-y-4 sm:space-y-5">
                       {[...Array(3)].map((_, i) => (
-                        <Card key={i} className="animate-pulse border rounded-2xl">
-                          <CardContent className="p-6">
-                            <div className="h-4 bg-muted rounded mb-3"></div>
-                            <div className="h-4 bg-muted rounded w-2/3 mb-6"></div>
-                            <div className="h-20 bg-muted rounded-xl"></div>
+                        <Card key={i} className="animate-pulse rounded-2xl border border-border/60 bg-card/70">
+                          <CardContent className="space-y-4 p-5 sm:p-6">
+                            <div className="h-4 w-3/4 rounded bg-muted" />
+                            <div className="h-4 w-1/2 rounded bg-muted" />
+                            <div className="h-20 rounded-xl bg-muted" />
                           </CardContent>
                         </Card>
                       ))}
                     </div>
                   ) : filteredFollowingAnalyses.length > 0 ? (
-                    <div className="space-y-6">
+                    <div className="space-y-5 sm:space-y-6">
                       {searchTerm && (
-                        <div className="text-sm text-muted-foreground bg-muted/50 rounded-xl p-4 border">
+                        <div className="rounded-2xl border border-border/60 bg-muted/40 p-4 text-sm text-muted-foreground">
                           Visar {filteredFollowingAnalyses.length} av {followingAnalyses?.length || 0} analyser
                         </div>
                       )}
-                      <div className="space-y-6">
+                      <div className="space-y-4 sm:space-y-5">
                         {filteredFollowingAnalyses.map(analysis => (
-                          <EnhancedAnalysisCard 
-                            key={analysis.id} 
-                            analysis={analysis} 
-                            onViewDetails={handleViewAnalysisDetails} 
-                            onDelete={handleDeleteAnalysis} 
-                            onEdit={handleEditAnalysis} 
-                            showProfileActions={false} 
+                          <EnhancedAnalysisCard
+                            key={analysis.id}
+                            analysis={analysis}
+                            onViewDetails={handleViewAnalysisDetails}
+                            onDelete={handleDeleteAnalysis}
+                            onEdit={handleEditAnalysis}
+                            showProfileActions={false}
                           />
                         ))}
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center py-16">
-                      <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-6">
-                        <Users className="w-8 h-8 text-muted-foreground" />
+                    <div className="rounded-3xl border border-dashed border-border/70 bg-background/60 px-6 py-16 text-center shadow-inner sm:px-10">
+                      <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+                        <Users className="h-8 w-8 text-muted-foreground" />
                       </div>
-                      <h3 className="text-xl font-semibold mb-3 text-foreground">
-                        {searchTerm ? "Inga analyser matchar din sökning" : user ? "Du följer inga analyser än" : "Logga in för att följa analyser"}
+                      <h3 className="mb-3 text-xl font-semibold text-foreground">
+                        {searchTerm
+                          ? 'Inga analyser matchar din sökning'
+                          : user
+                          ? 'Du följer inga analyser än'
+                          : 'Logga in för att följa analyser'}
                       </h3>
-                      <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-                        {searchTerm ? "Prova att ändra dina sökord" : user ? "Gå till Upptäck-fliken för att hitta analyser att följa" : "Skapa ett konto för att följa dina favoritanalytiker"}
+                      <p className="mx-auto mb-8 max-w-md text-sm text-muted-foreground sm:text-base">
+                        {searchTerm
+                          ? 'Prova att ändra dina sökord.'
+                          : user
+                          ? 'Gå till Upptäck-fliken för att hitta analyser att följa.'
+                          : 'Skapa ett konto för att följa dina favoritanalytiker.'}
                       </p>
                       {searchTerm && (
-                        <Button 
-                          onClick={() => setSearchTerm('')} 
+                        <Button
+                          onClick={() => setSearchTerm('')}
                           variant="outline"
                           className="rounded-xl border-border hover:bg-muted/50"
                         >
@@ -482,6 +469,8 @@ const Discover = () => {
           </Tabs>
         </div>
       </div>
-    </Layout>;
+    </Layout>
+  );
 };
+
 export default Discover;
