@@ -7,6 +7,9 @@ import {
   TableBody,
   TableCell,
 } from '@/components/ui/table';
+import { badgeVariants } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { RefreshCw } from 'lucide-react';
 
 interface Holding {
   id: string;
@@ -23,9 +26,17 @@ interface Holding {
 
 interface HoldingsTableProps {
   holdings: Holding[];
+  onRefreshPrice?: (symbol: string) => void;
+  isUpdatingPrice?: boolean;
+  refreshingTicker?: string | null;
 }
 
-const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings }) => {
+const HoldingsTable: React.FC<HoldingsTableProps> = ({
+  holdings,
+  onRefreshPrice,
+  isUpdatingPrice,
+  refreshingTicker
+}) => {
   const formatCurrency = (amount: number, currency = 'SEK') => {
     return new Intl.NumberFormat('sv-SE', {
       style: 'currency',
@@ -59,11 +70,39 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings }) => {
 
           const profitLoss = purchaseValue !== undefined ? value - purchaseValue : undefined;
           const displayCurrency = holding.price_currency || holding.currency || 'SEK';
+          const trimmedSymbol = holding.symbol?.trim();
+          const normalizedSymbol = trimmedSymbol ? trimmedSymbol.toUpperCase() : undefined;
+          const isRefreshing = Boolean(
+            isUpdatingPrice && refreshingTicker && normalizedSymbol && refreshingTicker === normalizedSymbol
+          );
 
           return (
             <TableRow key={holding.id}>
               <TableCell className="font-medium">{holding.name}</TableCell>
-              <TableCell>{holding.symbol || '-'}</TableCell>
+              <TableCell>
+                {onRefreshPrice && normalizedSymbol ? (
+                  <button
+                    type="button"
+                    onClick={() => onRefreshPrice(normalizedSymbol)}
+                    disabled={isUpdatingPrice}
+                    className={cn(
+                      badgeVariants({ variant: 'outline' }),
+                      'text-xs font-mono inline-flex items-center gap-1 px-2 py-0.5 cursor-pointer transition-colors group hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed'
+                    )}
+                    title="Uppdatera pris från Google Sheets"
+                  >
+                    {normalizedSymbol}
+                    <RefreshCw
+                      className={cn(
+                        'w-3 h-3 text-muted-foreground transition-opacity duration-200',
+                        isRefreshing ? 'opacity-100 animate-spin' : 'opacity-0 group-hover:opacity-100'
+                      )}
+                    />
+                  </button>
+                ) : (
+                  holding.symbol || '-'
+                )}
+              </TableCell>
               <TableCell className="capitalize">{holding.holding_type}</TableCell>
               <TableCell>{formatCurrency(value, displayCurrency)}</TableCell>
               <TableCell>{holding.quantity ?? '-'}</TableCell>

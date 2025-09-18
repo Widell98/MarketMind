@@ -23,6 +23,15 @@ import { supabase } from '@/integrations/supabase/client';
 type SheetTicker = {
   name: string;
   symbol: string;
+  price: number | null;
+  currency: string | null;
+};
+
+type RawSheetTicker = {
+  symbol?: string | null;
+  name?: string | null;
+  price?: number | null;
+  currency?: string | null;
 };
 
 const useSheetTickers = () => {
@@ -62,19 +71,45 @@ const useSheetTickers = () => {
         }
 
         const list = Array.isArray(data?.tickers)
-          ? (data.tickers as SheetTicker[])
+          ? (data.tickers as RawSheetTicker[])
           : [];
 
         if (list.length === 0) {
           console.warn('list-sheet-tickers edge function returned an empty list.');
         }
 
-        setTickers(
-          list.map((item) => ({
-            symbol: item.symbol,
-            name: item.name ?? item.symbol,
-          })),
-        );
+        const sanitizedTickers: SheetTicker[] = list
+          .map((item): SheetTicker | null => {
+            if (!item || typeof item.symbol !== 'string') {
+              return null;
+            }
+
+            const trimmedSymbol = item.symbol.trim();
+            if (!trimmedSymbol) {
+              return null;
+            }
+
+            const normalizedSymbol = trimmedSymbol.toUpperCase();
+            const resolvedName = typeof item.name === 'string' && item.name.trim().length > 0
+              ? item.name.trim()
+              : normalizedSymbol;
+            const resolvedPrice = typeof item.price === 'number' && Number.isFinite(item.price) && item.price > 0
+              ? item.price
+              : null;
+            const resolvedCurrency = typeof item.currency === 'string' && item.currency.trim().length > 0
+              ? item.currency.trim().toUpperCase()
+              : null;
+
+            return {
+              symbol: normalizedSymbol,
+              name: resolvedName,
+              price: resolvedPrice,
+              currency: resolvedCurrency,
+            };
+          })
+          .filter((item): item is SheetTicker => item !== null);
+
+        setTickers(sanitizedTickers);
       } catch (err) {
         if (!isMounted) {
           return;
@@ -127,6 +162,8 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [symbolError, setSymbolError] = useState<string | null>(null);
+  const [matchedTicker, setMatchedTicker] = useState<SheetTicker | null>(null);
+  const [priceOverridden, setPriceOverridden] = useState(false);
 
   // Update form data when initialData changes
   useEffect(() => {
@@ -142,16 +179,77 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         market: initialData.market || '',
         currency: initialData.currency || 'SEK'
       });
+      setPriceOverridden(Boolean(initialData.purchase_price));
+    } else {
+      setPriceOverridden(false);
     }
   }, [initialData]);
+
+  useEffect(() => {
+    const rawSymbol = formData.symbol?.trim();
+    if (!rawSymbol) {
+      setMatchedTicker(null);
+      return;
+    }
+
+    const normalizedSymbol = rawSymbol.toUpperCase();
+    const foundTicker = tickers.find((ticker) => ticker.symbol.toUpperCase() === normalizedSymbol) ?? null;
+    setMatchedTicker(foundTicker);
+  }, [formData.symbol, tickers]);
+
+  useEffect(() => {
+    if (!matchedTicker || priceOverridden) {
+      return;
+    }
+
+    if (typeof matchedTicker.price !== 'number' || !Number.isFinite(matchedTicker.price) || matchedTicker.price <= 0) {
+      return;
+    }
+
+    const nextPrice = matchedTicker.price.toString();
+
+    setFormData((prev) => {
+      if (prev.purchase_price === nextPrice) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        purchase_price: nextPrice,
+      };
+    });
+  }, [matchedTicker, priceOverridden]);
+
+  useEffect(() => {
+    setPriceOverridden(false);
+  }, [matchedTicker?.symbol]);
+
+  const formatDisplayPrice = (price: number) =>
+    new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(price);
+
+  const resolvedSheetPrice = matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0
+    ? matchedTicker.price
+    : null;
+
+  const sheetPriceCurrency = matchedTicker?.currency ?? (formData.currency || undefined);
+
+  const sheetPriceDisplay = resolvedSheetPrice !== null
+    ? `${formatDisplayPrice(resolvedSheetPrice)}${sheetPriceCurrency ? ` ${sheetPriceCurrency}` : ''}`.trim()
+    : '';
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
-    if (field === 'symbol' && symbolError) {
-      setSymbolError(null);
+    if (field === 'symbol') {
+      if (symbolError) {
+        setSymbolError(null);
+      }
+      setPriceOverridden(false);
+    }
+    if (field === 'purchase_price') {
+      setPriceOverridden(true);
     }
   };
 
@@ -189,6 +287,16 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       holdingData.current_value = calculatedValue;
     }
 
+    if (matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0) {
+      holdingData.current_price_per_unit = matchedTicker.price;
+      holdingData.price_currency = matchedTicker.currency ?? holdingData.currency;
+
+      if (quantity !== undefined && typeof holdingData.current_value !== 'number') {
+        const computedCurrentValue = Math.round(quantity * matchedTicker.price * 100) / 100;
+        holdingData.current_value = computedCurrentValue;
+      }
+    }
+
     const success = await onAdd(holdingData);
 
     if (success) {
@@ -205,6 +313,8 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         currency: 'SEK'
       });
       setSymbolError(null);
+      setMatchedTicker(null);
+      setPriceOverridden(false);
       onClose();
     }
 
@@ -225,6 +335,8 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         currency: 'SEK'
       });
       setSymbolError(null);
+      setMatchedTicker(null);
+      setPriceOverridden(false);
       onClose();
     }
   };
@@ -279,12 +391,16 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
               const label = ticker.name && ticker.name !== ticker.symbol
                 ? `${ticker.name} (${ticker.symbol})`
                 : ticker.symbol;
+              const priceLabel = typeof ticker.price === 'number' && Number.isFinite(ticker.price) && ticker.price > 0
+                ? ` – ${formatDisplayPrice(ticker.price)}${ticker.currency ? ` ${ticker.currency}` : ''}`.trimEnd()
+                : '';
+              const optionLabel = `${label}${priceLabel}`;
 
               return (
                 <option
                   key={ticker.symbol}
                   value={ticker.symbol}
-                  label={label}
+                  label={optionLabel}
                 />
               );
             })}
@@ -351,6 +467,21 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
                 placeholder="t.ex. 150.50"
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="sheet_price">Aktuellt pris (Google Sheets)</Label>
+            <Input
+              id="sheet_price"
+              value={sheetPriceDisplay}
+              readOnly
+              placeholder={tickersLoading ? 'Hämtar pris...' : 'Välj en ticker för att hämta priset'}
+            />
+            <p className="text-xs text-muted-foreground">
+              {sheetPriceDisplay
+                ? 'Priset läggs in som förvalt köppris men kan justeras innan du sparar.'
+                : 'Priset hämtas automatiskt när du väljer en ticker från listan.'}
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

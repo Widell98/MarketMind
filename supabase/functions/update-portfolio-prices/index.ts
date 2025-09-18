@@ -70,6 +70,18 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    let payload: { ticker?: string } | null = null;
+    if (req.method === "POST") {
+      try {
+        payload = await req.json();
+      } catch {
+        payload = null;
+      }
+    }
+
+    const requestedTicker = payload?.ticker ? String(payload.ticker).trim().toUpperCase() : null;
+    let processedRequestedTicker = false;
+
     const supabase = getSupabaseClient();
 
     // Hämta CSV från Google Sheets (ändra output till csv)
@@ -96,6 +108,12 @@ serve(async (req) => {
       const rawNameValue = normalizeValue(company);
       const normalizedSymbol = normalizeSymbol(rawSymbolValue);
       const normalizedName = normalizeName(rawNameValue);
+      const symbolVariants = getSymbolVariants(normalizedSymbol);
+      if (requestedTicker) {
+        const matchesTicker = symbolVariants.some((variant) => variant.toUpperCase() === requestedTicker);
+        if (!matchesTicker) continue;
+        processedRequestedTicker = true;
+      }
       const namePattern = normalizedName ? `${normalizedName}%` : null;
       const price = parsePrice(rawPrice);
       const originalCurrency = normalizeValue(rawCurrency)?.toUpperCase() || null;
@@ -116,7 +134,6 @@ serve(async (req) => {
         continue;
 
       // Hitta matchande innehav i Supabase
-      const symbolVariants = getSymbolVariants(normalizedSymbol);
       const query = supabase.from("user_holdings").select("id, quantity").neq("holding_type", "cash");
 
       if (symbolVariants.length > 0 && namePattern) {
@@ -167,9 +184,17 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, updated, errors, unmatched }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        updated,
+        errors,
+        unmatched,
+        requestedTicker,
+        tickerFound: requestedTicker ? processedRequestedTicker : undefined,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (err) {
     console.error("Portfolio update error:", err);
     return new Response(

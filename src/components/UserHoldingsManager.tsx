@@ -53,7 +53,15 @@ interface UserHoldingsManagerProps {
 }
 
 const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = [] }) => {
-  const { actualHoldings, loading, deleteHolding, recommendations, addHolding, updateHolding } = useUserHoldings();
+  const {
+    actualHoldings,
+    loading,
+    deleteHolding,
+    recommendations,
+    addHolding,
+    updateHolding,
+    refetch: refetchHoldings
+  } = useUserHoldings();
   const { performance, updatePrices, updating } = usePortfolioPerformance();
   const { 
     cashHoldings, 
@@ -78,6 +86,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
   const [editingHolding, setEditingHolding] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [isChartOpen, setIsChartOpen] = useState(false);
+  const [refreshingTicker, setRefreshingTicker] = useState<string | null>(null);
   
   const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
     console.log(`Deleting holding: ${holdingName} (${holdingId})`);
@@ -137,11 +146,28 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
 
   const handleUpdateHolding = async (holdingData: any) => {
     if (!editingHolding) return false;
-    
-    const success = await updateHolding(editingHolding.id, holdingData);
+
+    const rawSymbol = typeof holdingData.symbol === 'string'
+      ? holdingData.symbol
+      : editingHolding.symbol;
+    const normalizedSymbol = rawSymbol?.trim().length
+      ? rawSymbol.trim().toUpperCase()
+      : undefined;
+
+    const payload = {
+      ...holdingData,
+      ...(typeof holdingData.symbol === 'string'
+        ? { symbol: normalizedSymbol }
+        : {})
+    };
+
+    const success = await updateHolding(editingHolding.id, payload);
     if (success) {
       setShowEditHoldingDialog(false);
       setEditingHolding(null);
+      if (normalizedSymbol) {
+        void handleUpdateHoldingPrice(normalizedSymbol);
+      }
     }
     return success;
   };
@@ -150,8 +176,31 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
     const success = await addHolding(holdingData);
     if (success) {
       setShowAddHoldingDialog(false);
+      const normalizedSymbol = typeof holdingData.symbol === 'string'
+        ? holdingData.symbol.trim().toUpperCase()
+        : undefined;
+      if (normalizedSymbol) {
+        void handleUpdateHoldingPrice(normalizedSymbol);
+      }
     }
     return success;
+  };
+
+  const handleUpdateHoldingPrice = async (symbol?: string) => {
+    const normalizedSymbol = symbol?.trim().toUpperCase();
+    if (!normalizedSymbol || updating) {
+      return;
+    }
+
+    setRefreshingTicker(normalizedSymbol);
+    try {
+      await updatePrices(normalizedSymbol);
+      if (typeof refetchHoldings === 'function') {
+        await refetchHoldings({ silent: true });
+      }
+    } finally {
+      setRefreshingTicker(null);
+    }
   };
 
   // Prepare holdings data for grouping - fix type issues
@@ -376,11 +425,19 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                         }
                       } : handleEditHolding}
                       onDelete={group.key === 'cash' ? handleDeleteCash : handleDeleteHolding}
+                      onRefreshPrice={group.key === 'cash' ? undefined : handleUpdateHoldingPrice}
+                      isUpdatingPrice={updating}
+                      refreshingTicker={refreshingTicker}
                     />
                   ))}
                 </div>
               ) : (
-                <HoldingsTable holdings={filteredHoldings} />
+                <HoldingsTable
+                  holdings={filteredHoldings}
+                  onRefreshPrice={handleUpdateHoldingPrice}
+                  isUpdatingPrice={updating}
+                  refreshingTicker={refreshingTicker}
+                />
               )}
 
               {allHoldings.length > 0 && (

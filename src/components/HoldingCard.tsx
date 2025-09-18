@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Badge, badgeVariants } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   MessageSquare,
@@ -9,9 +9,11 @@ import {
   Trash2,
   Wallet,
   Building2,
-  TrendingUp
+  TrendingUp,
+  RefreshCw
 } from 'lucide-react';
 import SmartHoldingSuggestions from './SmartHoldingSuggestions';
+import { cn } from '@/lib/utils';
 
 interface HoldingCardProps {
   holding: {
@@ -32,6 +34,9 @@ interface HoldingCardProps {
   onEdit?: (id: string) => void;
   onDelete: (id: string, name: string) => void;
   showAISuggestions?: boolean;
+  onRefreshPrice?: (symbol: string) => void;
+  isUpdatingPrice?: boolean;
+  refreshingTicker?: string | null;
 }
 
 const HoldingCard: React.FC<HoldingCardProps> = ({
@@ -40,7 +45,10 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   onDiscuss,
   onEdit,
   onDelete,
-  showAISuggestions = true
+  showAISuggestions = true,
+  onRefreshPrice,
+  isUpdatingPrice,
+  refreshingTicker
 }) => {
   const formatCurrency = (amount: number, currency = 'SEK') => {
     return new Intl.NumberFormat('sv-SE', {
@@ -68,6 +76,11 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
     : 0;
 
   const displayCurrency = effectiveCurrency;
+  const trimmedSymbol = holding.symbol?.trim();
+  const normalizedSymbol = trimmedSymbol ? trimmedSymbol.toUpperCase() : undefined;
+  const isRefreshing = Boolean(
+    isUpdatingPrice && refreshingTicker && normalizedSymbol && refreshingTicker === normalizedSymbol
+  );
 
   const handleSuggestionAction = (suggestionId: string, action: string) => {
     console.log(`Suggestion ${suggestionId} ${action}`);
@@ -95,12 +108,33 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold text-foreground truncate">{holding.name}</h3>
                   {holding.symbol && (
-                    <Badge variant="outline" className="text-xs font-mono">
-                      {holding.symbol}
-                    </Badge>
+                    onRefreshPrice && normalizedSymbol ? (
+                      <button
+                        type="button"
+                        onClick={() => onRefreshPrice(normalizedSymbol)}
+                        disabled={isUpdatingPrice}
+                        className={cn(
+                          badgeVariants({ variant: 'outline' }),
+                          'text-xs font-mono inline-flex items-center gap-1 px-2 py-0.5 cursor-pointer transition-colors group hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed'
+                        )}
+                        title="Uppdatera pris från Google Sheets"
+                      >
+                        {normalizedSymbol}
+                        <RefreshCw
+                          className={cn(
+                            'w-3 h-3 text-muted-foreground transition-opacity duration-200',
+                            isRefreshing ? 'opacity-100 animate-spin' : 'opacity-0 group-hover:opacity-100'
+                          )}
+                        />
+                      </button>
+                    ) : (
+                      <Badge variant="outline" className="text-xs font-mono">
+                        {holding.symbol}
+                      </Badge>
+                    )
                   )}
                 </div>
-                
+
                 <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   <Badge variant="secondary" className="text-xs">
                     {holding.holding_type === 'cash' ? 'Kassa' : holding.holding_type}
