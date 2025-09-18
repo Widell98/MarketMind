@@ -2,6 +2,23 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { resolveHoldingValue, convertToSEK } from '@/utils/currencyUtils';
+
+const parseNumeric = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.replace(/\s/g, '').replace(',', '.');
+    const parsed = parseFloat(normalized);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+};
 
 export interface PerformanceData {
   totalValue: number;
@@ -140,7 +157,12 @@ export const usePortfolioPerformance = () => {
       const cashHoldings = allHoldings.filter(h => h.is_cash);
 
       // Calculate total cash
-      const totalCash = cashHoldings.reduce((sum, holding) => sum + (holding.current_value || 0), 0);
+      const totalCash = cashHoldings.reduce((sum, holding) => {
+        const parsedValue = parseNumeric(holding.current_value);
+        const cashValue = parsedValue ?? 0;
+        const cashCurrency = typeof holding.currency === 'string' ? holding.currency : 'SEK';
+        return sum + convertToSEK(cashValue, cashCurrency);
+      }, 0);
 
       // Get yesterday's performance data for day change calculation
       const yesterday = new Date();
@@ -160,14 +182,29 @@ export const usePortfolioPerformance = () => {
       const holdingsPerf: HoldingPerformance[] = [];
 
       securities.forEach(holding => {
-        const currentValue = holding.current_value || 0;
-        const purchasePrice = holding.purchase_price || 0;
-        const quantity = holding.quantity || 0;
-        const investedValue = purchasePrice * quantity;
+        const {
+          valueInSEK: currentValue,
+          quantity,
+          priceCurrency,
+        } = resolveHoldingValue(holding);
+
+        const purchasePrice = parseNumeric(holding.purchase_price) ?? 0;
+
+        const investedValueOriginal = purchasePrice > 0 && quantity > 0
+          ? purchasePrice * quantity
+          : 0;
+
+        const investedValue = investedValueOriginal > 0
+          ? convertToSEK(investedValueOriginal, holding.currency || priceCurrency || 'SEK')
+          : 0;
 
         // Find yesterday's value for this holding
         const yesterdayHolding = yesterdayData?.find(d => d.holding_id === holding.id);
-        const yesterdayValue = yesterdayHolding?.total_value || currentValue;
+        const yesterdayRawValue = yesterdayHolding
+          ? parseNumeric(yesterdayHolding.total_value) ?? currentValue
+          : currentValue;
+        const yesterdayCurrency = yesterdayHolding?.currency || holding.currency || priceCurrency || 'SEK';
+        const yesterdayValue = convertToSEK(yesterdayRawValue, yesterdayCurrency);
 
         const profit = currentValue - investedValue;
         const profitPercentage = investedValue > 0 ? (profit / investedValue) * 100 : 0;

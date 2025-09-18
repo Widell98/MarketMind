@@ -10,6 +10,7 @@ import {
 import { badgeVariants } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { RefreshCw } from 'lucide-react';
+import { formatCurrency, resolveHoldingValue, convertToSEK } from '@/utils/currencyUtils';
 
 interface Holding {
   id: string;
@@ -22,6 +23,7 @@ interface Holding {
   purchase_price?: number;
   current_price_per_unit?: number;
   price_currency?: string;
+  base_currency?: string;
 }
 
 interface HoldingsTableProps {
@@ -37,15 +39,6 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
   isUpdatingPrice,
   refreshingTicker
 }) => {
-  const formatCurrency = (amount: number, currency = 'SEK') => {
-    return new Intl.NumberFormat('sv-SE', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   return (
     <Table>
       <TableHeader>
@@ -60,16 +53,21 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
       </TableHeader>
       <TableBody>
         {holdings.map((holding) => {
-          const value = typeof holding.current_value === 'number'
-            ? holding.current_value
-            : 0;
+          const {
+            valueInSEK,
+            quantity,
+            priceCurrency,
+          } = resolveHoldingValue(holding);
 
-          const purchaseValue = holding.purchase_price && holding.quantity
-            ? holding.purchase_price * holding.quantity
+          const purchaseValueOriginal = typeof holding.purchase_price === 'number' && quantity > 0
+            ? holding.purchase_price * quantity
+            : undefined;
+          const purchaseValueSEK = purchaseValueOriginal !== undefined
+            ? convertToSEK(purchaseValueOriginal, holding.base_currency || priceCurrency || holding.currency || 'SEK')
             : undefined;
 
-          const profitLoss = purchaseValue !== undefined ? value - purchaseValue : undefined;
-          const displayCurrency = holding.price_currency || holding.currency || 'SEK';
+          const profitLoss = purchaseValueSEK !== undefined ? valueInSEK - purchaseValueSEK : undefined;
+
           const trimmedSymbol = holding.symbol?.trim();
           const normalizedSymbol = trimmedSymbol ? trimmedSymbol.toUpperCase() : undefined;
           const isRefreshing = Boolean(
@@ -104,10 +102,10 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
                 )}
               </TableCell>
               <TableCell className="capitalize">{holding.holding_type}</TableCell>
-              <TableCell>{formatCurrency(value, displayCurrency)}</TableCell>
-              <TableCell>{holding.quantity ?? '-'}</TableCell>
+              <TableCell>{formatCurrency(valueInSEK, 'SEK')}</TableCell>
+              <TableCell>{quantity > 0 ? quantity : '-'}</TableCell>
               <TableCell className={profitLoss === undefined ? '' : profitLoss >= 0 ? 'text-green-600' : 'text-red-600'}>
-                {profitLoss !== undefined ? formatCurrency(profitLoss, displayCurrency) : '-'}
+                {profitLoss !== undefined ? formatCurrency(profitLoss, 'SEK') : '-'}
               </TableCell>
             </TableRow>
           );

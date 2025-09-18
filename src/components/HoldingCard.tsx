@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import SmartHoldingSuggestions from './SmartHoldingSuggestions';
 import { cn } from '@/lib/utils';
+import { formatCurrency, resolveHoldingValue } from '@/utils/currencyUtils';
 
 interface HoldingCardProps {
   holding: {
@@ -50,15 +51,6 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   isUpdatingPrice,
   refreshingTicker
 }) => {
-  const formatCurrency = (amount: number, currency = 'SEK') => {
-    return new Intl.NumberFormat('sv-SE', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
-
   const getHoldingIcon = () => {
     if (holding.holding_type === 'cash') return Wallet;
     if (holding.holding_type === 'stock') return Building2;
@@ -68,14 +60,15 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   const Icon = getHoldingIcon();
   const isCash = holding.holding_type === 'cash';
 
-  const effectivePrice = holding.current_price_per_unit;
-  const effectiveCurrency = holding.price_currency || holding.currency || 'SEK';
+  const {
+    valueInSEK: displayValue,
+    pricePerUnit: effectivePrice,
+    priceCurrency: effectiveCurrency,
+    pricePerUnitInSEK,
+    quantity: normalizedQuantity,
+  } = resolveHoldingValue(holding);
 
-  const displayValue = typeof holding.current_value === 'number'
-    ? holding.current_value
-    : 0;
-
-  const displayCurrency = effectiveCurrency;
+  const quantity = normalizedQuantity;
   const trimmedSymbol = holding.symbol?.trim();
   const normalizedSymbol = trimmedSymbol ? trimmedSymbol.toUpperCase() : undefined;
   const isRefreshing = Boolean(
@@ -162,15 +155,15 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
             <div>
               <span className="text-muted-foreground">Värde:</span>
               <div className="font-semibold text-foreground">
-                {formatCurrency(displayValue, displayCurrency)}
+                {formatCurrency(displayValue, 'SEK')}
               </div>
             </div>
 
-            {!isCash && holding.quantity && (
+            {!isCash && quantity > 0 && (
               <div>
                 <span className="text-muted-foreground">Antal:</span>
                 <div className="font-semibold text-foreground">
-                  {holding.quantity}
+                  {quantity}
                 </div>
               </div>
             )}
@@ -181,8 +174,17 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                   <span className="text-muted-foreground">Aktuellt pris:</span>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">
-                      {effectivePrice
-                        ? formatCurrency(effectivePrice, effectiveCurrency)
+                      {typeof effectivePrice === 'number' && Number.isFinite(effectivePrice) && effectivePrice > 0
+                        ? (
+                          <>
+                            {formatCurrency(effectivePrice, effectiveCurrency)}
+                            {effectiveCurrency !== 'SEK' && pricePerUnitInSEK !== null && pricePerUnitInSEK > 0 && (
+                              <span className="text-xs text-muted-foreground ml-2">
+                                ≈ {formatCurrency(pricePerUnitInSEK, 'SEK')}
+                              </span>
+                            )}
+                          </>
+                        )
                         : 'Pris saknas'}
                     </span>
                   </div>
