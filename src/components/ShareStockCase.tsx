@@ -16,21 +16,21 @@ const ShareStockCase: React.FC<ShareStockCaseProps> = ({ stockCaseId, title }) =
   const { toast } = useToast();
   
   const shareUrl = `${window.location.origin}/stock-cases/${stockCaseId}`;
-  const shareText = `Check out this interesting stock case: ${title}`;
+  const shareText = `Kolla in det här aktiecaset: ${title}`;
 
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       toast({
-        title: "Link copied!",
-        description: "The link has been copied to your clipboard.",
+        title: "Länk kopierad!",
+        description: "Länken har kopierats till urklipp.",
       });
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       toast({
-        title: "Failed to copy",
-        description: "Could not copy the link to clipboard.",
+        title: "Kunde inte kopiera",
+        description: "Det gick inte att kopiera länken.",
         variant: "destructive",
       });
     }
@@ -61,14 +61,14 @@ const ShareStockCase: React.FC<ShareStockCaseProps> = ({ stockCaseId, title }) =
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Share className="w-4 h-4 mr-2" />
-          Share
+        <Button variant="outline" size="sm" className="w-full justify-center gap-2 sm:w-auto">
+          <Share className="h-4 w-4" />
+          Dela
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Share Stock Case</DialogTitle>
+          <DialogTitle>Dela aktiecase</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="flex items-center space-x-2">

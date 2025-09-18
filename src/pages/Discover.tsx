@@ -1,12 +1,25 @@
-import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Layout from '@/components/Layout';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Camera, Sparkles } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Sparkles, Camera, PenTool, BookOpen, Users } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import Layout from '@/components/Layout';
 import StockCaseCard from '@/components/StockCaseCard';
 import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
 import { useStockCases } from '@/hooks/useStockCases';
+import { Analysis } from '@/types/analysis';
+
+// Hooks
+import { useStockCases } from '@/hooks/useStockCases';
+import { useAnalyses } from '@/hooks/useAnalyses';
+import { useFollowingAnalyses } from '@/hooks/useFollowingAnalyses';
+const Discover = () => {
+  const {
+    user
+  } = useAuth();
+  const navigate = useNavigate();
 
 const Discover: React.FC = () => {
   const navigate = useNavigate();
@@ -21,6 +34,23 @@ const Discover: React.FC = () => {
   const [caseSortBy, setCaseSortBy] = useState('created_at');
   const [caseSortOrder, setCaseSortOrder] = useState<'asc' | 'desc'>('desc');
   const [caseViewMode, setCaseViewMode] = useState<'grid' | 'list'>('grid');
+
+  // Data hooks
+  const {
+    stockCases: allStockCases,
+    loading: stockCasesLoading
+  } = useStockCases(false);
+  const {
+    data: analyses,
+    isLoading: analysesLoading
+  } = useAnalyses(50);
+  const {
+    data: followingAnalyses,
+    isLoading: followingAnalysesLoading
+  } = useFollowingAnalyses();
+
+
+  // Filter and sort stock cases
 
   const getFilteredCases = useMemo(() => {
     let filtered = [...(allStockCases || [])];
@@ -109,6 +139,7 @@ const Discover: React.FC = () => {
     console.log('Delete stock case:', id);
   };
 
+
   return (
     <Layout>
       <div className="min-h-screen bg-background">
@@ -118,14 +149,31 @@ const Discover: React.FC = () => {
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                 <Sparkles className="w-6 h-6 text-primary" />
               </div>
+
+  const handleViewAnalysisDetails = (id: string) => {
+    navigate(`/analysis/${id}`);
+  };
+  const handleDeleteAnalysis = async (id: string) => {
+    console.log('Delete analysis:', id);
+  };
+  const handleEditAnalysis = (analysis: Analysis) => {
+    console.log('Edit analysis:', analysis);
+  };
+  return (
+    <Layout>
+      <div className="w-full pb-12">
+        <div className="mx-auto w-full max-w-6xl space-y-8 px-1 sm:px-4 lg:px-0">
+          <section className="rounded-3xl border border-border/60 bg-card/70 p-6 text-center shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:p-10">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 sm:h-14 sm:w-14">
+              <Sparkles className="h-6 w-6 text-primary" />
             </div>
-            <h1 className="text-4xl sm:text-5xl font-semibold text-foreground tracking-tight">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
               Upptäck & Utforska
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto font-light leading-relaxed">
               Hitta inspiration genom visuella aktiecase
             </p>
-          </div>
+          </section>
 
           <div className="bg-card border rounded-2xl p-6 mb-8">
             <EnhancedStockCasesSearch
@@ -203,4 +251,3 @@ const Discover: React.FC = () => {
 };
 
 export default Discover;
-

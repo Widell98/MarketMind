@@ -4,6 +4,17 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Search, Filter, SortAsc, SortDesc, Grid3X3, List, X } from 'lucide-react';
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { cn } from '@/lib/utils';
 
 interface EnhancedAnalysesSearchProps {
   searchTerm: string;
@@ -20,6 +31,20 @@ interface EnhancedAnalysesSearchProps {
   totalCount: number;
 }
 
+const getTypeLabel = (type: string) => {
+  const labels: Record<string, string> = {
+    market_insight: 'Marknadsinsikt',
+    technical_analysis: 'Teknisk analys',
+    fundamental_analysis: 'Fundamental analys',
+    sector_analysis: 'Sektoranalys',
+    portfolio_analysis: 'Portföljanalys',
+    position_analysis: 'Positionsanalys',
+    sector_deep_dive: 'Sektordjupdykning',
+  };
+
+  return labels[type] || type;
+};
+
 const EnhancedAnalysesSearch: React.FC<EnhancedAnalysesSearchProps> = ({
   searchTerm,
   onSearchChange,
@@ -32,33 +57,51 @@ const EnhancedAnalysesSearch: React.FC<EnhancedAnalysesSearchProps> = ({
   viewMode,
   onViewModeChange,
   resultsCount,
-  totalCount
+  totalCount,
 }) => {
-  const hasActiveFilters = searchTerm || selectedType;
+  const normalizedType = selectedType && selectedType !== 'all-types' ? selectedType : '';
+  const hasActiveFilters = Boolean(searchTerm || normalizedType);
+  const filtersCount = [searchTerm, normalizedType].filter(Boolean).length;
 
   const clearAllFilters = () => {
     onSearchChange('');
     onTypeChange('');
   };
 
-  const getTypeLabel = (type: string) => {
-    const labels = {
-      'market_insight': 'Marknadsinsikt',
-      'technical_analysis': 'Teknisk analys',
-      'fundamental_analysis': 'Fundamental analys', 
-      'sector_analysis': 'Sektoranalys',
-      'portfolio_analysis': 'Portföljanalys',
-      'position_analysis': 'Positionsanalys',
-      'sector_deep_dive': 'Sektordjupdykning'
-    };
-    return labels[type as keyof typeof labels] || type;
-  };
+  const ViewModeToggle = ({ className }: { className?: string }) => (
+    <div
+      className={cn(
+        'flex items-center gap-1 rounded-lg border border-border/60 bg-muted/40 p-1 shadow-sm',
+        className,
+      )}
+    >
+      <Button
+        type="button"
+        variant={viewMode === 'grid' ? 'default' : 'ghost'}
+        size="sm"
+        aria-pressed={viewMode === 'grid'}
+        onClick={() => onViewModeChange('grid')}
+        className="px-3"
+      >
+        <Grid3X3 className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        variant={viewMode === 'list' ? 'default' : 'ghost'}
+        size="sm"
+        aria-pressed={viewMode === 'list'}
+        onClick={() => onViewModeChange('list')}
+        className="px-3"
+      >
+        <List className="h-4 w-4" />
+      </Button>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
-      {/* Search Bar */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Sök analyser, författare eller innehåll..."
           value={searchTerm}
@@ -67,21 +110,127 @@ const EnhancedAnalysesSearch: React.FC<EnhancedAnalysesSearchProps> = ({
         />
         {searchTerm && (
           <Button
+            type="button"
             variant="ghost"
             size="sm"
             onClick={() => onSearchChange('')}
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+            className="absolute right-2 top-1/2 h-6 w-6 -translate-y-1/2 p-0"
           >
-            <X className="w-3 h-3" />
+            <X className="h-3 w-3" />
           </Button>
         )}
       </div>
 
-      {/* Filters Row */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="flex flex-col sm:flex-row gap-3 flex-1">
-          {/* Analysis Type Filter */}
-          <Select value={selectedType || ""} onValueChange={onTypeChange}>
+      <div className="flex flex-col gap-3 sm:hidden">
+        <div className="flex items-center gap-2">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex flex-1 items-center justify-between gap-2 rounded-xl border-border/70 bg-card/80 py-2 pl-3 pr-3 text-sm font-medium"
+              >
+                <span className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" />
+                  Filter
+                </span>
+                {filtersCount > 0 && (
+                  <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary/90 px-2 text-xs font-semibold text-primary-foreground">
+                    {filtersCount}
+                  </span>
+                )}
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="bottom"
+              className="h-auto max-h-[85vh] rounded-t-3xl border-t border-border/60 bg-background px-6 pb-6"
+            >
+              <SheetHeader>
+                <SheetTitle>Filtrera analyser</SheetTitle>
+                <SheetDescription>Ställ in vyer som passar din analysjakt.</SheetDescription>
+              </SheetHeader>
+
+              <div className="mt-6 space-y-6">
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Analystyp</p>
+                    <Select value={selectedType || ''} onValueChange={onTypeChange}>
+                      <SelectTrigger className="mt-2 w-full">
+                        <SelectValue placeholder="Välj analystyp" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all-types">Alla typer</SelectItem>
+                        <SelectItem value="market_insight">Marknadsinsikt</SelectItem>
+                        <SelectItem value="technical_analysis">Teknisk analys</SelectItem>
+                        <SelectItem value="fundamental_analysis">Fundamental analys</SelectItem>
+                        <SelectItem value="sector_analysis">Sektoranalys</SelectItem>
+                        <SelectItem value="portfolio_analysis">Portföljanalys</SelectItem>
+                        <SelectItem value="position_analysis">Positionsanalys</SelectItem>
+                        <SelectItem value="sector_deep_dive">Sektordjupdykning</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Sortera efter</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <Select value={sortBy} onValueChange={onSortChange}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Sortera" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="created_at">Senaste</SelectItem>
+                          <SelectItem value="likes_count">Gillningar</SelectItem>
+                          <SelectItem value="views_count">Visningar</SelectItem>
+                          <SelectItem value="title">Titel</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onSortOrderChange(sortOrder === 'asc' ? 'desc' : 'asc')}
+                        className="h-10 w-10 flex-shrink-0"
+                        aria-label={sortOrder === 'asc' ? 'Sortera fallande' : 'Sortera stigande'}
+                      >
+                        {sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Visa som</p>
+                    <ViewModeToggle className="mt-2 w-full justify-between" />
+                  </div>
+                </div>
+              </div>
+
+              <SheetFooter className="mt-6 gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="justify-start px-0 text-muted-foreground hover:text-foreground"
+                  onClick={clearAllFilters}
+                >
+                  Rensa filter
+                </Button>
+                <SheetClose asChild>
+                  <Button type="button" className="w-full">
+                    Visa resultat
+                  </Button>
+                </SheetClose>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
+          <ViewModeToggle className="ml-auto" />
+        </div>
+      </div>
+
+      <div className="hidden items-start justify-between gap-3 sm:flex">
+        <div className="flex flex-1 flex-col gap-3 sm:flex-row">
+          <Select value={selectedType || ''} onValueChange={onTypeChange}>
             <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="Välj analystyp" />
             </SelectTrigger>
@@ -97,7 +246,6 @@ const EnhancedAnalysesSearch: React.FC<EnhancedAnalysesSearchProps> = ({
             </SelectContent>
           </Select>
 
-          {/* Sort Options */}
           <div className="flex gap-2">
             <Select value={sortBy} onValueChange={onSortChange}>
               <SelectTrigger className="w-full sm:w-[140px]">
@@ -110,72 +258,57 @@ const EnhancedAnalysesSearch: React.FC<EnhancedAnalysesSearchProps> = ({
                 <SelectItem value="title">Titel</SelectItem>
               </SelectContent>
             </Select>
-
             <Button
+              type="button"
               variant="outline"
               size="sm"
               onClick={() => onSortOrderChange(sortOrder === 'asc' ? 'desc' : 'asc')}
               className="px-3"
+              aria-label={sortOrder === 'asc' ? 'Sortera fallande' : 'Sortera stigande'}
             >
-              {sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
+              {sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
             </Button>
           </div>
         </div>
 
-        {/* View Mode Toggle */}
-        <div className="flex gap-1 border rounded-lg p-1">
-          <Button
-            variant={viewMode === 'grid' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => onViewModeChange('grid')}
-            className="px-3"
-          >
-            <Grid3X3 className="w-4 h-4" />
-          </Button>
-          <Button
-            variant={viewMode === 'list' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => onViewModeChange('list')}
-            className="px-3"
-          >
-            <List className="w-4 h-4" />
-          </Button>
-        </div>
+        <ViewModeToggle />
       </div>
 
-      {/* Active Filters & Results */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="flex items-center gap-2 flex-wrap">
-          {hasActiveFilters && (
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          {hasActiveFilters ? (
             <>
               <span className="text-sm text-muted-foreground">Aktiva filter:</span>
               {searchTerm && (
                 <Badge variant="secondary" className="gap-1">
                   Sök: {searchTerm}
                   <Button
+                    type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => onSearchChange('')}
                     className="h-4 w-4 p-0 hover:bg-transparent"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="h-3 w-3" />
                   </Button>
                 </Badge>
               )}
-              {selectedType && (
+              {normalizedType && (
                 <Badge variant="secondary" className="gap-1">
-                  {getTypeLabel(selectedType)}
+                  {getTypeLabel(normalizedType)}
                   <Button
+                    type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => onTypeChange('')}
                     className="h-4 w-4 p-0 hover:bg-transparent"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="h-3 w-3" />
                   </Button>
                 </Badge>
               )}
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={clearAllFilters}
@@ -184,11 +317,14 @@ const EnhancedAnalysesSearch: React.FC<EnhancedAnalysesSearchProps> = ({
                 Rensa alla
               </Button>
             </>
+          ) : (
+            <span className="text-sm text-muted-foreground">
+              Snabbfilter hjälper dig att hitta rätt analys.
+            </span>
           )}
         </div>
 
-        {/* Results Count */}
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground sm:text-right">
           Visar {resultsCount} av {totalCount} analyser
         </div>
       </div>
