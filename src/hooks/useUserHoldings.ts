@@ -38,14 +38,18 @@ export const useUserHoldings = () => {
     }
   }, [user]);
 
-  const fetchHoldings = async () => {
+  const fetchHoldings = async (options?: { silent?: boolean }) => {
     if (!user) {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
       return;
     }
 
     try {
-      setLoading(true);
+      if (!options?.silent) {
+        setLoading(true);
+      }
       const { data, error } = await supabase
         .from('user_holdings')
         .select('*')
@@ -192,7 +196,9 @@ export const useUserHoldings = () => {
     } catch (error) {
       console.error('Error fetching holdings:', error);
     } finally {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
     }
   };
 

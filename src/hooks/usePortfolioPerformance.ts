@@ -33,6 +33,8 @@ interface PriceUpdateSummary {
   updated: number;
   errors: number;
   unmatched: Array<{ symbol?: string; name?: string }>;
+  tickerFound?: boolean;
+  requestedTicker?: string;
 }
 
 export const usePortfolioPerformance = () => {
@@ -222,7 +224,7 @@ export const usePortfolioPerformance = () => {
     }
   };
 
-  const updatePrices = async (): Promise<PriceUpdateSummary | null> => {
+  const updatePrices = async (ticker?: string): Promise<PriceUpdateSummary | null> => {
     if (!user || updating) {
       return null;
     }
@@ -230,7 +232,10 @@ export const usePortfolioPerformance = () => {
     try {
       setUpdating(true);
 
-      const { data, error } = await supabase.functions.invoke('update-portfolio-prices');
+      const normalizedTicker = ticker?.trim().toUpperCase();
+      const invokeOptions = normalizedTicker ? { body: { ticker: normalizedTicker } } : undefined;
+
+      const { data, error } = await supabase.functions.invoke('update-portfolio-prices', invokeOptions);
 
       if (error) {
         throw error;
@@ -240,6 +245,10 @@ export const usePortfolioPerformance = () => {
       const updatedCount = typeof data?.updated === 'number' ? data.updated : 0;
       const errorCount = typeof data?.errors === 'number' ? data.errors : 0;
       const unmatched = Array.isArray(data?.unmatched) ? data.unmatched : [];
+      const tickerFound = typeof data?.tickerFound === 'boolean' ? data.tickerFound : undefined;
+      const responseTicker = typeof data?.requestedTicker === 'string'
+        ? data.requestedTicker
+        : normalizedTicker;
 
       if (!success) {
         throw new Error(data?.error || 'Kunde inte uppdatera priserna');
@@ -259,12 +268,30 @@ export const usePortfolioPerformance = () => {
         descriptionParts.push(`${errorCount} fel uppstod`);
       }
 
+      if (normalizedTicker) {
+        if (updatedCount === 0) {
+          if (tickerFound === false) {
+            descriptionParts.push('Tickern hittades inte i Google Sheets.');
+          } else {
+            descriptionParts.push('Tickern matchade inga innehav att uppdatera.');
+          }
+        }
+      }
+
       if (unmatched.length > 0) {
         console.warn('Holdings not matched with Google Sheets data:', unmatched);
       }
 
+      const toastTitle = updatedCount > 0
+        ? normalizedTicker
+          ? `Pris uppdaterat för ${responseTicker}`
+          : 'Priser uppdaterade'
+        : normalizedTicker
+          ? `Inget pris uppdaterades för ${responseTicker}`
+          : 'Inga priser uppdaterades';
+
       toast({
-        title: updatedCount > 0 ? "Priser uppdaterade" : "Inga priser uppdaterades",
+        title: toastTitle,
         description: descriptionParts.join(' · ') || 'Inga innehav matchade Google Sheets-datan.',
         variant: updatedCount === 0 && (errorCount > 0 || unmatched.length > 0) ? 'destructive' : 'default',
       });
@@ -275,6 +302,8 @@ export const usePortfolioPerformance = () => {
         updated: updatedCount,
         errors: errorCount,
         unmatched,
+        tickerFound,
+        requestedTicker: responseTicker,
       };
 
     } catch (error) {

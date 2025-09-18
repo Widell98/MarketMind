@@ -30,6 +30,9 @@ interface HoldingsGroupSectionProps {
   onDiscuss: (name: string, symbol?: string) => void;
   onEdit?: (id: string) => void;
   onDelete: (id: string, name: string) => void;
+  onRefreshPrice?: (symbol: string) => void;
+  isUpdatingPrice?: boolean;
+  refreshingTicker?: string | null;
 }
 
 const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
@@ -41,7 +44,10 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
   defaultExpanded = true,
   onDiscuss,
   onEdit,
-  onDelete
+  onDelete,
+  onRefreshPrice,
+  isUpdatingPrice,
+  refreshingTicker
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -124,11 +130,14 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
                     onDiscuss={onDiscuss}
                     onEdit={onEdit}
                     onDelete={onDelete}
+                    onRefreshPrice={onRefreshPrice}
+                    isUpdatingPrice={isUpdatingPrice}
+                    refreshingTicker={refreshingTicker}
                     isMobile={true}
                   />
                 );
               }
-              
+
               return (
                 <HoldingCard
                   key={holding.id}
@@ -137,6 +146,9 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
                   onDiscuss={onDiscuss}
                   onEdit={onEdit}
                   onDelete={onDelete}
+                  onRefreshPrice={onRefreshPrice}
+                  isUpdatingPrice={isUpdatingPrice}
+                  refreshingTicker={refreshingTicker}
                 />
               );
             })}
