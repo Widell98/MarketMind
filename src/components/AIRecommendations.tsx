@@ -9,6 +9,13 @@ import { useNavigate } from 'react-router-dom';
 import { useUserHoldings, UserHolding } from '@/hooks/useUserHoldings';
 import { useToast } from '@/hooks/use-toast';
 import AddHoldingDialog from '@/components/AddHoldingDialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
 
 const AIRecommendations = () => {
   const { user } = useAuth();
@@ -23,10 +30,25 @@ const AIRecommendations = () => {
   const [isAddHoldingOpen, setIsAddHoldingOpen] = useState(false);
   const [selectedRecommendation, setSelectedRecommendation] = useState<UserHolding | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [isAllRecommendationsOpen, setIsAllRecommendationsOpen] = useState(false);
   const totalRecommendations = aiRecommendations.length;
   const displayedRecommendations = useMemo(
     () => aiRecommendations.slice(0, 6),
     [aiRecommendations]
+  );
+
+  const renderRecommendationCard = (recommendation: UserHolding) => (
+    <RecommendationCard
+      key={recommendation.id}
+      title={recommendation.name}
+      description={formatRecommendationDescription(recommendation)}
+      tags={buildRecommendationTags(recommendation)}
+      isAI
+      onAdd={(e) => handleAddToPortfolio(recommendation, e)}
+      onDiscuss={(e) => handleDiscussWithAI(recommendation, e)}
+      onDelete={(e) => handleDeleteRecommendation(recommendation, e)}
+      onClick={() => handleViewRecommendation(recommendation)}
+    />
   );
 
   const formatRecommendationDescription = (recommendation: UserHolding) => {
@@ -263,35 +285,11 @@ const AIRecommendations = () => {
           {/* Grid- eller listvy */}
           {viewMode === 'grid' ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {displayedRecommendations.map((recommendation) => (
-                <RecommendationCard
-                  key={recommendation.id}
-                  title={recommendation.name}
-                  description={formatRecommendationDescription(recommendation)}
-                  tags={buildRecommendationTags(recommendation)}
-                  isAI
-                  onAdd={(e) => handleAddToPortfolio(recommendation, e)}
-                  onDiscuss={(e) => handleDiscussWithAI(recommendation, e)}
-                  onDelete={(e) => handleDeleteRecommendation(recommendation, e)}
-                  onClick={() => handleViewRecommendation(recommendation)}
-                />
-              ))}
+              {displayedRecommendations.map(renderRecommendationCard)}
             </div>
           ) : (
             <div className="space-y-4 max-h-96 overflow-y-auto">
-              {displayedRecommendations.map((recommendation) => (
-                <RecommendationCard
-                  key={recommendation.id}
-                  title={recommendation.name}
-                  description={formatRecommendationDescription(recommendation)}
-                  tags={buildRecommendationTags(recommendation)}
-                  isAI
-                  onAdd={(e) => handleAddToPortfolio(recommendation, e)}
-                  onDiscuss={(e) => handleDiscussWithAI(recommendation, e)}
-                  onDelete={(e) => handleDeleteRecommendation(recommendation, e)}
-                  onClick={() => handleViewRecommendation(recommendation)}
-                />
-              ))}
+              {displayedRecommendations.map(renderRecommendationCard)}
             </div>
           )}
 
@@ -300,13 +298,63 @@ const AIRecommendations = () => {
             <Button
               variant="outline"
               className="w-full mt-6 rounded-xl py-3 bg-card/50 hover:bg-primary/5 text-primary hover:text-primary/80 border-primary/20 hover:border-primary/30"
-              onClick={() => navigate('/ai-chat')}
+              onClick={() => setIsAllRecommendationsOpen(true)}
             >
               Visa alla AI-rekommendationer ({totalRecommendations})
             </Button>
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={isAllRecommendationsOpen} onOpenChange={setIsAllRecommendationsOpen}>
+        <DialogContent className="max-w-4xl w-[95vw] max-h-[85vh] overflow-hidden bg-card">
+          <DialogHeader className="text-left">
+            <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
+              <Brain className="w-5 h-5 text-primary" />
+              Alla AI-rekommenderade innehav
+            </DialogTitle>
+            <DialogDescription>
+              Utforska hela listan över dina sparade AI-rekommendationer.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex items-center justify-between mt-4">
+            <span className="text-sm text-muted-foreground">
+              {totalRecommendations} AI-rekommendationer
+            </span>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setViewMode('list')}
+                className={viewMode === 'list' ? 'text-primary' : 'text-muted-foreground'}
+              >
+                <ListIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setViewMode('grid')}
+                className={viewMode === 'grid' ? 'text-primary' : 'text-muted-foreground'}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-4 max-h-[60vh] overflow-y-auto pr-1">
+            {viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {aiRecommendations.map(renderRecommendationCard)}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {aiRecommendations.map(renderRecommendationCard)}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AddHoldingDialog
         isOpen={isAddHoldingOpen}
