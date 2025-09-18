@@ -59,10 +59,85 @@ export const convertFromSEK = (amountInSEK: number, toCurrency: string): number 
  */
 export const convertCurrency = (amount: number, fromCurrency: string, toCurrency: string): number => {
   if (!amount || amount === 0) return 0;
-  
+
   // First convert to SEK, then to target currency
   const amountInSEK = convertToSEK(amount, fromCurrency);
   return convertFromSEK(amountInSEK, toCurrency);
+};
+
+const parseNumericValue = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.replace(/\s/g, '').replace(',', '.');
+    const parsed = parseFloat(normalized);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+};
+
+export interface HoldingLike {
+  quantity?: number | string | null;
+  current_price_per_unit?: number | string | null;
+  price_currency?: string | null;
+  currency?: string | null;
+  current_value?: number | string | null;
+}
+
+export interface HoldingValueBreakdown {
+  quantity: number;
+  pricePerUnit: number | null;
+  priceCurrency: string;
+  valueInOriginalCurrency: number;
+  valueCurrency: string;
+  valueInSEK: number;
+  pricePerUnitInSEK: number | null;
+  hasDirectPrice: boolean;
+}
+
+/**
+ * Resolve holding value information including normalized SEK totals
+ */
+export const resolveHoldingValue = (holding: HoldingLike): HoldingValueBreakdown => {
+  const quantity = parseNumericValue(holding?.quantity) ?? 0;
+
+  const pricePerUnit = parseNumericValue(holding?.current_price_per_unit);
+  const baseCurrencyRaw =
+    typeof holding?.price_currency === 'string' && holding.price_currency.trim().length > 0
+      ? holding.price_currency.trim().toUpperCase()
+      : typeof holding?.currency === 'string' && holding.currency.trim().length > 0
+        ? holding.currency.trim().toUpperCase()
+        : 'SEK';
+
+  const fallbackValue = parseNumericValue(holding?.current_value) ?? 0;
+  const fallbackCurrency = baseCurrencyRaw;
+
+  const hasDirectPrice = pricePerUnit !== null && quantity > 0;
+  const rawValue = hasDirectPrice ? pricePerUnit * quantity : fallbackValue;
+  const valueCurrency = hasDirectPrice ? baseCurrencyRaw : fallbackCurrency;
+  const valueInSEK = convertToSEK(rawValue, valueCurrency);
+
+  const pricePerUnitInSEK = pricePerUnit !== null
+    ? convertToSEK(pricePerUnit, baseCurrencyRaw)
+    : quantity > 0
+      ? valueInSEK / quantity
+      : null;
+
+  return {
+    quantity,
+    pricePerUnit,
+    priceCurrency: baseCurrencyRaw,
+    valueInOriginalCurrency: rawValue,
+    valueCurrency,
+    valueInSEK,
+    pricePerUnitInSEK,
+    hasDirectPrice,
+  };
 };
 
 /**
@@ -122,18 +197,15 @@ export const getCurrencySymbol = (currency: string): string => {
  * Calculate normalized value for portfolio calculations
  * Converts all holdings to SEK for fair comparison
  */
-export const getNormalizedValue = (holding: any): number => {
-  const value = holding.current_value || 0;
-  const currency = holding.currency || 'SEK';
-  
-  return convertToSEK(value, currency);
+export const getNormalizedValue = (holding: HoldingLike): number => {
+  return resolveHoldingValue(holding).valueInSEK;
 };
 
 /**
  * Calculate total portfolio value in SEK from mixed currency holdings
  */
-export const calculateTotalPortfolioValue = (holdings: any[]): number => {
+export const calculateTotalPortfolioValue = (holdings: HoldingLike[]): number => {
   return holdings.reduce((total, holding) => {
-    return total + getNormalizedValue(holding);
+    return total + resolveHoldingValue(holding).valueInSEK;
   }, 0);
 };

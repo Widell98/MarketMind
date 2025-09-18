@@ -5,6 +5,7 @@ import { useCashHoldings } from './useCashHoldings';
 import { useUserHoldings } from './useUserHoldings';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { getNormalizedValue } from '@/utils/currencyUtils';
 
 interface AIInsight {
   title: string;
@@ -56,7 +57,7 @@ export const useAIInsights = () => {
     setIsLoading(true);
     try {
       // Prepare portfolio context for AI analysis (robust against loading states)
-      const holdingsTotal = (actualHoldings || []).reduce((sum: number, h: any) => sum + (h.current_value || 0), 0);
+      const holdingsTotal = (actualHoldings || []).reduce((sum: number, h: any) => sum + getNormalizedValue(h), 0);
       const derivedTotal = performance.totalPortfolioValue > 0
         ? performance.totalPortfolioValue
         : holdingsTotal + (totalCash || 0);
@@ -74,10 +75,13 @@ export const useAIInsights = () => {
           dayChangePercentage: performance.dayChangePercentage
         },
         diversification: calculateDiversification(actualHoldings || []),
-        topHoldings: (actualHoldings || []).slice(0, 5).map((h: any) => ({
-          symbol: h.symbol,
-          percentage: safeTotal > 0 ? (h.current_value / safeTotal) * 100 : 0
-        }))
+        topHoldings: (actualHoldings || []).slice(0, 5).map((h: any) => {
+          const normalizedValue = getNormalizedValue(h);
+          return {
+            symbol: h.symbol,
+            percentage: safeTotal > 0 ? (normalizedValue / safeTotal) * 100 : 0
+          };
+        })
       };
 
       const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
@@ -112,8 +116,9 @@ export const useAIInsights = () => {
 
   const calculateDiversification = (holdings: any[]) => {
     if (!holdings.length) return 0;
-    const totalValue = holdings.reduce((sum, h) => sum + h.current_value, 0);
-    const weights = holdings.map(h => h.current_value / totalValue);
+    const totalValue = holdings.reduce((sum, h) => sum + getNormalizedValue(h), 0);
+    if (totalValue === 0) return 0;
+    const weights = holdings.map(h => getNormalizedValue(h) / totalValue);
     const herfindahl = weights.reduce((sum, w) => sum + w * w, 0);
     return 1 - herfindahl; // Higher = more diversified
   };
@@ -159,7 +164,7 @@ export const useAIInsights = () => {
     const insights: AIInsight[] = [];
     
     // Cash ratio insight
-    const holdingsTotalFallback = (actualHoldings || []).reduce((sum: number, h: any) => sum + (h.current_value || 0), 0);
+    const holdingsTotalFallback = (actualHoldings || []).reduce((sum: number, h: any) => sum + getNormalizedValue(h), 0);
     const derivedTotalFallback = performance.totalPortfolioValue > 0
       ? performance.totalPortfolioValue
       : holdingsTotalFallback + (totalCash || 0);

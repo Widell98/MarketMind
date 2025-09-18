@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Badge, badgeVariants } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   MessageSquare,
@@ -9,9 +9,12 @@ import {
   Trash2,
   Wallet,
   Building2,
-  TrendingUp
+  TrendingUp,
+  RefreshCw
 } from 'lucide-react';
 import SmartHoldingSuggestions from './SmartHoldingSuggestions';
+import { cn } from '@/lib/utils';
+import { formatCurrency, resolveHoldingValue } from '@/utils/currencyUtils';
 
 interface HoldingCardProps {
   holding: {
@@ -32,6 +35,9 @@ interface HoldingCardProps {
   onEdit?: (id: string) => void;
   onDelete: (id: string, name: string) => void;
   showAISuggestions?: boolean;
+  onRefreshPrice?: (symbol: string) => void;
+  isUpdatingPrice?: boolean;
+  refreshingTicker?: string | null;
 }
 
 const HoldingCard: React.FC<HoldingCardProps> = ({
@@ -40,17 +46,11 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   onDiscuss,
   onEdit,
   onDelete,
-  showAISuggestions = true
+  showAISuggestions = true,
+  onRefreshPrice,
+  isUpdatingPrice,
+  refreshingTicker
 }) => {
-  const formatCurrency = (amount: number, currency = 'SEK') => {
-    return new Intl.NumberFormat('sv-SE', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
-
   const getHoldingIcon = () => {
     if (holding.holding_type === 'cash') return Wallet;
     if (holding.holding_type === 'stock') return Building2;
@@ -60,14 +60,20 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   const Icon = getHoldingIcon();
   const isCash = holding.holding_type === 'cash';
 
-  const effectivePrice = holding.current_price_per_unit;
-  const effectiveCurrency = holding.price_currency || holding.currency || 'SEK';
+  const {
+    valueInSEK: displayValue,
+    pricePerUnit: effectivePrice,
+    priceCurrency: effectiveCurrency,
+    pricePerUnitInSEK,
+    quantity: normalizedQuantity,
+  } = resolveHoldingValue(holding);
 
-  const displayValue = typeof holding.current_value === 'number'
-    ? holding.current_value
-    : 0;
-
-  const displayCurrency = effectiveCurrency;
+  const quantity = normalizedQuantity;
+  const trimmedSymbol = holding.symbol?.trim();
+  const normalizedSymbol = trimmedSymbol ? trimmedSymbol.toUpperCase() : undefined;
+  const isRefreshing = Boolean(
+    isUpdatingPrice && refreshingTicker && normalizedSymbol && refreshingTicker === normalizedSymbol
+  );
 
   const handleSuggestionAction = (suggestionId: string, action: string) => {
     console.log(`Suggestion ${suggestionId} ${action}`);
@@ -95,12 +101,33 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold text-foreground truncate">{holding.name}</h3>
                   {holding.symbol && (
-                    <Badge variant="outline" className="text-xs font-mono">
-                      {holding.symbol}
-                    </Badge>
+                    onRefreshPrice && normalizedSymbol ? (
+                      <button
+                        type="button"
+                        onClick={() => onRefreshPrice(normalizedSymbol)}
+                        disabled={isUpdatingPrice}
+                        className={cn(
+                          badgeVariants({ variant: 'outline' }),
+                          'text-xs font-mono inline-flex items-center gap-1 px-2 py-0.5 cursor-pointer transition-colors group hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed'
+                        )}
+                        title="Uppdatera pris från Google Sheets"
+                      >
+                        {normalizedSymbol}
+                        <RefreshCw
+                          className={cn(
+                            'w-3 h-3 text-muted-foreground transition-opacity duration-200',
+                            isRefreshing ? 'opacity-100 animate-spin' : 'opacity-0 group-hover:opacity-100'
+                          )}
+                        />
+                      </button>
+                    ) : (
+                      <Badge variant="outline" className="text-xs font-mono">
+                        {holding.symbol}
+                      </Badge>
+                    )
                   )}
                 </div>
-                
+
                 <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   <Badge variant="secondary" className="text-xs">
                     {holding.holding_type === 'cash' ? 'Kassa' : holding.holding_type}
@@ -128,15 +155,15 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
             <div>
               <span className="text-muted-foreground">Värde:</span>
               <div className="font-semibold text-foreground">
-                {formatCurrency(displayValue, displayCurrency)}
+                {formatCurrency(displayValue, 'SEK')}
               </div>
             </div>
 
-            {!isCash && holding.quantity && (
+            {!isCash && quantity > 0 && (
               <div>
                 <span className="text-muted-foreground">Antal:</span>
                 <div className="font-semibold text-foreground">
-                  {holding.quantity}
+                  {quantity}
                 </div>
               </div>
             )}
@@ -147,8 +174,17 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                   <span className="text-muted-foreground">Aktuellt pris:</span>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">
-                      {effectivePrice
-                        ? formatCurrency(effectivePrice, effectiveCurrency)
+                      {typeof effectivePrice === 'number' && Number.isFinite(effectivePrice) && effectivePrice > 0
+                        ? (
+                          <>
+                            {formatCurrency(effectivePrice, effectiveCurrency)}
+                            {effectiveCurrency !== 'SEK' && pricePerUnitInSEK !== null && pricePerUnitInSEK > 0 && (
+                              <span className="text-xs text-muted-foreground ml-2">
+                                ≈ {formatCurrency(pricePerUnitInSEK, 'SEK')}
+                              </span>
+                            )}
+                          </>
+                        )
                         : 'Pris saknas'}
                     </span>
                   </div>

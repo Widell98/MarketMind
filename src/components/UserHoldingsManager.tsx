@@ -33,6 +33,7 @@ import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useAuth } from '@/contexts/AuthContext';
+import { resolveHoldingValue } from '@/utils/currencyUtils';
 
 interface TransformedHolding {
   id: string;
@@ -46,6 +47,9 @@ interface TransformedHolding {
   sector?: string;
   current_price_per_unit?: number;
   price_currency?: string;
+  base_currency?: string;
+  original_value?: number;
+  original_currency?: string;
 }
 
 interface UserHoldingsManagerProps {
@@ -53,7 +57,15 @@ interface UserHoldingsManagerProps {
 }
 
 const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = [] }) => {
-  const { actualHoldings, loading, deleteHolding, recommendations, addHolding, updateHolding } = useUserHoldings();
+  const {
+    actualHoldings,
+    loading,
+    deleteHolding,
+    recommendations,
+    addHolding,
+    updateHolding,
+    refetch: refetchHoldings
+  } = useUserHoldings();
   const { performance, updatePrices, updating } = usePortfolioPerformance();
   const { 
     cashHoldings, 
@@ -78,6 +90,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
   const [editingHolding, setEditingHolding] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [isChartOpen, setIsChartOpen] = useState(false);
+  const [refreshingTicker, setRefreshingTicker] = useState<string | null>(null);
   
   const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
     console.log(`Deleting holding: ${holdingName} (${holdingId})`);
@@ -137,11 +150,28 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
 
   const handleUpdateHolding = async (holdingData: any) => {
     if (!editingHolding) return false;
-    
-    const success = await updateHolding(editingHolding.id, holdingData);
+
+    const rawSymbol = typeof holdingData.symbol === 'string'
+      ? holdingData.symbol
+      : editingHolding.symbol;
+    const normalizedSymbol = rawSymbol?.trim().length
+      ? rawSymbol.trim().toUpperCase()
+      : undefined;
+
+    const payload = {
+      ...holdingData,
+      ...(typeof holdingData.symbol === 'string'
+        ? { symbol: normalizedSymbol }
+        : {})
+    };
+
+    const success = await updateHolding(editingHolding.id, payload);
     if (success) {
       setShowEditHoldingDialog(false);
       setEditingHolding(null);
+      if (normalizedSymbol) {
+        void handleUpdateHoldingPrice(normalizedSymbol);
+      }
     }
     return success;
   };
@@ -150,8 +180,31 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
     const success = await addHolding(holdingData);
     if (success) {
       setShowAddHoldingDialog(false);
+      const normalizedSymbol = typeof holdingData.symbol === 'string'
+        ? holdingData.symbol.trim().toUpperCase()
+        : undefined;
+      if (normalizedSymbol) {
+        void handleUpdateHoldingPrice(normalizedSymbol);
+      }
     }
     return success;
+  };
+
+  const handleUpdateHoldingPrice = async (symbol?: string) => {
+    const normalizedSymbol = symbol?.trim().toUpperCase();
+    if (!normalizedSymbol || updating) {
+      return;
+    }
+
+    setRefreshingTicker(normalizedSymbol);
+    try {
+      await updatePrices(normalizedSymbol);
+      if (typeof refetchHoldings === 'function') {
+        await refetchHoldings({ silent: true });
+      }
+    } finally {
+      setRefreshingTicker(null);
+    }
   };
 
   // Prepare holdings data for grouping - fix type issues
@@ -161,28 +214,34 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
 
   // Transform all holdings to match the TransformedHolding interface
   const transformedActualHoldings: TransformedHolding[] = actualHoldings.map(holding => {
-    const pricePerUnit = typeof holding.current_price_per_unit === 'number'
-      ? holding.current_price_per_unit
-      : undefined;
+    const {
+      pricePerUnit,
+      priceCurrency,
+      valueInSEK,
+      quantity,
+      valueInOriginalCurrency,
+      valueCurrency,
+    } = resolveHoldingValue(holding);
 
-    const currentValue = typeof holding.current_value === 'number'
-      ? holding.current_value
-      : 0;
-
-    const resolvedCurrency = holding.price_currency || holding.currency || 'SEK';
+    const resolvedQuantity = typeof holding.quantity === 'number' && Number.isFinite(holding.quantity)
+      ? holding.quantity
+      : quantity;
 
     return {
       id: holding.id,
       name: holding.name,
       holding_type: holding.holding_type || 'stock',
-      current_value: currentValue,
-      currency: resolvedCurrency,
+      current_value: valueInSEK,
+      currency: 'SEK',
       symbol: holding.symbol,
-      quantity: holding.quantity,
+      quantity: resolvedQuantity,
       purchase_price: holding.purchase_price,
       sector: holding.sector,
-      current_price_per_unit: pricePerUnit,
-      price_currency: resolvedCurrency
+      current_price_per_unit: typeof pricePerUnit === 'number' ? pricePerUnit : undefined,
+      price_currency: priceCurrency,
+      base_currency: holding.currency || priceCurrency,
+      original_value: valueInOriginalCurrency,
+      original_currency: valueCurrency,
     };
   });
 
@@ -197,7 +256,10 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
     purchase_price: undefined,
     sector: undefined,
     current_price_per_unit: undefined,
-    price_currency: 'SEK'
+    price_currency: 'SEK',
+    base_currency: 'SEK',
+    original_value: cash.current_value,
+    original_currency: 'SEK',
   }));
 
   const allHoldings = [
@@ -219,10 +281,10 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
       .map(([type, holdings]) => {
         // Fix: Properly sum the current_value of each holding
         const totalValue = holdings.reduce((sum, holding) => {
-          return sum + (Number(holding.current_value) || 0);
+          return sum + resolveHoldingValue(holding).valueInSEK;
         }, 0);
-        
-        const totalPortfolioValue = (performance?.totalPortfolioValue || 0) + (totalCash || 0);
+
+        const totalPortfolioValue = performance?.totalPortfolioValue || 0;
         const percentage = totalPortfolioValue > 0 ? (totalValue / totalPortfolioValue) * 100 : 0;
 
         const typeNames = {
@@ -376,11 +438,19 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                         }
                       } : handleEditHolding}
                       onDelete={group.key === 'cash' ? handleDeleteCash : handleDeleteHolding}
+                      onRefreshPrice={group.key === 'cash' ? undefined : handleUpdateHoldingPrice}
+                      isUpdatingPrice={updating}
+                      refreshingTicker={refreshingTicker}
                     />
                   ))}
                 </div>
               ) : (
-                <HoldingsTable holdings={filteredHoldings} />
+                <HoldingsTable
+                  holdings={filteredHoldings}
+                  onRefreshPrice={handleUpdateHoldingPrice}
+                  isUpdatingPrice={updating}
+                  refreshingTicker={refreshingTicker}
+                />
               )}
 
               {allHoldings.length > 0 && (

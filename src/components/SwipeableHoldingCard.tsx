@@ -13,6 +13,9 @@ interface SwipeableHoldingCardProps {
   onEdit?: (id: string) => void;
   onDelete: (id: string, name: string) => void;
   isMobile?: boolean;
+  onRefreshPrice?: (symbol: string) => void;
+  isUpdatingPrice?: boolean;
+  refreshingTicker?: string | null;
 }
 
 const SwipeableHoldingCard: React.FC<SwipeableHoldingCardProps> = ({
@@ -21,7 +24,10 @@ const SwipeableHoldingCard: React.FC<SwipeableHoldingCardProps> = ({
   onDiscuss,
   onEdit,
   onDelete,
-  isMobile = false
+  isMobile = false,
+  onRefreshPrice,
+  isUpdatingPrice,
+  refreshingTicker
 }) => {
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwipeActive, setIsSwipeActive] = useState(false);
@@ -186,6 +192,9 @@ const SwipeableHoldingCard: React.FC<SwipeableHoldingCardProps> = ({
           onDiscuss={onDiscuss}
           onEdit={onEdit}
           onDelete={onDelete}
+          onRefreshPrice={onRefreshPrice}
+          isUpdatingPrice={isUpdatingPrice}
+          refreshingTicker={refreshingTicker}
         />
       </div>
     </div>

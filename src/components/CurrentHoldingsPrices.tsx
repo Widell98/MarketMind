@@ -10,20 +10,12 @@ import { Activity, LogIn } from 'lucide-react';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { formatCurrency, resolveHoldingValue } from '@/utils/currencyUtils';
 
 const CurrentHoldingsPrices: React.FC = () => {
   const { actualHoldings, loading: holdingsLoading } = useUserHoldings();
   const { user } = useAuth();
   const navigate = useNavigate();
-
-  const formatCurrency = (amount: number, currency = 'SEK') => {
-    return new Intl.NumberFormat('sv-SE', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: currency === 'SEK' ? 0 : 2,
-      maximumFractionDigits: currency === 'SEK' ? 2 : 2,
-    }).format(amount);
-  };
 
   if (!user) {
     return (
@@ -56,21 +48,25 @@ const CurrentHoldingsPrices: React.FC = () => {
   const pricedHoldings = actualHoldings
     .filter((holding) => holding.holding_type !== 'cash')
     .map((holding) => {
-      const price = typeof holding.current_price_per_unit === 'number'
-        ? holding.current_price_per_unit
-        : null;
-      const currency = holding.price_currency || holding.currency || 'SEK';
-      const value = typeof holding.current_value === 'number'
-        ? holding.current_value
-        : 0;
+      const {
+        pricePerUnit,
+        priceCurrency,
+        pricePerUnitInSEK,
+        valueInOriginalCurrency,
+        valueCurrency,
+        valueInSEK,
+      } = resolveHoldingValue(holding);
 
       return {
         id: holding.id,
         name: holding.name,
         symbol: holding.symbol,
-        price,
-        currency,
-        value,
+        price: pricePerUnit,
+        currency: priceCurrency,
+        priceInSEK: pricePerUnitInSEK,
+        valueOriginal: valueInOriginalCurrency,
+        valueCurrency,
+        valueSEK: valueInSEK,
       };
     });
 
@@ -110,12 +106,26 @@ const CurrentHoldingsPrices: React.FC = () => {
                 </div>
                 <div className="text-right text-sm">
                   <div className="font-semibold">
-                    {holding.price !== null
-                      ? formatCurrency(holding.price, holding.currency)
+                    {holding.price !== null && typeof holding.price === 'number' && holding.price > 0
+                      ? (
+                        <>
+                          {formatCurrency(holding.price, holding.currency)}
+                          {holding.currency !== 'SEK' && holding.priceInSEK !== null && holding.priceInSEK > 0 && (
+                            <span className="text-xs text-muted-foreground ml-2">
+                              ≈ {formatCurrency(holding.priceInSEK, 'SEK')}
+                            </span>
+                          )}
+                        </>
+                      )
                       : 'Pris saknas'}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Värde: {formatCurrency(holding.value, holding.currency)}
+                    Värde: {formatCurrency(holding.valueSEK, 'SEK')}
+                    {holding.valueCurrency !== 'SEK' && holding.valueOriginal > 0 && (
+                      <span className="ml-1">
+                        ({formatCurrency(holding.valueOriginal, holding.valueCurrency)})
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

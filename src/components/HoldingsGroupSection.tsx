@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import HoldingCard from './HoldingCard';
 import SwipeableHoldingCard from './SwipeableHoldingCard';
+import { formatCurrency, resolveHoldingValue } from '@/utils/currencyUtils';
 
 interface Holding {
   id: string;
@@ -30,6 +31,9 @@ interface HoldingsGroupSectionProps {
   onDiscuss: (name: string, symbol?: string) => void;
   onEdit?: (id: string) => void;
   onDelete: (id: string, name: string) => void;
+  onRefreshPrice?: (symbol: string) => void;
+  isUpdatingPrice?: boolean;
+  refreshingTicker?: string | null;
 }
 
 const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
@@ -41,18 +45,12 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
   defaultExpanded = true,
   onDiscuss,
   onEdit,
-  onDelete
+  onDelete,
+  onRefreshPrice,
+  isUpdatingPrice,
+  refreshingTicker
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('sv-SE', {
-      style: 'currency',
-      currency: 'SEK',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
 
   // Detect if we're on mobile
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -79,7 +77,7 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
             <div>
               <h3 className="text-lg font-semibold text-foreground">{title}</h3>
               <p className="text-sm text-muted-foreground">
-                {holdings.length} innehav • {formatCurrency(totalValue)}
+                {holdings.length} innehav • {formatCurrency(totalValue, 'SEK')}
               </p>
             </div>
           </div>
@@ -106,9 +104,7 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
         <CardContent className="pt-0">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {holdings.map((holding) => {
-              const computedValue = typeof holding.current_value === 'number'
-                ? holding.current_value
-                : 0;
+              const { valueInSEK: computedValue } = resolveHoldingValue(holding);
 
               const holdingPercentage = totalValue > 0
                 ? (computedValue / totalValue) * groupPercentage
@@ -124,11 +120,14 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
                     onDiscuss={onDiscuss}
                     onEdit={onEdit}
                     onDelete={onDelete}
+                    onRefreshPrice={onRefreshPrice}
+                    isUpdatingPrice={isUpdatingPrice}
+                    refreshingTicker={refreshingTicker}
                     isMobile={true}
                   />
                 );
               }
-              
+
               return (
                 <HoldingCard
                   key={holding.id}
@@ -137,6 +136,9 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
                   onDiscuss={onDiscuss}
                   onEdit={onEdit}
                   onDelete={onDelete}
+                  onRefreshPrice={onRefreshPrice}
+                  isUpdatingPrice={isUpdatingPrice}
+                  refreshingTicker={refreshingTicker}
                 />
               );
             })}
