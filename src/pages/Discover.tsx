@@ -20,13 +20,11 @@ import { useFollowingAnalyses } from '@/hooks/useFollowingAnalyses';
 const Discover = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-
   const { stockCases: allStockCases, loading: stockCasesLoading } = useStockCases(false);
   const { data: analyses, isLoading: analysesLoading } = useAnalyses(50);
   const { data: followingAnalyses, isLoading: followingAnalysesLoading } = useFollowingAnalyses();
 
   const [activeTab, setActiveTab] = useState<'cases' | 'analyses'>('cases');
-
   const [caseSearchTerm, setCaseSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('');
   const [performanceFilter, setPerformanceFilter] = useState('');
@@ -46,95 +44,84 @@ const Discover = () => {
 
   const getFilteredCases = useMemo(() => {
     let filtered = [...(allStockCases || [])];
-
     if (caseSearchTerm) {
-      const lowerSearchTerm = caseSearchTerm.toLowerCase();
+      const lower = caseSearchTerm.toLowerCase();
       filtered = filtered.filter(
-        (stockCase) =>
-          stockCase.title.toLowerCase().includes(lowerSearchTerm) ||
-          stockCase.company_name?.toLowerCase().includes(lowerSearchTerm) ||
-          stockCase.description?.toLowerCase().includes(lowerSearchTerm) ||
-          stockCase.sector?.toLowerCase().includes(lowerSearchTerm) ||
-          stockCase.profiles?.display_name?.toLowerCase().includes(lowerSearchTerm) ||
-          stockCase.profiles?.username?.toLowerCase().includes(lowerSearchTerm)
+        (sc) =>
+          sc.title.toLowerCase().includes(lower) ||
+          sc.company_name?.toLowerCase().includes(lower) ||
+          sc.description?.toLowerCase().includes(lower) ||
+          sc.sector?.toLowerCase().includes(lower) ||
+          sc.profiles?.display_name?.toLowerCase().includes(lower) ||
+          sc.profiles?.username?.toLowerCase().includes(lower)
       );
     }
-
     if (selectedSector && selectedSector !== 'all-sectors') {
-      filtered = filtered.filter((stockCase) => stockCase.sector === selectedSector);
+      filtered = filtered.filter((sc) => sc.sector === selectedSector);
     }
-
     if (performanceFilter && performanceFilter !== 'all-results') {
-      filtered = filtered.filter((stockCase) => {
-        const performance = stockCase.performance_percentage || 0;
+      filtered = filtered.filter((sc) => {
+        const perf = sc.performance_percentage || 0;
         switch (performanceFilter) {
           case 'positive':
-            return performance > 0;
+            return perf > 0;
           case 'negative':
-            return performance < 0;
+            return perf < 0;
           case 'high':
-            return performance > 10;
+            return perf > 10;
           case 'low':
-            return performance < 5;
+            return perf < 5;
           default:
             return true;
         }
       });
     }
-
     filtered.sort((a, b) => {
-      let aValue: number | string = 0;
-      let bValue: number | string = 0;
-
+      let aVal: number | string = 0;
+      let bVal: number | string = 0;
       switch (caseSortBy) {
         case 'performance':
-          aValue = a.performance_percentage || 0;
-          bValue = b.performance_percentage || 0;
+          aVal = a.performance_percentage || 0;
+          bVal = b.performance_percentage || 0;
           break;
         case 'likes':
-          aValue = 0;
-          bValue = 0;
+          aVal = 0;
+          bVal = 0;
           break;
         case 'title':
-          aValue = a.title.toLowerCase();
-          bValue = b.title.toLowerCase();
+          aVal = a.title.toLowerCase();
+          bVal = b.title.toLowerCase();
           break;
-        case 'created_at':
         default:
-          aValue = new Date(a.created_at).getTime();
-          bValue = new Date(b.created_at).getTime();
-          break;
+          aVal = new Date(a.created_at).getTime();
+          bVal = new Date(b.created_at).getTime();
       }
-
       return caseSortOrder === 'asc'
-        ? aValue < bValue
+        ? aVal < bVal
           ? -1
-          : aValue > bValue
+          : aVal > bVal
           ? 1
           : 0
-        : aValue > bValue
+        : aVal > bVal
         ? -1
-        : aValue < bValue
+        : aVal < bVal
         ? 1
         : 0;
     });
-
     return filtered.slice(0, 6);
   }, [allStockCases, caseSearchTerm, selectedSector, performanceFilter, caseSortBy, caseSortOrder]);
 
   const availableSectors = useMemo(() => {
     const sectors = new Set<string>();
-    allStockCases?.forEach((stockCase) => {
-      if (stockCase.sector) sectors.add(stockCase.sector);
-    });
-    return Array.from(sectors).sort();
+    allStockCases?.forEach((sc) => sc.sector && sectors.add(sc.sector));
+    return [...sectors].sort();
   }, [allStockCases]);
 
   const handleViewStockCaseDetails = (id: string) => navigate(`/stock-cases/${id}`);
-  const handleDeleteStockCase = async (id: string) => console.log('Delete stock case:', id);
+  const handleDeleteStockCase = (id: string) => console.log('Delete stock case:', id);
   const handleViewAnalysisDetails = (id: string) => navigate(`/analysis/${id}`);
-  const handleDeleteAnalysis = async (id: string) => console.log('Delete analysis:', id);
-  const handleEditAnalysis = (analysis: Analysis) => console.log('Edit analysis:', analysis);
+  const handleDeleteAnalysis = (id: string) => console.log('Delete analysis:', id);
+  const handleEditAnalysis = (a: Analysis) => console.log('Edit analysis:', a);
 
   return (
     <Layout>
@@ -154,10 +141,10 @@ const Discover = () => {
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6 sm:space-y-8">
             <TabsList className="grid w-full grid-cols-2 gap-2 rounded-2xl border border-border/80 bg-muted/40 p-1.5 sm:mx-auto sm:max-w-md sm:gap-3 sm:p-2">
-              <TabsTrigger value="cases" className="flex items-center gap-2">
+              <TabsTrigger value="cases">
                 <Camera className="h-4 w-4" /> Case
               </TabsTrigger>
-              <TabsTrigger value="analyses" className="flex items-center gap-2">
+              <TabsTrigger value="analyses">
                 <PenTool className="h-4 w-4" /> Analyser
               </TabsTrigger>
             </TabsList>
@@ -184,10 +171,29 @@ const Discover = () => {
               </div>
 
               <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
-                {getFilteredCases.map((stockCase) => (
-                  <StockCaseCard key={stockCase.id} stockCase={stockCase} onViewDetails={handleViewStockCaseDetails} onDelete={handleDeleteStockCase} />
+                {getFilteredCases.map((sc) => (
+                  <StockCaseCard key={sc.id} stockCase={sc} onViewDetails={handleViewStockCaseDetails} onDelete={handleDeleteStockCase} />
                 ))}
               </div>
+
+              {!stockCasesLoading && getFilteredCases.length === 0 && (
+                <div className="rounded-3xl border border-dashed border-border/70 bg-background/60 px-6 py-16 text-center shadow-inner sm:px-10">
+                  <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+                    <Camera className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="mb-3 text-xl font-semibold text-foreground">
+                    {caseSearchTerm ? 'Inga case matchar din sökning' : 'Inga case hittades'}
+                  </h3>
+                  <p className="mx-auto mb-8 max-w-md text-sm text-muted-foreground sm:text-base">
+                    {caseSearchTerm ? 'Prova att justera dina sökkriterier eller rensa filtren.' : 'Kom tillbaka senare för nya case från communityt.'}
+                  </p>
+                  {caseSearchTerm && (
+                    <Button onClick={() => setCaseSearchTerm('')} variant="outline" className="rounded-xl border-border hover:bg-muted/50">
+                      Rensa sökning
+                    </Button>
+                  )}
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="analyses" className="space-y-6 sm:space-y-8">
@@ -207,7 +213,7 @@ const Discover = () => {
                   totalCount={analyses?.length || 0}
                 />
               </div>
-              {/* Resterande analyser-tabbar samma som din originalkod */}
+              {/* Analys-tabbar och kort kan fortsätta som i din main-version */}
             </TabsContent>
           </Tabs>
         </div>
