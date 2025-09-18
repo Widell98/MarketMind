@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +21,9 @@ import {
   PiggyBank,
   BarChart3,
   MessageCircleQuestion,
+  MessageSquare,
   AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -104,6 +106,12 @@ interface ParsedAdvisorResponse {
   savingsPlan: string[];
   closingQuestion?: string;
   disclaimer?: string;
+}
+
+interface RefinementMessage {
+  id: string;
+  role: 'assistant' | 'user';
+  content: string;
 }
 
 const parseAdvisorResponse = (content: string): ParsedAdvisorResponse | null => {
@@ -271,15 +279,27 @@ const ChatPortfolioAdvisor = () => {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [showHoldingsInput, setShowHoldingsInput] = useState(false);
   const [localLoading, setLoading] = useState(false);
+  const [refinementMessages, setRefinementMessages] = useState<RefinementMessage[]>([]);
+  const [refinementInput, setRefinementInput] = useState('');
+  const [isRefinementLoading, setIsRefinementLoading] = useState(false);
+  const [hasInitializedRefinement, setHasInitializedRefinement] = useState(false);
   const isInitialized = useRef(false);
-  
+
   const { generatePortfolioFromConversation, loading } = useConversationalPortfolio();
   const { refetch } = usePortfolio();
   const { refetch: refetchHoldings } = useUserHoldings();
   const { toast } = useToast();
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const refinementEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+
+  const structuredResponse = useMemo(() => {
+    if (!portfolioResult?.aiResponse) {
+      return null;
+    }
+    return parseAdvisorResponse(portfolioResult.aiResponse);
+  }, [portfolioResult?.aiResponse]);
 
   const questions = [
     {
@@ -538,11 +558,11 @@ const ChatPortfolioAdvisor = () => {
   }, [messages]);
 
   useEffect(() => {
-    console.log('ChatPortfolioAdvisor useEffect triggered', { 
+    console.log('ChatPortfolioAdvisor useEffect triggered', {
       isInitialized: isInitialized.current,
-      messagesLength: messages.length 
+      messagesLength: messages.length
     });
-    
+
     // Start conversation only once
     if (!isInitialized.current) {
       console.log('Starting conversation - adding first question');
@@ -552,6 +572,66 @@ const ChatPortfolioAdvisor = () => {
       setWaitingForAnswer(true);
     }
   }, []); // Empty dependency array
+
+  useEffect(() => {
+    if (!isComplete) {
+      setRefinementMessages([]);
+      setRefinementInput('');
+      setHasInitializedRefinement(false);
+      setIsRefinementLoading(false);
+    }
+  }, [isComplete]);
+
+  useEffect(() => {
+    if (!isComplete || hasInitializedRefinement) {
+      return;
+    }
+
+    if (structuredResponse) {
+      const summaryText = structuredResponse.summary?.join(' ') ?? '';
+      const recommendationLines = structuredResponse.recommendations
+        ?.map(recommendation => {
+          const parts = [
+            recommendation.name,
+            recommendation.ticker ? `(${recommendation.ticker})` : '',
+            recommendation.allocation ? `– ${recommendation.allocation}` : ''
+          ].filter(Boolean);
+          return `• ${parts.join(' ')}`.trim();
+        })
+        .filter(Boolean)
+        .join('\n');
+
+      const introParts = [
+        structuredResponse.closingQuestion || 'Vad tycker du om dessa förslag?',
+        summaryText ? `Sammanfattning: ${summaryText}` : null,
+        recommendationLines ? `Föreslagen allokering:\n${recommendationLines}` : null,
+        'Berätta vad du vill justera, så hjälper jag dig att finjustera portföljen.'
+      ].filter(Boolean);
+
+      setRefinementMessages([
+        {
+          id: `assistant-intro-${Date.now()}`,
+          role: 'assistant',
+          content: introParts.join('\n\n')
+        }
+      ]);
+      setHasInitializedRefinement(true);
+    } else if (portfolioResult?.aiResponse) {
+      setRefinementMessages([
+        {
+          id: `assistant-intro-${Date.now()}`,
+          role: 'assistant',
+          content:
+            'Vad tycker du om rekommendationen ovan? Beskriv gärna vad du vill ändra eller fördjupa så hjälper jag dig vidare.'
+        }
+      ]);
+      setHasInitializedRefinement(true);
+    }
+  }, [isComplete, structuredResponse, hasInitializedRefinement, portfolioResult?.aiResponse]);
+
+  useEffect(() => {
+    refinementEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [refinementMessages]);
 
   const addBotMessage = (content: string, hasOptions: boolean = false, options?: Array<{ value: string; label: string }>, hasHoldingsInput: boolean = false) => {
     console.log('addBotMessage called with content:', content.substring(0, 50) + '...');
@@ -1090,6 +1170,102 @@ const ChatPortfolioAdvisor = () => {
     }
   };
 
+  const handleRefinementSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const trimmedInput = refinementInput.trim();
+    if (!trimmedInput) {
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: 'Logga in krävs',
+        description: 'Du behöver vara inloggad för att kunna fortsätta dialogen med rådgivaren.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    const chatHistoryForAPI = refinementMessages.map(message => ({
+      role: message.role,
+      content: message.content
+    }));
+
+    const userMessage: RefinementMessage = {
+      id: `refinement-user-${Date.now()}`,
+      role: 'user',
+      content: trimmedInput
+    };
+
+    setRefinementMessages(prev => [...prev, userMessage]);
+    setRefinementInput('');
+    setIsRefinementLoading(true);
+
+    try {
+      const followUpInstruction = structuredResponse
+        ? `Utgå från den portföljstrategi du precis presenterade och anpassa den utifrån följande feedback från klienten: "${trimmedInput}". Beskriv tydligt om några allokeringar bör justeras, om något ska läggas till eller tas bort, och motivera förändringarna kort.`
+        : trimmedInput;
+
+      const { data, error } = await supabase.functions.invoke<Record<string, unknown> | string>('portfolio-ai-chat', {
+        body: {
+          message: followUpInstruction,
+          userId: user.id,
+          portfolioId: portfolioResult?.portfolio?.id,
+          chatHistory: chatHistoryForAPI,
+          analysisType: 'portfolio_followup',
+          stream: false
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Kunde inte få svar från rådgivaren.');
+      }
+
+      let aiMessageContent = '';
+      if (typeof data === 'string') {
+        aiMessageContent = data;
+      } else if (data && typeof data === 'object') {
+        const payload = data as Record<string, unknown>;
+        aiMessageContent =
+          (typeof payload['response'] === 'string' && (payload['response'] as string)) ||
+          (typeof payload['message'] === 'string' && (payload['message'] as string)) ||
+          (typeof payload['content'] === 'string' && (payload['content'] as string)) ||
+          (typeof payload['aiResponse'] === 'string' && (payload['aiResponse'] as string)) ||
+          '';
+      }
+
+      if (!aiMessageContent) {
+        aiMessageContent =
+          'Jag kunde inte generera ett uppdaterat svar just nu. Försök gärna igen eller formulera om din önskade ändring.';
+      }
+
+      setRefinementMessages(prev => [
+        ...prev,
+        {
+          id: `refinement-assistant-${Date.now()}`,
+          role: 'assistant',
+          content: aiMessageContent
+        }
+      ]);
+    } catch (error) {
+      console.error('Error sending refinement message:', error);
+      const description =
+        error instanceof Error
+          ? error.message
+          : 'Ett oväntat fel uppstod. Försök igen lite senare.';
+      toast({
+        title: 'Meddelandet skickades inte',
+        description,
+        variant: 'destructive'
+      });
+      setRefinementMessages(prev => prev.filter(message => message.id !== userMessage.id));
+      setRefinementInput(trimmedInput);
+    } finally {
+      setIsRefinementLoading(false);
+    }
+  };
+
   const handleImplementStrategy = async () => {
     try {
       // Show immediate feedback
@@ -1128,23 +1304,104 @@ const ChatPortfolioAdvisor = () => {
     }
   };
 
-  const formatAIResponse = (content: string) => {
-    if (!content || typeof content !== 'string') {
+  const renderAdvisorResponse = () => {
+    const aiContent = portfolioResult?.aiResponse;
+    if (!aiContent || typeof aiContent !== 'string') {
       return <div className="text-muted-foreground">Inget svar mottaget från AI.</div>;
     }
 
-    const structured = parseAdvisorResponse(content);
+    const renderRefinementChat = () => {
+      if (refinementMessages.length === 0) {
+        return null;
+      }
+
+      return (
+        <Card className="border border-border/60 bg-background/95 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+              <MessageSquare className="h-4 w-4 text-primary" />
+              Finjustera rekommendationen
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Fortsätt dialogen om du vill göra ändringar eller ställa följdfrågor kring strategin.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="max-h-64 space-y-3 overflow-y-auto pr-1">
+              {refinementMessages.map(message => (
+                <div
+                  key={message.id}
+                  className={`flex gap-2 ${message.role === 'assistant' ? 'justify-start' : 'justify-end'}`}
+                >
+                  {message.role === 'assistant' && (
+                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
+                      <MessageSquare className="h-4 w-4 text-primary" />
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-full rounded-2xl px-3 py-2 text-sm leading-relaxed shadow-sm sm:max-w-md ${
+                      message.role === 'assistant'
+                        ? 'bg-muted/60 text-foreground'
+                        : 'bg-primary text-primary-foreground'
+                    }`}
+                  >
+                    <p className="whitespace-pre-line">{message.content}</p>
+                  </div>
+                  {message.role === 'user' && (
+                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
+                      <User className="h-4 w-4 text-primary" />
+                    </div>
+                  )}
+                </div>
+              ))}
+              <div ref={refinementEndRef} />
+            </div>
+            <form
+              onSubmit={handleRefinementSubmit}
+              className="flex flex-col gap-3 border-t border-border/60 pt-3 sm:flex-row sm:items-end"
+            >
+              <div className="flex-1">
+                <Input
+                  value={refinementInput}
+                  onChange={(event) => setRefinementInput(event.target.value)}
+                  placeholder="Berätta vad du vill justera eller fråga om portföljen..."
+                  className="bg-background/80"
+                  disabled={isRefinementLoading}
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={!refinementInput.trim() || isRefinementLoading}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm sm:w-auto"
+              >
+                {isRefinementLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Send className="mr-2 h-4 w-4" />
+                    Skicka
+                  </>
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      );
+    };
+
+    const structured = structuredResponse;
 
     if (!structured) {
       return (
-        <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-          {content
+        <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
+          {aiContent
             .split(/\n{2,}/)
             .map(paragraph => paragraph.trim())
             .filter(Boolean)
             .map((paragraph, index) => (
               <p key={`fallback-${index}`}>{paragraph}</p>
             ))}
+          {renderRefinementChat()}
         </div>
       );
     }
@@ -1257,6 +1514,8 @@ const ChatPortfolioAdvisor = () => {
             </CardContent>
           </Card>
         )}
+
+        {renderRefinementChat()}
 
         {structured.disclaimer && (
           <Alert className="border-amber-200 bg-amber-50 text-amber-900">
@@ -1453,7 +1712,7 @@ const ChatPortfolioAdvisor = () => {
               <div className="flex-1 min-w-0">
                 <div className="bg-primary/10 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border border-primary/20 shadow-sm">
                   <div className="prose prose-sm max-w-none text-foreground">
-                    {formatAIResponse(portfolioResult.aiResponse)}
+                    {renderAdvisorResponse()}
                   </div>
                   
                   <div className="mt-4 pt-4 border-t border-primary/20">
