@@ -3,7 +3,27 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Send, User, Bot, CheckCircle, TrendingUp, Plus, Trash2, Check } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Brain,
+  Send,
+  User,
+  Bot,
+  CheckCircle,
+  TrendingUp,
+  Plus,
+  Trash2,
+  Check,
+  Sparkles,
+  ShieldAlert,
+  ClipboardList,
+  Clock,
+  PiggyBank,
+  BarChart3,
+  MessageCircleQuestion,
+  AlertTriangle,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationalPortfolio } from '@/hooks/useConversationalPortfolio';
 import { usePortfolio } from '@/hooks/usePortfolio';
@@ -65,6 +85,179 @@ interface ConversationData {
   specificGoalAmount?: string;
   taxConsideration?: string;
 }
+
+interface ParsedAdvisorRecommendation {
+  name: string;
+  ticker?: string;
+  analysis?: string;
+  role?: string;
+  allocation?: string;
+}
+
+interface ParsedAdvisorResponse {
+  summary: string[];
+  recommendations: ParsedAdvisorRecommendation[];
+  portfolioAnalysis: string[];
+  riskAnalysis: string[];
+  implementationPlan: string[];
+  followUp: string[];
+  savingsPlan: string[];
+  closingQuestion?: string;
+  disclaimer?: string;
+}
+
+const parseAdvisorResponse = (content: string): ParsedAdvisorResponse | null => {
+  if (!content || typeof content !== 'string') {
+    return null;
+  }
+
+  const sanitized = content.replace(/\r/g, '').trim();
+  if (!sanitized) {
+    return null;
+  }
+
+  let disclaimer: string | undefined;
+  let body = sanitized;
+  const disclaimerMatch = sanitized.match(/\*\*Disclaimer:\*\*\s*([\s\S]+)$/i);
+  if (disclaimerMatch && disclaimerMatch.index !== undefined) {
+    disclaimer = disclaimerMatch[1].trim();
+    body = sanitized.slice(0, disclaimerMatch.index).trim();
+  }
+
+  const sectionRegex = /\*\*(\d\.\s+[^*]+)\*\*/g;
+  const matches = [...body.matchAll(sectionRegex)];
+  if (matches.length === 0) {
+    return null;
+  }
+
+  const sectionMap: Record<string, string> = {};
+  matches.forEach((match, index) => {
+    const start = (match.index ?? 0) + match[0].length;
+    const end = index + 1 < matches.length ? matches[index + 1].index ?? body.length : body.length;
+    const key = match[1].trim().toLowerCase();
+    sectionMap[key] = body.slice(start, end).trim();
+  });
+
+  const getSection = (...candidates: string[]) => {
+    for (const candidate of candidates) {
+      const normalized = candidate.trim().toLowerCase();
+      if (sectionMap[normalized]) {
+        return sectionMap[normalized];
+      }
+    }
+    return '';
+  };
+
+  const parseParagraphs = (text: string) =>
+    text
+      .split(/\n{2,}/)
+      .map(paragraph => paragraph.replace(/\n+/g, ' ').trim())
+      .filter(Boolean);
+
+  const parseList = (text: string) =>
+    text
+      .split(/\n+/)
+      .map(item => item.replace(/^\s*[-•\d.]+\s*/, '').trim())
+      .filter(Boolean);
+
+  const summary = parseParagraphs(getSection('1. professionell sammanfattning'));
+
+  const strategyRaw = getSection('2. rekommenderad portföljstrategi');
+  const recommendations: ParsedAdvisorRecommendation[] = [];
+  if (strategyRaw) {
+    const investmentRegex = /###\s*([^\n(]+?)\s*(?:\(([^)\n]+)\))?\s*\n([\s\S]*?)(?=(?:\n###|\n\*\*\d\.)|$)/g;
+    let match: RegExpExecArray | null;
+    while ((match = investmentRegex.exec(strategyRaw)) !== null) {
+      const name = match[1]?.trim();
+      if (!name) {
+        continue;
+      }
+      const ticker = match[2]?.trim();
+      const details = match[3] ?? '';
+      const normalizedDetails = details
+        .replace(/\r/g, '')
+        .split('\n')
+        .map(line => line.replace(/^\s*[-•]\s*/, '').replace(/\*\*/g, '').trim())
+        .join('\n');
+
+      const analysisMatch = normalizedDetails.match(/Analys:\s*([\s\S]*?)(?:\n(?:Roll i portföljen|Rekommenderad allokering|Allokering)\b|\n$)/i);
+      const roleMatch = normalizedDetails.match(/Roll i portföljen:\s*([\s\S]*?)(?:\n(?:Rekommenderad allokering|Allokering)\b|\n$)/i);
+      const allocationMatch = normalizedDetails.match(/(?:Rekommenderad\s+)?Allokering:\s*([0-9]{1,3})(?:\s*%| procent)?/i);
+
+      recommendations.push({
+        name,
+        ticker,
+        analysis: analysisMatch ? analysisMatch[1].trim() : undefined,
+        role: roleMatch ? roleMatch[1].trim() : undefined,
+        allocation: allocationMatch ? `${allocationMatch[1].trim()}%` : undefined,
+      });
+    }
+  }
+
+  const portfolioAnalysis = parseList(getSection('3. portföljanalys'));
+  const riskAnalysis = parseList(getSection('4. riskanalys & stresstest', '4. riskanalys och stresstest'));
+  const implementationPlan = parseList(getSection('5. implementationsplan'));
+  const followUp = parseList(getSection('6. uppföljning'));
+  let savingsPlan = parseList(getSection('7. personlig sparrekommendation'));
+
+  let closingQuestion: string | undefined;
+  const questionMatch = body.match(/([^\n]+?\?)\s*$/);
+  if (questionMatch) {
+    closingQuestion = questionMatch[1].trim();
+    if (closingQuestion) {
+      const normalizedQuestion = closingQuestion.replace(/\s+/g, ' ').toLowerCase();
+      savingsPlan = savingsPlan.filter((item, index) => {
+        const normalizedItem = item.replace(/\s+/g, ' ').toLowerCase();
+        return !(index === savingsPlan.length - 1 && normalizedItem === normalizedQuestion);
+      });
+    }
+  }
+
+  return {
+    summary,
+    recommendations,
+    portfolioAnalysis,
+    riskAnalysis,
+    implementationPlan,
+    followUp,
+    savingsPlan,
+    closingQuestion,
+    disclaimer,
+  };
+};
+
+const renderListSection = (
+  title: string,
+  items: string[],
+  accentTextClass: string,
+  accentBgClass: string,
+  IconComponent: LucideIcon
+): JSX.Element | null => {
+  if (!items || items.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card className="bg-card/80 border border-border/60 shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+          <IconComponent className={`h-4 w-4 ${accentTextClass}`} />
+          <span>{title}</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <ul className="space-y-2">
+          {items.map((item, index) => (
+            <li key={`${title}-${index}`} className="flex items-start gap-3 text-sm text-muted-foreground">
+              <span className={`mt-1 h-2.5 w-2.5 rounded-full ${accentBgClass}`} />
+              <span className="leading-relaxed">{item}</span>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+};
 
 const ChatPortfolioAdvisor = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -939,20 +1132,149 @@ const ChatPortfolioAdvisor = () => {
     if (!content || typeof content !== 'string') {
       return <div className="text-muted-foreground">Inget svar mottaget från AI.</div>;
     }
-    const sections = content.split(/###|\*\*/).filter(section => section.trim());
-    
+
+    const structured = parseAdvisorResponse(content);
+
+    if (!structured) {
+      return (
+        <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+          {content
+            .split(/\n{2,}/)
+            .map(paragraph => paragraph.trim())
+            .filter(Boolean)
+            .map((paragraph, index) => (
+              <p key={`fallback-${index}`}>{paragraph}</p>
+            ))}
+        </div>
+      );
+    }
+
     return (
-      <div className="space-y-3">
-        {sections.map((section, index) => {
-          const trimmedSection = section.trim();
-          if (!trimmedSection) return null;
-          
-          return (
-            <div key={index} className="text-sm text-gray-700 leading-relaxed">
-              {trimmedSection}
+      <div className="space-y-6">
+        <Card className="border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-white shadow-md">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg font-semibold text-blue-900">
+              <Sparkles className="h-5 w-5 text-blue-500" />
+              Professionell sammanfattning
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Baseras på din riskprofil och rådgivningssamtalet
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {structured.summary.length > 0 ? (
+              structured.summary.map((paragraph, index) => (
+                <p key={`summary-${index}`} className="text-sm leading-relaxed text-muted-foreground">
+                  {paragraph}
+                </p>
+              ))
+            ) : (
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Din portföljanalys presenteras i sektionerna nedan.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {structured.recommendations.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h4 className="flex items-center gap-2 text-base font-semibold text-foreground">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                Rekommenderad portföljstrategi
+              </h4>
+              <Badge variant="outline" className="border-primary/20 bg-primary/10 text-primary">
+                Totalt 100% allokering
+              </Badge>
             </div>
-          );
-        })}
+            <div className="grid gap-4 sm:grid-cols-2">
+              {structured.recommendations.map((recommendation, index) => (
+                <Card
+                  key={`${recommendation.name}-${index}`}
+                  className="border border-border/60 bg-background/95 shadow-sm transition-shadow duration-200 hover:shadow-md"
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <CardTitle className="text-base font-semibold text-foreground">
+                          {recommendation.name}
+                        </CardTitle>
+                        {recommendation.ticker && (
+                          <p className="mt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                            {recommendation.ticker}
+                          </p>
+                        )}
+                      </div>
+                      {recommendation.allocation && (
+                        <Badge className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+                          {recommendation.allocation}
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+                    {recommendation.analysis && (
+                      <div className="rounded-xl border border-border/60 bg-muted/40 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Analys</p>
+                        <p className="mt-1 text-foreground">{recommendation.analysis}</p>
+                      </div>
+                    )}
+                    {recommendation.role && (
+                      <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-primary">Roll i portföljen</p>
+                        <p className="mt-1 text-foreground">{recommendation.role}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(structured.portfolioAnalysis.length > 0 || structured.riskAnalysis.length > 0) && (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {renderListSection('Portföljanalys', structured.portfolioAnalysis, 'text-blue-600', 'bg-blue-500/80', BarChart3)}
+            {renderListSection('Riskanalys & stresstest', structured.riskAnalysis, 'text-rose-600', 'bg-rose-500/80', ShieldAlert)}
+          </div>
+        )}
+
+        {(structured.implementationPlan.length > 0 || structured.followUp.length > 0) && (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {renderListSection('Implementationsplan', structured.implementationPlan, 'text-emerald-600', 'bg-emerald-500/80', ClipboardList)}
+            {renderListSection('Uppföljning', structured.followUp, 'text-purple-600', 'bg-purple-500/80', Clock)}
+          </div>
+        )}
+
+        {structured.savingsPlan.length > 0 &&
+          renderListSection('Personlig sparrekommendation', structured.savingsPlan, 'text-amber-600', 'bg-amber-500/80', PiggyBank)}
+
+        {structured.closingQuestion && (
+          <Card className="border border-primary/30 bg-primary/5">
+            <CardContent className="flex items-center gap-3 py-4 text-sm font-medium text-primary">
+              <MessageCircleQuestion className="h-5 w-5" />
+              <span>{structured.closingQuestion}</span>
+            </CardContent>
+          </Card>
+        )}
+
+        {structured.disclaimer && (
+          <Alert className="border-amber-200 bg-amber-50 text-amber-900">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Disclaimer</AlertTitle>
+            <AlertDescription className="space-y-1 text-sm leading-relaxed">
+              {structured.disclaimer
+                .split(/\n+/)
+                .map(line => line.trim())
+                .filter(Boolean)
+                .map((line, index) => (
+                  <span key={`disclaimer-${index}`} className="block">
+                    {line}
+                  </span>
+                ))}
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
     );
   };

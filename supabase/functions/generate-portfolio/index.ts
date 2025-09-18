@@ -184,34 +184,41 @@ Skapa en professionell investeringsanalys och portföljrekommendation enligt sve
 STRUKTUR FÖR PORTFÖLJREKOMMENDATION:
 
 **1. PROFESSIONELL SAMMANFATTNING**
-Kort analys av klientens situation och investeringsprofil
+- Inled med 2–3 meningar som fångar klientens mål, riskprofil och tidshorisont
+- Följ upp med en kompakt punktlista som sammanfattar risknivå, investeringshorisont, månadsbudget och eventuella fokusområden (t.ex. hållbarhet)
 
 **2. REKOMMENDERAD PORTFÖLJSTRATEGI** 
 6-8 specifika investeringar enligt detta OBLIGATORISKA format:
 **Exakt företagsnamn (TICKER)**: Professionell investeringsanalys med fundamental bedömning, riskanalys och passform för klientens profil. Rekommenderad allokering: XX%
 
 **3. PORTFÖLJANALYS**
-- Sammanlagd riskprofil och förväntad avkastning
-- Geografisk och sektoriell diversifiering  
-- Avgiftsanalys och skatteeffektivitet
+- Ange sammanlagd risknivå och förväntat avkastningsintervall i procent
+- Beskriv geografisk och sektoriell diversifiering med fokus på hur den kopplar till klientens mål
+- Kommentera avgifter/kostnader och hur portföljen är optimerad för ISK/KF
 
 **4. RISKANALYS & STRESSTEST**
-- Huvudsakliga risker i portföljen
-- Scenario-analys vid marknadsnedgång
-- Rekommenderad riskhantering
+- Identifiera de mest relevanta riskerna utifrån klientens profil
+- Beskriv minst två scenarier (t.ex. -15% och -30%) och hur portföljen förväntas reagera
+- Ge konkreta riskhanteringsåtgärder och skydd
 
 **5. IMPLEMENTATIONSPLAN**
-- Prioriterad köpordning för investeringarna
-- Månadsvis implementationsstrategi
-- Rebalanserings-rekommendationer
+- Presentera en tidslinje (0–30 dagar, 30–90 dagar, >90 dagar) med tydlig köpordning
+- Beskriv hur månadsspar och eventuella engångsköp kan automatiseras
+- Rekommendera rebalanseringsregler och triggers
 
 **6. UPPFÖLJNING**
-- Rekommenderad granskningsfrekvens
-- Nyckeltal att följa upp
-- När portföljen bör justeras
+- Ange rekommenderad uppföljningsfrekvens och vem som bör involveras
+- Lista nyckeltal att bevaka (t.ex. totalavkastning, risknivå, sparkvot)
+- Beskriv tydliga signaler för när portföljen ska justeras
 
 **7. PERSONLIG SPARREKOMMENDATION**
-- 3–5 konkreta steg och en enkel månadsplan baserat på användarens profil och preferenser
+- Ge 3–5 konkreta steg inklusive föreslaget månadsbelopp och automatiseringsförslag
+- Tipsa om beteenden eller vanor som stärker spardisciplinen
+- Avsluta med en motiverande handlingsuppmaning kopplad till klientens mål
+
+**AVSLUTNING**
+- Ställ en tydlig, öppen fråga på en egen rad som bjuder in till fortsatt dialog
+- Skriv därefter på nästa rad med fet markerad text som börjar med **Disclaimer:** följt av ett kort juridiskt förbehåll på svenska
 
 VIKTIGA RÅDGIVARKRAV:
 - Varje investering MÅSTE ha verifierbar ticker/symbol
