@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -162,10 +162,24 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [symbolError, setSymbolError] = useState<string | null>(null);
-  const [matchedTicker, setMatchedTicker] = useState<SheetTicker | null>(null);
   const [priceOverridden, setPriceOverridden] = useState(false);
   const [currencyOverridden, setCurrencyOverridden] = useState(false);
   const [nameOverridden, setNameOverridden] = useState(false);
+
+  const normalizedSymbol = useMemo(() => {
+    const rawSymbol = formData.symbol?.trim();
+    return rawSymbol ? rawSymbol.toUpperCase() : '';
+  }, [formData.symbol]);
+
+  const tickerLookup = useMemo(() => {
+    const map = new Map<string, SheetTicker>();
+    tickers.forEach((ticker) => {
+      map.set(ticker.symbol.toUpperCase(), ticker);
+    });
+    return map;
+  }, [tickers]);
+
+  const matchedTicker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) ?? null : null;
 
   // Update form data when initialData changes
   useEffect(() => {
@@ -190,18 +204,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       setNameOverridden(false);
     }
   }, [initialData]);
-
-  useEffect(() => {
-    const rawSymbol = formData.symbol?.trim();
-    if (!rawSymbol) {
-      setMatchedTicker(null);
-      return;
-    }
-
-    const normalizedSymbol = rawSymbol.toUpperCase();
-    const foundTicker = tickers.find((ticker) => ticker.symbol.toUpperCase() === normalizedSymbol) ?? null;
-    setMatchedTicker(foundTicker);
-  }, [formData.symbol, tickers]);
 
   useEffect(() => {
     if (!matchedTicker || nameOverridden) {
@@ -267,8 +269,34 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       };
     });
   }, [matchedTicker?.currency, currencyOverridden]);
-  const formatDisplayPrice = (price: number) =>
-    new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(price);
+  const priceFormatter = useMemo(
+    () => new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    []
+  );
+
+  const formatDisplayPrice = useCallback(
+    (price: number) => priceFormatter.format(price),
+    [priceFormatter]
+  );
+
+  const deferredTickers = useDeferredValue(tickers);
+
+  const tickerOptions = useMemo(() => deferredTickers.map((ticker) => {
+    const label = ticker.name && ticker.name !== ticker.symbol
+      ? `${ticker.name} (${ticker.symbol})`
+      : ticker.symbol;
+    const priceLabel = typeof ticker.price === 'number' && Number.isFinite(ticker.price) && ticker.price > 0
+      ? ` – ${formatDisplayPrice(ticker.price)}${ticker.currency ? ` ${ticker.currency}` : ''}`.trimEnd()
+      : '';
+
+    return (
+      <option
+        key={ticker.symbol}
+        value={ticker.symbol}
+        label={`${label}${priceLabel}`}
+      />
+    );
+  }), [deferredTickers, formatDisplayPrice]);
 
   const resolvedSheetPrice = matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0
     ? matchedTicker.price
@@ -308,10 +336,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     e.preventDefault();
     if (!formData.name.trim()) return;
 
-    const normalizedSymbol = formData.symbol.trim().toUpperCase();
-    const symbolMatches = tickers.some((ticker) => ticker.symbol.toUpperCase() === normalizedSymbol);
-
-    if (!normalizedSymbol || !symbolMatches) {
+    if (!normalizedSymbol || !tickerLookup.has(normalizedSymbol)) {
       setSymbolError('Tickern finns inte i Google Sheets. Välj en ticker från listan.');
       return;
     }
@@ -364,7 +389,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         currency: 'SEK'
       });
       setSymbolError(null);
-      setMatchedTicker(null);
       setPriceOverridden(false);
       setCurrencyOverridden(false);
       setNameOverridden(false);
@@ -388,7 +412,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         currency: 'SEK'
       });
       setSymbolError(null);
-      setMatchedTicker(null);
       setPriceOverridden(false);
       setCurrencyOverridden(false);
       setNameOverridden(false);
@@ -397,8 +420,14 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     }
   };
 
+  const handleDialogOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      handleClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
@@ -443,23 +472,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
             </div>
           </div>
           <datalist id="sheet-tickers">
-            {tickers.map((ticker) => {
-              const label = ticker.name && ticker.name !== ticker.symbol
-                ? `${ticker.name} (${ticker.symbol})`
-                : ticker.symbol;
-              const priceLabel = typeof ticker.price === 'number' && Number.isFinite(ticker.price) && ticker.price > 0
-                ? ` – ${formatDisplayPrice(ticker.price)}${ticker.currency ? ` ${ticker.currency}` : ''}`.trimEnd()
-                : '';
-              const optionLabel = `${label}${priceLabel}`;
-
-              return (
-                <option
-                  key={ticker.symbol}
-                  value={ticker.symbol}
-                  label={optionLabel}
-                />
-              );
-            })}
+            {tickerOptions}
           </datalist>
 
           <div className="grid grid-cols-2 gap-4">
