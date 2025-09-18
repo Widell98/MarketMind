@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Brain, Sparkles, ArrowRight, LayoutGrid, List as ListIcon } from 'lucide-react';
+import { Brain, Sparkles, ArrowRight, LayoutGrid, List as ListIcon, Trash2, Loader2 } from 'lucide-react';
 import RecommendationCard from '@/components/RecommendationCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +16,17 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from '@/components/ui/alert-dialog';
 
 const AIRecommendations = () => {
   const { user } = useAuth();
@@ -23,6 +34,7 @@ const AIRecommendations = () => {
   const {
     addHolding,
     deleteHolding,
+    clearRecommendations,
     recommendations: aiRecommendations,
     loading: holdingsLoading
   } = useUserHoldings();
@@ -31,6 +43,8 @@ const AIRecommendations = () => {
   const [selectedRecommendation, setSelectedRecommendation] = useState<UserHolding | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [isAllRecommendationsOpen, setIsAllRecommendationsOpen] = useState(false);
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+  const [isClearingRecommendations, setIsClearingRecommendations] = useState(false);
   const totalRecommendations = aiRecommendations.length;
   const displayedRecommendations = useMemo(
     () => aiRecommendations.slice(0, 6),
@@ -118,6 +132,17 @@ const AIRecommendations = () => {
   ) => {
     e.stopPropagation();
     await deleteHolding(recommendation.id);
+  };
+
+  const handleClearAllRecommendations = async () => {
+    setIsClearingRecommendations(true);
+    const success = await clearRecommendations();
+    setIsClearingRecommendations(false);
+
+    if (success) {
+      setIsAllRecommendationsOpen(false);
+      setIsClearDialogOpen(false);
+    }
   };
 
   const handleAddHolding = async (holdingData: Omit<UserHolding, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
@@ -223,7 +248,7 @@ const AIRecommendations = () => {
     <>
       <Card className="bg-card/30 backdrop-blur-xl border-border/20 shadow-lg rounded-3xl overflow-hidden">
         <CardHeader className="pb-6 bg-gradient-to-r from-primary/5 to-purple/5 border-b border-border/20">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
               <CardTitle className="text-xl font-semibold flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
@@ -243,6 +268,45 @@ const AIRecommendations = () => {
                 Personaliserade investeringsförslag baserade på din profil
               </CardDescription>
             </div>
+            <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl"
+                  disabled={totalRecommendations === 0 || isClearingRecommendations}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Rensa alla
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="rounded-2xl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    <Trash2 className="w-5 h-5 text-red-600" />
+                    Rensa alla AI-rekommendationer
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="text-base">
+                    Är du säker på att du vill radera alla AI-rekommenderade innehav? Den här åtgärden kan inte ångras.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="rounded-xl">Avbryt</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-red-600 hover:bg-red-700 rounded-xl"
+                    onClick={handleClearAllRecommendations}
+                    disabled={isClearingRecommendations}
+                  >
+                    {isClearingRecommendations ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 mr-2" />
+                    )}
+                    Rensa
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </CardHeader>
 
