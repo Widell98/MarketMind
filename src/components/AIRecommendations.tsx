@@ -16,6 +16,16 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog';
 
 const AIRecommendations = () => {
   const { user } = useAuth();
@@ -23,6 +33,7 @@ const AIRecommendations = () => {
   const {
     addHolding,
     deleteHolding,
+    clearRecommendations,
     recommendations: aiRecommendations,
     loading: holdingsLoading
   } = useUserHoldings();
@@ -31,11 +42,14 @@ const AIRecommendations = () => {
   const [selectedRecommendation, setSelectedRecommendation] = useState<UserHolding | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [isAllRecommendationsOpen, setIsAllRecommendationsOpen] = useState(false);
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const totalRecommendations = aiRecommendations.length;
   const displayedRecommendations = useMemo(
     () => aiRecommendations.slice(0, 6),
     [aiRecommendations]
   );
+  const hasRecommendations = totalRecommendations > 0;
 
   const renderRecommendationCard = (recommendation: UserHolding) => (
     <RecommendationCard
@@ -118,6 +132,19 @@ const AIRecommendations = () => {
   ) => {
     e.stopPropagation();
     await deleteHolding(recommendation.id);
+  };
+
+  const handleClearAllRecommendations = async (
+    event: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    event.preventDefault();
+    setIsClearing(true);
+    const success = await clearRecommendations();
+    setIsClearing(false);
+
+    if (success) {
+      setIsClearDialogOpen(false);
+    }
   };
 
   const handleAddHolding = async (holdingData: Omit<UserHolding, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
@@ -248,11 +275,20 @@ const AIRecommendations = () => {
 
         <CardContent className="p-8">
           {/* Header: antal och vy-val */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
             <div className="text-sm text-muted-foreground font-medium">
               {totalRecommendations} AI-rekommendationer
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsClearDialogOpen(true)}
+                disabled={!hasRecommendations || isClearing}
+                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              >
+                Rensa alla
+              </Button>
               <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
@@ -322,23 +358,34 @@ const AIRecommendations = () => {
             <span className="text-sm text-muted-foreground">
               {totalRecommendations} AI-rekommendationer
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="ghost"
-                size="icon"
-                onClick={() => setViewMode('list')}
-                className={viewMode === 'list' ? 'text-primary' : 'text-muted-foreground'}
+                size="sm"
+                onClick={() => setIsClearDialogOpen(true)}
+                disabled={!hasRecommendations || isClearing}
+                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
               >
-                <ListIcon className="h-4 w-4" />
+                Rensa alla
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setViewMode('grid')}
-                className={viewMode === 'grid' ? 'text-primary' : 'text-muted-foreground'}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setViewMode('list')}
+                  className={viewMode === 'list' ? 'text-primary' : 'text-muted-foreground'}
+                >
+                  <ListIcon className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setViewMode('grid')}
+                  className={viewMode === 'grid' ? 'text-primary' : 'text-muted-foreground'}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -365,6 +412,27 @@ const AIRecommendations = () => {
         onAdd={handleAddHolding}
         initialData={selectedRecommendation || undefined}
       />
+
+      <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rensa alla AI-rekommendationer</AlertDialogTitle>
+            <AlertDialogDescription>
+              Detta tar bort samtliga AI-rekommenderade innehav från din lista. Åtgärden går inte att ångra.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isClearing}>Avbryt</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleClearAllRecommendations}
+              disabled={isClearing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isClearing ? 'Rensar...' : 'Rensa alla'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
