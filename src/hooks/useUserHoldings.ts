@@ -357,6 +357,40 @@ export const useUserHoldings = () => {
     }
   };
 
+  const clearRecommendations = async () => {
+    if (!user) return false;
+
+    try {
+      const { error } = await supabase
+        .from('user_holdings')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('holding_type', 'recommendation');
+
+      if (error) {
+        console.error('Error clearing AI recommendations:', error);
+        toast({
+          title: "Error",
+          description: "Failed to clear AI recommendations",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      setHoldings(prev => prev.filter(h => h.holding_type !== 'recommendation'));
+      setRecommendations([]);
+
+      toast({
+        title: "Success",
+        description: "Alla AI-rekommendationer har rensats",
+      });
+      return true;
+    } catch (error) {
+      console.error('Error clearing AI recommendations:', error);
+      return false;
+    }
+  };
+
   return {
     holdings,
     actualHoldings,
@@ -365,6 +399,7 @@ export const useUserHoldings = () => {
     addHolding,
     updateHolding,
     deleteHolding,
+    clearRecommendations,
     refetch: fetchHoldings
   };
 };

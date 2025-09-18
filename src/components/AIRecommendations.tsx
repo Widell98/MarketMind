@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Brain, Sparkles, ArrowRight, LayoutGrid, List as ListIcon } from 'lucide-react';
+import { Brain, Sparkles, ArrowRight, LayoutGrid, List as ListIcon, Trash2 } from 'lucide-react';
 import RecommendationCard from '@/components/RecommendationCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -23,6 +23,7 @@ const AIRecommendations = () => {
   const {
     addHolding,
     deleteHolding,
+    clearRecommendations,
     recommendations: aiRecommendations,
     loading: holdingsLoading
   } = useUserHoldings();
@@ -31,6 +32,7 @@ const AIRecommendations = () => {
   const [selectedRecommendation, setSelectedRecommendation] = useState<UserHolding | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [isAllRecommendationsOpen, setIsAllRecommendationsOpen] = useState(false);
+  const [isClearingRecommendations, setIsClearingRecommendations] = useState(false);
   const totalRecommendations = aiRecommendations.length;
   const displayedRecommendations = useMemo(
     () => aiRecommendations.slice(0, 6),
@@ -118,6 +120,23 @@ const AIRecommendations = () => {
   ) => {
     e.stopPropagation();
     await deleteHolding(recommendation.id);
+  };
+
+  const handleClearAllRecommendations = async () => {
+    const confirmed = window.confirm('Är du säker på att du vill rensa alla AI-rekommenderade innehav?');
+    if (!confirmed) {
+      return;
+    }
+
+    setIsClearingRecommendations(true);
+    try {
+      const success = await clearRecommendations();
+      if (success) {
+        setIsAllRecommendationsOpen(false);
+      }
+    } finally {
+      setIsClearingRecommendations(false);
+    }
   };
 
   const handleAddHolding = async (holdingData: Omit<UserHolding, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
@@ -274,6 +293,16 @@ const AIRecommendations = () => {
               <Button
                 variant="ghost"
                 size="sm"
+                onClick={handleClearAllRecommendations}
+                disabled={isClearingRecommendations}
+                className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 rounded-xl"
+              >
+                <Trash2 className="w-3 h-3 mr-1" />
+                {isClearingRecommendations ? 'Rensar...' : 'Rensa alla'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => navigate('/ai-chat')}
                 className="text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl font-medium"
               >
@@ -322,7 +351,7 @@ const AIRecommendations = () => {
             <span className="text-sm text-muted-foreground">
               {totalRecommendations} AI-rekommendationer
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
                 size="icon"
@@ -338,6 +367,16 @@ const AIRecommendations = () => {
                 className={viewMode === 'grid' ? 'text-primary' : 'text-muted-foreground'}
               >
                 <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearAllRecommendations}
+                disabled={isClearingRecommendations}
+                className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 rounded-xl"
+              >
+                <Trash2 className="w-3 h-3 mr-1" />
+                {isClearingRecommendations ? 'Rensar...' : 'Rensa alla'}
               </Button>
             </div>
           </div>
