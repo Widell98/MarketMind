@@ -390,9 +390,11 @@ const Index = () => {
                   </section>
 
                   <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <h2 className="text-base font-semibold text-foreground sm:text-lg">Snabbgenvägar</h2>
-                      <p className="text-sm text-muted-foreground sm:text-base">Utforska dina favoritverktyg.</p>
+                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-6">
+                      <h2 className="text-base font-semibold text-foreground sm:text-lg md:text-xl">Snabbgenvägar</h2>
+                      <p className="text-sm text-muted-foreground md:max-w-xl md:text-base md:leading-relaxed">
+                        Utforska dina favoritverktyg.
+                      </p>
                     </div>
                     <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
                       {quickActions.map(({ icon: Icon, title, description, to }) => (
