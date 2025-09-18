@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Brain, Sparkles } from 'lucide-react';
 import ChatPortfolioAdvisor from './ChatPortfolioAdvisor';
 
@@ -38,8 +37,8 @@ const ConversationalPortfolioAdvisor = () => {
         </CardHeader>
         
         <CardContent className="space-y-8 px-8 pb-8">
-          <div className="grid md:grid-cols-2 gap-6 bg-blue-50/50 rounded-xl p-6 border border-blue-100/30">
-            <div className="p-6 bg-accent/50 rounded-xl border border-border/50">
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="p-6 rounded-2xl border border-border/60 bg-background/80 dark:bg-card/50 shadow-sm backdrop-blur-sm">
               <h3 className="font-medium text-foreground mb-4 flex items-center gap-3">
                 <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
                   <Sparkles className="w-4 h-4 text-primary" />
@@ -48,21 +47,21 @@ const ConversationalPortfolioAdvisor = () => {
               </h3>
               <ul className="text-muted-foreground space-y-2 text-sm">
                 <li className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></span>
+                  <span className="w-1.5 h-1.5 bg-primary/80 rounded-full mt-2 flex-shrink-0"></span>
                   Naturlig konversation med AI-rådgivare
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></span>
+                  <span className="w-1.5 h-1.5 bg-primary/80 rounded-full mt-2 flex-shrink-0"></span>
                   En fråga i taget för bättre fokus
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></span>
+                  <span className="w-1.5 h-1.5 bg-primary/80 rounded-full mt-2 flex-shrink-0"></span>
                   Anpassade följdfrågor baserat på dina svar
                 </li>
               </ul>
             </div>
-            
-            <div className="p-6 bg-accent/50 rounded-xl border border-border/50">
+
+            <div className="p-6 rounded-2xl border border-border/60 bg-background/80 dark:bg-card/50 shadow-sm backdrop-blur-sm">
               <h3 className="font-medium text-foreground mb-4 flex items-center gap-3">
                 <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
                   <Brain className="w-4 h-4 text-primary" />
@@ -71,15 +70,15 @@ const ConversationalPortfolioAdvisor = () => {
               </h3>
               <ul className="text-muted-foreground space-y-2 text-sm">
                 <li className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></span>
+                  <span className="w-1.5 h-1.5 bg-primary/80 rounded-full mt-2 flex-shrink-0"></span>
                   Analyserar dina intressen och mål
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></span>
+                  <span className="w-1.5 h-1.5 bg-primary/80 rounded-full mt-2 flex-shrink-0"></span>
                   Föreslår konkreta investeringar
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></span>
+                  <span className="w-1.5 h-1.5 bg-primary/80 rounded-full mt-2 flex-shrink-0"></span>
                   Skapar actionable strategi
                 </li>
               </ul>
