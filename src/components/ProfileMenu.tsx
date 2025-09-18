@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { User, Settings, LogOut, Heart, BarChart3 } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
-import NotificationCenter from './NotificationCenter';
 
 const ProfileMenu = () => {
   const { user } = useAuth();
@@ -31,8 +30,6 @@ const ProfileMenu = () => {
 
   return (
     <div className="flex items-center gap-2 md:gap-3">
-      <NotificationCenter />
-      
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button 
