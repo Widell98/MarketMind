@@ -402,13 +402,20 @@ const Index = () => {
                           variant="outline"
                           className="group h-full w-full justify-start rounded-2xl border-border/60 bg-card/60 p-4 text-left transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 hover:shadow-md sm:p-5 whitespace-normal"
                         >
-                          <Link to={to} className="flex h-full w-full flex-col items-start gap-3">
+                          <Link
+                            to={to}
+                            className="flex h-full w-full flex-col items-start gap-3 text-left !whitespace-normal"
+                          >
                             <div className="flex items-center justify-center rounded-xl bg-primary/10 p-3 text-primary transition-all group-hover:bg-primary group-hover:text-primary-foreground">
                               <Icon className="h-5 w-5" />
                             </div>
                             <div className="w-full space-y-1">
-                              <span className="break-words text-sm font-semibold text-foreground sm:text-base">{title}</span>
-                              <span className="break-words text-xs leading-relaxed text-muted-foreground sm:text-sm">{description}</span>
+                              <span className="break-words text-sm font-semibold text-foreground sm:text-base">
+                                {title}
+                              </span>
+                              <span className="break-words text-xs leading-relaxed text-muted-foreground sm:text-sm">
+                                {description}
+                              </span>
                             </div>
                           </Link>
                         </Button>
