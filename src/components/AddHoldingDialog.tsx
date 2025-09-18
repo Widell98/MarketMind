@@ -245,7 +245,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       };
     });
   }, [matchedTicker?.currency, currencyOverridden]);
-
   const formatDisplayPrice = (price: number) =>
     new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(price);
 
@@ -365,6 +364,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       setMatchedTicker(null);
       setPriceOverridden(false);
       setCurrencyOverridden(false);
+
       onClose();
     }
   };

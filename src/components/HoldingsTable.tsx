@@ -62,12 +62,12 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
           const purchaseValueOriginal = typeof holding.purchase_price === 'number' && quantity > 0
             ? holding.purchase_price * quantity
             : undefined;
-
           const purchaseValueSEK = purchaseValueOriginal !== undefined
             ? convertToSEK(purchaseValueOriginal, holding.base_currency || priceCurrency || holding.currency || 'SEK')
             : undefined;
 
           const profitLoss = purchaseValueSEK !== undefined ? valueInSEK - purchaseValueSEK : undefined;
+
           const trimmedSymbol = holding.symbol?.trim();
           const normalizedSymbol = trimmedSymbol ? trimmedSymbol.toUpperCase() : undefined;
           const isRefreshing = Boolean(
