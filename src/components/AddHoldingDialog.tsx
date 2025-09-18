@@ -165,6 +165,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const [matchedTicker, setMatchedTicker] = useState<SheetTicker | null>(null);
   const [priceOverridden, setPriceOverridden] = useState(false);
   const [currencyOverridden, setCurrencyOverridden] = useState(false);
+  const [nameOverridden, setNameOverridden] = useState(false);
 
   // Update form data when initialData changes
   useEffect(() => {
@@ -182,9 +183,11 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       });
       setPriceOverridden(Boolean(initialData.purchase_price));
       setCurrencyOverridden(Boolean(initialData.currency));
+      setNameOverridden(Boolean(initialData.name));
     } else {
       setPriceOverridden(false);
       setCurrencyOverridden(false);
+      setNameOverridden(false);
     }
   }, [initialData]);
 
@@ -199,6 +202,25 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     const foundTicker = tickers.find((ticker) => ticker.symbol.toUpperCase() === normalizedSymbol) ?? null;
     setMatchedTicker(foundTicker);
   }, [formData.symbol, tickers]);
+
+  useEffect(() => {
+    if (!matchedTicker || nameOverridden) {
+      return;
+    }
+
+    const resolvedName = matchedTicker.name?.trim() || matchedTicker.symbol;
+
+    setFormData((prev) => {
+      if (prev.name === resolvedName) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        name: resolvedName,
+      };
+    });
+  }, [matchedTicker, nameOverridden]);
 
   useEffect(() => {
     if (!matchedTicker || priceOverridden) {
@@ -263,12 +285,16 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       ...prev,
       [field]: value
     }));
+    if (field === 'name') {
+      setNameOverridden(true);
+    }
     if (field === 'symbol') {
       if (symbolError) {
         setSymbolError(null);
       }
       setPriceOverridden(false);
       setCurrencyOverridden(false);
+      setNameOverridden(false);
     }
     if (field === 'purchase_price') {
       setPriceOverridden(true);
@@ -341,6 +367,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       setMatchedTicker(null);
       setPriceOverridden(false);
       setCurrencyOverridden(false);
+      setNameOverridden(false);
       onClose();
     }
 
@@ -364,6 +391,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       setMatchedTicker(null);
       setPriceOverridden(false);
       setCurrencyOverridden(false);
+      setNameOverridden(false);
 
       onClose();
     }
