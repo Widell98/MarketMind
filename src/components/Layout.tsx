@@ -48,7 +48,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 
                 <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 flex-shrink-0">
                   <ThemeToggle />
-                  <LanguageToggle />
+                  {/* <LanguageToggle /> */}
                   {user ? (
                     <ProfileMenu />
                   ) : (

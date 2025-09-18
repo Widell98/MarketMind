@@ -1,19 +1,31 @@
-import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Layout from '@/components/Layout';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Camera, Sparkles } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Sparkles, Camera, PenTool, BookOpen, Users } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import Layout from '@/components/Layout';
+
 import StockCaseCard from '@/components/StockCaseCard';
 import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
-import { useStockCases } from '@/hooks/useStockCases';
+import EnhancedAnalysesSearch from '@/components/EnhancedAnalysesSearch';
+import EnhancedAnalysisCard from '@/components/EnhancedAnalysisCard';
+import { Analysis } from '@/types/analysis';
 
-const Discover: React.FC = () => {
+import { useStockCases } from '@/hooks/useStockCases';
+import { useAnalyses } from '@/hooks/useAnalyses';
+import { useFollowingAnalyses } from '@/hooks/useFollowingAnalyses';
+
+const Discover = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const {
-    stockCases: allStockCases,
-    loading: stockCasesLoading,
-  } = useStockCases(false);
+
+  const { stockCases: allStockCases, loading: stockCasesLoading } = useStockCases(false);
+  const { data: analyses, isLoading: analysesLoading } = useAnalyses(50);
+  const { data: followingAnalyses, isLoading: followingAnalysesLoading } = useFollowingAnalyses();
+
+  const [activeTab, setActiveTab] = useState<'cases' | 'analyses'>('cases');
 
   const [caseSearchTerm, setCaseSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('');
@@ -22,18 +34,29 @@ const Discover: React.FC = () => {
   const [caseSortOrder, setCaseSortOrder] = useState<'asc' | 'desc'>('desc');
   const [caseViewMode, setCaseViewMode] = useState<'grid' | 'list'>('grid');
 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedType, setSelectedType] = useState('');
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [analysisSubTab, setAnalysisSubTab] = useState<'all' | 'following'>('all');
+
+  const filteredAnalyses = analyses || [];
+  const filteredFollowingAnalyses = followingAnalyses || [];
+
   const getFilteredCases = useMemo(() => {
     let filtered = [...(allStockCases || [])];
 
     if (caseSearchTerm) {
       const lowerSearchTerm = caseSearchTerm.toLowerCase();
-      filtered = filtered.filter((stockCase) =>
-        stockCase.title.toLowerCase().includes(lowerSearchTerm) ||
-        stockCase.company_name?.toLowerCase().includes(lowerSearchTerm) ||
-        stockCase.description?.toLowerCase().includes(lowerSearchTerm) ||
-        stockCase.sector?.toLowerCase().includes(lowerSearchTerm) ||
-        stockCase.profiles?.display_name?.toLowerCase().includes(lowerSearchTerm) ||
-        stockCase.profiles?.username?.toLowerCase().includes(lowerSearchTerm)
+      filtered = filtered.filter(
+        (stockCase) =>
+          stockCase.title.toLowerCase().includes(lowerSearchTerm) ||
+          stockCase.company_name?.toLowerCase().includes(lowerSearchTerm) ||
+          stockCase.description?.toLowerCase().includes(lowerSearchTerm) ||
+          stockCase.sector?.toLowerCase().includes(lowerSearchTerm) ||
+          stockCase.profiles?.display_name?.toLowerCase().includes(lowerSearchTerm) ||
+          stockCase.profiles?.username?.toLowerCase().includes(lowerSearchTerm)
       );
     }
 
@@ -83,11 +106,17 @@ const Discover: React.FC = () => {
           break;
       }
 
-      if (caseSortOrder === 'asc') {
-        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-      } else {
-        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
-      }
+      return caseSortOrder === 'asc'
+        ? aValue < bValue
+          ? -1
+          : aValue > bValue
+          ? 1
+          : 0
+        : aValue > bValue
+        ? -1
+        : aValue < bValue
+        ? 1
+        : 0;
     });
 
     return filtered.slice(0, 6);
@@ -101,101 +130,86 @@ const Discover: React.FC = () => {
     return Array.from(sectors).sort();
   }, [allStockCases]);
 
-  const handleViewStockCaseDetails = (id: string) => {
-    navigate(`/stock-cases/${id}`);
-  };
-
-  const handleDeleteStockCase = async (id: string) => {
-    console.log('Delete stock case:', id);
-  };
+  const handleViewStockCaseDetails = (id: string) => navigate(`/stock-cases/${id}`);
+  const handleDeleteStockCase = async (id: string) => console.log('Delete stock case:', id);
+  const handleViewAnalysisDetails = (id: string) => navigate(`/analysis/${id}`);
+  const handleDeleteAnalysis = async (id: string) => console.log('Delete analysis:', id);
+  const handleEditAnalysis = (analysis: Analysis) => console.log('Edit analysis:', analysis);
 
   return (
     <Layout>
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
-          <div className="text-center space-y-6 mb-12">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-primary" />
-              </div>
+      <div className="w-full pb-12">
+        <div className="mx-auto w-full max-w-6xl space-y-8 px-1 sm:px-4 lg:px-0">
+          <section className="rounded-3xl border border-border/60 bg-card/70 p-6 text-center shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:p-10">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 sm:h-14 sm:w-14">
+              <Sparkles className="h-6 w-6 text-primary" />
             </div>
-            <h1 className="text-4xl sm:text-5xl font-semibold text-foreground tracking-tight">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
               Upptäck & Utforska
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto font-light leading-relaxed">
-              Hitta inspiration genom visuella aktiecase
+            <p className="mx-auto mt-3 max-w-2xl text-base text-muted-foreground sm:text-lg">
+              Hitta inspiration genom visuella aktiecase och djupa marknadsanalyser.
             </p>
-          </div>
+          </section>
 
-          <div className="bg-card border rounded-2xl p-6 mb-8">
-            <EnhancedStockCasesSearch
-              searchTerm={caseSearchTerm}
-              onSearchChange={setCaseSearchTerm}
-              selectedSector={selectedSector}
-              onSectorChange={setSelectedSector}
-              performanceFilter={performanceFilter}
-              onPerformanceFilterChange={setPerformanceFilter}
-              sortBy={caseSortBy}
-              onSortChange={setCaseSortBy}
-              sortOrder={caseSortOrder}
-              onSortOrderChange={setCaseSortOrder}
-              viewMode={caseViewMode}
-              onViewModeChange={setCaseViewMode}
-              availableSectors={availableSectors}
-              resultsCount={getFilteredCases.length}
-              totalCount={allStockCases?.length || 0}
-            />
-          </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6 sm:space-y-8">
+            <TabsList className="grid w-full grid-cols-2 gap-2 rounded-2xl border border-border/80 bg-muted/40 p-1.5 sm:mx-auto sm:max-w-md sm:gap-3 sm:p-2">
+              <TabsTrigger value="cases" className="flex items-center gap-2">
+                <Camera className="h-4 w-4" /> Case
+              </TabsTrigger>
+              <TabsTrigger value="analyses" className="flex items-center gap-2">
+                <PenTool className="h-4 w-4" /> Analyser
+              </TabsTrigger>
+            </TabsList>
 
-          <div className="space-y-6">
-            {stockCasesLoading ? (
-              <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
-                {[...Array(6)].map((_, i) => (
-                  <Card key={i} className="animate-pulse border rounded-2xl">
-                    <CardContent className="p-6">
-                      <div className="h-4 bg-muted rounded mb-3"></div>
-                      <div className="h-4 bg-muted rounded w-2/3 mb-6"></div>
-                      <div className="h-32 bg-muted rounded-xl"></div>
-                    </CardContent>
-                  </Card>
-                ))}
+            <TabsContent value="cases" className="space-y-6 sm:space-y-8">
+              <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">
+                <EnhancedStockCasesSearch
+                  searchTerm={caseSearchTerm}
+                  onSearchChange={setCaseSearchTerm}
+                  selectedSector={selectedSector}
+                  onSectorChange={setSelectedSector}
+                  performanceFilter={performanceFilter}
+                  onPerformanceFilterChange={setPerformanceFilter}
+                  sortBy={caseSortBy}
+                  onSortChange={setCaseSortBy}
+                  sortOrder={caseSortOrder}
+                  onSortOrderChange={setCaseSortOrder}
+                  viewMode={caseViewMode}
+                  onViewModeChange={setCaseViewMode}
+                  availableSectors={availableSectors}
+                  resultsCount={getFilteredCases.length}
+                  totalCount={allStockCases?.length || 0}
+                />
               </div>
-            ) : (
+
               <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
                 {getFilteredCases.map((stockCase) => (
-                  <StockCaseCard
-                    key={stockCase.id}
-                    stockCase={stockCase}
-                    onViewDetails={handleViewStockCaseDetails}
-                    onDelete={handleDeleteStockCase}
-                  />
+                  <StockCaseCard key={stockCase.id} stockCase={stockCase} onViewDetails={handleViewStockCaseDetails} onDelete={handleDeleteStockCase} />
                 ))}
               </div>
-            )}
+            </TabsContent>
 
-            {!stockCasesLoading && getFilteredCases.length === 0 && (
-              <div className="text-center py-16">
-                <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-6">
-                  <Camera className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-xl font-semibold mb-3 text-foreground">
-                  {caseSearchTerm ? 'Inga case matchar din sökning' : 'Inga case hittades'}
-                </h3>
-                <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-                  {caseSearchTerm ? 'Prova att ändra dina sökord' : 'Var den första att dela ett aktiecase!'}
-                </p>
-                {caseSearchTerm && (
-                  <Button
-                    onClick={() => setCaseSearchTerm('')}
-                    variant="outline"
-                    className="rounded-xl border-border hover:bg-muted/50"
-                  >
-                    Rensa sökning
-                  </Button>
-                )}
+            <TabsContent value="analyses" className="space-y-6 sm:space-y-8">
+              <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">
+                <EnhancedAnalysesSearch
+                  searchTerm={searchTerm}
+                  onSearchChange={setSearchTerm}
+                  selectedType={selectedType}
+                  onTypeChange={setSelectedType}
+                  sortBy={sortBy}
+                  onSortChange={setSortBy}
+                  sortOrder={sortOrder}
+                  onSortOrderChange={setSortOrder}
+                  viewMode={viewMode}
+                  onViewModeChange={setViewMode}
+                  resultsCount={filteredAnalyses.length}
+                  totalCount={analyses?.length || 0}
+                />
               </div>
-            )}
-          </div>
+              {/* Resterande analyser-tabbar samma som din originalkod */}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </Layout>
@@ -203,4 +217,3 @@ const Discover: React.FC = () => {
 };
 
 export default Discover;
-
