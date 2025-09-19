@@ -189,19 +189,16 @@ serve(async (req) => {
       const originalCurrency = normalizeValue(rawCurrency)?.toUpperCase() || null;
       const dailyChangePct = parseChangePercent(rawChange);
 
-      let resolvedPrice = price;
-      let priceCurrency = originalCurrency ?? "SEK";
+      const priceCurrency = originalCurrency ?? "SEK";
+      const pricePerUnit = price;
 
-      if (price !== null) {
-        const converted = convertToSEK(price, originalCurrency ?? "SEK");
-        if (converted !== null) {
-          resolvedPrice = converted;
-          priceCurrency = "SEK";
-        }
-      }
-
-      if ((!canonicalSymbol && !normalizedName) || resolvedPrice === null || resolvedPrice <= 0)
+      if ((!canonicalSymbol && !normalizedName) || pricePerUnit === null || pricePerUnit <= 0)
         continue;
+
+      const pricePerUnitInSEK =
+        priceCurrency === "SEK"
+          ? pricePerUnit
+          : convertToSEK(pricePerUnit, priceCurrency);
 
       // Hitta matchande innehav i Supabase
       let query = supabase.from("user_holdings").select("id, quantity");
@@ -242,14 +239,22 @@ serve(async (req) => {
           ? holding.quantity
           : parseFloat(String(holding.quantity ?? "").replace(",", "."));
         const quantity = Number.isFinite(q) ? q : 0;
-        const computedValue = quantity * (resolvedPrice ?? 0);
+        const computedValue =
+          pricePerUnitInSEK !== null && Number.isFinite(quantity)
+            ? quantity * pricePerUnitInSEK
+            : quantity === 0
+              ? 0
+              : null;
 
         const payload: Record<string, unknown> = {
-          current_price_per_unit: resolvedPrice,
+          current_price_per_unit: pricePerUnit,
           price_currency: priceCurrency,
-          current_value: computedValue,
           updated_at: timestamp,
         };
+
+        if (computedValue !== null) {
+          payload.current_value = computedValue;
+        }
         if (dailyChangePct !== null) payload.daily_change_pct = dailyChangePct;
 
         const { error: updateErr } = await supabase.from("user_holdings").update(payload).eq("id", holding.id);
