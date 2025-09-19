@@ -1042,19 +1042,46 @@ const ChatPortfolioAdvisor = () => {
 
     try {
       console.log('Saving user holdings to database:', holdings);
-      
+
+      const roundToTwo = (value: number) => Math.round(value * 100) / 100;
+
       // Transform holdings to match the user_holdings table structure
-      const holdingsToInsert = holdings.map(holding => ({
-        user_id: user.id,
-        name: holding.name,
-        symbol: holding.symbol || null,
-        quantity: holding.quantity,
-        purchase_price: holding.purchasePrice,
-        current_value: holding.quantity * holding.purchasePrice, // Initial value based on purchase
-        currency: 'SEK',
-        holding_type: 'stock', // Default to stock
-        purchase_date: new Date().toISOString()
-      }));
+      const holdingsToInsert = holdings.map(holding => {
+        const normalizedSymbol = holding.symbol?.trim().length
+          ? holding.symbol.trim().toUpperCase()
+          : null;
+        const ticker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) : undefined;
+
+        const sheetPrice = ticker && typeof ticker.price === 'number' && Number.isFinite(ticker.price) && ticker.price > 0
+          ? roundToTwo(ticker.price)
+          : null;
+        const manualPrice = holding.purchasePrice > 0 ? roundToTwo(holding.purchasePrice) : null;
+        const resolvedPrice = sheetPrice ?? manualPrice;
+        const priceCurrency = resolvedPrice !== null
+          ? (ticker?.currency?.trim()?.toUpperCase() || 'SEK')
+          : null;
+        const quantity = Number.isFinite(holding.quantity) && holding.quantity > 0 ? holding.quantity : 0;
+
+        const currentValue = quantity > 0 && resolvedPrice !== null
+          ? roundToTwo(resolvedPrice * quantity)
+          : quantity > 0 && manualPrice !== null
+            ? roundToTwo(manualPrice * quantity)
+            : null;
+
+        return {
+          user_id: user.id,
+          name: holding.name,
+          symbol: normalizedSymbol,
+          quantity,
+          purchase_price: manualPrice,
+          current_price_per_unit: resolvedPrice,
+          price_currency: priceCurrency,
+          current_value: currentValue,
+          currency: 'SEK',
+          holding_type: 'stock', // Default to stock
+          purchase_date: new Date().toISOString(),
+        };
+      });
 
       const { error } = await supabase
         .from('user_holdings')
@@ -1066,6 +1093,8 @@ const ChatPortfolioAdvisor = () => {
       }
 
       console.log('Successfully saved user holdings');
+
+      await refetchHoldings({ silent: true });
     } catch (error) {
       console.error('Failed to save user holdings:', error);
       toast({
