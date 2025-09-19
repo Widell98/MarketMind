@@ -26,7 +26,7 @@ const AIWeeklyPicks = () => {
       title: stockCase.title,
       data: stockCase
     };
-    navigate('/ai-chat', {
+    navigate('/ai-chatt', {
       state: {
         contextData
       }
@@ -34,7 +34,7 @@ const AIWeeklyPicks = () => {
   };
   const handleGenerateAICases = () => {
     // Trigger the weekly cases generation function
-    navigate('/ai-chat', {
+    navigate('/ai-chatt', {
       state: {
         initialMessage: 'Kan du hjälpa mig att generera AI-baserade investeringsmöjligheter baserat på aktuella marknadstrender?'
       }

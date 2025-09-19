@@ -140,7 +140,7 @@ const CommunityRecommendations: React.FC = () => {
       };
     }
 
-    navigate('/ai-chat', { state: { contextData } });
+    navigate('/ai-chatt', { state: { contextData } });
   };
 
   const handleDeleteRecommendation = async (recommendation: CommunityRecommendation, e: React.MouseEvent<HTMLButtonElement>) => {

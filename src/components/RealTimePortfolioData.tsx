@@ -1,13 +1,11 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  RefreshCw, 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
   Calendar,
   Activity,
   Target,
@@ -17,12 +15,10 @@ import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { formatCurrency } from '@/utils/currencyUtils';
 
 const RealTimePortfolioData: React.FC = () => {
-  const { 
-    performance, 
-    holdingsPerformance, 
-    loading, 
-    updating, 
-    updatePrices 
+  const {
+    performance,
+    holdingsPerformance,
+    loading,
   } = usePortfolioPerformance();
 
   const getChangeIcon = (change: number) => {
@@ -58,23 +54,15 @@ const RealTimePortfolioData: React.FC = () => {
               <Target className="w-5 h-5 text-primary" />
               Portföljöversikt
             </CardTitle>
-            <CardDescription>
-              Senast uppdaterad: {new Date(performance.lastUpdated).toLocaleString('sv-SE')}
+            <CardDescription className="space-y-1">
+              <span className="block">
+                Senast uppdaterad: {new Date(performance.lastUpdated).toLocaleString('sv-SE')}
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                Uppdatera priset för ett innehav genom att klicka på dess ticker i listan över innehav.
+              </span>
             </CardDescription>
           </div>
-          <Button
-            onClick={() => updatePrices()}
-            disabled={updating}
-            variant="outline"
-            size="sm"
-          >
-            {updating ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            ) : (
-              <RefreshCw className="w-4 h-4 mr-2" />
-            )}
-            Uppdatera priser
-          </Button>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

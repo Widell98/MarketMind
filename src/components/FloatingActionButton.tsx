@@ -71,7 +71,7 @@ const FloatingActionButton: React.FC = () => {
     
     switch (actionId) {
       case 'add_holding':
-        navigate('/ai-chat', { 
+        navigate('/ai-chatt', { 
           state: { 
             createNewSession: true, 
             sessionName: 'Lägg till innehav',
@@ -84,7 +84,7 @@ const FloatingActionButton: React.FC = () => {
         document.dispatchEvent(new CustomEvent('openAddCashDialog'));
         break;
       case 'ai_chat':
-        navigate('/ai-chat');
+        navigate('/ai-chatt');
         break;
       case 'analyze':
         navigate('/portfolio-implementation');

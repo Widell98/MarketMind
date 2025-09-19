@@ -149,7 +149,7 @@ Ge ett kortfattat, snabbt svar på investeringsfrågan.`;
     }
     // Redirect to AI chat page with the action as a message parameter
     const encodedMessage = encodeURIComponent(action);
-    window.location.href = `/ai-chat?message=${encodedMessage}`;
+    window.location.href = `/ai-chatt?message=${encodedMessage}`;
   };
 
   const toggleVoice = () => setIsListening(prev => !prev);

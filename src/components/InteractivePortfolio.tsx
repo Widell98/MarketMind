@@ -49,7 +49,7 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
     const message = `Jag vill ersätta ${oldSymbol} med ${newSymbol.toUpperCase()} i min portfölj. Kan du analysera om det är en bra idé och genomföra bytet om det passar min riskprofil?`;
     
     // Navigate to AI chat and pre-fill the input (without sending)
-    navigate('/ai-chat');
+    navigate('/ai-chatt');
     
     // Small delay to ensure navigation is complete before dispatching event
     setTimeout(() => {
@@ -65,7 +65,7 @@ const InteractivePortfolio: React.FC<InteractivePortfolioProps> = ({
 
   const handleQuickAction = (message: string) => {
     // Navigate to AI chat and pre-fill the input (without sending)
-    navigate('/ai-chat');
+    navigate('/ai-chatt');
     
     // Small delay to ensure navigation is complete before dispatching event
     setTimeout(() => {

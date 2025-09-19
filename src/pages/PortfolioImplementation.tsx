@@ -71,7 +71,7 @@ const PortfolioImplementation = () => {
     }
     if (message.startsWith('NEW_SESSION:')) {
       const [, sessionName, actualMessage] = message.split(':');
-      navigate('/ai-chat', {
+      navigate('/ai-chatt', {
         state: {
           createNewSession: true,
           sessionName,
@@ -79,7 +79,7 @@ const PortfolioImplementation = () => {
         }
       });
     } else {
-      navigate('/ai-chat');
+      navigate('/ai-chatt');
     }
   };
   const handleActionClick = (action: string) => {
