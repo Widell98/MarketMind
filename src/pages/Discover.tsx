@@ -144,7 +144,13 @@ const Discover = () => {
 
               <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
                 {getFilteredCases.map((sc) => (
-                  <StockCaseCard key={sc.id} stockCase={sc} onViewDetails={handleViewStockCaseDetails} onDelete={handleDeleteStockCase} />
+                  <StockCaseCard
+                    key={sc.id}
+                    stockCase={sc}
+                    onViewDetails={handleViewStockCaseDetails}
+                    onDelete={handleDeleteStockCase}
+                    showMetaBadges={false}
+                  />
                 ))}
               </div>
 
