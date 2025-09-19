@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { resolveHoldingValue, convertToSEK } from '@/utils/currencyUtils';
+import type { SheetTicker } from '@/hooks/useSheetTickers';
 
 const parseNumeric = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -14,6 +15,75 @@ const parseNumeric = (value: unknown): number | null => {
     const parsed = parseFloat(normalized);
     if (Number.isFinite(parsed)) {
       return parsed;
+    }
+  }
+
+  return null;
+};
+
+const normalizeValue = (value?: string | null) => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const stripSymbolPrefix = (symbol?: string | null) => {
+  const normalized = normalizeValue(symbol);
+  if (!normalized) {
+    return null;
+  }
+
+  const upper = normalized.toUpperCase();
+  const parts = upper.split(':');
+  const candidate = parts[parts.length - 1]?.trim();
+  return candidate && candidate.length > 0 ? candidate : upper;
+};
+
+const getSymbolVariants = (symbol?: string | null) => {
+  const variants = new Set<string>();
+
+  const addVariant = (value?: string | null) => {
+    const normalized = normalizeValue(value);
+    if (!normalized) {
+      return;
+    }
+
+    const upper = normalized.toUpperCase();
+    variants.add(upper);
+
+    const stripped = stripSymbolPrefix(upper);
+    if (stripped && stripped !== upper) {
+      variants.add(stripped);
+    }
+  };
+
+  addVariant(symbol);
+
+  const currentVariants = Array.from(variants);
+  currentVariants.forEach((variant) => {
+    if (variant.endsWith('.ST')) {
+      const base = variant.replace(/\.ST$/, '');
+      if (base) {
+        variants.add(base);
+      }
+    } else {
+      variants.add(`${variant}.ST`);
+    }
+  });
+
+  return Array.from(variants);
+};
+
+const findTickerMatch = (tickers: SheetTicker[], ticker: string): SheetTicker | null => {
+  const targetVariants = new Set(getSymbolVariants(ticker));
+
+  for (const candidate of tickers) {
+    const candidateVariants = getSymbolVariants(candidate.symbol);
+    if (candidateVariants.some((variant) => targetVariants.has(variant))) {
+      return candidate;
     }
   }
 
@@ -54,6 +124,13 @@ interface PriceUpdateSummary {
   requestedTicker?: string;
 }
 
+interface HoldingRow {
+  id: string;
+  quantity: number | string | null;
+  symbol?: string | null;
+  name?: string | null;
+}
+
 export const usePortfolioPerformance = () => {
   const [performance, setPerformance] = useState<PerformanceData>({
     totalValue: 0,
@@ -71,7 +148,7 @@ export const usePortfolioPerformance = () => {
   const [holdingsPerformance, setHoldingsPerformance] = useState<HoldingPerformance[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -279,40 +356,121 @@ export const usePortfolioPerformance = () => {
     try {
       setUpdating(true);
 
-      let accessToken = session?.access_token;
-      if (!accessToken) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        accessToken = sessionData.session?.access_token ?? undefined;
+      const { data: tickerResponse, error: tickerError } = await supabase.functions.invoke('list-sheet-tickers');
+
+      if (tickerError) {
+        throw new Error(tickerError.message || 'Kunde inte hämta tickers från Google Sheets.');
       }
 
-      if (!accessToken) {
-        throw new Error('Ingen aktiv session hittades. Försök logga in igen.');
+      const tickerList = Array.isArray(tickerResponse?.tickers)
+        ? (tickerResponse.tickers as SheetTicker[])
+        : [];
+
+      if (tickerList.length === 0) {
+        throw new Error('Kunde inte hämta tickers från Google Sheets.');
       }
 
-      const invokeOptions: { body: { ticker: string }; headers: Record<string, string> } = {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: { ticker: normalizedTicker },
-      };
+      const matchedTicker = findTickerMatch(tickerList, normalizedTicker);
 
-      const { data, error } = await supabase.functions.invoke('update-portfolio-prices', invokeOptions);
-
-      if (error) {
-        throw error;
+      if (!matchedTicker) {
+        toast({
+          title: 'Tickern hittades inte',
+          description: 'Tickern finns inte i Google Sheets-listan. Kontrollera stavningen eller välj en annan ticker.',
+          variant: 'destructive',
+        });
+        return {
+          updated: 0,
+          errors: 0,
+          unmatched: [],
+          tickerFound: false,
+          requestedTicker: normalizedTicker,
+        };
       }
 
-      const success = data?.success ?? false;
-      const updatedCount = typeof data?.updated === 'number' ? data.updated : 0;
-      const errorCount = typeof data?.errors === 'number' ? data.errors : 0;
-      const unmatched = Array.isArray(data?.unmatched) ? data.unmatched : [];
-      const tickerFound = typeof data?.tickerFound === 'boolean' ? data.tickerFound : undefined;
-      const responseTicker = typeof data?.requestedTicker === 'string'
-        ? data.requestedTicker
-        : normalizedTicker;
+      if (typeof matchedTicker.price !== 'number' || !Number.isFinite(matchedTicker.price) || matchedTicker.price <= 0) {
+        throw new Error(`Tickern ${matchedTicker.symbol} saknar ett giltigt pris i Google Sheets.`);
+      }
 
-      if (!success) {
-        throw new Error(data?.error || 'Kunde inte uppdatera priserna');
+      const canonicalSymbol = stripSymbolPrefix(matchedTicker.symbol) ?? matchedTicker.symbol.toUpperCase();
+      const symbolVariants = getSymbolVariants(matchedTicker.symbol);
+
+      let holdingsQuery = supabase
+        .from('user_holdings')
+        .select('id, quantity, symbol, name, holding_type')
+        .eq('user_id', user.id)
+        .neq('holding_type', 'cash');
+
+      if (symbolVariants.length > 1) {
+        holdingsQuery = holdingsQuery.or(symbolVariants.map((variant) => `symbol.ilike.${variant}`).join(','));
+      } else if (symbolVariants.length === 1) {
+        holdingsQuery = holdingsQuery.ilike('symbol', symbolVariants[0]);
+      }
+
+      const { data: holdings, error: holdingsError } = await holdingsQuery;
+
+      if (holdingsError) {
+        throw holdingsError;
+      }
+
+      if (!holdings || holdings.length === 0) {
+        toast({
+          title: 'Inget innehav att uppdatera',
+          description: `Tickern ${canonicalSymbol} finns inte i din portfölj.`,
+          variant: 'destructive',
+        });
+        return {
+          updated: 0,
+          errors: 0,
+          unmatched: [],
+          tickerFound: true,
+          requestedTicker: canonicalSymbol,
+        };
+      }
+
+      const rawCurrency = matchedTicker.currency ? matchedTicker.currency.toUpperCase() : 'SEK';
+      const rawPrice = matchedTicker.price;
+      let resolvedPrice = rawPrice;
+      let resolvedCurrency = rawCurrency;
+
+      if (resolvedCurrency !== 'SEK') {
+        const converted = convertToSEK(rawPrice, resolvedCurrency);
+        if (Number.isFinite(converted)) {
+          resolvedPrice = converted;
+          resolvedCurrency = 'SEK';
+        }
+      }
+
+      const timestamp = new Date().toISOString();
+      let updatedCount = 0;
+      let errorCount = 0;
+      const failedHoldings: Array<{ symbol?: string; name?: string }> = [];
+
+      const typedHoldings = holdings as HoldingRow[];
+
+      for (const holding of typedHoldings) {
+        const quantity = parseNumeric(holding.quantity) ?? 0;
+        const computedValue = quantity > 0 ? quantity * resolvedPrice : 0;
+
+        const { error: updateError } = await supabase
+          .from('user_holdings')
+          .update({
+            current_price_per_unit: resolvedPrice,
+            price_currency: resolvedCurrency,
+            current_value: computedValue,
+            updated_at: timestamp,
+          })
+          .eq('id', holding.id);
+
+        if (updateError) {
+          errorCount++;
+          failedHoldings.push({
+            symbol: holding.symbol ?? undefined,
+            name: holding.name ?? undefined,
+          });
+          console.error(`Error updating holding ${holding.id}:`, updateError);
+        } else {
+          updatedCount++;
+        }
       }
 
       const descriptionParts: string[] = [];
@@ -321,36 +479,22 @@ export const usePortfolioPerformance = () => {
         descriptionParts.push(`${updatedCount} innehav uppdaterades`);
       }
 
-      if (unmatched.length > 0) {
-        descriptionParts.push(`${unmatched.length} innehav kunde inte matchas`);
-      }
-
       if (errorCount > 0) {
-        descriptionParts.push(`${errorCount} fel uppstod`);
+        descriptionParts.push(`${errorCount} uppdateringar misslyckades`);
       }
 
-      if (normalizedTicker) {
-        if (updatedCount === 0) {
-          if (tickerFound === false) {
-            descriptionParts.push('Tickern hittades inte i Google Sheets.');
-          } else {
-            descriptionParts.push('Tickern matchade inga innehav att uppdatera.');
-          }
-        }
-      }
-
-      if (unmatched.length > 0) {
-        console.warn('Holdings not matched with Google Sheets data:', unmatched);
+      if (updatedCount === 0 && errorCount === 0) {
+        descriptionParts.push('Tickern matchade inga innehav att uppdatera.');
       }
 
       const toastTitle = updatedCount > 0
-        ? `Pris uppdaterat för ${responseTicker}`
-        : `Inget pris uppdaterades för ${responseTicker}`;
+        ? `Pris uppdaterat för ${canonicalSymbol}`
+        : `Inget pris uppdaterades för ${canonicalSymbol}`;
 
       toast({
         title: toastTitle,
-        description: descriptionParts.join(' · ') || 'Inga innehav matchade Google Sheets-datan.',
-        variant: updatedCount === 0 && (errorCount > 0 || unmatched.length > 0) ? 'destructive' : 'default',
+        description: descriptionParts.join(' · ') || undefined,
+        variant: updatedCount === 0 && (errorCount > 0) ? 'destructive' : 'default',
       });
 
       await calculatePerformance();
@@ -358,17 +502,17 @@ export const usePortfolioPerformance = () => {
       return {
         updated: updatedCount,
         errors: errorCount,
-        unmatched,
-        tickerFound,
-        requestedTicker: responseTicker,
+        unmatched: failedHoldings,
+        tickerFound: true,
+        requestedTicker: canonicalSymbol,
       };
 
     } catch (error) {
       console.error('Error updating prices:', error);
       toast({
-        title: "Fel vid prisuppdatering",
-        description: error instanceof Error ? error.message : "Kunde inte uppdatera priserna",
-        variant: "destructive",
+        title: 'Fel vid prisuppdatering',
+        description: error instanceof Error ? error.message : 'Kunde inte uppdatera priserna',
+        variant: 'destructive',
       });
       return null;
     } finally {
