@@ -3,10 +3,9 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  Home, 
+import {
+  Home,
   MessageSquare,
-  TrendingUp, 
   BarChart3,
   Lock,
   Brain,
@@ -29,7 +28,6 @@ const MobileNavigation = () => {
   const navigation = [
     { name: 'Hem', href: '/', icon: Home },
     { name: 'AI-Chat', href: '/ai-chatt', icon: Brain, priority: true },
-    { name: 'Aktiefall', href: '/stock-cases', icon: TrendingUp },
     { name: 'Upptäck', href: '/discover', icon: Search },
     { name: 'Portfölj', href: '/portfolio-implementation', icon: BarChart3, requiresAuth: true },
   ];

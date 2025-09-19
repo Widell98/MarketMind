@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,12 @@ import { Brain } from 'lucide-react';
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const location = useLocation();
+  const isChatRoute = location.pathname.startsWith('/ai-chat') || location.pathname.startsWith('/ai-chatt');
+
+  const mainClassName = isChatRoute ? 'flex-1 container-responsive py-2 sm:py-3 lg:py-4 min-h-0 max-w-full flex flex-col overflow-hidden' : 'flex-1 container-responsive py-2 sm:py-4 lg:py-6 min-h-0 max-w-full overflow-y-scroll';
+  const breadcrumbWrapperClassName = isChatRoute ? 'mb-2 sm:mb-3 flex-shrink-0' : 'mb-2 sm:mb-4';
+  const contentWrapperClassName = isChatRoute ? 'flex-1 flex flex-col min-h-0 px-0' : 'max-w-full overflow-hidden px-1 sm:px-0';
 
   return (
     <ConversationMemoryProvider>
@@ -70,13 +76,13 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             
             {/* Main content */}
             <main
-              className="flex-1 container-responsive py-2 sm:py-4 lg:py-6 min-h-0 max-w-full overflow-y-scroll"
+              className={mainClassName}
               style={{ scrollbarGutter: 'stable' }}
             >
-              <div className="mb-2 sm:mb-4">
+              <div className={breadcrumbWrapperClassName}>
                 <BreadcrumbNavigation />
               </div>
-              <div className="max-w-full overflow-hidden px-1 sm:px-0">
+              <div className={contentWrapperClassName}>
                 {children}
               </div>
             </main>

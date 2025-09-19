@@ -124,7 +124,7 @@ const AIChatPage = () => {
       <LoginPromptModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
       
       {/* Full-height container with gradient background */}
-      <div className="min-h-[calc(100dvh-6rem)] bg-gradient-to-br from-background via-background to-primary/[0.02] flex flex-col">
+      <div className="flex-1 min-h-0 bg-gradient-to-br from-background via-background to-primary/[0.02] flex flex-col">
         <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 flex-1 flex flex-col min-h-0 gap-4 sm:gap-6 lg:gap-8 py-4 sm:py-6 lg:py-8">
           {user && riskProfile ? (
             <div className="flex-1 min-h-0">
