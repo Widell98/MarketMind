@@ -24,6 +24,15 @@ const normalizeValue = (v?: string | null) => (v?.trim()?.length ? v.trim() : nu
 const normalizeSymbol = (v?: string | null) => normalizeValue(v)?.toUpperCase() ?? null;
 const normalizeName = (v?: string | null) => normalizeValue(v)?.toUpperCase() ?? null;
 
+const stripSymbolPrefix = (symbol?: string | null) => {
+  const normalized = normalizeValue(symbol);
+  if (!normalized) return null;
+  const upper = normalized.toUpperCase();
+  const parts = upper.split(":");
+  const candidate = parts[parts.length - 1]?.trim();
+  return candidate && candidate.length > 0 ? candidate : upper;
+};
+
 const parsePrice = (v?: string | null) => {
   if (!v) return null;
   const num = parseFloat(v.replace(/\s/g, "").replace(",", "."));
@@ -36,11 +45,37 @@ const parseChangePercent = (v?: string | null) => {
   return Number.isFinite(num) ? num : null;
 };
 
-const getSymbolVariants = (symbol: string | null) => {
-  if (!symbol) return [];
-  const variants = new Set<string>([symbol]);
-  if (symbol.endsWith(".ST")) variants.add(symbol.replace(/\.ST$/, ""));
-  else variants.add(`${symbol}.ST`);
+const getSymbolVariants = (symbol: string | null, alternative?: string | null) => {
+  const seeds = new Set<string>();
+
+  const addSeed = (value: string | null) => {
+    const normalized = normalizeSymbol(value);
+    if (!normalized) return;
+
+    seeds.add(normalized);
+
+    const withoutPrefix = stripSymbolPrefix(normalized);
+    if (withoutPrefix && withoutPrefix !== normalized) {
+      seeds.add(withoutPrefix);
+    }
+  };
+
+  addSeed(symbol);
+  if (alternative) addSeed(alternative);
+
+  const variants = new Set<string>(seeds);
+
+  for (const variant of [...seeds]) {
+    if (variant.endsWith(".ST")) {
+      const base = variant.replace(/\.ST$/, "");
+      if (base.length > 0) {
+        variants.add(base);
+      }
+    } else {
+      variants.add(`${variant}.ST`);
+    }
+  }
+
   return [...variants];
 };
 
@@ -141,7 +176,9 @@ serve(async (req) => {
       const rawNameValue = normalizeValue(company);
       const normalizedSymbol = normalizeSymbol(rawSymbolValue);
       const normalizedName = normalizeName(rawNameValue);
-      const symbolVariants = getSymbolVariants(normalizedSymbol);
+      const sanitizedSymbol = stripSymbolPrefix(rawSymbolValue);
+      const symbolVariants = getSymbolVariants(rawSymbolValue, sanitizedSymbol);
+      const canonicalSymbol = sanitizedSymbol ?? normalizedSymbol;
       if (requestedTicker) {
         const matchesTicker = symbolVariants.some((variant) => variant.toUpperCase() === requestedTicker);
         if (!matchesTicker) continue;
@@ -163,7 +200,7 @@ serve(async (req) => {
         }
       }
 
-      if ((!normalizedSymbol && !normalizedName) || resolvedPrice === null || resolvedPrice <= 0)
+      if ((!canonicalSymbol && !normalizedName) || resolvedPrice === null || resolvedPrice <= 0)
         continue;
 
       // Hitta matchande innehav i Supabase
@@ -189,14 +226,14 @@ serve(async (req) => {
 
       const { data: holdings, error: selectErr } = await query;
       if (selectErr) {
-        console.error(`Error selecting holdings for ${normalizedSymbol ?? normalizedName}:`, selectErr);
+        console.error(`Error selecting holdings for ${canonicalSymbol ?? normalizedName}:`, selectErr);
         errors++;
         continue;
       }
 
       if (!holdings || holdings.length === 0) {
-        unmatched.push({ symbol: rawSymbolValue ?? undefined, name: rawNameValue ?? undefined });
-        console.warn(`No holdings matched for ${normalizedSymbol ?? rawSymbolValue}`);
+        unmatched.push({ symbol: canonicalSymbol ?? rawSymbolValue ?? undefined, name: rawNameValue ?? undefined });
+        console.warn(`No holdings matched for ${canonicalSymbol ?? normalizedSymbol ?? rawSymbolValue}`);
         continue;
       }
 
