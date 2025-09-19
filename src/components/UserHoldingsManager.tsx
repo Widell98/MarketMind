@@ -13,8 +13,7 @@ import {
   LayoutGrid,
   Table as TableIcon,
   PieChart as PieChartIcon,
-  RefreshCw,
-  Loader2
+  RefreshCw
 } from 'lucide-react';
 import {
   Dialog,
@@ -376,20 +375,10 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                     <Banknote className="w-4 h-4" />
                     Lägg till kassa
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex items-center gap-2"
-                    onClick={() => updatePrices()}
-                    disabled={updating}
-                  >
-                    {updating ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="w-4 h-4" />
-                    )}
-                    {updating ? 'Uppdaterar...' : 'Uppdatera priser'}
-                  </Button>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground border border-dashed border-border rounded-md px-2 py-1">
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Klicka på en ticker för att uppdatera priset.</span>
+                  </div>
                 </div>
 
                 <div className="flex gap-2 flex-1 max-w-md items-center">

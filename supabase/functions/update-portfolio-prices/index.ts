@@ -24,6 +24,15 @@ const normalizeValue = (v?: string | null) => (v?.trim()?.length ? v.trim() : nu
 const normalizeSymbol = (v?: string | null) => normalizeValue(v)?.toUpperCase() ?? null;
 const normalizeName = (v?: string | null) => normalizeValue(v)?.toUpperCase() ?? null;
 
+const stripSymbolPrefix = (symbol?: string | null) => {
+  const normalized = normalizeValue(symbol);
+  if (!normalized) return null;
+  const upper = normalized.toUpperCase();
+  const parts = upper.split(":");
+  const candidate = parts[parts.length - 1]?.trim();
+  return candidate && candidate.length > 0 ? candidate : upper;
+};
+
 const parsePrice = (v?: string | null) => {
   if (!v) return null;
   const num = parseFloat(v.replace(/\s/g, "").replace(",", "."));
@@ -36,11 +45,37 @@ const parseChangePercent = (v?: string | null) => {
   return Number.isFinite(num) ? num : null;
 };
 
-const getSymbolVariants = (symbol: string | null) => {
-  if (!symbol) return [];
-  const variants = new Set<string>([symbol]);
-  if (symbol.endsWith(".ST")) variants.add(symbol.replace(/\.ST$/, ""));
-  else variants.add(`${symbol}.ST`);
+const getSymbolVariants = (symbol: string | null, alternative?: string | null) => {
+  const seeds = new Set<string>();
+
+  const addSeed = (value: string | null) => {
+    const normalized = normalizeSymbol(value);
+    if (!normalized) return;
+
+    seeds.add(normalized);
+
+    const withoutPrefix = stripSymbolPrefix(normalized);
+    if (withoutPrefix && withoutPrefix !== normalized) {
+      seeds.add(withoutPrefix);
+    }
+  };
+
+  addSeed(symbol);
+  if (alternative) addSeed(alternative);
+
+  const variants = new Set<string>(seeds);
+
+  for (const variant of [...seeds]) {
+    if (variant.endsWith(".ST")) {
+      const base = variant.replace(/\.ST$/, "");
+      if (base.length > 0) {
+        variants.add(base);
+      }
+    } else {
+      variants.add(`${variant}.ST`);
+    }
+  }
+
   return [...variants];
 };
 
@@ -84,6 +119,39 @@ serve(async (req) => {
 
     const supabase = getSupabaseClient();
 
+    const unauthorizedResponse = (status: number, message: string) =>
+      new Response(JSON.stringify({ success: false, error: message }), {
+        status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) return unauthorizedResponse(401, "Missing authorization header");
+
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    if (!token) return unauthorizedResponse(401, "Missing access token");
+
+    const serviceToken = Deno.env.get("PORTFOLIO_SERVICE_TOKEN");
+    let isServiceRequest = false;
+    let userId: string | null = null;
+
+    if (serviceToken && token === serviceToken) {
+      isServiceRequest = true;
+    } else {
+      const { data: userData, error: userError } = await supabase.auth.getUser(token);
+      if (userError || !userData.user) {
+        return unauthorizedResponse(403, "Invalid or expired access token");
+      }
+      userId = userData.user.id;
+    }
+
+    if (!isServiceRequest && !requestedTicker) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Ingen ticker angavs för prisuppdatering" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // Hämta CSV från Google Sheets (ändra output till csv)
     const csvUrl =
       "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvOPfg5tZjaFqCu7b3Li80oPEEuje4tQTcnr6XjxCW_ItVbOGWCvfQfFvWDXRH544MkBKeI1dPyzJG/pub?output=csv";
@@ -108,7 +176,9 @@ serve(async (req) => {
       const rawNameValue = normalizeValue(company);
       const normalizedSymbol = normalizeSymbol(rawSymbolValue);
       const normalizedName = normalizeName(rawNameValue);
-      const symbolVariants = getSymbolVariants(normalizedSymbol);
+      const sanitizedSymbol = stripSymbolPrefix(rawSymbolValue);
+      const symbolVariants = getSymbolVariants(rawSymbolValue, sanitizedSymbol);
+      const canonicalSymbol = sanitizedSymbol ?? normalizedSymbol;
       if (requestedTicker) {
         const matchesTicker = symbolVariants.some((variant) => variant.toUpperCase() === requestedTicker);
         if (!matchesTicker) continue;
@@ -119,22 +189,25 @@ serve(async (req) => {
       const originalCurrency = normalizeValue(rawCurrency)?.toUpperCase() || null;
       const dailyChangePct = parseChangePercent(rawChange);
 
-      let resolvedPrice = price;
-      let priceCurrency = originalCurrency ?? "SEK";
+      const priceCurrency = originalCurrency ?? "SEK";
+      const pricePerUnit = price;
 
-      if (price !== null) {
-        const converted = convertToSEK(price, originalCurrency ?? "SEK");
-        if (converted !== null) {
-          resolvedPrice = converted;
-          priceCurrency = "SEK";
-        }
-      }
-
-      if ((!normalizedSymbol && !normalizedName) || resolvedPrice === null || resolvedPrice <= 0)
+      if ((!canonicalSymbol && !normalizedName) || pricePerUnit === null || pricePerUnit <= 0)
         continue;
 
+      const pricePerUnitInSEK =
+        priceCurrency === "SEK"
+          ? pricePerUnit
+          : convertToSEK(pricePerUnit, priceCurrency);
+
       // Hitta matchande innehav i Supabase
-      const query = supabase.from("user_holdings").select("id, quantity").neq("holding_type", "cash");
+      let query = supabase.from("user_holdings").select("id, quantity");
+
+      if (!isServiceRequest && userId) {
+        query = query.eq("user_id", userId);
+      }
+
+      query = query.neq("holding_type", "cash");
 
       if (symbolVariants.length > 0 && namePattern) {
         query.or(
@@ -150,14 +223,14 @@ serve(async (req) => {
 
       const { data: holdings, error: selectErr } = await query;
       if (selectErr) {
-        console.error(`Error selecting holdings for ${normalizedSymbol ?? normalizedName}:`, selectErr);
+        console.error(`Error selecting holdings for ${canonicalSymbol ?? normalizedName}:`, selectErr);
         errors++;
         continue;
       }
 
       if (!holdings || holdings.length === 0) {
-        unmatched.push({ symbol: rawSymbolValue ?? undefined, name: rawNameValue ?? undefined });
-        console.warn(`No holdings matched for ${normalizedSymbol ?? rawSymbolValue}`);
+        unmatched.push({ symbol: canonicalSymbol ?? rawSymbolValue ?? undefined, name: rawNameValue ?? undefined });
+        console.warn(`No holdings matched for ${canonicalSymbol ?? normalizedSymbol ?? rawSymbolValue}`);
         continue;
       }
 
@@ -166,14 +239,22 @@ serve(async (req) => {
           ? holding.quantity
           : parseFloat(String(holding.quantity ?? "").replace(",", "."));
         const quantity = Number.isFinite(q) ? q : 0;
-        const computedValue = quantity * (resolvedPrice ?? 0);
+        const computedValue =
+          pricePerUnitInSEK !== null && Number.isFinite(quantity)
+            ? quantity * pricePerUnitInSEK
+            : quantity === 0
+              ? 0
+              : null;
 
         const payload: Record<string, unknown> = {
-          current_price_per_unit: resolvedPrice,
+          current_price_per_unit: pricePerUnit,
           price_currency: priceCurrency,
-          current_value: computedValue,
           updated_at: timestamp,
         };
+
+        if (computedValue !== null) {
+          payload.current_value = computedValue;
+        }
         if (dailyChangePct !== null) payload.daily_change_pct = dailyChangePct;
 
         const { error: updateErr } = await supabase.from("user_holdings").update(payload).eq("id", holding.id);
