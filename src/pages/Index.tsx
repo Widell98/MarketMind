@@ -132,7 +132,7 @@ const Index = () => {
       icon: MessageSquare,
       title: 'AI Chat',
       description: 'Få personliga investeringsråd',
-      to: '/ai-chat',
+      to: '/ai-chatt',
     },
     {
       icon: TrendingUp,
@@ -201,7 +201,7 @@ const Index = () => {
                     </Link>
                   </Button>
                   <Button asChild variant="ghost" size="lg" className="text-primary hover:bg-primary/5 font-medium px-8 py-4 rounded-xl transition-all duration-300 text-lg">
-                    <Link to="/ai-chat">
+                    <Link to="/ai-chatt">
                       {t('hero.cta.demo')}
                     </Link>
                   </Button>
@@ -276,7 +276,7 @@ const Index = () => {
                       </div>
                       <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
                         <Button asChild variant="outline" size="sm" className="w-full justify-center hover:bg-muted/50 sm:w-auto">
-                          <Link to="/ai-chat">
+                          <Link to="/ai-chatt">
                             <MessageSquare className="mr-2 h-4 w-4" />
                             AI Chat
                           </Link>

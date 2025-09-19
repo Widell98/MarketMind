@@ -124,142 +124,141 @@ const AIChatPage = () => {
       <LoginPromptModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
       
       {/* Full-height container with gradient background */}
-      <div className="min-h-0 bg-gradient-to-br from-background via-background to-primary/[0.02]">
-        <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 xl:px-8 h-full">
-          {/* Compact Header Section for logged in users */}
-          {user && riskProfile ? <div className="pt-4 pb-2">
-              <div className="text-center">
-                
-              </div>
-            </div> : <div className="pt-8 pb-6 sm:pt-12 sm:pb-8">
-              <div className="text-center max-w-3xl mx-auto">
-                <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-primary/10 backdrop-blur-sm rounded-3xl mb-6 shadow-2xl shadow-primary/10">
-                  <Brain className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />
-                </div>
-                
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4 tracking-tight">
-                  {t('aiChat.title')}
-                </h1>
-                <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                  {t('aiChat.subtitle')}
-                </p>
-              </div>
-            </div>}
-
-          {/* Content based on authentication status */}
-          {user && riskProfile ? (/* Full Chat Interface */
-        <div className="h-[calc(100vh-12rem)] sm:h-[calc(100vh-10rem)] lg:h-[calc(100vh-8rem)] min-h-[400px]">
+      <div className="flex-1 min-h-0 bg-gradient-to-br from-background via-background to-primary/[0.02] flex flex-col">
+        <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 flex-1 flex flex-col min-h-0 gap-4 sm:gap-6 lg:gap-8 py-4 sm:py-6 lg:py-8">
+          {user && riskProfile ? (
+            <div className="flex-1 min-h-0">
               <AIChat portfolioId={activePortfolio?.id} initialStock={stockName} initialMessage={message} />
-            </div>) : (/* Demo Content for non-authenticated users */
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 pb-4 sm:pb-6 lg:pb-8">
-              {/* Demo Chat - Main Content */}
-              <div className="xl:col-span-8 min-w-0">
-                <div className="bg-white/80 dark:bg-card/80 backdrop-blur-xl border border-white/20 dark:border-border/50 shadow-2xl rounded-3xl overflow-hidden">
-                  {/* Chat Header */}
-                  <div className="bg-gradient-to-r from-primary/5 to-primary/10 border-b border-border/30 p-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-primary/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
-                        <MessageSquare className="w-6 h-6 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-semibold text-foreground">{t('aiChat.demo.title')}</h3>
-                        <p className="text-muted-foreground">{t('aiChat.demo.subtitle')}</p>
-                      </div>
-                      <div className="ml-auto">
-                        <Badge className="bg-primary/20 text-primary border-primary/30 px-3 py-1 rounded-full font-medium">
-                          <Zap className="w-3 h-3 mr-1.5" />
-                          {t('aiChat.demo.liveDemo')}
-                        </Badge>
-                      </div>
-                    </div>
+            </div>
+          ) : (
+            <>
+              <div className="pt-4 sm:pt-8 lg:pt-12">
+                <div className="text-center max-w-3xl mx-auto">
+                  <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-primary/10 backdrop-blur-sm rounded-3xl mb-6 shadow-2xl shadow-primary/10">
+                    <Brain className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />
                   </div>
 
-                  {/* Demo Messages */}
-                  <div className="p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 lg:space-y-8 min-h-[300px] sm:min-h-[400px] max-h-[400px] sm:max-h-[500px] overflow-y-auto">
-                    {demoMessages.map((msg, index) => <div key={index} className={`flex items-start gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                        {/* Avatar */}
-                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-gradient-to-br from-primary/20 to-primary/30 text-primary'}`}>
-                          {msg.role === 'user' ? <User className="w-5 h-5" /> : <Brain className="w-5 h-5" />}
-                        </div>
+                  <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4 tracking-tight">
+                    {t('aiChat.title')}
+                  </h1>
+                  <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                    {t('aiChat.subtitle')}
+                  </p>
+                </div>
+              </div>
 
-                        {/* Message Bubble */}
-                        <div className={`max-w-[70%] ${msg.role === 'user' ? 'bg-primary text-primary-foreground shadow-primary/25' : 'bg-muted/70 text-foreground shadow-black/5'} rounded-3xl px-6 py-4 shadow-xl backdrop-blur-sm`}>
-                          <p className="text-sm sm:text-base leading-relaxed break-words whitespace-pre-wrap">
-                            {msg.content}
-                          </p>
-                          <p className="text-xs opacity-70 mt-3 font-medium">
-                            {msg.timestamp.toLocaleTimeString('sv-SE', {
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 pb-4 sm:pb-6 lg:pb-8">
+                {/* Demo Chat - Main Content */}
+                <div className="xl:col-span-8 min-w-0">
+                  <div className="bg-white/80 dark:bg-card/80 backdrop-blur-xl border border-white/20 dark:border-border/50 shadow-2xl rounded-3xl overflow-hidden">
+                    {/* Chat Header */}
+                    <div className="bg-gradient-to-r from-primary/5 to-primary/10 border-b border-border/30 p-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-primary/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
+                          <MessageSquare className="w-6 h-6 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-semibold text-foreground">{t('aiChat.demo.title')}</h3>
+                          <p className="text-muted-foreground">{t('aiChat.demo.subtitle')}</p>
+                        </div>
+                        <div className="ml-auto">
+                          <Badge className="bg-primary/20 text-primary border-primary/30 px-3 py-1 rounded-full font-medium">
+                            <Zap className="w-3 h-3 mr-1.5" />
+                            {t('aiChat.demo.liveDemo')}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Demo Messages */}
+                    <div className="p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 lg:space-y-8 min-h-[300px] sm:min-h-[400px] max-h-[400px] sm:max-h-[500px] overflow-y-auto">
+                      {demoMessages.map((msg, index) => <div key={index} className={`flex items-start gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                          {/* Avatar */}
+                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-gradient-to-br from-primary/20 to-primary/30 text-primary'}`}>
+                            {msg.role === 'user' ? <User className="w-5 h-5" /> : <Brain className="w-5 h-5" />}
+                          </div>
+
+                          {/* Message Bubble */}
+                          <div className={`max-w-[70%] ${msg.role === 'user' ? 'bg-primary text-primary-foreground shadow-primary/25' : 'bg-muted/70 text-foreground shadow-black/5'} rounded-3xl px-6 py-4 shadow-xl backdrop-blur-sm`}>
+                            <p className="text-sm sm:text-base leading-relaxed break-words whitespace-pre-wrap">
+                              {msg.content}
+                            </p>
+                            <p className="text-xs opacity-70 mt-3 font-medium">
+                              {msg.timestamp.toLocaleTimeString('sv-SE', {
                         hour: '2-digit',
                         minute: '2-digit'
                       })}
-                          </p>
-                        </div>
-                      </div>)}
-                  </div>
-
-                  {/* Login Prompt */}
-                  <div className="border-t border-border/30 p-6 sm:p-8">
-                    <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border border-primary/20 rounded-3xl p-6 backdrop-blur-sm">
-                      <div className="flex flex-col sm:flex-row items-center gap-6">
-                        <div className="flex items-center gap-4 flex-1">
-                          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-xl shadow-primary/25">
-                            <LogIn className="w-7 h-7 text-primary-foreground" />
-                          </div>
-                          <div className="text-center sm:text-left">
-                            <h4 className="text-lg font-semibold text-foreground mb-1">
-                              {t('aiChat.demo.continueConversation')}
-                            </h4>
-                            <p className="text-muted-foreground leading-relaxed">
-                              {t('aiChat.demo.loginPrompt')}
                             </p>
                           </div>
+                        </div>)}
+                    </div>
+
+                    {/* Login Prompt */}
+                    <div className="border-t border-border/30 p-6 sm:p-8">
+                      <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border border-primary/20 rounded-3xl p-6 backdrop-blur-sm">
+                        <div className="flex flex-col sm:flex-row items-center gap-6">
+                          <div className="flex items-center gap-4 flex-1">
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-xl shadow-primary/25">
+                              <LogIn className="w-7 h-7 text-primary-foreground" />
+                            </div>
+                            <div className="text-center sm:text-left">
+                              <h4 className="text-lg font-semibold text-foreground mb-1">
+                                {t('aiChat.demo.continueConversation')}
+                              </h4>
+                              <p className="text-muted-foreground leading-relaxed">
+                                {t('aiChat.demo.loginPrompt')}
+                              </p>
+                            </div>
+                          </div>
+                          <Button onClick={() => window.location.href = '/auth'} className="flex-shrink-0 px-8 py-3 rounded-2xl font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105" size="lg">
+                            <LogIn className="w-4 h-4 mr-2" />
+                            {t('aiChat.demo.loginButton')}
+                          </Button>
                         </div>
-                        <Button onClick={() => window.location.href = '/auth'} className="flex-shrink-0 px-8 py-3 rounded-2xl font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105" size="lg">
-                          <LogIn className="w-4 h-4 mr-2" />
-                          {t('aiChat.demo.loginButton')}
-                        </Button>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Right sidebar - Features & Marketing */}
-              <div className="xl:col-span-4 space-y-4 sm:space-y-6 min-w-0">
-                {/* AI Features Card */}
-                <div className="bg-white/80 dark:bg-card/80 backdrop-blur-xl border border-white/20 dark:border-border/50 shadow-2xl rounded-3xl p-6 sm:p-8">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-2xl bg-primary/20 flex items-center justify-center">
-                      <Lightbulb className="w-5 h-5 text-primary" />
+                {/* Right sidebar - Features & Marketing */}
+                <div className="xl:col-span-4 space-y-4 sm:space-y-6 min-w-0">
+                  {/* AI Features Card */}
+                  <div className="bg-white/80 dark:bg-card/80 backdrop-blur-xl border border-white/20 dark:border-border/50 shadow-2xl rounded-3xl p-6 sm:p-8">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 rounded-2xl bg-primary/20 flex items-center justify-center">
+                        <Lightbulb className="w-5 h-5 text-primary" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-foreground">{t('aiChat.features.title')}</h3>
                     </div>
-                    <h3 className="text-xl font-semibold text-foreground">{t('aiChat.features.title')}</h3>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    {examplePrompts.map((prompt, index) => <div key={index} className="group p-4 rounded-2xl bg-muted/50 hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-all duration-300 cursor-pointer" onClick={() => handleExamplePrompt(prompt.prompt)}>
-                        <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/30 transition-colors">
-                            {prompt.icon}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-foreground mb-1 group-hover:text-primary transition-colors">
-                              {prompt.title}
-                            </h4>
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                              {prompt.description}
-                            </p>
-                          </div>
-                        </div>
-                      </div>)}
-                  </div>
-                </div>
 
-                {/* Marketing Panel */}
-                <AIMarketingPanel />
+                    <div className="space-y-4">
+                      {examplePrompts.map((prompt, index) => <div key={index} className="group p-4 rounded-2xl bg-muted/50 hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-all duration-300 cursor-pointer" onClick={() => handleExamplePrompt(prompt.prompt)}>
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/30 transition-colors">
+                              {prompt.icon}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-foreground mb-1 group-hover:text-primary transition-colors">
+                                {prompt.title}
+                              </h4>
+                              <p className="text-sm text-muted-foreground leading-relaxed">
+                                {prompt.description}
+                              </p>
+                            </div>
+                          </div>
+                        </div>)}
+                    </div>
+                  </div>
+
+                  {/* Marketing Panel */}
+                  <AIMarketingPanel />
+                </div>
               </div>
-            </div>)}
+            </>
+          )}
         </div>
       </div>
     </Layout>;
 };
+
 export default AIChatPage;

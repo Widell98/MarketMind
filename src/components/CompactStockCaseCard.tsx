@@ -53,7 +53,7 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
       company: stockCase.company_name,
       data: stockCase
     };
-    navigate('/ai-chat', { state: { contextData } });
+    navigate('/ai-chatt', { state: { contextData } });
   };
 
   const handleEditCase = (e: React.MouseEvent) => {

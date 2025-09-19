@@ -1,46 +1,25 @@
 import React, { useState, useMemo } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Sparkles, Camera, PenTool, BookOpen, Users } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { Sparkles, Camera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 
 import StockCaseCard from '@/components/StockCaseCard';
 import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
-import EnhancedAnalysesSearch from '@/components/EnhancedAnalysesSearch';
-import EnhancedAnalysisCard from '@/components/EnhancedAnalysisCard';
-import { Analysis } from '@/types/analysis';
 
 import { useStockCases } from '@/hooks/useStockCases';
-import { useAnalyses } from '@/hooks/useAnalyses';
-import { useFollowingAnalyses } from '@/hooks/useFollowingAnalyses';
 
 const Discover = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const { stockCases: allStockCases, loading: stockCasesLoading } = useStockCases(false);
-  const { data: analyses, isLoading: analysesLoading } = useAnalyses(50);
-  const { data: followingAnalyses, isLoading: followingAnalysesLoading } = useFollowingAnalyses();
 
-  const [activeTab, setActiveTab] = useState<'cases' | 'analyses'>('cases');
   const [caseSearchTerm, setCaseSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('');
   const [performanceFilter, setPerformanceFilter] = useState('');
   const [caseSortBy, setCaseSortBy] = useState('created_at');
   const [caseSortOrder, setCaseSortOrder] = useState<'asc' | 'desc'>('desc');
   const [caseViewMode, setCaseViewMode] = useState<'grid' | 'list'>('grid');
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState('');
-  const [sortBy, setSortBy] = useState('created_at');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [analysisSubTab, setAnalysisSubTab] = useState<'all' | 'following'>('all');
-
-  const filteredAnalyses = analyses || [];
-  const filteredFollowingAnalyses = followingAnalyses || [];
 
   const getFilteredCases = useMemo(() => {
     let filtered = [...(allStockCases || [])];
@@ -119,10 +98,6 @@ const Discover = () => {
 
   const handleViewStockCaseDetails = (id: string) => navigate(`/stock-cases/${id}`);
   const handleDeleteStockCase = (id: string) => console.log('Delete stock case:', id);
-  const handleViewAnalysisDetails = (id: string) => navigate(`/analysis/${id}`);
-  const handleDeleteAnalysis = (id: string) => console.log('Delete analysis:', id);
-  const handleEditAnalysis = (a: Analysis) => console.log('Edit analysis:', a);
-
   return (
     <Layout>
       <div className="w-full pb-12">
@@ -135,17 +110,14 @@ const Discover = () => {
               Upptäck & Utforska
             </h1>
             <p className="mx-auto mt-3 max-w-2xl text-base text-muted-foreground sm:text-lg">
-              Hitta inspiration genom visuella aktiecase och djupa marknadsanalyser.
+              Hitta inspiration genom visuella aktiecase och AI-drivna idéer.
             </p>
           </section>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6 sm:space-y-8">
-            <TabsList className="grid w-full grid-cols-2 gap-2 rounded-2xl border border-border/80 bg-muted/40 p-1.5 sm:mx-auto sm:max-w-md sm:gap-3 sm:p-2">
+          <Tabs defaultValue="cases" className="w-full space-y-6 sm:space-y-8">
+            <TabsList className="grid w-full grid-cols-1 gap-2 rounded-2xl border border-border/80 bg-muted/40 p-1.5 sm:mx-auto sm:max-w-xs sm:gap-3 sm:p-2">
               <TabsTrigger value="cases">
                 <Camera className="h-4 w-4" /> Case
-              </TabsTrigger>
-              <TabsTrigger value="analyses">
-                <PenTool className="h-4 w-4" /> Analyser
               </TabsTrigger>
             </TabsList>
 
@@ -196,25 +168,6 @@ const Discover = () => {
               )}
             </TabsContent>
 
-            <TabsContent value="analyses" className="space-y-6 sm:space-y-8">
-              <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">
-                <EnhancedAnalysesSearch
-                  searchTerm={searchTerm}
-                  onSearchChange={setSearchTerm}
-                  selectedType={selectedType}
-                  onTypeChange={setSelectedType}
-                  sortBy={sortBy}
-                  onSortChange={setSortBy}
-                  sortOrder={sortOrder}
-                  onSortOrderChange={setSortOrder}
-                  viewMode={viewMode}
-                  onViewModeChange={setViewMode}
-                  resultsCount={filteredAnalyses.length}
-                  totalCount={analyses?.length || 0}
-                />
-              </div>
-              {/* Analys-tabbar och kort kan fortsätta som i din main-version */}
-            </TabsContent>
           </Tabs>
         </div>
       </div>

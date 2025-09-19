@@ -18,7 +18,7 @@ const AppSidebar = () => {
     requiresAuth: true
   }, {
     name: t('nav.aiChat'),
-    href: '/ai-chat',
+    href: '/ai-chatt',
     icon: Brain
   }];
   const mainNavigation = [{

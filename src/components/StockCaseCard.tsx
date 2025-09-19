@@ -117,7 +117,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
       company: stockCase.company_name,
       data: stockCase
     };
-    navigate('/ai-chat', {
+    navigate('/ai-chatt', {
       state: {
         contextData
       }

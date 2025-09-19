@@ -65,7 +65,7 @@ const SmartSuggestionsCard: React.FC<SmartSuggestionsCardProps> = ({
           }
         });
         window.dispatchEvent(urgentEvent);
-        navigate('/ai-chat');
+        navigate('/ai-chatt');
         break;
       case 'deep-analysis-learning':
         const learningEvent = new CustomEvent('createStockChat', {
@@ -75,7 +75,7 @@ const SmartSuggestionsCard: React.FC<SmartSuggestionsCardProps> = ({
           }
         });
         window.dispatchEvent(learningEvent);
-        navigate('/ai-chat');
+        navigate('/ai-chatt');
         break;
       case 'market-opportunities':
         navigate('/stock-cases');
@@ -88,10 +88,10 @@ const SmartSuggestionsCard: React.FC<SmartSuggestionsCardProps> = ({
           }
         });
         window.dispatchEvent(diversificationEvent);
-        navigate('/ai-chat');
+        navigate('/ai-chatt');
         break;
       case 'try-ai-assistant':
-        navigate('/ai-chat');
+        navigate('/ai-chatt');
         break;
       case 'weekly-portfolio-check':
         navigate('/portfolio-implementation');
@@ -108,7 +108,7 @@ const SmartSuggestionsCard: React.FC<SmartSuggestionsCardProps> = ({
           }
         });
         window.dispatchEvent(genericEvent);
-        navigate('/ai-chat');
+        navigate('/ai-chatt');
     }
     
     onDismiss(); // Close suggestions after action

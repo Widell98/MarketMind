@@ -154,7 +154,7 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   };
   const handleQuickAction = (message: string) => {
     // Navigate to AI chat and trigger the pre-filled message
-    navigate('/ai-chat');
+    navigate('/ai-chatt');
 
     // Small delay to ensure navigation is complete before dispatching event
     setTimeout(() => {
