@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useId } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
+import useSheetTickers, { SheetTicker } from '@/hooks/useSheetTickers';
 
 interface Message {
   id: string;
@@ -50,6 +51,8 @@ interface Holding {
   symbol: string;
   quantity: number;
   purchasePrice: number;
+  nameManuallyEdited: boolean;
+  priceManuallyEdited: boolean;
 }
 
 interface ConversationData {
@@ -293,6 +296,47 @@ const ChatPortfolioAdvisor = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const refinementEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+  const { tickers, isLoading: tickersLoading, error: tickersError } = useSheetTickers();
+  const rawTickerListId = useId();
+  const tickerDatalistId = `advisor-sheet-tickers-${rawTickerListId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+
+  const priceFormatter = useMemo(
+    () => new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    []
+  );
+
+  const tickerLookup = useMemo(() => {
+    const map = new Map<string, SheetTicker>();
+    tickers.forEach(ticker => {
+      map.set(ticker.symbol.toUpperCase(), ticker);
+    });
+    return map;
+  }, [tickers]);
+
+  const tickerOptions = useMemo(
+    () =>
+      tickers.map(ticker => {
+        const label =
+          ticker.name && ticker.name !== ticker.symbol
+            ? `${ticker.name} (${ticker.symbol})`
+            : ticker.symbol;
+        const priceLabel =
+          typeof ticker.price === 'number' && Number.isFinite(ticker.price) && ticker.price > 0
+            ? ` – ${priceFormatter.format(ticker.price)}${
+                ticker.currency ? ` ${ticker.currency}` : ''
+              }`.trimEnd()
+            : '';
+
+        return (
+          <option
+            key={ticker.symbol}
+            value={ticker.symbol}
+            label={`${label}${priceLabel}`}
+          />
+        );
+      }),
+    [tickers, priceFormatter]
+  );
 
   const structuredResponse = useMemo(() => {
     if (!portfolioResult?.aiResponse) {
@@ -667,16 +711,157 @@ const ChatPortfolioAdvisor = () => {
       name: '',
       symbol: '',
       quantity: 0,
-      purchasePrice: 0
+      purchasePrice: 0,
+      nameManuallyEdited: false,
+      priceManuallyEdited: false
     };
     setHoldings(prev => [...prev, newHolding]);
   };
 
-  const updateHolding = (id: string, field: keyof Holding, value: string | number) => {
-    setHoldings(prev => prev.map(holding => 
-      holding.id === id ? { ...holding, [field]: value } : holding
-    ));
+  const handleHoldingNameChange = (id: string, value: string) => {
+    setHoldings(prev =>
+      prev.map(holding =>
+        holding.id === id
+          ? {
+              ...holding,
+              name: value,
+              nameManuallyEdited: value.trim().length > 0
+            }
+          : holding
+      )
+    );
   };
+
+  const handleHoldingSymbolChange = (id: string, rawValue: string) => {
+    const normalizedSymbol = rawValue.trim().toUpperCase();
+
+    setHoldings(prev =>
+      prev.map(holding => {
+        if (holding.id !== id) {
+          return holding;
+        }
+
+        const ticker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) : undefined;
+
+        let updatedHolding: Holding = {
+          ...holding,
+          symbol: normalizedSymbol
+        };
+
+        if (ticker) {
+          if (!holding.nameManuallyEdited) {
+            const resolvedName = ticker.name?.trim() || normalizedSymbol;
+            if (holding.name !== resolvedName) {
+              updatedHolding = {
+                ...updatedHolding,
+                name: resolvedName
+              };
+            }
+          }
+
+          if (
+            !holding.priceManuallyEdited &&
+            typeof ticker.price === 'number' &&
+            Number.isFinite(ticker.price) &&
+            ticker.price > 0
+          ) {
+            const normalizedPrice = parseFloat(ticker.price.toFixed(2));
+            if (holding.purchasePrice !== normalizedPrice) {
+              updatedHolding = {
+                ...updatedHolding,
+                purchasePrice: normalizedPrice
+              };
+            }
+          }
+        }
+
+        return updatedHolding;
+      })
+    );
+  };
+
+  const handleHoldingQuantityChange = (id: string, rawValue: string) => {
+    const parsed = parseInt(rawValue, 10);
+    setHoldings(prev =>
+      prev.map(holding =>
+        holding.id === id
+          ? {
+              ...holding,
+              quantity: Number.isFinite(parsed) ? parsed : 0
+            }
+          : holding
+      )
+    );
+  };
+
+  const handleHoldingPurchasePriceChange = (id: string, rawValue: string) => {
+    const parsed = parseFloat(rawValue);
+    setHoldings(prev =>
+      prev.map(holding =>
+        holding.id === id
+          ? {
+              ...holding,
+              purchasePrice: Number.isFinite(parsed) ? parsed : 0,
+              priceManuallyEdited: rawValue.trim().length > 0
+            }
+          : holding
+      )
+    );
+  };
+
+  useEffect(() => {
+    if (tickers.length === 0) {
+      return;
+    }
+
+    setHoldings(prev => {
+      let hasChanges = false;
+
+      const updatedHoldings = prev.map(holding => {
+        const symbol = holding.symbol?.trim().toUpperCase();
+        if (!symbol) {
+          return holding;
+        }
+
+        const ticker = tickerLookup.get(symbol);
+        if (!ticker) {
+          return holding;
+        }
+
+        let nextHolding = holding;
+        let modified = false;
+
+        if (!holding.nameManuallyEdited) {
+          const resolvedName = ticker.name?.trim() || symbol;
+          if (holding.name !== resolvedName) {
+            nextHolding = { ...nextHolding, name: resolvedName };
+            modified = true;
+          }
+        }
+
+        if (
+          !holding.priceManuallyEdited &&
+          typeof ticker.price === 'number' &&
+          Number.isFinite(ticker.price) &&
+          ticker.price > 0
+        ) {
+          const normalizedPrice = parseFloat(ticker.price.toFixed(2));
+          if (holding.purchasePrice !== normalizedPrice) {
+            nextHolding = { ...nextHolding, purchasePrice: normalizedPrice };
+            modified = true;
+          }
+        }
+
+        if (modified) {
+          hasChanges = true;
+        }
+
+        return nextHolding;
+      });
+
+      return hasChanges ? updatedHoldings : prev;
+    });
+  }, [tickerLookup, tickers.length]);
 
   const removeHolding = (id: string) => {
     setHoldings(prev => prev.filter(holding => holding.id !== id));
@@ -778,7 +963,17 @@ const ChatPortfolioAdvisor = () => {
           true
         );
         setShowHoldingsInput(true);
-        setHoldings([{ id: '1', name: '', symbol: '', quantity: 0, purchasePrice: 0 }]);
+        setHoldings([
+          {
+            id: '1',
+            name: '',
+            symbol: '',
+            quantity: 0,
+            purchasePrice: 0,
+            nameManuallyEdited: false,
+            priceManuallyEdited: false
+          }
+        ]);
       }, 1000);
       
       return;
@@ -847,19 +1042,46 @@ const ChatPortfolioAdvisor = () => {
 
     try {
       console.log('Saving user holdings to database:', holdings);
-      
+
+      const roundToTwo = (value: number) => Math.round(value * 100) / 100;
+
       // Transform holdings to match the user_holdings table structure
-      const holdingsToInsert = holdings.map(holding => ({
-        user_id: user.id,
-        name: holding.name,
-        symbol: holding.symbol || null,
-        quantity: holding.quantity,
-        purchase_price: holding.purchasePrice,
-        current_value: holding.quantity * holding.purchasePrice, // Initial value based on purchase
-        currency: 'SEK',
-        holding_type: 'stock', // Default to stock
-        purchase_date: new Date().toISOString()
-      }));
+      const holdingsToInsert = holdings.map(holding => {
+        const normalizedSymbol = holding.symbol?.trim().length
+          ? holding.symbol.trim().toUpperCase()
+          : null;
+        const ticker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) : undefined;
+
+        const sheetPrice = ticker && typeof ticker.price === 'number' && Number.isFinite(ticker.price) && ticker.price > 0
+          ? roundToTwo(ticker.price)
+          : null;
+        const manualPrice = holding.purchasePrice > 0 ? roundToTwo(holding.purchasePrice) : null;
+        const resolvedPrice = sheetPrice ?? manualPrice;
+        const priceCurrency = resolvedPrice !== null
+          ? (ticker?.currency?.trim()?.toUpperCase() || 'SEK')
+          : null;
+        const quantity = Number.isFinite(holding.quantity) && holding.quantity > 0 ? holding.quantity : 0;
+
+        const currentValue = quantity > 0 && resolvedPrice !== null
+          ? roundToTwo(resolvedPrice * quantity)
+          : quantity > 0 && manualPrice !== null
+            ? roundToTwo(manualPrice * quantity)
+            : null;
+
+        return {
+          user_id: user.id,
+          name: holding.name,
+          symbol: normalizedSymbol,
+          quantity,
+          purchase_price: manualPrice,
+          current_price_per_unit: resolvedPrice,
+          price_currency: priceCurrency,
+          current_value: currentValue,
+          currency: 'SEK',
+          holding_type: 'stock', // Default to stock
+          purchase_date: new Date().toISOString(),
+        };
+      });
 
       const { error } = await supabase
         .from('user_holdings')
@@ -871,6 +1093,8 @@ const ChatPortfolioAdvisor = () => {
       }
 
       console.log('Successfully saved user holdings');
+
+      await refetchHoldings({ silent: true });
     } catch (error) {
       console.error('Failed to save user holdings:', error);
       toast({
@@ -1594,34 +1818,49 @@ const ChatPortfolioAdvisor = () => {
                       {/* Holdings Input Form */}
                       {message.hasHoldingsInput && showHoldingsInput && (
                         <div className="mt-4 space-y-4">
-                          <div className="text-sm text-muted-foreground mb-3">
+                          <div className="text-sm text-muted-foreground mb-3 space-y-2">
                             <p className="flex items-center gap-2">
                               <Check className="w-4 h-4 text-green-600" />
                               Fyll i dina innehav nedan. Symbol/ticker är valfritt men rekommenderat för bättre analys.
                             </p>
+                            {tickersLoading && (
+                              <p className="text-xs text-muted-foreground">Hämtar tickerlista från Google Sheets...</p>
+                            )}
+                            {tickersError && (
+                              <p className="text-xs text-muted-foreground">{tickersError}</p>
+                            )}
+                            {!tickersLoading && !tickersError && tickers.length > 0 && (
+                              <p className="text-xs text-muted-foreground">
+                                Välj en symbol från listan eller skriv in den manuellt för att fylla i namn och pris automatiskt.
+                              </p>
+                            )}
                           </div>
-                          
+
                           <div className="max-h-60 overflow-y-auto space-y-3">
-                            {holdings.map((holding, index) => (
-                              <div key={holding.id} className="grid grid-cols-1 sm:grid-cols-5 gap-2 p-3 bg-background/50 rounded-lg border">
+                            {holdings.map(holding => (
+                              <div
+                                key={holding.id}
+                                className="grid grid-cols-1 sm:grid-cols-5 gap-2 p-3 bg-background/50 rounded-lg border"
+                              >
                                 <Input
                                   placeholder="Företagsnamn *"
                                   value={holding.name}
-                                  onChange={(e) => updateHolding(holding.id, 'name', e.target.value)}
+                                  onChange={(e) => handleHoldingNameChange(holding.id, e.target.value)}
                                   className="text-xs sm:text-sm"
                                   required
                                 />
                                 <Input
-                                  placeholder="Symbol (t.ex. AAPL)"
+                                  placeholder={tickersLoading ? 'Hämtar tickers...' : 'Symbol (t.ex. AAPL)'}
                                   value={holding.symbol}
-                                  onChange={(e) => updateHolding(holding.id, 'symbol', e.target.value.toUpperCase())}
+                                  onChange={(e) => handleHoldingSymbolChange(holding.id, e.target.value)}
                                   className="text-xs sm:text-sm"
+                                  list={tickerDatalistId}
                                 />
                                 <Input
                                   type="number"
                                   placeholder="Antal *"
                                   value={holding.quantity || ''}
-                                  onChange={(e) => updateHolding(holding.id, 'quantity', parseInt(e.target.value) || 0)}
+                                  onChange={(e) => handleHoldingQuantityChange(holding.id, e.target.value)}
                                   className="text-xs sm:text-sm"
                                   required
                                   min="1"
@@ -1630,7 +1869,7 @@ const ChatPortfolioAdvisor = () => {
                                   type="number"
                                   placeholder="Köppris (SEK) *"
                                   value={holding.purchasePrice || ''}
-                                  onChange={(e) => updateHolding(holding.id, 'purchasePrice', parseFloat(e.target.value) || 0)}
+                                  onChange={(e) => handleHoldingPurchasePriceChange(holding.id, e.target.value)}
                                   className="text-xs sm:text-sm"
                                   required
                                   min="0"
@@ -1648,6 +1887,8 @@ const ChatPortfolioAdvisor = () => {
                               </div>
                             ))}
                           </div>
+
+                          <datalist id={tickerDatalistId}>{tickerOptions}</datalist>
                           
                           {/* Holdings Summary */}
                           {holdings.some(h => h.name && h.quantity > 0 && h.purchasePrice > 0) && (
