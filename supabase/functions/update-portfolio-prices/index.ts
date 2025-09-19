@@ -110,6 +110,13 @@ serve(async (req) => {
       userId = userData.user.id;
     }
 
+    if (!isServiceRequest && !requestedTicker) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Ingen ticker angavs för prisuppdatering" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // Hämta CSV från Google Sheets (ändra output till csv)
     const csvUrl =
       "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvOPfg5tZjaFqCu7b3Li80oPEEuje4tQTcnr6XjxCW_ItVbOGWCvfQfFvWDXRH544MkBKeI1dPyzJG/pub?output=csv";

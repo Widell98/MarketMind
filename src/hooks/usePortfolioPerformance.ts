@@ -266,10 +266,18 @@ export const usePortfolioPerformance = () => {
       return null;
     }
 
+    const normalizedTicker = ticker?.trim().toUpperCase();
+
+    if (!normalizedTicker) {
+      toast({
+        title: 'Välj innehav att uppdatera',
+        description: 'Klicka på ett innehavs ticker i listan för att uppdatera priset.',
+      });
+      return null;
+    }
+
     try {
       setUpdating(true);
-
-      const normalizedTicker = ticker?.trim().toUpperCase();
 
       let accessToken = session?.access_token;
       if (!accessToken) {
@@ -281,15 +289,12 @@ export const usePortfolioPerformance = () => {
         throw new Error('Ingen aktiv session hittades. Försök logga in igen.');
       }
 
-      const invokeOptions: { body?: { ticker: string }; headers?: Record<string, string> } = {
+      const invokeOptions: { body: { ticker: string }; headers: Record<string, string> } = {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
+        body: { ticker: normalizedTicker },
       };
-
-      if (normalizedTicker) {
-        invokeOptions.body = { ticker: normalizedTicker };
-      }
 
       const { data, error } = await supabase.functions.invoke('update-portfolio-prices', invokeOptions);
 
@@ -339,12 +344,8 @@ export const usePortfolioPerformance = () => {
       }
 
       const toastTitle = updatedCount > 0
-        ? normalizedTicker
-          ? `Pris uppdaterat för ${responseTicker}`
-          : 'Priser uppdaterade'
-        : normalizedTicker
-          ? `Inget pris uppdaterades för ${responseTicker}`
-          : 'Inga priser uppdaterades';
+        ? `Pris uppdaterat för ${responseTicker}`
+        : `Inget pris uppdaterades för ${responseTicker}`;
 
       toast({
         title: toastTitle,
