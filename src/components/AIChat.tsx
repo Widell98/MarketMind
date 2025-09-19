@@ -266,8 +266,8 @@ const AIChat = ({
           {/* Main Chat Area */}
           <div className="flex-1 flex flex-col bg-background">
             {/* Minimal Top Bar */}
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 border-b border-border">
+              <div className="flex items-center gap-2 sm:gap-3">
                 {/* Mobile Menu Button */}
                 {isMobile && <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
                     <SheetTrigger asChild>
@@ -285,13 +285,18 @@ const AIChat = ({
                     {desktopSidebarCollapsed ? <PanelLeft className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
                   </Button>}
 
-                <Button onClick={handleNewSession} variant="ghost" size="sm" className="text-sm text-muted-foreground hover:text-foreground">
+                <Button
+                  onClick={handleNewSession}
+                  variant="ghost"
+                  size="sm"
+                  className="w-full sm:w-auto justify-center text-sm text-muted-foreground hover:text-foreground"
+                >
                   New chat
                 </Button>
               </div>
 
               {/* Usage indicator for free users */}
-              {!isPremium && <div className="text-xs text-muted-foreground">
+              {!isPremium && <div className="text-xs text-muted-foreground sm:text-right">
                   {usedCredits}/{totalCredits} credits använt idag
                 </div>}
             </div>
@@ -365,7 +370,7 @@ const AIChat = ({
               </>)}
 
             {/* Chat Input - Always visible when user is logged in and not in guide session */}
-            {!isGuideSession && <div className="border-t border-border bg-background p-4">
+            {!isGuideSession && <div className="border-t border-border bg-background p-3 sm:p-4">
                 <ChatInput input={input} setInput={setInput} onSubmit={handleSubmit} isLoading={isLoading} quotaExceeded={quotaExceeded} inputRef={inputRef} />
               </div>}
           </div>

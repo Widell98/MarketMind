@@ -25,7 +25,7 @@ const AnalysisCarousel: React.FC<AnalysisCarouselProps> = ({
       title: analysis.title,
       data: analysis
     };
-    navigate('/ai-chat', { state: { contextData } });
+    navigate('/ai-chatt', { state: { contextData } });
   };
 
   if (!analyses || analyses.length === 0) {

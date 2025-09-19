@@ -50,7 +50,7 @@ const StockCases = () => {
       title: stockCase.title,
       data: stockCase
     };
-    navigate('/ai-chat', {
+    navigate('/ai-chatt', {
       state: {
         contextData
       }

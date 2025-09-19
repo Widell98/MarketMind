@@ -87,7 +87,7 @@ const EnhancedAnalysisCard: React.FC<EnhancedAnalysisCardProps> = ({
       title: analysis.title,
       data: analysis
     };
-    navigate('/ai-chat', { state: { contextData } });
+    navigate('/ai-chatt', { state: { contextData } });
   };
 
   const handleFollow = async () => {

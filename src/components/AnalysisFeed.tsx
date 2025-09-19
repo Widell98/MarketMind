@@ -82,7 +82,7 @@ const AnalysisFeed = () => {
       title: analysis.title,
       data: analysis
     };
-    navigate('/ai-chat', { state: { contextData } });
+    navigate('/ai-chatt', { state: { contextData } });
   };
 
   if (isLoading) {

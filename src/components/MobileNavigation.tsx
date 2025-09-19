@@ -28,7 +28,7 @@ const MobileNavigation = () => {
   
   const navigation = [
     { name: 'Hem', href: '/', icon: Home },
-    { name: 'AI-Chat', href: '/ai-chat', icon: Brain, priority: true },
+    { name: 'AI-Chat', href: '/ai-chatt', icon: Brain, priority: true },
     { name: 'Aktiefall', href: '/stock-cases', icon: TrendingUp },
     { name: 'Upptäck', href: '/discover', icon: Search },
     { name: 'Portfölj', href: '/portfolio-implementation', icon: BarChart3, requiresAuth: true },

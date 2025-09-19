@@ -96,7 +96,7 @@ const AIRecommendations = () => {
   };
 
   const handleViewRecommendation = (recommendation: UserHolding) => {
-    navigate('/ai-chat', {
+    navigate('/ai-chatt', {
       state: {
         createNewSession: true,
         sessionName: `AI-rekommendation: ${recommendation.name}`,
@@ -224,7 +224,7 @@ const AIRecommendations = () => {
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Button
-                onClick={() => navigate('/ai-chat')}
+                onClick={() => navigate('/ai-chatt')}
                 className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
               >
                 <Brain className="w-4 h-4" />
@@ -338,7 +338,7 @@ const AIRecommendations = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate('/ai-chat')}
+                onClick={() => navigate('/ai-chatt')}
                 className="text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl font-medium"
               >
                 Få fler <ArrowRight className="w-3 h-3 ml-1" />

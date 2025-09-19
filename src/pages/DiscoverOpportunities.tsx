@@ -66,7 +66,7 @@ const DiscoverOpportunities = () => {
       title: item.title || item.company_name,
       data: item
     };
-    navigate('/ai-chat', { state: { contextData } });
+    navigate('/ai-chatt', { state: { contextData } });
   };
 
   // Mock data for saved opportunities

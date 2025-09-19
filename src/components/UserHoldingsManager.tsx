@@ -104,7 +104,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
     const sessionName = `Diskussion: ${holdingName}`;
     const message = `Berätta mer om ${holdingName}${symbol ? ` (${symbol})` : ''}. Vad gör företaget, vilka är deras huvudsakliga affärsområden, och varför skulle det vara en bra investering för min portfölj? Analysera också eventuella risker och möjligheter.`;
     
-    navigate('/ai-chat', {
+    navigate('/ai-chatt', {
       state: {
         createNewSession: true,
         sessionName: sessionName,

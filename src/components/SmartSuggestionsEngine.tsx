@@ -172,7 +172,9 @@ export const useSmartSuggestionsEngine = () => {
     }
 
     // 7. Returning User Engagement
-    if (isReturningUser() && currentPath === '/' && !hasVisitedPage('/ai-chat')) {
+    const hasVisitedAIChat = hasVisitedPage('/ai-chatt') || hasVisitedPage('/ai-chat');
+
+    if (isReturningUser() && currentPath === '/' && !hasVisitedAIChat) {
       suggestions.push({
         id: 'try-ai-assistant',
         title: 'Prova AI-assistenten',

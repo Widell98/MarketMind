@@ -44,7 +44,7 @@ const IntelligentRouting: React.FC = () => {
           title: 'Testa AI-rådgivaren',
           description: 'Få en försmak av våra AI-drivna investeringsinsikter',
           icon: Brain,
-          href: '/ai-chat',
+          href: '/ai-chatt',
           badge: 'Demo',
           color: 'bg-gradient-to-r from-purple-500 to-purple-600'
         }

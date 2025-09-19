@@ -124,8 +124,8 @@ const AIChatPage = () => {
       <LoginPromptModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
       
       {/* Full-height container with gradient background */}
-      <div className="min-h-0 bg-gradient-to-br from-background via-background to-primary/[0.02]">
-        <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 xl:px-8 h-full">
+      <div className="min-h-[calc(100dvh-6rem)] bg-gradient-to-br from-background via-background to-primary/[0.02]">
+        <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 h-full">
           {/* Compact Header Section for logged in users */}
           {user && riskProfile ? <div className="pt-4 pb-2">
               <div className="text-center">
@@ -148,7 +148,7 @@ const AIChatPage = () => {
 
           {/* Content based on authentication status */}
           {user && riskProfile ? (/* Full Chat Interface */
-        <div className="h-[calc(100vh-12rem)] sm:h-[calc(100vh-10rem)] lg:h-[calc(100vh-8rem)] min-h-[400px]">
+        <div className="h-[calc(100dvh-12rem)] sm:h-[calc(100vh-10rem)] lg:h-[calc(100vh-8rem)] min-h-[480px] sm:min-h-[520px]">
               <AIChat portfolioId={activePortfolio?.id} initialStock={stockName} initialMessage={message} />
             </div>) : (/* Demo Content for non-authenticated users */
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 pb-4 sm:pb-6 lg:pb-8">

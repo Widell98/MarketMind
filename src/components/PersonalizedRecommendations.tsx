@@ -26,7 +26,7 @@ const PersonalizedRecommendations = () => {
       title: recommendation.item.title || recommendation.item.company_name,
       data: recommendation.item
     };
-    navigate('/ai-chat', { state: { contextData } });
+    navigate('/ai-chatt', { state: { contextData } });
   };
 
   const getPlaceholderImage = (stockCase: any) => {

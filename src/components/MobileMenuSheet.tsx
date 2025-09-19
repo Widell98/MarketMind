@@ -34,7 +34,7 @@ const MobileMenuSheet = () => {
   const navigation = [
     { name: 'Hem', href: '/', icon: Home },
     { name: 'Aktiefall', href: '/stock-cases', icon: TrendingUp },
-    { name: 'AI-Assistent', href: '/ai-chat', icon: MessageSquare },
+    { name: 'AI-Assistent', href: '/ai-chatt', icon: MessageSquare },
     { name: 'Min Portfölj', href: '/portfolio-implementation', icon: BarChart3 },
   ];
 

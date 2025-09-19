@@ -60,7 +60,7 @@ const ChatMessages = ({ messages, isLoading, isLoadingSession, messagesEndRef, o
 
   if (isLoadingSession) {
     return (
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto scroll-mobile">
         <div className="p-4 sm:p-6 space-y-6 max-w-6xl mx-auto w-full">
           {[1, 2, 3].map((i) => (
             <div key={i} className="flex gap-3 items-start max-w-full">
@@ -77,7 +77,7 @@ const ChatMessages = ({ messages, isLoading, isLoadingSession, messagesEndRef, o
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto scroll-mobile">
       <div className="p-4 sm:p-6 space-y-6 sm:space-y-8 max-w-6xl mx-auto w-full">
         {/* Guide Bot - Only shown when explicitly in guide session */}
         {showGuideBot && (
