@@ -427,18 +427,9 @@ export const usePortfolioPerformance = () => {
         };
       }
 
-      const rawCurrency = matchedTicker.currency ? matchedTicker.currency.toUpperCase() : 'SEK';
-      const rawPrice = matchedTicker.price;
-      let resolvedPrice = rawPrice;
-      let resolvedCurrency = rawCurrency;
-
-      if (resolvedCurrency !== 'SEK') {
-        const converted = convertToSEK(rawPrice, resolvedCurrency);
-        if (Number.isFinite(converted)) {
-          resolvedPrice = converted;
-          resolvedCurrency = 'SEK';
-        }
-      }
+      const priceCurrency = matchedTicker.currency ? matchedTicker.currency.toUpperCase() : 'SEK';
+      const pricePerUnit = matchedTicker.price;
+      const pricePerUnitInSEK = convertToSEK(pricePerUnit, priceCurrency);
 
       const timestamp = new Date().toISOString();
       let updatedCount = 0;
@@ -449,14 +440,18 @@ export const usePortfolioPerformance = () => {
 
       for (const holding of typedHoldings) {
         const quantity = parseNumeric(holding.quantity) ?? 0;
-        const computedValue = quantity > 0 ? quantity * resolvedPrice : 0;
+        const computedValue = Number.isFinite(pricePerUnitInSEK)
+          ? quantity > 0
+            ? quantity * pricePerUnitInSEK
+            : 0
+          : null;
 
         const { error: updateError } = await supabase
           .from('user_holdings')
           .update({
-            current_price_per_unit: resolvedPrice,
-            price_currency: resolvedCurrency,
-            current_value: computedValue,
+            current_price_per_unit: pricePerUnit,
+            price_currency: priceCurrency,
+            ...(computedValue !== null ? { current_value: computedValue } : {}),
             updated_at: timestamp,
           })
           .eq('id', holding.id);
