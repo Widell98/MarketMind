@@ -71,7 +71,7 @@ export const usePortfolioPerformance = () => {
   const [holdingsPerformance, setHoldingsPerformance] = useState<HoldingPerformance[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -270,7 +270,26 @@ export const usePortfolioPerformance = () => {
       setUpdating(true);
 
       const normalizedTicker = ticker?.trim().toUpperCase();
-      const invokeOptions = normalizedTicker ? { body: { ticker: normalizedTicker } } : undefined;
+
+      let accessToken = session?.access_token;
+      if (!accessToken) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        accessToken = sessionData.session?.access_token ?? undefined;
+      }
+
+      if (!accessToken) {
+        throw new Error('Ingen aktiv session hittades. Försök logga in igen.');
+      }
+
+      const invokeOptions: { body?: { ticker: string }; headers?: Record<string, string> } = {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      };
+
+      if (normalizedTicker) {
+        invokeOptions.body = { ticker: normalizedTicker };
+      }
 
       const { data, error } = await supabase.functions.invoke('update-portfolio-prices', invokeOptions);
 

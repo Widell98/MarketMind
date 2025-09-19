@@ -84,6 +84,32 @@ serve(async (req) => {
 
     const supabase = getSupabaseClient();
 
+    const unauthorizedResponse = (status: number, message: string) =>
+      new Response(JSON.stringify({ success: false, error: message }), {
+        status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) return unauthorizedResponse(401, "Missing authorization header");
+
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    if (!token) return unauthorizedResponse(401, "Missing access token");
+
+    const serviceToken = Deno.env.get("PORTFOLIO_SERVICE_TOKEN");
+    let isServiceRequest = false;
+    let userId: string | null = null;
+
+    if (serviceToken && token === serviceToken) {
+      isServiceRequest = true;
+    } else {
+      const { data: userData, error: userError } = await supabase.auth.getUser(token);
+      if (userError || !userData.user) {
+        return unauthorizedResponse(403, "Invalid or expired access token");
+      }
+      userId = userData.user.id;
+    }
+
     // Hämta CSV från Google Sheets (ändra output till csv)
     const csvUrl =
       "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvOPfg5tZjaFqCu7b3Li80oPEEuje4tQTcnr6XjxCW_ItVbOGWCvfQfFvWDXRH544MkBKeI1dPyzJG/pub?output=csv";
@@ -134,7 +160,13 @@ serve(async (req) => {
         continue;
 
       // Hitta matchande innehav i Supabase
-      const query = supabase.from("user_holdings").select("id, quantity").neq("holding_type", "cash");
+      let query = supabase.from("user_holdings").select("id, quantity");
+
+      if (!isServiceRequest && userId) {
+        query = query.eq("user_id", userId);
+      }
+
+      query = query.neq("holding_type", "cash");
 
       if (symbolVariants.length > 0 && namePattern) {
         query.or(
