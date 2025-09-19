@@ -14,11 +14,13 @@ interface StockCaseCardProps {
   stockCase: StockCase;
   onViewDetails: (id: string) => void;
   onDelete?: (id: string) => void;
+  showMetaBadges?: boolean;
 }
 const StockCaseCard: React.FC<StockCaseCardProps> = ({
   stockCase,
   onViewDetails,
-  onDelete
+  onDelete,
+  showMetaBadges = true
 }) => {
   const {
     user
@@ -137,7 +139,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
         <div className="flex flex-col gap-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto py-0.5 text-[11px] text-muted-foreground [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:text-xs sm:py-0">
+              {showMetaBadges && <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto py-0.5 text-[11px] text-muted-foreground [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:text-xs sm:py-0">
                 <Badge variant="secondary" className={`shrink-0 whitespace-nowrap px-2.5 py-0.5 font-semibold ${getPerformanceBadgeClasses(performance)}`}>
                   {formattedPerformance}
                 </Badge>
@@ -171,7 +173,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
                     <UserCircle className="mr-1 h-3 w-3" />
                     Community
                   </Badge>}
-              </div>
+              </div>}
 
               <div className="space-y-1">
                 <CardTitle className="text-lg font-semibold leading-tight tracking-tight transition-colors group-hover:text-primary sm:text-xl">
