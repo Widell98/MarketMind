@@ -63,7 +63,7 @@ const AIFloatingWidget = () => {
     if (!isPremium && currentUsage >= dailyLimit) {
       toast({
         title: "Daglig gräns nådd",
-        description: "Du har nått din dagliga gräns för AI-meddelanden. Uppgradera till Premium för obegränsad användning.",
+        description: "Du har nått din dagliga gräns för AI-meddelanden. Uppgradera till Unlimited Chatt för obegränsad användning.",
         variant: "destructive"
       });
       return;
@@ -245,7 +245,7 @@ Ge ett kortfattat, snabbt svar på investeringsfrågan.`;
                 <div className="text-center space-y-2">
                   <p className="text-xs text-muted-foreground">Daglig gräns nådd ({currentUsage}/{dailyLimit})</p>
                   <Button onClick={() => window.location.href = '/profile'} className="w-full" size="sm" variant="outline">
-                    Uppgradera till Premium
+                    Uppgradera till Unlimited Chatt
                   </Button>
                 </div>
               ) : (

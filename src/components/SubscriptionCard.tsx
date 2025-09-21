@@ -3,25 +3,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Crown, Zap, Settings, CheckCircle } from 'lucide-react';
+import { Crown, Settings, CheckCircle } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useToast } from '@/hooks/use-toast';
 
 const SubscriptionCard: React.FC = () => {
-  const { 
-    subscription, 
-    usage, 
-    loading, 
-    createCheckout, 
+  const {
+    subscription,
+    usage,
+    loading,
+    createCheckout,
     openCustomerPortal,
-    getRemainingUsage 
+    getRemainingUsage
   } = useSubscription();
   
   const { toast } = useToast();
 
-  const handleUpgrade = async (tier: 'premium' | 'pro') => {
+  const handleUpgrade = async () => {
     try {
-      await createCheckout(tier);
+      await createCheckout();
     } catch (error) {
       console.error('Upgrade error:', error);
       toast({
@@ -80,14 +80,12 @@ const SubscriptionCard: React.FC = () => {
 
   const tierColors = {
     free: 'bg-gray-100 text-gray-800',
-    premium: 'bg-blue-100 text-blue-800',
-    pro: 'bg-purple-100 text-purple-800'
+    unlimited: 'bg-blue-100 text-blue-800'
   };
 
   const tierIcons = {
     free: CheckCircle,
-    premium: Crown,
-    pro: Zap
+    unlimited: Crown
   };
 
   const TierIcon = tierIcons[tier];
@@ -101,11 +99,10 @@ const SubscriptionCard: React.FC = () => {
         </div>
         <Badge className={tierColors[tier]}>
           {tier === 'free' && 'Gratis'}
-          {tier === 'premium' && 'Premium'}
-          {tier === 'pro' && 'Pro'}
+          {tier === 'unlimited' && 'Unlimited Chatt'}
         </Badge>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
         {!isPremium ? (
           <>
@@ -138,29 +135,21 @@ const SubscriptionCard: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <Button 
-                onClick={() => handleUpgrade('premium')}
+              <Button
+                onClick={handleUpgrade}
                 className="w-full bg-blue-600 hover:bg-blue-700"
               >
                 <Crown className="w-4 h-4 mr-2" />
-                Uppgradera till Premium - 99 SEK/mån
-              </Button>
-              <Button 
-                onClick={() => handleUpgrade('pro')}
-                variant="outline"
-                className="w-full"
-              >
-                <Zap className="w-4 h-4 mr-2" />
-                Uppgradera till Pro - 199 SEK/mån
+                Uppgradera till Unlimited Chatt - 49 SEK/mån
               </Button>
             </div>
           </>
         ) : (
           <>
             <CardDescription>
-              Du har obegränsad tillgång till alla AI-funktioner
+              Du har aktiverat Unlimited Chatt med obegränsad AI-användning
             </CardDescription>
-            
+
             {subscription.subscription_end && (
               <div className="text-sm text-gray-600">
                 Förnyas: {new Date(subscription.subscription_end).toLocaleDateString('sv-SE')}

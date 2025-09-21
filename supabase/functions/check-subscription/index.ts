@@ -8,7 +8,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const logStep = (step: string, details?: any) => {
+const logStep = (step: string, details?: unknown) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
 };
@@ -103,7 +103,7 @@ serve(async (req) => {
         status: "active",
         limit: 1,
       });
-      
+
       const hasActiveSub = subscriptions.data.length > 0;
       let subscriptionTier = 'free';
       let subscriptionEnd = null;
@@ -111,17 +111,13 @@ serve(async (req) => {
       if (hasActiveSub) {
         const subscription = subscriptions.data[0];
         subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-        
+
         const priceId = subscription.items.data[0].price.id;
         const price = await stripe.prices.retrieve(priceId);
         const amount = price.unit_amount || 0;
-        
-        if (amount <= 9900) { // 99 SEK
-          subscriptionTier = "premium";
-        } else {
-          subscriptionTier = "pro";
-        }
-        logStep("Determined subscription tier", { priceId, amount, subscriptionTier });
+
+        subscriptionTier = "unlimited";
+        logStep("Active subscription detected", { priceId, amount, subscriptionTier });
       }
 
       await supabaseClient.from("subscribers").upsert({

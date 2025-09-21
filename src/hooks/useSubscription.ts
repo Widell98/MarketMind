@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface SubscriptionData {
   subscribed: boolean;
-  subscription_tier: 'free' | 'premium' | 'pro';
+  subscription_tier: 'free' | 'unlimited';
   subscription_end?: string;
 }
 
@@ -88,7 +88,7 @@ export const useSubscription = () => {
     }
   }, [user]);
 
-  const createCheckout = async (tier: 'premium' | 'pro') => {
+  const createCheckout = async () => {
     if (!user) {
       toast({
         title: "Fel",
@@ -99,10 +99,8 @@ export const useSubscription = () => {
     }
 
     try {
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { tier },
-      });
-      
+      const { data, error } = await supabase.functions.invoke('create-checkout');
+
       if (error) throw error;
       if (data?.url) {
         window.location.href = data.url;

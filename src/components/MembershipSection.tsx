@@ -13,8 +13,8 @@ const MembershipSection = () => {
     createCheckout,
     openCustomerPortal
   } = useSubscription();
-  const handleUpgrade = async (tier: 'premium' | 'pro') => {
-    await createCheckout(tier);
+  const handleUpgrade = async () => {
+    await createCheckout();
   };
   const handleManageSubscription = async () => {
     await openCustomerPortal();
@@ -26,7 +26,6 @@ const MembershipSection = () => {
       </div>;
   }
   const isSubscribed = subscription?.subscribed;
-  const tier = subscription?.subscription_tier || 'free';
   return <div className="space-y-6">
       {/* Current Membership Status */}
       
@@ -40,29 +39,29 @@ const MembershipSection = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {!isSubscribed ? <div className="space-y-3">
+          {!isSubscribed ? (
+            <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Uppgradera ditt konto för att få tillgång till obegränsade AI-funktioner och avancerade verktyg.
+                Uppgradera ditt konto för obegränsad AI-chatt och alla premiumfunktioner.
               </p>
               <div className="grid grid-cols-1 gap-3">
-                <Button onClick={() => handleUpgrade('premium')} className="w-full" size="sm">
+                <Button onClick={handleUpgrade} className="w-full" size="sm">
                   <Crown className="h-4 w-4 mr-2 flex-shrink-0" />
-                  <span className="truncate">Uppgradera till Premium</span>
-                </Button>
-                <Button onClick={() => handleUpgrade('pro')} variant="outline" className="w-full" size="sm">
-                  <Crown className="h-4 w-4 mr-2 flex-shrink-0" />
-                  <span className="truncate">Uppgradera till Pro</span>
+                  <span className="truncate">Uppgradera till Unlimited Chatt – 49 SEK/mån</span>
                 </Button>
               </div>
-            </div> : <div className="space-y-3">
+            </div>
+          ) : (
+            <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Du har en aktiv {tier}-prenumeration. Hantera din prenumeration via Stripe.
+                Du har en aktiv Unlimited Chatt-prenumeration. Hantera din prenumeration via Stripe.
               </p>
               <Button onClick={handleManageSubscription} variant="outline" className="w-full" size="sm">
                 <Settings className="h-4 w-4 mr-2 flex-shrink-0" />
                 <span className="truncate">Hantera prenumeration</span>
               </Button>
-            </div>}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>;

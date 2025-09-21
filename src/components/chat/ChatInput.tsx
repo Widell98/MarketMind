@@ -77,7 +77,7 @@ const ChatInput = memo(({
                   handleSubmit(e as unknown as React.FormEvent);
                 }
               }}
-              placeholder={isAtLimit ? "Uppgradera till Premium för fler meddelanden" : "Skriv ditt meddelande här... (kostar 1 credit)"}
+              placeholder={isAtLimit ? "Uppgradera till Unlimited Chatt för fler meddelanden" : "Skriv ditt meddelande här... (kostar 1 credit)"}
               disabled={isLoading || quotaExceeded}
               className="min-h-[44px] max-h-[140px] bg-background/95 border border-border/60 shadow-sm rounded-xl text-sm sm:text-base px-3 sm:px-4 pr-10 transition-all duration-200 focus:shadow-md resize-none w-full"
               style={{ fontSize: '16px' }}
@@ -101,12 +101,12 @@ const ChatInput = memo(({
           </Button>
         </form>
 
-        {/* Premium Badge for Premium Users */}
+        {/* Badge for Unlimited Chatt users */}
         {isPremium && (
           <div className="flex justify-center mt-3">
             <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs px-3 py-1">
               <Crown className="w-3 h-3 mr-1" />
-              Premium - Obegränsade meddelanden
+              Unlimited Chatt - Obegränsade meddelanden
             </Badge>
           </div>
         )}

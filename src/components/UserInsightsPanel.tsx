@@ -79,7 +79,7 @@ const UserInsightsPanel = () => {
     if (!checkUsageLimit('insights')) {
       toast({
         title: "Credits slut",
-        description: "Du har förbrukat dina 5 dagliga credits. Uppgradera till Premium för obegränsad användning.",
+        description: "Du har förbrukat dina 5 dagliga credits. Uppgradera till Unlimited Chatt för obegränsad användning.",
         variant: "destructive"
       });
       return;
@@ -283,7 +283,7 @@ const UserInsightsPanel = () => {
                   <Crown className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300 mb-2 font-medium leading-tight">
-                  Uppgradera till Premium för att uppdatera AI-insikter
+                  Uppgradera till Unlimited Chatt för att uppdatera AI-insikter
                 </p>
                 <p className="text-xs sm:text-sm text-blue-600 dark:text-blue-400 leading-relaxed">
                   Få tillgång till färska AI-analyser och personliga rekommendationer
@@ -316,7 +316,7 @@ const UserInsightsPanel = () => {
                     <Crown className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
                   </div>
                   <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300 font-medium leading-tight">
-                    {!user ? 'Logga in för AI-insikter' : 'Inga credits kvar idag - Uppgradera till Premium'}
+                    {!user ? 'Logga in för AI-insikter' : 'Inga credits kvar idag - Uppgradera till Unlimited Chatt'}
                   </p>
                 </div>
               )}

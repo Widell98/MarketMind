@@ -8,7 +8,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const logStep = (step: string, details?: any) => {
+const logStep = (step: string, details?: unknown) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
@@ -68,21 +68,8 @@ serve(async (req) => {
     const user = userData.user;
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const { tier } = await req.json();
-    if (!tier || !['premium', 'pro'].includes(tier)) {
-      logStep("Invalid tier", { tier });
-      return new Response(JSON.stringify({ 
-        error: "Ogiltig prenumerationsplan" 
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
-      });
-    }
-
-    logStep("Tier validated", { tier });
-
-    const stripe = new Stripe(stripeKey, { 
-      apiVersion: "2023-10-16" 
+    const stripe = new Stripe(stripeKey, {
+      apiVersion: "2023-10-16"
     });
 
     logStep("Stripe initialized");
@@ -97,25 +84,17 @@ serve(async (req) => {
       logStep("No existing customer found, will create during checkout");
     }
 
-    const priceData = tier === 'premium' ? {
+    const priceData = {
       currency: "sek",
-      product_data: { 
-        name: "AI Portfolio Advisor Premium",
-        description: "Obegränsad AI-analys och alla funktioner"
+      product_data: {
+        name: "AI Portfolio Advisor Unlimited Chatt",
+        description: "Obegränsad AI-chatt och premiumfunktioner"
       },
-      unit_amount: 9900, // 99 SEK
-      recurring: { interval: "month" },
-    } : {
-      currency: "sek", 
-      product_data: { 
-        name: "AI Portfolio Advisor Pro",
-        description: "Alla funktioner plus prioriterad support"
-      },
-      unit_amount: 19900, // 199 SEK
+      unit_amount: 4900, // 49 SEK
       recurring: { interval: "month" },
     };
 
-    logStep("Creating checkout session", { tier, priceData });
+    logStep("Creating checkout session", { priceData });
 
     const origin = req.headers.get("origin") || "http://localhost:3000";
     
@@ -133,7 +112,7 @@ serve(async (req) => {
       cancel_url: `${origin}/portfolio-advisor?cancelled=true`,
       metadata: {
         user_id: user.id,
-        tier: tier,
+        tier: 'unlimited',
       },
     });
 

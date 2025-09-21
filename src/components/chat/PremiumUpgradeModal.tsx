@@ -27,8 +27,8 @@ const PremiumUpgradeModal = ({ isOpen, onClose, currentUsage, dailyLimit }: Prem
   const { createCheckout } = useSubscription();
   const navigate = useNavigate();
 
-  const handleUpgrade = async (tier: 'premium' | 'pro') => {
-    await createCheckout(tier);
+  const handleUpgrade = async () => {
+    await createCheckout();
   };
 
   const handlePremiumClick = () => {
@@ -75,7 +75,7 @@ const PremiumUpgradeModal = ({ isOpen, onClose, currentUsage, dailyLimit }: Prem
                 Du har använt <span className="font-semibold text-foreground">{currentUsage}</span> av {dailyLimit} gratis meddelanden idag
               </p>
               <p className="text-sm text-muted-foreground">
-                Uppgradera till Premium för obegränsad användning
+                Uppgradera till Unlimited Chatt för obegränsad användning
               </p>
             </div>
           </DialogHeader>
@@ -98,7 +98,7 @@ const PremiumUpgradeModal = ({ isOpen, onClose, currentUsage, dailyLimit }: Prem
 
           {/* Features */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-lg text-foreground">Vad du får med Premium:</h3>
+            <h3 className="font-semibold text-lg text-foreground">Vad du får med Unlimited Chatt:</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {features.map((feature, index) => (
                 <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border">
@@ -124,9 +124,9 @@ const PremiumUpgradeModal = ({ isOpen, onClose, currentUsage, dailyLimit }: Prem
                   <Badge className="bg-primary text-primary-foreground mb-2">
                     Mest populär
                   </Badge>
-                  <h4 className="font-bold text-lg text-foreground">Premium</h4>
+                  <h4 className="font-bold text-lg text-foreground">Unlimited Chatt</h4>
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-2xl font-bold text-foreground">99</span>
+                    <span className="text-2xl font-bold text-foreground">49</span>
                     <span className="text-muted-foreground">SEK/mån</span>
                   </div>
                 </div>
@@ -143,12 +143,12 @@ const PremiumUpgradeModal = ({ isOpen, onClose, currentUsage, dailyLimit }: Prem
                     </div>
                   ))}
                 </div>
-                <Button 
-                  onClick={() => handleUpgrade('premium')}
+                <Button
+                  onClick={handleUpgrade}
                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                   size="lg"
                 >
-                  Välj Premium
+                  Välj Unlimited Chatt
                 </Button>
               </div>
             </Card>
@@ -198,12 +198,12 @@ const PremiumUpgradeModal = ({ isOpen, onClose, currentUsage, dailyLimit }: Prem
           <div className="text-center text-xs text-muted-foreground space-y-1">
             <p>Du kan avsluta prenumerationen när som helst</p>
             <p>Återstående meddelanden återställs imorgon</p>
-            <Button 
-              variant="link" 
+            <Button
+              variant="link"
               className="text-xs text-primary h-auto p-0"
               onClick={handlePremiumClick}
             >
-              Visa alla medlemsfördelar →
+              Visa alla Unlimited Chatt-fördelar →
             </Button>
           </div>
         </div>
