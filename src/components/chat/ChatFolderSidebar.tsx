@@ -12,7 +12,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Plus,
   Search,
   Folder,
   ChevronDown,
@@ -35,9 +34,7 @@ interface ChatFolderSidebarProps {
   onLoadSession: (sessionId: string) => void;
   onDeleteSession: (sessionId: string) => void;
   onEditSessionName: (sessionId: string, name: string) => void;
-  onNewSession: () => void;
   onLoadGuideSession?: () => void;
-  isLoadingSession?: boolean;
   className?: string;
 }
 
@@ -46,9 +43,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
   onLoadSession,
   onDeleteSession,
   onEditSessionName,
-  onNewSession,
   onLoadGuideSession,
-  isLoadingSession = false,
   className = '',
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -239,17 +234,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
       )}
     >
       <div className="px-4 pb-4 pt-6">
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={onNewSession}
-            variant="ghost"
-            size="sm"
-            className="flex-1 justify-start gap-2 rounded-ai-sm bg-ai-surface text-[15px] font-medium text-foreground shadow-sm hover:bg-ai-surface"
-            disabled={isLoadingSession}
-          >
-            <Plus className="h-4 w-4" />
-            {isLoadingSession ? 'Skapar…' : 'Ny konversation'}
-          </Button>
+        <div className="flex justify-end">
           <CreateFolderDialog
             onCreateFolder={createFolder}
             trigger={

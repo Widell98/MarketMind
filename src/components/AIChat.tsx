@@ -167,6 +167,7 @@ const AIChat = ({
   };
   const handleNewSession = useCallback(async () => {
     if (!user) return;
+    setIsGuideSession(false);
     await createNewSession();
     setInput('');
     setHasProcessedInitialMessage(false); // Reset for new session
@@ -213,14 +214,9 @@ const AIChat = ({
     },
     onDeleteSession: deleteSession,
     onEditSessionName: editSessionName,
-    onNewSession: () => {
-      setIsGuideSession(false);
-      handleNewSession();
-    },
     onLoadGuideSession: handleLoadGuideSession,
-    isLoadingSession: isLoadingSession,
     className: isMobile ? "w-full min-h-full" : "",
-  }), [isGuideSession, currentSessionId, handleLoadSession, deleteSession, editSessionName, handleNewSession, handleLoadGuideSession, isLoadingSession, isMobile]);
+  }), [isGuideSession, currentSessionId, handleLoadSession, deleteSession, editSessionName, handleLoadGuideSession, isMobile]);
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden">
       {user ? (

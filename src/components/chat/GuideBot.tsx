@@ -152,64 +152,68 @@ const GuideBot: React.FC<GuideBotProps> = ({ onPromptExample, onNavigate, onShow
 
   return (
     <div className="space-y-4">
-      {/* Guide Bot Message */}
-      <div className="flex gap-3 items-start">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0 shadow-sm">
-          <Compass className="w-4 h-4 text-white" />
-        </div>
-        
-        <Card className="flex-1 p-4 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800">
-          <div className="flex items-center gap-2 mb-3">
-            <BookOpen className="w-4 h-4 text-amber-600" />
-            <span className="font-semibold text-amber-900 dark:text-amber-100">
-              {currentMessage.title}
-            </span>
-            <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-              Guide
-            </Badge>
+      <Card className="border border-ai-border/60 bg-ai-surface shadow-sm">
+        <div className="flex items-start gap-4 px-4 py-4 sm:px-5">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-ai-border/70 bg-ai-surface-muted/70 text-foreground">
+            <Compass className="h-5 w-5" />
           </div>
-          
-          <div className="space-y-4">
-            <div className="text-sm text-amber-900 dark:text-amber-100 whitespace-pre-line leading-relaxed">
-              {currentMessage.content}
+
+          <div className="flex-1 space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-ai-text-muted" />
+                <span className="text-sm font-semibold text-foreground">
+                  {currentMessage.title}
+                </span>
+              </div>
+              <Badge
+                variant="secondary"
+                className="rounded-full border border-ai-border/60 bg-ai-surface-muted/70 px-2.5 py-0 text-[11px] font-medium uppercase tracking-[0.12em] text-ai-text-muted"
+              >
+                Guide
+              </Badge>
             </div>
-            
+
+            <p className="whitespace-pre-line text-sm leading-6 text-ai-text-muted">
+              {currentMessage.content}
+            </p>
+
             {currentMessage.buttons && (
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {currentMessage.buttons.map((button, index) => (
                   <Button
                     key={index}
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     onClick={() => handleButtonClick(button)}
-                    className="justify-start h-auto p-3 text-left bg-white dark:bg-gray-900 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                    className="flex w-full items-start gap-3 rounded-ai-sm border border-ai-border/60 bg-ai-surface px-3 py-3 text-left text-[14px] font-medium text-foreground shadow-sm transition hover:border-ai-border hover:bg-ai-surface-muted/70 focus-visible:ring-0 focus-visible:ring-offset-0"
                   >
-                    <div className="flex items-start gap-3 w-full">
-                      {button.icon && (
-                        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
-                          {React.cloneElement(button.icon as React.ReactElement, {
-                            className: "w-4 h-4 text-amber-600 dark:text-amber-300"
-                          })}
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm text-amber-900 dark:text-amber-100">
-                          {button.text}
-                        </div>
-                        {button.description && (
-                          <div className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                            {button.description}
-                          </div>
-                        )}
+                    {button.icon && (
+                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-ai-sm border border-ai-border/60 bg-ai-surface-muted/70 text-foreground">
+                        {React.isValidElement(button.icon)
+                          ? React.cloneElement(button.icon, {
+                              className: 'h-4 w-4 text-foreground',
+                            })
+                          : button.icon}
                       </div>
+                    )}
+                    <div className="min-w-0 flex-1 text-left">
+                      <span className="block text-sm font-medium text-foreground">
+                        {button.text}
+                      </span>
+                      {button.description && (
+                        <span className="mt-1 block text-xs text-ai-text-muted">
+                          {button.description}
+                        </span>
+                      )}
                     </div>
                   </Button>
                 ))}
               </div>
             )}
           </div>
-        </Card>
-      </div>
+        </div>
+      </Card>
     </div>
   );
 };
