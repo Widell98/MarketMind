@@ -92,7 +92,7 @@ const enrichStockCases = async (stockCases: any[]): Promise<StockCase[]> => {
       .from('profiles')
       .select('id, username, display_name')
       .in('id', userIds);
-    
+
     if (error) {
       console.error('Error fetching profiles:', error);
     } else {
@@ -107,7 +107,7 @@ const enrichStockCases = async (stockCases: any[]): Promise<StockCase[]> => {
       .from('case_categories')
       .select('id, name, color')
       .in('id', categoryIds);
-    
+
     if (error) {
       console.error('Error fetching categories:', error);
     } else {
@@ -115,15 +115,41 @@ const enrichStockCases = async (stockCases: any[]): Promise<StockCase[]> => {
     }
   }
 
-  // Enrich stock cases with profile and category data
+  // Fetch like counts for each stock case
+  const likesMap = new Map<string, number>();
+  if (stockCases.length > 0) {
+    const likeCountResults = await Promise.all(
+      stockCases.map(async (stockCase) => {
+        try {
+          const { data, error } = await supabase.rpc('get_stock_case_like_count', { case_id: stockCase.id });
+
+          if (error) {
+            throw error;
+          }
+
+          return { id: stockCase.id, count: data || 0 };
+        } catch (error) {
+          console.error('Error fetching like count for stock case:', stockCase.id, error);
+          return { id: stockCase.id, count: 0 };
+        }
+      })
+    );
+
+    likeCountResults.forEach(({ id, count }) => {
+      likesMap.set(id, count);
+    });
+  }
+
+  // Enrich stock cases with profile, category, and like data
   return stockCases.map(stockCase => {
     const profile = profilesData.find(p => p.id === stockCase.user_id);
     const category = categoriesData.find(c => c.id === stockCase.category_id);
-    
+
     return {
       ...stockCase,
       status: (stockCase.status || 'active') as 'active' | 'winner' | 'loser',
       is_public: stockCase.is_public ?? true,
+      likes_count: likesMap.get(stockCase.id) || 0,
       profiles: profile ? {
         username: profile.username,
         display_name: profile.display_name
