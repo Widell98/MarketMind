@@ -20,26 +20,40 @@ const Discover = () => {
   const [caseSortOrder, setCaseSortOrder] = useState<'asc' | 'desc'>('desc');
   const [caseViewMode, setCaseViewMode] = useState<'grid' | 'list'>('grid');
 
-  const getFilteredCases = useMemo(() => {
+  const filteredCases = useMemo(() => {
     let filtered = [...(allStockCases || [])];
-    if (caseSearchTerm) {
-      const lower = caseSearchTerm.toLowerCase();
+    const normalizedSearchTerm = caseSearchTerm.trim().toLowerCase();
+
+    if (normalizedSearchTerm) {
+      filtered = filtered.filter((sc) => {
+        const sector = sc.sector?.toLowerCase();
+        const title = sc.title.toLowerCase();
+        const company = sc.company_name?.toLowerCase();
+        const description = sc.description?.toLowerCase();
+        const displayName = sc.profiles?.display_name?.toLowerCase();
+        const username = sc.profiles?.username?.toLowerCase();
+
+        return (
+          title.includes(normalizedSearchTerm) ||
+          company?.includes(normalizedSearchTerm) ||
+          description?.includes(normalizedSearchTerm) ||
+          sector?.includes(normalizedSearchTerm) ||
+          displayName?.includes(normalizedSearchTerm) ||
+          username?.includes(normalizedSearchTerm)
+        );
+      });
+    }
+
+    if (selectedSector && selectedSector !== 'all-sectors') {
+      const normalizedSector = selectedSector.trim().toLowerCase();
       filtered = filtered.filter(
-        (sc) =>
-          sc.title.toLowerCase().includes(lower) ||
-          sc.company_name?.toLowerCase().includes(lower) ||
-          sc.description?.toLowerCase().includes(lower) ||
-          sc.sector?.toLowerCase().includes(lower) ||
-          sc.profiles?.display_name?.toLowerCase().includes(lower) ||
-          sc.profiles?.username?.toLowerCase().includes(lower)
+        (sc) => sc.sector && sc.sector.trim().toLowerCase() === normalizedSector
       );
     }
-    if (selectedSector && selectedSector !== 'all-sectors') {
-      filtered = filtered.filter((sc) => sc.sector === selectedSector);
-    }
+
     if (performanceFilter && performanceFilter !== 'all-results') {
       filtered = filtered.filter((sc) => {
-        const perf = sc.performance_percentage || 0;
+        const perf = sc.performance_percentage ?? 0;
         switch (performanceFilter) {
           case 'positive':
             return perf > 0;
@@ -54,6 +68,7 @@ const Discover = () => {
         }
       });
     }
+
     filtered.sort((a, b) => {
       let aVal: number | string = 0;
       let bVal: number | string = 0;
@@ -63,8 +78,8 @@ const Discover = () => {
           bVal = b.performance_percentage || 0;
           break;
         case 'likes':
-          aVal = 0;
-          bVal = 0;
+          aVal = a.likes_count ?? 0;
+          bVal = b.likes_count ?? 0;
           break;
         case 'title':
           aVal = a.title.toLowerCase();
@@ -74,19 +89,19 @@ const Discover = () => {
           aVal = new Date(a.created_at).getTime();
           bVal = new Date(b.created_at).getTime();
       }
-      return caseSortOrder === 'asc'
-        ? aVal < bVal
-          ? -1
-          : aVal > bVal
-          ? 1
-          : 0
-        : aVal > bVal
-        ? -1
-        : aVal < bVal
-        ? 1
-        : 0;
+
+      if (aVal < bVal) {
+        return caseSortOrder === 'asc' ? -1 : 1;
+      }
+
+      if (aVal > bVal) {
+        return caseSortOrder === 'asc' ? 1 : -1;
+      }
+
+      return 0;
     });
-    return filtered.slice(0, 6);
+
+    return filtered;
   }, [allStockCases, caseSearchTerm, selectedSector, performanceFilter, caseSortBy, caseSortOrder]);
 
   const availableSectors = useMemo(() => {
@@ -129,13 +144,13 @@ const Discover = () => {
                 viewMode={caseViewMode}
                 onViewModeChange={setCaseViewMode}
                 availableSectors={availableSectors}
-                resultsCount={getFilteredCases.length}
+                resultsCount={filteredCases.length}
                 totalCount={allStockCases?.length || 0}
               />
             </div>
 
             <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
-              {getFilteredCases.map((sc) => (
+              {filteredCases.map((sc) => (
                 <StockCaseCard
                   key={sc.id}
                   stockCase={sc}
@@ -146,7 +161,7 @@ const Discover = () => {
               ))}
             </div>
 
-            {!stockCasesLoading && getFilteredCases.length === 0 && (
+            {!stockCasesLoading && filteredCases.length === 0 && (
               <div className="rounded-3xl border border-dashed border-border/70 bg-background/60 px-6 py-16 text-center shadow-inner sm:px-10">
                 <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
                   <Camera className="h-8 w-8 text-muted-foreground" />
