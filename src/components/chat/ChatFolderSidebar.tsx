@@ -136,30 +136,31 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
     const isActive = currentSessionId === session.id;
 
     return (
-      <li
-        key={session.id}
-        className={cn(
-          'border-b border-ai-border/40 last:border-b-0',
-          depth > 0 && 'pl-2',
-        )}
-      >
-        <div className="flex items-center gap-2 pr-2">
+      <li key={session.id} className={cn(depth > 0 && 'pl-2')}>
+        <div
+          className={cn(
+            'group flex items-center gap-2 rounded-ai-sm px-2 py-2 transition-colors focus-within:ring-1 focus-within:ring-ai-border/70',
+            isActive
+              ? 'bg-ai-surface text-foreground shadow-sm ring-1 ring-ai-border/70'
+              : 'text-ai-text-muted hover:bg-ai-surface/80 hover:text-foreground focus-within:bg-ai-surface/80 focus-within:text-foreground',
+          )}
+        >
           <button
+            type="button"
             onClick={() => onLoadSession(session.id)}
-            className={cn(
-              'flex-1 rounded-ai-sm px-3 py-2.5 text-left text-[15px] leading-6 transition-colors',
-              depth > 0 && 'pl-4',
-              isActive
-                ? 'bg-ai-surface text-foreground shadow-sm ring-1 ring-ai-border/70'
-                : 'text-ai-text-muted hover:bg-ai-surface/80 hover:text-foreground',
-            )}
+            className="flex flex-1 items-center gap-3 pr-1 text-left text-[15px] leading-6"
           >
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ai-surface-muted/60 text-ai-text-muted">
-                <MessageSquare className="h-4 w-4" />
-              </div>
-              <span className="min-w-0 flex-1 truncate font-medium">{session.session_name}</span>
+            <div
+              className={cn(
+                'flex h-8 w-8 items-center justify-center rounded-full transition-colors',
+                isActive
+                  ? 'bg-ai-surface text-foreground'
+                  : 'bg-ai-surface-muted/60 text-ai-text-muted',
+              )}
+            >
+              <MessageSquare className="h-4 w-4" />
             </div>
+            <span className="min-w-0 flex-1 truncate font-medium">{session.session_name}</span>
           </button>
 
           <DropdownMenu>
@@ -167,7 +168,8 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 rounded-full text-ai-text-muted hover:bg-ai-surface hover:text-foreground"
+                aria-label="Konversationsalternativ"
+                className="h-7 w-7 rounded-full text-ai-text-muted transition-opacity hover:bg-ai-surface md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
               >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -220,11 +222,9 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
     if (sessionList.length === 0) return null;
 
     return (
-      <div className="mt-6 first:mt-0">
-        <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-[0.08em] text-ai-text-muted">
-          {label}
-        </p>
-        <ul className="rounded-ai-sm bg-ai-surface/40">
+      <div className="mt-6 space-y-2 first:mt-0">
+        <p className="px-3 text-xs font-semibold uppercase tracking-[0.08em] text-ai-text-muted">{label}</p>
+        <ul className="space-y-2">
           {sessionList.map((session) => renderSessionItem(session))}
         </ul>
       </div>
@@ -303,16 +303,19 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
           const hasActiveSession = folderSessions.some((session) => session.id === currentSessionId);
 
           return (
-            <div key={folder.id} className="mt-6 first:mt-0">
-              <div className="flex items-center gap-2 pr-2">
+            <div key={folder.id} className="mt-6 space-y-2 first:mt-0">
+              <div
+                className={cn(
+                  'group flex items-center gap-2 rounded-ai-sm px-2 py-2 transition-colors focus-within:ring-1 focus-within:ring-ai-border/70',
+                  hasActiveSession
+                    ? 'bg-ai-surface text-foreground shadow-sm ring-1 ring-ai-border/70'
+                    : 'text-ai-text-muted hover:bg-ai-surface/80 hover:text-foreground focus-within:bg-ai-surface/80 focus-within:text-foreground',
+                )}
+              >
                 <button
+                  type="button"
                   onClick={() => toggleFolder(folder.id)}
-                  className={cn(
-                    'flex-1 rounded-ai-sm px-3 py-2.5 text-left text-[15px] leading-6 transition-colors',
-                    hasActiveSession
-                      ? 'bg-ai-surface text-foreground shadow-sm ring-1 ring-ai-border/70'
-                      : 'text-ai-text-muted hover:bg-ai-surface/80 hover:text-foreground',
-                  )}
+                  className="flex flex-1 items-center gap-3 pr-1 text-left text-[15px] leading-6"
                 >
                   <span className="flex items-center gap-3 truncate font-medium">
                     {isExpanded ? (
@@ -326,7 +329,9 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                     />
                     <span className="truncate">{folder.name}</span>
                   </span>
-                  <span className="ml-auto text-xs text-ai-text-muted">{folderSessions.length}</span>
+                  <span className="ml-auto text-xs text-ai-text-muted transition-colors group-hover:text-foreground/80 group-focus-within:text-foreground/80">
+                    {folderSessions.length}
+                  </span>
                 </button>
 
                 <DropdownMenu>
@@ -334,7 +339,8 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 rounded-full text-ai-text-muted hover:bg-ai-surface hover:text-foreground"
+                      aria-label="Mappalternativ"
+                      className="h-7 w-7 rounded-full text-ai-text-muted transition-opacity hover:bg-ai-surface md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
                     >
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
@@ -364,7 +370,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
               </div>
 
               {isExpanded && folderSessions.length > 0 && (
-                <ul className="mt-2 rounded-ai-sm bg-ai-surface-muted/50">
+                <ul className="space-y-2 pl-4">
                   {folderSessions.map((session) => renderSessionItem(session, 1))}
                 </ul>
               )}
