@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Sparkles, Camera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -114,67 +113,58 @@ const Discover = () => {
             </p>
           </section>
 
-          <Tabs defaultValue="cases" className="w-full space-y-6 sm:space-y-8">
-            <TabsList className="grid w-full grid-cols-1 gap-2 rounded-2xl border border-border/80 bg-muted/40 p-1.5 sm:mx-auto sm:max-w-xs sm:gap-3 sm:p-2">
-              <TabsTrigger value="cases">
-                <Camera className="h-4 w-4" /> Case
-              </TabsTrigger>
-            </TabsList>
+          <div className="w-full space-y-6 sm:space-y-8">
+            <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">
+              <EnhancedStockCasesSearch
+                searchTerm={caseSearchTerm}
+                onSearchChange={setCaseSearchTerm}
+                selectedSector={selectedSector}
+                onSectorChange={setSelectedSector}
+                performanceFilter={performanceFilter}
+                onPerformanceFilterChange={setPerformanceFilter}
+                sortBy={caseSortBy}
+                onSortChange={setCaseSortBy}
+                sortOrder={caseSortOrder}
+                onSortOrderChange={setCaseSortOrder}
+                viewMode={caseViewMode}
+                onViewModeChange={setCaseViewMode}
+                availableSectors={availableSectors}
+                resultsCount={getFilteredCases.length}
+                totalCount={allStockCases?.length || 0}
+              />
+            </div>
 
-            <TabsContent value="cases" className="space-y-6 sm:space-y-8">
-              <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">
-                <EnhancedStockCasesSearch
-                  searchTerm={caseSearchTerm}
-                  onSearchChange={setCaseSearchTerm}
-                  selectedSector={selectedSector}
-                  onSectorChange={setSelectedSector}
-                  performanceFilter={performanceFilter}
-                  onPerformanceFilterChange={setPerformanceFilter}
-                  sortBy={caseSortBy}
-                  onSortChange={setCaseSortBy}
-                  sortOrder={caseSortOrder}
-                  onSortOrderChange={setCaseSortOrder}
-                  viewMode={caseViewMode}
-                  onViewModeChange={setCaseViewMode}
-                  availableSectors={availableSectors}
-                  resultsCount={getFilteredCases.length}
-                  totalCount={allStockCases?.length || 0}
+            <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+              {getFilteredCases.map((sc) => (
+                <StockCaseCard
+                  key={sc.id}
+                  stockCase={sc}
+                  onViewDetails={handleViewStockCaseDetails}
+                  onDelete={handleDeleteStockCase}
+                  showMetaBadges={false}
                 />
-              </div>
+              ))}
+            </div>
 
-              <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${caseViewMode === 'grid' ? 'grid-cols-1 xs:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
-                {getFilteredCases.map((sc) => (
-                  <StockCaseCard
-                    key={sc.id}
-                    stockCase={sc}
-                    onViewDetails={handleViewStockCaseDetails}
-                    onDelete={handleDeleteStockCase}
-                    showMetaBadges={false}
-                  />
-                ))}
-              </div>
-
-              {!stockCasesLoading && getFilteredCases.length === 0 && (
-                <div className="rounded-3xl border border-dashed border-border/70 bg-background/60 px-6 py-16 text-center shadow-inner sm:px-10">
-                  <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
-                    <Camera className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="mb-3 text-xl font-semibold text-foreground">
-                    {caseSearchTerm ? 'Inga case matchar din sökning' : 'Inga case hittades'}
-                  </h3>
-                  <p className="mx-auto mb-8 max-w-md text-sm text-muted-foreground sm:text-base">
-                    {caseSearchTerm ? 'Prova att justera dina sökkriterier eller rensa filtren.' : 'Kom tillbaka senare för nya case från communityt.'}
-                  </p>
-                  {caseSearchTerm && (
-                    <Button onClick={() => setCaseSearchTerm('')} variant="outline" className="rounded-xl border-border hover:bg-muted/50">
-                      Rensa sökning
-                    </Button>
-                  )}
+            {!stockCasesLoading && getFilteredCases.length === 0 && (
+              <div className="rounded-3xl border border-dashed border-border/70 bg-background/60 px-6 py-16 text-center shadow-inner sm:px-10">
+                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+                  <Camera className="h-8 w-8 text-muted-foreground" />
                 </div>
-              )}
-            </TabsContent>
-
-          </Tabs>
+                <h3 className="mb-3 text-xl font-semibold text-foreground">
+                  {caseSearchTerm ? 'Inga case matchar din sökning' : 'Inga case hittades'}
+                </h3>
+                <p className="mx-auto mb-8 max-w-md text-sm text-muted-foreground sm:text-base">
+                  {caseSearchTerm ? 'Prova att justera dina sökkriterier eller rensa filtren.' : 'Kom tillbaka senare för nya case från communityt.'}
+                </p>
+                {caseSearchTerm && (
+                  <Button onClick={() => setCaseSearchTerm('')} variant="outline" className="rounded-xl border-border hover:bg-muted/50">
+                    Rensa sökning
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </Layout>
