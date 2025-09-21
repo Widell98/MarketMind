@@ -7,6 +7,91 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const EXCHANGE_RATES: Record<string, number> = {
+  SEK: 1,
+  USD: 10.5,
+  EUR: 11.4,
+  GBP: 13.2,
+  NOK: 0.95,
+  DKK: 1.53,
+  JPY: 0.07,
+  CHF: 11.8,
+  CAD: 7.8,
+  AUD: 7.0,
+};
+
+const normalizeCurrencyCode = (currency: unknown): string | null => {
+  if (typeof currency === 'string') {
+    const trimmed = currency.trim();
+    if (trimmed.length > 0) {
+      return trimmed.toUpperCase();
+    }
+  }
+  return null;
+};
+
+const parseNumericField = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.replace(/\s/g, '').replace(',', '.');
+    const parsed = parseFloat(normalized);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+};
+
+const convertAmountToSEK = (amount: number | null, currency?: string | null): number => {
+  if (amount === null || !Number.isFinite(amount)) {
+    return 0;
+  }
+
+  const normalizedCurrency = normalizeCurrencyCode(currency) || 'SEK';
+  if (normalizedCurrency === 'SEK') {
+    return amount;
+  }
+
+  const rate = EXCHANGE_RATES[normalizedCurrency];
+  if (typeof rate !== 'number') {
+    console.warn(`Exchange rate not found for currency: ${normalizedCurrency}, defaulting to SEK`);
+    return amount;
+  }
+
+  return amount * rate;
+};
+
+const getHoldingValueInSEK = (holding: any): number => {
+  const quantity = parseNumericField(holding?.quantity) ?? 0;
+  const currentValue = parseNumericField(holding?.current_value);
+  const currentPricePerUnit = parseNumericField(holding?.current_price_per_unit);
+  const purchasePrice = parseNumericField(holding?.purchase_price);
+  const priceCurrency = normalizeCurrencyCode(holding?.price_currency);
+  const holdingCurrency = normalizeCurrencyCode(holding?.currency) || priceCurrency || 'SEK';
+
+  if (currentValue !== null && Math.abs(currentValue) > 1e-6) {
+    return convertAmountToSEK(currentValue, holdingCurrency);
+  }
+
+  if (currentPricePerUnit !== null && quantity > 0) {
+    return convertAmountToSEK(currentPricePerUnit * quantity, priceCurrency || holdingCurrency);
+  }
+
+  if (purchasePrice !== null && quantity > 0) {
+    return convertAmountToSEK(purchasePrice * quantity, holdingCurrency);
+  }
+
+  if (currentValue !== null) {
+    return convertAmountToSEK(currentValue, holdingCurrency);
+  }
+
+  return 0;
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -553,16 +638,46 @@ contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
     if (holdings && holdings.length > 0) {
       const actualHoldings = holdings.filter(h => h.holding_type !== 'recommendation');
       if (actualHoldings.length > 0) {
-        const totalValue = actualHoldings.reduce((sum, h) => sum + (h.current_value || 0), 0);
-        const topHoldings = actualHoldings
-          .sort((a, b) => (b.current_value || 0) - (a.current_value || 0))
-          .slice(0, 5);
-        
+        const normalizedHoldings = actualHoldings.map((holding: any) => ({
+          ...holding,
+          normalizedValue: getHoldingValueInSEK(holding)
+        }));
+
+        const totalValue = normalizedHoldings.reduce((sum: number, holding: any) => {
+          return sum + (Number.isFinite(holding.normalizedValue) ? holding.normalizedValue : 0);
+        }, 0);
+
+        const positiveHoldings = normalizedHoldings.filter((holding: any) => holding.normalizedValue > 0);
+
+        const sortedHoldings = (positiveHoldings.length > 0 ? positiveHoldings : normalizedHoldings)
+          .slice()
+          .sort((a: any, b: any) => (b.normalizedValue || 0) - (a.normalizedValue || 0));
+
+        const topHoldings = sortedHoldings.slice(0, 5);
+
+        const totalValueText = totalValue > 0
+          ? `${totalValue.toLocaleString('sv-SE', { maximumFractionDigits: 0 })} SEK`
+          : 'Ej tillgängligt';
+
+        let topHoldingsText = 'Data saknas';
+
+        if (totalValue > 0 && topHoldings.length > 0) {
+          topHoldingsText = topHoldings
+            .map((holding: any) => `${holding.symbol || holding.name} (${((holding.normalizedValue / totalValue) * 100).toFixed(1)}%)`)
+            .join(', ');
+        } else if (topHoldings.length > 0) {
+          topHoldingsText = topHoldings
+            .map((holding: any) => `${holding.symbol || holding.name} (värde saknas)`)
+            .join(', ');
+        } else {
+          topHoldingsText = 'Inga registrerade positioner';
+        }
+
         contextInfo += `\n\nNUVARANDE PORTFÖLJ:
-- Totalt värde: ${totalValue.toLocaleString()} SEK
+- Totalt värde: ${totalValueText}
 - Antal innehav: ${actualHoldings.length}
-- Största positioner: ${topHoldings.map(h => `${h.symbol || h.name} (${((h.current_value || 0) / totalValue * 100).toFixed(1)}%)`).join(', ')}`;
-        
+- Största positioner: ${topHoldingsText}`;
+
         if (portfolio) {
           contextInfo += `\n- Portföljens riskpoäng: ${portfolio.risk_score || 'Ej beräknad'}
 - Förväntad årlig avkastning: ${portfolio.expected_return || 'Ej beräknad'}%`;
