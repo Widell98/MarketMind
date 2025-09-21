@@ -222,7 +222,7 @@ const AIChat = ({
     className: isMobile ? "w-full min-h-full" : "",
   }), [isGuideSession, currentSessionId, handleLoadSession, deleteSession, editSessionName, handleNewSession, handleLoadGuideSession, isLoadingSession, isMobile]);
   return (
-    <div className="flex h-full min-h-0 w-full">
+    <div className="flex h-full min-h-0 w-full overflow-hidden">
       {user ? (
         <>
           {!isMobile && !desktopSidebarCollapsed && (
@@ -231,7 +231,7 @@ const AIChat = ({
             </div>
           )}
 
-          <div className="flex flex-1 min-h-0 flex-col bg-ai-surface">
+          <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
             <header className="grid grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-ai-border/60 px-4 py-3 sm:px-6">
               <div className="flex items-center gap-2">
                 {isMobile && (
@@ -289,7 +289,7 @@ const AIChat = ({
               </div>
             </header>
 
-            <div className="flex flex-1 min-h-0 flex-col">
+            <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
               <ChatMessages
                 messages={messages}
                 isLoading={isLoading}
@@ -330,8 +330,8 @@ const AIChat = ({
           </div>
         </>
       ) : (
-        <div className="flex w-full flex-col bg-ai-surface">
-          <div className="relative flex flex-1 flex-col overflow-hidden">
+        <div className="flex w-full min-h-0 flex-col overflow-hidden bg-ai-surface">
+          <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden">
             <div className="absolute inset-0 flex">
               {!isMobile && (
                 <div className="hidden w-[260px] flex-col border-r border-ai-border/60 bg-ai-surface-muted/60 px-4 py-6 md:flex">
@@ -348,8 +348,8 @@ const AIChat = ({
                   </div>
                 </div>
               )}
-              <div className="flex flex-1 flex-col bg-ai-surface px-4 py-8 sm:px-10">
-                <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center space-y-6">
+              <div className="flex flex-1 flex-col overflow-y-auto bg-ai-surface px-4 py-8 sm:px-10 lg:px-14">
+                <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center space-y-6 py-6 sm:py-8">
                   <div className="flex flex-col gap-4">
                     <div className="flex justify-center">
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-ai-surface-muted/70 text-ai-text-muted">

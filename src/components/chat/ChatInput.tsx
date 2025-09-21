@@ -52,7 +52,7 @@ const ChatInput = memo(({
 
   return (
     <>
-      <div className="flex-shrink-0 border-t border-ai-border/60 bg-ai-surface p-3 sm:p-4 lg:p-6 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+      <div className="flex-shrink-0 border-t border-ai-border/60 bg-ai-surface p-3 sm:p-4 lg:px-8 lg:py-6 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
         {quotaExceeded && (
           <div className="mb-3 sm:mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
             <div className="flex items-center gap-2 font-medium mb-1 text-destructive text-sm">
@@ -65,7 +65,10 @@ const ChatInput = memo(({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex w-full max-w-4xl mx-auto gap-2 sm:gap-3 items-end">
+        <form
+          onSubmit={handleSubmit}
+          className="mx-auto flex w-full max-w-4xl items-end gap-2 sm:gap-3 lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl"
+        >
           <div className="flex-1 relative min-w-0">
             <Textarea
               ref={inputRef}
