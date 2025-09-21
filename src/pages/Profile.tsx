@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ExportSharingSection from '@/components/ExportSharingSection';
-import { TrendingUp, FileText, Plus, Brain, CreditCard } from 'lucide-react';
+import { TrendingUp, FileText, Plus, Brain, CreditCard, Share2 } from 'lucide-react';
 import UserAnalysesSection from '@/components/UserAnalysesSection';
 import SavedOpportunitiesSection from '@/components/SavedOpportunitiesSection';
 import EnhancedProfileHeader from '@/components/EnhancedProfileHeader';
@@ -151,7 +151,7 @@ const Profile = () => {
         {/* Main Content */}
         <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6 lg:py-8">
           <Tabs defaultValue="content" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-8 bg-muted/20 border border-border/30 rounded-xl p-1 shadow-sm backdrop-blur-sm">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-8 bg-muted/20 border border-border/30 rounded-xl p-1 md:p-2 shadow-sm backdrop-blur-sm">
               <TabsTrigger value="content" className="rounded-lg font-medium">
                 Innehåll
               </TabsTrigger>
@@ -159,11 +159,9 @@ const Profile = () => {
                 <Brain className="w-4 h-4" />
                 Riskprofil
               </TabsTrigger>
-              <TabsTrigger value="export" className="rounded-lg font-medium">
-                Export & Delning
-              </TabsTrigger>
-              <TabsTrigger value="activity" className="rounded-lg font-medium">
-                Aktivitet
+              <TabsTrigger value="sharing-activity" className="flex items-center gap-2 rounded-lg font-medium">
+                <Share2 className="w-4 h-4" />
+                Delning & aktivitet
               </TabsTrigger>
               <TabsTrigger value="membership" className="flex items-center gap-2 rounded-lg font-medium">
                 <CreditCard className="w-4 h-4" />
@@ -250,12 +248,11 @@ const Profile = () => {
               <UserInvestmentAnalysis />
             </TabsContent>
 
-            <TabsContent value="export" className="space-y-8">
-              <ExportSharingSection />
-            </TabsContent>
-
-            <TabsContent value="activity" className="space-y-8">
-              <ActivitySection />
+            <TabsContent value="sharing-activity" className="space-y-8">
+              <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-8 items-start">
+                <ExportSharingSection />
+                <ActivitySection />
+              </div>
             </TabsContent>
 
             <TabsContent value="membership" className="space-y-8">
