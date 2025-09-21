@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-interface ChatFolder {
+export interface ChatFolder {
   id: string;
   name: string;
   color: string;
@@ -11,7 +11,7 @@ interface ChatFolder {
   updated_at: string;
 }
 
-interface ChatSession {
+export interface ChatSession {
   id: string;
   session_name: string;
   created_at: string;

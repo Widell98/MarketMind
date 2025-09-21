@@ -52,7 +52,7 @@ const ChatInput = memo(({
 
   return (
     <>
-      <div className="flex-shrink-0 border-t border-border/60 bg-background/95 p-3 sm:p-4 lg:p-6 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))] backdrop-blur">
+      <div className="flex-shrink-0 border-t border-ai-border/60 bg-ai-surface p-3 sm:p-4 lg:p-6 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
         {quotaExceeded && (
           <div className="mb-3 sm:mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
             <div className="flex items-center gap-2 font-medium mb-1 text-destructive text-sm">
@@ -79,11 +79,11 @@ const ChatInput = memo(({
               }}
               placeholder={isAtLimit ? "Uppgradera till Premium för fler meddelanden" : "Skriv ditt meddelande här... (kostar 1 credit)"}
               disabled={isLoading || quotaExceeded}
-              className="min-h-[44px] max-h-[140px] bg-background/95 border border-border/60 shadow-sm rounded-xl text-sm sm:text-base px-3 sm:px-4 pr-10 transition-all duration-200 focus:shadow-md resize-none w-full"
+              className="min-h-[44px] max-h-[140px] w-full resize-none rounded-ai-md border border-ai-border/60 bg-ai-surface px-3 pr-10 text-sm shadow-sm transition-all duration-200 focus:border-ai-border/80 focus:shadow-md sm:px-4 sm:text-base"
               style={{ fontSize: '16px' }}
               rows={1}
             />
-            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ai-text-muted">
               <MessageSquare className="w-4 h-4" />
             </div>
           </div>
