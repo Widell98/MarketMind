@@ -310,7 +310,7 @@ const StockCaseCard = ({ stockCase }: { stockCase: any }) => {
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
         <div className="absolute top-3 left-3">
-          <Badge variant="outline" className="text-xs font-medium text-white bg-black/50 border-white/20 backdrop-blur-sm">
+          <Badge variant="outline" className="text-xs font-medium text-white bg-black/50 border-white/20 dark:border-white/10 backdrop-blur-sm">
             STOCK CASE
           </Badge>
         </div>

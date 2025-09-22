@@ -159,24 +159,24 @@ const CashHoldingsManager: React.FC = () => {
               </div>
             ) : (
               cashHoldings.map(holding => (
-                <div key={holding.id} className="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-sm">
+                <div key={holding.id} className="bg-white dark:bg-slate-900/70 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 hover:shadow-sm">
                   <div className="flex items-center justify-between p-4">
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-gray-900">{holding.name}</h3>
-                      <div className="text-sm text-gray-600">
-                        <span className="font-medium text-green-600">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">{holding.name}</h3>
+                      <div className="text-sm text-gray-600 dark:text-gray-300">
+                        <span className="font-medium text-green-600 dark:text-green-400">
                           {formatCurrency(holding.current_value)}
                         </span>
                       </div>
                     </div>
-                    
+
                     <div className="flex-shrink-0 ml-4 flex gap-2">
                       <Dialog open={editingHolding?.id === holding.id} onOpenChange={(open) => !open && setEditingHolding(null)}>
                         <DialogTrigger asChild>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-blue-600 hover:text-blue-700"
+                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                             onClick={() => setEditingHolding({ id: holding.id, amount: holding.current_value })}
                           >
                             <Edit2 className="w-4 h-4 mr-1" />

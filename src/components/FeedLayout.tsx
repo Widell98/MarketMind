@@ -54,17 +54,17 @@ const FeedLayout = () => {
               
               {/* Enhanced status indicators for larger screens */}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8 lg:mb-10">
-                <div className="flex items-center gap-3 lg:gap-4 bg-white/15 backdrop-blur-md rounded-full px-4 sm:px-6 lg:px-8 py-3 lg:py-4 border border-white/20 shadow-lg">
+                <div className="flex items-center gap-3 lg:gap-4 bg-white/15 dark:bg-white/5 backdrop-blur-md rounded-full px-4 sm:px-6 lg:px-8 py-3 lg:py-4 border border-white/20 dark:border-white/10 shadow-lg">
                   <div className="w-2.5 h-2.5 lg:w-3 lg:h-3 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></div>
                   <span className="text-sm sm:text-base lg:text-lg font-semibold text-blue-50">Live Updates</span>
                 </div>
                 
-                <div className="flex items-center gap-3 lg:gap-4 bg-white/10 backdrop-blur-md rounded-full px-4 sm:px-6 lg:px-8 py-3 lg:py-4 border border-white/20">
+                <div className="flex items-center gap-3 lg:gap-4 bg-white/10 dark:bg-white/[0.07] backdrop-blur-md rounded-full px-4 sm:px-6 lg:px-8 py-3 lg:py-4 border border-white/20 dark:border-white/10">
                   <Sparkles className="w-4 h-4 lg:w-5 lg:h-5 text-yellow-300" />
                   <span className="text-sm sm:text-base lg:text-lg font-medium text-blue-100">AI-Powered</span>
                 </div>
                 
-                <div className="flex items-center gap-3 lg:gap-4 bg-white/10 backdrop-blur-md rounded-full px-4 sm:px-6 lg:px-8 py-3 lg:py-4 border border-white/20">
+                <div className="flex items-center gap-3 lg:gap-4 bg-white/10 dark:bg-white/[0.07] backdrop-blur-md rounded-full px-4 sm:px-6 lg:px-8 py-3 lg:py-4 border border-white/20 dark:border-white/10">
                   <BarChart3 className="w-4 h-4 lg:w-5 lg:h-5 text-purple-300" />
                   <span className="text-sm sm:text-base lg:text-lg font-medium text-blue-100">Expert Analysis</span>
                 </div>

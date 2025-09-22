@@ -90,30 +90,30 @@ const ProfileContextCard = ({ onUpdate }: ProfileContextCardProps) => {
       label: 'Månatlig sparbudget',
       value: riskProfile.monthly_investment_amount ? `${riskProfile.monthly_investment_amount.toLocaleString()} SEK` : 'Ej angiven',
       icon: DollarSign,
-      color: 'bg-green-50 text-green-700 border-green-200'
+      color: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700'
     },
     {
       key: 'risk_tolerance',
       label: 'Risktolerans',
-      value: riskProfile.risk_tolerance === 'conservative' ? 'Konservativ' : 
+      value: riskProfile.risk_tolerance === 'conservative' ? 'Konservativ' :
              riskProfile.risk_tolerance === 'moderate' ? 'Måttlig' : 'Aggressiv',
       icon: Shield,
-      color: 'bg-blue-50 text-blue-700 border-blue-200'
+      color: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700'
     },
     {
       key: 'investment_horizon',
       label: 'Tidshorisont',
-      value: riskProfile.investment_horizon === 'short' ? 'Kort (1-3 år)' : 
+      value: riskProfile.investment_horizon === 'short' ? 'Kort (1-3 år)' :
              riskProfile.investment_horizon === 'medium' ? 'Medel (3-7 år)' : 'Lång (7+ år)',
       icon: Calendar,
-      color: 'bg-purple-50 text-purple-700 border-purple-200'
+      color: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700'
     },
     {
       key: 'age',
       label: 'Ålder',
       value: riskProfile.age ? `${riskProfile.age} år` : 'Ej angiven',
       icon: User,
-      color: 'bg-gray-50 text-gray-700 border-gray-200'
+      color: 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900/30 dark:text-gray-300 dark:border-gray-700'
     }
   ];
 

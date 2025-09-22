@@ -103,15 +103,15 @@ const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   const getInsightColor = (severity: string) => {
     switch (severity) {
       case 'critical':
-        return 'border-red-200 bg-red-50';
+        return 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/30';
       case 'high':
-        return 'border-orange-200 bg-orange-50';
+        return 'border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-900/30';
       case 'medium':
-        return 'border-yellow-200 bg-yellow-50';
+        return 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/30';
       case 'low':
-        return 'border-blue-200 bg-blue-50';
+        return 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/30';
       default:
-        return 'border-gray-200 bg-gray-50';
+        return 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/30';
     }
   };
   const getHoldingTypeColor = (type: string) => {

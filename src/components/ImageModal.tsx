@@ -65,7 +65,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose, imageUrl, altT
         <DialogTitle className="sr-only">Zoomed image view - {altText}</DialogTitle>
         
         {/* Control bar */}
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 flex items-center gap-2 bg-black/70 backdrop-blur-sm rounded-lg p-2 border border-white/20">
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 flex items-center gap-2 bg-black/70 backdrop-blur-sm rounded-lg p-2 border border-white/20 dark:border-white/10">
           <Button
             variant="ghost"
             size="sm"
@@ -107,7 +107,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose, imageUrl, altT
           variant="ghost"
           size="sm"
           onClick={handleClose}
-          className="absolute top-4 right-4 z-30 bg-black/70 hover:bg-black/80 text-white border border-white/20 hover:border-white/40 backdrop-blur-sm"
+          className="absolute top-4 right-4 z-30 bg-black/70 hover:bg-black/80 text-white border border-white/20 dark:border-white/10 hover:border-white/40 backdrop-blur-sm"
         >
           <X className="w-5 h-5" />
         </Button>
@@ -138,7 +138,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose, imageUrl, altT
 
         {/* Instructions */}
         {zoom > 1 && (
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-sm text-white text-sm px-3 py-2 rounded-lg border border-white/20">
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-sm text-white text-sm px-3 py-2 rounded-lg border border-white/20 dark:border-white/10">
             Drag to pan • Scroll to zoom
           </div>
         )}

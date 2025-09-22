@@ -39,10 +39,10 @@ const StockExchangeSuggestions: React.FC<StockExchangeSuggestionsProps> = ({
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
-      case 'low': return 'bg-green-100 text-green-800 border-green-200';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'high': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'low': return 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800';
+      case 'high': return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/30 dark:text-gray-300 dark:border-gray-700';
     }
   };
 
@@ -51,7 +51,7 @@ const StockExchangeSuggestions: React.FC<StockExchangeSuggestionsProps> = ({
   }
 
   return (
-    <Card className="mt-4 border-blue-200 bg-blue-50">
+    <Card className="mt-4 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-blue-800">
           <ArrowRightLeft className="w-5 h-5" />
@@ -60,16 +60,16 @@ const StockExchangeSuggestions: React.FC<StockExchangeSuggestionsProps> = ({
       </CardHeader>
       <CardContent className="space-y-4">
         {suggestions.map((suggestion, index) => (
-          <div key={index} className="bg-white rounded-lg p-4 border border-blue-200">
+          <div key={index} className="bg-white dark:bg-slate-900/60 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
             <div className="flex items-start justify-between mb-3">
               <div>
-                <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                   {suggestion.name}
                   <Badge variant="outline" className="text-xs">
                     {suggestion.ticker}
                   </Badge>
                 </h4>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                   {suggestion.reason}
                 </p>
               </div>
@@ -81,17 +81,17 @@ const StockExchangeSuggestions: React.FC<StockExchangeSuggestionsProps> = ({
             
             <div className="grid grid-cols-2 gap-4 mb-3 text-sm">
               <div>
-                <span className="font-medium text-gray-500">Föreslagen vikt:</span>
-                <div className="text-gray-900">{suggestion.weight}</div>
+                <span className="font-medium text-gray-500 dark:text-gray-400">Föreslagen vikt:</span>
+                <div className="text-gray-900 dark:text-gray-100">{suggestion.weight}</div>
               </div>
               <div>
-                <span className="font-medium text-gray-500">Sektor:</span>
-                <div className="text-gray-900">{suggestion.sector}</div>
+                <span className="font-medium text-gray-500 dark:text-gray-400">Sektor:</span>
+                <div className="text-gray-900 dark:text-gray-100">{suggestion.sector}</div>
               </div>
             </div>
-            
-            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-              <div className="flex items-center gap-2 text-xs text-gray-500">
+
+            <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800/60">
+              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                 <AlertTriangle className="w-3 h-3" />
                 <span>Detta är utbildningssyfte, inte investeringsråd</span>
               </div>
@@ -118,11 +118,11 @@ const StockExchangeSuggestions: React.FC<StockExchangeSuggestionsProps> = ({
           </div>
         ))}
         
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-4">
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mt-4">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5" />
-            <div className="text-sm text-yellow-800">
-              <strong>Viktigt:</strong> Dessa förslag är endast för utbildningsändamål. 
+            <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-300 mt-0.5" />
+            <div className="text-sm text-yellow-800 dark:text-yellow-200">
+              <strong>Viktigt:</strong> Dessa förslag är endast för utbildningsändamål.
               Gör alltid egen research och konsultera en licensierad finansiell rådgivare innan du fattar investeringsbeslut.
             </div>
           </div>

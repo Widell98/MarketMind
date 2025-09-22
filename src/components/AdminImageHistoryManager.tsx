@@ -131,7 +131,7 @@ const AdminImageHistoryManager: React.FC<AdminImageHistoryManagerProps> = ({
                       Är du säker på att du vill radera denna bild från historiken? 
                       Denna åtgärd kan inte ångras.
                       {image.is_current && (
-                        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                        <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded">
                           <strong>Varning:</strong> Detta är den aktuella bilden för caset.
                         </div>
                       )}

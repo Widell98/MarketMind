@@ -265,11 +265,11 @@ const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ portfolioId }
                         <span>Förväntad utveckling</span>
                       </div>
                       <div className="flex items-center gap-1 sm:gap-2">
-                        <div className="w-2 h-2 sm:w-3 sm:h-3 bg-green-500/20 border border-green-500 rounded flex-shrink-0"></div>
+                        <div className="w-2 h-2 sm:w-3 sm:h-3 bg-green-500/20 dark:bg-green-500/10 border border-green-500 dark:border-green-400 rounded flex-shrink-0"></div>
                         <span>Optimistiskt scenario</span>
                       </div>
                       <div className="flex items-center gap-1 sm:gap-2">
-                        <div className="w-2 h-2 sm:w-3 sm:h-3 bg-red-500/20 border border-red-500 rounded flex-shrink-0"></div>
+                        <div className="w-2 h-2 sm:w-3 sm:h-3 bg-red-500/20 dark:bg-red-500/10 border border-red-500 dark:border-red-400 rounded flex-shrink-0"></div>
                         <span>Pessimistiskt scenario</span>
                       </div>
                     </div>
