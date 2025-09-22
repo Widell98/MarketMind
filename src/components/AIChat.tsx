@@ -55,6 +55,7 @@ const AIChat = ({
     createNewSession,
     loadSession,
     deleteSession,
+    deleteSessionsBulk,
     editSessionName,
     clearMessages,
     dismissProfileUpdatePrompt,
@@ -213,6 +214,7 @@ const AIChat = ({
       handleLoadSession(sessionId);
     },
     onDeleteSession: deleteSession,
+    onBulkDeleteSessions: deleteSessionsBulk,
     onEditSessionName: editSessionName,
     onLoadGuideSession: handleLoadGuideSession,
     onCreateNewSession: handleNewSession,
@@ -222,6 +224,7 @@ const AIChat = ({
     currentSessionId,
     handleLoadSession,
     deleteSession,
+    deleteSessionsBulk,
     editSessionName,
     handleLoadGuideSession,
     handleNewSession,

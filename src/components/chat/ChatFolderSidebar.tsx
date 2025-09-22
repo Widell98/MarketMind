@@ -33,10 +33,11 @@ import { cn } from '@/lib/utils';
 interface ChatFolderSidebarProps {
   currentSessionId: string | null;
   onLoadSession: (sessionId: string) => void;
-  onDeleteSession: (sessionId: string) => void;
+  onDeleteSession: (sessionId: string) => Promise<void> | void;
   onEditSessionName: (sessionId: string, name: string) => void;
   onLoadGuideSession?: () => void;
   onCreateNewSession: () => void;
+  onBulkDeleteSessions?: (sessionIds: string[]) => Promise<void> | void;
   className?: string;
 }
 
@@ -47,11 +48,13 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
   onEditSessionName,
   onLoadGuideSession,
   onCreateNewSession,
+  onBulkDeleteSessions,
   className = '',
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [editingSession, setEditingSession] = useState<{ id: string; name: string } | null>(null);
+  const [isClearingRoot, setIsClearingRoot] = useState(false);
   const { shouldShowGuide } = useGuideSession();
 
   const {
@@ -62,7 +65,11 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
     deleteFolder,
     moveSessionToFolder,
     getSessionsByFolder,
+    loadSessions,
+    removeSessionsFromState,
   } = useChatFolders();
+
+  const rootSessions = sessions.filter((session) => !session.folder_id);
 
   const filteredSessions = sessions.filter((session) =>
     session.session_name.toLowerCase().includes(searchTerm.toLowerCase()),
@@ -78,6 +85,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
   });
 
   const unorganizedSessions = filteredSessions.filter((session) => !session.folder_id);
+  const hasRootSessions = rootSessions.length > 0;
 
   const toggleFolder = (folderId: string) => {
     const next = new Set(expandedFolders);
@@ -97,6 +105,43 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
     if (editingSession) {
       onEditSessionName(editingSession.id, newName);
       setEditingSession(null);
+    }
+  };
+
+  const handleClearUnorganizedSessions = async () => {
+    if (isClearingRoot || rootSessions.length === 0) {
+      return;
+    }
+
+    const confirmed =
+      typeof window === 'undefined'
+        ? true
+        : window.confirm(
+            'Vill du rensa alla osorterade chattar? Mapplagrade chattar ligger kvar.',
+          );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsClearingRoot(true);
+    const sessionIds = rootSessions.map((session) => session.id);
+
+    try {
+      if (onBulkDeleteSessions) {
+        await Promise.resolve(onBulkDeleteSessions(sessionIds));
+      } else {
+        for (const sessionId of sessionIds) {
+          await Promise.resolve(onDeleteSession(sessionId));
+        }
+      }
+
+      removeSessionsFromState(sessionIds);
+      await loadSessions();
+    } catch (error) {
+      console.error('Error clearing unorganized sessions:', error);
+    } finally {
+      setIsClearingRoot(false);
     }
   };
 
@@ -205,7 +250,14 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                 </DropdownMenuSub>
               )}
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onDeleteSession(session.id)} className="text-red-600">
+              <DropdownMenuItem
+                onClick={async () => {
+                  await Promise.resolve(onDeleteSession(session.id));
+                  removeSessionsFromState([session.id]);
+                  await loadSessions();
+                }}
+                className="text-red-600"
+              >
                 <Trash className="mr-2 h-4 w-4" />
                 Ta bort
               </DropdownMenuItem>
@@ -272,6 +324,22 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
             className="h-9 rounded-ai-sm border border-transparent bg-ai-surface pl-10 text-[15px] text-foreground placeholder:text-ai-text-muted focus-visible:border-ai-border focus-visible:ring-0"
           />
         </div>
+
+        <Button
+          type="button"
+          onClick={handleClearUnorganizedSessions}
+          variant="ghost"
+          size="sm"
+          disabled={!hasRootSessions || isClearingRoot}
+          className="mt-3 w-full justify-center gap-2 rounded-ai-sm border border-ai-border/60 bg-ai-surface px-3 py-2 text-[14px] font-medium text-ai-text-muted transition hover:border-destructive/40 hover:bg-destructive/5 hover:text-destructive focus-visible:ring-1 focus-visible:ring-destructive/40 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-destructive/15"
+        >
+          <Trash className="h-4 w-4 text-destructive" />
+          {isClearingRoot
+            ? 'Rensar chattar...'
+            : hasRootSessions
+              ? 'Rensa osorterade chattar'
+              : 'Inga osorterade chattar'}
+        </Button>
       </div>
 
       <div className="border-t border-ai-border/60" />

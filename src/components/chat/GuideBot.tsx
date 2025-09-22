@@ -179,30 +179,30 @@ const GuideBot: React.FC<GuideBotProps> = ({ onPromptExample, onNavigate, onShow
             </p>
 
             {currentMessage.buttons && (
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {currentMessage.buttons.map((button, index) => (
                   <Button
                     key={index}
                     variant="ghost"
                     size="sm"
                     onClick={() => handleButtonClick(button)}
-                    className="flex w-full items-start gap-3 rounded-ai-sm border border-ai-border/60 bg-ai-surface px-3 py-3 text-left text-[14px] font-medium text-foreground shadow-sm transition hover:border-ai-border hover:bg-ai-surface-muted/70 focus-visible:ring-0 focus-visible:ring-offset-0"
+                    className="group flex w-full items-start gap-3 rounded-ai-md border border-ai-border/60 bg-ai-surface-muted/70 px-4 py-3 text-left text-[14px] font-medium text-foreground shadow-sm transition hover:-translate-y-0.5 hover:border-ai-border hover:bg-ai-surface focus-visible:ring-1 focus-visible:ring-ai-border/60 focus-visible:ring-offset-0"
                   >
                     {button.icon && (
-                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-ai-sm border border-ai-border/60 bg-ai-surface-muted/70 text-foreground">
+                      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-ai-border/60 bg-ai-surface text-foreground transition group-hover:border-ai-border group-hover:bg-ai-surface group-hover:text-foreground">
                         {React.isValidElement(button.icon)
                           ? React.cloneElement(button.icon, {
                               className: 'h-4 w-4 text-foreground',
                             })
                           : button.icon}
-                      </div>
+                      </span>
                     )}
-                    <div className="min-w-0 flex-1 text-left">
-                      <span className="block text-sm font-medium text-foreground">
+                    <div className="min-w-0 flex-1 space-y-1 text-left">
+                      <span className="block text-sm font-semibold text-foreground">
                         {button.text}
                       </span>
                       {button.description && (
-                        <span className="mt-1 block text-xs text-ai-text-muted">
+                        <span className="block text-xs leading-snug text-ai-text-muted">
                           {button.description}
                         </span>
                       )}
