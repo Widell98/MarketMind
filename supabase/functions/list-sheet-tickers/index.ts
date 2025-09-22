@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getSheetValues } from "../getSheetValues.ts";
+import { inferListSheetColumns } from "../_shared/sheetStructure.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,75 +17,56 @@ const normalizeValue = (value?: string | null) => {
 
 const normalizeHeader = (header: string) => header.trim().toLowerCase();
 
+const findHeaderIndex = (headers: string[], patterns: RegExp[]) =>
+  headers.findIndex((header) => patterns.some((pattern) => pattern.test(header)));
+
 const resolveSheetStructure = (rows: string[][]) => {
   const headerRow = rows[0] ?? [];
   const normalizedHeaders = headerRow.map((header) => normalizeHeader(header));
 
-  const companyIdx = normalizedHeaders.findIndex((header) => /(company|bolag)/i.test(header));
-  const tickerIdx = normalizedHeaders.findIndex((header) => /ticker/i.test(header));
-  const currencyIdx = normalizedHeaders.findIndex((header) => /(currency|valuta)/i.test(header));
-  const priceIdx = normalizedHeaders.findIndex((header) => /(price|pris)/i.test(header));
+  const companyIdx = findHeaderIndex(normalizedHeaders, [
+    /company/,
+    /bolag/,
+    /name/,
+    /namn/,
+    /företag/,
+    /issuer/,
+  ]);
+  const tickerIdx = findHeaderIndex(normalizedHeaders, [/ticker/, /symbol/, /kortnamn/, /aktie/]);
+  const currencyIdx = findHeaderIndex(normalizedHeaders, [/currency/, /valuta/]);
+  const priceIdx = findHeaderIndex(normalizedHeaders, [
+    /price/,
+    /pris/,
+    /last/,
+    /senast/,
+    /kurs/,
+    /value/,
+    /värde/,
+  ]);
 
-  const hasHeader = companyIdx !== -1 && tickerIdx !== -1 && priceIdx !== -1;
+  const hasHeader = tickerIdx !== -1 && priceIdx !== -1;
 
   if (hasHeader) {
     return {
       dataRows: rows.slice(1),
       indices: { companyIdx, tickerIdx, currencyIdx, priceIdx },
       usingFallback: false as const,
-    };
-  }
-
-  const firstRowLength = (rows[0] ?? []).length;
-
-  if (firstRowLength >= 5) {
-    return {
-      dataRows: rows,
-      indices: {
-        companyIdx: 0,
-        tickerIdx: 1,
-        currencyIdx: 3,
-        priceIdx: 4,
+      diagnostics: {
+        price: "high" as const,
+        ticker: "high" as const,
+        currency: currencyIdx !== -1 ? ("high" as const) : ("none" as const),
+        company: companyIdx !== -1 ? ("high" as const) : ("none" as const),
+        warnings: [] as string[],
       },
-      usingFallback: true as const,
     };
   }
 
-  if (firstRowLength >= 4) {
-    return {
-      dataRows: rows,
-      indices: {
-        companyIdx: 0,
-        tickerIdx: 1,
-        currencyIdx: 2,
-        priceIdx: 3,
-      },
-      usingFallback: true as const,
-    };
-  }
-
-  if (firstRowLength >= 3) {
-    return {
-      dataRows: rows,
-      indices: {
-        companyIdx: 0,
-        tickerIdx: 1,
-        currencyIdx: -1,
-        priceIdx: 2,
-      },
-      usingFallback: true as const,
-    };
-  }
-
+  const inference = inferListSheetColumns(rows);
   return {
     dataRows: rows,
-    indices: {
-      companyIdx: firstRowLength > 0 ? 0 : -1,
-      tickerIdx: firstRowLength > 1 ? 1 : -1,
-      currencyIdx: -1,
-      priceIdx: firstRowLength > 2 ? 2 : -1,
-    },
+    indices: inference.indices,
     usingFallback: true as const,
+    diagnostics: inference.diagnostics,
   };
 };
 
@@ -111,17 +93,20 @@ serve(async (req) => {
       throw new Error("Google Sheets API returned only empty rows for the configured range.");
     }
 
-    const { dataRows, indices, usingFallback } = resolveSheetStructure(nonEmptyRows);
+    const { dataRows, indices, usingFallback, diagnostics } = resolveSheetStructure(nonEmptyRows);
 
     if (usingFallback) {
       console.warn(
-        "Google Sheets header row was not detected for list-sheet-tickers. Falling back to expected column order (Company, Ticker, -, Currency, Price). Update GOOGLE_SHEET_RANGE to include the header row for more robust parsing.",
+        "Google Sheets header row was not detected for list-sheet-tickers. Column positions were inferred heuristically from the data.",
       );
+      for (const warning of diagnostics.warnings) {
+        console.warn(warning);
+      }
     }
 
-    if (indices.companyIdx === -1 || indices.tickerIdx === -1 || indices.priceIdx === -1) {
+    if (indices.tickerIdx === -1 || indices.priceIdx === -1) {
       throw new Error(
-        "Google Sheets data is missing required columns (Company, Ticker, Price). Update GOOGLE_SHEET_RANGE so the range includes the header row with these columns.",
+        "Unable to identify ticker and price columns from Google Sheets. Ensure GOOGLE_SHEET_RANGE includes the header row or adjust the sheet so ticker and price columns are present.",
       );
     }
 
@@ -159,7 +144,7 @@ serve(async (req) => {
 
     if (tickers.length === 0) {
       const rangeHint = usingFallback
-        ? "Verify that GOOGLE_SHEET_RANGE points to the correct columns (expected order: Company, Ticker, -, Currency, Price)."
+        ? "Include the sheet's header row in GOOGLE_SHEET_RANGE or confirm that ticker and price columns contain data."
         : "Verify that the sheet contains at least one row with both ticker and price values.";
       throw new Error(`Google Sheets data did not contain any usable tickers. ${rangeHint}`);
     }

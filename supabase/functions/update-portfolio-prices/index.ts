@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { getSheetValues } from "../getSheetValues.ts";
+import { inferPortfolioSheetColumns } from "../_shared/sheetStructure.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,15 +49,43 @@ const parseChangePercent = (v?: string | null) => {
 
 const normalizeHeader = (header: string) => header.trim().toLowerCase();
 
+const findHeaderIndex = (headers: string[], patterns: RegExp[]) =>
+  headers.findIndex((header) => patterns.some((pattern) => pattern.test(header)));
+
 const resolvePortfolioSheetStructure = (rows: string[][]) => {
   const headerRow = rows[0] ?? [];
   const normalizedHeaders = headerRow.map((header) => normalizeHeader(header));
 
-  const companyIdx = normalizedHeaders.findIndex((header) => /(company|bolag)/i.test(header));
-  const tickerIdx = normalizedHeaders.findIndex((header) => /ticker/i.test(header));
-  const currencyIdx = normalizedHeaders.findIndex((header) => /(currency|valuta)/i.test(header));
-  const priceIdx = normalizedHeaders.findIndex((header) => /(price|pris)/i.test(header));
-  const changeIdx = normalizedHeaders.findIndex((header) => /(change|förändring)/i.test(header));
+  const companyIdx = findHeaderIndex(normalizedHeaders, [
+    /company/,
+    /bolag/,
+    /name/,
+    /namn/,
+    /företag/,
+    /issuer/,
+  ]);
+  const tickerIdx = findHeaderIndex(normalizedHeaders, [/ticker/, /symbol/, /kortnamn/, /aktie/]);
+  const currencyIdx = findHeaderIndex(normalizedHeaders, [/currency/, /valuta/]);
+  const priceIdx = findHeaderIndex(normalizedHeaders, [
+    /price/,
+    /pris/,
+    /last/,
+    /senast/,
+    /kurs/,
+    /value/,
+    /värde/,
+    /close/,
+    /stängning/,
+    /slutkurs/,
+  ]);
+  const changeIdx = findHeaderIndex(normalizedHeaders, [
+    /change/,
+    /förändring/,
+    /chg/,
+    /delta/,
+    /diff/,
+    /variation/,
+  ]);
 
   const hasHeader = tickerIdx !== -1 && priceIdx !== -1;
 
@@ -65,77 +94,23 @@ const resolvePortfolioSheetStructure = (rows: string[][]) => {
       dataRows: rows.slice(1),
       indices: { companyIdx, tickerIdx, currencyIdx, priceIdx, changeIdx },
       usingFallback: false as const,
-    };
-  }
-
-  const firstRowLength = (rows[0] ?? []).length;
-
-  if (firstRowLength >= 7) {
-    return {
-      dataRows: rows,
-      indices: {
-        companyIdx: 0,
-        tickerIdx: 1,
-        currencyIdx: 3,
-        priceIdx: 4,
-        changeIdx: 6,
+      diagnostics: {
+        price: "high" as const,
+        ticker: "high" as const,
+        currency: currencyIdx !== -1 ? ("high" as const) : ("none" as const),
+        company: companyIdx !== -1 ? ("high" as const) : ("none" as const),
+        change: changeIdx !== -1 ? ("high" as const) : ("none" as const),
+        warnings: [] as string[],
       },
-      usingFallback: true as const,
     };
   }
 
-  if (firstRowLength >= 5) {
-    return {
-      dataRows: rows,
-      indices: {
-        companyIdx: 0,
-        tickerIdx: 1,
-        currencyIdx: 2,
-        priceIdx: 3,
-        changeIdx: 4,
-      },
-      usingFallback: true as const,
-    };
-  }
-
-  if (firstRowLength >= 4) {
-    return {
-      dataRows: rows,
-      indices: {
-        companyIdx: 0,
-        tickerIdx: 1,
-        currencyIdx: 2,
-        priceIdx: 3,
-        changeIdx: -1,
-      },
-      usingFallback: true as const,
-    };
-  }
-
-  if (firstRowLength >= 3) {
-    return {
-      dataRows: rows,
-      indices: {
-        companyIdx: 0,
-        tickerIdx: 1,
-        currencyIdx: -1,
-        priceIdx: 2,
-        changeIdx: -1,
-      },
-      usingFallback: true as const,
-    };
-  }
-
+  const inference = inferPortfolioSheetColumns(rows);
   return {
     dataRows: rows,
-    indices: {
-      companyIdx: firstRowLength > 0 ? 0 : -1,
-      tickerIdx: firstRowLength > 1 ? 1 : -1,
-      currencyIdx: -1,
-      priceIdx: firstRowLength > 2 ? 2 : -1,
-      changeIdx: -1,
-    },
+    indices: inference.indices,
     usingFallback: true as const,
+    diagnostics: inference.diagnostics,
   };
 };
 
@@ -263,18 +238,21 @@ serve(async (req) => {
       throw new Error("Google Sheets API returned only empty rows for the configured range.");
     }
 
-    const { dataRows, indices, usingFallback } = resolvePortfolioSheetStructure(nonEmptyRows);
+    const { dataRows, indices, usingFallback, diagnostics } = resolvePortfolioSheetStructure(nonEmptyRows);
 
     if (usingFallback) {
       console.warn(
-        "Google Sheets header row was not detected for update-portfolio-prices. Falling back to expected column order (Company, Ticker, -, Currency, Price, -, Change). Update GOOGLE_SHEET_RANGE to include the header row for more resilient parsing.",
+        "Google Sheets header row was not detected for update-portfolio-prices. Column positions were inferred heuristically from the data.",
       );
+      for (const warning of diagnostics.warnings) {
+        console.warn(warning);
+      }
     }
 
     if (indices.tickerIdx === -1 || indices.priceIdx === -1) {
-      const rangeHint =
-        "Update GOOGLE_SHEET_RANGE so the selected range includes the header row with Ticker and Price columns.";
-      throw new Error(`Google Sheets data is missing required columns (Ticker, Price). ${rangeHint}`);
+      throw new Error(
+        "Unable to identify ticker and price columns from Google Sheets. Ensure GOOGLE_SHEET_RANGE includes the header row or adjust the sheet layout so these columns are available.",
+      );
     }
 
     const timestamp = new Date().toISOString();
