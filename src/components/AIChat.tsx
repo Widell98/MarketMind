@@ -215,8 +215,18 @@ const AIChat = ({
     onDeleteSession: deleteSession,
     onEditSessionName: editSessionName,
     onLoadGuideSession: handleLoadGuideSession,
+    onCreateNewSession: handleNewSession,
     className: isMobile ? "w-full min-h-full" : "",
-  }), [isGuideSession, currentSessionId, handleLoadSession, deleteSession, editSessionName, handleLoadGuideSession, isMobile]);
+  }), [
+    isGuideSession,
+    currentSessionId,
+    handleLoadSession,
+    deleteSession,
+    editSessionName,
+    handleLoadGuideSession,
+    handleNewSession,
+    isMobile,
+  ]);
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden">
       {user ? (

@@ -22,6 +22,7 @@ import {
   Move,
   MessageSquare,
   Sparkles,
+  Plus,
 } from 'lucide-react';
 import { useChatFolders, ChatFolder, ChatSession } from '@/hooks/useChatFolders';
 import { useGuideSession } from '@/hooks/useGuideSession';
@@ -35,6 +36,7 @@ interface ChatFolderSidebarProps {
   onDeleteSession: (sessionId: string) => void;
   onEditSessionName: (sessionId: string, name: string) => void;
   onLoadGuideSession?: () => void;
+  onCreateNewSession: () => void;
   className?: string;
 }
 
@@ -44,6 +46,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
   onDeleteSession,
   onEditSessionName,
   onLoadGuideSession,
+  onCreateNewSession,
   className = '',
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -234,14 +237,25 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
       )}
     >
       <div className="px-4 pb-4 pt-6">
-        <div className="flex justify-end">
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            onClick={onCreateNewSession}
+            variant="ghost"
+            size="sm"
+            className="flex-1 justify-center gap-2 rounded-ai-sm border border-ai-border/70 bg-ai-surface px-3 py-2 text-[15px] font-medium text-foreground shadow-sm transition hover:bg-ai-surface-muted/80 hover:text-foreground focus-visible:ring-1 focus-visible:ring-ai-border/70 focus-visible:ring-offset-0"
+          >
+            <Plus className="h-4 w-4" />
+            Ny konversation
+          </Button>
           <CreateFolderDialog
             onCreateFolder={createFolder}
             trigger={
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface hover:text-foreground"
+                className="h-9 w-9 rounded-full border border-transparent text-ai-text-muted transition hover:border-ai-border/60 hover:bg-ai-surface hover:text-foreground"
+                aria-label="Skapa mapp"
               >
                 <Folder className="h-4 w-4" />
               </Button>
