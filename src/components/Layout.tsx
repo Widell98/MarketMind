@@ -21,14 +21,27 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const isChatRoute = location.pathname.startsWith('/ai-chat') || location.pathname.startsWith('/ai-chatt');
 
-  const mainClassName = isChatRoute ? 'flex-1 container-responsive py-2 sm:py-3 lg:py-4 min-h-0 max-w-full flex flex-col overflow-hidden' : 'flex-1 container-responsive py-2 sm:py-4 lg:py-6 min-h-0 max-w-full overflow-y-scroll';
-  const breadcrumbWrapperClassName = isChatRoute ? 'mb-2 sm:mb-3 flex-shrink-0' : 'mb-2 sm:mb-4';
-  const contentWrapperClassName = isChatRoute ? 'flex-1 flex flex-col min-h-0 px-0' : 'max-w-full overflow-hidden px-1 sm:px-0';
+  const rootClassName = isChatRoute
+    ? 'h-screen bg-background w-full flex overflow-hidden'
+    : 'min-h-screen bg-background w-full flex overflow-hidden';
+
+  const mainClassName = isChatRoute
+    ? 'flex-1 w-full min-h-0 max-w-full flex flex-col overflow-hidden'
+    : 'flex-1 container-responsive py-2 sm:py-4 lg:py-6 min-h-0 max-w-full overflow-y-scroll';
+
+  const breadcrumbWrapperClassName = 'mb-2 sm:mb-4';
+
+  const contentWrapperClassName = isChatRoute
+    ? 'flex-1 flex w-full flex-col min-h-0'
+    : 'max-w-full overflow-hidden px-1 sm:px-0';
+
+  const showFooter = !isChatRoute;
+  const showBreadcrumb = !isChatRoute;
 
   return (
     <ConversationMemoryProvider>
       <SidebarProvider>
-        <div className="min-h-screen bg-background w-full flex overflow-hidden">
+        <div className={rootClassName}>
           {/* Sidebar for desktop */}
           <AppSidebar />
 
@@ -79,20 +92,24 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               className={mainClassName}
               style={{ scrollbarGutter: 'stable' }}
             >
-              <div className={breadcrumbWrapperClassName}>
-                <BreadcrumbNavigation />
-              </div>
+              {showBreadcrumb && (
+                <div className={breadcrumbWrapperClassName}>
+                  <BreadcrumbNavigation />
+                </div>
+              )}
               <div className={contentWrapperClassName}>
                 {children}
               </div>
             </main>
             
             {/* Footer */}
-            <footer className="bg-card border-t border-border py-4 sm:py-6 lg:py-8 mt-auto flex-shrink-0">
-              <div className="container-responsive text-center text-xs sm:text-sm lg:text-base text-muted-foreground">
-                © {new Date().getFullYear()} Market Mind. {t('footer.copyright')}
-              </div>
-            </footer>
+            {showFooter && (
+              <footer className="bg-card border-t border-border py-4 sm:py-6 lg:py-8 mt-auto flex-shrink-0">
+                <div className="container-responsive text-center text-xs sm:text-sm lg:text-base text-muted-foreground">
+                  © {new Date().getFullYear()} Market Mind. {t('footer.copyright')}
+                </div>
+              </footer>
+            )}
           </div>
 
           {/* AI Floating Widget - available on all pages */}

@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-interface ChatFolder {
+export interface ChatFolder {
   id: string;
   name: string;
   color: string;
@@ -11,7 +11,7 @@ interface ChatFolder {
   updated_at: string;
 }
 
-interface ChatSession {
+export interface ChatSession {
   id: string;
   session_name: string;
   created_at: string;
@@ -227,6 +227,12 @@ export const useChatFolders = () => {
     }
   }, [user, folders, toast]);
 
+  const removeSessionsFromState = useCallback((sessionIds: string[]) => {
+    if (sessionIds.length === 0) return;
+
+    setSessions((prev) => prev.filter((session) => !sessionIds.includes(session.id)));
+  }, []);
+
   const getSessionsByFolder = useMemo(() => {
     return (folderId: string | null) => {
       return sessions.filter(session => session.folder_id === folderId);
@@ -238,6 +244,7 @@ export const useChatFolders = () => {
       loadFolders();
       loadSessions();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]); // Remove loadFolders and loadSessions from dependencies to prevent infinite loop
 
   return {
@@ -251,5 +258,6 @@ export const useChatFolders = () => {
     getSessionsByFolder,
     loadFolders,
     loadSessions,
+    removeSessionsFromState,
   };
 };

@@ -67,6 +67,24 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* AI chat shared tokens */
+    --ai-shell: 240 11% 96%;
+    --ai-surface: 0 0% 100%;
+    --ai-surface-muted: 240 11% 93%;
+    --ai-border-soft: 220 14% 88%;
+    --ai-text-soft: 218 15% 46%;
+    --ai-bubble-assistant: 0 0% 100%;
+    --ai-bubble-user: 240 11% 90%;
+
+    --ai-radius-lg: 1.25rem;
+    --ai-radius-md: 1rem;
+    --ai-radius-sm: 0.75rem;
+
+    --ai-space-xs: 0.5rem;
+    --ai-space-sm: 0.75rem;
+    --ai-space-md: 1.25rem;
+    --ai-space-lg: 2rem;
   }
 
   .dark {
@@ -127,6 +145,15 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* AI chat shared tokens - dark mode */
+    --ai-shell: 228 16% 11%;
+    --ai-surface: 228 22% 15%;
+    --ai-surface-muted: 228 20% 19%;
+    --ai-border-soft: 228 19% 28%;
+    --ai-text-soft: 215 20% 72%;
+    --ai-bubble-assistant: 228 20% 20%;
+    --ai-bubble-user: 228 32% 32%;
   }
 }
 

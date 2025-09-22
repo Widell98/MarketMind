@@ -4,18 +4,23 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
 
+type ProfileUpdates = Record<string, unknown>;
+
+type MessageContext = {
+  analysisType?: string;
+  confidence?: number;
+  isExchangeRequest?: boolean;
+  profileUpdates?: ProfileUpdates;
+  requiresConfirmation?: boolean;
+  [key: string]: unknown;
+};
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
-  context?: {
-    analysisType?: string;
-    confidence?: number;
-    isExchangeRequest?: boolean;
-    profileUpdates?: any;
-    requiresConfirmation?: boolean;
-  };
+  context?: MessageContext;
 }
 
 interface ChatSession {
@@ -68,7 +73,9 @@ export const useAIChat = (portfolioId?: string) => {
         role: message.message_type === 'user' ? 'user' : 'assistant',
         content: message.message,
         timestamp: new Date(message.created_at),
-        context: message.context_data as any,
+        context: message.context_data
+          ? (message.context_data as MessageContext)
+          : undefined,
       }));
 
       console.log('Formatted messages:', formattedMessages);
@@ -350,6 +357,63 @@ export const useAIChat = (portfolioId?: string) => {
       });
     }
   }, [user, currentSessionId, sessions, loadSession, toast]);
+
+  const deleteSessionsBulk = useCallback(async (sessionIds: string[]) => {
+    if (!user || sessionIds.length === 0) {
+      return;
+    }
+
+    const uniqueIds = Array.from(new Set(sessionIds));
+
+    try {
+      const { error: messagesError } = await supabase
+        .from('portfolio_chat_history')
+        .delete()
+        .eq('user_id', user.id)
+        .in('chat_session_id', uniqueIds);
+
+      if (messagesError) {
+        throw new Error(`Kunde inte radera meddelanden: ${messagesError.message}`);
+      }
+
+      const { error: sessionsError } = await supabase
+        .from('ai_chat_sessions')
+        .delete()
+        .eq('user_id', user.id)
+        .in('id', uniqueIds);
+
+      if (sessionsError) {
+        throw new Error(`Kunde inte radera sessioner: ${sessionsError.message}`);
+      }
+
+      const remainingSessions = sessions.filter(
+        (session) => !uniqueIds.includes(session.id),
+      );
+
+      setSessions(remainingSessions);
+
+      if (currentSessionId && uniqueIds.includes(currentSessionId)) {
+        setCurrentSessionId(null);
+        setMessages([]);
+
+        if (remainingSessions.length > 0) {
+          await loadSession(remainingSessions[0].id);
+        }
+      }
+
+      toast({
+        title: "Chattar rensade",
+        description: "Dina osorterade chattar har tagits bort.",
+      });
+    } catch (error) {
+      console.error('Error clearing sessions:', error);
+      toast({
+        title: "Fel",
+        description: error instanceof Error ? error.message : "Kunde inte rensa chattar. Försök igen.",
+        variant: "destructive",
+      });
+    }
+  }, [user, sessions, currentSessionId, loadSession, toast]);
 
   const editSessionName = useCallback(async (sessionId: string, newName: string) => {
     if (!user) {
@@ -733,7 +797,7 @@ export const useAIChat = (portfolioId?: string) => {
   }, [messages]);
 
   // Function to update user profile based on AI-detected changes
-  const updateUserProfile = useCallback(async (profileUpdates: any, sourceMessageId?: string) => {
+  const updateUserProfile = useCallback(async (profileUpdates: ProfileUpdates, sourceMessageId?: string) => {
     if (!user) return;
 
     const keyLabels: Record<string, string> = {
@@ -766,7 +830,7 @@ export const useAIChat = (portfolioId?: string) => {
       long: 'Lång (7+ år)'
     };
 
-    const formatValue = (key: string, value: any) => {
+    const formatValue = (key: string, value: unknown) => {
       if (key === 'housing_situation') {
         return housingSituationLabels[String(value)] ?? String(value);
       }
@@ -843,7 +907,7 @@ export const useAIChat = (portfolioId?: string) => {
               role: 'assistant',
               content: insertedMessage.message,
               timestamp: new Date(insertedMessage.created_at),
-              context: insertedMessage.context_data as any
+              context: insertedMessage.context_data as MessageContext
             }
           ]);
         } else {
@@ -977,6 +1041,7 @@ export const useAIChat = (portfolioId?: string) => {
     createNewSession,
     loadSession,
     deleteSession,
+    deleteSessionsBulk,
     editSessionName,
     clearMessages,
     getQuickAnalysis,
