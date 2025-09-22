@@ -186,7 +186,7 @@ const GuideBot: React.FC<GuideBotProps> = ({ onPromptExample, onNavigate, onShow
                     variant="ghost"
                     size="sm"
                     onClick={() => handleButtonClick(button)}
-                    className="group flex w-full items-start gap-3 rounded-ai-md border border-ai-border/60 bg-ai-surface-muted/70 px-4 py-3 text-left text-[14px] font-medium text-foreground shadow-sm transition hover:-translate-y-0.5 hover:border-ai-border hover:bg-ai-surface focus-visible:ring-1 focus-visible:ring-ai-border/60 focus-visible:ring-offset-0"
+                    className="group flex h-auto w-full items-start justify-start gap-3 rounded-ai-md border border-ai-border/60 bg-ai-surface-muted/70 px-4 py-3 text-left text-[14px] font-medium text-foreground shadow-sm transition hover:-translate-y-0.5 hover:border-ai-border hover:bg-ai-surface focus-visible:ring-1 focus-visible:ring-ai-border/60 focus-visible:ring-offset-0"
                   >
                     {button.icon && (
                       <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-ai-border/60 bg-ai-surface text-foreground transition group-hover:border-ai-border group-hover:bg-ai-surface group-hover:text-foreground">
