@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { getSheetValues } from "../getSheetValues.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -43,6 +44,105 @@ const parseChangePercent = (v?: string | null) => {
   if (!v) return null;
   const num = parseFloat(v.replace(/\s/g, "").replace("%", "").replace(",", "."));
   return Number.isFinite(num) ? num : null;
+};
+
+const normalizeHeader = (header: string) => header.trim().toLowerCase();
+
+const resolvePortfolioSheetStructure = (rows: string[][]) => {
+  const headerRow = rows[0] ?? [];
+  const normalizedHeaders = headerRow.map((header) => normalizeHeader(header));
+
+  const companyIdx = normalizedHeaders.findIndex((header) => /(company|bolag)/i.test(header));
+  const tickerIdx = normalizedHeaders.findIndex((header) => /ticker/i.test(header));
+  const currencyIdx = normalizedHeaders.findIndex((header) => /(currency|valuta)/i.test(header));
+  const priceIdx = normalizedHeaders.findIndex((header) => /(price|pris)/i.test(header));
+  const changeIdx = normalizedHeaders.findIndex((header) => /(change|förändring)/i.test(header));
+
+  const hasHeader = tickerIdx !== -1 && priceIdx !== -1;
+
+  if (hasHeader) {
+    return {
+      dataRows: rows.slice(1),
+      indices: { companyIdx, tickerIdx, currencyIdx, priceIdx, changeIdx },
+      usingFallback: false as const,
+    };
+  }
+
+  const firstRowLength = (rows[0] ?? []).length;
+
+  if (firstRowLength >= 7) {
+    return {
+      dataRows: rows,
+      indices: {
+        companyIdx: 0,
+        tickerIdx: 1,
+        currencyIdx: 3,
+        priceIdx: 4,
+        changeIdx: 6,
+      },
+      usingFallback: true as const,
+    };
+  }
+
+  if (firstRowLength >= 5) {
+    return {
+      dataRows: rows,
+      indices: {
+        companyIdx: 0,
+        tickerIdx: 1,
+        currencyIdx: 2,
+        priceIdx: 3,
+        changeIdx: 4,
+      },
+      usingFallback: true as const,
+    };
+  }
+
+  if (firstRowLength >= 4) {
+    return {
+      dataRows: rows,
+      indices: {
+        companyIdx: 0,
+        tickerIdx: 1,
+        currencyIdx: 2,
+        priceIdx: 3,
+        changeIdx: -1,
+      },
+      usingFallback: true as const,
+    };
+  }
+
+  if (firstRowLength >= 3) {
+    return {
+      dataRows: rows,
+      indices: {
+        companyIdx: 0,
+        tickerIdx: 1,
+        currencyIdx: -1,
+        priceIdx: 2,
+        changeIdx: -1,
+      },
+      usingFallback: true as const,
+    };
+  }
+
+  return {
+    dataRows: rows,
+    indices: {
+      companyIdx: firstRowLength > 0 ? 0 : -1,
+      tickerIdx: firstRowLength > 1 ? 1 : -1,
+      currencyIdx: -1,
+      priceIdx: firstRowLength > 2 ? 2 : -1,
+      changeIdx: -1,
+    },
+    usingFallback: true as const,
+  };
+};
+
+const getCell = (row: string[], index: number) => {
+  if (index < 0 || index >= row.length) return "";
+  const value = row[index];
+  return typeof value === "string" ? value : String(value ?? "");
 };
 
 const getSymbolVariants = (symbol: string | null, alternative?: string | null) => {
@@ -152,25 +252,44 @@ serve(async (req) => {
       );
     }
 
-    // Hämta CSV från Google Sheets (ändra output till csv)
-    const csvUrl =
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvOPfg5tZjaFqCu7b3Li80oPEEuje4tQTcnr6XjxCW_ItVbOGWCvfQfFvWDXRH544MkBKeI1dPyzJG/pub?output=csv";
-    const res = await fetch(csvUrl);
-    if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
-    const csvText = await res.text();
+    const values = await getSheetValues();
+    if (!Array.isArray(values) || values.length === 0) {
+      throw new Error("Google Sheets API returned no rows for the configured range.");
+    }
 
-    // Parsning av CSV → rader
-    const rows = csvText.split("\n").map((r) => r.split(","));
+    const nonEmptyRows = values.filter((row) => Array.isArray(row) && row.some((cell) => String(cell ?? "").trim().length > 0)) as string[][];
+
+    if (nonEmptyRows.length === 0) {
+      throw new Error("Google Sheets API returned only empty rows for the configured range.");
+    }
+
+    const { dataRows, indices, usingFallback } = resolvePortfolioSheetStructure(nonEmptyRows);
+
+    if (usingFallback) {
+      console.warn(
+        "Google Sheets header row was not detected for update-portfolio-prices. Falling back to expected column order (Company, Ticker, -, Currency, Price, -, Change). Update GOOGLE_SHEET_RANGE to include the header row for more resilient parsing.",
+      );
+    }
+
+    if (indices.tickerIdx === -1 || indices.priceIdx === -1) {
+      const rangeHint =
+        "Update GOOGLE_SHEET_RANGE so the selected range includes the header row with Ticker and Price columns.";
+      throw new Error(`Google Sheets data is missing required columns (Ticker, Price). ${rangeHint}`);
+    }
+
     const timestamp = new Date().toISOString();
     let updated = 0;
     let errors = 0;
     const unmatched: Array<{ symbol?: string; name?: string }> = [];
 
-    for (const row of rows) {
-      // Anpassa index efter din CSV-struktur (B2:H tidigare)
-      const [company, rawSymbol, , rawCurrency, rawPrice, , rawChange] = row.map((c) =>
-        c.trim()
-      );
+    for (const row of dataRows) {
+      if (!Array.isArray(row)) continue;
+
+      const company = getCell(row, indices.companyIdx).trim();
+      const rawSymbol = getCell(row, indices.tickerIdx).trim();
+      const rawCurrency = getCell(row, indices.currencyIdx).trim();
+      const rawPrice = getCell(row, indices.priceIdx).trim();
+      const rawChange = indices.changeIdx >= 0 ? getCell(row, indices.changeIdx).trim() : "";
 
       const rawSymbolValue = normalizeValue(rawSymbol);
       const rawNameValue = normalizeValue(company);
@@ -277,7 +396,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
-    console.error("Portfolio update error:", err);
+    console.error("Portfolio update Sheets API error:", err);
     return new Response(
       JSON.stringify({ success: false, error: err instanceof Error ? err.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
