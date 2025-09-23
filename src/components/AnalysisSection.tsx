@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
 import CreateAnalysisDialog from '@/components/CreateAnalysisDialog';
+import { usePersistentDialogOpenState } from '@/hooks/usePersistentDialogOpenState';
+import { CREATE_ANALYSIS_DIALOG_STORAGE_KEY } from '@/constants/storageKeys';
 
 interface AnalysisSectionProps {
   limit?: number;
@@ -21,7 +23,11 @@ const AnalysisSection: React.FC<AnalysisSectionProps> = ({
   limit = 6, 
   showHeader = true 
 }) => {
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const {
+    isOpen: isCreateDialogOpen,
+    open: openCreateDialog,
+    close: closeCreateDialog,
+  } = usePersistentDialogOpenState(CREATE_ANALYSIS_DIALOG_STORAGE_KEY, 'analysis-section');
   const { data: analyses, isLoading, error } = useAnalyses(limit);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -72,7 +78,7 @@ const AnalysisSection: React.FC<AnalysisSectionProps> = ({
         {showHeader && (
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold">Senaste Analyser</h2>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Button onClick={openCreateDialog}>
               Skapa Analys
             </Button>
           </div>
@@ -97,7 +103,7 @@ const AnalysisSection: React.FC<AnalysisSectionProps> = ({
         {showHeader && (
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold">Senaste Analyser</h2>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Button onClick={openCreateDialog}>
               Skapa Analys
             </Button>
           </div>
@@ -122,7 +128,7 @@ const AnalysisSection: React.FC<AnalysisSectionProps> = ({
         {showHeader && (
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold">Senaste Analyser</h2>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Button onClick={openCreateDialog}>
               Skapa Analys
             </Button>
           </div>
@@ -134,14 +140,14 @@ const AnalysisSection: React.FC<AnalysisSectionProps> = ({
             <p className="text-sm text-muted-foreground mb-4">
               Bli den första att dela en analys med communityn!
             </p>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Button onClick={openCreateDialog}>
               Skapa Analys
             </Button>
           </CardContent>
         </Card>
-        <CreateAnalysisDialog 
+        <CreateAnalysisDialog
           isOpen={isCreateDialogOpen}
-          onClose={() => setIsCreateDialogOpen(false)}
+          onClose={closeCreateDialog}
         />
       </div>
     );
@@ -152,7 +158,7 @@ const AnalysisSection: React.FC<AnalysisSectionProps> = ({
       {showHeader && (
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">Senaste Analyser</h2>
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <Button onClick={openCreateDialog}>
             Skapa Analys
           </Button>
         </div>
@@ -302,9 +308,9 @@ const AnalysisSection: React.FC<AnalysisSectionProps> = ({
         })}
       </div>
       
-      <CreateAnalysisDialog 
+      <CreateAnalysisDialog
         isOpen={isCreateDialogOpen}
-        onClose={() => setIsCreateDialogOpen(false)}
+        onClose={closeCreateDialog}
       />
     </div>
   );
