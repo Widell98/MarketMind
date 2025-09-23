@@ -218,7 +218,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
             <Bot className="h-4 w-4" />
           </div>
           <div className="flex-1 min-w-0 max-w-[75%] space-y-3">
-            <div className="rounded-ai-md border border-ai-border/60 bg-ai-bubble px-4 py-3 text-sm leading-relaxed text-foreground shadow-sm">
+            <div className="rounded-ai-md border border-ai-border/40 bg-ai-bubble px-4 py-3 text-sm leading-relaxed text-foreground shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
               <div className="space-y-2">{formatMessageContent(message.content)}</div>
               <p className="mt-3 text-[11px] text-ai-text-muted">
                 {message.timestamp.toLocaleTimeString('sv-SE', {
@@ -229,7 +229,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
             </div>
 
             {stockSuggestions.length > 0 && (
-              <div className="space-y-3 rounded-ai-md border border-ai-border/60 bg-ai-surface px-4 py-3">
+              <div className="space-y-3 rounded-ai-md border border-ai-border/40 bg-ai-surface/95 px-4 py-3">
                 <p className="flex items-center gap-2 text-xs font-medium text-ai-text-muted">
                   <TrendingUp className="h-3 w-3" />
                   Aktieförslag från AI ({stockSuggestions.length} st)
@@ -274,7 +274,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       ) : (
         <>
           <div className="flex-1 min-w-0 max-w-[75%]">
-            <div className="rounded-ai-md border border-ai-border/60 bg-ai-bubble-user px-4 py-3 text-sm leading-relaxed text-foreground shadow-sm">
+            <div className="rounded-ai-md border border-primary/30 bg-ai-bubble-user px-4 py-3 text-sm leading-relaxed text-primary shadow-[0_18px_44px_rgba(37,99,235,0.18)]">
               <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">{message.content}</p>
               <p className="mt-3 text-[11px] text-ai-text-muted">
                 {message.timestamp.toLocaleTimeString('sv-SE', {

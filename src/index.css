@@ -69,13 +69,13 @@
     --sidebar-ring: 217.2 91.2% 59.8%;
 
     /* AI chat shared tokens */
-    --ai-shell: 240 11% 96%;
+    --ai-shell: 210 33% 99%;
     --ai-surface: 0 0% 100%;
-    --ai-surface-muted: 240 11% 93%;
-    --ai-border-soft: 220 14% 88%;
-    --ai-text-soft: 218 15% 46%;
+    --ai-surface-muted: 214 32% 97%;
+    --ai-border-soft: 216 28% 90%;
+    --ai-text-soft: 220 15% 38%;
     --ai-bubble-assistant: 0 0% 100%;
-    --ai-bubble-user: 240 11% 90%;
+    --ai-bubble-user: 217 100% 95%;
 
     --ai-radius-lg: 1.25rem;
     --ai-radius-md: 1rem;

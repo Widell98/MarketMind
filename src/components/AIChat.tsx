@@ -235,13 +235,13 @@ const AIChat = ({
       {user ? (
         <>
           {!isMobile && !desktopSidebarCollapsed && (
-            <div className="w-[260px] flex-shrink-0 border-r border-ai-border/60 bg-ai-surface-muted/60">
+            <div className="w-[260px] flex-shrink-0 border-r border-ai-border/40 bg-ai-surface/80 backdrop-blur-md">
               <ChatFolderSidebar {...sidebarProps} />
             </div>
           )}
 
-          <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
-            <header className="grid grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-ai-border/60 px-4 py-3 sm:px-6">
+          <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface/95">
+            <header className="grid grid-cols-[auto_1fr_auto] items-center gap-4 border-b border-ai-border/40 bg-ai-surface/80 px-6 py-4 sm:px-8 sm:py-5 backdrop-blur">
               <div className="flex items-center gap-2">
                 {isMobile && (
                   <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -249,7 +249,7 @@ const AIChat = ({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground"
+                        className="h-9 w-9 rounded-full text-ai-text-muted transition-colors hover:bg-primary/10 hover:text-primary"
                       >
                         <Menu className="h-4 w-4" />
                       </Button>
@@ -265,7 +265,7 @@ const AIChat = ({
                     onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground"
+                    className="h-9 w-9 rounded-full text-ai-text-muted transition-colors hover:bg-primary/10 hover:text-primary"
                   >
                     {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
                   </Button>
@@ -281,7 +281,7 @@ const AIChat = ({
 
               <div className="flex items-center justify-end gap-2">
                 {!isPremium && (
-                  <span className="hidden rounded-full border border-ai-border/70 bg-ai-surface-muted/60 px-3 py-1 text-xs font-medium text-ai-text-muted sm:inline-flex">
+                  <span className="hidden rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary sm:inline-flex">
                     {remainingCredits}/{totalCredits} krediter kvar
                   </span>
                 )}
@@ -289,7 +289,7 @@ const AIChat = ({
                   onClick={handleNewSession}
                   variant="ghost"
                   size="sm"
-                  className="inline-flex items-center gap-2 rounded-ai-sm border border-ai-border/70 bg-ai-surface px-3 py-2 text-[14px] font-medium text-foreground hover:bg-ai-surface-muted/70"
+                  className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-2 text-[14px] font-medium text-primary transition-colors hover:bg-primary/15"
                 >
                   <Plus className="h-4 w-4" />
                   <span className="hidden sm:inline">Ny konversation</span>
@@ -339,29 +339,29 @@ const AIChat = ({
           </div>
         </>
       ) : (
-        <div className="flex w-full min-h-0 flex-col overflow-hidden bg-ai-surface">
+        <div className="flex w-full min-h-0 flex-col overflow-hidden bg-ai-surface/95">
           <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden">
             <div className="absolute inset-0 flex">
               {!isMobile && (
-                <div className="hidden w-[260px] flex-col border-r border-ai-border/60 bg-ai-surface-muted/60 px-4 py-6 md:flex">
+                <div className="hidden w-[260px] flex-col border-r border-ai-border/40 bg-ai-surface/80 px-6 py-8 backdrop-blur-md md:flex">
                   <h3 className="text-sm font-semibold text-foreground">Senaste konversationer</h3>
                   <div className="mt-4 space-y-3 text-[15px] text-ai-text-muted">
-                    <div className="rounded-ai-sm border border-ai-border/50 bg-ai-surface px-3 py-2">
+                    <div className="rounded-ai-sm border border-ai-border/40 bg-ai-surface/90 px-3 py-2">
                       <p className="font-medium text-foreground">Portföljanalys</p>
                       <p className="text-xs text-ai-text-muted">Idag</p>
                     </div>
-                    <div className="rounded-ai-sm border border-ai-border/50 bg-ai-surface px-3 py-2">
+                    <div className="rounded-ai-sm border border-ai-border/40 bg-ai-surface/90 px-3 py-2">
                       <p className="font-medium text-foreground">Tesla uppföljning</p>
                       <p className="text-xs text-ai-text-muted">Igår</p>
                     </div>
                   </div>
                 </div>
               )}
-              <div className="flex flex-1 flex-col overflow-y-auto bg-ai-surface px-4 py-8 sm:px-10 lg:px-14">
+              <div className="flex flex-1 flex-col overflow-y-auto bg-ai-surface/95 px-6 py-8 sm:px-10 lg:px-16">
                 <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center space-y-6 py-6 sm:py-8">
                   <div className="flex flex-col gap-4">
                     <div className="flex justify-center">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-ai-surface-muted/70 text-ai-text-muted">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                         <Sparkles className="h-5 w-5" />
                       </div>
                     </div>
@@ -374,17 +374,17 @@ const AIChat = ({
                   </div>
                   <div className="space-y-4 text-[15px]">
                     <div className="flex justify-start">
-                      <div className="max-w-[80%] rounded-ai-md border border-ai-border/50 bg-ai-bubble px-4 py-3 text-ai-text-muted">
+                      <div className="max-w-[80%] rounded-ai-md border border-ai-border/40 bg-ai-bubble px-4 py-3 text-ai-text-muted">
                         Hej! Jag är din AI-assistent och kan analysera portföljer, marknadsläge och ge nästa steg.
                       </div>
                     </div>
                     <div className="flex justify-end">
-                      <div className="max-w-[80%] rounded-ai-md border border-ai-border/60 bg-ai-bubble-user px-4 py-3 text-foreground">
+                      <div className="max-w-[80%] rounded-ai-md border border-primary/30 bg-ai-bubble-user px-4 py-3 text-primary">
                         Kan du sammanfatta min portfölj och vad jag borde fokusera på?
                       </div>
                     </div>
                     <div className="flex justify-start">
-                      <div className="max-w-[80%] rounded-ai-md border border-ai-border/50 bg-ai-bubble px-4 py-3 text-ai-text-muted">
+                      <div className="max-w-[80%] rounded-ai-md border border-ai-border/40 bg-ai-bubble px-4 py-3 text-ai-text-muted">
                         Självklart. Logga in så kan jag använda din profil och ge rekommendationer som passar din risknivå.
                       </div>
                     </div>
@@ -392,9 +392,9 @@ const AIChat = ({
                 </div>
               </div>
             </div>
-            <div className="absolute inset-0 flex items-center justify-center bg-ai-surface/85 px-4 py-6 backdrop-blur-sm">
-              <div className="w-full max-w-md rounded-ai-md border border-ai-border/60 bg-ai-surface px-6 py-8 text-center shadow-xl">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-ai-surface-muted/70 text-ai-text-muted">
+            <div className="absolute inset-0 flex items-center justify-center bg-white/85 px-4 py-6 backdrop-blur-sm">
+              <div className="w-full max-w-md rounded-[28px] border border-ai-border/40 bg-ai-surface/95 px-8 py-10 text-center shadow-[0_28px_80px_rgba(15,23,42,0.08)]">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <Lock className="h-6 w-6" />
                 </div>
                 <h3 className="mt-4 text-lg font-semibold text-foreground">Logga in för att fortsätta</h3>

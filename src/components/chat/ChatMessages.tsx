@@ -102,7 +102,7 @@ const ChatMessages = ({
         {messages.length === 0 && !isLoading && onExamplePrompt && !showGuideBot && (
           <div className="space-y-6">
             <div className="text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-ai-surface-muted/70 text-ai-text-muted">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <Brain className="h-5 w-5" />
               </div>
               <h2 className="mt-3 text-lg font-semibold text-foreground">Redo när du är</h2>
@@ -116,11 +116,11 @@ const ChatMessages = ({
                 <Button
                   key={index}
                   variant="ghost"
-                  className="h-auto justify-start rounded-ai-md border border-ai-border/60 bg-ai-surface px-4 py-3 text-left transition hover:bg-ai-surface-muted/70"
+                  className="h-auto justify-start rounded-ai-md border border-ai-border/40 bg-ai-surface/95 px-4 py-3 text-left transition hover:border-primary/30 hover:bg-primary/10"
                   onClick={() => onExamplePrompt(example.prompt)}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-ai-surface-muted/70 text-ai-text-muted">
+                    <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
                       {example.icon}
                     </div>
                     <div className="min-w-0 space-y-1">
@@ -136,7 +136,7 @@ const ChatMessages = ({
 
         {messages.length === 0 && !isLoading && !onExamplePrompt && !showGuideBot && (
           <div className="text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-ai-surface-muted/70 text-ai-text-muted">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
               <Brain className="h-5 w-5" />
             </div>
             <h2 className="mt-3 text-lg font-semibold text-foreground">Välkommen till Market Mind</h2>
@@ -152,10 +152,10 @@ const ChatMessages = ({
 
         {isLoading && (
           <div className="flex items-start gap-3">
-            <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-ai-surface-muted/70">
+            <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-ai-border/70 border-t-transparent" />
             </div>
-            <div className="max-w-[70%] rounded-ai-md border border-ai-border/60 bg-ai-bubble px-4 py-3 text-sm text-ai-text-muted">
+            <div className="max-w-[70%] rounded-ai-md border border-ai-border/40 bg-ai-bubble px-4 py-3 text-sm text-ai-text-muted">
               Assistenten tänker...
             </div>
           </div>
