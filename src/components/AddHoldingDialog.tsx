@@ -24,7 +24,7 @@ interface AddHoldingDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (holdingData: Omit<UserHolding, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<boolean>;
-  initialData?: any;
+  initialData?: Partial<UserHolding>;
 }
 
 const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
@@ -40,9 +40,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     holding_type: initialData?.holding_type === 'recommendation' ? 'stock' : (initialData?.holding_type || 'stock'),
     quantity: '',
     purchase_price: initialData?.purchase_price?.toString() || '',
-    purchase_date: '',
-    sector: initialData?.sector || '',
-    market: initialData?.market || '',
     currency: initialData?.currency || 'SEK'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,9 +72,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         holding_type: initialData.holding_type === 'recommendation' ? 'stock' : (initialData.holding_type || 'stock'),
         quantity: '',
         purchase_price: initialData.purchase_price?.toString() || '',
-        purchase_date: '',
-        sector: initialData.sector || '',
-        market: initialData.market || '',
         currency: initialData.currency || 'SEK'
       });
       setPriceOverridden(Boolean(initialData.purchase_price));
@@ -237,9 +231,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       holding_type: formData.holding_type as UserHolding['holding_type'],
       quantity,
       purchase_price: purchasePrice,
-      purchase_date: formData.purchase_date || undefined,
-      sector: formData.sector.trim() || undefined,
-      market: formData.market.trim() || undefined,
       currency: formData.currency || 'SEK'
     };
 
@@ -268,9 +259,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         holding_type: 'stock',
         quantity: '',
         purchase_price: '',
-        purchase_date: '',
-        sector: '',
-        market: '',
         currency: 'SEK'
       });
       setSymbolError(null);
@@ -291,9 +279,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         holding_type: 'stock',
         quantity: '',
         purchase_price: '',
-        purchase_date: '',
-        sector: '',
-        market: '',
         currency: 'SEK'
       });
       setSymbolError(null);
@@ -436,37 +421,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
                 ? 'Priset läggs in som förvalt köppris men kan justeras innan du sparar.'
                 : 'Priset hämtas automatiskt när du väljer en ticker från listan.'}
             </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="purchase_date">Köpdatum</Label>
-              <Input
-                id="purchase_date"
-                type="date"
-                value={formData.purchase_date}
-                onChange={(e) => handleInputChange('purchase_date', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sector">Sektor</Label>
-              <Input
-                id="sector"
-                value={formData.sector}
-                onChange={(e) => handleInputChange('sector', e.target.value)}
-                placeholder="t.ex. Bilar"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="market">Marknad</Label>
-            <Input
-              id="market"
-              value={formData.market}
-              onChange={(e) => handleInputChange('market', e.target.value)}
-              placeholder="t.ex. NASDAQ Stockholm"
-            />
           </div>
 
           <div className="flex justify-end gap-2 pt-4">

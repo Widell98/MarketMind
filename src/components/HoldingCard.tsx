@@ -15,6 +15,7 @@ import {
 import SmartHoldingSuggestions from './SmartHoldingSuggestions';
 import { cn } from '@/lib/utils';
 import { formatCurrency, resolveHoldingValue } from '@/utils/currencyUtils';
+import type { HoldingPerformance } from '@/hooks/usePortfolioPerformance';
 
 interface HoldingCardProps {
   holding: {
@@ -29,6 +30,7 @@ interface HoldingCardProps {
     currency: string;
     current_price_per_unit?: number;
     price_currency?: string;
+    performance?: HoldingPerformance;
   };
   portfolioPercentage: number;
   onDiscuss: (name: string, symbol?: string) => void;
@@ -74,6 +76,17 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   const isRefreshing = Boolean(
     isUpdatingPrice && refreshingTicker && normalizedSymbol && refreshingTicker === normalizedSymbol
   );
+
+  const performance = holding.performance;
+  const hasPurchasePrice = performance?.hasPurchasePrice ?? false;
+  const profitValue = performance?.profit ?? 0;
+  const profitColor = !performance || !hasPurchasePrice
+    ? 'text-muted-foreground'
+    : profitValue > 0
+      ? 'text-green-600'
+      : profitValue < 0
+        ? 'text-red-600'
+        : 'text-muted-foreground';
 
   const handleSuggestionAction = (suggestionId: string, action: string) => {
     console.log(`Suggestion ${suggestionId} ${action}`);
@@ -195,6 +208,31 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                   </div>
                 )}
               </div>
+            )}
+
+            {performance && (
+              <>
+                <div>
+                  <span className="text-muted-foreground">Investerat:</span>
+                  <div className="font-semibold text-foreground">
+                    {formatCurrency(performance.investedValue, 'SEK')}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Avkastning:</span>
+                  <div className={cn('font-semibold', profitColor)}>
+                    {hasPurchasePrice ? formatCurrency(performance.profit, 'SEK') : '–'}
+                  </div>
+                  <div className={cn('text-xs', profitColor)}>
+                    {hasPurchasePrice ? `${performance.profitPercentage.toFixed(2)}%` : 'Köpdata saknas'}
+                  </div>
+                </div>
+                {!hasPurchasePrice && (
+                  <div className="col-span-2 text-xs text-muted-foreground">
+                    Lägg till inköpspris för att se avkastning för detta innehav.
+                  </div>
+                )}
+              </>
             )}
           </div>
 

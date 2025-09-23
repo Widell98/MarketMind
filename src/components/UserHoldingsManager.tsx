@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,7 +29,7 @@ import AddHoldingDialog from '@/components/AddHoldingDialog';
 import EditHoldingDialog from '@/components/EditHoldingDialog';
 import SectorAllocationChart from '@/components/SectorAllocationChart';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
-import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
+import { usePortfolioPerformance, type HoldingPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveHoldingValue } from '@/utils/currencyUtils';
@@ -49,6 +49,7 @@ interface TransformedHolding {
   base_currency?: string;
   original_value?: number;
   original_currency?: string;
+  performance?: HoldingPerformance;
 }
 
 interface UserHoldingsManagerProps {
@@ -65,7 +66,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
     updateHolding,
     refetch: refetchHoldings
   } = useUserHoldings();
-  const { performance, updatePrices, updating } = usePortfolioPerformance();
+  const { performance, holdingsPerformance, updatePrices, updating } = usePortfolioPerformance();
   const { 
     cashHoldings, 
     totalCash, 
@@ -211,6 +212,14 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
     !actualHoldings.some(holding => holding.id === cash.id)
   );
 
+  const performanceByHoldingId = useMemo(() => {
+    const entries = new Map<string, HoldingPerformance>();
+    holdingsPerformance.forEach(perf => {
+      entries.set(perf.id, perf);
+    });
+    return entries;
+  }, [holdingsPerformance]);
+
   // Transform all holdings to match the TransformedHolding interface
   const transformedActualHoldings: TransformedHolding[] = actualHoldings.map(holding => {
     const {
@@ -225,6 +234,8 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
     const resolvedQuantity = typeof holding.quantity === 'number' && Number.isFinite(holding.quantity)
       ? holding.quantity
       : quantity;
+
+    const performanceForHolding = performanceByHoldingId.get(holding.id);
 
     return {
       id: holding.id,
@@ -241,6 +252,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
       base_currency: holding.currency || priceCurrency,
       original_value: valueInOriginalCurrency,
       original_currency: valueCurrency,
+      performance: performanceForHolding,
     };
   });
 
