@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,6 +13,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import CreateAnalysisDialog from '@/components/CreateAnalysisDialog';
 import { useNavigate } from 'react-router-dom';
+import { usePersistentDialogOpenState } from '@/hooks/usePersistentDialogOpenState';
+import { CREATE_ANALYSIS_DIALOG_STORAGE_KEY } from '@/constants/storageKeys';
 
 interface UserAnalysesSectionProps {
   compact?: boolean;
@@ -21,7 +23,11 @@ interface UserAnalysesSectionProps {
 const UserAnalysesSection = ({ compact = false }: UserAnalysesSectionProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const {
+    isOpen: isCreateDialogOpen,
+    open: openCreateDialog,
+    close: closeCreateDialog,
+  } = usePersistentDialogOpenState(CREATE_ANALYSIS_DIALOG_STORAGE_KEY, 'user-analyses');
   const navigate = useNavigate();
 
   const { data: analyses, isLoading } = useQuery({
@@ -117,7 +123,7 @@ const UserAnalysesSection = ({ compact = false }: UserAnalysesSectionProps) => {
               <FileText className="w-8 h-8 text-gray-400 mx-auto mb-2" />
               <p className="text-sm text-gray-500 mb-3">Inga analyser än.</p>
               <Button 
-                onClick={() => setIsCreateDialogOpen(true)}
+                onClick={openCreateDialog}
                 size="sm"
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -185,10 +191,10 @@ const UserAnalysesSection = ({ compact = false }: UserAnalysesSectionProps) => {
             </div>
           )}
           
-          <CreateAnalysisDialog 
-            isOpen={isCreateDialogOpen}
-            onClose={() => setIsCreateDialogOpen(false)}
-          />
+        <CreateAnalysisDialog
+          isOpen={isCreateDialogOpen}
+          onClose={closeCreateDialog}
+        />
         </CardContent>
       </Card>
     );
@@ -223,7 +229,7 @@ const UserAnalysesSection = ({ compact = false }: UserAnalysesSectionProps) => {
             <FileText className="w-5 h-5 mr-2" />
             Mina Analyser ({analyses?.length || 0})
           </div>
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <Button onClick={openCreateDialog}>
             <Plus className="w-4 h-4 mr-2" />
             Skapa analys
           </Button>
@@ -234,7 +240,7 @@ const UserAnalysesSection = ({ compact = false }: UserAnalysesSectionProps) => {
           <div className="text-center py-8">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500 mb-4">Du har inte skapat några analyser än.</p>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Button onClick={openCreateDialog}>
               <Plus className="w-4 h-4 mr-2" />
               Skapa analys
             </Button>
@@ -332,9 +338,9 @@ const UserAnalysesSection = ({ compact = false }: UserAnalysesSectionProps) => {
         )}
       </CardContent>
       
-      <CreateAnalysisDialog 
+      <CreateAnalysisDialog
         isOpen={isCreateDialogOpen}
-        onClose={() => setIsCreateDialogOpen(false)}
+        onClose={closeCreateDialog}
       />
     </Card>
   );

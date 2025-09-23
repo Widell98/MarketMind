@@ -9,6 +9,8 @@ import { useNavigate } from 'react-router-dom';
 import { useUserHoldings, UserHolding } from '@/hooks/useUserHoldings';
 import { useToast } from '@/hooks/use-toast';
 import AddHoldingDialog from '@/components/AddHoldingDialog';
+import { usePersistentDialogOpenState } from '@/hooks/usePersistentDialogOpenState';
+import { ADD_HOLDING_DIALOG_STORAGE_KEY } from '@/constants/storageKeys';
 import {
   Dialog,
   DialogContent,
@@ -39,7 +41,11 @@ const AIRecommendations = () => {
     loading: holdingsLoading
   } = useUserHoldings();
   const { toast } = useToast();
-  const [isAddHoldingOpen, setIsAddHoldingOpen] = useState(false);
+  const {
+    isOpen: isAddHoldingOpen,
+    open: openAddHoldingDialog,
+    close: closeAddHoldingDialog,
+  } = usePersistentDialogOpenState(ADD_HOLDING_DIALOG_STORAGE_KEY, 'ai-recommendations');
   const [selectedRecommendation, setSelectedRecommendation] = useState<UserHolding | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [isAllRecommendationsOpen, setIsAllRecommendationsOpen] = useState(false);
@@ -118,7 +124,7 @@ const AIRecommendations = () => {
     }
 
     setSelectedRecommendation(recommendation);
-    setIsAddHoldingOpen(true);
+    openAddHoldingDialog();
   };
 
   const handleDiscussWithAI = (recommendation: UserHolding, e: React.MouseEvent<HTMLButtonElement>) => {
@@ -153,7 +159,7 @@ const AIRecommendations = () => {
         description: `${holdingData.name} har lagts till i din portfölj`,
         variant: "default"
       });
-      setIsAddHoldingOpen(false);
+      closeAddHoldingDialog();
       setSelectedRecommendation(null);
       return true;
     } catch (error) {
@@ -423,7 +429,7 @@ const AIRecommendations = () => {
       <AddHoldingDialog
         isOpen={isAddHoldingOpen}
         onClose={() => {
-          setIsAddHoldingOpen(false);
+          closeAddHoldingDialog();
           setSelectedRecommendation(null);
         }}
         onAdd={handleAddHolding}

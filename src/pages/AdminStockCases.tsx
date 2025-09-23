@@ -32,6 +32,13 @@ import { Badge } from '@/components/ui/badge';
 import AdminImageHistoryManager from '@/components/AdminImageHistoryManager';
 import AdminAnalysesDashboard from '@/components/AdminAnalysesDashboard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import {
+  STOCK_CASE_FORM_STORAGE_KEY,
+  STOCK_CASE_CREATE_VISIBLE_KEY,
+  STOCK_CASE_EDITING_ID_KEY,
+  STOCK_CASE_IS_INDEX_KEY,
+} from '@/constants/storageKeys';
 
 type StockCaseWithActions = {
   id: string;
@@ -72,6 +79,34 @@ type Category = {
   color: string;
 };
 
+type StockCaseFormState = {
+  title: string;
+  company_name: string;
+  sector: string;
+  market_cap: string;
+  description: string;
+  admin_comment: string;
+  entry_price: string;
+  current_price: string;
+  target_price: string;
+  stop_loss: string;
+  category_id: string;
+};
+
+const createDefaultCaseFormState = (): StockCaseFormState => ({
+  title: '',
+  company_name: '',
+  sector: '',
+  market_cap: '',
+  description: '',
+  admin_comment: '',
+  entry_price: '',
+  current_price: '',
+  target_price: '',
+  stop_loss: '',
+  category_id: '',
+});
+
 const AdminStockCases = () => {
   const { user } = useAuth();
   const { isAdmin, loading: roleLoading } = useUserRole();
@@ -84,24 +119,24 @@ const AdminStockCases = () => {
   const [loading, setLoading] = useState(false);
   const [allCases, setAllCases] = useState<StockCaseWithActions[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [editingCase, setEditingCase] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm, resetShowCreateForm] = useLocalStorage<boolean>(
+    STOCK_CASE_CREATE_VISIBLE_KEY,
+    false
+  );
+  const [editingCase, setEditingCase, resetEditingCase] = useLocalStorage<string | null>(
+    STOCK_CASE_EDITING_ID_KEY,
+    null
+  );
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isCreatingIndex, setIsCreatingIndex] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    company_name: '',
-    sector: '',
-    market_cap: '',
-    description: '',
-    admin_comment: '',
-    entry_price: '',
-    current_price: '',
-    target_price: '',
-    stop_loss: '',
-    category_id: '',
-  });
+  const [isCreatingIndex, setIsCreatingIndex, resetIsCreatingIndex] = useLocalStorage<boolean>(
+    STOCK_CASE_IS_INDEX_KEY,
+    false
+  );
+  const [formData, setFormData, resetFormState] = useLocalStorage<StockCaseFormState>(
+    STOCK_CASE_FORM_STORAGE_KEY,
+    createDefaultCaseFormState
+  );
 
   // Move useEffect here, before any conditional returns
   useEffect(() => {
@@ -368,24 +403,12 @@ const AdminStockCases = () => {
   };
 
   const resetForm = () => {
-    setFormData({
-      title: '',
-      company_name: '',
-      sector: '',
-      market_cap: '',
-      description: '',
-      admin_comment: '',
-      entry_price: '',
-      current_price: '',
-      target_price: '',
-      stop_loss: '',
-      category_id: '',
-    });
+    resetFormState();
     setImageFile(null);
     setImagePreview(null);
-    setShowCreateForm(false);
-    setEditingCase(null);
-    setIsCreatingIndex(false);
+    resetShowCreateForm();
+    resetEditingCase();
+    resetIsCreatingIndex();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
