@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import HoldingCard from './HoldingCard';
 import SwipeableHoldingCard from './SwipeableHoldingCard';
 import { formatCurrency, resolveHoldingValue } from '@/utils/currencyUtils';
+import type { HoldingPerformance } from '@/hooks/usePortfolioPerformance';
 
 interface Holding {
   id: string;
@@ -19,6 +20,7 @@ interface Holding {
   currency: string;
   current_price_per_unit?: number;
   price_currency?: string;
+  performance?: HoldingPerformance;
 }
 
 interface HoldingsGroupSectionProps {
