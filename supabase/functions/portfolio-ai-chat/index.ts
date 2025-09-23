@@ -7,6 +7,120 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const EXCHANGE_RATES: Record<string, number> = {
+  SEK: 1,
+  USD: 10.5,
+  EUR: 11.4,
+  GBP: 13.2,
+  NOK: 0.95,
+  DKK: 1.53,
+  JPY: 0.07,
+  CHF: 11.8,
+  CAD: 7.8,
+  AUD: 7,
+};
+
+const normalizeCurrency = (currency?: string | null) => {
+  if (typeof currency === 'string') {
+    const trimmed = currency.trim();
+    if (trimmed.length > 0) {
+      return trimmed.toUpperCase();
+    }
+  }
+  return 'SEK';
+};
+
+const parseNumericValue = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.replace(/\s/g, '').replace(',', '.');
+    const parsed = Number(normalized);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return undefined;
+};
+
+const convertToSEK = (amount: number | undefined, fromCurrency?: string | null): number => {
+  if (amount === undefined || !Number.isFinite(amount) || amount === 0) {
+    return 0;
+  }
+
+  const currency = normalizeCurrency(fromCurrency);
+  const rate = EXCHANGE_RATES[currency];
+
+  if (!rate) {
+    console.warn(`Exchange rate not found for currency: ${currency}, defaulting to SEK`);
+    return amount;
+  }
+
+  return amount * rate;
+};
+
+interface HoldingValueBreakdown {
+  quantity: number;
+  pricePerUnit: number | null;
+  priceCurrency: string;
+  valueInOriginalCurrency: number;
+  valueCurrency: string;
+  valueInSEK: number;
+  pricePerUnitInSEK: number | null;
+  hasDirectPrice: boolean;
+}
+
+interface HoldingLike {
+  quantity?: number | string | null;
+  current_price_per_unit?: number | string | null;
+  price_currency?: string | null;
+  currency?: string | null;
+  current_value?: number | string | null;
+}
+
+const resolveHoldingValue = (holding: HoldingLike): HoldingValueBreakdown => {
+  const quantity = parseNumericValue(holding?.quantity) ?? 0;
+  const pricePerUnitRaw = parseNumericValue(holding?.current_price_per_unit);
+  const pricePerUnit = pricePerUnitRaw !== undefined ? pricePerUnitRaw : null;
+
+  const rawPriceCurrency = typeof holding?.price_currency === 'string' ? holding.price_currency.trim() : '';
+  const rawHoldingCurrency = typeof holding?.currency === 'string' ? holding.currency.trim() : '';
+  const priceCurrency = rawPriceCurrency.length > 0
+    ? rawPriceCurrency.toUpperCase()
+    : rawHoldingCurrency.length > 0
+      ? rawHoldingCurrency.toUpperCase()
+      : 'SEK';
+
+  const fallbackValue = parseNumericValue(holding?.current_value) ?? 0;
+  const fallbackCurrency = priceCurrency;
+
+  const hasDirectPrice = pricePerUnit !== null && quantity > 0;
+  const valueInOriginalCurrency = hasDirectPrice ? pricePerUnit * quantity : fallbackValue;
+  const valueCurrency = hasDirectPrice ? priceCurrency : fallbackCurrency;
+  const valueInSEK = convertToSEK(valueInOriginalCurrency, valueCurrency);
+  const pricePerUnitInSEK = pricePerUnit !== null
+    ? convertToSEK(pricePerUnit, priceCurrency)
+    : quantity > 0
+      ? valueInSEK / quantity
+      : null;
+
+  return {
+    quantity,
+    pricePerUnit,
+    priceCurrency,
+    valueInOriginalCurrency,
+    valueCurrency,
+    valueInSEK: Number.isFinite(valueInSEK) ? valueInSEK : 0,
+    pricePerUnitInSEK: pricePerUnitInSEK !== null && Number.isFinite(pricePerUnitInSEK)
+      ? pricePerUnitInSEK
+      : null,
+    hasDirectPrice,
+  };
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -551,15 +665,6 @@ contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
 
     // Add current portfolio context with latest valuations
     if (holdings && holdings.length > 0) {
-      const parseNumericValue = (value: unknown): number | undefined => {
-        if (typeof value === 'number' && Number.isFinite(value)) return value;
-        if (typeof value === 'string' && value.trim() !== '') {
-          const parsed = Number(value);
-          return Number.isFinite(parsed) ? parsed : undefined;
-        }
-        return undefined;
-      };
-
       const roundToDecimals = (value: number, decimals = 1) => {
         const factor = Math.pow(10, decimals);
         return Math.round(value * factor) / factor;
@@ -579,25 +684,32 @@ contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
 
       const actualHoldings = holdings.filter(h => h.holding_type !== 'recommendation');
       if (actualHoldings.length > 0) {
-        const totalValue = actualHoldings.reduce((sum, h) => sum + (parseNumericValue(h.current_value) ?? 0), 0);
-        const totalValueForDisplay = Number.isFinite(totalValue) ? Math.round(totalValue) : 0;
-        const safeTotalForFallback = totalValue > 0 && Number.isFinite(totalValue) ? totalValue : 0;
-        const topHoldings = [...actualHoldings]
-          .sort((a, b) => (parseNumericValue(b.current_value) ?? 0) - (parseNumericValue(a.current_value) ?? 0))
+        const holdingsWithValues = actualHoldings.map(holding => {
+          const { valueInSEK } = resolveHoldingValue(holding as HoldingLike);
+          return {
+            holding,
+            valueInSEK: Number.isFinite(valueInSEK) ? valueInSEK : 0,
+          };
+        });
+
+        const totalPortfolioValue = holdingsWithValues.reduce((sum, entry) => sum + entry.valueInSEK, 0);
+        const totalValueForDisplay = Number.isFinite(totalPortfolioValue) ? Math.round(totalPortfolioValue) : 0;
+        const safeTotalForFallback = totalPortfolioValue > 0 && Number.isFinite(totalPortfolioValue)
+          ? totalPortfolioValue
+          : 0;
+
+        const topHoldings = holdingsWithValues
+          .slice()
+          .sort((a, b) => b.valueInSEK - a.valueInSEK)
           .slice(0, 5);
 
         const formattedTopHoldings = topHoldings
-          .map(holding => {
+          .map(({ holding, valueInSEK }) => {
             const explicitAllocation = parseNumericValue(holding.allocation);
-            const allocationValue = explicitAllocation !== undefined
-              ? explicitAllocation
-              : (() => {
-                  if (safeTotalForFallback <= 0) return undefined;
-                  const currentValue = parseNumericValue(holding.current_value) ?? 0;
-                  if (currentValue <= 0) return undefined;
-                  const calculated = (currentValue / safeTotalForFallback) * 100;
-                  return Number.isFinite(calculated) ? calculated : undefined;
-                })();
+            const fallbackAllocation = safeTotalForFallback > 0 && valueInSEK > 0
+              ? (valueInSEK / safeTotalForFallback) * 100
+              : undefined;
+            const allocationValue = explicitAllocation ?? fallbackAllocation;
 
             const formattedAllocation = formatPercentage(allocationValue);
             if (!formattedAllocation) return null;
