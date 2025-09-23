@@ -12,6 +12,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useUserHoldings, UserHolding } from '@/hooks/useUserHoldings';
 import AddHoldingDialog from '@/components/AddHoldingDialog';
+import { usePersistentDialogOpenState } from '@/hooks/usePersistentDialogOpenState';
+import { ADD_HOLDING_DIALOG_STORAGE_KEY } from '@/constants/storageKeys';
 
 declare global {
   interface Window {
@@ -37,7 +39,11 @@ const CommunityRecommendations: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { addHolding } = useUserHoldings();
-  const [isAddHoldingOpen, setIsAddHoldingOpen] = useState(false);
+  const {
+    isOpen: isAddHoldingOpen,
+    open: openAddHoldingDialog,
+    close: closeAddHoldingDialog,
+  } = usePersistentDialogOpenState(ADD_HOLDING_DIALOG_STORAGE_KEY, 'community-recommendations');
   const [selectedRecommendation, setSelectedRecommendation] = useState<SelectedRecommendation | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
@@ -91,7 +97,7 @@ const CommunityRecommendations: React.FC = () => {
         currency: 'SEK'
       }
     });
-    setIsAddHoldingOpen(true);
+    openAddHoldingDialog();
   };
 
   const handleAddHolding = async (
@@ -106,7 +112,7 @@ const CommunityRecommendations: React.FC = () => {
         variant: "default"
       });
       
-      setIsAddHoldingOpen(false);
+      closeAddHoldingDialog();
       setSelectedRecommendation(null);
       return true;
     } catch (error) {
@@ -391,7 +397,7 @@ const CommunityRecommendations: React.FC = () => {
       <AddHoldingDialog
         isOpen={isAddHoldingOpen}
         onClose={() => {
-          setIsAddHoldingOpen(false);
+          closeAddHoldingDialog();
           setSelectedRecommendation(null);
         }}
         onAdd={handleAddHolding}

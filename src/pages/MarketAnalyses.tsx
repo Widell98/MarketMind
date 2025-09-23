@@ -14,12 +14,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { BarChart3, TrendingUp, Sparkles, Users, Search, BookOpen, Plus } from 'lucide-react';
 import CreateAnalysisDialog from '@/components/CreateAnalysisDialog';
+import { usePersistentDialogOpenState } from '@/hooks/usePersistentDialogOpenState';
+import { CREATE_ANALYSIS_DIALOG_STORAGE_KEY } from '@/constants/storageKeys';
 
 const MarketAnalyses = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const {
+    isOpen: isCreateDialogOpen,
+    open: openCreateDialog,
+    close: closeCreateDialog,
+  } = usePersistentDialogOpenState(CREATE_ANALYSIS_DIALOG_STORAGE_KEY, 'market-analyses');
   
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -156,7 +162,7 @@ const MarketAnalyses = () => {
             </h1>
           </div>
           {user && (
-            <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700">
+            <Button onClick={openCreateDialog} className="bg-purple-600 hover:bg-purple-700">
               <Plus className="w-4 h-4 mr-2" />
               Ny Analys
             </Button>
@@ -240,7 +246,7 @@ const MarketAnalyses = () => {
                     Rensa filter
                   </Button>
                 ) : user && (
-                  <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700">
+                  <Button onClick={openCreateDialog} className="bg-purple-600 hover:bg-purple-700">
                     <BookOpen className="w-4 h-4 mr-2" />
                     Skapa första analysen
                   </Button>
@@ -336,10 +342,10 @@ const MarketAnalyses = () => {
         </Tabs>
 
         {/* Create Analysis Dialog */}
-        <CreateAnalysisDialog 
-          isOpen={isCreateDialogOpen}
-          onClose={() => setIsCreateDialogOpen(false)}
-        />
+      <CreateAnalysisDialog
+        isOpen={isCreateDialogOpen}
+        onClose={closeCreateDialog}
+      />
       </div>
     </Layout>
   );

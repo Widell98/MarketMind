@@ -19,6 +19,8 @@ import {
 } from '@/components/ui/select';
 import { UserHolding } from '@/hooks/useUserHoldings';
 import useSheetTickers, { SheetTicker } from '@/hooks/useSheetTickers';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { ADD_HOLDING_FORM_STORAGE_KEY } from '@/constants/storageKeys';
 
 interface AddHoldingDialogProps {
   isOpen: boolean;
@@ -27,6 +29,42 @@ interface AddHoldingDialogProps {
   initialData?: any;
 }
 
+interface AddHoldingFormState {
+  formData: {
+    name: string;
+    symbol: string;
+    holding_type: string;
+    quantity: string;
+    purchase_price: string;
+    purchase_date: string;
+    sector: string;
+    market: string;
+    currency: string;
+  };
+  priceOverridden: boolean;
+  currencyOverridden: boolean;
+  nameOverridden: boolean;
+  lastInitialDataSignature: string | null;
+}
+
+const createDefaultFormState = (): AddHoldingFormState => ({
+  formData: {
+    name: '',
+    symbol: '',
+    holding_type: 'stock',
+    quantity: '',
+    purchase_price: '',
+    purchase_date: '',
+    sector: '',
+    market: '',
+    currency: 'SEK'
+  },
+  priceOverridden: false,
+  currencyOverridden: false,
+  nameOverridden: false,
+  lastInitialDataSignature: null,
+});
+
 const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   isOpen,
   onClose,
@@ -34,22 +72,13 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   initialData
 }) => {
   const { tickers, isLoading: tickersLoading, error: tickersError } = useSheetTickers();
-  const [formData, setFormData] = useState({
-    name: initialData?.name || '',
-    symbol: initialData?.symbol || '',
-    holding_type: initialData?.holding_type === 'recommendation' ? 'stock' : (initialData?.holding_type || 'stock'),
-    quantity: '',
-    purchase_price: initialData?.purchase_price?.toString() || '',
-    purchase_date: '',
-    sector: initialData?.sector || '',
-    market: initialData?.market || '',
-    currency: initialData?.currency || 'SEK'
-  });
+  const [dialogState, setDialogState, resetDialogState] = useLocalStorage<AddHoldingFormState>(
+    ADD_HOLDING_FORM_STORAGE_KEY,
+    createDefaultFormState
+  );
+  const { formData, priceOverridden, currencyOverridden, nameOverridden } = dialogState;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [symbolError, setSymbolError] = useState<string | null>(null);
-  const [priceOverridden, setPriceOverridden] = useState(false);
-  const [currencyOverridden, setCurrencyOverridden] = useState(false);
-  const [nameOverridden, setNameOverridden] = useState(false);
 
   const normalizedSymbol = useMemo(() => {
     const rawSymbol = formData.symbol?.trim();
@@ -68,27 +97,48 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
   // Update form data when initialData changes
   useEffect(() => {
-    if (initialData) {
-      setFormData({
-        name: initialData.name || '',
-        symbol: initialData.symbol || '',
-        holding_type: initialData.holding_type === 'recommendation' ? 'stock' : (initialData.holding_type || 'stock'),
-        quantity: '',
-        purchase_price: initialData.purchase_price?.toString() || '',
-        purchase_date: '',
-        sector: initialData.sector || '',
-        market: initialData.market || '',
-        currency: initialData.currency || 'SEK'
+    if (!initialData) {
+      setDialogState(prev => {
+        if (prev.lastInitialDataSignature === null) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          lastInitialDataSignature: null,
+        };
       });
-      setPriceOverridden(Boolean(initialData.purchase_price));
-      setCurrencyOverridden(Boolean(initialData.currency));
-      setNameOverridden(Boolean(initialData.name));
-    } else {
-      setPriceOverridden(false);
-      setCurrencyOverridden(false);
-      setNameOverridden(false);
+      return;
     }
-  }, [initialData]);
+
+    const signatureParts = [initialData.id, initialData.symbol, initialData.name]
+      .filter(Boolean)
+      .join('::');
+
+    setDialogState(prev => {
+      if (prev.lastInitialDataSignature === signatureParts) {
+        return prev;
+      }
+
+      return {
+        formData: {
+          name: initialData.name || '',
+          symbol: initialData.symbol || '',
+          holding_type: initialData.holding_type === 'recommendation' ? 'stock' : (initialData.holding_type || 'stock'),
+          quantity: '',
+          purchase_price: initialData.purchase_price?.toString() || '',
+          purchase_date: '',
+          sector: initialData.sector || '',
+          market: initialData.market || '',
+          currency: initialData.currency || 'SEK'
+        },
+        priceOverridden: Boolean(initialData.purchase_price),
+        currencyOverridden: Boolean(initialData.currency),
+        nameOverridden: Boolean(initialData.name),
+        lastInitialDataSignature: signatureParts,
+      };
+    });
+  }, [initialData, setDialogState]);
 
   useEffect(() => {
     if (!matchedTicker || nameOverridden) {
@@ -97,17 +147,24 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
     const resolvedName = matchedTicker.name?.trim() || matchedTicker.symbol;
 
-    setFormData((prev) => {
-      if (prev.name === resolvedName) {
+    setDialogState(prev => {
+      if (prev.nameOverridden) {
+        return prev;
+      }
+
+      if (prev.formData.name === resolvedName) {
         return prev;
       }
 
       return {
         ...prev,
-        name: resolvedName,
+        formData: {
+          ...prev.formData,
+          name: resolvedName,
+        },
       };
     });
-  }, [matchedTicker, nameOverridden]);
+  }, [matchedTicker, nameOverridden, setDialogState]);
 
   useEffect(() => {
     if (!matchedTicker || priceOverridden) {
@@ -120,22 +177,42 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
     const nextPrice = matchedTicker.price.toString();
 
-    setFormData((prev) => {
-      if (prev.purchase_price === nextPrice) {
+    setDialogState(prev => {
+      if (prev.priceOverridden) {
+        return prev;
+      }
+
+      if (prev.formData.purchase_price === nextPrice) {
         return prev;
       }
 
       return {
         ...prev,
-        purchase_price: nextPrice,
+        formData: {
+          ...prev.formData,
+          purchase_price: nextPrice,
+        },
       };
     });
-  }, [matchedTicker, priceOverridden]);
+  }, [matchedTicker, priceOverridden, setDialogState]);
 
   useEffect(() => {
-    setPriceOverridden(false);
-    setCurrencyOverridden(false);
-  }, [matchedTicker?.symbol]);
+    if (!matchedTicker?.symbol) {
+      return;
+    }
+
+    setDialogState(prev => {
+      if (!prev.priceOverridden && !prev.currencyOverridden) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        priceOverridden: false,
+        currencyOverridden: false,
+      };
+    });
+  }, [matchedTicker?.symbol, setDialogState]);
 
   useEffect(() => {
     if (!matchedTicker?.currency || currencyOverridden) {
@@ -143,17 +220,24 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     }
 
     const normalizedCurrency = matchedTicker.currency.toUpperCase();
-    setFormData((prev) => {
-      if (prev.currency === normalizedCurrency) {
+    setDialogState(prev => {
+      if (prev.currencyOverridden) {
+        return prev;
+      }
+
+      if (prev.formData.currency === normalizedCurrency) {
         return prev;
       }
 
       return {
         ...prev,
-        currency: normalizedCurrency,
+        formData: {
+          ...prev.formData,
+          currency: normalizedCurrency,
+        },
       };
     });
-  }, [matchedTicker?.currency, currencyOverridden]);
+  }, [matchedTicker?.currency, currencyOverridden, setDialogState]);
   const priceFormatter = useMemo(
     () => new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     []
@@ -194,27 +278,61 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     : '';
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    if (field === 'name') {
-      setNameOverridden(true);
+    if (field === 'symbol' && symbolError) {
+      setSymbolError(null);
     }
-    if (field === 'symbol') {
-      if (symbolError) {
-        setSymbolError(null);
+
+    setDialogState(prev => {
+      const updatedFormData = {
+        ...prev.formData,
+        [field]: value,
+      };
+
+      let priceOverride = prev.priceOverridden;
+      let currencyOverride = prev.currencyOverridden;
+      let nameOverride = prev.nameOverridden;
+      let lastSignature = prev.lastInitialDataSignature;
+
+      if (field === 'name') {
+        nameOverride = true;
       }
-      setPriceOverridden(false);
-      setCurrencyOverridden(false);
-      setNameOverridden(false);
-    }
-    if (field === 'purchase_price') {
-      setPriceOverridden(true);
-    }
-    if (field === 'currency') {
-      setCurrencyOverridden(true);
-    }
+
+      if (field === 'symbol') {
+        priceOverride = false;
+        currencyOverride = false;
+        nameOverride = false;
+        lastSignature = null;
+      }
+
+      if (field === 'purchase_price') {
+        priceOverride = true;
+      }
+
+      if (field === 'currency') {
+        currencyOverride = true;
+      }
+
+      const previousValue = prev.formData[field as keyof AddHoldingFormState['formData']];
+
+      if (
+        previousValue === value &&
+        priceOverride === prev.priceOverridden &&
+        currencyOverride === prev.currencyOverridden &&
+        nameOverride === prev.nameOverridden &&
+        lastSignature === prev.lastInitialDataSignature
+      ) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        formData: updatedFormData,
+        priceOverridden: priceOverride,
+        currencyOverridden: currencyOverride,
+        nameOverridden: nameOverride,
+        lastInitialDataSignature: lastSignature,
+      };
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -261,22 +379,8 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     const success = await onAdd(holdingData);
 
     if (success) {
-      // Reset form
-      setFormData({
-        name: '',
-        symbol: '',
-        holding_type: 'stock',
-        quantity: '',
-        purchase_price: '',
-        purchase_date: '',
-        sector: '',
-        market: '',
-        currency: 'SEK'
-      });
+      resetDialogState();
       setSymbolError(null);
-      setPriceOverridden(false);
-      setCurrencyOverridden(false);
-      setNameOverridden(false);
       onClose();
     }
 
@@ -285,22 +389,8 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
   const handleClose = () => {
     if (!isSubmitting) {
-      setFormData({
-        name: '',
-        symbol: '',
-        holding_type: 'stock',
-        quantity: '',
-        purchase_price: '',
-        purchase_date: '',
-        sector: '',
-        market: '',
-        currency: 'SEK'
-      });
+      resetDialogState();
       setSymbolError(null);
-      setPriceOverridden(false);
-      setCurrencyOverridden(false);
-      setNameOverridden(false);
-
       onClose();
     }
   };
