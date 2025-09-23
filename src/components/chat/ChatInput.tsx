@@ -52,7 +52,7 @@ const ChatInput = memo(({
 
   return (
     <>
-      <div className="flex-shrink-0 border-t border-ai-border/40 bg-ai-surface/90 px-4 py-3 sm:px-6 sm:py-4 lg:px-10 lg:py-6 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))] backdrop-blur-sm">
+      <div className="flex-shrink-0 border-t border-ai-border/40 bg-ai-surface/90 px-3 py-3 sm:px-4 sm:py-4 lg:px-8 lg:py-6 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))] backdrop-blur-sm">
         {quotaExceeded && (
           <div className="mb-3 sm:mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
             <div className="flex items-center gap-2 font-medium mb-1 text-destructive text-sm">

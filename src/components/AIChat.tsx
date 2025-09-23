@@ -241,7 +241,7 @@ const AIChat = ({
           )}
 
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface/95">
-            <header className="grid grid-cols-[auto_1fr_auto] items-center gap-4 border-b border-ai-border/40 bg-ai-surface/80 px-6 py-4 sm:px-8 sm:py-5 backdrop-blur">
+            <header className="grid grid-cols-[auto_1fr_auto] items-center gap-4 border-b border-ai-border/40 bg-ai-surface/80 px-4 py-3 sm:px-6 sm:py-4 backdrop-blur">
               <div className="flex items-center gap-2">
                 {isMobile && (
                   <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -343,7 +343,7 @@ const AIChat = ({
           <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden">
             <div className="absolute inset-0 flex">
               {!isMobile && (
-                <div className="hidden w-[260px] flex-col border-r border-ai-border/40 bg-ai-surface/80 px-6 py-8 backdrop-blur-md md:flex">
+                <div className="hidden w-[260px] flex-col border-r border-ai-border/40 bg-ai-surface/80 px-4 py-6 backdrop-blur-md md:flex">
                   <h3 className="text-sm font-semibold text-foreground">Senaste konversationer</h3>
                   <div className="mt-4 space-y-3 text-[15px] text-ai-text-muted">
                     <div className="rounded-ai-sm border border-ai-border/40 bg-ai-surface/90 px-3 py-2">
@@ -357,7 +357,7 @@ const AIChat = ({
                   </div>
                 </div>
               )}
-              <div className="flex flex-1 flex-col overflow-y-auto bg-ai-surface/95 px-6 py-8 sm:px-10 lg:px-16">
+              <div className="flex flex-1 flex-col overflow-y-auto bg-ai-surface/95 px-4 py-8 sm:px-10 lg:px-14">
                 <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center space-y-6 py-6 sm:py-8">
                   <div className="flex flex-col gap-4">
                     <div className="flex justify-center">
