@@ -9,7 +9,7 @@ import ChatInput from './chat/ChatInput';
 import ProfileUpdateConfirmation from './ProfileUpdateConfirmation';
 import ChatFolderSidebar from './chat/ChatFolderSidebar';
 
-import { LogIn, MessageSquare, Brain, Lock, Sparkles, Menu, PanelLeftClose, PanelLeft, Plus } from 'lucide-react';
+import { LogIn, MessageSquare, Brain, Lock, Sparkles, Menu, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 interface Message {
@@ -285,16 +285,6 @@ const AIChat = ({
                     {remainingCredits}/{totalCredits} krediter kvar
                   </span>
                 )}
-                <Button
-                  onClick={handleNewSession}
-                  variant="ghost"
-                  size="sm"
-                  className="inline-flex items-center gap-2 rounded-ai-sm border border-ai-border/70 bg-ai-surface px-3 py-2 text-[14px] font-medium text-foreground hover:bg-ai-surface-muted/70"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">Ny konversation</span>
-                  <span className="sm:hidden">Ny</span>
-                </Button>
               </div>
             </header>
 
