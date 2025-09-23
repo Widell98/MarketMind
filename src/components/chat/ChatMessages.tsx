@@ -102,7 +102,7 @@ const ChatMessages = ({
         {messages.length === 0 && !isLoading && onExamplePrompt && !showGuideBot && (
           <div className="space-y-6">
             <div className="text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500/15 to-blue-500/25 text-primary shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:shadow-none">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#144272]/20 to-[#205295]/24 text-primary shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:shadow-none">
                 <Brain className="h-5 w-5" />
               </div>
               <h2 className="mt-3 text-lg font-semibold text-foreground">Redo när du är</h2>
@@ -116,11 +116,11 @@ const ChatMessages = ({
                 <Button
                   key={index}
                   variant="ghost"
-                  className="h-auto justify-start rounded-[18px] border border-blue-100/80 bg-white/90 px-4 py-4 text-left shadow-[0_18px_45px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50/80 hover:shadow-[0_24px_55px_rgba(15,23,42,0.08)] dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none dark:hover:bg-ai-surface-muted/70"
+                  className="h-auto justify-start rounded-[18px] border border-[#144272]/20 bg-white/90 px-4 py-4 text-left shadow-[0_18px_45px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:border-[#205295]/40 hover:bg-[#144272]/10 hover:shadow-[0_24px_55px_rgba(15,23,42,0.08)] dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none dark:hover:bg-ai-surface-muted/70"
                   onClick={() => onExamplePrompt(example.prompt)}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-blue-50/90 text-primary shadow-sm transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted">
+                    <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-[#144272]/12 text-primary shadow-sm transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted">
                       {example.icon}
                     </div>
                     <div className="min-w-0 space-y-1">
@@ -136,7 +136,7 @@ const ChatMessages = ({
 
         {messages.length === 0 && !isLoading && !onExamplePrompt && !showGuideBot && (
           <div className="text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500/15 to-blue-500/25 text-primary shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:shadow-none">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#144272]/20 to-[#205295]/24 text-primary shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:shadow-none">
               <Brain className="h-5 w-5" />
             </div>
             <h2 className="mt-3 text-lg font-semibold text-foreground">Välkommen till Market Mind</h2>
@@ -152,10 +152,10 @@ const ChatMessages = ({
 
         {isLoading && (
           <div className="flex items-start gap-3">
-            <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-primary shadow-[0_10px_25px_rgba(15,23,42,0.08)] ring-1 ring-blue-100/70 transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:ring-transparent dark:shadow-none">
+            <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-primary shadow-[0_10px_25px_rgba(15,23,42,0.08)] ring-1 ring-[#144272]/25 transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:ring-transparent dark:shadow-none">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/40 border-t-transparent dark:border-ai-border/70" />
             </div>
-            <div className="max-w-[70%] rounded-[18px] border border-blue-100/70 bg-white/90 px-4 py-3 text-sm text-ai-text-muted shadow-[0_16px_40px_rgba(15,23,42,0.06)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble">
+            <div className="max-w-[70%] rounded-[18px] border border-[#205295]/22 bg-white/90 px-4 py-3 text-sm text-ai-text-muted shadow-[0_16px_40px_rgba(15,23,42,0.06)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble">
               Assistenten tänker...
             </div>
           </div>

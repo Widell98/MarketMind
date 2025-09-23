@@ -214,11 +214,11 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     <div className={`flex w-full items-start gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
       {message.role === 'assistant' ? (
         <>
-          <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-primary shadow-[0_12px_28px_rgba(15,23,42,0.12)] ring-1 ring-blue-100/70 transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:ring-transparent dark:shadow-none">
+          <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-primary shadow-[0_12px_28px_rgba(15,23,42,0.12)] ring-1 ring-[#144272]/25 transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:ring-transparent dark:shadow-none">
             <Bot className="h-4 w-4" />
           </div>
           <div className="flex-1 min-w-0 max-w-[75%] space-y-3">
-            <div className="rounded-[20px] border border-blue-100/70 bg-white/90 px-5 py-4 text-sm leading-relaxed text-foreground shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble dark:px-4 dark:py-3 dark:shadow-sm">
+            <div className="rounded-[20px] border border-[#205295]/20 bg-white/90 px-5 py-4 text-sm leading-relaxed text-foreground shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble dark:px-4 dark:py-3 dark:shadow-sm">
               <div className="space-y-2">{formatMessageContent(message.content)}</div>
               <p className="mt-3 text-[11px] text-ai-text-muted">
                 {message.timestamp.toLocaleTimeString('sv-SE', {
@@ -229,7 +229,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
             </div>
 
             {stockSuggestions.length > 0 && (
-              <div className="space-y-3 rounded-[18px] border border-blue-100/70 bg-white/90 px-4 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.05)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none">
+              <div className="space-y-3 rounded-[18px] border border-[#144272]/18 bg-white/90 px-4 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.05)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none">
                 <p className="flex items-center gap-2 text-xs font-medium text-primary dark:text-ai-text-muted">
                   <TrendingUp className="h-3 w-3" />
                   Aktieförslag från AI ({stockSuggestions.length} st)
@@ -240,7 +240,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
                     return (
                       <div
                         key={suggestion.symbol}
-                        className="flex items-center justify-between gap-3 rounded-[14px] border border-blue-50/80 bg-white/85 px-3 py-2 shadow-sm transition-colors dark:rounded-ai-sm dark:border-ai-border/50 dark:bg-ai-bubble"
+                        className="flex items-center justify-between gap-3 rounded-[14px] border border-[#205295]/18 bg-white/85 px-3 py-2 shadow-sm transition-colors dark:rounded-ai-sm dark:border-ai-border/50 dark:bg-ai-bubble"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium text-foreground">{suggestion.name}</p>
@@ -274,7 +274,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       ) : (
         <>
           <div className="flex-1 min-w-0 max-w-[75%]">
-            <div className="rounded-[20px] border border-blue-200/70 bg-gradient-to-br from-blue-50 via-white to-blue-100 px-5 py-4 text-sm leading-relaxed text-foreground shadow-[0_22px_55px_rgba(15,23,42,0.1)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble-user dark:px-4 dark:py-3 dark:shadow-sm">
+            <div className="rounded-[20px] border border-[#144272]/25 bg-gradient-to-br from-[#144272]/18 via-white/95 to-[#205295]/16 px-5 py-4 text-sm leading-relaxed text-foreground shadow-[0_22px_55px_rgba(15,23,42,0.1)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble-user dark:px-4 dark:py-3 dark:shadow-sm">
               <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">{message.content}</p>
               <p className="mt-3 text-[11px] text-ai-text-muted">
                 {message.timestamp.toLocaleTimeString('sv-SE', {
@@ -284,7 +284,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
               </p>
             </div>
           </div>
-          <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-blue-500 to-blue-600 text-white shadow-[0_16px_40px_rgba(15,23,42,0.18)] ring-1 ring-blue-500/50 transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:ring-transparent dark:shadow-none">
+          <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-blue-500 to-blue-600 text-white shadow-[0_16px_40px_rgba(15,23,42,0.18)] ring-1 ring-[#144272]/35 transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:ring-transparent dark:shadow-none">
             <User className="h-4 w-4" />
           </div>
         </>
