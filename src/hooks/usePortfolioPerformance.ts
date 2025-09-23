@@ -265,15 +265,17 @@ export const usePortfolioPerformance = () => {
           priceCurrency,
         } = resolveHoldingValue(holding);
 
-        const purchasePrice = parseNumeric(holding.purchase_price) ?? 0;
+        const purchasePrice = parseNumeric(holding.purchase_price);
+        const hasPurchasePrice = purchasePrice !== null && quantity > 0;
 
-        const investedValueOriginal = purchasePrice > 0 && quantity > 0
-          ? purchasePrice * quantity
-          : 0;
-
-        const investedValue = investedValueOriginal > 0
-          ? convertToSEK(investedValueOriginal, holding.currency || priceCurrency || 'SEK')
-          : 0;
+        let investedValue = currentValue;
+        if (hasPurchasePrice && purchasePrice !== null) {
+          const investedValueOriginal = purchasePrice * quantity;
+          investedValue = convertToSEK(
+            investedValueOriginal,
+            holding.currency || priceCurrency || 'SEK'
+          );
+        }
 
         // Find yesterday's value for this holding
         const yesterdayHolding = yesterdayData?.find(d => d.holding_id === holding.id);
@@ -283,8 +285,8 @@ export const usePortfolioPerformance = () => {
         const yesterdayCurrency = yesterdayHolding?.currency || holding.currency || priceCurrency || 'SEK';
         const yesterdayValue = convertToSEK(yesterdayRawValue, yesterdayCurrency);
 
-        const profit = currentValue - investedValue;
-        const profitPercentage = investedValue > 0 ? (profit / investedValue) * 100 : 0;
+        const profit = hasPurchasePrice ? currentValue - investedValue : 0;
+        const profitPercentage = hasPurchasePrice && investedValue > 0 ? (profit / investedValue) * 100 : 0;
         const dayChange = currentValue - yesterdayValue;
         const dayChangePercentage = yesterdayValue > 0 ? (dayChange / yesterdayValue) * 100 : 0;
 
