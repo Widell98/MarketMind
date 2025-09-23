@@ -22,7 +22,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isChatRoute = location.pathname.startsWith('/ai-chat') || location.pathname.startsWith('/ai-chatt');
 
   const rootClassName = isChatRoute
-    ? 'h-screen bg-background w-full flex overflow-hidden'
+    ? 'h-screen w-full flex overflow-hidden bg-white dark:bg-background'
     : 'min-h-screen bg-background w-full flex overflow-hidden';
 
   const mainClassName = isChatRoute
