@@ -10,7 +10,8 @@ import {
 import { badgeVariants } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { RefreshCw } from 'lucide-react';
-import { formatCurrency, resolveHoldingValue, convertToSEK } from '@/utils/currencyUtils';
+import { formatCurrency, resolveHoldingValue } from '@/utils/currencyUtils';
+import type { HoldingPerformance } from '@/hooks/usePortfolioPerformance';
 
 interface Holding {
   id: string;
@@ -24,6 +25,7 @@ interface Holding {
   current_price_per_unit?: number;
   price_currency?: string;
   base_currency?: string;
+  performance?: HoldingPerformance;
 }
 
 interface HoldingsTableProps {
@@ -46,9 +48,11 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
           <TableHead>Namn</TableHead>
           <TableHead>Symbol</TableHead>
           <TableHead>Typ</TableHead>
-          <TableHead>Värde</TableHead>
           <TableHead>Antal</TableHead>
-          <TableHead>Vinst/Förlust</TableHead>
+          <TableHead>Värde</TableHead>
+          <TableHead>Investerat</TableHead>
+          <TableHead>Avkastning</TableHead>
+          <TableHead>Avkastning %</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -56,17 +60,29 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
           const {
             valueInSEK,
             quantity,
-            priceCurrency,
           } = resolveHoldingValue(holding);
 
-          const purchaseValueOriginal = typeof holding.purchase_price === 'number' && quantity > 0
-            ? holding.purchase_price * quantity
-            : undefined;
-          const purchaseValueSEK = purchaseValueOriginal !== undefined
-            ? convertToSEK(purchaseValueOriginal, holding.base_currency || priceCurrency || holding.currency || 'SEK')
-            : undefined;
+          const performance = holding.performance;
+          const hasPurchasePrice = performance?.hasPurchasePrice ?? false;
+          const investedValue = typeof performance?.investedValue === 'number'
+            ? performance.investedValue
+            : null;
+          const profitValue = hasPurchasePrice && typeof performance?.profit === 'number'
+            ? performance.profit
+            : null;
+          const profitPercentageValue = hasPurchasePrice && typeof performance?.profitPercentage === 'number'
+            ? performance.profitPercentage
+            : null;
 
-          const profitLoss = purchaseValueSEK !== undefined ? valueInSEK - purchaseValueSEK : undefined;
+          const missingPurchaseData = Boolean(performance) && !hasPurchasePrice;
+
+          const profitClass = !hasPurchasePrice
+            ? 'text-muted-foreground'
+            : profitValue && profitValue > 0
+              ? 'text-green-600'
+              : profitValue && profitValue < 0
+                ? 'text-red-600'
+                : 'text-muted-foreground';
 
           const trimmedSymbol = holding.symbol?.trim();
           const normalizedSymbol = trimmedSymbol ? trimmedSymbol.toUpperCase() : undefined;
@@ -102,10 +118,24 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
                 )}
               </TableCell>
               <TableCell className="capitalize">{holding.holding_type}</TableCell>
-              <TableCell>{formatCurrency(valueInSEK, 'SEK')}</TableCell>
               <TableCell>{quantity > 0 ? quantity : '-'}</TableCell>
-              <TableCell className={profitLoss === undefined ? '' : profitLoss >= 0 ? 'text-green-600' : 'text-red-600'}>
-                {profitLoss !== undefined ? formatCurrency(profitLoss, 'SEK') : '-'}
+              <TableCell>{formatCurrency(valueInSEK, 'SEK')}</TableCell>
+              <TableCell>
+                {typeof investedValue === 'number'
+                  ? formatCurrency(investedValue, 'SEK')
+                  : '–'}
+              </TableCell>
+              <TableCell className={profitClass}>
+                {profitValue !== null
+                  ? formatCurrency(profitValue, 'SEK')
+                  : '–'}
+              </TableCell>
+              <TableCell className={profitClass}>
+                {profitPercentageValue !== null
+                  ? `${profitPercentageValue.toFixed(2)}%`
+                  : missingPurchaseData
+                    ? 'Köpdata saknas'
+                    : '–'}
               </TableCell>
             </TableRow>
           );

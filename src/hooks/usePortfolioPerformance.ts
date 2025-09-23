@@ -114,6 +114,7 @@ export interface HoldingPerformance {
   profitPercentage: number;
   dayChange: number;
   dayChangePercentage: number;
+  hasPurchasePrice: boolean;
 }
 
 interface PriceUpdateSummary {
@@ -299,7 +300,8 @@ export const usePortfolioPerformance = () => {
           profit,
           profitPercentage,
           dayChange,
-          dayChangePercentage
+          dayChangePercentage,
+          hasPurchasePrice
         });
 
         totalValue += currentValue;
