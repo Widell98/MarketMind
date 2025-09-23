@@ -551,22 +551,96 @@ contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
 
     // Add current portfolio context with latest valuations
     if (holdings && holdings.length > 0) {
+      const parseNumericValue = (value: unknown): number | undefined => {
+        if (typeof value === 'number' && Number.isFinite(value)) return value;
+        if (typeof value === 'string' && value.trim() !== '') {
+          const parsed = Number(value);
+          return Number.isFinite(parsed) ? parsed : undefined;
+        }
+        return undefined;
+      };
+
+      const roundToDecimals = (value: number, decimals = 1) => {
+        const factor = Math.pow(10, decimals);
+        return Math.round(value * factor) / factor;
+      };
+
+      const formatPercentage = (value: number | undefined) => {
+        if (value === undefined) return null;
+        const rounded = roundToDecimals(value, 1);
+        return Number.isFinite(rounded) ? `${rounded}%` : null;
+      };
+
+      const formatRoundedNumber = (value: number | undefined, decimals = 1) => {
+        if (value === undefined) return null;
+        const rounded = roundToDecimals(value, decimals);
+        return Number.isFinite(rounded) ? `${rounded}` : null;
+      };
+
       const actualHoldings = holdings.filter(h => h.holding_type !== 'recommendation');
       if (actualHoldings.length > 0) {
-        const totalValue = actualHoldings.reduce((sum, h) => sum + (h.current_value || 0), 0);
-        const topHoldings = actualHoldings
-          .sort((a, b) => (b.current_value || 0) - (a.current_value || 0))
+        const totalValue = actualHoldings.reduce((sum, h) => sum + (parseNumericValue(h.current_value) ?? 0), 0);
+        const totalValueForDisplay = Number.isFinite(totalValue) ? Math.round(totalValue) : 0;
+        const safeTotalForFallback = totalValue > 0 && Number.isFinite(totalValue) ? totalValue : 0;
+        const topHoldings = [...actualHoldings]
+          .sort((a, b) => (parseNumericValue(b.current_value) ?? 0) - (parseNumericValue(a.current_value) ?? 0))
           .slice(0, 5);
-        
+
+        const formattedTopHoldings = topHoldings
+          .map(holding => {
+            const explicitAllocation = parseNumericValue(holding.allocation);
+            const allocationValue = explicitAllocation !== undefined
+              ? explicitAllocation
+              : (() => {
+                  if (safeTotalForFallback <= 0) return undefined;
+                  const currentValue = parseNumericValue(holding.current_value) ?? 0;
+                  if (currentValue <= 0) return undefined;
+                  const calculated = (currentValue / safeTotalForFallback) * 100;
+                  return Number.isFinite(calculated) ? calculated : undefined;
+                })();
+
+            const formattedAllocation = formatPercentage(allocationValue);
+            if (!formattedAllocation) return null;
+
+            const label = holding.symbol || holding.name;
+            if (!label) return null;
+
+            return `${label} (${formattedAllocation})`;
+          })
+          .filter((entry): entry is string => Boolean(entry));
+
         contextInfo += `\n\nNUVARANDE PORTFÖLJ:
-- Totalt värde: ${totalValue.toLocaleString()} SEK
+- Totalt värde: ${totalValueForDisplay.toLocaleString()} SEK
 - Antal innehav: ${actualHoldings.length}
-- Största positioner: ${topHoldings.map(h => `${h.symbol || h.name} (${((h.current_value || 0) / totalValue * 100).toFixed(1)}%)`).join(', ')}`;
-        
+- Största positioner: ${formattedTopHoldings.length > 0 ? formattedTopHoldings.join(', ') : 'Data ej tillgänglig'}`;
+
         if (portfolio) {
-          contextInfo += `\n- Portföljens riskpoäng: ${portfolio.risk_score || 'Ej beräknad'}
-- Förväntad årlig avkastning: ${portfolio.expected_return || 'Ej beräknad'}%`;
+          const riskScoreValue = parseNumericValue(portfolio.risk_score);
+          const expectedReturnValue = parseNumericValue(portfolio.expected_return);
+          const formattedRiskScore = formatRoundedNumber(riskScoreValue);
+          const formattedExpectedReturn = formatPercentage(expectedReturnValue);
+
+          contextInfo += `\n- Portföljens riskpoäng: ${formattedRiskScore ?? 'Ej beräknad'}
+- Förväntad årlig avkastning: ${formattedExpectedReturn ?? 'Ej beräknad'}`;
         }
+      }
+
+      const recommendedHoldings = holdings.filter(h => h.holding_type === 'recommendation');
+      const formattedRecommendations = recommendedHoldings
+        .map(holding => {
+          const allocationValue = parseNumericValue(holding.allocation);
+          const formattedAllocation = formatPercentage(allocationValue);
+          if (!formattedAllocation) return null;
+
+          const label = holding.symbol || holding.name;
+          if (!label) return null;
+
+          return `- ${label}: ${formattedAllocation}`;
+        })
+        .filter((entry): entry is string => Boolean(entry));
+
+      if (formattedRecommendations.length > 0) {
+        contextInfo += `\n\nREKOMMENDERADE INNEHAV (ALLOKERINGAR):\n${formattedRecommendations.join('\n')}`;
       }
     }
 
