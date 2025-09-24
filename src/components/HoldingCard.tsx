@@ -15,6 +15,7 @@ import {
 import SmartHoldingSuggestions from './SmartHoldingSuggestions';
 import { cn } from '@/lib/utils';
 import { formatCurrency, resolveHoldingValue } from '@/utils/currencyUtils';
+import type { HoldingPerformance } from '@/hooks/usePortfolioPerformance';
 
 interface HoldingCardProps {
   holding: {
@@ -31,6 +32,7 @@ interface HoldingCardProps {
     price_currency?: string;
   };
   portfolioPercentage: number;
+  performance?: HoldingPerformance;
   onDiscuss: (name: string, symbol?: string) => void;
   onEdit?: (id: string) => void;
   onDelete: (id: string, name: string) => void;
@@ -43,6 +45,7 @@ interface HoldingCardProps {
 const HoldingCard: React.FC<HoldingCardProps> = ({
   holding,
   portfolioPercentage,
+  performance,
   onDiscuss,
   onEdit,
   onDelete,
@@ -69,6 +72,14 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   } = resolveHoldingValue(holding);
 
   const quantity = normalizedQuantity;
+  const holdingPerformance = performance;
+  const hasPerformanceData = Boolean(holdingPerformance);
+  const investedValue = holdingPerformance?.investedValue ?? displayValue;
+  const profit = holdingPerformance?.profit ?? 0;
+  const profitPercentage = holdingPerformance?.profitPercentage ?? 0;
+  const hasPurchasePrice = holdingPerformance?.hasPurchasePrice ?? (typeof holding.purchase_price === 'number' && holding.purchase_price > 0 && quantity > 0);
+  const profitColor = profit > 0 ? 'text-green-600' : profit < 0 ? 'text-red-600' : 'text-foreground';
+  const profitPercentageColor = profit > 0 ? 'text-green-600' : profit < 0 ? 'text-red-600' : 'text-muted-foreground';
   const trimmedSymbol = holding.symbol?.trim();
   const normalizedSymbol = trimmedSymbol ? trimmedSymbol.toUpperCase() : undefined;
   const isRefreshing = Boolean(
@@ -165,6 +176,54 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                 <div className="font-semibold text-foreground">
                   {quantity}
                 </div>
+              </div>
+            )}
+
+            {!isCash && (
+              <div>
+                <span className="text-muted-foreground">Investerat:</span>
+                <div className="font-semibold text-foreground">
+                  {formatCurrency(investedValue, 'SEK')}
+                </div>
+                {hasPerformanceData ? (
+                  !hasPurchasePrice ? (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Köpkurs saknas – använder aktuellt värde.
+                    </div>
+                  ) : null
+                ) : (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Beräknar avkastning...
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!isCash && (
+              <div>
+                <span className="text-muted-foreground">Avkastning:</span>
+                {hasPerformanceData ? (
+                  <>
+                    <div className={cn('font-semibold', hasPurchasePrice ? profitColor : 'text-foreground')}>
+                      {hasPurchasePrice
+                        ? `${profit > 0 ? '+' : ''}${formatCurrency(profit, 'SEK')}`
+                        : formatCurrency(0, 'SEK')}
+                    </div>
+                    {hasPurchasePrice ? (
+                      <div className={cn('text-xs', profitPercentageColor)}>
+                        {`${profit > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground">
+                        Köpkurs saknas
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Beräknar avkastning...
+                  </div>
+                )}
               </div>
             )}
 

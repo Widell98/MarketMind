@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { MessageSquare, Edit2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import HoldingCard from './HoldingCard';
+import type { HoldingPerformance } from '@/hooks/usePortfolioPerformance';
 
 interface SwipeableHoldingCardProps {
   holding: any;
   portfolioPercentage: number;
+  holdingPerformance?: HoldingPerformance;
   onDiscuss: (name: string, symbol?: string) => void;
   onEdit?: (id: string) => void;
   onDelete: (id: string, name: string) => void;
@@ -21,6 +23,7 @@ interface SwipeableHoldingCardProps {
 const SwipeableHoldingCard: React.FC<SwipeableHoldingCardProps> = ({
   holding,
   portfolioPercentage,
+  holdingPerformance,
   onDiscuss,
   onEdit,
   onDelete,
@@ -189,6 +192,7 @@ const SwipeableHoldingCard: React.FC<SwipeableHoldingCardProps> = ({
         <HoldingCard
           holding={holding}
           portfolioPercentage={portfolioPercentage}
+          performance={holdingPerformance}
           onDiscuss={onDiscuss}
           onEdit={onEdit}
           onDelete={onDelete}

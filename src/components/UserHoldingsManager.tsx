@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,7 @@ import EditHoldingDialog from '@/components/EditHoldingDialog';
 import SectorAllocationChart from '@/components/SectorAllocationChart';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
+import type { HoldingPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveHoldingValue } from '@/utils/currencyUtils';
@@ -67,7 +68,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
     updateHolding,
     refetch: refetchHoldings
   } = useUserHoldings();
-  const { performance, updatePrices, updating } = usePortfolioPerformance();
+  const { performance, updatePrices, updating, holdingsPerformance } = usePortfolioPerformance();
   const { 
     cashHoldings, 
     totalCash, 
@@ -96,6 +97,14 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [isChartOpen, setIsChartOpen] = useState(false);
   const [refreshingTicker, setRefreshingTicker] = useState<string | null>(null);
+
+  const holdingPerformanceMap = useMemo<Record<string, HoldingPerformance>>(() => {
+    const map: Record<string, HoldingPerformance> = {};
+    holdingsPerformance.forEach(performanceEntry => {
+      map[performanceEntry.id] = performanceEntry;
+    });
+    return map;
+  }, [holdingsPerformance]);
   
   const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
     console.log(`Deleting holding: ${holdingName} (${holdingId})`);
@@ -425,6 +434,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                       holdings={group.holdings}
                       totalValue={group.totalValue}
                       groupPercentage={group.percentage}
+                      holdingPerformanceMap={holdingPerformanceMap}
                       onDiscuss={handleDiscussHolding}
                       onEdit={group.key === 'cash' ? (id: string) => {
                         const cash = group.holdings.find(h => h.id === id);
@@ -445,6 +455,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                   onRefreshPrice={handleUpdateHoldingPrice}
                   isUpdatingPrice={updating}
                   refreshingTicker={refreshingTicker}
+                  holdingPerformanceMap={holdingPerformanceMap}
                 />
               )}
 
