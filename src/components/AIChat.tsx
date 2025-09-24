@@ -218,7 +218,7 @@ const AIChat = ({
     onEditSessionName: editSessionName,
     onLoadGuideSession: handleLoadGuideSession,
     onCreateNewSession: handleNewSession,
-    className: isMobile ? "w-full min-h-full" : "",
+    className: isMobile ? "w-full min-h-full" : "w-[300px] xl:w-[320px]",
   }), [
     isGuideSession,
     currentSessionId,
@@ -235,9 +235,7 @@ const AIChat = ({
       {user ? (
         <>
           {!isMobile && !desktopSidebarCollapsed && (
-            <div className="w-[260px] flex-shrink-0 border-r border-ai-border/60 bg-ai-surface-muted/60">
-              <ChatFolderSidebar {...sidebarProps} />
-            </div>
+            <ChatFolderSidebar {...sidebarProps} />
           )}
 
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
