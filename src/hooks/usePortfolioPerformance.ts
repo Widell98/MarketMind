@@ -114,6 +114,7 @@ export interface HoldingPerformance {
   profitPercentage: number;
   dayChange: number;
   dayChangePercentage: number;
+  hasPurchasePrice: boolean;
 }
 
 interface PriceUpdateSummary {
@@ -265,15 +266,13 @@ export const usePortfolioPerformance = () => {
           priceCurrency,
         } = resolveHoldingValue(holding);
 
-        const purchasePrice = parseNumeric(holding.purchase_price) ?? 0;
+        const parsedPurchasePrice = parseNumeric(holding.purchase_price);
+        const hasPurchasePrice = parsedPurchasePrice !== null && parsedPurchasePrice > 0 && quantity > 0;
+        const purchasePrice = hasPurchasePrice ? parsedPurchasePrice : 0;
 
-        const investedValueOriginal = purchasePrice > 0 && quantity > 0
-          ? purchasePrice * quantity
-          : 0;
-
-        const investedValue = investedValueOriginal > 0
-          ? convertToSEK(investedValueOriginal, holding.currency || priceCurrency || 'SEK')
-          : 0;
+        const investedValue = hasPurchasePrice
+          ? convertToSEK(purchasePrice * quantity, holding.currency || priceCurrency || 'SEK')
+          : currentValue;
 
         // Find yesterday's value for this holding
         const yesterdayHolding = yesterdayData?.find(d => d.holding_id === holding.id);
@@ -283,8 +282,8 @@ export const usePortfolioPerformance = () => {
         const yesterdayCurrency = yesterdayHolding?.currency || holding.currency || priceCurrency || 'SEK';
         const yesterdayValue = convertToSEK(yesterdayRawValue, yesterdayCurrency);
 
-        const profit = currentValue - investedValue;
-        const profitPercentage = investedValue > 0 ? (profit / investedValue) * 100 : 0;
+        const profit = hasPurchasePrice ? currentValue - investedValue : 0;
+        const profitPercentage = hasPurchasePrice && investedValue > 0 ? (profit / investedValue) * 100 : 0;
         const dayChange = currentValue - yesterdayValue;
         const dayChangePercentage = yesterdayValue > 0 ? (dayChange / yesterdayValue) * 100 : 0;
 
@@ -297,7 +296,8 @@ export const usePortfolioPerformance = () => {
           profit,
           profitPercentage,
           dayChange,
-          dayChangePercentage
+          dayChangePercentage,
+          hasPurchasePrice,
         });
 
         totalValue += currentValue;

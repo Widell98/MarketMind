@@ -11,6 +11,7 @@ import { badgeVariants } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { RefreshCw } from 'lucide-react';
 import { formatCurrency, resolveHoldingValue, convertToSEK } from '@/utils/currencyUtils';
+import type { HoldingPerformance } from '@/hooks/usePortfolioPerformance';
 
 interface Holding {
   id: string;
@@ -31,13 +32,15 @@ interface HoldingsTableProps {
   onRefreshPrice?: (symbol: string) => void;
   isUpdatingPrice?: boolean;
   refreshingTicker?: string | null;
+  holdingPerformanceMap?: Record<string, HoldingPerformance>;
 }
 
 const HoldingsTable: React.FC<HoldingsTableProps> = ({
   holdings,
   onRefreshPrice,
   isUpdatingPrice,
-  refreshingTicker
+  refreshingTicker,
+  holdingPerformanceMap
 }) => {
   return (
     <Table>
@@ -59,14 +62,28 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
             priceCurrency,
           } = resolveHoldingValue(holding);
 
-          const purchaseValueOriginal = typeof holding.purchase_price === 'number' && quantity > 0
+          const hasPurchasePriceFallback = typeof holding.purchase_price === 'number' && holding.purchase_price > 0 && quantity > 0;
+          const purchaseValueOriginal = hasPurchasePriceFallback
             ? holding.purchase_price * quantity
             : undefined;
           const purchaseValueSEK = purchaseValueOriginal !== undefined
             ? convertToSEK(purchaseValueOriginal, holding.base_currency || priceCurrency || holding.currency || 'SEK')
             : undefined;
 
-          const profitLoss = purchaseValueSEK !== undefined ? valueInSEK - purchaseValueSEK : undefined;
+          const performance = holdingPerformanceMap?.[holding.id];
+          const hasPerformanceData = Boolean(performance);
+          const hasPurchasePrice = performance?.hasPurchasePrice ?? hasPurchasePriceFallback;
+          const profitLoss = performance?.profit ?? (purchaseValueSEK !== undefined ? valueInSEK - purchaseValueSEK : undefined);
+          const profitPercentage = performance?.profitPercentage ?? (
+            purchaseValueSEK !== undefined && purchaseValueSEK > 0
+              ? ((valueInSEK - purchaseValueSEK) / purchaseValueSEK) * 100
+              : undefined
+          );
+          const profitClass = profitLoss !== undefined && profitLoss !== 0
+            ? profitLoss > 0
+              ? 'text-green-600'
+              : 'text-red-600'
+            : 'text-foreground';
 
           const trimmedSymbol = holding.symbol?.trim();
           const normalizedSymbol = trimmedSymbol ? trimmedSymbol.toUpperCase() : undefined;
@@ -104,8 +121,38 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
               <TableCell className="capitalize">{holding.holding_type}</TableCell>
               <TableCell>{formatCurrency(valueInSEK, 'SEK')}</TableCell>
               <TableCell>{quantity > 0 ? quantity : '-'}</TableCell>
-              <TableCell className={profitLoss === undefined ? '' : profitLoss >= 0 ? 'text-green-600' : 'text-red-600'}>
-                {profitLoss !== undefined ? formatCurrency(profitLoss, 'SEK') : '-'}
+              <TableCell>
+                {hasPerformanceData ? (
+                  <div className="flex flex-col">
+                    <span className={cn('font-medium', hasPurchasePrice ? profitClass : 'text-foreground')}>
+                      {hasPurchasePrice
+                        ? `${profitLoss !== undefined && profitLoss > 0 ? '+' : ''}${formatCurrency(profitLoss ?? 0, 'SEK')}`
+                        : formatCurrency(0, 'SEK')}
+                    </span>
+                    {hasPurchasePrice ? (
+                      <span className={cn('text-xs', profitLoss !== undefined && profitLoss !== 0 ? profitClass : 'text-muted-foreground')}>
+                        {profitPercentage !== undefined
+                          ? `${profitLoss !== undefined && profitLoss > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`
+                          : '—'}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Köpkurs saknas</span>
+                    )}
+                  </div>
+                ) : profitLoss !== undefined ? (
+                  <div className="flex flex-col">
+                    <span className={cn('font-medium', profitClass)}>
+                      {`${profitLoss > 0 ? '+' : ''}${formatCurrency(profitLoss, 'SEK')}`}
+                    </span>
+                    {profitPercentage !== undefined && (
+                      <span className={cn('text-xs', profitClass)}>
+                        {`${profitLoss > 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  '-'
+                )}
               </TableCell>
             </TableRow>
           );
