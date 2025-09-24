@@ -182,7 +182,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
       <li key={session.id} className={cn(depth > 0 && 'pl-3')}>
         <div
           className={cn(
-            'group/session flex items-center gap-2 rounded-ai-md border border-transparent px-2.5 py-2.5 transition-colors focus-within:border-ai-border/60 focus-within:bg-ai-surface/80 focus-within:text-foreground',
+            'group/session relative flex items-center gap-2 rounded-ai-md border border-transparent px-2.5 py-2.5 transition-colors focus-within:border-ai-border/60 focus-within:bg-ai-surface/80 focus-within:text-foreground',
             isActive
               ? 'border-ai-border/60 bg-ai-surface text-foreground shadow-sm'
               : 'text-ai-text-muted hover:border-ai-border/50 hover:bg-ai-surface/70 hover:text-foreground',
@@ -191,7 +191,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
           <button
             type="button"
             onClick={() => onLoadSession(session.id)}
-            className="flex min-w-0 flex-1 items-center gap-3 pr-1 text-left text-[15px] leading-6"
+            className="flex min-w-0 flex-1 items-center gap-3 pr-10 text-left text-[15px] leading-6"
           >
             <div
               className={cn(
@@ -212,7 +212,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                 variant="ghost"
                 size="icon"
                 aria-label="Konversationsalternativ"
-                className="h-7 w-7 shrink-0 rounded-full text-ai-text-muted transition-opacity hover:bg-ai-surface md:opacity-0 md:group-hover/session:opacity-100 md:group-focus-within/session:opacity-100"
+                className="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2 rounded-full text-ai-text-muted transition-opacity hover:bg-ai-surface md:opacity-0 md:group-hover/session:opacity-100 md:group-focus-within/session:opacity-100"
               >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -378,7 +378,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
               <section key={folder.id} className="space-y-2">
                 <div
                   className={cn(
-                    'group/folder flex items-center gap-2 rounded-ai-md border border-transparent px-2.5 py-2.5 transition-colors focus-within:border-ai-border/60 focus-within:bg-ai-surface/80 focus-within:text-foreground',
+                    'group/folder relative flex items-center gap-2 rounded-ai-md border border-transparent px-2.5 py-2.5 transition-colors focus-within:border-ai-border/60 focus-within:bg-ai-surface/80 focus-within:text-foreground',
                     hasActiveSession
                       ? 'border-ai-border/60 bg-ai-surface text-foreground shadow-sm'
                       : 'text-ai-text-muted hover:border-ai-border/50 hover:bg-ai-surface/70 hover:text-foreground',
@@ -387,7 +387,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                   <button
                     type="button"
                     onClick={() => toggleFolder(folder.id)}
-                    className="flex min-w-0 flex-1 items-center gap-3 pr-1 text-left text-[15px] leading-6"
+                    className="flex min-w-0 flex-1 items-center gap-3 pr-10 text-left text-[15px] leading-6"
                   >
                     <span className="flex min-w-0 items-center gap-3 font-medium">
                       {isExpanded ? (
@@ -414,7 +414,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                         variant="ghost"
                         size="icon"
                         aria-label="Mappalternativ"
-                        className="h-7 w-7 shrink-0 rounded-full text-ai-text-muted transition-opacity hover:bg-ai-surface md:opacity-0 md:group-hover/folder:opacity-100 md:group-focus-within/folder:opacity-100"
+                        className="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2 rounded-full text-ai-text-muted transition-opacity hover:bg-ai-surface md:opacity-0 md:group-hover/folder:opacity-100 md:group-focus-within/folder:opacity-100"
                       >
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
