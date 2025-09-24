@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,9 +30,12 @@ import EditHoldingDialog from '@/components/EditHoldingDialog';
 import SectorAllocationChart from '@/components/SectorAllocationChart';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
+import type { HoldingPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveHoldingValue } from '@/utils/currencyUtils';
+import { usePersistentDialogOpenState } from '@/hooks/usePersistentDialogOpenState';
+import { ADD_HOLDING_DIALOG_STORAGE_KEY } from '@/constants/storageKeys';
 
 interface TransformedHolding {
   id: string;
@@ -65,7 +68,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
     updateHolding,
     refetch: refetchHoldings
   } = useUserHoldings();
-  const { performance, updatePrices, updating } = usePortfolioPerformance();
+  const { performance, updatePrices, updating, holdingsPerformance } = usePortfolioPerformance();
   const { 
     cashHoldings, 
     totalCash, 
@@ -84,12 +87,24 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
     amount: ''
   });
   const [searchTerm, setSearchTerm] = useState('');
-  const [showAddHoldingDialog, setShowAddHoldingDialog] = useState(false);
+  const {
+    isOpen: isAddHoldingDialogOpen,
+    open: openAddHoldingDialog,
+    close: closeAddHoldingDialog,
+  } = usePersistentDialogOpenState(ADD_HOLDING_DIALOG_STORAGE_KEY, 'user-holdings');
   const [showEditHoldingDialog, setShowEditHoldingDialog] = useState(false);
   const [editingHolding, setEditingHolding] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [isChartOpen, setIsChartOpen] = useState(false);
   const [refreshingTicker, setRefreshingTicker] = useState<string | null>(null);
+
+  const holdingPerformanceMap = useMemo<Record<string, HoldingPerformance>>(() => {
+    const map: Record<string, HoldingPerformance> = {};
+    holdingsPerformance.forEach(performanceEntry => {
+      map[performanceEntry.id] = performanceEntry;
+    });
+    return map;
+  }, [holdingsPerformance]);
   
   const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
     console.log(`Deleting holding: ${holdingName} (${holdingId})`);
@@ -178,7 +193,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
   const handleAddHolding = async (holdingData: any) => {
     const success = await addHolding(holdingData);
     if (success) {
-      setShowAddHoldingDialog(false);
+      closeAddHoldingDialog();
       const normalizedSymbol = typeof holdingData.symbol === 'string'
         ? holdingData.symbol.trim().toUpperCase()
         : undefined;
@@ -352,7 +367,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                 Lägg till dina nuvarande aktier, fonder och kassapositioner för att få en komplett bild av din portfölj och bättre AI-rekommendationer.
               </p>
               <div className="flex gap-2 justify-center">
-                <Button className="flex items-center gap-2" onClick={() => setShowAddHoldingDialog(true)}>
+                <Button className="flex items-center gap-2" onClick={openAddHoldingDialog}>
                   <Plus className="w-4 h-4" />
                   Lägg till innehav
                 </Button>
@@ -367,7 +382,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
               {/* Action Bar */}
               <div className="flex flex-col sm:flex-row gap-4 pb-4 border-b border-border">
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" className="flex items-center gap-2" onClick={() => setShowAddHoldingDialog(true)}>
+                  <Button size="sm" className="flex items-center gap-2" onClick={openAddHoldingDialog}>
                     <Plus className="w-4 h-4" />
                     Lägg till innehav
                   </Button>
@@ -419,6 +434,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                       holdings={group.holdings}
                       totalValue={group.totalValue}
                       groupPercentage={group.percentage}
+                      holdingPerformanceMap={holdingPerformanceMap}
                       onDiscuss={handleDiscussHolding}
                       onEdit={group.key === 'cash' ? (id: string) => {
                         const cash = group.holdings.find(h => h.id === id);
@@ -439,6 +455,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                   onRefreshPrice={handleUpdateHoldingPrice}
                   isUpdatingPrice={updating}
                   refreshingTicker={refreshingTicker}
+                  holdingPerformanceMap={holdingPerformanceMap}
                 />
               )}
 
@@ -537,8 +554,8 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
 
       {/* Add Holding Dialog */}
       <AddHoldingDialog
-        isOpen={showAddHoldingDialog}
-        onClose={() => setShowAddHoldingDialog(false)}
+        isOpen={isAddHoldingDialogOpen}
+        onClose={closeAddHoldingDialog}
         onAdd={handleAddHolding}
       />
 

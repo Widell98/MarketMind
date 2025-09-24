@@ -7,6 +7,135 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const EXCHANGE_RATES: Record<string, number> = {
+  SEK: 1.0,
+  USD: 10.5,
+  EUR: 11.4,
+  GBP: 13.2,
+  NOK: 0.95,
+  DKK: 1.53,
+  JPY: 0.07,
+  CHF: 11.8,
+  CAD: 7.8,
+  AUD: 7.0,
+};
+
+const convertToSEK = (amount: number, fromCurrency?: string | null): number => {
+  if (!amount || amount === 0) return 0;
+
+  const currency = typeof fromCurrency === 'string' && fromCurrency.trim().length > 0
+    ? fromCurrency.trim().toUpperCase()
+    : 'SEK';
+
+  const rate = EXCHANGE_RATES[currency];
+
+  if (!rate) {
+    console.warn(`Exchange rate not found for currency: ${currency}, defaulting to SEK`);
+    return amount;
+  }
+
+  return amount * rate;
+};
+
+const parseNumericValue = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.replace(/\s/g, '').replace(',', '.');
+    const parsed = parseFloat(normalized);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+};
+
+const normalizeIdentifier = (value?: string | null): string | null => {
+  if (!value) return null;
+
+  const normalized = value
+    .toString()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .toUpperCase();
+
+  return normalized.length > 0 ? normalized : null;
+};
+
+type HoldingRecord = {
+  symbol?: string | null;
+  name?: string | null;
+  holding_type?: string | null;
+  quantity?: number | string | null;
+  current_price_per_unit?: number | string | null;
+  price_currency?: string | null;
+  currency?: string | null;
+  current_value?: number | string | null;
+};
+
+type HoldingValueBreakdown = {
+  quantity: number;
+  pricePerUnit: number | null;
+  priceCurrency: string;
+  valueInOriginalCurrency: number;
+  valueCurrency: string;
+  valueInSEK: number;
+  pricePerUnitInSEK: number | null;
+  hasDirectPrice: boolean;
+};
+
+const resolveHoldingValue = (holding: HoldingRecord): HoldingValueBreakdown => {
+  const quantity = parseNumericValue(holding?.quantity) ?? 0;
+
+  const pricePerUnit = parseNumericValue(holding?.current_price_per_unit);
+  const baseCurrencyRaw =
+    typeof holding?.price_currency === 'string' && holding.price_currency.trim().length > 0
+      ? holding.price_currency.trim().toUpperCase()
+      : typeof holding?.currency === 'string' && holding.currency.trim().length > 0
+        ? holding.currency.trim().toUpperCase()
+        : 'SEK';
+
+  const fallbackValue = parseNumericValue(holding?.current_value) ?? 0;
+  const fallbackCurrency = baseCurrencyRaw;
+
+  const hasDirectPrice = pricePerUnit !== null && quantity > 0;
+  const rawValue = hasDirectPrice ? pricePerUnit * quantity : fallbackValue;
+  const valueCurrency = hasDirectPrice ? baseCurrencyRaw : fallbackCurrency;
+  const valueInSEK = convertToSEK(rawValue, valueCurrency);
+
+  const pricePerUnitInSEK = pricePerUnit !== null
+    ? convertToSEK(pricePerUnit, baseCurrencyRaw)
+    : quantity > 0
+      ? valueInSEK / quantity
+      : null;
+
+  return {
+    quantity,
+    pricePerUnit,
+    priceCurrency: baseCurrencyRaw,
+    valueInOriginalCurrency: rawValue,
+    valueCurrency,
+    valueInSEK,
+    pricePerUnitInSEK,
+    hasDirectPrice,
+  };
+};
+
+const formatAllocationLabel = (label: string): string => {
+  const normalized = label.replace(/_/g, ' ').trim();
+  if (!normalized) return label;
+
+  return normalized
+    .split(' ')
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -551,19 +680,135 @@ contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
 
     // Add current portfolio context with latest valuations
     if (holdings && holdings.length > 0) {
-      const actualHoldings = holdings.filter(h => h.holding_type !== 'recommendation');
+      const actualHoldings: HoldingRecord[] = (holdings as HoldingRecord[]).filter((h) => h.holding_type !== 'recommendation');
       if (actualHoldings.length > 0) {
-        const totalValue = actualHoldings.reduce((sum, h) => sum + (h.current_value || 0), 0);
-        const topHoldings = actualHoldings
-          .sort((a, b) => (b.current_value || 0) - (a.current_value || 0))
+        const holdingsWithValues = actualHoldings.map((holding) => ({
+          holding,
+          value: resolveHoldingValue(holding),
+        }));
+
+        const totalValue = holdingsWithValues.reduce((sum, item) => sum + item.value.valueInSEK, 0);
+
+        const actualHoldingsLookup = new Map<string, { label: string; percentage: number; valueInSEK: number }>();
+
+        holdingsWithValues.forEach(({ holding, value }) => {
+          const label = holding.symbol || holding.name || 'Okänt innehav';
+          const percentage = totalValue > 0 ? (value.valueInSEK / totalValue) * 100 : 0;
+          const entry = { label, percentage, valueInSEK: value.valueInSEK };
+
+          const symbolKey = normalizeIdentifier(typeof holding.symbol === 'string' ? holding.symbol : null);
+          const nameKey = normalizeIdentifier(typeof holding.name === 'string' ? holding.name : null);
+
+          if (symbolKey && !actualHoldingsLookup.has(symbolKey)) {
+            actualHoldingsLookup.set(symbolKey, entry);
+          }
+
+          if (nameKey && !actualHoldingsLookup.has(nameKey)) {
+            actualHoldingsLookup.set(nameKey, entry);
+          }
+        });
+
+        const topHoldings = [...holdingsWithValues]
+          .sort((a, b) => b.value.valueInSEK - a.value.valueInSEK)
           .slice(0, 5);
-        
+
+        const topHoldingsDetails = topHoldings.map(({ holding, value }) => {
+          const label = holding.symbol || holding.name || 'Okänt innehav';
+          const percentage = totalValue > 0 ? (value.valueInSEK / totalValue) * 100 : 0;
+
+          const identifiers = new Set<string>();
+          const symbolKey = normalizeIdentifier(typeof holding.symbol === 'string' ? holding.symbol : null);
+          const nameKey = normalizeIdentifier(typeof holding.name === 'string' ? holding.name : null);
+
+          if (symbolKey) identifiers.add(symbolKey);
+          if (nameKey) identifiers.add(nameKey);
+
+          return {
+            label,
+            percentage,
+            formattedPercentage: percentage.toFixed(1),
+            identifiers: Array.from(identifiers),
+          };
+        });
+
+        let holdingsSummary = topHoldingsDetails
+          .map(({ label, formattedPercentage }) => `${label} (${formattedPercentage}%)`)
+          .join(', ');
+
+        const totalValueFormatted = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0 }).format(Math.round(totalValue));
+
+        let recommendedAllocationEntries: Array<{
+          asset: string;
+          percentage: number;
+          displayValue: string;
+          normalizedKey: string | null;
+          actualPercentage: number | null;
+        }> = [];
+
+        if (portfolio && portfolio.asset_allocation && typeof portfolio.asset_allocation === 'object') {
+          recommendedAllocationEntries = Object.entries(portfolio.asset_allocation)
+            .map(([asset, rawValue]) => {
+              const parsedValue = parseNumericValue(rawValue);
+              if (parsedValue === null) return null;
+
+              const normalizedKey = normalizeIdentifier(asset);
+              const actualMatch = normalizedKey ? actualHoldingsLookup.get(normalizedKey) : undefined;
+
+              return {
+                asset,
+                percentage: parsedValue,
+                displayValue: typeof rawValue === 'number' ? rawValue.toString() : String(rawValue),
+                normalizedKey,
+                actualPercentage: actualMatch ? actualMatch.percentage : null,
+              };
+            })
+            .filter((entry): entry is {
+              asset: string;
+              percentage: number;
+              displayValue: string;
+              normalizedKey: string | null;
+              actualPercentage: number | null;
+            } => entry !== null);
+
+          if (recommendedAllocationEntries.length > 0) {
+            holdingsSummary = topHoldingsDetails
+              .map(({ label, formattedPercentage, identifiers }) => {
+                const matchingAllocation = identifiers
+                  .map(identifier => recommendedAllocationEntries.find(entry => entry.normalizedKey === identifier))
+                  .find((match): match is {
+                    asset: string;
+                    percentage: number;
+                    displayValue: string;
+                    normalizedKey: string | null;
+                    actualPercentage: number | null;
+                  } => Boolean(match));
+
+                if (matchingAllocation) {
+                  return `${label} (nu ${formattedPercentage}%, mål ${matchingAllocation.displayValue}%)`;
+                }
+
+                return `${label} (${formattedPercentage}%)`;
+              })
+              .join(', ');
+          }
+        }
+
         contextInfo += `\n\nNUVARANDE PORTFÖLJ:
-- Totalt värde: ${totalValue.toLocaleString()} SEK
+- Totalt värde: ${totalValueFormatted} SEK
 - Antal innehav: ${actualHoldings.length}
-- Största positioner: ${topHoldings.map(h => `${h.symbol || h.name} (${((h.current_value || 0) / totalValue * 100).toFixed(1)}%)`).join(', ')}`;
-        
+- Största positioner: ${holdingsSummary || 'Inga registrerade innehav'}`;
+
         if (portfolio) {
+          if (recommendedAllocationEntries.length > 0) {
+            contextInfo += `\n- Rekommenderad allokering (använd dessa målviktstal när du diskuterar portföljens struktur):`;
+            recommendedAllocationEntries.forEach(({ asset, displayValue, actualPercentage }) => {
+              const actualText = actualPercentage !== null
+                ? ` (nu ${actualPercentage.toFixed(1)}%)`
+                : '';
+              contextInfo += `\n  • ${formatAllocationLabel(asset)}: ${displayValue}%${actualText}`;
+            });
+          }
+
           contextInfo += `\n- Portföljens riskpoäng: ${portfolio.risk_score || 'Ej beräknad'}
 - Förväntad årlig avkastning: ${portfolio.expected_return || 'Ej beräknad'}%`;
         }

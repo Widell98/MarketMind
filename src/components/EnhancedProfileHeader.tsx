@@ -1,13 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Users, Heart, Eye, PenLine, Settings, Camera, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Users, Heart, Eye, PenLine, Settings, Camera } from 'lucide-react';
 import { useUserFollows } from '@/hooks/useUserFollows';
-import { useRiskProfile } from '@/hooks/useRiskProfile';
-import { useToast } from '@/hooks/use-toast';
 
 interface EnhancedProfileHeaderProps {
   profileData: any;
@@ -40,10 +37,6 @@ const EnhancedProfileHeader: React.FC<EnhancedProfileHeaderProps> = ({
     unfollowUser,
     isFollowing
   } = useUserFollows();
-  
-  const { clearRiskProfile, loading: riskProfileLoading } = useRiskProfile();
-  const { toast } = useToast();
-  const [showResetDialog, setShowResetDialog] = useState(false);
 
   const getInitials = (name: string): string => {
     if (!name) return '??';
@@ -60,21 +53,6 @@ const EnhancedProfileHeader: React.FC<EnhancedProfileHeaderProps> = ({
     } else {
       followUser(profileData.id);
     }
-  };
-
-  const handleResetRiskProfileClick = () => {
-    setShowResetDialog(true);
-  };
-
-  const handleConfirmResetRiskProfile = async () => {
-    const success = await clearRiskProfile();
-    if (success) {
-      toast({
-        title: "Riskprofil raderad",
-        description: "Du kan nu skapa en ny riskprofil genom att gå till portföljrådgivaren.",
-      });
-    }
-    setShowResetDialog(false);
   };
 
   return (
@@ -117,16 +95,6 @@ const EnhancedProfileHeader: React.FC<EnhancedProfileHeaderProps> = ({
                       <Button variant="outline" size="sm" onClick={onEditClick} className="flex items-center gap-2">
                         <PenLine className="h-4 w-4" />
                         Redigera profil
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleResetRiskProfileClick}
-                        disabled={riskProfileLoading}
-                        className="flex items-center gap-2 hover:bg-red-50 hover:text-red-600 hover:border-red-300"
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                        Ny riskprofil
                       </Button>
                       <Button variant="outline" size="sm">
                         <Settings className="h-4 w-4" />
@@ -174,39 +142,6 @@ const EnhancedProfileHeader: React.FC<EnhancedProfileHeaderProps> = ({
           </CardContent>
         </Card>
       </div>
-      
-      <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-        <AlertDialogContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl">
-          <AlertDialogHeader>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
-              </div>
-              <AlertDialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                Rensa riskprofil
-              </AlertDialogTitle>
-            </div>
-            <AlertDialogDescription className="text-gray-600 dark:text-gray-400 text-base leading-relaxed">
-              Du håller på att rensa din nuvarande riskprofil. All data om dina investeringspreferenser, 
-              risktolerans och portföljmål kommer att raderas permanent.
-              <br /><br />
-              <strong>Vill du verkligen fortsätta?</strong>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-3">
-            <AlertDialogCancel className="rounded-xl px-6 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 border-0">
-              Avbryt
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleConfirmResetRiskProfile}
-              disabled={riskProfileLoading}
-              className="rounded-xl px-6 py-2 bg-red-600 hover:bg-red-700 text-white border-0"
-            >
-              {riskProfileLoading ? 'Raderar...' : 'Ja, rensa profil'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 };

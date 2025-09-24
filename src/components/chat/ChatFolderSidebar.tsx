@@ -1,22 +1,43 @@
 import React, { useState, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Folder, ChevronDown, ChevronRight, MoreHorizontal, Edit, Trash, Move, MessageSquare } from 'lucide-react';
-import { useChatFolders } from '@/hooks/useChatFolders';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Search,
+  Folder,
+  ChevronDown,
+  ChevronRight,
+  MoreHorizontal,
+  Edit,
+  Trash,
+  Move,
+  MessageSquare,
+  Sparkles,
+  Plus,
+} from 'lucide-react';
+import { useChatFolders, ChatFolder, ChatSession } from '@/hooks/useChatFolders';
 import { useGuideSession } from '@/hooks/useGuideSession';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import CreateFolderDialog from './CreateFolderDialog';
 import EditSessionNameDialog from './EditSessionNameDialog';
+import { cn } from '@/lib/utils';
 
 interface ChatFolderSidebarProps {
   currentSessionId: string | null;
   onLoadSession: (sessionId: string) => void;
-  onDeleteSession: (sessionId: string) => void;
+  onDeleteSession: (sessionId: string) => Promise<void> | void;
   onEditSessionName: (sessionId: string, name: string) => void;
-  onNewSession: () => void;
   onLoadGuideSession?: () => void;
-  isLoadingSession?: boolean;
+  onCreateNewSession: () => void;
+  onBulkDeleteSessions?: (sessionIds: string[]) => Promise<void> | void;
   className?: string;
 }
 
@@ -25,53 +46,55 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
   onLoadSession,
   onDeleteSession,
   onEditSessionName,
-  onNewSession,
   onLoadGuideSession,
-  isLoadingSession = false,
-  className = ""
+  onCreateNewSession,
+  onBulkDeleteSessions,
+  className = '',
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [editingSession, setEditingSession] = useState<{ id: string; name: string } | null>(null);
+  const [isClearingRoot, setIsClearingRoot] = useState(false);
   const { shouldShowGuide } = useGuideSession();
-  
+
   const {
     folders,
     sessions,
-    isLoading,
     createFolder,
     updateFolder,
     deleteFolder,
     moveSessionToFolder,
     getSessionsByFolder,
+    loadSessions,
+    removeSessionsFromState,
   } = useChatFolders();
 
-  const filteredSessions = sessions.filter(session =>
-    session.session_name.toLowerCase().includes(searchTerm.toLowerCase())
+  const rootSessions = sessions.filter((session) => !session.folder_id);
+
+  const filteredSessions = sessions.filter((session) =>
+    session.session_name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  const filteredFolders = folders.filter(folder =>
-    folder.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    getSessionsByFolder(folder.id).some(session =>
-      session.session_name.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
+  const filteredFolders = folders.filter((folder) => {
+    const folderMatches = folder.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const folderSessions = getSessionsByFolder(folder.id);
+    const sessionMatches = folderSessions.some((session) =>
+      session.session_name.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
+    return folderMatches || sessionMatches;
+  });
 
-  const unorganizedSessions = filteredSessions.filter(session => 
-    !session.folder_id
-  );
-
-  const totalSessions = sessions.length;
-  const isGuideActive = currentSessionId === 'guide-session';
+  const unorganizedSessions = filteredSessions.filter((session) => !session.folder_id);
+  const hasRootSessions = rootSessions.length > 0;
 
   const toggleFolder = (folderId: string) => {
-    const newExpanded = new Set(expandedFolders);
-    if (newExpanded.has(folderId)) {
-      newExpanded.delete(folderId);
+    const next = new Set(expandedFolders);
+    if (next.has(folderId)) {
+      next.delete(folderId);
     } else {
-      newExpanded.add(folderId);
+      next.add(folderId);
     }
-    setExpandedFolders(newExpanded);
+    setExpandedFolders(next);
   };
 
   const handleEditSession = (sessionId: string, sessionName: string) => {
@@ -85,263 +108,369 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
     }
   };
 
-  const getTodaySessions = (sessionList: any[]) => {
+  const handleClearUnorganizedSessions = async () => {
+    if (isClearingRoot || rootSessions.length === 0) {
+      return;
+    }
+
+    const confirmed =
+      typeof window === 'undefined'
+        ? true
+        : window.confirm(
+            'Vill du rensa alla osorterade chattar? Mapplagrade chattar ligger kvar.',
+          );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsClearingRoot(true);
+    const sessionIds = rootSessions.map((session) => session.id);
+
+    try {
+      if (onBulkDeleteSessions) {
+        await Promise.resolve(onBulkDeleteSessions(sessionIds));
+      } else {
+        for (const sessionId of sessionIds) {
+          await Promise.resolve(onDeleteSession(sessionId));
+        }
+      }
+
+      removeSessionsFromState(sessionIds);
+      await loadSessions();
+    } catch (error) {
+      console.error('Error clearing unorganized sessions:', error);
+    } finally {
+      setIsClearingRoot(false);
+    }
+  };
+
+  const getTodaySessions = (sessionList: ChatSession[]) => {
     const today = new Date();
-    return sessionList.filter(session => {
+    return sessionList.filter((session) => {
       const sessionDate = new Date(session.created_at);
       return sessionDate.toDateString() === today.toDateString();
     });
   };
 
-  const getYesterdaySessions = (sessionList: any[]) => {
+  const getYesterdaySessions = (sessionList: ChatSession[]) => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    return sessionList.filter(session => {
+    return sessionList.filter((session) => {
       const sessionDate = new Date(session.created_at);
       return sessionDate.toDateString() === yesterday.toDateString();
     });
   };
 
-  const getOlderSessions = (sessionList: any[]) => {
+  const getOlderSessions = (sessionList: ChatSession[]) => {
     const today = new Date();
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    return sessionList.filter(session => {
+    return sessionList.filter((session) => {
       const sessionDate = new Date(session.created_at);
-      return sessionDate.toDateString() !== today.toDateString() && 
-             sessionDate.toDateString() !== yesterday.toDateString();
+      return (
+        sessionDate.toDateString() !== today.toDateString() &&
+        sessionDate.toDateString() !== yesterday.toDateString()
+      );
     });
   };
 
-  const renderSessionGroup = (sessions: any[], label: string) => {
-    if (sessions.length === 0) return null;
-    
+  const renderSessionItem = (session: ChatSession, depth = 0) => {
+    const isActive = currentSessionId === session.id;
+
     return (
-      <div className="space-y-1 mt-4 first:mt-0">
-        <div className="text-xs font-medium text-muted-foreground px-2 py-1">{label}</div>
-        {sessions.map(session => (
-          <div key={session.id} className="group flex items-center">
-            <button
-              onClick={() => onLoadSession(session.id)}
-              className={`flex-1 text-left px-2 py-2 text-sm rounded-lg hover:bg-muted/50 transition-colors truncate ${
-                currentSessionId === session.id ? 'bg-muted text-foreground' : 'text-muted-foreground'
-              }`}
+      <li key={session.id} className={cn(depth > 0 && 'pl-3')}>
+        <div
+          className={cn(
+            'group/session relative flex items-center gap-2 rounded-ai-md border border-transparent px-2.5 py-2.5 transition-colors focus-within:border-ai-border/60 focus-within:bg-ai-surface/80 focus-within:text-foreground',
+            isActive
+              ? 'border-ai-border/60 bg-ai-surface text-foreground shadow-sm'
+              : 'text-ai-text-muted hover:border-ai-border/50 hover:bg-ai-surface/70 hover:text-foreground',
+          )}
+        >
+          <button
+            type="button"
+            onClick={() => onLoadSession(session.id)}
+            className="flex min-w-0 flex-1 items-center gap-3 pr-10 text-left text-[15px] leading-6"
+          >
+            <div
+              className={cn(
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-transparent bg-ai-surface/70 text-ai-text-muted transition-colors group-hover/session:border-ai-border/50 group-hover/session:bg-ai-surface group-hover/session:text-foreground',
+                isActive && 'border-ai-border/60 bg-ai-surface text-foreground',
+              )}
             >
+              <MessageSquare className="h-4 w-4" />
+            </div>
+            <span className="min-w-0 flex-1 truncate font-medium" title={session.session_name}>
               {session.session_name}
-            </button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
-                >
-                  <MoreHorizontal className="w-3 h-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-background border shadow-lg z-50">
-                <DropdownMenuItem onClick={() => handleEditSession(session.id, session.session_name)}>
-                  <Edit className="w-4 h-4 mr-2" />
-                  Byt namn
-                </DropdownMenuItem>
-                {folders.length > 0 && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="flex items-center w-full px-2 py-1.5 text-sm hover:bg-accent rounded-sm cursor-pointer">
-                      <Move className="w-4 h-4 mr-2" />
-                      Flytta till mapp
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent side="right" align="start" className="bg-background border shadow-lg z-50">
-                      {folders.map(folder => (
-                        <DropdownMenuItem 
-                          key={folder.id}
-                          onClick={() => moveSessionToFolder(session.id, folder.id)}
-                        >
-                          <Folder className="w-4 h-4 mr-2" />
-                          {folder.name}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-                <DropdownMenuItem onClick={() => onDeleteSession(session.id)} className="text-red-600">
-                  <Trash className="w-4 h-4 mr-2" />
-                  Ta bort
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        ))}
-      </div>
+            </span>
+          </button>
+
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Konversationsalternativ"
+                className="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2 rounded-full text-ai-text-muted transition-opacity hover:bg-ai-surface md:opacity-0 md:group-hover/session:opacity-100 md:group-focus-within/session:opacity-100"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-48 rounded-ai-md border border-ai-border/60 bg-ai-surface p-1 shadow-lg"
+            >
+              <DropdownMenuItem onClick={() => handleEditSession(session.id, session.session_name)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Byt namn
+              </DropdownMenuItem>
+              {folders.length > 0 && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Move className="mr-2 h-4 w-4" />
+                    Flytta till mapp
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="rounded-ai-md border border-ai-border/60 bg-ai-surface shadow-lg">
+                    {folders.map((folder) => (
+                      <DropdownMenuItem
+                        key={folder.id}
+                        onClick={() => moveSessionToFolder(session.id, folder.id)}
+                      >
+                        <Folder className="mr-2 h-4 w-4" />
+                        {folder.name}
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => moveSessionToFolder(session.id, null)}>
+                      <Trash className="mr-2 h-4 w-4" />
+                      Ta bort från mapp
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={async () => {
+                  await Promise.resolve(onDeleteSession(session.id));
+                  removeSessionsFromState([session.id]);
+                  await loadSessions();
+                }}
+                className="text-red-600"
+              >
+                <Trash className="mr-2 h-4 w-4" />
+                Ta bort
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </li>
+    );
+  };
+
+  const renderSessionGroup = (sessionList: ChatSession[], label: string) => {
+    if (sessionList.length === 0) return null;
+
+    return (
+      <section className="space-y-2">
+        <p className="px-3 text-xs font-semibold uppercase tracking-[0.14em] text-ai-text-muted/80">{label}</p>
+        <ul className="space-y-2">
+          {sessionList.map((session) => renderSessionItem(session))}
+        </ul>
+      </section>
     );
   };
 
   return (
-    <div className={`flex flex-col h-full bg-background ${className}`}>
-      {/* Header with New Chat Button */}
-      <div className="flex-shrink-0 p-4 space-y-3">
-        <Button
-          onClick={onNewSession}
-          className="w-full flex items-center justify-start gap-2 h-9 hover:bg-muted/50 text-sm font-normal text-muted-foreground hover:text-foreground rounded-lg transition-colors"
-          variant="ghost"
-          disabled={isLoadingSession}
-        >
-          <Plus className="w-4 h-4" />
-          {isLoadingSession ? 'Creating...' : 'New chat'}
-        </Button>
-
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search chats..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 h-8 text-sm"
+    <aside
+      className={cn(
+        'group/sidebar relative flex h-full min-h-0 w-[280px] flex-shrink-0 flex-col overflow-hidden border-r border-ai-border/60 bg-ai-surface-muted/80 backdrop-blur-sm supports-[backdrop-filter]:bg-ai-surface-muted/70',
+        className,
+      )}
+    >
+      <header className="sticky top-0 z-20 border-b border-ai-border/60 bg-ai-surface-muted/90 px-4 pb-5 pt-6 backdrop-blur-sm supports-[backdrop-filter]:bg-ai-surface-muted/70">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ai-text-muted/60">
+              Översikt
+            </p>
+            <h2 className="text-lg font-semibold text-foreground">Konversationer</h2>
+          </div>
+          <CreateFolderDialog
+            onCreateFolder={createFolder}
+            trigger={
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-full border border-transparent text-ai-text-muted transition-colors hover:border-ai-border/60 hover:bg-ai-surface hover:text-foreground"
+                aria-label="Skapa mapp"
+              >
+                <Folder className="h-4 w-4" />
+              </Button>
+            }
           />
         </div>
 
-        {/* Create Folder Button */}
-        <CreateFolderDialog
-          onCreateFolder={createFolder}
-          trigger={
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start text-xs text-muted-foreground hover:text-foreground"
-            >
-              <Folder className="w-3 h-3 mr-2" />
-              Create folder
-            </Button>
-          }
-        />
-      </div>
+        <Button
+          type="button"
+          onClick={onCreateNewSession}
+          variant="default"
+          className="mt-4 h-10 w-full justify-center rounded-ai-md text-[15px] font-semibold shadow-sm transition hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-0"
+        >
+          <Plus className="h-4 w-4" />
+          Ny konversation
+        </Button>
 
-      {/* Chat History */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-4 pt-0 space-y-1">
-          {/* Folders */}
-          {filteredFolders.map(folder => {
-            const folderSessions = getSessionsByFolder(folder.id).filter(session =>
-              session.session_name.toLowerCase().includes(searchTerm.toLowerCase())
+        <div className="relative mt-4">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ai-text-muted" />
+          <Input
+            placeholder="Sök konversationer"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            className="h-10 rounded-ai-md border border-ai-border/60 bg-ai-surface pl-11 text-sm text-foreground placeholder:text-ai-text-muted focus-visible:border-primary/60 focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
+        </div>
+
+        <Button
+          type="button"
+          onClick={handleClearUnorganizedSessions}
+          variant="ghost"
+          size="sm"
+          disabled={!hasRootSessions || isClearingRoot}
+          className="mt-3 self-end h-auto gap-1.5 rounded-full px-3 py-1 text-[12px] font-medium text-ai-text-muted transition-colors hover:bg-ai-surface/70 hover:text-destructive focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Trash className="h-3.5 w-3.5 text-destructive" />
+          {isClearingRoot
+            ? 'Rensar chattar...'
+            : hasRootSessions
+              ? 'Rensa osorterade'
+              : 'Inga osorterade'}
+        </Button>
+      </header>
+
+      <nav className="flex-1 overflow-y-auto px-3 pb-6 pt-6">
+        <div className="flex flex-col gap-6">
+          {shouldShowGuide && onLoadGuideSession && (
+            <section className="px-1">
+              <button
+                onClick={onLoadGuideSession}
+                className="flex w-full items-center gap-3 rounded-ai-md border border-ai-border/50 bg-ai-surface px-3 py-3 text-left text-[15px] leading-6 text-foreground shadow-sm transition hover:border-primary/40 hover:bg-ai-surface/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-0"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary">
+                  <Sparkles className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">Upptäck assistenten</p>
+                  <p className="truncate text-sm text-ai-text-muted">Kom igång med en guidning</p>
+                </div>
+              </button>
+            </section>
+          )}
+
+          {filteredFolders.map((folder) => {
+            const folderSessions = getSessionsByFolder(folder.id).filter((session) =>
+              session.session_name.toLowerCase().includes(searchTerm.toLowerCase()),
             );
-            const isExpanded = expandedFolders.has(folder.id);
-            const hasActiveSession = folderSessions.some(session => session.id === currentSessionId);
-            
+            const isExpanded = expandedFolders.has(folder.id) || Boolean(searchTerm);
+            const hasActiveSession = folderSessions.some((session) => session.id === currentSessionId);
+
             return (
-              <div key={folder.id} className="space-y-1">
-                <div className="flex items-center justify-between group">
+              <section key={folder.id} className="space-y-2">
+                <div
+                  className={cn(
+                    'group/folder relative flex items-center gap-2 rounded-ai-md border border-transparent px-2.5 py-2.5 transition-colors focus-within:border-ai-border/60 focus-within:bg-ai-surface/80 focus-within:text-foreground',
+                    hasActiveSession
+                      ? 'border-ai-border/60 bg-ai-surface text-foreground shadow-sm'
+                      : 'text-ai-text-muted hover:border-ai-border/50 hover:bg-ai-surface/70 hover:text-foreground',
+                  )}
+                >
                   <button
+                    type="button"
                     onClick={() => toggleFolder(folder.id)}
-                    className={`flex items-center gap-2 px-2 py-1 text-sm font-medium rounded-lg hover:bg-muted/50 transition-colors flex-1 ${
-                      hasActiveSession ? 'text-foreground bg-muted/30' : 'text-muted-foreground hover:text-foreground'
-                    }`}
+                    className="flex min-w-0 flex-1 items-center gap-3 pr-10 text-left text-[15px] leading-6"
                   >
-                    {isExpanded ? (
-                      <ChevronDown className="w-3 h-3" />
-                    ) : (
-                      <ChevronRight className="w-3 h-3" />
-                    )}
-                    <Folder className="w-3 h-3" />
-                    <span className="truncate">{folder.name}</span>
-                    <Badge variant="secondary" className="text-xs ml-auto">
+                    <span className="flex min-w-0 items-center gap-3 font-medium">
+                      {isExpanded ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: folder.color || '#d4d7dc' }}
+                      />
+                      <span className="truncate" title={folder.name}>
+                        {folder.name}
+                      </span>
+                    </span>
+                    <span className="ml-auto shrink-0 text-xs text-ai-text-muted transition-colors group-hover/folder:text-foreground/80 group-focus-within/folder:text-foreground/80">
                       {folderSessions.length}
-                    </Badge>
+                    </span>
                   </button>
-                  <DropdownMenu>
+
+                  <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Mappalternativ"
+                        className="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2 rounded-full text-ai-text-muted transition-opacity hover:bg-ai-surface md:opacity-0 md:group-hover/folder:opacity-100 md:group-focus-within/folder:opacity-100"
                       >
-                        <MoreHorizontal className="w-3 h-3" />
+                        <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-background border shadow-lg z-50">
-                      <DropdownMenuItem onClick={() => {
-                        const newName = prompt('Enter new folder name:', folder.name);
-                        if (newName && newName !== folder.name) {
-                          updateFolder(folder.id, { name: newName });
-                        }
-                      }}>
-                        <Edit className="w-4 h-4 mr-2" />
+                    <DropdownMenuContent
+                      align="end"
+                      className="w-48 rounded-ai-md border border-ai-border/60 bg-ai-surface p-1 shadow-lg"
+                    >
+                      <DropdownMenuItem
+                        onClick={() => {
+                          const newName = prompt('Nytt mappnamn', folder.name);
+                          if (newName && newName !== folder.name) {
+                            updateFolder(folder.id, { name: newName });
+                          }
+                        }}
+                      >
+                        <Edit className="mr-2 h-4 w-4" />
                         Byt namn
                       </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => deleteFolder(folder.id)} className="text-red-600">
-                        <Trash className="w-4 h-4 mr-2" />
-                        Ta bort
+                        <Trash className="mr-2 h-4 w-4" />
+                        Ta bort mapp
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                
-                {isExpanded && (
-                  <div className="ml-4 space-y-1">
-                    {folderSessions.map(session => (
-                      <div key={session.id} className="group flex items-center">
-                        <button
-                          onClick={() => onLoadSession(session.id)}
-                          className={`flex-1 text-left px-2 py-2 text-sm rounded-lg hover:bg-muted/50 transition-colors truncate ${
-                            currentSessionId === session.id ? 'bg-muted text-foreground font-medium' : 'text-muted-foreground'
-                          }`}
-                        >
-                          {session.session_name}
-                        </button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
-                            >
-                              <MoreHorizontal className="w-3 h-3" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-background border shadow-lg z-50">
-                            <DropdownMenuItem onClick={() => handleEditSession(session.id, session.session_name)}>
-                              <Edit className="w-4 h-4 mr-2" />
-                              Byt namn
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => moveSessionToFolder(session.id, null)}>
-                              <Move className="w-4 h-4 mr-2" />
-                              Ta bort från mapp
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onDeleteSession(session.id)} className="text-red-600">
-                              <Trash className="w-4 h-4 mr-2" />
-                              Ta bort
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    ))}
-                  </div>
+
+                {isExpanded && folderSessions.length > 0 && (
+                  <ul className="space-y-2 border-l border-ai-border/30 pl-4">
+                    {folderSessions.map((session) => renderSessionItem(session, 1))}
+                  </ul>
                 )}
-              </div>
+              </section>
             );
           })}
 
-          {/* Unorganized Sessions */}
-          {renderSessionGroup(getTodaySessions(unorganizedSessions), 'Today')}
-          {renderSessionGroup(getYesterdaySessions(unorganizedSessions), 'Yesterday')}
-          {renderSessionGroup(getOlderSessions(unorganizedSessions), 'Previous')}
+          {renderSessionGroup(getTodaySessions(unorganizedSessions), 'Idag')}
+          {renderSessionGroup(getYesterdaySessions(unorganizedSessions), 'Igår')}
+          {renderSessionGroup(getOlderSessions(unorganizedSessions), 'Tidigare')}
 
-          {/* Empty state */}
           {sessions.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <p className="text-sm">No chat history yet</p>
+            <div className="py-12 text-center text-sm text-ai-text-muted">
+              Inga konversationer ännu
             </div>
           )}
         </div>
-      </div>
+      </nav>
 
-      {/* Edit Session Name Dialog */}
       <EditSessionNameDialog
         isOpen={!!editingSession}
         onClose={() => setEditingSession(null)}
         currentName={editingSession?.name || ''}
         onSave={handleSaveSessionName}
       />
-    </div>
+    </aside>
   );
 });
 

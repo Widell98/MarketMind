@@ -52,9 +52,9 @@ const ChatInput = memo(({
 
   return (
     <>
-      <div className="flex-shrink-0 border-t border-border/60 bg-background/95 p-3 sm:p-4 lg:p-6 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))] backdrop-blur">
+      <div className="flex-shrink-0 border-t border-[#144272]/20 bg-white/95 px-4 py-4 shadow-[0_-20px_60px_rgba(15,23,42,0.07)] backdrop-blur-sm transition-colors sm:px-6 sm:py-5 lg:px-10 lg:py-8 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))] dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none">
         {quotaExceeded && (
-          <div className="mb-3 sm:mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
+          <div className="mb-3 sm:mb-4 rounded-[18px] border border-destructive/20 bg-destructive/10 p-3 shadow-[0_16px_40px_rgba(239,68,68,0.18)]">
             <div className="flex items-center gap-2 font-medium mb-1 text-destructive text-sm">
               <AlertCircle className="w-4 h-4" />
               API-kvot överskriden
@@ -65,7 +65,10 @@ const ChatInput = memo(({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex w-full max-w-4xl mx-auto gap-2 sm:gap-3 items-end">
+        <form
+          onSubmit={handleSubmit}
+          className="mx-auto flex w-full max-w-4xl items-end gap-2 sm:gap-3 lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl"
+        >
           <div className="flex-1 relative min-w-0">
             <Textarea
               ref={inputRef}
@@ -79,11 +82,11 @@ const ChatInput = memo(({
               }}
               placeholder={isAtLimit ? "Uppgradera till Premium för fler meddelanden" : "Skriv ditt meddelande här... (kostar 1 credit)"}
               disabled={isLoading || quotaExceeded}
-              className="min-h-[44px] max-h-[140px] bg-background/95 border border-border/60 shadow-sm rounded-xl text-sm sm:text-base px-3 sm:px-4 pr-10 transition-all duration-200 focus:shadow-md resize-none w-full"
+              className="min-h-[48px] max-h-[160px] w-full resize-none rounded-[18px] border border-[#205295]/22 bg-white/90 px-4 pr-12 text-sm shadow-[0_16px_40px_rgba(15,23,42,0.06)] transition-all duration-200 focus:border-primary/60 focus:shadow-[0_20px_55px_rgba(15,23,42,0.08)] focus:ring-2 focus:ring-primary/20 sm:px-5 sm:text-base dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-sm dark:focus:border-ai-border/80 dark:focus:ring-0"
               style={{ fontSize: '16px' }}
               rows={1}
             />
-            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+            <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-primary/50 transition-colors dark:text-ai-text-muted">
               <MessageSquare className="w-4 h-4" />
             </div>
           </div>
@@ -91,7 +94,7 @@ const ChatInput = memo(({
             type="submit"
             disabled={!input.trim() || isLoading || quotaExceeded}
             size="default"
-            className="h-10 sm:h-11 lg:h-12 px-3 sm:px-4 lg:px-4 bg-primary hover:bg-primary/90 shadow-sm rounded-xl text-sm font-medium transition-all duration-200 hover:shadow-md text-primary-foreground flex-shrink-0 self-end"
+            className="h-10 sm:h-11 lg:h-12 px-5 sm:px-6 bg-gradient-to-r from-blue-500 to-primary hover:from-blue-500/90 hover:to-primary/90 shadow-[0_24px_55px_rgba(15,23,42,0.18)] rounded-full text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_28px_70px_rgba(15,23,42,0.22)] text-primary-foreground flex-shrink-0 self-end dark:from-primary dark:to-primary dark:hover:from-primary/90 dark:hover:to-primary/90 dark:shadow-none"
           >
             {isLoading ? (
               <Loader2 className="w-4 h-4 animate-spin" />

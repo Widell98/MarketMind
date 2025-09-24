@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, Plus, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { CREATE_ANALYSIS_FORM_STORAGE_KEY } from '@/constants/storageKeys';
 
 interface CreateAnalysisDialogProps {
   isOpen: boolean;
@@ -18,31 +20,58 @@ interface CreateAnalysisDialogProps {
   preselectedStockCase?: string;
 }
 
+type CreateAnalysisFormState = {
+  title: string;
+  content: string;
+  analysisType: string;
+  tags: string[];
+  currentTag: string;
+};
+
+const createDefaultAnalysisFormState = (): CreateAnalysisFormState => ({
+  title: '',
+  content: '',
+  analysisType: 'market_insight',
+  tags: [],
+  currentTag: '',
+});
+
 const CreateAnalysisDialog: React.FC<CreateAnalysisDialogProps> = ({
   isOpen,
   onClose,
   preselectedStockCase
 }) => {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [analysisType, setAnalysisType] = useState('market_insight');
-  const [tags, setTags] = useState<string[]>([]);
-  const [currentTag, setCurrentTag] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formState, setFormState, resetFormState] = useLocalStorage<CreateAnalysisFormState>(
+    CREATE_ANALYSIS_FORM_STORAGE_KEY,
+    createDefaultAnalysisFormState
+  );
+  const { title, content, analysisType, tags, currentTag } = formState;
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const updateFormState = (changes: Partial<CreateAnalysisFormState>) => {
+    setFormState(prev => ({ ...prev, ...changes }));
+  };
+
   const addTag = () => {
     if (currentTag.trim() && !tags.includes(currentTag.trim())) {
-      setTags([...tags, currentTag.trim()]);
-      setCurrentTag('');
+      const normalizedTag = currentTag.trim();
+      setFormState(prev => ({
+        ...prev,
+        tags: [...prev.tags, normalizedTag],
+        currentTag: '',
+      }));
     }
   };
 
   const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
+    setFormState(prev => ({
+      ...prev,
+      tags: prev.tags.filter(tag => tag !== tagToRemove),
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -94,12 +123,8 @@ const CreateAnalysisDialog: React.FC<CreateAnalysisDialogProps> = ({
       });
 
       // Reset form
-      setTitle('');
-      setContent('');
-      setAnalysisType('market_insight');
-      setTags([]);
-      setCurrentTag('');
-      
+      resetFormState();
+
       onClose();
       
       // Navigate to the created analysis
@@ -134,7 +159,7 @@ const CreateAnalysisDialog: React.FC<CreateAnalysisDialogProps> = ({
             <Input
               id="title"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => updateFormState({ title: e.target.value })}
               placeholder="t.ex. Marknadsutblick Q1 2024 eller Tekniska indikatorer visar..."
               required
             />
@@ -142,7 +167,7 @@ const CreateAnalysisDialog: React.FC<CreateAnalysisDialogProps> = ({
 
           <div>
             <Label htmlFor="analysis-type">Analystyp</Label>
-            <Select value={analysisType} onValueChange={setAnalysisType}>
+            <Select value={analysisType} onValueChange={(value) => updateFormState({ analysisType: value })}>
               <SelectTrigger>
                 <SelectValue placeholder="Välj analystyp" />
               </SelectTrigger>
@@ -164,7 +189,7 @@ const CreateAnalysisDialog: React.FC<CreateAnalysisDialogProps> = ({
               <Input
                 id="tags"
                 value={currentTag}
-                onChange={(e) => setCurrentTag(e.target.value)}
+                onChange={(e) => updateFormState({ currentTag: e.target.value })}
                 placeholder="Lägg till tagg..."
                 onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
               />
@@ -195,7 +220,7 @@ const CreateAnalysisDialog: React.FC<CreateAnalysisDialogProps> = ({
             <Textarea
               id="content"
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={(e) => updateFormState({ content: e.target.value })}
               placeholder="Skriv din analys här... Du kan inkludera marknadskommentarer, teknisk analys, fundamental analys, investeringsidéer, riskbedömningar, etc."
               rows={10}
               required

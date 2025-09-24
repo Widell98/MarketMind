@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import HoldingCard from './HoldingCard';
 import SwipeableHoldingCard from './SwipeableHoldingCard';
 import { formatCurrency, resolveHoldingValue } from '@/utils/currencyUtils';
+import type { HoldingPerformance } from '@/hooks/usePortfolioPerformance';
 
 interface Holding {
   id: string;
@@ -28,6 +29,7 @@ interface HoldingsGroupSectionProps {
   groupPercentage: number;
   isCollapsible?: boolean;
   defaultExpanded?: boolean;
+  holdingPerformanceMap?: Record<string, HoldingPerformance>;
   onDiscuss: (name: string, symbol?: string) => void;
   onEdit?: (id: string) => void;
   onDelete: (id: string, name: string) => void;
@@ -43,6 +45,7 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
   groupPercentage,
   isCollapsible = true,
   defaultExpanded = true,
+  holdingPerformanceMap,
   onDiscuss,
   onEdit,
   onDelete,
@@ -105,6 +108,7 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {holdings.map((holding) => {
               const { valueInSEK: computedValue } = resolveHoldingValue(holding);
+              const holdingPerformance = holdingPerformanceMap?.[holding.id];
 
               const holdingPercentage = totalValue > 0
                 ? (computedValue / totalValue) * groupPercentage
@@ -117,6 +121,7 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
                     key={holding.id}
                     holding={holding}
                     portfolioPercentage={holdingPercentage}
+                    holdingPerformance={holdingPerformance}
                     onDiscuss={onDiscuss}
                     onEdit={onEdit}
                     onDelete={onDelete}
@@ -133,6 +138,7 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
                   key={holding.id}
                   holding={holding}
                   portfolioPercentage={holdingPercentage}
+                  performance={holdingPerformance}
                   onDiscuss={onDiscuss}
                   onEdit={onEdit}
                   onDelete={onDelete}

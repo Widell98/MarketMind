@@ -14,6 +14,7 @@ export interface StockCase {
   target_price?: number;
   stop_loss?: number;
   performance_percentage?: number;
+  likes_count?: number;
   status: 'active' | 'winner' | 'loser';
   created_at: string;
   updated_at: string;
