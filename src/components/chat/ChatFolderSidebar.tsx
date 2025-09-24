@@ -206,7 +206,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
             </span>
           </button>
 
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
@@ -408,7 +408,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                     </span>
                   </button>
 
-                  <DropdownMenu>
+                  <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
