@@ -53,6 +53,19 @@ const parseNumericValue = (value: unknown): number | null => {
   return null;
 };
 
+const normalizeIdentifier = (value?: string | null): string | null => {
+  if (!value) return null;
+
+  const normalized = value
+    .toString()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .toUpperCase();
+
+  return normalized.length > 0 ? normalized : null;
+};
+
 type HoldingRecord = {
   symbol?: string | null;
   name?: string | null;
@@ -675,19 +688,110 @@ contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
         }));
 
         const totalValue = holdingsWithValues.reduce((sum, item) => sum + item.value.valueInSEK, 0);
+
+        const actualHoldingsLookup = new Map<string, { label: string; percentage: number; valueInSEK: number }>();
+
+        holdingsWithValues.forEach(({ holding, value }) => {
+          const label = holding.symbol || holding.name || 'Okänt innehav';
+          const percentage = totalValue > 0 ? (value.valueInSEK / totalValue) * 100 : 0;
+          const entry = { label, percentage, valueInSEK: value.valueInSEK };
+
+          const symbolKey = normalizeIdentifier(typeof holding.symbol === 'string' ? holding.symbol : null);
+          const nameKey = normalizeIdentifier(typeof holding.name === 'string' ? holding.name : null);
+
+          if (symbolKey && !actualHoldingsLookup.has(symbolKey)) {
+            actualHoldingsLookup.set(symbolKey, entry);
+          }
+
+          if (nameKey && !actualHoldingsLookup.has(nameKey)) {
+            actualHoldingsLookup.set(nameKey, entry);
+          }
+        });
+
         const topHoldings = [...holdingsWithValues]
           .sort((a, b) => b.value.valueInSEK - a.value.valueInSEK)
           .slice(0, 5);
 
-        const holdingsSummary = topHoldings
-          .map(({ holding, value }) => {
-            const label = holding.symbol || holding.name || 'Okänt innehav';
-            const percentage = totalValue > 0 ? ((value.valueInSEK / totalValue) * 100).toFixed(1) : '0.0';
-            return `${label} (${percentage}%)`;
-          })
+        const topHoldingsDetails = topHoldings.map(({ holding, value }) => {
+          const label = holding.symbol || holding.name || 'Okänt innehav';
+          const percentage = totalValue > 0 ? (value.valueInSEK / totalValue) * 100 : 0;
+
+          const identifiers = new Set<string>();
+          const symbolKey = normalizeIdentifier(typeof holding.symbol === 'string' ? holding.symbol : null);
+          const nameKey = normalizeIdentifier(typeof holding.name === 'string' ? holding.name : null);
+
+          if (symbolKey) identifiers.add(symbolKey);
+          if (nameKey) identifiers.add(nameKey);
+
+          return {
+            label,
+            percentage,
+            formattedPercentage: percentage.toFixed(1),
+            identifiers: Array.from(identifiers),
+          };
+        });
+
+        let holdingsSummary = topHoldingsDetails
+          .map(({ label, formattedPercentage }) => `${label} (${formattedPercentage}%)`)
           .join(', ');
 
         const totalValueFormatted = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0 }).format(Math.round(totalValue));
+
+        let recommendedAllocationEntries: Array<{
+          asset: string;
+          percentage: number;
+          displayValue: string;
+          normalizedKey: string | null;
+          actualPercentage: number | null;
+        }> = [];
+
+        if (portfolio && portfolio.asset_allocation && typeof portfolio.asset_allocation === 'object') {
+          recommendedAllocationEntries = Object.entries(portfolio.asset_allocation)
+            .map(([asset, rawValue]) => {
+              const parsedValue = parseNumericValue(rawValue);
+              if (parsedValue === null) return null;
+
+              const normalizedKey = normalizeIdentifier(asset);
+              const actualMatch = normalizedKey ? actualHoldingsLookup.get(normalizedKey) : undefined;
+
+              return {
+                asset,
+                percentage: parsedValue,
+                displayValue: typeof rawValue === 'number' ? rawValue.toString() : String(rawValue),
+                normalizedKey,
+                actualPercentage: actualMatch ? actualMatch.percentage : null,
+              };
+            })
+            .filter((entry): entry is {
+              asset: string;
+              percentage: number;
+              displayValue: string;
+              normalizedKey: string | null;
+              actualPercentage: number | null;
+            } => entry !== null);
+
+          if (recommendedAllocationEntries.length > 0) {
+            holdingsSummary = topHoldingsDetails
+              .map(({ label, formattedPercentage, identifiers }) => {
+                const matchingAllocation = identifiers
+                  .map(identifier => recommendedAllocationEntries.find(entry => entry.normalizedKey === identifier))
+                  .find((match): match is {
+                    asset: string;
+                    percentage: number;
+                    displayValue: string;
+                    normalizedKey: string | null;
+                    actualPercentage: number | null;
+                  } => Boolean(match));
+
+                if (matchingAllocation) {
+                  return `${label} (nu ${formattedPercentage}%, mål ${matchingAllocation.displayValue}%)`;
+                }
+
+                return `${label} (${formattedPercentage}%)`;
+              })
+              .join(', ');
+          }
+        }
 
         contextInfo += `\n\nNUVARANDE PORTFÖLJ:
 - Totalt värde: ${totalValueFormatted} SEK
@@ -695,25 +799,14 @@ contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
 - Största positioner: ${holdingsSummary || 'Inga registrerade innehav'}`;
 
         if (portfolio) {
-          if (portfolio.asset_allocation && typeof portfolio.asset_allocation === 'object') {
-            const allocationEntries = Object.entries(portfolio.asset_allocation)
-              .map(([asset, rawValue]) => {
-                const parsedValue = parseNumericValue(rawValue);
-                if (parsedValue === null) return null;
-                return {
-                  asset,
-                  percentage: parsedValue,
-                  displayValue: typeof rawValue === 'number' ? rawValue.toString() : String(rawValue),
-                };
-              })
-              .filter((entry): entry is { asset: string; percentage: number; displayValue: string } => entry !== null);
-
-            if (allocationEntries.length > 0) {
-              contextInfo += `\n- Rekommenderad allokering:`;
-              allocationEntries.forEach(({ asset, displayValue }) => {
-                contextInfo += `\n  • ${formatAllocationLabel(asset)}: ${displayValue}%`;
-              });
-            }
+          if (recommendedAllocationEntries.length > 0) {
+            contextInfo += `\n- Rekommenderad allokering (använd dessa målviktstal när du diskuterar portföljens struktur):`;
+            recommendedAllocationEntries.forEach(({ asset, displayValue, actualPercentage }) => {
+              const actualText = actualPercentage !== null
+                ? ` (nu ${actualPercentage.toFixed(1)}%)`
+                : '';
+              contextInfo += `\n  • ${formatAllocationLabel(asset)}: ${displayValue}%${actualText}`;
+            });
           }
 
           contextInfo += `\n- Portföljens riskpoäng: ${portfolio.risk_score || 'Ej beräknad'}
