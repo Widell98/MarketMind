@@ -147,23 +147,25 @@ const PortfolioImplementation = () => {
       <LoginPromptModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
       
       <div className="min-h-0 bg-gradient-to-br from-background to-secondary/5">
-        <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4 sm:py-8 lg:py-12">
+        <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 pt-4 sm:pt-6 lg:pt-8 pb-8 sm:pb-12 lg:pb-16">
           {/* Breadcrumb Navigation */}
           <div className="mb-8">
             <Breadcrumb />
           </div>
           
-          {/* Clean Header */}
-          <div className="text-center mb-16">
-            <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-8 bg-primary/10 border border-primary/20 shadow-lg">
-              <Brain className="w-10 h-10 text-primary" />
-            </div>
-            <h1 className="text-4xl font-bold mb-4 text-foreground">
-              {t('portfolio.title')}
-            </h1>
-            
-            
-            
+          {/* Page Header */}
+          <div className="mb-10 sm:mb-12 lg:mb-14">
+            <section className="rounded-3xl border border-border/60 bg-card/70 px-6 py-8 text-center shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:px-10 sm:py-12">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 sm:h-14 sm:w-14">
+                <Brain className="h-6 w-6 text-primary" />
+              </div>
+              <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
+                {t('portfolio.title')}
+              </h1>
+              <p className="mx-auto mt-3 max-w-2xl text-base text-muted-foreground sm:text-lg">
+                {t('portfolio.subtitle')}
+              </p>
+            </section>
           </div>
 
           {/* Portfolio Health Score */}
