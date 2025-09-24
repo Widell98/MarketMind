@@ -1,5 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { parse } from "https://deno.land/std@0.168.0/csv/parse.ts";
+import { buildTickersFromParsedCsv } from "./parser.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,12 +13,6 @@ const corsHeaders = {
 const CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvOPfg5tZjaFqCu7b3Li80oPEEuje4tQTcnr6XjxCW_ItVbOGWCvfQfFvWDXRH544MkBKeI1dPyzJG/pub?output=csv";
 
-const normalizeValue = (value?: string | null) => {
-  if (!value) return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -27,52 +23,36 @@ serve(async (req) => {
     if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
     const csvText = await res.text();
 
-    // Splitta rader och kolumner
-    const [headerLine, ...lines] = csvText.split("\n").filter((l) => l.trim() !== "");
-    const headers = headerLine.split(",").map((h) => h.trim());
+    const rawRows = await parse(csvText);
+    const rows = (Array.isArray(rawRows) ? rawRows : [])
+      .filter((row): row is unknown[] => Array.isArray(row))
+      .map((row) =>
+        row.map((value) =>
+          typeof value === "string"
+            ? value
+            : value === null || value === undefined
+            ? undefined
+            : String(value)
+        )
+      );
 
-    const companyIdx = headers.findIndex((h) => /company/i.test(h));
-    const tickerIdx = headers.findIndex((h) => /ticker/i.test(h));
-    const currencyIdx = headers.findIndex((h) => /currency/i.test(h));
-    const priceIdx = headers.findIndex((h) => /price/i.test(h));
-
-    if (companyIdx === -1 || tickerIdx === -1 || priceIdx === -1) {
-      throw new Error("CSV saknar nödvändiga kolumner (Company, Ticker, Price).");
+    if (rows.length === 0) {
+      throw new Error("CSV-filen saknar innehåll.");
     }
 
-    const tickerMap = new Map<
-      string,
-      { name: string; symbol: string; currency: string | null; price: number | null }
-    >();
+    const [headerRow, ...dataRows] = rows;
+    const { tickers, symbolCounts } = buildTickersFromParsedCsv(
+      headerRow,
+      dataRows,
+    );
 
-    for (const line of lines) {
-      const cols = line.split(",").map((c) => c.trim());
-      if (cols.length <= priceIdx) continue;
-
-      const rawName = normalizeValue(cols[companyIdx]);
-      const rawSymbol = normalizeValue(cols[tickerIdx]);
-      const rawCurrency = normalizeValue(cols[currencyIdx]);
-      const rawPrice = normalizeValue(cols[priceIdx]);
-
-      if (!rawSymbol || !rawPrice) continue;
-
-      // Ta bort ev. "STO:" prefix
-      const cleanedSymbol = rawSymbol.includes(":")
-        ? rawSymbol.split(":")[1].toUpperCase()
-        : rawSymbol.toUpperCase();
-
-      const price = parseFloat(rawPrice.replace(/\s/g, "").replace(",", "."));
-      if (isNaN(price)) continue;
-
-      tickerMap.set(cleanedSymbol, {
-        symbol: cleanedSymbol,
-        name: rawName ?? cleanedSymbol,
-        currency: rawCurrency ?? null,
-        price,
-      });
+    for (const [symbol, occurrence] of symbolCounts.entries()) {
+      if (occurrence > 1) {
+        console.info(
+          `Duplicate ticker symbol detected for ${symbol}; preserving occurrence #${occurrence}.`,
+        );
+      }
     }
-
-    const tickers = Array.from(tickerMap.values());
 
     return new Response(JSON.stringify({ success: true, tickers }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -88,3 +68,4 @@ serve(async (req) => {
     );
   }
 });
+
