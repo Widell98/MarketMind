@@ -147,14 +147,14 @@ const PortfolioImplementation = () => {
       <LoginPromptModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
       
       <div className="min-h-0 bg-gradient-to-br from-background to-secondary/5">
-        <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4 sm:py-8 lg:py-12">
+        <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 pt-4 sm:pt-6 lg:pt-8 pb-8 sm:pb-12 lg:pb-16">
           {/* Breadcrumb Navigation */}
           <div className="mb-8">
             <Breadcrumb />
           </div>
           
           {/* Clean Header */}
-          <div className="text-center mb-16">
+          <div className="text-center mb-10 sm:mb-12 lg:mb-14">
             <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-8 bg-primary/10 border border-primary/20 shadow-lg">
               <Brain className="w-10 h-10 text-primary" />
             </div>
