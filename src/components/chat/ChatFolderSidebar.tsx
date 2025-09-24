@@ -322,29 +322,42 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
       <div className="relative flex h-full flex-col">
         <div className="relative z-10 px-5 pb-5 pt-6">
           <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2 rounded-ai-md border border-white/5 bg-ai-surface/90 p-2 shadow-sm">
-              <Button
-                type="button"
-                onClick={onCreateNewSession}
-                variant="ghost"
-                className="flex-1 justify-center gap-2 rounded-ai-sm border border-ai-border/40 bg-ai-surface px-3 py-2 text-[15px] font-semibold text-foreground shadow-sm transition hover:border-ai-border/60 hover:bg-ai-surface/90 hover:text-foreground focus-visible:ring-ai-border/60 focus-visible:ring-offset-0"
-              >
-                <Plus className="h-4 w-4" />
-                Ny konversation
-              </Button>
-              <CreateFolderDialog
-                onCreateFolder={createFolder}
-                trigger={
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-10 w-10 rounded-ai-sm border border-transparent bg-ai-surface/80 text-ai-text-muted transition hover:border-ai-border/60 hover:bg-ai-surface/90 hover:text-foreground"
-                    aria-label="Skapa mapp"
-                  >
-                    <Folder className="h-4 w-4" />
-                  </Button>
-                }
-              />
+            <div className="rounded-ai-md border border-white/5 bg-ai-surface/90 p-3 shadow-sm">
+              <div className="grid grid-cols-[1fr_auto] gap-2">
+                <Button
+                  type="button"
+                  onClick={onCreateNewSession}
+                  variant="ghost"
+                  className="w-full justify-center gap-2 rounded-ai-sm border border-ai-border/40 bg-ai-surface px-3 py-2 text-[15px] font-semibold text-foreground shadow-sm transition hover:border-ai-border/60 hover:bg-ai-surface/90 hover:text-foreground focus-visible:ring-ai-border/60 focus-visible:ring-offset-0"
+                >
+                  <Plus className="h-4 w-4" />
+                  Ny konversation
+                </Button>
+                <CreateFolderDialog
+                  onCreateFolder={createFolder}
+                  trigger={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-full min-h-[40px] justify-center gap-2 rounded-ai-sm border border-transparent bg-ai-surface/80 px-3 text-[14px] font-medium text-ai-text-muted transition hover:border-ai-border/60 hover:bg-ai-surface/90 hover:text-foreground focus-visible:ring-ai-border/60 focus-visible:ring-offset-0"
+                    >
+                      <Folder className="h-4 w-4" />
+                      Ny mapp
+                    </Button>
+                  }
+                />
+              </div>
+              {onLoadGuideSession && (
+                <Button
+                  type="button"
+                  onClick={onLoadGuideSession}
+                  variant="ghost"
+                  className="mt-2 w-full justify-center gap-2 rounded-ai-sm border border-primary/40 bg-primary/10 px-3 py-2 text-[15px] font-semibold text-primary transition hover:border-primary/60 hover:bg-primary/15 focus-visible:ring-primary/50 focus-visible:ring-offset-0"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  AI-guide
+                </Button>
+              )}
             </div>
 
             <div className="relative">

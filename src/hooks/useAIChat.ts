@@ -30,6 +30,10 @@ interface ChatSession {
   is_active: boolean;
 }
 
+interface LoadMessagesOptions {
+  preserveExisting?: boolean;
+}
+
 export const useAIChat = (portfolioId?: string) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -42,14 +46,16 @@ export const useAIChat = (portfolioId?: string) => {
   const [quotaExceeded, setQuotaExceeded] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
 
-  const loadMessages = useCallback(async (sessionId: string, skipClear = false) => {
+  const loadMessages = useCallback(async (sessionId: string, options: LoadMessagesOptions = {}) => {
     if (!user) return;
+
+    const { preserveExisting = false } = options;
 
     console.log('=== LOADING MESSAGES ===');
     console.log('Session ID:', sessionId);
     console.log('User ID:', user.id);
 
-    if (!skipClear) {
+    if (!preserveExisting) {
       setIsLoadingSession(true);
     }
 
@@ -81,7 +87,7 @@ export const useAIChat = (portfolioId?: string) => {
       console.log('Formatted messages:', formattedMessages);
       console.log('Setting messages to state...');
 
-      if (skipClear) {
+      if (preserveExisting) {
         setMessages(formattedMessages);
       } else {
         // Clear messages first, then set new ones
@@ -100,7 +106,7 @@ export const useAIChat = (portfolioId?: string) => {
         variant: "destructive",
       });
     } finally {
-      if (!skipClear) {
+      if (!preserveExisting) {
         setIsLoadingSession(false);
       }
     }
@@ -158,13 +164,12 @@ export const useAIChat = (portfolioId?: string) => {
     console.log('Loading chat session:', sessionId);
     console.log('Current session before change:', currentSessionId);
     
-    // Immediately clear messages and set new session
-    setMessages([]);
+    // Immediately set the new session without clearing existing messages to avoid visual flashing
     setCurrentSessionId(sessionId);
-    
-    // Load messages for the selected session
-    await loadMessages(sessionId);
-    
+
+    // Load messages for the selected session while keeping the previous thread visible until the new one arrives
+    await loadMessages(sessionId, { preserveExisting: true });
+
     console.log('Session loaded successfully');
     toast({
       title: "Chat laddad",
@@ -732,7 +737,7 @@ export const useAIChat = (portfolioId?: string) => {
       // After streaming is complete, reload messages from database to get the complete conversation with correct IDs
       console.log('Streaming complete, reloading messages from database...');
       setTimeout(() => {
-        loadMessages(targetSessionId, true);
+        loadMessages(targetSessionId, { preserveExisting: true });
       }, 1000);
 
       // Track usage
