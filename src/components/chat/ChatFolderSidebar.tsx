@@ -182,7 +182,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
       <li key={session.id} className={cn('transition-all', depth > 0 && 'pl-3')}>
         <div
           className={cn(
-            'group flex items-center gap-2 rounded-ai-md border border-transparent px-3 py-2 transition-all duration-150 focus-within:border-ai-border/60 focus-within:ring-1 focus-within:ring-ai-border/60',
+            'group flex items-stretch overflow-hidden rounded-ai-md border border-transparent transition-all duration-150 focus-within:border-ai-border/60 focus-within:ring-1 focus-within:ring-ai-border/60',
             isActive
               ? 'border-ai-border/70 bg-ai-surface text-foreground shadow-lg ring-1 ring-ai-border/70'
               : 'text-ai-text-muted hover:border-ai-border/50 hover:bg-ai-surface/70 hover:text-foreground focus-within:border-ai-border/50 focus-within:bg-ai-surface/70 focus-within:text-foreground',
@@ -191,7 +191,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
           <button
             type="button"
             onClick={() => onLoadSession(session.id)}
-            className="flex flex-1 items-center gap-3 pr-2 text-left text-[15px] leading-6"
+            className="flex flex-1 items-center gap-3 px-3 py-2 text-left text-[15px] leading-6 transition-colors focus-visible:outline-none"
           >
             <div
               className={cn(
@@ -210,9 +210,9 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
                 aria-label="Konversationsalternativ"
-                className="h-8 w-8 rounded-full border border-transparent text-ai-text-muted transition-all duration-150 hover:border-ai-border/50 hover:bg-ai-surface/80 hover:text-foreground md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+                className="h-auto rounded-none border-l border-white/5 px-2.5 text-ai-text-muted transition-all duration-150 hover:border-ai-border/50 hover:bg-ai-surface/80 hover:text-foreground focus-visible:ring-0 md:border-transparent md:opacity-0 md:group-hover:border-ai-border/40 md:group-hover:bg-ai-surface/60 md:group-hover:opacity-100 md:group-focus-within:border-ai-border/40 md:group-focus-within:bg-ai-surface/60 md:group-focus-within:opacity-100"
               >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -378,7 +378,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
               <div key={folder.id} className="space-y-3">
                 <div
                   className={cn(
-                    'group flex items-center gap-2 rounded-ai-md border border-transparent px-3 py-2 transition-all duration-150 focus-within:border-ai-border/60 focus-within:ring-1 focus-within:ring-ai-border/60',
+                    'group flex items-stretch overflow-hidden rounded-ai-md border border-transparent transition-all duration-150 focus-within:border-ai-border/60 focus-within:ring-1 focus-within:ring-ai-border/60',
                     hasActiveSession
                       ? 'border-ai-border/70 bg-ai-surface text-foreground shadow-lg ring-1 ring-ai-border/70'
                       : 'text-ai-text-muted hover:border-ai-border/50 hover:bg-ai-surface/70 hover:text-foreground focus-within:border-ai-border/50 focus-within:bg-ai-surface/70 focus-within:text-foreground',
@@ -387,7 +387,7 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                   <button
                     type="button"
                     onClick={() => toggleFolder(folder.id)}
-                    className="flex flex-1 items-center gap-3 pr-2 text-left text-[15px] leading-6"
+                    className="flex flex-1 items-center gap-3 px-3 py-2 text-left text-[15px] leading-6 transition-colors focus-visible:outline-none"
                   >
                     <span className="flex items-center gap-3 truncate font-medium">
                       {isExpanded ? (
@@ -410,9 +410,9 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size="sm"
                         aria-label="Mappalternativ"
-                        className="h-8 w-8 rounded-full border border-transparent text-ai-text-muted transition-all duration-150 hover:border-ai-border/50 hover:bg-ai-surface/80 hover:text-foreground md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+                        className="h-auto rounded-none border-l border-white/5 px-2.5 text-ai-text-muted transition-all duration-150 hover:border-ai-border/50 hover:bg-ai-surface/80 hover:text-foreground focus-visible:ring-0 md:border-transparent md:opacity-0 md:group-hover:border-ai-border/40 md:group-hover:bg-ai-surface/60 md:group-hover:opacity-100 md:group-focus-within:border-ai-border/40 md:group-focus-within:bg-ai-surface/60 md:group-focus-within:opacity-100"
                       >
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
