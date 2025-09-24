@@ -247,6 +247,101 @@ export const useChatFolders = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]); // Remove loadFolders and loadSessions from dependencies to prevent infinite loop
 
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const channel = supabase
+      .channel(`ai_chat_sessions_changes:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'ai_chat_sessions',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newSession = payload.new;
+          if (!newSession) {
+            return;
+          }
+
+          setSessions((prev) => {
+            const formattedSession: ChatSession = {
+              id: newSession.id,
+              session_name: newSession.session_name || 'Ny Session',
+              created_at: newSession.created_at,
+              is_active: newSession.is_active || false,
+              folder_id: newSession.folder_id,
+            };
+
+            const alreadyExists = prev.some((session) => session.id === formattedSession.id);
+            if (alreadyExists) {
+              return prev.map((session) =>
+                session.id === formattedSession.id ? formattedSession : session,
+              );
+            }
+
+            return [formattedSession, ...prev];
+          });
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'ai_chat_sessions',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const updatedSession = payload.new;
+          if (!updatedSession) {
+            return;
+          }
+
+          setSessions((prev) =>
+            prev.map((session) =>
+              session.id === updatedSession.id
+                ? {
+                    id: updatedSession.id,
+                    session_name: updatedSession.session_name || 'Ny Session',
+                    created_at: updatedSession.created_at,
+                    is_active: updatedSession.is_active || false,
+                    folder_id: updatedSession.folder_id,
+                  }
+                : session,
+            ),
+          );
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'ai_chat_sessions',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const deletedSession = payload.old;
+          if (!deletedSession) {
+            return;
+          }
+
+          setSessions((prev) => prev.filter((session) => session.id !== deletedSession.id));
+        },
+      );
+
+    channel.subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   return {
     folders,
     sessions,
