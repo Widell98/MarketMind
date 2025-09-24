@@ -8,6 +8,7 @@ import ChatMessages from './chat/ChatMessages';
 import ChatInput from './chat/ChatInput';
 import ProfileUpdateConfirmation from './ProfileUpdateConfirmation';
 import ChatFolderSidebar from './chat/ChatFolderSidebar';
+import { cn } from '@/lib/utils';
 
 import { LogIn, MessageSquare, Brain, Lock, Sparkles, Menu, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -218,7 +219,10 @@ const AIChat = ({
     onEditSessionName: editSessionName,
     onLoadGuideSession: handleLoadGuideSession,
     onCreateNewSession: handleNewSession,
-    className: isMobile ? "w-full min-h-full" : "",
+    className: cn(
+      'relative z-10',
+      isMobile && 'min-h-full bg-ai-surface',
+    ),
   }), [
     isGuideSession,
     currentSessionId,
@@ -234,8 +238,18 @@ const AIChat = ({
     <div className="flex h-full min-h-0 w-full overflow-hidden">
       {user ? (
         <>
-          {!isMobile && !desktopSidebarCollapsed && (
-            <div className="w-[260px] flex-shrink-0 border-r border-ai-border/60 bg-ai-surface-muted/60">
+          {!isMobile && (
+            <div
+              aria-hidden={desktopSidebarCollapsed}
+              className={cn(
+                'relative flex h-full flex-shrink-0 overflow-hidden transition-[width,opacity] duration-300 ease-out',
+                desktopSidebarCollapsed
+                  ? 'pointer-events-none w-0 min-w-0 border-r-0 opacity-0'
+                  : 'w-[280px] min-w-[260px] border-r border-ai-border/60 opacity-100',
+              )}
+            >
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-ai-surface-muted/80 via-ai-surface/60 to-ai-surface-muted/80" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_65%)]" />
               <ChatFolderSidebar {...sidebarProps} />
             </div>
           )}
