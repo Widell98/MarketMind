@@ -3,6 +3,140 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
+type MarketauxIntent = 'news' | 'report';
+
+type MarketauxNormalizedItem = {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  url?: string | null;
+  publishedAt?: string | null;
+  source?: string | null;
+  imageUrl?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+type MarketauxContextPayload = {
+  source: 'marketaux';
+  intent: MarketauxIntent;
+  symbol?: string | null;
+  query?: string;
+  fetchedAt: string;
+  summary?: string[];
+  items?: MarketauxNormalizedItem[];
+};
+
+type QuickAssistantContext = {
+  marketaux?: MarketauxContextPayload;
+};
+
+const buildMarketauxContextPrompt = (payload: MarketauxContextPayload) => {
+  const header = `DATAKÄLLA (MarketAux – ${payload.intent === 'report' ? 'Bolagsrapporter' : 'Nyheter'})`;
+  const summaryLines = Array.isArray(payload.summary) && payload.summary.length
+    ? payload.summary.map((line) => `- ${line}`).join('\n')
+    : '- Ingen sammanfattning tillgänglig.';
+
+  const itemsText = Array.isArray(payload.items) && payload.items.length
+    ? payload.items.map((item, idx) => formatMarketauxItem(item, payload.intent, idx + 1)).join('\n\n')
+    : '- Inga enskilda dataposter tillgängliga.';
+
+  return `${header}
+Fråga: ${payload.query ?? 'Okänd fråga'}
+Symbol: ${payload.symbol ?? 'Ej angiven'}
+Hämtad: ${payload.fetchedAt}
+
+Sammanfattning:
+${summaryLines}
+
+Poster:
+${itemsText}
+
+Instruktioner:
+- Utgå från MarketAux-datan ovan när du svarar.
+- Om datan täcker frågan, inkludera en kort analys.
+- Svara på svenska och var tydlig när något är osäkert.
+- Markera i svaret att MarketAux användes, till exempel genom att skriva "Källa: MarketAux".`;
+};
+
+const formatMarketauxItem = (item: MarketauxNormalizedItem, intent: MarketauxIntent, index: number) => {
+  const baseLines = [`${index}. ${item.title}`];
+
+  if (item.subtitle) {
+    baseLines.push(`   Sammanfattning: ${item.subtitle}`);
+  }
+
+  if (item.source || item.publishedAt) {
+    const metaParts = [] as string[];
+    if (item.source) metaParts.push(`Källa: ${item.source}`);
+    if (item.publishedAt) metaParts.push(`Publicerad: ${item.publishedAt}`);
+    if (metaParts.length) {
+      baseLines.push(`   ${metaParts.join(' • ')}`);
+    }
+  }
+
+  if (intent === 'report') {
+    const reportDetails = extractReportDetails(item.metadata ?? {});
+    if (reportDetails.length) {
+      baseLines.push(`   Nyckeltal: ${reportDetails.join(' | ')}`);
+    }
+  }
+
+  if (item.url && intent === 'news') {
+    baseLines.push(`   Länk: ${item.url}`);
+  }
+
+  return baseLines.join('\n');
+};
+
+const extractReportDetails = (metadata: Record<string, unknown>) => {
+  const rows: string[] = [];
+  const fiscalPeriod = typeof metadata.fiscalPeriod === 'string' ? metadata.fiscalPeriod : undefined;
+  const fiscalYear = typeof metadata.fiscalYear === 'string' || typeof metadata.fiscalYear === 'number'
+    ? metadata.fiscalYear
+    : undefined;
+  const epsActual = typeof metadata.epsActual === 'number' ? metadata.epsActual : undefined;
+  const epsEstimate = typeof metadata.epsEstimate === 'number' ? metadata.epsEstimate : undefined;
+  const revenueActual = typeof metadata.revenueActual === 'number' ? metadata.revenueActual : undefined;
+  const revenueEstimate = typeof metadata.revenueEstimate === 'number' ? metadata.revenueEstimate : undefined;
+  const currency = typeof metadata.currency === 'string' ? metadata.currency : undefined;
+
+  if (fiscalPeriod || fiscalYear) {
+    rows.push(`Period: ${[fiscalPeriod, fiscalYear].filter(Boolean).join(' ')}`);
+  }
+
+  if (epsActual != null || epsEstimate != null) {
+    rows.push(`EPS: ${formatNumber(epsActual)} (est ${formatNumber(epsEstimate)})`);
+  }
+
+  if (revenueActual != null || revenueEstimate != null) {
+    rows.push(`Intäkter: ${formatNumber(revenueActual, currency)} (est ${formatNumber(revenueEstimate, currency)})`);
+  }
+
+  return rows;
+};
+
+const formatNumber = (value?: number, currency?: string) => {
+  if (value == null || Number.isNaN(value)) {
+    return '–';
+  }
+
+  try {
+    if (currency) {
+      return new Intl.NumberFormat('sv-SE', {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 2,
+      }).format(value);
+    }
+
+    return new Intl.NumberFormat('sv-SE', {
+      maximumFractionDigits: 2,
+    }).format(value);
+  } catch (_) {
+    return String(value);
+  }
+};
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -20,10 +154,20 @@ serve(async (req) => {
     const requestBody = await req.json();
     console.log('Request body received:', JSON.stringify(requestBody, null, 2));
     
-    const { message, userId, systemPrompt, model = 'gpt-4o-mini', maxTokens = 50, temperature = 0.3 } = requestBody;
+    const {
+      message,
+      userId,
+      systemPrompt,
+      model = 'gpt-4o-mini',
+      maxTokens = 50,
+      temperature = 0.3,
+      contextData,
+    } = requestBody;
 
-    console.log('Quick AI Assistant called with:', { 
-      message: message?.substring(0, 50) + '...', 
+    const marketauxContext: MarketauxContextPayload | undefined = (contextData as QuickAssistantContext | undefined)?.marketaux;
+
+    console.log('Quick AI Assistant called with:', {
+      message: message?.substring(0, 50) + '...',
       userId,
       model,
       maxTokens,
@@ -60,16 +204,25 @@ Exempel:
 
 Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
 
-    const messages = [
+    const messages: Array<{ role: 'system' | 'user'; content: string }> = [
       {
         role: 'system',
         content: enhancedSystemPrompt
-      },
-      {
-        role: 'user',
-        content: message
       }
     ];
+
+    if (marketauxContext) {
+      console.log('MarketAux context detected with items:', marketauxContext.items?.length ?? 0);
+      messages.push({
+        role: 'system',
+        content: buildMarketauxContextPrompt(marketauxContext),
+      });
+    }
+
+    messages.push({
+      role: 'user',
+      content: message
+    });
 
     console.log('=== CALLING OPENAI API ===');
     console.log('Model:', model);
