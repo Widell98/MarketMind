@@ -11,12 +11,24 @@ export interface ChatFolder {
   updated_at: string;
 }
 
+export type ChatAnalysisCategory =
+  | 'risk'
+  | 'diversification'
+  | 'optimization'
+  | 'summary'
+  | 'profile'
+  | 'general'
+  | 'other';
+
 export interface ChatSession {
   id: string;
   session_name: string;
   created_at: string;
   is_active: boolean;
   folder_id: string | null;
+  last_message_at?: string | null;
+  last_message_preview?: string | null;
+  last_analysis_type?: ChatAnalysisCategory | null;
 }
 
 export const useChatFolders = () => {
@@ -51,7 +63,7 @@ export const useChatFolders = () => {
 
   const loadSessions = useCallback(async () => {
     if (!user) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('ai_chat_sessions')
@@ -61,13 +73,83 @@ export const useChatFolders = () => {
 
       if (error) throw error;
 
-      const formattedSessions = data.map(session => ({
-        id: session.id,
-        session_name: session.session_name || 'Ny Session',
-        created_at: session.created_at,
-        is_active: session.is_active || false,
-        folder_id: session.folder_id,
-      }));
+      const sessionIds = (data || []).map(session => session.id);
+
+      type HistoryRow = {
+        chat_session_id: string;
+        message: string;
+        message_type: string;
+        created_at: string;
+        context_data: Record<string, unknown> | null;
+      };
+
+      const { data: historyData } = sessionIds.length
+        ? await supabase
+            .from('portfolio_chat_history')
+            .select('chat_session_id, message, message_type, created_at, context_data')
+            .in('chat_session_id', sessionIds)
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+        : { data: [] as HistoryRow[] };
+
+      const normalizeAnalysisType = (value?: unknown): ChatAnalysisCategory | null => {
+        if (typeof value !== 'string') return null;
+        const normalized = value.toLowerCase();
+
+        if (normalized.includes('risk')) return 'risk';
+        if (normalized.includes('divers')) return 'diversification';
+        if (normalized.includes('optim')) return 'optimization';
+        if (normalized.includes('summary')) return 'summary';
+        if (normalized.includes('profile')) return 'profile';
+        if (normalized.includes('general')) return 'general';
+        return 'other';
+      };
+
+      const latestMessages = new Map<string, HistoryRow>();
+      const latestAssistantMessages = new Map<string, HistoryRow>();
+
+      (historyData || []).forEach((row: HistoryRow) => {
+        if (!latestMessages.has(row.chat_session_id)) {
+          latestMessages.set(row.chat_session_id, row);
+        }
+
+        if (row.message_type !== 'user' && !latestAssistantMessages.has(row.chat_session_id)) {
+          latestAssistantMessages.set(row.chat_session_id, row);
+        }
+      });
+
+      const createPreview = (message?: string | null) => {
+        if (!message) return null;
+        const collapsed = message.replace(/\s+/g, ' ').trim();
+        if (collapsed.length === 0) {
+          return null;
+        }
+        return collapsed.length > 140 ? `${collapsed.slice(0, 137)}...` : collapsed;
+      };
+
+      const formattedSessions = data.map(session => {
+        const assistantMessage = latestAssistantMessages.get(session.id);
+        const fallbackMessage = latestMessages.get(session.id);
+        const summarySource = assistantMessage ?? fallbackMessage ?? null;
+
+        const preview = createPreview(summarySource?.message ?? null);
+        const analysisTypeRaw =
+          summarySource?.context_data && typeof summarySource.context_data === 'object'
+            ? (summarySource.context_data as Record<string, unknown>).analysisType
+            : undefined;
+        const analysisType = normalizeAnalysisType(analysisTypeRaw);
+
+        return {
+          id: session.id,
+          session_name: session.session_name || 'Ny Session',
+          created_at: session.created_at,
+          is_active: session.is_active || false,
+          folder_id: session.folder_id,
+          last_message_at: summarySource?.created_at ?? null,
+          last_message_preview: preview,
+          last_analysis_type: analysisType,
+        } satisfies ChatSession;
+      });
 
       setSessions(formattedSessions);
     } catch (error) {
@@ -235,7 +317,14 @@ export const useChatFolders = () => {
 
   const getSessionsByFolder = useMemo(() => {
     return (folderId: string | null) => {
-      return sessions.filter(session => session.folder_id === folderId);
+      return sessions
+        .filter(session => session.folder_id === folderId)
+        .slice()
+        .sort((a, b) => {
+          const aDate = a.last_message_at || a.created_at;
+          const bDate = b.last_message_at || b.created_at;
+          return new Date(bDate).getTime() - new Date(aDate).getTime();
+        });
     };
   }, [sessions]);
 

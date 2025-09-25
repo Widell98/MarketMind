@@ -9,7 +9,17 @@ import ChatInput from './chat/ChatInput';
 import ProfileUpdateConfirmation from './ProfileUpdateConfirmation';
 import ChatFolderSidebar from './chat/ChatFolderSidebar';
 
-import { LogIn, MessageSquare, Brain, Lock, Sparkles, Menu, PanelLeftClose, PanelLeft } from 'lucide-react';
+import {
+  LogIn,
+  MessageSquare,
+  Brain,
+  Lock,
+  Sparkles,
+  Menu,
+  PanelLeftClose,
+  PanelLeft,
+  Loader2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 interface Message {
@@ -51,6 +61,7 @@ const AIChat = ({
     isLoading,
     quotaExceeded,
     isLoadingSession,
+    isAnalyzing,
     sendMessage,
     createNewSession,
     loadSession,
@@ -58,6 +69,7 @@ const AIChat = ({
     deleteSessionsBulk,
     editSessionName,
     clearMessages,
+    summarizeSessions,
     dismissProfileUpdatePrompt,
     updateUserProfile
   } = useAIChat(portfolioId);
@@ -66,6 +78,7 @@ const AIChat = ({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [isGuideSession, setIsGuideSession] = useState(false);
+  const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -172,6 +185,7 @@ const AIChat = ({
     await createNewSession();
     setInput('');
     setHasProcessedInitialMessage(false); // Reset for new session
+    setSelectedSessionIds([]);
     if (isMobile) {
       setSidebarOpen(false);
     }
@@ -199,14 +213,68 @@ const AIChat = ({
       }, 100);
     }
   };
+  const handleToggleSessionSelection = useCallback((sessionId: string) => {
+    setSelectedSessionIds((prev) =>
+      prev.includes(sessionId)
+        ? prev.filter((id) => id !== sessionId)
+        : [...prev, sessionId],
+    );
+  }, []);
+
+  const handleClearSessionSelection = useCallback(() => {
+    setSelectedSessionIds([]);
+  }, []);
+
   const handleLoadGuideSession = useCallback(() => {
     // Clear regular chat and show guide
     setIsGuideSession(true);
     clearMessages();
+    setSelectedSessionIds([]);
     if (isMobile) {
       setSidebarOpen(false);
     }
   }, [clearMessages, isMobile]);
+  const handleQuickAction = useCallback(
+    async (prompt: string) => {
+      if (!user || isLoading) return;
+
+      if (isGuideSession) {
+        await handleNewSession();
+      }
+
+      await sendMessage(prompt);
+    },
+    [user, isLoading, isGuideSession, handleNewSession, sendMessage],
+  );
+
+  const quickActions = useMemo(
+    () => [
+      {
+        label: 'Riskanalys',
+        prompt: 'Gör en riskanalys av min portfölj och identifiera de största riskerna.',
+      },
+      {
+        label: 'Diversifiering',
+        prompt: 'Analysera hur diversifierad min portfölj är och föreslå förbättringar.',
+      },
+      {
+        label: 'Optimering',
+        prompt: 'Ge mig optimeringsförslag och konkreta nästa steg för min portfölj.',
+      },
+    ],
+    [],
+  );
+
+  const handleSummarizeSelected = useCallback(async () => {
+    if (selectedSessionIds.length === 0 || isAnalyzing) {
+      return;
+    }
+
+    const success = await summarizeSessions(selectedSessionIds);
+    if (success) {
+      setSelectedSessionIds([]);
+    }
+  }, [selectedSessionIds, summarizeSessions, isAnalyzing]);
   const sidebarProps = useMemo(() => ({
     currentSessionId: isGuideSession ? 'guide-session' : currentSessionId,
     onLoadSession: (sessionId: string) => {
@@ -218,6 +286,9 @@ const AIChat = ({
     onEditSessionName: editSessionName,
     onLoadGuideSession: handleLoadGuideSession,
     onCreateNewSession: handleNewSession,
+    selectedSessionIds,
+    onToggleSessionSelection: handleToggleSessionSelection,
+    onClearSelection: handleClearSessionSelection,
     className: isMobile ? "w-full min-h-full" : "w-[300px] xl:w-[320px]",
   }), [
     isGuideSession,
@@ -228,6 +299,9 @@ const AIChat = ({
     editSessionName,
     handleLoadGuideSession,
     handleNewSession,
+    selectedSessionIds,
+    handleToggleSessionSelection,
+    handleClearSessionSelection,
     isMobile,
   ]);
   return (
@@ -285,6 +359,48 @@ const AIChat = ({
                 )}
               </div>
             </header>
+
+            <div className="border-b border-ai-border/60 bg-ai-surface-muted/40 px-4 py-3 sm:px-6">
+              <div className="flex flex-wrap items-center gap-2">
+                {quickActions.map((action) => (
+                  <Button
+                    key={action.label}
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="rounded-full border border-transparent px-4 text-[13px] font-medium"
+                    onClick={() => handleQuickAction(action.prompt)}
+                    disabled={isLoading || isAnalyzing || !user}
+                  >
+                    {action.label}
+                  </Button>
+                ))}
+                <div className="ml-auto flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="rounded-full px-4 text-[13px] font-semibold"
+                    onClick={handleSummarizeSelected}
+                    disabled={selectedSessionIds.length === 0 || isAnalyzing}
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                        Bearbetar...
+                      </>
+                    ) : (
+                      <>Sammanfatta markerade ({selectedSessionIds.length || 0})</>
+                    )}
+                  </Button>
+                </div>
+              </div>
+              {selectedSessionIds.length > 0 && (
+                <p className="mt-2 text-xs text-ai-text-muted">
+                  Markera de konversationer du vill kombinera och klicka på "Sammanfatta markerade" för en samlad analys.
+                </p>
+              )}
+            </div>
 
             <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
               <ChatMessages

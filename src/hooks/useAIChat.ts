@@ -172,16 +172,19 @@ export const useAIChat = (portfolioId?: string) => {
     });
   }, [currentSessionId, loadMessages, toast]);
 
-  const createNewSession = useCallback(async (customName?: string, shouldSendInitialMessage?: string) => {
+  const createNewSession = useCallback(async (
+    customName?: string,
+    shouldSendInitialMessage?: string,
+  ): Promise<string | null> => {
     console.log('=== CREATE NEW SESSION ===');
     console.log('User:', user?.id);
     console.log('Portfolio ID:', portfolioId);
     console.log('Custom name:', customName);
     console.log('Should send initial message:', shouldSendInitialMessage);
-    
+
     if (!user) {
       console.log('Cannot create session: missing user');
-      return;
+      return null;
     }
     
     setIsLoading(true);
@@ -240,7 +243,8 @@ export const useAIChat = (portfolioId?: string) => {
         title: customName ? `Chat "${customName}" skapad` : "Ny chat skapad",
         description: shouldSendInitialMessage ? "Skickar din fråga..." : "Du kan nu börja chatta med din AI-assistent.",
       });
-      
+
+      return newSession.id;
     } catch (error) {
       console.error('Error creating new session:', error);
       toast({
@@ -248,6 +252,7 @@ export const useAIChat = (portfolioId?: string) => {
         description: "Kunde inte skapa ny session. Försök igen.",
         variant: "destructive",
       });
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -1009,9 +1014,222 @@ export const useAIChat = (portfolioId?: string) => {
       });
       return;
     }
-    
+
     await sendMessage(prompt);
   }, [sendMessage, checkUsageLimit, subscription, toast]);
+
+  const summarizeSessions = useCallback(
+    async (sessionIds: string[]): Promise<boolean> => {
+      if (!user || sessionIds.length === 0) {
+        return false;
+      }
+
+      const canSendMessage = checkUsageLimit('ai_message');
+      const isPremium = subscription?.subscribed;
+
+      if (!canSendMessage && !isPremium) {
+        toast({
+          title: "Daglig gräns nådd",
+          description: "Du har använt alla dina 5 gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.",
+          variant: "destructive",
+        });
+        setQuotaExceeded(true);
+        return false;
+      }
+
+      setIsAnalyzing(true);
+      setQuotaExceeded(false);
+
+      try {
+        let targetSessionId = currentSessionId;
+
+        if (!targetSessionId) {
+          const createdSessionId = await createNewSession('Sammanfattning');
+          if (!createdSessionId) {
+            throw new Error('Kunde inte skapa en ny session för sammanfattningen.');
+          }
+          targetSessionId = createdSessionId;
+        }
+
+        const { data: historyData, error: historyError } = await supabase
+          .from('portfolio_chat_history')
+          .select('chat_session_id, message, message_type, created_at')
+          .in('chat_session_id', sessionIds)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true });
+
+        if (historyError) {
+          throw historyError;
+        }
+
+        const groupedTranscripts = sessionIds.map((sessionId) => {
+          const relatedMessages = (historyData || []).filter(
+            (row) => row.chat_session_id === sessionId,
+          );
+          const limitedMessages = relatedMessages.slice(-8);
+          const transcript = limitedMessages
+            .map((message) => `${message.message_type === 'user' ? 'Användare' : 'AI'}: ${message.message}`)
+            .join('\n');
+
+          const sessionMeta = sessions.find((session) => session.id === sessionId);
+
+          return {
+            sessionId,
+            sessionName: sessionMeta?.session_name ?? 'Okänd konversation',
+            transcript,
+          };
+        });
+
+        const hasTranscript = groupedTranscripts.some((item) => item.transcript.trim().length > 0);
+
+        if (!hasTranscript) {
+          toast({
+            title: 'Inget att sammanfatta',
+            description: 'De markerade konversationerna innehåller inga meddelanden att sammanfatta.',
+          });
+          return false;
+        }
+
+        const formattedPrompt = groupedTranscripts
+          .map(
+            (entry, index) =>
+              `Session ${index + 1}: ${entry.sessionName}\n${entry.transcript || 'Ingen historik tillgänglig.'}`,
+          )
+          .join('\n\n');
+
+        const summaryRequestContent = `Sammanfatta markerade sessioner: ${groupedTranscripts
+          .map((entry) => entry.sessionName)
+          .join(', ')}`;
+
+        const { data: userRecord, error: userRecordError } = await supabase
+          .from('portfolio_chat_history')
+          .insert({
+            user_id: user.id,
+            chat_session_id: targetSessionId,
+            message: summaryRequestContent,
+            message_type: 'user',
+            context_data: {
+              analysisType: 'multi_session_summary_request',
+              sourceSessions: sessionIds,
+            },
+          })
+          .select()
+          .maybeSingle();
+
+        if (userRecordError) {
+          throw userRecordError;
+        }
+
+        const userMessage: Message = {
+          id: userRecord?.id ?? `${Date.now()}_user_summary`,
+          role: 'user',
+          content: summaryRequestContent,
+          timestamp: userRecord ? new Date(userRecord.created_at) : new Date(),
+          context: {
+            analysisType: 'multi_session_summary_request',
+          },
+        };
+
+        setMessages((prev) => [...prev, userMessage]);
+
+        const { data, error } = await supabase.functions.invoke<{ response?: string } | string>(
+          'portfolio-ai-chat',
+          {
+            body: {
+              message: `Skapa en samlad sammanfattning på svenska av följande konversationer. Lyft fram de viktigaste slutsatserna, eventuella rekommendationer och gemensamma teman.\n\n${formattedPrompt}`,
+              userId: user.id,
+              portfolioId,
+              sessionId: targetSessionId,
+              analysisType: 'multi_session_summary',
+              conversationData: groupedTranscripts,
+            },
+          },
+        );
+
+        if (error) {
+          throw error;
+        }
+
+        const responsePayload = typeof data === 'string' ? { response: data } : data;
+        const aiContent = responsePayload?.response ?? '';
+
+        if (!aiContent) {
+          throw new Error('Sammanfattningen misslyckades. Försök igen.');
+        }
+
+        const { data: assistantRecord, error: assistantError } = await supabase
+          .from('portfolio_chat_history')
+          .insert({
+            user_id: user.id,
+            chat_session_id: targetSessionId,
+            message: aiContent,
+            message_type: 'assistant',
+            context_data: {
+              analysisType: 'multi_session_summary',
+              sourceSessions: sessionIds,
+            },
+          })
+          .select()
+          .maybeSingle();
+
+        if (assistantError) {
+          throw assistantError;
+        }
+
+        const assistantMessage: Message = {
+          id: assistantRecord?.id ?? `${Date.now()}_assistant_summary`,
+          role: 'assistant',
+          content: aiContent,
+          timestamp: assistantRecord ? new Date(assistantRecord.created_at) : new Date(),
+          context: {
+            analysisType: 'multi_session_summary',
+            sourceSessions: sessionIds,
+          },
+        };
+
+        setMessages((prev) => [...prev, assistantMessage]);
+
+        const { error: usageError } = await supabase.rpc('increment_ai_usage', {
+          _user_id: user.id,
+          _usage_type: 'ai_message',
+        });
+
+        if (usageError) {
+          console.error('Usage tracking failed:', usageError);
+        } else {
+          incrementUsage('ai_message');
+          await fetchUsage();
+        }
+
+        await loadMessages(targetSessionId, true);
+        return true;
+      } catch (error) {
+        console.error('Error summarizing sessions:', error);
+        toast({
+          title: 'Fel vid sammanfattning',
+          description: error instanceof Error ? error.message : 'Kunde inte skapa sammanfattningen. Försök igen.',
+          variant: 'destructive',
+        });
+        return false;
+      } finally {
+        setIsAnalyzing(false);
+      }
+    },
+    [
+      user,
+      currentSessionId,
+      checkUsageLimit,
+      subscription,
+      toast,
+      createNewSession,
+      sessions,
+      supabase,
+      portfolioId,
+      incrementUsage,
+      fetchUsage,
+      loadMessages,
+    ],
+  );
 
   const clearMessages = useCallback(() => {
     setMessages([]);
@@ -1045,6 +1263,7 @@ export const useAIChat = (portfolioId?: string) => {
     editSessionName,
     clearMessages,
     getQuickAnalysis,
+    summarizeSessions,
     dismissProfileUpdatePrompt,
     updateUserProfile,
   };

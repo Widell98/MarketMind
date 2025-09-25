@@ -1,4 +1,4 @@
-import React, { useState, memo } from 'react';
+import React, { useState, memo, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -24,7 +24,15 @@ import {
   Sparkles,
   Plus,
 } from 'lucide-react';
-import { useChatFolders, ChatFolder, ChatSession } from '@/hooks/useChatFolders';
+import { formatDistanceToNow } from 'date-fns';
+import { sv } from 'date-fns/locale';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  useChatFolders,
+  ChatFolder,
+  ChatSession,
+  ChatAnalysisCategory,
+} from '@/hooks/useChatFolders';
 import { useGuideSession } from '@/hooks/useGuideSession';
 import CreateFolderDialog from './CreateFolderDialog';
 import EditSessionNameDialog from './EditSessionNameDialog';
@@ -38,6 +46,9 @@ interface ChatFolderSidebarProps {
   onLoadGuideSession?: () => void;
   onCreateNewSession: () => void;
   onBulkDeleteSessions?: (sessionIds: string[]) => Promise<void> | void;
+  selectedSessionIds?: string[];
+  onToggleSessionSelection?: (sessionId: string) => void;
+  onClearSelection?: () => void;
   className?: string;
 }
 
@@ -49,12 +60,16 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
   onLoadGuideSession,
   onCreateNewSession,
   onBulkDeleteSessions,
+  selectedSessionIds = [],
+  onToggleSessionSelection,
+  onClearSelection,
   className = '',
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [editingSession, setEditingSession] = useState<{ id: string; name: string } | null>(null);
   const [isClearingRoot, setIsClearingRoot] = useState(false);
+  const [analysisFilter, setAnalysisFilter] = useState<ChatAnalysisCategory | 'all'>('all');
   const { shouldShowGuide } = useGuideSession();
 
   const {
@@ -71,16 +86,30 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
 
   const rootSessions = sessions.filter((session) => !session.folder_id);
 
-  const filteredSessions = sessions.filter((session) =>
-    session.session_name.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const searchValue = searchTerm.toLowerCase();
+
+  const matchesFilter = (session: ChatSession) => {
+    const matchesSearch =
+      session.session_name.toLowerCase().includes(searchValue) ||
+      (session.last_message_preview?.toLowerCase().includes(searchValue) ?? false);
+
+    if (!matchesSearch) {
+      return false;
+    }
+
+    if (analysisFilter === 'all') {
+      return true;
+    }
+
+    return session.last_analysis_type === analysisFilter;
+  };
+
+  const filteredSessions = sessions.filter(matchesFilter);
 
   const filteredFolders = folders.filter((folder) => {
     const folderMatches = folder.name.toLowerCase().includes(searchTerm.toLowerCase());
     const folderSessions = getSessionsByFolder(folder.id);
-    const sessionMatches = folderSessions.some((session) =>
-      session.session_name.toLowerCase().includes(searchTerm.toLowerCase()),
-    );
+    const sessionMatches = folderSessions.some(matchesFilter);
     return folderMatches || sessionMatches;
   });
 
@@ -175,8 +204,54 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
     });
   };
 
+  const analysisFilterOptions: { value: ChatAnalysisCategory | 'all'; label: string }[] = useMemo(
+    () => [
+      { value: 'all', label: 'Alla' },
+      { value: 'risk', label: 'Risk' },
+      { value: 'diversification', label: 'Diversifiering' },
+      { value: 'optimization', label: 'Optimering' },
+      { value: 'summary', label: 'Sammanfattningar' },
+    ],
+    [],
+  );
+
+  const renderAnalysisLabel = (analysisType?: ChatAnalysisCategory | null) => {
+    if (!analysisType || analysisType === 'general' || analysisType === 'other') {
+      return null;
+    }
+
+    const labelMap: Record<ChatAnalysisCategory, string> = {
+      risk: 'Riskanalys',
+      diversification: 'Diversifiering',
+      optimization: 'Optimering',
+      summary: 'Sammanfattning',
+      profile: 'Profil',
+      general: 'Allmänt',
+      other: 'Övrigt',
+    };
+
+    return (
+      <span className="inline-flex shrink-0 items-center rounded-full border border-ai-border/50 bg-ai-surface/70 px-2 py-0.5 text-[11px] font-medium text-ai-text-muted">
+        {labelMap[analysisType]}
+      </span>
+    );
+  };
+
+  const renderRelativeTime = (timestamp?: string | null) => {
+    if (!timestamp) return null;
+
+    try {
+      return formatDistanceToNow(new Date(timestamp), { addSuffix: true, locale: sv });
+    } catch (error) {
+      console.error('Failed to format timestamp', error);
+      return null;
+    }
+  };
+
   const renderSessionItem = (session: ChatSession, depth = 0) => {
     const isActive = currentSessionId === session.id;
+    const isSelected = selectedSessionIds.includes(session.id);
+    const relativeTime = renderRelativeTime(session.last_message_at);
 
     return (
       <li key={session.id} className={cn(depth > 0 && 'pl-3')}>
@@ -186,8 +261,19 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
             isActive
               ? 'border-ai-border/60 bg-ai-surface text-foreground shadow-sm'
               : 'text-ai-text-muted hover:border-ai-border/50 hover:bg-ai-surface/70 hover:text-foreground',
+            isSelected && 'border-primary/60 bg-ai-surface text-foreground shadow-sm',
           )}
         >
+          {onToggleSessionSelection && (
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center">
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={() => onToggleSessionSelection(session.id)}
+                className="h-4 w-4 border-ai-border/50 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
+                onClick={(event) => event.stopPropagation()}
+              />
+            </div>
+          )}
           <button
             type="button"
             onClick={() => onLoadSession(session.id)}
@@ -196,14 +282,29 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
             <div
               className={cn(
                 'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-transparent bg-ai-surface/70 text-ai-text-muted transition-colors group-hover/session:border-ai-border/50 group-hover/session:bg-ai-surface group-hover/session:text-foreground',
-                isActive && 'border-ai-border/60 bg-ai-surface text-foreground',
+                (isActive || isSelected) && 'border-ai-border/60 bg-ai-surface text-foreground',
               )}
             >
               <MessageSquare className="h-4 w-4" />
             </div>
-            <span className="min-w-0 flex-1 truncate font-medium" title={session.session_name}>
-              {session.session_name}
-            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate font-medium" title={session.session_name}>
+                  {session.session_name}
+                </span>
+                {renderAnalysisLabel(session.last_analysis_type)}
+              </div>
+              {session.last_message_preview && (
+                <p className="mt-1 truncate text-xs text-ai-text-muted/80" title={session.last_message_preview}>
+                  {session.last_message_preview}
+                </p>
+              )}
+              {relativeTime && (
+                <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-ai-text-muted/60">
+                  {relativeTime}
+                </p>
+              )}
+            </div>
           </button>
 
           <DropdownMenu modal={false}>
@@ -330,6 +431,41 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
             className="h-10 rounded-ai-md border border-ai-border/60 bg-ai-surface pl-11 text-sm text-foreground placeholder:text-ai-text-muted focus-visible:border-primary/60 focus-visible:ring-0 focus-visible:ring-offset-0"
           />
         </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {analysisFilterOptions.map((option) => (
+            <Button
+              key={option.value}
+              type="button"
+              size="sm"
+              variant={analysisFilter === option.value ? 'secondary' : 'ghost'}
+              className={cn(
+                'h-8 rounded-full border border-transparent px-3 text-[12px] font-medium text-ai-text-muted transition-colors hover:border-ai-border/50 hover:bg-ai-surface/80 hover:text-foreground',
+                analysisFilter === option.value && 'border-primary/50 text-foreground',
+              )}
+              onClick={() => setAnalysisFilter(option.value)}
+            >
+              {option.label}
+            </Button>
+          ))}
+        </div>
+
+        {selectedSessionIds.length > 0 && (
+          <div className="mt-3 flex items-center justify-between rounded-ai-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-medium text-primary">
+            <span>{selectedSessionIds.length} markerade</span>
+            {onClearSelection && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-auto rounded-full px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10"
+                onClick={onClearSelection}
+              >
+                Rensa val
+              </Button>
+            )}
+          </div>
+        )}
 
         <Button
           type="button"
