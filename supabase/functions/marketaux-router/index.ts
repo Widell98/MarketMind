@@ -166,30 +166,35 @@ async function fetchAndTransformFromMarketaux({ intent, symbol, query, limit }: 
 }
 
 function buildEndpoint(intent: MarketauxIntent, symbol?: string | null, query?: string, limit = 3) {
-  const baseUrl = intent === "report"
-    ? "https://api.marketaux.com/v1/earnings/latest"
-    : "https://api.marketaux.com/v1/news/all";
-
   const params = new URLSearchParams({
     api_token: marketauxApiKey!,
     limit: String(Math.max(limit, 1)),
-    language: "en",
-    filter_entities: "true",
-    sort: "published_at:desc",
   });
+
+  if (intent === "report") {
+    const baseUrl = "https://api.marketaux.com/v1/earnings";
+
+    if (symbol) {
+      params.set("symbols", symbol);
+    } else if (query) {
+      params.set("query", query);
+    }
+
+    return `${baseUrl}?${params.toString()}`;
+  }
+
+  const baseUrl = "https://api.marketaux.com/v1/news/all";
+
+  params.set("language", "en");
+  params.set("filter_entities", "true");
+  params.set("sort", "published_at:desc");
 
   if (symbol) {
     params.set("symbols", symbol);
   }
 
   if (query) {
-    params.set(intent === "report" ? "search" : "query", query);
-  }
-
-  if (intent === "report") {
-    params.delete("language");
-    params.delete("filter_entities");
-    params.delete("sort");
+    params.set("query", query);
   }
 
   return `${baseUrl}?${params.toString()}`;
@@ -226,8 +231,10 @@ type MarketauxReportItem = {
   revenue_actual?: number;
   revenue_estimate?: number;
   announcement_date?: string;
+  report_date?: string;
   updated_at?: string;
   currency?: string;
+  url?: string;
 };
 
 type NormalizedItem = {
@@ -274,8 +281,8 @@ function normalizeReports(json: unknown, limit: number): NormalizedItem[] {
     id: String(item.id ?? `${item.symbol}-${item.announcement_date ?? crypto.randomUUID()}`),
     title: `${item.company_name ?? item.symbol ?? "Okänt bolag"} – ${item.fiscal_period ?? "Senaste rapport"}`,
     subtitle: buildReportSubtitle(item),
-    url: null,
-    publishedAt: item.announcement_date ?? item.updated_at ?? null,
+    url: item.url ?? null,
+    publishedAt: item.announcement_date ?? item.report_date ?? item.updated_at ?? null,
     source: "MarketAux Earnings",
     metadata: {
       symbol: item.symbol,
