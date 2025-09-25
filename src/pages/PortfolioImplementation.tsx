@@ -147,15 +147,14 @@ const PortfolioImplementation = () => {
       <LoginPromptModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
       
       <div className="min-h-0 bg-gradient-to-br from-background to-secondary/5">
-        <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 pt-4 sm:pt-6 lg:pt-8 pb-8 sm:pb-12 lg:pb-16">
+        <div className="mx-auto w-full max-w-6xl space-y-8 sm:space-y-10 lg:space-y-12 px-2 pb-8 sm:px-4 sm:pb-12 lg:px-6 lg:pb-16">
           {/* Breadcrumb Navigation */}
-          <div className="mb-8">
+          <div>
             <Breadcrumb />
           </div>
           
           {/* Page Header */}
-          <div className="mb-10 sm:mb-12 lg:mb-14">
-            <section className="rounded-3xl border border-border/60 bg-card/70 px-6 py-8 text-center shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:px-10 sm:py-12">
+          <section className="rounded-3xl border border-border/60 bg-card/70 px-6 py-8 text-center shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:px-10 sm:py-12">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 sm:h-14 sm:w-14">
                 <Brain className="h-6 w-6 text-primary" />
               </div>
@@ -165,22 +164,16 @@ const PortfolioImplementation = () => {
               <p className="mx-auto mt-3 max-w-2xl text-base text-muted-foreground sm:text-lg">
                 {t('portfolio.subtitle')}
               </p>
-            </section>
-          </div>
+          </section>
 
           {/* Portfolio Health Score */}
-          {user && totalPortfolioValue > 0 && <div className="mb-12">
-              
-            </div>}
+          {user && totalPortfolioValue > 0 && <div className="hidden" />}
 
           {/* Portfolio Value Cards */}
-          <div className="mb-12">
-            <PortfolioValueCards totalPortfolioValue={totalPortfolioValue} totalInvestedValue={investedValue} totalCashValue={totalCash} loading={loading} />
-          </div>
+          <PortfolioValueCards totalPortfolioValue={totalPortfolioValue} totalInvestedValue={investedValue} totalCashValue={totalCash} loading={loading} />
 
           {/* Risk Profile Required Alert */}
-          {user && !riskProfile && <div className="mb-12">
-              <div className="bg-amber-50/70 dark:bg-amber-950/20 backdrop-blur-xl border border-amber-200/50 dark:border-amber-800/50 rounded-3xl p-8 shadow-xl">
+          {user && !riskProfile && <div className="bg-amber-50/70 dark:bg-amber-950/20 backdrop-blur-xl border border-amber-200/50 dark:border-amber-800/50 rounded-3xl p-8 shadow-xl">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
@@ -200,9 +193,9 @@ const PortfolioImplementation = () => {
                     {t('portfolio.createProfile.button')}
                   </Button>
                 </div>
-              </div>
-            </div>}
+              </div>}
 
+          {/* Portfolio Overview & Community */}
           <div className="space-y-4 sm:space-y-6 lg:space-y-8">
             <div className="relative bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-border/50 rounded-3xl shadow-xl overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
