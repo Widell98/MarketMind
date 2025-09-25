@@ -4,6 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
 
+import type { MarketauxIntent, MarketauxResponsePayload } from '@/types/marketaux';
+import { buildMarketauxQuery, detectMarketauxIntent } from '@/utils/marketaux';
+
 type ProfileUpdates = Record<string, unknown>;
 
 type MessageContext = {
@@ -12,6 +15,8 @@ type MessageContext = {
   isExchangeRequest?: boolean;
   profileUpdates?: ProfileUpdates;
   requiresConfirmation?: boolean;
+  source?: 'marketaux';
+  marketaux?: MarketauxResponsePayload;
   [key: string]: unknown;
 };
 
@@ -20,6 +25,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  source?: 'marketaux';
   context?: MessageContext;
 }
 
@@ -68,15 +74,20 @@ export const useAIChat = (portfolioId?: string) => {
 
       console.log('Raw messages from database:', data);
 
-      const formattedMessages: Message[] = data.map(message => ({
-        id: message.id,
-        role: message.message_type === 'user' ? 'user' : 'assistant',
-        content: message.message,
-        timestamp: new Date(message.created_at),
-        context: message.context_data
+      const formattedMessages: Message[] = data.map(message => {
+        const context = message.context_data
           ? (message.context_data as MessageContext)
-          : undefined,
-      }));
+          : undefined;
+
+        return {
+          id: message.id,
+          role: message.message_type === 'user' ? 'user' : 'assistant',
+          content: message.message,
+          timestamp: new Date(message.created_at),
+          context,
+          source: context?.source === 'marketaux' ? 'marketaux' : undefined,
+        };
+      });
 
       console.log('Formatted messages:', formattedMessages);
       console.log('Setting messages to state...');
@@ -607,6 +618,38 @@ export const useAIChat = (portfolioId?: string) => {
         content: msg.content
       }));
       
+      let marketauxContext: MarketauxResponsePayload | null = null;
+      let marketauxFallbackMessage: string | null = null;
+      let marketauxIntent: MarketauxIntent | undefined;
+
+      const marketauxDetection = detectMarketauxIntent(content, undefined);
+
+      if (marketauxDetection) {
+        marketauxIntent = marketauxDetection.intent;
+        try {
+          const query = buildMarketauxQuery(content, undefined);
+          const { data: marketauxData, error: marketauxError } = await supabase.functions.invoke<MarketauxResponsePayload>('marketaux-router', {
+            body: {
+              query,
+              symbol: marketauxDetection.symbol,
+              intent: marketauxDetection.intent,
+            },
+          });
+
+          if (marketauxError) {
+            console.error('MarketAux fetch error:', marketauxError);
+            marketauxFallbackMessage = 'Kunde inte hämta färska MarketAux-data just nu. Försök igen senare eller ställ en annan fråga.';
+          } else if (!marketauxData || !(marketauxData.items?.length)) {
+            marketauxFallbackMessage = 'MarketAux hade inga färska datapunkter att dela kring frågan. Testa att formulera om eller fråga om ett annat bolag.';
+          } else {
+            marketauxContext = marketauxData;
+          }
+        } catch (error) {
+          console.error('Unexpected MarketAux error:', error);
+          marketauxFallbackMessage = 'Det uppstod ett fel vid hämtning av MarketAux-data. Försök igen senare.';
+        }
+      }
+
       // Handle streaming response using direct fetch for better streaming support
       const supabaseUrl = 'https://qifolopsdeeyrevbuxfl.supabase.co';
       const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpZm9sb3BzZGVleXJldmJ1eGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5MzY3MjMsImV4cCI6MjA2MzUxMjcyM30.x89y179_8EDl1NwTryhXfUDMzdxrnfomZfRmhmySMhM';
@@ -623,7 +666,10 @@ export const useAIChat = (portfolioId?: string) => {
           portfolioId: portfolioId,
           sessionId: targetSessionId,
           chatHistory: chatHistoryForAPI,
-          analysisType: 'general'
+          analysisType: 'general',
+          contextData: marketauxContext ? { marketaux: marketauxContext } : undefined,
+          marketauxFallbackMessage: marketauxFallbackMessage ?? undefined,
+          marketauxIntent
         })
       });
 
@@ -657,7 +703,16 @@ export const useAIChat = (portfolioId?: string) => {
           confidence: 0.8
         }
       };
-      
+
+      if (marketauxContext) {
+        aiMessage.source = 'marketaux';
+        aiMessage.context = {
+          ...aiMessage.context,
+          source: 'marketaux',
+          marketaux: marketauxContext,
+        };
+      }
+
       setMessages(prev => [...prev, aiMessage]);
       
       // Process streaming response

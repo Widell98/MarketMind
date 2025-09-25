@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Bot, User, Plus, Check, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { parseMarkdownSafely } from '@/utils/sanitizer';
+
+import MarketauxContextDetails from '@/components/MarketauxContextDetails';
+import type { MarketauxResponsePayload } from '@/types/marketaux';
 
 interface StockSuggestion {
   symbol: string;
@@ -18,12 +21,16 @@ interface ChatMessageProps {
     role: 'user' | 'assistant';
     content: string;
     timestamp: Date;
+    source?: 'marketaux';
     context?: {
       analysisType?: string;
       confidence?: number;
       isExchangeRequest?: boolean;
       profileUpdates?: Record<string, unknown>;
       requiresConfirmation?: boolean;
+      marketaux?: MarketauxResponsePayload;
+      source?: 'marketaux';
+      [key: string]: unknown;
     };
   };
 }
@@ -32,6 +39,18 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
   const [addedStocks, setAddedStocks] = useState<Set<string>>(new Set());
   const { addHolding, actualHoldings } = useUserHoldings();
   const { toast } = useToast();
+
+  const [isMarketauxExpanded, setIsMarketauxExpanded] = useState(false);
+
+  useEffect(() => {
+    setIsMarketauxExpanded(false);
+  }, [message.id]);
+
+  const marketauxContext = message.context?.marketaux as MarketauxResponsePayload | undefined;
+  const usesMarketaux =
+    message.source === 'marketaux' ||
+    message.context?.source === 'marketaux' ||
+    Boolean(marketauxContext);
 
   const extractStockSuggestions = (content: string): StockSuggestion[] => {
     const suggestions: StockSuggestion[] = [];
@@ -220,6 +239,29 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
           <div className="flex-1 min-w-0 max-w-[75%] space-y-3">
             <div className="rounded-[20px] border border-[#205295]/20 bg-white/90 px-5 py-4 text-sm leading-relaxed text-foreground shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble dark:px-4 dark:py-3 dark:shadow-sm">
               <div className="space-y-2">{formatMessageContent(message.content)}</div>
+
+              {usesMarketaux && marketauxContext && (
+                <div className="mt-3 space-y-2 rounded-[16px] border border-ai-border/50 bg-ai-surface-muted/50 p-3 text-[12px] text-ai-text-muted transition-colors dark:border-ai-border/40 dark:bg-ai-surface-muted/40">
+                  <div className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="font-medium text-foreground">Källa: MarketAux</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto px-2 py-1 text-[11px]"
+                      onClick={() => setIsMarketauxExpanded((prev) => !prev)}
+                    >
+                      {isMarketauxExpanded ? 'Dölj källdata' : 'Visa källdata'}
+                    </Button>
+                  </div>
+
+                  {isMarketauxExpanded && (
+                    <div className="pt-2 text-left">
+                      <MarketauxContextDetails context={marketauxContext} />
+                    </div>
+                  )}
+                </div>
+              )}
+
               <p className="mt-3 text-[11px] text-ai-text-muted">
                 {message.timestamp.toLocaleTimeString('sv-SE', {
                   hour: '2-digit',

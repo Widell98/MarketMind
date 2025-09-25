@@ -6,15 +6,23 @@ import ChatMessage from './ChatMessage';
 import GuideBot from './GuideBot';
 import { useGuideSession } from '@/hooks/useGuideSession';
 
+import type { MarketauxResponsePayload } from '@/types/marketaux';
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  source?: 'marketaux';
   context?: {
     analysisType?: string;
     confidence?: number;
     isExchangeRequest?: boolean;
+    profileUpdates?: Record<string, unknown>;
+    requiresConfirmation?: boolean;
+    marketaux?: MarketauxResponsePayload;
+    source?: 'marketaux';
+    [key: string]: unknown;
   };
 }
 

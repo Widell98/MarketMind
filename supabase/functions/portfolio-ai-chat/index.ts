@@ -88,6 +88,266 @@ type HoldingValueBreakdown = {
   hasDirectPrice: boolean;
 };
 
+type MarketauxIntent = 'news' | 'report';
+
+type MarketauxNormalizedItem = {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  url?: string | null;
+  publishedAt?: string | null;
+  source?: string | null;
+  imageUrl?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+type MarketauxContextPayload = {
+  source: 'marketaux';
+  intent: MarketauxIntent;
+  symbol?: string | null;
+  query?: string;
+  fetchedAt: string;
+  summary?: string[];
+  items?: MarketauxNormalizedItem[];
+};
+
+const buildMarketauxContextPrompt = (payload: MarketauxContextPayload) => {
+  const header = `DATAKÄLLA (MarketAux – ${payload.intent === 'report' ? 'Bolagsrapporter' : 'Nyheter'})`;
+  const summaryLines = Array.isArray(payload.summary) && payload.summary.length
+    ? payload.summary.map((line) => `- ${line}`).join('\n')
+    : '- Ingen sammanfattning tillgänglig.';
+
+  const itemsText = Array.isArray(payload.items) && payload.items.length
+    ? payload.items.map((item, idx) => formatMarketauxItem(item, payload.intent, idx + 1)).join('\n\n')
+    : '- Inga enskilda dataposter tillgängliga.';
+
+  return `${header}
+Fråga: ${payload.query ?? 'Okänd fråga'}
+Symbol: ${payload.symbol ?? 'Ej angiven'}
+Hämtad: ${payload.fetchedAt}
+
+Sammanfattning:
+${summaryLines}
+
+Poster:
+${itemsText}
+
+Instruktioner:
+- Utgå från MarketAux-datan ovan när du svarar.
+- Om datan täcker frågan, inkludera en kort analys.
+- Svara på svenska och var tydlig när något är osäkert.
+- Markera i svaret att MarketAux användes, till exempel genom att skriva "Källa: MarketAux".`;
+};
+
+const formatMarketauxItem = (item: MarketauxNormalizedItem, intent: MarketauxIntent, index: number) => {
+  const baseLines = [`${index}. ${item.title}`];
+
+  if (item.subtitle) {
+    baseLines.push(`   Sammanfattning: ${item.subtitle}`);
+  }
+
+  if (item.source || item.publishedAt) {
+    const metaParts: string[] = [];
+    if (item.source) metaParts.push(`Källa: ${item.source}`);
+    if (item.publishedAt) metaParts.push(`Publicerad: ${item.publishedAt}`);
+    if (metaParts.length) {
+      baseLines.push(`   ${metaParts.join(' • ')}`);
+    }
+  }
+
+  if (intent === 'report') {
+    const reportDetails = extractReportDetails(item.metadata ?? {});
+    if (reportDetails.length) {
+      baseLines.push(`   Nyckeltal: ${reportDetails.join(' | ')}`);
+    }
+  }
+
+  if (item.url && intent === 'news') {
+    baseLines.push(`   Länk: ${item.url}`);
+  }
+
+  return baseLines.join('\n');
+};
+
+const extractReportDetails = (metadata: Record<string, unknown>) => {
+  const rows: string[] = [];
+  const fiscalPeriod = typeof metadata.fiscalPeriod === 'string' ? metadata.fiscalPeriod : undefined;
+  const fiscalYear = typeof metadata.fiscalYear === 'string' || typeof metadata.fiscalYear === 'number'
+    ? metadata.fiscalYear
+    : undefined;
+  const epsActual = typeof metadata.epsActual === 'number' ? metadata.epsActual : undefined;
+  const epsEstimate = typeof metadata.epsEstimate === 'number' ? metadata.epsEstimate : undefined;
+  const revenueActual = typeof metadata.revenueActual === 'number' ? metadata.revenueActual : undefined;
+  const revenueEstimate = typeof metadata.revenueEstimate === 'number' ? metadata.revenueEstimate : undefined;
+  const currency = typeof metadata.currency === 'string' ? metadata.currency : undefined;
+
+  if (fiscalPeriod || fiscalYear) {
+    rows.push(`Period: ${[fiscalPeriod, fiscalYear].filter(Boolean).join(' ')}`);
+  }
+
+  if (epsActual != null || epsEstimate != null) {
+    rows.push(`EPS: ${formatNumber(epsActual)} (est ${formatNumber(epsEstimate)})`);
+  }
+
+  if (revenueActual != null || revenueEstimate != null) {
+    rows.push(`Intäkter: ${formatNumber(revenueActual, currency)} (est ${formatNumber(revenueEstimate, currency)})`);
+  }
+
+  return rows;
+};
+
+const formatNumber = (value?: number, currency?: string) => {
+  if (value == null || Number.isNaN(value)) {
+    return '–';
+  }
+
+  try {
+    if (currency) {
+      return new Intl.NumberFormat('sv-SE', {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 2,
+      }).format(value);
+    }
+
+    return new Intl.NumberFormat('sv-SE', {
+      maximumFractionDigits: 2,
+    }).format(value);
+  } catch (_) {
+    return String(value);
+  }
+};
+
+type MarketauxIntent = 'news' | 'report';
+
+type MarketauxNormalizedItem = {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  url?: string | null;
+  publishedAt?: string | null;
+  source?: string | null;
+  imageUrl?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+type MarketauxContextPayload = {
+  source: 'marketaux';
+  intent: MarketauxIntent;
+  symbol?: string | null;
+  query?: string;
+  fetchedAt: string;
+  summary?: string[];
+  items?: MarketauxNormalizedItem[];
+};
+
+const buildMarketauxContextPrompt = (payload: MarketauxContextPayload) => {
+  const header = `DATAKÄLLA (MarketAux – ${payload.intent === 'report' ? 'Bolagsrapporter' : 'Nyheter'})`;
+  const summaryLines = Array.isArray(payload.summary) && payload.summary.length
+    ? payload.summary.map((line) => `- ${line}`).join('\n')
+    : '- Ingen sammanfattning tillgänglig.';
+
+  const itemsText = Array.isArray(payload.items) && payload.items.length
+    ? payload.items.map((item, idx) => formatMarketauxItem(item, payload.intent, idx + 1)).join('\n\n')
+    : '- Inga enskilda dataposter tillgängliga.';
+
+  return `${header}
+Fråga: ${payload.query ?? 'Okänd fråga'}
+Symbol: ${payload.symbol ?? 'Ej angiven'}
+Hämtad: ${payload.fetchedAt}
+
+Sammanfattning:
+${summaryLines}
+
+Poster:
+${itemsText}
+
+Instruktioner:
+- Utgå från MarketAux-datan ovan när du svarar.
+- Om datan täcker frågan, inkludera en kort analys.
+- Svara på svenska och var tydlig när något är osäkert.
+- Markera i svaret att MarketAux användes, till exempel genom att skriva "Källa: MarketAux".`;
+};
+
+const formatMarketauxItem = (item: MarketauxNormalizedItem, intent: MarketauxIntent, index: number) => {
+  const baseLines = [`${index}. ${item.title}`];
+
+  if (item.subtitle) {
+    baseLines.push(`   Sammanfattning: ${item.subtitle}`);
+  }
+
+  if (item.source || item.publishedAt) {
+    const metaParts: string[] = [];
+    if (item.source) metaParts.push(`Källa: ${item.source}`);
+    if (item.publishedAt) metaParts.push(`Publicerad: ${item.publishedAt}`);
+    if (metaParts.length) {
+      baseLines.push(`   ${metaParts.join(' • ')}`);
+    }
+  }
+
+  if (intent === 'report') {
+    const reportDetails = extractReportDetails(item.metadata ?? {});
+    if (reportDetails.length) {
+      baseLines.push(`   Nyckeltal: ${reportDetails.join(' | ')}`);
+    }
+  }
+
+  if (item.url && intent === 'news') {
+    baseLines.push(`   Länk: ${item.url}`);
+  }
+
+  return baseLines.join('\n');
+};
+
+const extractReportDetails = (metadata: Record<string, unknown>) => {
+  const rows: string[] = [];
+  const fiscalPeriod = typeof metadata.fiscalPeriod === 'string' ? metadata.fiscalPeriod : undefined;
+  const fiscalYear = typeof metadata.fiscalYear === 'string' || typeof metadata.fiscalYear === 'number'
+    ? metadata.fiscalYear
+    : undefined;
+  const epsActual = typeof metadata.epsActual === 'number' ? metadata.epsActual : undefined;
+  const epsEstimate = typeof metadata.epsEstimate === 'number' ? metadata.epsEstimate : undefined;
+  const revenueActual = typeof metadata.revenueActual === 'number' ? metadata.revenueActual : undefined;
+  const revenueEstimate = typeof metadata.revenueEstimate === 'number' ? metadata.revenueEstimate : undefined;
+  const currency = typeof metadata.currency === 'string' ? metadata.currency : undefined;
+
+  if (fiscalPeriod || fiscalYear) {
+    rows.push(`Period: ${[fiscalPeriod, fiscalYear].filter(Boolean).join(' ')}`);
+  }
+
+  if (epsActual != null || epsEstimate != null) {
+    rows.push(`EPS: ${formatNumber(epsActual)} (est ${formatNumber(epsEstimate)})`);
+  }
+
+  if (revenueActual != null || revenueEstimate != null) {
+    rows.push(`Intäkter: ${formatNumber(revenueActual, currency)} (est ${formatNumber(revenueEstimate, currency)})`);
+  }
+
+  return rows;
+};
+
+const formatNumber = (value?: number, currency?: string) => {
+  if (value == null || Number.isNaN(value)) {
+    return '–';
+  }
+
+  try {
+    if (currency) {
+      return new Intl.NumberFormat('sv-SE', {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 2,
+      }).format(value);
+    }
+
+    return new Intl.NumberFormat('sv-SE', {
+      maximumFractionDigits: 2,
+    }).format(value);
+  } catch (_) {
+    return String(value);
+  }
+};
+
 const resolveHoldingValue = (holding: HoldingRecord): HoldingValueBreakdown => {
   const quantity = parseNumericValue(holding?.quantity) ?? 0;
 
@@ -150,7 +410,10 @@ serve(async (req) => {
     const requestBody = await req.json();
     console.log('Request body received:', JSON.stringify(requestBody, null, 2));
     
-    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData, stream } = requestBody;
+    const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData, stream, contextData, marketauxFallbackMessage, marketauxIntent } = requestBody;
+
+    const marketauxContext: MarketauxContextPayload | undefined = (contextData as { marketaux?: MarketauxContextPayload } | undefined)?.marketaux;
+    const hasMarketauxContext = Boolean(marketauxContext);
 
     console.log('Portfolio AI Chat function called with:', { 
       message: message?.substring(0, 50) + '...', 
@@ -220,7 +483,7 @@ serve(async (req) => {
 
     // ENHANCED INTENT DETECTION FOR PROFILE UPDATES
     const detectProfileUpdates = (message: string) => {
-      const updates: any = {};
+      const updates: Record<string, unknown> = {};
       let requiresConfirmation = false;
       const lowerMessage = message.toLowerCase();
 
@@ -469,7 +732,13 @@ serve(async (req) => {
     }
 
     // AI Memory update function
-    const updateAIMemory = async (supabase: any, userId: string, userMessage: string, aiResponse: string, existingMemory: any) => {
+    const updateAIMemory = async (
+      supabase: ReturnType<typeof createClient>,
+      userId: string,
+      userMessage: string,
+      aiResponse: string,
+      existingMemory: Record<string, unknown> | null
+    ) => {
       try {
         // Extract interests and companies from conversation
         const interests: string[] = [];
@@ -862,6 +1131,7 @@ VIKTIGT:
     // Build messages array with enhanced context
     const messages = [
       { role: 'system', content: contextInfo + marketDataContext },
+      ...(marketauxContext ? [{ role: 'system', content: buildMarketauxContextPrompt(marketauxContext) }] : []),
       ...chatHistory,
       { role: 'user', content: message }
     ];
@@ -876,6 +1146,7 @@ VIKTIGT:
       model,
       timestamp: new Date().toISOString(),
       hasMarketData: !!marketDataContext,
+      hasMarketauxContext,
       isPremium
     };
 
@@ -894,13 +1165,72 @@ VIKTIGT:
             context_data: {
               analysisType,
               requestId,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
+              ...(hasMarketauxContext ? { source: 'marketaux', marketaux: marketauxContext } : {}),
+              ...(marketauxIntent ? { marketauxIntent } : {}),
             }
           });
         console.log('User message saved to database');
       } catch (error) {
         console.error('Error saving user message:', error);
       }
+    }
+
+    if (marketauxFallbackMessage && !marketauxContext) {
+      console.log('MarketAux fallback triggered, skipping OpenAI call');
+
+      const fallbackResponseContent = String(marketauxFallbackMessage);
+
+      if (sessionId) {
+        try {
+          await supabase
+            .from('portfolio_chat_history')
+            .insert({
+              user_id: userId,
+              chat_session_id: sessionId,
+              message: fallbackResponseContent,
+              message_type: 'assistant',
+              context_data: {
+                analysisType,
+                model,
+                requestId,
+                source: 'marketaux',
+                marketaux: {
+                  source: 'marketaux',
+                  intent: marketauxIntent ?? 'news',
+                  fetchedAt: new Date().toISOString(),
+                  summary: [],
+                  items: [],
+                },
+                hasMarketData: !!marketDataContext,
+                hasMarketauxContext: false,
+              },
+            });
+          console.log('Fallback assistant message saved to database');
+        } catch (error) {
+          console.error('Error saving fallback assistant message:', error);
+        }
+      }
+
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(`data: ${JSON.stringify({ content: fallbackResponseContent })}\n\n`);
+          controller.enqueue('data: [DONE]\n\n');
+          controller.close();
+        },
+      });
+
+      const { error: usageError } = await supabase.rpc('increment_ai_usage', {
+        _user_id: userId,
+        _usage_type: 'ai_message'
+      });
+      if (usageError) {
+        console.error('Usage tracking failed:', usageError);
+      }
+
+      console.log('TELEMETRY COMPLETE:', { ...telemetryData, responseLength: fallbackResponseContent.length, completed: true, usedMarketauxFallback: true });
+
+      return new Response(stream, { headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' } });
     }
 
     // If the client requests non-streaming, return JSON instead of SSE
@@ -946,7 +1276,8 @@ VIKTIGT:
               hasMarketData: !!marketDataContext,
               profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
               requiresConfirmation: profileChangeDetection.requiresConfirmation,
-              confidence: 0.8
+              confidence: 0.8,
+              ...(marketauxContext ? { source: 'marketaux', marketaux: marketauxContext } : {}),
             }
           });
       }
@@ -1034,7 +1365,8 @@ VIKTIGT:
                           hasMarketData: !!marketDataContext,
                           profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
                           requiresConfirmation: profileChangeDetection.requiresConfirmation,
-                          confidence: 0.8
+                          confidence: 0.8,
+                          ...(marketauxContext ? { source: 'marketaux', marketaux: marketauxContext } : {}),
                         }
                       });
                   }
