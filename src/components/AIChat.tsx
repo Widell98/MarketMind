@@ -270,12 +270,12 @@ const AIChat = ({
                 )}
               </div>
 
-              <div className="flex items-center justify-center">
+              {/* <div className="flex items-center justify-center">
                 <div className="flex flex-col items-center gap-0.5">
                   <span className="text-sm font-medium text-foreground sm:text-base">AI-assistent</span>
                   <span className="hidden text-[12px] text-ai-text-muted sm:inline">Marknadsguiden i realtid</span>
                 </div>
-              </div>
+              </div> */}
 
               <div className="flex items-center justify-end gap-2">
                 {!isPremium && (

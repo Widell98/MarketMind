@@ -292,9 +292,9 @@ const ChatFolderSidebar: React.FC<ChatFolderSidebarProps> = memo(({
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ai-text-muted/60">
-              Översikt
+              Ai-chatt
             </p>
-            <h2 className="text-lg font-semibold text-foreground">Konversationer</h2>
+            {/* <h2 className="text-lg font-semibold text-foreground">Konversationer</h2> */}
           </div>
           <CreateFolderDialog
             onCreateFolder={createFolder}
