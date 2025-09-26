@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -32,13 +32,7 @@ export const useUserHoldings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (user) {
-      fetchHoldings();
-    }
-  }, [user]);
-
-  const fetchHoldings = async (options?: { silent?: boolean }) => {
+  const fetchHoldings = useCallback(async (options?: { silent?: boolean }) => {
     if (!user) {
       if (!options?.silent) {
         setLoading(false);
@@ -200,7 +194,45 @@ export const useUserHoldings = () => {
         setLoading(false);
       }
     }
-  };
+  }, [user, toast]);
+
+  useEffect(() => {
+    if (!user) {
+      setHoldings([]);
+      setActualHoldings([]);
+      setRecommendations([]);
+      setLoading(false);
+      return;
+    }
+
+    void fetchHoldings();
+  }, [user, fetchHoldings]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const channel = supabase
+      .channel(`user-holdings-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_holdings',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          void fetchHoldings({ silent: true });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, fetchHoldings]);
 
   const addHolding = async (holdingData: Omit<UserHolding, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
     if (!user) return false;

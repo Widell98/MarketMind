@@ -19,7 +19,8 @@ import FloatingActionButton from '@/components/FloatingActionButton';
 import Breadcrumb from '@/components/Breadcrumb';
 const PortfolioImplementation = () => {
   const {
-    actualHoldings
+    actualHoldings,
+    refetch: refetchHoldings
   } = useUserHoldings();
   const {
     activePortfolio,
@@ -58,6 +59,11 @@ const PortfolioImplementation = () => {
     if (!user || loading) return;
     setShowOnboarding(false);
   }, [user, activePortfolio, loading]);
+  useEffect(() => {
+    // Ensure holdings are refreshed when visiting the page
+    void refetchHoldings({ silent: true });
+  }, [refetchHoldings]);
+
   useEffect(() => {
     // Set last updated time
     setLastUpdated(new Date().toLocaleTimeString('sv-SE', {
