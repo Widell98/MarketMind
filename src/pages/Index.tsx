@@ -128,12 +128,12 @@ const Index = () => {
   ], [t, safeTotalPortfolioValue, holdingsCount, safeTotalCash]);
 
   const quickActions = React.useMemo<QuickAction[]>(() => [
-    {
-      icon: MessageSquare,
-      title: 'AI Chat',
-      description: 'Få personliga investeringsråd',
-      to: '/ai-chatt',
-    },
+    // {
+    //   icon: MessageSquare,
+    //   title: 'AI Chat',
+    //   description: 'Få personliga investeringsråd',
+    //   to: '/ai-chatt',
+    // },
     {
       icon: TrendingUp,
       title: 'Marknadsanalyser',
@@ -200,11 +200,11 @@ const Index = () => {
                       {t('hero.cta.start')}
                     </Link>
                   </Button>
-                  <Button asChild variant="ghost" size="lg" className="text-primary hover:bg-primary/5 font-medium px-8 py-4 rounded-xl transition-all duration-300 text-lg">
+                  {/* <Button asChild variant="ghost" size="lg" className="text-primary hover:bg-primary/5 font-medium px-8 py-4 rounded-xl transition-all duration-300 text-lg">
                     <Link to="/ai-chatt">
                       {t('hero.cta.demo')}
                     </Link>
-                  </Button>
+                  </Button> */}
                 </div>
               </div>
 
@@ -275,12 +275,12 @@ const Index = () => {
                         </div>
                       </div>
                       <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
-                        <Button asChild variant="outline" size="sm" className="w-full justify-center hover:bg-muted/50 sm:w-auto">
+                        {/* <Button asChild variant="outline" size="sm" className="w-full justify-center hover:bg-muted/50 sm:w-auto">
                           <Link to="/ai-chatt">
                             <MessageSquare className="mr-2 h-4 w-4" />
                             AI Chat
                           </Link>
-                        </Button>
+                        </Button> */}
                         <Button asChild size="sm" className="w-full justify-center bg-primary hover:bg-primary/90 sm:w-auto">
                           <Link to="/portfolio-implementation">
                             <BarChart3 className="mr-2 h-4 w-4" />
@@ -400,16 +400,16 @@ const Index = () => {
                           key={title}
                           asChild
                           variant="outline"
-                          className="group h-full w-full justify-start rounded-2xl border-border/60 bg-card/60 p-4 text-left transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 hover:shadow-md sm:p-5 whitespace-normal"
+                          className="group h-full w-full items-center justify-center rounded-2xl border-border/60 bg-card/60 p-4 text-center transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 hover:shadow-md sm:p-5 whitespace-normal"
                         >
                           <Link
                             to={to}
-                            className="flex h-full w-full flex-col items-start gap-3 text-left !whitespace-normal"
+                            className="flex h-full w-full flex-col items-center gap-3 text-center !whitespace-normal"
                           >
                             <div className="flex items-center justify-center rounded-xl bg-primary/10 p-3 text-primary transition-all group-hover:bg-primary group-hover:text-primary-foreground">
                               <Icon className="h-5 w-5" />
                             </div>
-                            <div className="w-full space-y-1">
+                            <div className="w-full space-y-1 text-center">
                               <p className="break-words text-sm font-semibold text-foreground sm:text-base">
                                 {title}
                               </p>
