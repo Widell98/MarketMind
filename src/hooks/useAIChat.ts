@@ -7,6 +7,12 @@ import { useSubscription } from '@/hooks/useSubscription';
 import type { MarketauxIntent, MarketauxResponsePayload } from '@/types/marketaux';
 import { buildMarketauxQuery, detectMarketauxIntent } from '@/utils/marketaux';
 
+interface PortfolioAIChatResponse {
+  response?: string;
+  requiresConfirmation?: boolean;
+  profileUpdates?: ProfileUpdates | null;
+}
+
 type ProfileUpdates = Record<string, unknown>;
 
 type MessageContext = {
@@ -650,43 +656,127 @@ export const useAIChat = (portfolioId?: string) => {
         }
       }
 
-      // Handle streaming response using direct fetch for better streaming support
       const supabaseUrl = 'https://qifolopsdeeyrevbuxfl.supabase.co';
       const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpZm9sb3BzZGVleXJldmJ1eGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5MzY3MjMsImV4cCI6MjA2MzUxMjcyM30.x89y179_8EDl1NwTryhXfUDMzdxrnfomZfRmhmySMhM';
-      
-      const streamResponse = await fetch(`${supabaseUrl}/functions/v1/portfolio-ai-chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-        },
-        body: JSON.stringify({
-          message: content.trim(),
-          userId: user.id,
-          portfolioId: portfolioId,
-          sessionId: targetSessionId,
-          chatHistory: chatHistoryForAPI,
-          analysisType: 'general',
-          contextData: marketauxContext ? { marketaux: marketauxContext } : undefined,
-          marketauxFallbackMessage: marketauxFallbackMessage ?? undefined,
-          marketauxIntent
-        })
-      });
 
-      if (streamResponse.status === 429) {
-        setQuotaExceeded(true);
-        toast({
-          title: "Daglig gräns nådd",
-          description: "Du har använt alla dina 5 gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.",
-          variant: "destructive",
+      const requestPayload = {
+        message: content.trim(),
+        userId: user.id,
+        portfolioId: portfolioId,
+        sessionId: targetSessionId,
+        chatHistory: chatHistoryForAPI,
+        analysisType: 'general',
+        contextData: marketauxContext ? { marketaux: marketauxContext } : undefined,
+        marketauxFallbackMessage: marketauxFallbackMessage ?? undefined,
+        marketauxIntent,
+      };
+
+      let streamResponse: Response | null = null;
+      let streamError: unknown = null;
+
+      try {
+        streamResponse = await fetch(`${supabaseUrl}/functions/v1/portfolio-ai-chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseAnonKey}`,
+            'apikey': supabaseAnonKey,
+          },
+          body: JSON.stringify(requestPayload),
+          mode: 'cors',
         });
-        setMessages(prev => prev.filter(msg => !msg.id.includes('_temp')));
-        await fetchUsage();
-        return;
+
+        if (streamResponse.status === 429) {
+          setQuotaExceeded(true);
+          toast({
+            title: "Daglig gräns nådd",
+            description: "Du har använt alla dina 5 gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.",
+            variant: "destructive",
+          });
+          setMessages(prev => prev.filter(msg => !msg.id.includes('_temp')));
+          await fetchUsage();
+          return;
+        }
+
+        if (!streamResponse.ok || !streamResponse.body) {
+          streamError = new Error(`HTTP error! status: ${streamResponse.status}`);
+        }
+      } catch (error) {
+        streamError = error;
       }
 
-      if (!streamResponse.ok) {
-        throw new Error(`HTTP error! status: ${streamResponse.status}`);
+      if (streamError || !streamResponse || !streamResponse.body) {
+        console.error('Streaming request failed, falling back to non-streaming invocation.', streamError);
+
+        const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke<PortfolioAIChatResponse>('portfolio-ai-chat', {
+          body: {
+            ...requestPayload,
+            stream: false,
+          },
+        });
+
+        if (fallbackError) {
+          const status = (fallbackError as { status?: number }).status;
+          if (status === 429) {
+            setQuotaExceeded(true);
+            toast({
+              title: "Daglig gräns nådd",
+              description: "Du har använt alla dina 5 gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.",
+              variant: "destructive",
+            });
+            setMessages(prev => prev.filter(msg => !msg.id.includes('_temp')));
+            await fetchUsage();
+            return;
+          }
+
+          throw fallbackError;
+        }
+
+        const fallbackContent = fallbackData?.response?.trim().length
+          ? fallbackData.response
+          : (marketauxFallbackMessage ?? 'Tyvärr uppstod ett fel. Försök igen senare.');
+
+        const fallbackContext: MessageContext = {
+          analysisType: 'general',
+          confidence: 0.8,
+        };
+
+        if (marketauxContext) {
+          fallbackContext.source = 'marketaux';
+          fallbackContext.marketaux = marketauxContext;
+        }
+
+        if (fallbackData?.requiresConfirmation && fallbackData.profileUpdates) {
+          fallbackContext.requiresConfirmation = true;
+          fallbackContext.profileUpdates = fallbackData.profileUpdates;
+        }
+
+        const fallbackMessage: Message = {
+          id: Date.now().toString() + '_ai_fallback',
+          role: 'assistant',
+          content: fallbackContent ?? '',
+          timestamp: new Date(),
+          source: marketauxContext ? 'marketaux' : undefined,
+          context: fallbackContext,
+        };
+
+        setMessages(prev => [...prev, fallbackMessage]);
+
+        setTimeout(() => {
+          loadMessages(targetSessionId, true);
+        }, 1000);
+
+        const { error: usageError } = await supabase.rpc('increment_ai_usage', {
+          _user_id: user.id,
+          _usage_type: 'ai_message'
+        });
+        if (usageError) {
+          console.error('Usage tracking failed:', usageError);
+        } else {
+          incrementUsage('ai_message');
+        }
+
+        return;
       }
 
       console.log('Starting streaming response...');
