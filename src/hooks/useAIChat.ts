@@ -698,11 +698,63 @@ export const useAIChat = (portfolioId?: string) => {
           return;
         }
 
-        if (!streamResponse.ok || !streamResponse.body) {
+        if (!streamResponse.ok) {
           streamError = new Error(`HTTP error! status: ${streamResponse.status}`);
         }
       } catch (error) {
         streamError = error;
+      }
+
+      const contentType = streamResponse?.headers.get('Content-Type') ?? '';
+
+      if (!streamError && streamResponse && contentType.includes('application/json') && !contentType.includes('text/event-stream')) {
+        const nonStreamData: PortfolioAIChatResponse | null = await streamResponse.json().catch(() => null);
+
+        const fallbackContent = nonStreamData?.response?.trim().length
+          ? nonStreamData.response
+          : (marketauxFallbackMessage ?? 'Tyvärr uppstod ett fel. Försök igen senare.');
+
+        const fallbackContext: MessageContext = {
+          analysisType: 'general',
+          confidence: 0.8,
+        };
+
+        if (marketauxContext) {
+          fallbackContext.source = 'marketaux';
+          fallbackContext.marketaux = marketauxContext;
+        }
+
+        if (nonStreamData?.requiresConfirmation && nonStreamData.profileUpdates) {
+          fallbackContext.requiresConfirmation = true;
+          fallbackContext.profileUpdates = nonStreamData.profileUpdates;
+        }
+
+        const fallbackMessage: Message = {
+          id: Date.now().toString() + '_ai_fallback',
+          role: 'assistant',
+          content: fallbackContent ?? '',
+          timestamp: new Date(),
+          source: marketauxContext ? 'marketaux' : undefined,
+          context: fallbackContext,
+        };
+
+        setMessages(prev => [...prev, fallbackMessage]);
+
+        setTimeout(() => {
+          loadMessages(targetSessionId, true);
+        }, 1000);
+
+        const { error: usageError } = await supabase.rpc('increment_ai_usage', {
+          _user_id: user.id,
+          _usage_type: 'ai_message'
+        });
+        if (usageError) {
+          console.error('Usage tracking failed:', usageError);
+        } else {
+          incrementUsage('ai_message');
+        }
+
+        return;
       }
 
       if (streamError || !streamResponse || !streamResponse.body) {
