@@ -168,17 +168,21 @@ async function fetchAndTransformFromMarketaux({ intent, symbol, query, limit }: 
 function buildEndpoint(intent: MarketauxIntent, symbol?: string | null, query?: string, limit = 3) {
   const params = new URLSearchParams({
     api_token: marketauxApiKey!,
-    limit: String(Math.max(limit, 1)),
   });
 
+  const normalizedLimit = Math.max(1, Math.min(limit, 10));
+  params.set("limit", String(normalizedLimit));
+
   if (intent === "report") {
-    const baseUrl = "https://api.marketaux.com/v1/earnings";
+    const baseUrl = "https://api.marketaux.com/v1/earnings/announcements";
 
     if (symbol) {
       params.set("symbols", symbol);
     } else if (query) {
-      params.set("query", query);
+      params.set("search", query);
     }
+
+    params.set("language", "en");
 
     return `${baseUrl}?${params.toString()}`;
   }
@@ -187,13 +191,10 @@ function buildEndpoint(intent: MarketauxIntent, symbol?: string | null, query?: 
 
   params.set("language", "en");
   params.set("filter_entities", "true");
-  params.set("sort", "published_at:desc");
 
   if (symbol) {
     params.set("symbols", symbol);
-  }
-
-  if (query) {
+  } else if (query) {
     params.set("query", query);
   }
 
