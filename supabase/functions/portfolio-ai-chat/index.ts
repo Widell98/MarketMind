@@ -132,11 +132,12 @@ ${summaryLines}
 Poster:
 ${itemsText}
 
-Instruktioner:
-- Utgå från MarketAux-datan ovan när du svarar.
-- Om datan täcker frågan, inkludera en kort analys.
-- Svara på svenska och var tydlig när något är osäkert.
-- Markera i svaret att MarketAux användes, till exempel genom att skriva "Källa: MarketAux".`;
+  Instruktioner:
+  - Utgå från MarketAux-datan ovan när du svarar.
+  - Börja svaret med en kort summering av de viktigaste nyhetsrubrikerna innan du analyserar vidare.
+  - Om datan täcker frågan, inkludera en kort analys.
+  - Svara på svenska och var tydlig när något är osäkert.
+  - Markera i svaret att MarketAux användes, till exempel genom att skriva "Källa: MarketAux".`;
 };
 
 const formatMarketauxItem = (item: MarketauxNormalizedItem, intent: MarketauxIntent, index: number) => {
@@ -218,134 +219,305 @@ const formatNumber = (value?: number, currency?: string) => {
   }
 };
 
-type MarketauxIntent = 'news' | 'report';
-
-type MarketauxNormalizedItem = {
-  id: string;
-  title: string;
-  subtitle?: string | null;
-  url?: string | null;
-  publishedAt?: string | null;
-  source?: string | null;
-  imageUrl?: string | null;
-  metadata?: Record<string, unknown> | null;
+const MARKET_AUX_NEWS_URL = 'https://api.marketaux.com/v1/news/all';
+const MAX_MARKETAUX_NEWS_ITEMS = 3;
+const IGNORED_TICKER_CANDIDATES = new Set(['AI', 'USA', 'GDP', 'ETF', 'CEO', 'EPS', 'IPO', 'USD', 'SEK']);
+const COMMON_NAME_TO_SYMBOL: Record<string, string> = {
+  tesla: 'TSLA',
+  tsla: 'TSLA',
+  amazon: 'AMZN',
+  amzn: 'AMZN',
+  microsoft: 'MSFT',
+  msft: 'MSFT',
+  apple: 'AAPL',
+  aapl: 'AAPL',
+  google: 'GOOGL',
+  alphabet: 'GOOGL',
+  googl: 'GOOGL',
+  meta: 'META',
+  facebook: 'META',
+  'meta platforms': 'META',
+  nvidia: 'NVDA',
+  nvda: 'NVDA',
+  netflix: 'NFLX',
+  nflx: 'NFLX',
+  spotify: 'SPOT',
+  spot: 'SPOT',
+  volvo: 'VOLV',
+  saab: 'SAAB',
+  ericsson: 'ERIC',
+  investor: 'INVE',
+  sandvik: 'SAND',
+  "h&m": 'HM-B',
+  hm: 'HM-B',
 };
 
-type MarketauxContextPayload = {
-  source: 'marketaux';
+type SessionMetadata = {
+  session_name?: string | null;
+  context_data?: Record<string, unknown> | null;
+} | null;
+
+type MarketauxDetection = {
+  symbols: string[];
   intent: MarketauxIntent;
-  symbol?: string | null;
-  query?: string;
-  fetchedAt: string;
-  summary?: string[];
-  items?: MarketauxNormalizedItem[];
 };
 
-const buildMarketauxContextPrompt = (payload: MarketauxContextPayload) => {
-  const header = `DATAKÄLLA (MarketAux – ${payload.intent === 'report' ? 'Bolagsrapporter' : 'Nyheter'})`;
-  const summaryLines = Array.isArray(payload.summary) && payload.summary.length
-    ? payload.summary.map((line) => `- ${line}`).join('\n')
-    : '- Ingen sammanfattning tillgänglig.';
-
-  const itemsText = Array.isArray(payload.items) && payload.items.length
-    ? payload.items.map((item, idx) => formatMarketauxItem(item, payload.intent, idx + 1)).join('\n\n')
-    : '- Inga enskilda dataposter tillgängliga.';
-
-  return `${header}
-Fråga: ${payload.query ?? 'Okänd fråga'}
-Symbol: ${payload.symbol ?? 'Ej angiven'}
-Hämtad: ${payload.fetchedAt}
-
-Sammanfattning:
-${summaryLines}
-
-Poster:
-${itemsText}
-
-Instruktioner:
-- Utgå från MarketAux-datan ovan när du svarar.
-- Om datan täcker frågan, inkludera en kort analys.
-- Svara på svenska och var tydlig när något är osäkert.
-- Markera i svaret att MarketAux användes, till exempel genom att skriva "Källa: MarketAux".`;
+type MarketauxNewsResult = {
+  payload: MarketauxContextPayload | null;
+  articlesFound: boolean;
 };
 
-const formatMarketauxItem = (item: MarketauxNormalizedItem, intent: MarketauxIntent, index: number) => {
-  const baseLines = [`${index}. ${item.title}`];
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-  if (item.subtitle) {
-    baseLines.push(`   Sammanfattning: ${item.subtitle}`);
+const extractTickerCandidate = (value?: string | null): string | null => {
+  if (!value) return null;
+
+  const matches = String(value).toUpperCase().match(/\b[A-Z]{2,5}\b/g);
+  if (!matches) {
+    return null;
   }
 
-  if (item.source || item.publishedAt) {
-    const metaParts: string[] = [];
-    if (item.source) metaParts.push(`Källa: ${item.source}`);
-    if (item.publishedAt) metaParts.push(`Publicerad: ${item.publishedAt}`);
-    if (metaParts.length) {
-      baseLines.push(`   ${metaParts.join(' • ')}`);
+  for (const candidate of matches) {
+    if (IGNORED_TICKER_CANDIDATES.has(candidate) || /^Q[1-4]$/.test(candidate)) {
+      continue;
+    }
+
+    return candidate;
+  }
+
+  return null;
+};
+
+const collectSessionSymbols = (session: SessionMetadata): string[] => {
+  if (!session) return [];
+
+  const detected = new Set<string>();
+  const fromName = extractTickerCandidate(session.session_name ?? undefined);
+  if (fromName) {
+    detected.add(fromName);
+  }
+
+  if (session.context_data && typeof session.context_data === 'object') {
+    collectConversationSymbols(session.context_data).forEach(symbol => detected.add(symbol));
+  }
+
+  return Array.from(detected);
+};
+
+const collectConversationSymbols = (conversation: Record<string, unknown> | null | undefined): string[] => {
+  if (!conversation || typeof conversation !== 'object') {
+    return [];
+  }
+
+  const candidates = new Set<string>();
+  const keysToInspect = [
+    'symbol',
+    'ticker',
+    'stockSymbol',
+    'stock_symbol',
+    'focusSymbol',
+    'focus_symbol',
+    'primary_symbol',
+  ];
+
+  for (const key of keysToInspect) {
+    const raw = (conversation as Record<string, unknown>)[key];
+    if (typeof raw === 'string') {
+      const candidate = extractTickerCandidate(raw);
+      if (candidate) {
+        candidates.add(candidate);
+      }
     }
   }
 
-  if (intent === 'report') {
-    const reportDetails = extractReportDetails(item.metadata ?? {});
-    if (reportDetails.length) {
-      baseLines.push(`   Nyckeltal: ${reportDetails.join(' | ')}`);
+  return Array.from(candidates);
+};
+
+const collectHoldingsSymbols = (message: string, holdingsData: HoldingRecord[] | null | undefined): string[] => {
+  if (!Array.isArray(holdingsData) || holdingsData.length === 0) {
+    return [];
+  }
+
+  const symbols = new Set<string>();
+  const lowerMessage = message.toLowerCase();
+
+  for (const holding of holdingsData) {
+    const symbolCandidate = extractTickerCandidate(typeof holding?.symbol === 'string' ? holding.symbol : null);
+    if (symbolCandidate) {
+      const regex = new RegExp(`\\b${escapeRegExp(symbolCandidate)}\\b`, 'i');
+      if (regex.test(message)) {
+        symbols.add(symbolCandidate);
+      }
+    }
+
+    if (typeof holding?.name === 'string' && holding.name.trim().length > 0 && symbolCandidate) {
+      const normalizedName = holding.name
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (normalizedName) {
+        const [firstToken, secondToken] = normalizedName.split(' ');
+        if (firstToken && firstToken.length >= 3 && lowerMessage.includes(firstToken)) {
+          symbols.add(symbolCandidate);
+        } else if (secondToken && secondToken.length >= 3 && lowerMessage.includes(`${firstToken} ${secondToken}`.trim())) {
+          symbols.add(symbolCandidate);
+        }
+      }
     }
   }
 
-  if (item.url && intent === 'news') {
-    baseLines.push(`   Länk: ${item.url}`);
-  }
-
-  return baseLines.join('\n');
+  return Array.from(symbols);
 };
 
-const extractReportDetails = (metadata: Record<string, unknown>) => {
-  const rows: string[] = [];
-  const fiscalPeriod = typeof metadata.fiscalPeriod === 'string' ? metadata.fiscalPeriod : undefined;
-  const fiscalYear = typeof metadata.fiscalYear === 'string' || typeof metadata.fiscalYear === 'number'
-    ? metadata.fiscalYear
-    : undefined;
-  const epsActual = typeof metadata.epsActual === 'number' ? metadata.epsActual : undefined;
-  const epsEstimate = typeof metadata.epsEstimate === 'number' ? metadata.epsEstimate : undefined;
-  const revenueActual = typeof metadata.revenueActual === 'number' ? metadata.revenueActual : undefined;
-  const revenueEstimate = typeof metadata.revenueEstimate === 'number' ? metadata.revenueEstimate : undefined;
-  const currency = typeof metadata.currency === 'string' ? metadata.currency : undefined;
+const collectMessageSymbols = (message: string): string[] => {
+  const symbols = new Set<string>();
+  const upperMatches = message.toUpperCase().match(/\b[A-Z]{2,5}\b/g);
 
-  if (fiscalPeriod || fiscalYear) {
-    rows.push(`Period: ${[fiscalPeriod, fiscalYear].filter(Boolean).join(' ')}`);
-  }
-
-  if (epsActual != null || epsEstimate != null) {
-    rows.push(`EPS: ${formatNumber(epsActual)} (est ${formatNumber(epsEstimate)})`);
-  }
-
-  if (revenueActual != null || revenueEstimate != null) {
-    rows.push(`Intäkter: ${formatNumber(revenueActual, currency)} (est ${formatNumber(revenueEstimate, currency)})`);
-  }
-
-  return rows;
-};
-
-const formatNumber = (value?: number, currency?: string) => {
-  if (value == null || Number.isNaN(value)) {
-    return '–';
-  }
-
-  try {
-    if (currency) {
-      return new Intl.NumberFormat('sv-SE', {
-        style: 'currency',
-        currency,
-        maximumFractionDigits: 2,
-      }).format(value);
+  if (upperMatches) {
+    for (const match of upperMatches) {
+      if (IGNORED_TICKER_CANDIDATES.has(match) || /^Q[1-4]$/.test(match)) {
+        continue;
+      }
+      symbols.add(match);
     }
-
-    return new Intl.NumberFormat('sv-SE', {
-      maximumFractionDigits: 2,
-    }).format(value);
-  } catch (_) {
-    return String(value);
   }
+
+  const lowerMessage = message.toLowerCase();
+  for (const [name, symbol] of Object.entries(COMMON_NAME_TO_SYMBOL)) {
+    if (lowerMessage.includes(name) && !IGNORED_TICKER_CANDIDATES.has(symbol)) {
+      symbols.add(symbol);
+    }
+  }
+
+  return Array.from(symbols);
+};
+
+const detectMarketauxNews = ({
+  message,
+  session,
+  holdings,
+  conversationData,
+}: {
+  message: string;
+  session: SessionMetadata;
+  holdings: HoldingRecord[] | null | undefined;
+  conversationData: Record<string, unknown> | null | undefined;
+}): MarketauxDetection | null => {
+  const detected = new Set<string>();
+
+  collectSessionSymbols(session).forEach(symbol => detected.add(symbol));
+  collectConversationSymbols(conversationData).forEach(symbol => detected.add(symbol));
+  collectMessageSymbols(message).forEach(symbol => detected.add(symbol));
+  collectHoldingsSymbols(message, holdings).forEach(symbol => detected.add(symbol));
+
+  if (detected.size === 0) {
+    return null;
+  }
+
+  const symbols = Array.from(detected).slice(0, MAX_MARKETAUX_NEWS_ITEMS);
+  return { symbols, intent: 'news' };
+};
+
+const summarizeMarketauxItem = (item: MarketauxNormalizedItem) => {
+  const parts: string[] = [item.title];
+  if (item.source) {
+    parts.push(`(${item.source})`);
+  }
+  if (item.publishedAt) {
+    parts.push(`Publicerad ${item.publishedAt}`);
+  }
+  return parts.join(' ');
+};
+
+const fetchMarketauxNews = async ({
+  apiKey,
+  symbols,
+  originalQuery,
+}: {
+  apiKey: string;
+  symbols: string[];
+  originalQuery: string;
+}): Promise<MarketauxNewsResult> => {
+  const params = new URLSearchParams({
+    symbols: symbols.join(','),
+    filter_entities: 'true',
+    language: 'en',
+    api_token: apiKey,
+    limit: String(MAX_MARKETAUX_NEWS_ITEMS),
+  });
+
+  const response = await fetch(`${MARKET_AUX_NEWS_URL}?${params.toString()}`);
+
+  if (!response.ok) {
+    let errorBody: unknown;
+    try {
+      errorBody = await response.json();
+    } catch (_) {
+      errorBody = await response.text();
+    }
+    console.error('[marketaux-middleware] MarketAux news error', { status: response.status, errorBody });
+    throw new Error(`MarketAux news responded with status ${response.status}`);
+  }
+
+  const json = await response.json();
+  const articles = Array.isArray(json?.data) ? json.data : [];
+
+  if (!articles.length) {
+    return { payload: null, articlesFound: false };
+  }
+
+  const normalizedItems: MarketauxNormalizedItem[] = articles.slice(0, MAX_MARKETAUX_NEWS_ITEMS).map((article: Record<string, unknown>, index: number) => {
+    const title = typeof article.title === 'string' ? article.title : `Nyhet ${index + 1}`;
+    const summary = typeof article.description === 'string'
+      ? article.description
+      : typeof article.summary === 'string'
+        ? article.summary
+        : typeof article.snippet === 'string'
+          ? article.snippet
+          : null;
+    const url = typeof article.url === 'string' ? article.url : null;
+    const publishedAt = typeof article.published_at === 'string' ? article.published_at : null;
+    const source = typeof article.source === 'string'
+      ? article.source
+      : typeof article.domain === 'string'
+        ? article.domain
+        : null;
+    const imageUrl = typeof article.image_url === 'string' ? article.image_url : null;
+
+    const id = typeof article.uuid === 'string'
+      ? article.uuid
+      : typeof article.id === 'string'
+        ? article.id
+        : `${symbols.join(',')}-${index}`;
+
+    return {
+      id,
+      title,
+      subtitle: summary,
+      url,
+      publishedAt,
+      source,
+      imageUrl,
+      metadata: null,
+    } satisfies MarketauxNormalizedItem;
+  });
+
+  const summaryLines = normalizedItems.map(item => summarizeMarketauxItem(item));
+
+  return {
+    payload: {
+      source: 'marketaux',
+      intent: 'news',
+      symbol: symbols.join(','),
+      query: originalQuery,
+      fetchedAt: new Date().toISOString(),
+      summary: summaryLines,
+      items: normalizedItems,
+    },
+    articlesFound: true,
+  };
 };
 
 const resolveHoldingValue = (holding: HoldingRecord): HoldingValueBreakdown => {
@@ -412,8 +584,10 @@ serve(async (req) => {
     
     const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData, stream, contextData, marketauxFallbackMessage, marketauxIntent } = requestBody;
 
-    const marketauxContext: MarketauxContextPayload | undefined = (contextData as { marketaux?: MarketauxContextPayload } | undefined)?.marketaux;
-    const hasMarketauxContext = Boolean(marketauxContext);
+    let marketauxContext: MarketauxContextPayload | undefined = (contextData as { marketaux?: MarketauxContextPayload } | undefined)?.marketaux;
+    let resolvedMarketauxIntent: MarketauxIntent | undefined = marketauxIntent;
+    let marketauxFallback = marketauxFallbackMessage ?? null;
+    let hasMarketauxContext = Boolean(marketauxContext);
 
     console.log('Portfolio AI Chat function called with:', { 
       message: message?.substring(0, 50) + '...', 
@@ -450,7 +624,8 @@ serve(async (req) => {
       { data: riskProfile },
       { data: portfolio },
       { data: holdings },
-      { data: subscriber }
+      { data: subscriber },
+      sessionInfoResult
     ] = await Promise.all([
       supabase
         .from('user_ai_memory')
@@ -478,8 +653,17 @@ serve(async (req) => {
         .from('subscribers')
         .select('subscribed')
         .eq('user_id', userId)
-        .maybeSingle()
+        .maybeSingle(),
+      sessionId
+        ? supabase
+            .from('ai_chat_sessions')
+            .select('id, session_name, context_data')
+            .eq('id', sessionId)
+            .maybeSingle()
+        : Promise.resolve({ data: null as null, error: null })
     ]);
+
+    const sessionInfo = (sessionInfoResult as { data: { session_name?: string | null; context_data?: Record<string, unknown> | null } | null }).data;
 
     // ENHANCED INTENT DETECTION FOR PROFILE UPDATES
     const detectProfileUpdates = (message: string) => {
@@ -687,9 +871,47 @@ serve(async (req) => {
     const isPremium = subscriber?.subscribed || false;
     console.log('User premium status:', isPremium);
 
+    if (!marketauxContext) {
+      const detection = detectMarketauxNews({
+        message,
+        session: sessionInfo ?? null,
+        holdings: Array.isArray(holdings) ? holdings : [],
+        conversationData: (conversationData && typeof conversationData === 'object') ? conversationData as Record<string, unknown> : null,
+      });
+
+      if (detection) {
+        resolvedMarketauxIntent = detection.intent;
+        const apiKey = Deno.env.get('MARKETAUX_API_KEY');
+
+        if (apiKey) {
+          try {
+            console.log('[marketaux-middleware] Fetching MarketAux news for symbols', detection.symbols.join(','));
+            const newsResult = await fetchMarketauxNews({
+              apiKey,
+              symbols: detection.symbols,
+              originalQuery: message,
+            });
+
+            if (newsResult.payload && newsResult.payload.items?.length) {
+              marketauxContext = newsResult.payload;
+            } else if (!newsResult.articlesFound && !marketauxFallback) {
+              const displaySymbol = detection.symbols.join(', ');
+              marketauxFallback = `I couldn't find any recent news about ${displaySymbol}.`;
+            }
+          } catch (error) {
+            console.error('[marketaux-middleware] Failed to fetch MarketAux news', error);
+          }
+        } else {
+          console.warn('[marketaux-middleware] MARKETAUX_API_KEY is not configured; skipping MarketAux enrichment');
+        }
+      }
+    }
+
+    hasMarketauxContext = Boolean(marketauxContext);
+
     // Check if this is a stock exchange request
     const isExchangeRequest = /(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|amerikanska|svenska|europeiska|asiatiska|aktier|innehav)/i.test(message);
-    
+
     // Enhanced stock detection - detect both analysis requests AND stock mentions
     const stockMentionPatterns = [
       // Direct stock mentions with company names
@@ -1167,7 +1389,7 @@ VIKTIGT:
               requestId,
               timestamp: new Date().toISOString(),
               ...(hasMarketauxContext ? { source: 'marketaux', marketaux: marketauxContext } : {}),
-              ...(marketauxIntent ? { marketauxIntent } : {}),
+              ...(resolvedMarketauxIntent ? { marketauxIntent: resolvedMarketauxIntent } : {}),
             }
           });
         console.log('User message saved to database');
@@ -1176,10 +1398,10 @@ VIKTIGT:
       }
     }
 
-    if (marketauxFallbackMessage && !marketauxContext) {
+    if (marketauxFallback && !marketauxContext) {
       console.log('MarketAux fallback triggered, skipping OpenAI call');
 
-      const fallbackResponseContent = String(marketauxFallbackMessage);
+      const fallbackResponseContent = String(marketauxFallback);
 
       if (sessionId) {
         try {
@@ -1197,7 +1419,7 @@ VIKTIGT:
                 source: 'marketaux',
                 marketaux: {
                   source: 'marketaux',
-                  intent: marketauxIntent ?? 'news',
+                  intent: resolvedMarketauxIntent ?? 'news',
                   fetchedAt: new Date().toISOString(),
                   summary: [],
                   items: [],
