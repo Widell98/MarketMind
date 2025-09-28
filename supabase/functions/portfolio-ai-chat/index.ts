@@ -394,6 +394,73 @@ const collectMessageSymbols = (message: string): string[] => {
   return Array.from(symbols);
 };
 
+const shouldTriggerMarketauxRealtimeFetch = (message: string) => {
+  const normalized = message.toLowerCase();
+
+  const reportKeywords = [
+    'rapport',
+    'earnings',
+    'delårsrapport',
+    'kvartalsrapport',
+    'bokslut',
+    'resultat',
+    'årsrapport',
+  ];
+
+  const newsKeywords = [
+    'nyhet',
+    'nyheter',
+    'headline',
+    'rubrik',
+    'pressmeddelande',
+    'pressrelease',
+    'breaking',
+    'marknadssiffror',
+    'uppdatering',
+  ];
+
+  const recencyKeywords = [
+    'senaste',
+    'nyligen',
+    'hur gick',
+    'hur var',
+    'just nu',
+    'vad hände',
+    'uppdatering',
+    'update',
+    'latest',
+  ];
+
+  const marketKeywords = [
+    'marknad',
+    'börs',
+    'marknadssiffror',
+    'senaste siffror',
+    'realtid',
+  ];
+
+  const hasReportKeyword = reportKeywords.some(keyword => normalized.includes(keyword));
+  const hasNewsKeyword = newsKeywords.some(keyword => normalized.includes(keyword));
+  const hasRecencyKeyword = recencyKeywords.some(keyword => normalized.includes(keyword));
+  const mentionsReportExplicitly = normalized.includes('rapport');
+  const mentionsNewsExplicitly = normalized.includes('nyhet') || normalized.includes('nyheter');
+  const mentionsMarketExplicitly = marketKeywords.some(keyword => normalized.includes(keyword));
+
+  if ((hasReportKeyword || mentionsReportExplicitly) && (hasRecencyKeyword || mentionsReportExplicitly)) {
+    return true;
+  }
+
+  if ((hasNewsKeyword || mentionsNewsExplicitly) && (hasRecencyKeyword || mentionsNewsExplicitly || mentionsMarketExplicitly)) {
+    return true;
+  }
+
+  if (hasRecencyKeyword && mentionsMarketExplicitly) {
+    return true;
+  }
+
+  return false;
+};
+
 const detectMarketauxNews = ({
   message,
   session,
@@ -405,6 +472,10 @@ const detectMarketauxNews = ({
   holdings: HoldingRecord[] | null | undefined;
   conversationData: Record<string, unknown> | null | undefined;
 }): MarketauxDetection | null => {
+  if (!shouldTriggerMarketauxRealtimeFetch(message)) {
+    return null;
+  }
+
   const detected = new Set<string>();
 
   collectSessionSymbols(session).forEach(symbol => detected.add(symbol));
