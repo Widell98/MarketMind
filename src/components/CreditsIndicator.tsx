@@ -16,8 +16,8 @@ const CreditsIndicator = ({
 }: CreditsIndicatorProps) => {
   const {
     subscription,
-    usage,
-    getRemainingUsage
+    getRemainingUsage,
+    isAdmin
   } = useSubscription();
   const {
     user
@@ -25,17 +25,28 @@ const CreditsIndicator = ({
   if (!user) return null;
   const isPremium = subscription?.subscribed;
   const remaining = getRemainingUsage(type);
-  const total = 5;
-  const used = total - remaining;
-  if (isPremium) {
-    return;
-  }
-  return <div className="flex items-center gap-2">
-      <Badge variant={remaining > 0 ? "secondary" : "destructive"} className="text-xs">
+
+  if (isAdmin) {
+    return <Badge variant="secondary" className="text-xs">
         <Zap className="w-3 h-3 mr-1" />
-        {remaining}/{total} credits kvar idag
+        ∞ credits (admin)
+      </Badge>;
+  }
+
+  if (isPremium) {
+    return null;
+  }
+
+  const total = 5;
+  const safeRemaining = Number.isFinite(remaining) ? remaining : total;
+  const labelRemaining = Math.max(0, Math.min(total, safeRemaining));
+
+  return <div className="flex items-center gap-2">
+      <Badge variant={labelRemaining > 0 ? "secondary" : "destructive"} className="text-xs">
+        <Zap className="w-3 h-3 mr-1" />
+        {labelRemaining}/{total} credits kvar idag
       </Badge>
-      {showUpgrade && remaining === 0 && onUpgrade && <Button size="sm" onClick={onUpgrade} className="text-xs h-6 px-2">
+      {showUpgrade && labelRemaining === 0 && onUpgrade && <Button size="sm" onClick={onUpgrade} className="text-xs h-6 px-2">
           <Crown className="w-3 h-3 mr-1" />
           Uppgradera
         </Button>}

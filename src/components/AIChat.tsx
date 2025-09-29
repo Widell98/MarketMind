@@ -41,8 +41,9 @@ const AIChat = ({
     user
   } = useAuth();
   const {
-    usage,
-    subscription
+    subscription,
+    getRemainingUsage,
+    isAdmin
   } = useSubscription();
   const isMobile = useIsMobile();
   const {
@@ -70,12 +71,17 @@ const AIChat = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const location = useLocation();
-  const currentUsage = usage?.ai_messages_count || 0;
   const isPremium = subscription?.subscribed;
 
   // Calculate credits for display (same logic as CreditsIndicator)
   const totalCredits = 5;
-  const remainingCredits = Math.max(0, totalCredits - currentUsage);
+  const remainingCreditsRaw = getRemainingUsage('ai_message');
+  const hasUnlimitedCredits = isAdmin || isPremium;
+  const remainingCredits = hasUnlimitedCredits
+    ? Infinity
+    : Number.isFinite(remainingCreditsRaw)
+      ? Math.max(0, Math.min(totalCredits, remainingCreditsRaw))
+      : totalCredits;
   useEffect(() => {
     // Auto-scroll when messages change
     messagesEndRef.current?.scrollIntoView({
@@ -278,10 +284,16 @@ const AIChat = ({
               </div> */}
 
               <div className="flex items-center justify-end gap-2">
-                {!isPremium && (
+                {isAdmin ? (
                   <span className="hidden rounded-full border border-ai-border/70 bg-ai-surface-muted/60 px-3 py-1 text-xs font-medium text-ai-text-muted sm:inline-flex">
-                    {remainingCredits}/{totalCredits} krediter kvar
+                    ∞/∞ krediter (admin)
                   </span>
+                ) : (
+                  !isPremium && (
+                    <span className="hidden rounded-full border border-ai-border/70 bg-ai-surface-muted/60 px-3 py-1 text-xs font-medium text-ai-text-muted sm:inline-flex">
+                      {remainingCredits}/{totalCredits} krediter kvar
+                    </span>
+                  )
                 )}
               </div>
             </header>

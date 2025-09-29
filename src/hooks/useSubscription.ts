@@ -23,6 +23,7 @@ export const useSubscription = () => {
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [usage, setUsage] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const checkSubscription = useCallback(async () => {
     if (!user) {
@@ -85,6 +86,28 @@ export const useSubscription = () => {
         insights_count: 0,
         predictive_analysis_count: 0,
       });
+    }
+  }, [user]);
+
+  const fetchAdminStatus = useCallback(async () => {
+    if (!user) {
+      setIsAdmin(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('validate_admin_action');
+
+      if (error) {
+        console.error('Admin status fetch error:', error);
+        setIsAdmin(false);
+        return;
+      }
+
+      setIsAdmin(!!data);
+    } catch (error) {
+      console.error('Error fetching admin status:', error);
+      setIsAdmin(false);
     }
   }, [user]);
 
@@ -153,15 +176,17 @@ export const useSubscription = () => {
   };
 
   const checkUsageLimit = (type: 'ai_message' | 'analysis' | 'insights' | 'predictive_analysis'): boolean => {
+    if (isAdmin) return true;
     if (!subscription || !usage) return false;
     if (subscription.subscribed) return true;
-    
+
     const limit = 5;
     const currentUsage = usage[`${type}_count` as keyof UsageData] || 0;
     return currentUsage < limit;
   };
 
   const getRemainingUsage = (type: 'ai_message' | 'analysis' | 'insights' | 'predictive_analysis'): number => {
+    if (isAdmin) return Infinity;
     if (!usage || subscription?.subscribed) return Infinity;
     const limit = 5;
     const currentUsage = usage[`${type}_count` as keyof UsageData] || 0;
@@ -176,7 +201,7 @@ export const useSubscription = () => {
 
   useEffect(() => {
     if (user) {
-      Promise.all([checkSubscription(), fetchUsage()]).finally(() => {
+      Promise.all([checkSubscription(), fetchUsage(), fetchAdminStatus()]).finally(() => {
         setLoading(false);
       });
     } else {
@@ -188,9 +213,10 @@ export const useSubscription = () => {
         insights_count: 0,
         predictive_analysis_count: 0,
       });
+      setIsAdmin(false);
       setLoading(false);
     }
-  }, [user, checkSubscription, fetchUsage]);
+  }, [user, checkSubscription, fetchUsage, fetchAdminStatus]);
 
   useEffect(() => {
     if (!user) return;
@@ -232,5 +258,6 @@ export const useSubscription = () => {
     checkUsageLimit,
     getRemainingUsage,
     incrementUsage,
+    isAdmin,
   };
 };
