@@ -7,6 +7,29 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const REALTIME_KEYWORDS = [
+  'senaste',
+  'idag',
+  'just nu',
+  'aktuella',
+  'uppdaterad',
+  'uppdaterade',
+  'nyligen',
+  'latest',
+  'current',
+  'today',
+  'recent',
+  'rapport',
+  'earnings',
+  'resultat',
+  'news',
+  'rapporten',
+  'report',
+  'pris nu',
+  'price now',
+  'price today'
+];
+
 const EXCHANGE_RATES: Record<string, number> = {
   SEK: 1.0,
   USD: 10.5,
@@ -134,6 +157,101 @@ const formatAllocationLabel = (label: string): string => {
     .filter(Boolean)
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+};
+
+const requiresRealTimeSearch = (message: string): boolean => {
+  const normalized = message.toLowerCase();
+  return REALTIME_KEYWORDS.some(keyword => normalized.includes(keyword));
+};
+
+type TavilySearchResult = {
+  title?: string;
+  content?: string;
+  snippet?: string;
+  url?: string;
+  published_date?: string;
+};
+
+type TavilySearchResponse = {
+  answer?: string;
+  results?: TavilySearchResult[];
+};
+
+const formatTavilyResults = (data: TavilySearchResponse | null): string => {
+  if (!data) return '';
+
+  const sections: string[] = [];
+
+  if (typeof data.answer === 'string' && data.answer.trim().length > 0) {
+    sections.push(`Sammanfattning från realtidssökning: ${data.answer.trim()}`);
+  }
+
+  if (Array.isArray(data.results)) {
+    const topResults = data.results.slice(0, 3);
+    if (topResults.length > 0) {
+      const resultLines = topResults.map((result: TavilySearchResult, index: number) => {
+        const title = typeof result.title === 'string' ? result.title : `Resultat ${index + 1}`;
+        const snippet = typeof result.content === 'string' ? result.content : result.snippet;
+        const trimmedSnippet = typeof snippet === 'string' ? snippet.trim() : '';
+        const url = typeof result.url === 'string' ? result.url : '';
+        const publishedDate = typeof result.published_date === 'string' ? result.published_date : '';
+
+        const parts = [`• ${title}`];
+        if (publishedDate) {
+          parts.push(`(${publishedDate})`);
+        }
+        if (trimmedSnippet) {
+          parts.push(`- ${trimmedSnippet}`);
+        }
+        if (url) {
+          parts.push(`Källa: ${url}`);
+        }
+        return parts.join(' ');
+      });
+      sections.push('Detaljer från TAVILY-sökning:\n' + resultLines.join('\n'));
+    }
+  }
+
+  return sections.length > 0
+    ? `\n\nExtern realtidskontext:\n${sections.join('\n\n')}`
+    : '';
+};
+
+const fetchTavilyContext = async (message: string): Promise<string> => {
+  const tavilyApiKey = Deno.env.get('TAVILY_API_KEY');
+  if (!tavilyApiKey) {
+    console.warn('TAVILY_API_KEY saknas i miljövariablerna. Hoppar över realtidssökning.');
+    return '';
+  }
+
+  try {
+    const response = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        api_key: tavilyApiKey,
+        query: message,
+        search_depth: 'advanced',
+        include_answer: true,
+        include_raw_content: false,
+        max_results: 5,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Fel vid anrop till Tavily API:', errorText);
+      return '';
+    }
+
+    const tavilyData = await response.json() as TavilySearchResponse;
+    return formatTavilyResults(tavilyData);
+  } catch (error) {
+    console.error('Undantag vid anrop till Tavily API:', error);
+    return '';
+  }
 };
 
 serve(async (req) => {
@@ -860,8 +978,17 @@ VIKTIGT:
     });
 
     // Build messages array with enhanced context
+    let tavilyContext = '';
+    if (requiresRealTimeSearch(message)) {
+      console.log('Fråga upptäckt som realtidsfråga – anropar Tavily.');
+      tavilyContext = await fetchTavilyContext(message);
+      if (tavilyContext) {
+        console.log('Tavily-kontent hämtad och läggs till i kontexten.');
+      }
+    }
+
     const messages = [
-      { role: 'system', content: contextInfo + marketDataContext },
+      { role: 'system', content: contextInfo + marketDataContext + tavilyContext },
       ...chatHistory,
       { role: 'user', content: message }
     ];
