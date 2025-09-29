@@ -7,6 +7,73 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const REALTIME_KEYWORDS = [
+  'rapport',
+  'rapporten',
+  'rapporter',
+  'earnings',
+  'nyheter',
+  'news',
+  'senaste',
+  'latest',
+  'update',
+  'uppdatering',
+  'uppdateringar',
+  'delårsrapport',
+  'årsrapport',
+  'kvartalsrapport'
+];
+
+const COMPANY_REPORT_REGEX = /\b([A-ZÅÄÖ][\w&\-.]*\s?)+\s+(?:rapport|rapporten|delårsrapport|årsrapport|kvartalsrapport|earnings\s*(?:report)?)/i;
+
+const needsRealtimeData = (message: string | undefined | null): boolean => {
+  if (!message) return false;
+
+  const lowerMessage = message.toLowerCase();
+  if (REALTIME_KEYWORDS.some((keyword) => lowerMessage.includes(keyword))) {
+    return true;
+  }
+
+  return COMPANY_REPORT_REGEX.test(message);
+};
+
+const truncateSummary = (summary: string, maxLength = 220): string => {
+  const cleanSummary = summary.replace(/\s+/g, ' ').trim();
+  if (cleanSummary.length <= maxLength) {
+    return cleanSummary;
+  }
+  return `${cleanSummary.slice(0, maxLength - 1)}…`;
+};
+
+type TavilyResult = {
+  title?: string;
+  content?: string;
+  snippet?: string;
+  url?: string;
+};
+
+const buildTavilyContext = (results: TavilyResult[]): string => {
+  if (!Array.isArray(results) || results.length === 0) {
+    return '';
+  }
+
+  const keyPoints = results
+    .filter((result) => result && (result.title || result.content || result.snippet) && result.url)
+    .slice(0, 5)
+    .map((result) => {
+      const title = result.title?.trim() || 'Okänd källa';
+      const summary = truncateSummary(result.content || result.snippet || 'Ingen sammanfattning tillgänglig.');
+      const url = result.url;
+      return `• ${title} – ${summary} (${url})`;
+    });
+
+  if (keyPoints.length === 0) {
+    return '';
+  }
+
+  return `\n\nAKTUELLA MARKNADSNYHETER (Tavily):\n${keyPoints.join('\n')}`;
+};
+
 const EXCHANGE_RATES: Record<string, number> = {
   SEK: 1.0,
   USD: 10.5,
@@ -468,6 +535,46 @@ serve(async (req) => {
       }
     }
 
+    const shouldFetchRealtimeData = needsRealtimeData(message);
+    const tavilyApiKey = Deno.env.get('TAVILY_API_KEY');
+    let tavilyContext = '';
+
+    if (shouldFetchRealtimeData) {
+      if (!tavilyApiKey) {
+        console.warn('Tavily API key not configured but real-time data was requested.');
+      } else {
+        try {
+          const tavilyResponse = await fetch('https://api.tavily.com/search', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${tavilyApiKey}`
+            },
+            body: JSON.stringify({
+              query: message,
+              search_depth: 'basic',
+              max_results: 5
+            })
+          });
+
+          if (!tavilyResponse.ok) {
+            const errorBody = await tavilyResponse.text();
+            console.warn('Tavily API responded with non-OK status:', tavilyResponse.status, errorBody);
+          } else {
+            const tavilyData = await tavilyResponse.json();
+            tavilyContext = buildTavilyContext(Array.isArray(tavilyData?.results) ? tavilyData.results : []);
+            if (tavilyContext) {
+              console.log('Tavily context added to system prompt.');
+            } else {
+              console.log('Tavily response did not contain usable results.');
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching data from Tavily:', error);
+        }
+      }
+    }
+
     // AI Memory update function
     const updateAIMemory = async (supabase: any, userId: string, userMessage: string, aiResponse: string, existingMemory: any) => {
       try {
@@ -861,7 +968,7 @@ VIKTIGT:
 
     // Build messages array with enhanced context
     const messages = [
-      { role: 'system', content: contextInfo + marketDataContext },
+      { role: 'system', content: contextInfo + marketDataContext + tavilyContext },
       ...chatHistory,
       { role: 'user', content: message }
     ];
@@ -876,6 +983,8 @@ VIKTIGT:
       model,
       timestamp: new Date().toISOString(),
       hasMarketData: !!marketDataContext,
+      hasRealtimeData: !!tavilyContext,
+      requestedRealtimeData: shouldFetchRealtimeData,
       isPremium
     };
 
@@ -944,6 +1053,8 @@ VIKTIGT:
               model,
               requestId,
               hasMarketData: !!marketDataContext,
+              hasRealtimeData: !!tavilyContext,
+              requestedRealtimeData: shouldFetchRealtimeData,
               profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
               requiresConfirmation: profileChangeDetection.requiresConfirmation,
               confidence: 0.8
@@ -1032,6 +1143,8 @@ VIKTIGT:
                           model,
                           requestId,
                           hasMarketData: !!marketDataContext,
+                          hasRealtimeData: !!tavilyContext,
+                          requestedRealtimeData: shouldFetchRealtimeData,
                           profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
                           requiresConfirmation: profileChangeDetection.requiresConfirmation,
                           confidence: 0.8
