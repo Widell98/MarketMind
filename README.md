@@ -97,3 +97,11 @@ The portfolio features rely on two Supabase Edge Functions: `update-portfolio-pr
    Replace the URL and token with your project details. A successful response contains `{ "success": true, "tickers": [...] }`.
 
 If any of these steps fail the UI will surface helpful diagnostics (for example in the “Lägg till innehav” dialog) explaining what needs to be fixed.
+
+### Real-time research with Tavily
+
+Questions that require färska nyheter eller rapporter triggar nu en sökning via [Tavily](https://tavily.com/). För att detta ska fungera i Edge-funktionen `portfolio-ai-chat` behöver du ange API-nyckeln i miljön:
+
+- `TAVILY_API_KEY` – hittas i Tavily-konsolen och används för realtidssökningen.
+
+När nyckeln finns tillgänglig kommer funktionen automatiskt att hämta sökresultat och skicka med dem till språkmodellen när användaren ställer frågor som t.ex. "Hur såg Teslas senaste rapport ut?".
