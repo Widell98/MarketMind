@@ -13,6 +13,7 @@ import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
 import AIWeeklyPicks from '@/components/AIWeeklyPicks';
 import { useStockCases } from '@/hooks/useStockCases';
 import { useFollowingStockCases } from '@/hooks/useFollowingStockCases';
+import { useCurrentProfileLevel, hasRequiredStockCaseLevel } from '@/hooks/useCurrentProfileLevel';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { TrendingUp, PlusCircle, Sparkles, MessageCircle, Users, Search } from 'lucide-react';
@@ -21,6 +22,9 @@ const StockCases = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const { level, loading: levelLoading } = useCurrentProfileLevel();
+  const canCreateStockCase = hasRequiredStockCaseLevel(level);
+  const shouldShowUpgradePrompt = user && !levelLoading && !canCreateStockCase;
   
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -182,10 +186,24 @@ const StockCases = () => {
               Aktiefall
             </h1>
           </div>
-          {user && <Button onClick={() => setCreateDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+          {user && canCreateStockCase && (
+            <Button onClick={() => setCreateDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
               <PlusCircle className="w-4 h-4 mr-2" />
               Nytt Aktiefall
-            </Button>}
+            </Button>
+          )}
+          {shouldShowUpgradePrompt && (
+            <div className="text-sm text-muted-foreground max-w-xs text-right">
+              <p>
+                Du behöver uppgradera din profil till Analyst eller Pro för att skapa aktiecase. Besök
+                {' '}
+                <Link to="/profile" className="text-primary underline underline-offset-2">
+                  din profilsida
+                </Link>
+                {' '}och öppna Medlemskap-fliken för att uppgradera.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Main Content Tabs */}
@@ -256,25 +274,31 @@ const StockCases = () => {
                     : "Var den första att skapa ett aktiefall!"
                   }
                 </p>
-                {searchTerm || selectedSector || performanceFilter ? (
-                  <Button 
-                    onClick={() => {
-                      setSearchTerm('');
-                      setSelectedSector('');
-                      setPerformanceFilter('');
-                    }}
-                    variant="outline"
-                  >
-                    Rensa filter
-                  </Button>
-                ) : user && (
-                  <Button onClick={() => setCreateDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-                    <PlusCircle className="w-4 h-4 mr-2" />
-                    Skapa första aktiefallet
-                  </Button>
-                )}
-              </div>
-            )}
+                  {searchTerm || selectedSector || performanceFilter ? (
+                    <Button
+                      onClick={() => {
+                        setSearchTerm('');
+                        setSelectedSector('');
+                        setPerformanceFilter('');
+                      }}
+                      variant="outline"
+                    >
+                      Rensa filter
+                    </Button>
+                  ) : shouldShowUpgradePrompt ? (
+                    <div className="text-sm text-muted-foreground max-w-xs mx-auto">
+                      <p>
+                        Uppgradera till Analyst eller Pro via Medlemskap-fliken på din profilsida för att kunna skapa aktiefall.
+                      </p>
+                    </div>
+                  ) : user && canCreateStockCase && (
+                    <Button onClick={() => setCreateDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+                      <PlusCircle className="w-4 h-4 mr-2" />
+                      Skapa första aktiefallet
+                    </Button>
+                  )}
+                </div>
+              )}
           </TabsContent>
 
           {/* Följer Tab */}

@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { hasRequiredStockCaseLevel } from './useCurrentProfileLevel';
 
 export const useStockCaseOperations = () => {
   const { user } = useAuth();
@@ -13,6 +14,21 @@ export const useStockCaseOperations = () => {
   const createStockCase = async (stockCaseData: any) => {
     if (!user) {
       throw new Error('Du måste vara inloggad för att skapa aktiecases');
+    }
+
+    const { data: profileLevelData, error: profileError } = await supabase
+      .from('profiles')
+      .select('level')
+      .eq('id', user.id)
+      .single<{ level: string | null }>();
+
+    if (profileError) {
+      console.error('Failed to verify profile level before creating stock case:', profileError);
+      throw new Error('Kunde inte verifiera din profilnivå. Försök igen senare.');
+    }
+
+    if (!hasRequiredStockCaseLevel(profileLevelData?.level ?? null)) {
+      throw new Error('Du behöver vara Analyst eller Pro för att skapa aktiecase.');
     }
 
     console.log('Creating stock case with data:', stockCaseData);

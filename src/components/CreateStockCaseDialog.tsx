@@ -7,9 +7,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStockCaseOperations } from '@/hooks/useStockCaseOperations';
+import { useCurrentProfileLevel, hasRequiredStockCaseLevel } from '@/hooks/useCurrentProfileLevel';
+import { supabase } from '@/integrations/supabase/client';
 import { Upload, TrendingUp, X } from 'lucide-react';
 
 interface CreateStockCaseDialogProps {
@@ -43,6 +44,8 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
   const { user } = useAuth();
   const { toast } = useToast();
   const { uploadImage } = useStockCaseOperations();
+  const { level, loading: levelLoading } = useCurrentProfileLevel();
+  const hasRequiredLevel = hasRequiredStockCaseLevel(level);
 
   // Load saved draft when dialog opens
   useEffect(() => {
@@ -152,6 +155,23 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
       return;
     }
 
+    if (levelLoading) {
+      toast({
+        title: "Verifierar profilnivå",
+        description: "Vänligen vänta medan vi bekräftar din behörighet.",
+      });
+      return;
+    }
+
+    if (!hasRequiredLevel) {
+      toast({
+        title: "Uppgradera din profil",
+        description: "Du behöver vara Analyst eller Pro för att skapa aktiecase.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -220,11 +240,11 @@ const CreateStockCaseDialog: React.FC<CreateStockCaseDialogProps> = ({
       if (onSuccess) {
         onSuccess();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating stock case:', error);
       toast({
         title: "Fel",
-        description: "Kunde inte skapa aktiecase. Försök igen.",
+        description: error?.message || "Kunde inte skapa aktiecase. Försök igen.",
         variant: "destructive"
       });
     } finally {

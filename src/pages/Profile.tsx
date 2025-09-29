@@ -24,6 +24,7 @@ import { useEnhancedUserStats } from '@/hooks/useEnhancedUserStats';
 import { useSavedOpportunities } from '@/hooks/useSavedOpportunities';
 import { supabase } from '@/integrations/supabase/client';
 import UserInvestmentAnalysis from '@/components/UserInvestmentAnalysis';
+import { useCurrentProfileLevel, hasRequiredStockCaseLevel } from '@/hooks/useCurrentProfileLevel';
 
 const Profile = () => {
   const { user, loading } = useAuth();
@@ -40,6 +41,8 @@ const Profile = () => {
   const { savedItems, removeOpportunity } = useSavedOpportunities();
   const { stockCases, loading: stockCasesLoading, refetch } = useStockCases();
   const { deleteStockCase } = useStockCaseOperations();
+  const { level, loading: levelLoading } = useCurrentProfileLevel();
+  const canCreateStockCase = hasRequiredStockCaseLevel(level);
 
   // Fetch profile data
   React.useEffect(() => {
@@ -180,14 +183,22 @@ const Profile = () => {
                       </div>
                       Mina Inlägg
                     </CardTitle>
-                    <Button
-                      onClick={() => setIsCreateCaseDialogOpen(true)}
-                      size="sm"
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Nytt case
-                    </Button>
+                    {canCreateStockCase ? (
+                      <Button
+                        onClick={() => setIsCreateCaseDialogOpen(true)}
+                        size="sm"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Nytt case
+                      </Button>
+                    ) : (
+                      !levelLoading && (
+                        <div className="text-sm text-muted-foreground text-right max-w-xs">
+                          <p>Öppna Medlemskap-fliken för att uppgradera till Analyst eller Pro och låsa upp möjligheten att skapa aktiecase.</p>
+                        </div>
+                      )
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -214,13 +225,21 @@ const Profile = () => {
                           </div>
                           <h3 className="text-xl font-semibold text-foreground mb-3">Inga cases än</h3>
                           <p className="text-muted-foreground mb-6 max-w-md mx-auto">Skapa ditt första aktiecase och dela dina investeringsidéer med communityn.</p>
-                          <Button
-                            onClick={() => setIsCreateCaseDialogOpen(true)}
-                            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium"
-                          >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Skapa första case
-                          </Button>
+                          {canCreateStockCase ? (
+                            <Button
+                              onClick={() => setIsCreateCaseDialogOpen(true)}
+                              className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium"
+                            >
+                              <Plus className="w-4 h-4 mr-2" />
+                              Skapa första case
+                            </Button>
+                          ) : (
+                            !levelLoading && (
+                              <div className="text-sm text-muted-foreground max-w-xs mx-auto">
+                                <p>Uppgradera till Analyst eller Pro via Medlemskap-fliken för att kunna skapa aktiecase.</p>
+                              </div>
+                            )
+                          )}
                         </div>
                       )}
                     </div>
