@@ -111,18 +111,36 @@ serve(async (req) => {
 
       if (!rawSymbol) continue;
 
-      const symbolParts = rawSymbol.split(":");
-      const cleanedSymbol = (symbolParts[symbolParts.length - 1] ?? rawSymbol).toUpperCase();
-      if (!cleanedSymbol) continue;
+      const normalizedSymbol = rawSymbol.toUpperCase();
+      if (!normalizedSymbol) continue;
 
       const price = toNumberOrNull(rawPrice);
+      const resolvedName = rawName ?? normalizedSymbol;
+      const resolvedCurrency = rawCurrency ?? null;
 
-      tickerMap.set(cleanedSymbol, {
-        symbol: cleanedSymbol,
-        name: rawName ?? cleanedSymbol,
-        currency: rawCurrency ?? null,
-        price,
-      });
+      const existing = tickerMap.get(normalizedSymbol);
+
+      if (!existing) {
+        tickerMap.set(normalizedSymbol, {
+          symbol: normalizedSymbol,
+          name: resolvedName,
+          currency: resolvedCurrency,
+          price,
+        });
+        continue;
+      }
+
+      if (existing.name === existing.symbol && resolvedName && resolvedName !== normalizedSymbol) {
+        existing.name = resolvedName;
+      }
+
+      if (existing.currency === null && resolvedCurrency) {
+        existing.currency = resolvedCurrency;
+      }
+
+      if (existing.price === null && price !== null) {
+        existing.price = price;
+      }
     }
 
     const tickers = Array.from(tickerMap.values());
