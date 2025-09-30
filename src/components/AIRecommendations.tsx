@@ -256,7 +256,7 @@ const AIRecommendations = () => {
         <CardHeader className="pb-6 bg-gradient-to-r from-primary/5 to-purple/5 border-b border-border/20">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
-              <CardTitle className="text-xl font-semibold flex items-center gap-3">
+              <CardTitle className="text-xl font-semibold flex items-center gap-3 flex-wrap">
                 <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
                   <Brain className="w-5 h-5 text-primary" />
                 </div>
@@ -316,14 +316,14 @@ const AIRecommendations = () => {
           </div>
         </CardHeader>
 
-        <CardContent className="p-8">
+        <CardContent className="p-6 sm:p-8">
           {/* Header: antal och vy-val */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
             <div className="text-sm text-muted-foreground font-medium">
               {totalRecommendations} AI-rekommendationer
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+              <div className="flex items-center justify-center sm:justify-end gap-1">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -345,7 +345,7 @@ const AIRecommendations = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/ai-chatt')}
-                className="text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl font-medium"
+                className="w-full sm:w-auto text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl font-medium"
               >
                 Få fler <ArrowRight className="w-3 h-3 ml-1" />
               </Button>
@@ -354,7 +354,7 @@ const AIRecommendations = () => {
 
           {/* Grid- eller listvy */}
           {viewMode === 'grid' ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {displayedRecommendations.map(renderRecommendationCard)}
             </div>
           ) : (
@@ -388,11 +388,11 @@ const AIRecommendations = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex items-center justify-between mt-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
             <span className="text-sm text-muted-foreground">
               {totalRecommendations} AI-rekommendationer
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center justify-center sm:justify-end gap-1">
               <Button
                 variant="ghost"
                 size="icon"
@@ -414,7 +414,7 @@ const AIRecommendations = () => {
 
           <div className="mt-4 max-h-[60vh] overflow-y-auto pr-1">
             {viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {aiRecommendations.map(renderRecommendationCard)}
               </div>
             ) : (

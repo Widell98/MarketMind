@@ -283,9 +283,9 @@ const CommunityRecommendations: React.FC = () => {
   return (
     <Card className="bg-card/30 backdrop-blur-xl border-border/20 shadow-lg rounded-3xl overflow-hidden">
       <CardHeader className="pb-6 bg-gradient-to-r from-primary/5 to-purple/5 border-b border-border/20">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <CardTitle className="text-xl font-semibold flex items-center gap-3">
+            <CardTitle className="text-xl font-semibold flex items-center gap-3 flex-wrap">
               <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
                 <Users className="w-5 h-5 text-primary" />
               </div>
@@ -302,13 +302,13 @@ const CommunityRecommendations: React.FC = () => {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-8">
-        <div className="flex items-center justify-between mb-6">
+      <CardContent className="p-6 sm:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div className="text-sm text-muted-foreground font-medium">
             {recommendations.length} sparade rekommendationer
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center justify-center sm:justify-end gap-1">
               <Button
                 variant="ghost"
                 size="icon"
@@ -330,7 +330,7 @@ const CommunityRecommendations: React.FC = () => {
               variant="ghost"
               size="sm"
               onClick={() => navigate('/stock-cases')}
-              className="text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl font-medium"
+              className="w-full sm:w-auto text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl font-medium"
             >
               Hitta fler <ArrowRight className="w-3 h-3 ml-1" />
             </Button>
@@ -338,7 +338,7 @@ const CommunityRecommendations: React.FC = () => {
         </div>
         {viewMode === 'grid' ? (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {recommendations.slice(0, 6).map((recommendation) => (
                 <RecommendationCard
                   key={recommendation.id}
