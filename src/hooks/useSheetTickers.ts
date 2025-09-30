@@ -4,12 +4,14 @@ import { supabase } from '@/integrations/supabase/client';
 export type SheetTicker = {
   name: string;
   symbol: string;
+  sheetSymbol?: string | null;
   price: number | null;
   currency: string | null;
 };
 
 type RawSheetTicker = {
   symbol?: string | null;
+  sheetSymbol?: string | null;
   name?: string | null;
   price?: number | null;
   currency?: string | null;
@@ -71,6 +73,9 @@ const useSheetTickers = () => {
             }
 
             const normalizedSymbol = trimmedSymbol.toUpperCase();
+            const resolvedSheetSymbol = typeof item.sheetSymbol === 'string' && item.sheetSymbol.trim().length > 0
+              ? item.sheetSymbol.trim().toUpperCase()
+              : normalizedSymbol;
             const resolvedName = typeof item.name === 'string' && item.name.trim().length > 0
               ? item.name.trim()
               : normalizedSymbol;
@@ -83,6 +88,7 @@ const useSheetTickers = () => {
 
             return {
               symbol: normalizedSymbol,
+              sheetSymbol: resolvedSheetSymbol,
               name: resolvedName,
               price: resolvedPrice,
               currency: resolvedCurrency,

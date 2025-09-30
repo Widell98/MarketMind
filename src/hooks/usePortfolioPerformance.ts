@@ -42,7 +42,7 @@ const stripSymbolPrefix = (symbol?: string | null) => {
   return candidate && candidate.length > 0 ? candidate : upper;
 };
 
-const getSymbolVariants = (symbol?: string | null) => {
+const getSymbolVariants = (symbol?: string | null, alternative?: string | null) => {
   const variants = new Set<string>();
 
   const addVariant = (value?: string | null) => {
@@ -61,6 +61,7 @@ const getSymbolVariants = (symbol?: string | null) => {
   };
 
   addVariant(symbol);
+  addVariant(alternative);
 
   const currentVariants = Array.from(variants);
   currentVariants.forEach((variant) => {
@@ -81,7 +82,7 @@ const findTickerMatch = (tickers: SheetTicker[], ticker: string): SheetTicker | 
   const targetVariants = new Set(getSymbolVariants(ticker));
 
   for (const candidate of tickers) {
-    const candidateVariants = getSymbolVariants(candidate.symbol);
+    const candidateVariants = getSymbolVariants(candidate.symbol, candidate.sheetSymbol);
     if (candidateVariants.some((variant) => targetVariants.has(variant))) {
       return candidate;
     }

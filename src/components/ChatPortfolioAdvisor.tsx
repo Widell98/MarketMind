@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo, useId } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useId, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +34,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import useSheetTickers, { SheetTicker } from '@/hooks/useSheetTickers';
+import { buildTickerLookupMap, normalizeTickerSymbol } from '@/utils/tickerUtils';
 
 interface Message {
   id: string;
@@ -305,13 +306,20 @@ const ChatPortfolioAdvisor = () => {
     []
   );
 
-  const tickerLookup = useMemo(() => {
-    const map = new Map<string, SheetTicker>();
-    tickers.forEach(ticker => {
-      map.set(ticker.symbol.toUpperCase(), ticker);
-    });
-    return map;
-  }, [tickers]);
+  const tickerLookup = useMemo(() => buildTickerLookupMap(tickers), [tickers]);
+
+  const resolveTickerData = useCallback((
+    value?: string | null
+  ): { ticker: SheetTicker | undefined; canonical: string | null } => {
+    const normalized = normalizeTickerSymbol(value);
+    if (!normalized) {
+      return { ticker: undefined, canonical: null };
+    }
+
+    const ticker = tickerLookup.get(normalized);
+    const canonical = normalizeTickerSymbol(ticker?.symbol) ?? normalized;
+    return { ticker, canonical };
+  }, [tickerLookup]);
 
   const tickerOptions = useMemo(
     () =>
@@ -733,24 +741,23 @@ const ChatPortfolioAdvisor = () => {
   };
 
   const handleHoldingSymbolChange = (id: string, rawValue: string) => {
-    const normalizedSymbol = rawValue.trim().toUpperCase();
-
     setHoldings(prev =>
       prev.map(holding => {
         if (holding.id !== id) {
           return holding;
         }
 
-        const ticker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) : undefined;
+        const { ticker, canonical } = resolveTickerData(rawValue);
+        const resolvedSymbol = canonical ?? '';
 
         let updatedHolding: Holding = {
           ...holding,
-          symbol: normalizedSymbol
+          symbol: resolvedSymbol
         };
 
         if (ticker) {
           if (!holding.nameManuallyEdited) {
-            const resolvedName = ticker.name?.trim() || normalizedSymbol;
+            const resolvedName = ticker.name?.trim() || resolvedSymbol;
             if (holding.name !== resolvedName) {
               updatedHolding = {
                 ...updatedHolding,
@@ -818,21 +825,21 @@ const ChatPortfolioAdvisor = () => {
       let hasChanges = false;
 
       const updatedHoldings = prev.map(holding => {
-        const symbol = holding.symbol?.trim().toUpperCase();
-        if (!symbol) {
-          return holding;
-        }
-
-        const ticker = tickerLookup.get(symbol);
-        if (!ticker) {
+        const { ticker, canonical } = resolveTickerData(holding.symbol);
+        if (!canonical || !ticker) {
           return holding;
         }
 
         let nextHolding = holding;
         let modified = false;
 
+        if (holding.symbol !== canonical) {
+          nextHolding = { ...nextHolding, symbol: canonical };
+          modified = true;
+        }
+
         if (!holding.nameManuallyEdited) {
-          const resolvedName = ticker.name?.trim() || symbol;
+          const resolvedName = ticker.name?.trim() || canonical;
           if (holding.name !== resolvedName) {
             nextHolding = { ...nextHolding, name: resolvedName };
             modified = true;
@@ -861,7 +868,7 @@ const ChatPortfolioAdvisor = () => {
 
       return hasChanges ? updatedHoldings : prev;
     });
-  }, [tickerLookup, tickers.length]);
+  }, [resolveTickerData, tickers.length]);
 
   const removeHolding = (id: string) => {
     setHoldings(prev => prev.filter(holding => holding.id !== id));
@@ -1047,10 +1054,7 @@ const ChatPortfolioAdvisor = () => {
 
       // Transform holdings to match the user_holdings table structure
       const holdingsToInsert = holdings.map(holding => {
-        const normalizedSymbol = holding.symbol?.trim().length
-          ? holding.symbol.trim().toUpperCase()
-          : null;
-        const ticker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) : undefined;
+        const { ticker, canonical } = resolveTickerData(holding.symbol);
 
         const sheetPrice = ticker && typeof ticker.price === 'number' && Number.isFinite(ticker.price) && ticker.price > 0
           ? roundToTwo(ticker.price)
@@ -1071,7 +1075,7 @@ const ChatPortfolioAdvisor = () => {
         return {
           user_id: user.id,
           name: holding.name,
-          symbol: normalizedSymbol,
+          symbol: canonical,
           quantity,
           purchase_price: manualPrice,
           current_price_per_unit: resolvedPrice,
@@ -1112,19 +1116,23 @@ const ChatPortfolioAdvisor = () => {
       console.log('Saving AI-recommended stocks as holdings:', recommendedStocks);
       
       // Transform recommended stocks to holdings format
-      const holdingsToInsert = recommendedStocks.map(stock => ({
-        user_id: user.id,
-        name: stock.name || stock.symbol || 'Rekommenderad aktie',
-        symbol: stock.symbol || null,
-        quantity: 0, // No quantity yet, these are recommendations
-        purchase_price: stock.expected_price || 0,
-        current_value: 0, // No current value since not purchased yet
-        currency: 'SEK',
-        holding_type: 'recommendation', // Mark as recommendation
-        purchase_date: new Date().toISOString(),
-        sector: stock.sector || null,
-        market: stock.market || 'Swedish'
-      }));
+      const holdingsToInsert = recommendedStocks.map(stock => {
+        const { canonical } = resolveTickerData(stock.symbol);
+
+        return {
+          user_id: user.id,
+          name: stock.name || stock.symbol || 'Rekommenderad aktie',
+          symbol: canonical,
+          quantity: 0, // No quantity yet, these are recommendations
+          purchase_price: stock.expected_price || 0,
+          current_value: 0, // No current value since not purchased yet
+          currency: 'SEK',
+          holding_type: 'recommendation', // Mark as recommendation
+          purchase_date: new Date().toISOString(),
+          sector: stock.sector || null,
+          market: stock.market || 'Swedish'
+        };
+      });
 
       const { error } = await supabase
         .from('user_holdings')
@@ -1167,19 +1175,23 @@ const ChatPortfolioAdvisor = () => {
       console.log('Found recommendations to save:', recommendations);
 
       // Transform recommendations to holdings format
-      const holdingsToInsert = recommendations.map(rec => ({
-        user_id: user.id,
-        name: rec.name,
-        symbol: rec.symbol || null,
-        quantity: 0, // No quantity yet, these are recommendations
-        purchase_price: rec.expected_price || 0,
-        current_value: 0, // No current value since not purchased yet
-        currency: 'SEK',
-        holding_type: 'recommendation', // Mark as recommendation
-        purchase_date: new Date().toISOString(),
-        sector: rec.sector || null,
-        market: 'Swedish'
-      }));
+      const holdingsToInsert = recommendations.map(rec => {
+        const { canonical } = resolveTickerData(rec.symbol);
+
+        return {
+          user_id: user.id,
+          name: rec.name,
+          symbol: canonical,
+          quantity: 0, // No quantity yet, these are recommendations
+          purchase_price: rec.expected_price || 0,
+          current_value: 0, // No current value since not purchased yet
+          currency: 'SEK',
+          holding_type: 'recommendation', // Mark as recommendation
+          purchase_date: new Date().toISOString(),
+          sector: rec.sector || null,
+          market: 'Swedish'
+        };
+      });
 
       const { error } = await supabase
         .from('user_holdings')

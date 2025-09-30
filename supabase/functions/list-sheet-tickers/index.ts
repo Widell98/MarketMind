@@ -103,7 +103,13 @@ serve(async (req) => {
 
     const tickerMap = new Map<
       string,
-      { name: string; symbol: string; currency: string | null; price: number | null }
+      {
+        name: string;
+        symbol: string;
+        sheetSymbol: string | null;
+        currency: string | null;
+        price: number | null;
+      }
     >();
 
     for (const row of rows) {
@@ -121,6 +127,7 @@ serve(async (req) => {
       if (!rawSymbol) continue;
 
       const normalizedSymbol = rawSymbol.toUpperCase();
+      const normalizedSheetSymbol = rawTickerSymbol ? rawTickerSymbol.toUpperCase() : null;
       if (!normalizedSymbol) continue;
 
       const price = toNumberOrNull(rawPrice);
@@ -132,6 +139,7 @@ serve(async (req) => {
       if (!existing) {
         tickerMap.set(normalizedSymbol, {
           symbol: normalizedSymbol,
+          sheetSymbol: normalizedSheetSymbol ?? normalizedSymbol,
           name: resolvedName,
           currency: resolvedCurrency,
           price,
@@ -141,6 +149,10 @@ serve(async (req) => {
 
       if (existing.name === existing.symbol && resolvedName && resolvedName !== normalizedSymbol) {
         existing.name = resolvedName;
+      }
+
+      if (existing.sheetSymbol === null && normalizedSheetSymbol) {
+        existing.sheetSymbol = normalizedSheetSymbol;
       }
 
       if (existing.currency === null && resolvedCurrency) {

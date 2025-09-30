@@ -21,6 +21,7 @@ import { UserHolding } from '@/hooks/useUserHoldings';
 import useSheetTickers, { SheetTicker } from '@/hooks/useSheetTickers';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { ADD_HOLDING_FORM_STORAGE_KEY } from '@/constants/storageKeys';
+import { buildTickerLookupMap, normalizeTickerSymbol } from '@/utils/tickerUtils';
 
 interface AddHoldingDialogProps {
   isOpen: boolean;
@@ -80,18 +81,9 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [symbolError, setSymbolError] = useState<string | null>(null);
 
-  const normalizedSymbol = useMemo(() => {
-    const rawSymbol = formData.symbol?.trim();
-    return rawSymbol ? rawSymbol.toUpperCase() : '';
-  }, [formData.symbol]);
+  const normalizedSymbol = useMemo(() => normalizeTickerSymbol(formData.symbol), [formData.symbol]);
 
-  const tickerLookup = useMemo(() => {
-    const map = new Map<string, SheetTicker>();
-    tickers.forEach((ticker) => {
-      map.set(ticker.symbol.toUpperCase(), ticker);
-    });
-    return map;
-  }, [tickers]);
+  const tickerLookup = useMemo(() => buildTickerLookupMap(tickers), [tickers]);
 
   const matchedTicker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) ?? null : null;
 
@@ -139,6 +131,25 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       };
     });
   }, [initialData, setDialogState]);
+
+  useEffect(() => {
+    if (!matchedTicker) {
+      return;
+    }
+
+    const canonicalSymbol = normalizeTickerSymbol(matchedTicker.symbol);
+    if (!canonicalSymbol || formData.symbol === canonicalSymbol) {
+      return;
+    }
+
+    setDialogState(prev => ({
+      ...prev,
+      formData: {
+        ...prev.formData,
+        symbol: canonicalSymbol,
+      },
+    }));
+  }, [matchedTicker, formData.symbol, setDialogState]);
 
   useEffect(() => {
     if (!matchedTicker || nameOverridden) {
@@ -339,7 +350,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     e.preventDefault();
     if (!formData.name.trim()) return;
 
-    if (!normalizedSymbol || !tickerLookup.has(normalizedSymbol)) {
+    if (!matchedTicker) {
       setSymbolError('Tickern finns inte i Google Sheets. Välj en ticker från listan.');
       return;
     }
@@ -349,9 +360,11 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     const quantity = formData.quantity ? parseFloat(formData.quantity) : undefined;
     const purchasePrice = formData.purchase_price ? parseFloat(formData.purchase_price) : undefined;
 
+    const resolvedSymbol = normalizeTickerSymbol(matchedTicker.symbol) ?? normalizedSymbol ?? '';
+
     const holdingData: Omit<UserHolding, 'id' | 'user_id' | 'created_at' | 'updated_at'> = {
       name: formData.name.trim(),
-      symbol: normalizedSymbol,
+      symbol: resolvedSymbol,
       holding_type: formData.holding_type as UserHolding['holding_type'],
       quantity,
       purchase_price: purchasePrice,
