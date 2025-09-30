@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { parse } from "https://deno.land/std@0.168.0/encoding/csv.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,18 +28,42 @@ serve(async (req) => {
     if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
     const csvText = await res.text();
 
-    // Splitta rader och kolumner
-    const [headerLine, ...lines] = csvText.split("\n").filter((l) => l.trim() !== "");
-    const headers = headerLine.split(",").map((h) => h.trim());
+    const parsedCsv = await parse(csvText, { skipFirstRow: false });
+    if (!Array.isArray(parsedCsv) || parsedCsv.length === 0) {
+      throw new Error("CSV saknar data.");
+    }
+
+    const stringifyCell = (cell: unknown) => (cell ?? "").toString();
+    const normalizeHeader = (value: string) => value.replace(/^\uFEFF/, "").trim();
+
+    let headerPairs: Array<{ raw: string; normalized: string }> = [];
+    let dataRows: string[][] = [];
+
+    const firstRow = parsedCsv[0];
+    if (Array.isArray(firstRow)) {
+      const table = (parsedCsv as unknown[][]).map((row) => row.map(stringifyCell));
+      const [headerRow, ...rows] = table;
+      headerPairs = headerRow.map((header) => ({ raw: header, normalized: normalizeHeader(header) }));
+      dataRows = rows;
+    } else if (firstRow && typeof firstRow === "object") {
+      const records = parsedCsv as Record<string, unknown>[];
+      const keys = Object.keys(firstRow as Record<string, unknown>);
+      headerPairs = keys.map((key) => ({ raw: key, normalized: normalizeHeader(key) }));
+      dataRows = records.map((record) => headerPairs.map(({ raw }) => stringifyCell(record[raw])));
+    } else {
+      throw new Error("CSV-formatet känns inte igen.");
+    }
+
+    const headers = headerPairs.map(({ normalized }) => normalized);
 
     const companyIdx = headers.findIndex((h) => /company/i.test(h));
-    const tickerIdx = headers.findIndex((h) => /ticker/i.test(h));
     const simpleTickerIdx = headers.findIndex((h) => /simple\s*ticker/i.test(h));
+    const tickerIdx = headers.findIndex((h, idx) => /ticker/i.test(h) && idx !== simpleTickerIdx);
     const currencyIdx = headers.findIndex((h) => /currency/i.test(h));
     const priceIdx = headers.findIndex((h) => /price/i.test(h));
 
-    if (companyIdx === -1 || tickerIdx === -1 || priceIdx === -1) {
-      throw new Error("CSV saknar nödvändiga kolumner (Company, Ticker, Price).");
+    if (companyIdx === -1 || priceIdx === -1 || (tickerIdx === -1 && simpleTickerIdx === -1)) {
+      throw new Error("CSV saknar nödvändiga kolumner (Company, Ticker/Simpel Ticker, Price).");
     }
 
     const tickerMap = new Map<
@@ -46,12 +71,17 @@ serve(async (req) => {
       { name: string; symbol: string; currency: string | null; price: number | null }
     >();
 
-    for (const line of lines) {
-      const cols = line.split(",").map((c) => c.trim());
-      if (cols.length <= priceIdx) continue;
+    const relevantIndices = [companyIdx, simpleTickerIdx, tickerIdx, currencyIdx, priceIdx].filter(
+      (idx) => idx !== -1,
+    );
+    const maxRequiredIdx = relevantIndices.length > 0 ? Math.max(...relevantIndices) : -1;
 
-      const rawName = normalizeValue(cols[companyIdx]);
-      const rawTicker = normalizeValue(cols[tickerIdx]);
+    for (const cols of dataRows) {
+      if (!Array.isArray(cols)) continue;
+      if (maxRequiredIdx >= 0 && cols.length <= maxRequiredIdx) continue;
+
+      const rawName = companyIdx !== -1 ? normalizeValue(cols[companyIdx]) : null;
+      const rawTicker = tickerIdx !== -1 ? normalizeValue(cols[tickerIdx]) : null;
       const rawSimpleTicker =
         simpleTickerIdx !== -1 ? normalizeValue(cols[simpleTickerIdx]) : null;
       const rawCurrency =
@@ -66,9 +96,15 @@ serve(async (req) => {
         cleanedSymbol = rawSimpleTicker.toUpperCase();
       } else {
         // Ta bort ev. "STO:" prefix
-        cleanedSymbol = rawTicker!.includes(":")
-          ? rawTicker!.split(":")[1].toUpperCase()
-          : rawTicker!.toUpperCase();
+        const tickerValue = rawTicker ?? "";
+        const stripped = tickerValue.includes(":")
+          ? tickerValue
+              .split(":")
+              .map((part) => part.trim())
+              .filter((part) => part.length > 0)
+              .pop()
+          : tickerValue;
+        cleanedSymbol = (stripped ?? tickerValue).toUpperCase();
       }
 
       const price = parseFloat(rawPrice.replace(/\s/g, "").replace(",", "."));
