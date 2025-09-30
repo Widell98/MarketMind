@@ -114,6 +114,9 @@ const translations = {
     'portfolio.createProfile.button': 'Skapa profil',
     'portfolio.aiAnalysis': 'AI-Analys',
     'portfolio.updated': 'Uppdaterad',
+    'portfolio.refreshHoldings': 'Uppdatera priser',
+    'portfolio.refreshingHoldings': 'Uppdaterar...',
+    'portfolio.lastUpdated': 'Senast uppdaterad',
     
     // Footer
     'footer.copyright': 'All rights reserved.',
@@ -224,6 +227,9 @@ const translations = {
     'portfolio.createProfile.button': 'Create profile',
     'portfolio.aiAnalysis': 'AI Analysis',
     'portfolio.updated': 'Updated',
+    'portfolio.refreshHoldings': 'Refresh prices',
+    'portfolio.refreshingHoldings': 'Refreshing...',
+    'portfolio.lastUpdated': 'Last updated',
     
     // Footer
     'footer.copyright': 'All rights reserved.',

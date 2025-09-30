@@ -14,12 +14,13 @@ import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { Button } from '@/components/ui/button';
-import { Brain, AlertCircle, User } from 'lucide-react';
+import { Brain, AlertCircle, User, RefreshCcw } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
 import Breadcrumb from '@/components/Breadcrumb';
 const PortfolioImplementation = () => {
   const {
-    actualHoldings
+    actualHoldings,
+    refetch: refetchHoldings
   } = useUserHoldings();
   const {
     activePortfolio,
@@ -30,7 +31,8 @@ const PortfolioImplementation = () => {
     loading: authLoading
   } = useAuth();
   const {
-    t
+    t,
+    language
   } = useLanguage();
   const {
     riskProfile,
@@ -46,6 +48,7 @@ const PortfolioImplementation = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [isRefreshingHoldings, setIsRefreshingHoldings] = useState(false);
   useEffect(() => {
     // Only show login modal if auth has finished loading and user is not authenticated
     if (!authLoading && !user) {
@@ -59,12 +62,12 @@ const PortfolioImplementation = () => {
     setShowOnboarding(false);
   }, [user, activePortfolio, loading]);
   useEffect(() => {
-    // Set last updated time
-    setLastUpdated(new Date().toLocaleTimeString('sv-SE', {
+    const locale = language === 'sv' ? 'sv-SE' : 'en-US';
+    setLastUpdated(new Date().toLocaleTimeString(locale, {
       hour: '2-digit',
       minute: '2-digit'
     }));
-  }, [performance, totalCash]);
+  }, [performance, totalCash, language]);
   const handleQuickChat = (message: string) => {
     if (!riskProfile) {
       return;
@@ -87,6 +90,28 @@ const PortfolioImplementation = () => {
   };
   const handleUpdateProfile = () => {
     setShowOnboarding(true);
+  };
+
+  const handleRefreshHoldings = async () => {
+    if (isRefreshingHoldings) {
+      return;
+    }
+
+    setIsRefreshingHoldings(true);
+    try {
+      await refetchHoldings({
+        silent: true
+      });
+      const locale = language === 'sv' ? 'sv-SE' : 'en-US';
+      setLastUpdated(new Date().toLocaleTimeString(locale, {
+        hour: '2-digit',
+        minute: '2-digit'
+      }));
+    } catch (error) {
+      console.error('Error refreshing holdings:', error);
+    } finally {
+      setIsRefreshingHoldings(false);
+    }
   };
 
   // Show loading while portfolio is loading
@@ -154,16 +179,29 @@ const PortfolioImplementation = () => {
           </div>
           
           {/* Page Header */}
-          <section className="rounded-3xl border border-border/60 bg-card/70 px-6 py-8 text-center shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:px-10 sm:py-12">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 sm:h-14 sm:w-14">
-                <Brain className="h-6 w-6 text-primary" />
+          <section className="rounded-3xl border border-border/60 bg-card/70 px-6 py-8 shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:px-10 sm:py-12">
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-1 flex-col items-center text-center sm:items-start sm:text-left">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 sm:h-14 sm:w-14">
+                  <Brain className="h-6 w-6 text-primary" />
+                </div>
+                <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
+                  {t('portfolio.title')}
+                </h1>
+                <p className="mt-3 max-w-2xl text-base text-muted-foreground sm:text-lg">
+                  {t('portfolio.subtitle')}
+                </p>
               </div>
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
-                {t('portfolio.title')}
-              </h1>
-              <p className="mx-auto mt-3 max-w-2xl text-base text-muted-foreground sm:text-lg">
-                {t('portfolio.subtitle')}
-              </p>
+              <div className="flex flex-col items-center gap-2 sm:items-end">
+                {lastUpdated && <span className="text-sm text-muted-foreground">
+                      {t('portfolio.lastUpdated')} {lastUpdated}
+                    </span>}
+                <Button variant="outline" size="sm" onClick={handleRefreshHoldings} disabled={isRefreshingHoldings} className="rounded-2xl px-4 py-2">
+                  <RefreshCcw className={`h-4 w-4 ${isRefreshingHoldings ? 'animate-spin' : ''}`} />
+                  {isRefreshingHoldings ? t('portfolio.refreshingHoldings') : t('portfolio.refreshHoldings')}
+                </Button>
+              </div>
+            </div>
           </section>
 
           {/* Portfolio Health Score */}
