@@ -27,8 +27,14 @@ serve(async (req) => {
     const res = await fetch(CSV_URL);
     if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
     const csvText = await res.text();
+    const normalizedCsvText = csvText.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
-    const rawRows = parse(csvText, { skipFirstRow: false }) as string[][];
+    const parsedRows = parse(normalizedCsvText, {
+      skipFirstRow: false,
+      lazyQuotes: true,
+    }) as unknown[];
+
+    const rawRows = parsedRows.filter((row): row is string[] => Array.isArray(row));
     if (!rawRows.length) {
       throw new Error("CSV saknar rader.");
     }
