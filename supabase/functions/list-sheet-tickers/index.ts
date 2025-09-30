@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { parse } from "https://deno.land/std@0.168.0/encoding/csv.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,18 +28,29 @@ serve(async (req) => {
     if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
     const csvText = await res.text();
 
-    // Splitta rader och kolumner
-    const [headerLine, ...lines] = csvText.split("\n").filter((l) => l.trim() !== "");
-    const headers = headerLine.split(",").map((h) => h.trim());
+    // ✅ Använd riktig CSV-parser
+    const rawRows = parse(csvText, {
+      skipFirstRow: false,
+      columns: false,
+    }) as string[][];
+
+    if (!rawRows.length) throw new Error("CSV saknar rader.");
+
+    const headers = rawRows[0].map((h) =>
+      typeof h === "string" ? h.trim() : ""
+    );
+    const dataRows = rawRows.slice(1);
+
+    console.log("Headers:", headers);
 
     const companyIdx = headers.findIndex((h) => /company/i.test(h));
     const simpleTickerIdx = headers.findIndex((h) => /simple\s*ticker/i.test(h));
-    const tickerIdx = headers.findIndex((h) => /ticker/i.test(h));
-    const currencyIdx = headers.findIndex((h) => /currency/i.test(h));
-    const priceIdx = headers.findIndex((h) => /price/i.test(h));
+    const tickerIdx = headers.findIndex((h) => /ticker/i.test(h) && !/simple/i.test(h));
+    const currencyIdx = headers.findIndex((h) => /(currency|valuta)/i.test(h));
+    const priceIdx = headers.findIndex((h) => /(price|senast|last)/i.test(h));
 
-    if (companyIdx === -1 || tickerIdx === -1 || priceIdx === -1) {
-      throw new Error("CSV saknar nödvändiga kolumner (Company, Ticker, Price).");
+    if (tickerIdx === -1 && simpleTickerIdx === -1) {
+      throw new Error("CSV saknar nödvändiga kolumner (Ticker eller Simpel Ticker).");
     }
 
     const tickerMap = new Map<
@@ -46,26 +58,24 @@ serve(async (req) => {
       { name: string; symbol: string; currency: string | null; price: number | null }
     >();
 
-    for (const line of lines) {
-      const cols = line.split(",").map((c) => c.trim());
-      if (cols.length <= priceIdx) continue;
-
-      const rawName = normalizeValue(cols[companyIdx]);
+    for (const cols of dataRows) {
+      const rawName = normalizeValue(companyIdx !== -1 ? cols[companyIdx] : null);
       const rawSimpleSymbol = simpleTickerIdx !== -1 ? normalizeValue(cols[simpleTickerIdx]) : null;
-      const rawSymbol = normalizeValue(cols[tickerIdx]);
-      const rawCurrency = normalizeValue(cols[currencyIdx]);
-      const rawPrice = normalizeValue(cols[priceIdx]);
+      const rawSymbol = tickerIdx !== -1 ? normalizeValue(cols[tickerIdx]) : null;
+      const rawCurrency = currencyIdx !== -1 ? normalizeValue(cols[currencyIdx]) : null;
+      const rawPrice = priceIdx !== -1 ? normalizeValue(cols[priceIdx]) : null;
 
       const selectedSymbol = rawSimpleSymbol ?? rawSymbol;
-      if (!selectedSymbol || !rawPrice) continue;
+      if (!selectedSymbol) continue;
 
       // Ta bort ev. "STO:" prefix
       const cleanedSymbol = selectedSymbol.includes(":")
         ? selectedSymbol.split(":").pop()!.toUpperCase()
         : selectedSymbol.toUpperCase();
 
-      const price = parseFloat(rawPrice.replace(/\s/g, "").replace(",", "."));
-      if (isNaN(price)) continue;
+      const price = rawPrice
+        ? parseFloat(rawPrice.replace(/\s/g, "").replace(",", "."))
+        : null;
 
       tickerMap.set(cleanedSymbol, {
         symbol: cleanedSymbol,
@@ -77,7 +87,11 @@ serve(async (req) => {
 
     const tickers = Array.from(tickerMap.values());
 
-    console.log("Antal tickers:", tickers.length);
+    // 🔍 Debug-loggar
+    // console.log("Antal rader i CSV:", rawRows.length);
+    // console.log("Antal tickers:", tickers.length);
+    // console.log("Första 3:", tickers.slice(0, 3));
+    // console.log("Sista 3:", tickers.slice(-3));
 
     return new Response(JSON.stringify({ success: true, tickers }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
