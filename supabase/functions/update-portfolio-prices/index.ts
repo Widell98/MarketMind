@@ -102,39 +102,28 @@ const convertToSEK = (amount: number, currency?: string | null) => {
 };
 
 const parseCsvRecords = (csvText: string) => {
-  const parsed = parse(csvText, { skipFirstRow: false }) as unknown;
+  let headers: string[] = [];
 
-  if (!Array.isArray(parsed)) {
+  const records = parse(csvText.replace(/^\ufeff/, ""), {
+    skipFirstRow: false,
+    columns: (cols: string[]) => {
+      headers = cols.map((value, index) => {
+        const normalized = value?.trim();
+        return normalized && normalized.length > 0 ? normalized : `column_${index}`;
+      });
+      return headers;
+    },
+  }) as Array<Record<string, string>>;
+
+  if (!Array.isArray(records)) {
     throw new Error("Kunde inte tolka CSV-innehållet");
   }
 
-  if (parsed.length === 0) {
-    return { headers: [] as string[], records: [] as Array<Record<string, string>> };
-  }
+  const sanitizedRecords = records.filter((record) =>
+    headers.some((header) => normalizeValue(record[header] ?? null))
+  );
 
-  const [rawHeaderRow, ...rawDataRows] = parsed;
-
-  if (!Array.isArray(rawHeaderRow)) {
-    throw new Error("CSV saknar en giltig header-rad");
-  }
-
-  const headers = rawHeaderRow.map((value, index) => {
-    const header = value === null || value === undefined ? "" : String(value).trim();
-    return header.length > 0 ? header : `column_${index}`;
-  });
-
-  const records = rawDataRows.map((row) => {
-    const record: Record<string, string> = {};
-    if (Array.isArray(row)) {
-      headers.forEach((header, index) => {
-        const cell = row[index];
-        record[header] = cell === null || cell === undefined ? "" : String(cell);
-      });
-    }
-    return record;
-  });
-
-  return { headers, records };
+  return { headers, records: sanitizedRecords };
 };
 
 // === Edge Function ===
