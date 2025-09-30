@@ -102,22 +102,47 @@ const convertToSEK = (amount: number, currency?: string | null) => {
 };
 
 const parseCsvRecords = (csvText: string) => {
-  let headers: string[] = [];
-
-  const records = parse(csvText.replace(/^\ufeff/, ""), {
+  const rawRows = parse(csvText.replace(/^\ufeff/, ""), {
     skipFirstRow: false,
-    columns: (cols: string[]) => {
-      headers = cols.map((value, index) => {
-        const normalized = value?.trim();
-        return normalized && normalized.length > 0 ? normalized : `column_${index}`;
-      });
-      return headers;
-    },
-  }) as Array<Record<string, string>>;
+  }) as string[][];
 
-  if (!Array.isArray(records)) {
-    throw new Error("Kunde inte tolka CSV-innehållet");
+  if (!Array.isArray(rawRows) || rawRows.length === 0) {
+    return { headers: [] as string[], records: [] as Array<Record<string, string>> };
   }
+
+  const seenHeaders = new Set<string>();
+  const ensureHeaderName = (value: string | undefined, index: number) => {
+    const base = value?.trim()?.length ? value.trim() : `column_${index}`;
+    let candidate = base;
+    let counter = 1;
+    while (seenHeaders.has(candidate)) {
+      candidate = `${base}_${counter++}`;
+    }
+    seenHeaders.add(candidate);
+    return candidate;
+  };
+
+  const headerRow = rawRows[0] ?? [];
+  const headers = headerRow.map((value, index) => ensureHeaderName(value, index));
+
+  let maxColumns = headers.length;
+  for (let i = 1; i < rawRows.length; i++) {
+    if (rawRows[i].length > maxColumns) {
+      maxColumns = rawRows[i].length;
+    }
+  }
+
+  for (let i = headers.length; i < maxColumns; i++) {
+    headers.push(ensureHeaderName(undefined, i));
+  }
+
+  const records = rawRows.slice(1).map((row) => {
+    const record: Record<string, string> = {};
+    for (let i = 0; i < headers.length; i++) {
+      record[headers[i]] = row[i] ?? "";
+    }
+    return record;
+  });
 
   const sanitizedRecords = records.filter((record) =>
     headers.some((header) => normalizeValue(record[header] ?? null))
