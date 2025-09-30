@@ -32,6 +32,7 @@ serve(async (req) => {
     const headers = headerLine.split(",").map((h) => h.trim());
 
     const companyIdx = headers.findIndex((h) => /company/i.test(h));
+    const simpleTickerIdx = headers.findIndex((h) => /simple\s*ticker/i.test(h));
     const tickerIdx = headers.findIndex((h) => /ticker/i.test(h));
     const currencyIdx = headers.findIndex((h) => /currency/i.test(h));
     const priceIdx = headers.findIndex((h) => /price/i.test(h));
@@ -50,16 +51,18 @@ serve(async (req) => {
       if (cols.length <= priceIdx) continue;
 
       const rawName = normalizeValue(cols[companyIdx]);
+      const rawSimpleSymbol = simpleTickerIdx !== -1 ? normalizeValue(cols[simpleTickerIdx]) : null;
       const rawSymbol = normalizeValue(cols[tickerIdx]);
       const rawCurrency = normalizeValue(cols[currencyIdx]);
       const rawPrice = normalizeValue(cols[priceIdx]);
 
-      if (!rawSymbol || !rawPrice) continue;
+      const selectedSymbol = rawSimpleSymbol ?? rawSymbol;
+      if (!selectedSymbol || !rawPrice) continue;
 
       // Ta bort ev. "STO:" prefix
-      const cleanedSymbol = rawSymbol.includes(":")
-        ? rawSymbol.split(":")[1].toUpperCase()
-        : rawSymbol.toUpperCase();
+      const cleanedSymbol = selectedSymbol.includes(":")
+        ? selectedSymbol.split(":").pop()!.toUpperCase()
+        : selectedSymbol.toUpperCase();
 
       const price = parseFloat(rawPrice.replace(/\s/g, "").replace(",", "."));
       if (isNaN(price)) continue;
@@ -73,6 +76,8 @@ serve(async (req) => {
     }
 
     const tickers = Array.from(tickerMap.values());
+
+    console.log("Antal tickers:", tickers.length);
 
     return new Response(JSON.stringify({ success: true, tickers }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
