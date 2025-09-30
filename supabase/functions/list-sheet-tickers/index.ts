@@ -43,6 +43,13 @@ serve(async (req) => {
     );
     const dataRows = rawRows.slice(1);
 
+    console.log("=== DEBUG START ===");
+    console.log("Antal rader i rå CSV:", rawRows.length);
+    console.log("Headers:", headers);
+    console.log("Exempel rad 1:", dataRows[0]);
+    console.log("Exempel rad 200:", dataRows[199]);
+    console.log("Exempel rad sista:", dataRows[dataRows.length - 1]);
+
     const companyIdx = headers.findIndex((h) => /company/i.test(h));
     const simpleTickerIdx = headers.findIndex((h) =>
       /simple\s*ticker/i.test(h)
@@ -63,7 +70,11 @@ serve(async (req) => {
 
     const tickerMap = new Map<string, any>();
 
-    for (const row of dataRows) {
+    let skippedNoSymbol = 0;
+    let skippedNoPrice = 0;
+
+    for (let rowIndex = 0; rowIndex < dataRows.length; rowIndex++) {
+      const row = dataRows[rowIndex];
       const cols = row.map((c) =>
         typeof c === "string" ? c.trim() : String(c).trim()
       );
@@ -85,7 +96,10 @@ serve(async (req) => {
         : null;
 
       const selectedSymbol = rawSimpleSymbol ?? rawSymbol;
-      if (!selectedSymbol) continue;
+      if (!selectedSymbol) {
+        skippedNoSymbol++;
+        continue;
+      }
 
       const cleanedSymbol = selectedSymbol.includes(":")
         ? selectedSymbol.split(":").pop()!.toUpperCase()
@@ -94,6 +108,10 @@ serve(async (req) => {
       const price = rawPrice
         ? parseFloat(rawPrice.replace(/\s/g, "").replace(",", "."))
         : null;
+
+      if (rawPrice === null) {
+        skippedNoPrice++;
+      }
 
       tickerMap.set(cleanedSymbol, {
         symbol: cleanedSymbol,
@@ -105,10 +123,12 @@ serve(async (req) => {
 
     const tickers = Array.from(tickerMap.values());
 
-    console.log("Antal rader i CSV:", rawRows.length);
-    console.log("Antal tickers:", tickers.length);
-    console.log("Första 5:", tickers.slice(0, 5));
-    console.log("Sista 5:", tickers.slice(-5));
+    console.log("Antal tickers byggda:", tickers.length);
+    console.log("Första 5 tickers:", tickers.slice(0, 5));
+    console.log("Sista 5 tickers:", tickers.slice(-5));
+    console.log("Skippade rader utan symbol:", skippedNoSymbol);
+    console.log("Rader som saknade pris:", skippedNoPrice);
+    console.log("=== DEBUG END ===");
 
     return new Response(
       JSON.stringify({ success: true, tickers }),
