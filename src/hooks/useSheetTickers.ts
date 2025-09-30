@@ -12,9 +12,21 @@ export type SheetTicker = {
 type RawSheetTicker = {
   symbol?: string | null;
   sheetSymbol?: string | null;
+  simpleSymbol?: string | null;
+  simpleTicker?: string | null;
+  simple_ticker?: string | null;
   name?: string | null;
   price?: number | null;
   currency?: string | null;
+};
+
+const coerceString = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 };
 
 const useSheetTickers = () => {
@@ -63,32 +75,34 @@ const useSheetTickers = () => {
 
         const sanitizedTickers: SheetTicker[] = list
           .map((item): SheetTicker | null => {
-            if (!item || typeof item.symbol !== 'string') {
+            if (!item) {
               return null;
             }
 
-            const trimmedSymbol = item.symbol.trim();
-            if (!trimmedSymbol) {
+            const candidateSymbols: Array<string | null> = [
+              coerceString(item.simpleSymbol),
+              coerceString(item.simpleTicker),
+              coerceString(item.simple_ticker),
+              coerceString(item.symbol),
+              coerceString(item.sheetSymbol),
+            ];
+
+            const rawSimpleSymbol = candidateSymbols.find((candidate) => candidate && candidate.length > 0);
+            if (!rawSimpleSymbol) {
               return null;
             }
 
-            const normalizedSymbol = trimmedSymbol.toUpperCase();
-            const resolvedSheetSymbol = typeof item.sheetSymbol === 'string' && item.sheetSymbol.trim().length > 0
-              ? item.sheetSymbol.trim().toUpperCase()
-              : normalizedSymbol;
-            const resolvedName = typeof item.name === 'string' && item.name.trim().length > 0
-              ? item.name.trim()
-              : normalizedSymbol;
+            const normalizedSymbol = rawSimpleSymbol.toUpperCase();
+            const resolvedSheetSymbol = coerceString(item.sheetSymbol) ?? coerceString(item.symbol) ?? normalizedSymbol;
+            const resolvedName = coerceString(item.name) ?? normalizedSymbol;
             const resolvedPrice = typeof item.price === 'number' && Number.isFinite(item.price) && item.price > 0
               ? item.price
               : null;
-            const resolvedCurrency = typeof item.currency === 'string' && item.currency.trim().length > 0
-              ? item.currency.trim().toUpperCase()
-              : null;
+            const resolvedCurrency = coerceString(item.currency)?.toUpperCase() ?? null;
 
             return {
               symbol: normalizedSymbol,
-              sheetSymbol: resolvedSheetSymbol,
+              sheetSymbol: resolvedSheetSymbol?.toUpperCase() ?? normalizedSymbol,
               name: resolvedName,
               price: resolvedPrice,
               currency: resolvedCurrency,
