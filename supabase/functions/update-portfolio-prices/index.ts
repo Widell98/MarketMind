@@ -216,13 +216,14 @@ serve(async (req) => {
       throw new Error("CSV innehåller inga rader");
     }
     const companyKey = headers.find((h) => /company/i.test(h));
-    const tickerKey = headers.find((h) => /ticker/i.test(h));
+    const simpleTickerKey = headers.find((h) => /simple\s*ticker/i.test(h));
+    const tickerKey = headers.find((h) => /ticker/i.test(h) && !/simple/i.test(h));
     const currencyKey = headers.find((h) => /currency/i.test(h));
     const priceKey = headers.find((h) => /price/i.test(h));
     const changeKey = headers.find((h) => /change/i.test(h));
 
-    if (!tickerKey || !priceKey) {
-      throw new Error("CSV saknar nödvändiga kolumner (Ticker, Price).");
+    if ((!simpleTickerKey && !tickerKey) || !priceKey) {
+      throw new Error("CSV saknar nödvändiga kolumner (Simple Ticker/Ticker, Price).");
     }
     const timestamp = new Date().toISOString();
     let updated = 0;
@@ -230,16 +231,25 @@ serve(async (req) => {
     const unmatched: Array<{ symbol?: string; name?: string }> = [];
 
     for (const row of rows) {
-      const rawNameValue = normalizeValue(companyKey ? row[companyKey as string] : null);
-      const rawSymbolValue = normalizeValue(row[tickerKey as string]);
-      const rawCurrencyValue = normalizeValue(currencyKey ? row[currencyKey as string] : null);
-      const rawPriceValue = normalizeValue(row[priceKey as string]);
-      const rawChangeValue = normalizeValue(changeKey ? row[changeKey as string] : null);
+      const rawNameValue = normalizeValue(companyKey ? row[companyKey] : null);
+      const rawSimpleSymbol = normalizeValue(
+        simpleTickerKey ? row[simpleTickerKey] : null,
+      );
+      const rawTickerSymbol = normalizeValue(
+        tickerKey ? row[tickerKey] : null,
+      );
+      const rawSymbolValue = rawSimpleSymbol ?? rawTickerSymbol;
+      const rawCurrencyValue = normalizeValue(currencyKey ? row[currencyKey] : null);
+      const rawPriceValue = normalizeValue(row[priceKey]);
+      const rawChangeValue = normalizeValue(changeKey ? row[changeKey] : null);
 
       const normalizedSymbol = normalizeSymbol(rawSymbolValue);
       const normalizedName = normalizeName(rawNameValue);
-      const sanitizedSymbol = stripSymbolPrefix(rawSymbolValue);
-      const symbolVariants = getSymbolVariants(rawSymbolValue, sanitizedSymbol);
+      const sanitizedSymbol = stripSymbolPrefix(rawTickerSymbol ?? rawSymbolValue);
+      const symbolVariants = getSymbolVariants(
+        rawSymbolValue,
+        rawTickerSymbol && rawTickerSymbol !== rawSymbolValue ? rawTickerSymbol : null,
+      );
       const canonicalSymbol = sanitizedSymbol ?? normalizedSymbol;
       if (requestedTicker) {
         const matchesTicker = symbolVariants.some((variant) => variant.toUpperCase() === requestedTicker);

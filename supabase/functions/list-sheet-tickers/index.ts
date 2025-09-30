@@ -90,12 +90,15 @@ serve(async (req) => {
     }
 
     const companyKey = headers.find((h) => /company/i.test(h));
-    const tickerKey = headers.find((h) => /ticker/i.test(h));
+    const simpleTickerKey = headers.find((h) => /simple\s*ticker/i.test(h));
+    const tickerKey = headers.find((h) => /ticker/i.test(h) && !/simple/i.test(h));
     const currencyKey = headers.find((h) => /currency/i.test(h));
     const priceKey = headers.find((h) => /price/i.test(h));
 
-    if (!tickerKey || !priceKey) {
-      throw new Error("CSV saknar nödvändiga kolumner (Company, Ticker, Price).");
+    if ((!simpleTickerKey && !tickerKey) || !priceKey) {
+      throw new Error(
+        "CSV saknar nödvändiga kolumner (Company, Simple Ticker/Ticker, Price).",
+      );
     }
 
     const tickerMap = new Map<
@@ -104,10 +107,16 @@ serve(async (req) => {
     >();
 
     for (const row of rows) {
-      const rawName = normalizeValue(companyKey ? row[companyKey as string] : null);
-      const rawSymbol = normalizeValue(row[tickerKey as string]);
-      const rawCurrency = normalizeValue(currencyKey ? row[currencyKey as string] : null);
-      const rawPrice = normalizeValue(row[priceKey as string]);
+      const rawName = normalizeValue(companyKey ? row[companyKey] : null);
+      const rawSimpleSymbol = normalizeValue(
+        simpleTickerKey ? row[simpleTickerKey] : null,
+      );
+      const rawTickerSymbol = normalizeValue(
+        tickerKey ? row[tickerKey] : null,
+      );
+      const rawSymbol = rawSimpleSymbol ?? rawTickerSymbol;
+      const rawCurrency = normalizeValue(currencyKey ? row[currencyKey] : null);
+      const rawPrice = normalizeValue(row[priceKey]);
 
       if (!rawSymbol) continue;
 
