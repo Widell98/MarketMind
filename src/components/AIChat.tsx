@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAIChat } from '@/hooks/useAIChat';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSubscription } from '@/hooks/useSubscription';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ChatMessages from './chat/ChatMessages';
 import ChatInput from './chat/ChatInput';
@@ -40,10 +39,6 @@ const AIChat = ({
   const {
     user
   } = useAuth();
-  const {
-    usage,
-    subscription
-  } = useSubscription();
   const isMobile = useIsMobile();
   const {
     messages,
@@ -59,7 +54,11 @@ const AIChat = ({
     editSessionName,
     clearMessages,
     dismissProfileUpdatePrompt,
-    updateUserProfile
+    updateUserProfile,
+    usage,
+    subscription,
+    remainingCredits,
+    totalCredits
   } = useAIChat(portfolioId);
   const [input, setInput] = useState('');
   const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false);
@@ -70,12 +69,7 @@ const AIChat = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const location = useLocation();
-  const currentUsage = usage?.ai_messages_count || 0;
   const isPremium = subscription?.subscribed;
-
-  // Calculate credits for display (same logic as CreditsIndicator)
-  const totalCredits = 5;
-  const remainingCredits = Math.max(0, totalCredits - currentUsage);
   useEffect(() => {
     // Auto-scroll when messages change
     messagesEndRef.current?.scrollIntoView({
