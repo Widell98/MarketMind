@@ -326,13 +326,16 @@ const ChatPortfolioAdvisor = () => {
                 ticker.currency ? ` ${ticker.currency}` : ''
               }`.trimEnd()
             : '';
+        const optionLabel = `${label}${priceLabel}`;
 
         return (
           <option
             key={ticker.symbol}
             value={ticker.symbol}
-            label={`${label}${priceLabel}`}
-          />
+            label={optionLabel}
+          >
+            {optionLabel}
+          </option>
         );
       }),
     [tickers, priceFormatter]
