@@ -33,6 +33,7 @@ serve(async (req) => {
 
     const companyIdx = headers.findIndex((h) => /company/i.test(h));
     const tickerIdx = headers.findIndex((h) => /ticker/i.test(h));
+    const simpleTickerIdx = headers.findIndex((h) => /simple\s*ticker/i.test(h));
     const currencyIdx = headers.findIndex((h) => /currency/i.test(h));
     const priceIdx = headers.findIndex((h) => /price/i.test(h));
 
@@ -50,16 +51,25 @@ serve(async (req) => {
       if (cols.length <= priceIdx) continue;
 
       const rawName = normalizeValue(cols[companyIdx]);
-      const rawSymbol = normalizeValue(cols[tickerIdx]);
-      const rawCurrency = normalizeValue(cols[currencyIdx]);
+      const rawTicker = normalizeValue(cols[tickerIdx]);
+      const rawSimpleTicker =
+        simpleTickerIdx !== -1 ? normalizeValue(cols[simpleTickerIdx]) : null;
+      const rawCurrency =
+        currencyIdx !== -1 ? normalizeValue(cols[currencyIdx]) : null;
       const rawPrice = normalizeValue(cols[priceIdx]);
 
-      if (!rawSymbol || !rawPrice) continue;
+      const baseSymbol = rawSimpleTicker ?? rawTicker;
+      if (!baseSymbol || !rawPrice) continue;
 
-      // Ta bort ev. "STO:" prefix
-      const cleanedSymbol = rawSymbol.includes(":")
-        ? rawSymbol.split(":")[1].toUpperCase()
-        : rawSymbol.toUpperCase();
+      let cleanedSymbol: string;
+      if (rawSimpleTicker) {
+        cleanedSymbol = rawSimpleTicker.toUpperCase();
+      } else {
+        // Ta bort ev. "STO:" prefix
+        cleanedSymbol = rawTicker!.includes(":")
+          ? rawTicker!.split(":")[1].toUpperCase()
+          : rawTicker!.toUpperCase();
+      }
 
       const price = parseFloat(rawPrice.replace(/\s/g, "").replace(",", "."));
       if (isNaN(price)) continue;
@@ -73,6 +83,8 @@ serve(async (req) => {
     }
 
     const tickers = Array.from(tickerMap.values());
+
+    console.log("Antal tickers:", tickers.length);
 
     return new Response(JSON.stringify({ success: true, tickers }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
