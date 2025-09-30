@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { parse } from "https://deno.land/std@0.168.0/csv/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
 const corsHeaders = {
@@ -159,21 +160,37 @@ serve(async (req) => {
     if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
     const csvText = await res.text();
 
-    // Parsning av CSV → rader
-    const rows = csvText.split("\n").map((r) => r.split(","));
+    const rows = parse(csvText, {
+      skipFirstRow: false,
+      columns: true,
+    }) as Array<Record<string, string>>;
+
+    if (!rows.length) {
+      throw new Error("CSV innehåller inga rader");
+    }
+
+    const headers = Object.keys(rows[0]);
+    const companyKey = headers.find((h) => /company/i.test(h));
+    const tickerKey = headers.find((h) => /ticker/i.test(h));
+    const currencyKey = headers.find((h) => /currency/i.test(h));
+    const priceKey = headers.find((h) => /price/i.test(h));
+    const changeKey = headers.find((h) => /change/i.test(h));
+
+    if (!tickerKey || !priceKey) {
+      throw new Error("CSV saknar nödvändiga kolumner (Ticker, Price).");
+    }
     const timestamp = new Date().toISOString();
     let updated = 0;
     let errors = 0;
     const unmatched: Array<{ symbol?: string; name?: string }> = [];
 
     for (const row of rows) {
-      // Anpassa index efter din CSV-struktur (B2:H tidigare)
-      const [company, rawSymbol, , rawCurrency, rawPrice, , rawChange] = row.map((c) =>
-        c.trim()
-      );
+      const rawNameValue = normalizeValue(companyKey ? row[companyKey as string] : null);
+      const rawSymbolValue = normalizeValue(row[tickerKey as string]);
+      const rawCurrencyValue = normalizeValue(currencyKey ? row[currencyKey as string] : null);
+      const rawPriceValue = normalizeValue(row[priceKey as string]);
+      const rawChangeValue = normalizeValue(changeKey ? row[changeKey as string] : null);
 
-      const rawSymbolValue = normalizeValue(rawSymbol);
-      const rawNameValue = normalizeValue(company);
       const normalizedSymbol = normalizeSymbol(rawSymbolValue);
       const normalizedName = normalizeName(rawNameValue);
       const sanitizedSymbol = stripSymbolPrefix(rawSymbolValue);
@@ -185,9 +202,9 @@ serve(async (req) => {
         processedRequestedTicker = true;
       }
       const namePattern = normalizedName ? `${normalizedName}%` : null;
-      const price = parsePrice(rawPrice);
-      const originalCurrency = normalizeValue(rawCurrency)?.toUpperCase() || null;
-      const dailyChangePct = parseChangePercent(rawChange);
+      const price = parsePrice(rawPriceValue);
+      const originalCurrency = rawCurrencyValue?.toUpperCase() || null;
+      const dailyChangePct = parseChangePercent(rawChangeValue);
 
       const priceCurrency = originalCurrency ?? "SEK";
       const pricePerUnit = price;

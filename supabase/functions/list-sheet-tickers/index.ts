@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { parse } from "https://deno.land/std@0.168.0/csv/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,17 +27,23 @@ serve(async (req) => {
     const res = await fetch(CSV_URL);
     if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
     const csvText = await res.text();
+    const rows = parse(csvText, {
+      skipFirstRow: false,
+      columns: true,
+    }) as Array<Record<string, string>>;
 
-    // Splitta rader och kolumner
-    const [headerLine, ...lines] = csvText.split("\n").filter((l) => l.trim() !== "");
-    const headers = headerLine.split(",").map((h) => h.trim());
+    if (!rows.length) {
+      throw new Error("CSV innehåller inga rader");
+    }
 
-    const companyIdx = headers.findIndex((h) => /company/i.test(h));
-    const tickerIdx = headers.findIndex((h) => /ticker/i.test(h));
-    const currencyIdx = headers.findIndex((h) => /currency/i.test(h));
-    const priceIdx = headers.findIndex((h) => /price/i.test(h));
+    const headers = Object.keys(rows[0]);
 
-    if (companyIdx === -1 || tickerIdx === -1 || priceIdx === -1) {
+    const companyKey = headers.find((h) => /company/i.test(h));
+    const tickerKey = headers.find((h) => /ticker/i.test(h));
+    const currencyKey = headers.find((h) => /currency/i.test(h));
+    const priceKey = headers.find((h) => /price/i.test(h));
+
+    if (!tickerKey || !priceKey) {
       throw new Error("CSV saknar nödvändiga kolumner (Company, Ticker, Price).");
     }
 
@@ -45,14 +52,11 @@ serve(async (req) => {
       { name: string; symbol: string; currency: string | null; price: number | null }
     >();
 
-    for (const line of lines) {
-      const cols = line.split(",").map((c) => c.trim());
-      if (cols.length <= priceIdx) continue;
-
-      const rawName = normalizeValue(cols[companyIdx]);
-      const rawSymbol = normalizeValue(cols[tickerIdx]);
-      const rawCurrency = normalizeValue(cols[currencyIdx]);
-      const rawPrice = normalizeValue(cols[priceIdx]);
+    for (const row of rows) {
+      const rawName = normalizeValue(companyKey ? row[companyKey as string] : null);
+      const rawSymbol = normalizeValue(row[tickerKey as string]);
+      const rawCurrency = normalizeValue(currencyKey ? row[currencyKey as string] : null);
+      const rawPrice = normalizeValue(row[priceKey as string]);
 
       if (!rawSymbol || !rawPrice) continue;
 
