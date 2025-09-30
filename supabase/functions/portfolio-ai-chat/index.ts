@@ -694,12 +694,18 @@ PERSONA & STIL:
 - Använd svensk finansterminologi och marknadskontext
 - Avsluta svar med en öppen fråga för att uppmuntra fortsatt dialog
 - Inkludera alltid en **Disclaimer** om utbildningssyfte
-`;
+
+PERSONALISERING:
+- Utnyttja aiMemory, senaste chatHistory och portföljdata för att bygga vidare på tidigare resonemang och undvika upprepningar.
+- Lyft fram nya eller förändrade datapunkter (exempelvis största portföljförändringen, nya mål eller transaktioner).
+- Om något redan behandlats – markera det kort och erbjud en ny vinkel eller fördjupning istället för att repetera.`;
 
 const intentPrompts = {
   stock_analysis: `
 AKTIEANALYSUPPGIFT:
 Om användaren nämner specifika aktier eller företag - GE ALLTID KONKRETA AKTIEFÖRSLAG!
+- Välj en unik infallsvinkel (t.ex. fundamental värdering, tekniska nivåer, kassaflöde eller scenarioanalys) som passar frågan och användarens portfölj.
+- Anpassa rubriker/emojis efter vinkeln och hoppa över delar som inte tillför värde.
 
 **VIKTIGT: När du rekommenderar aktier, använd ALLTID denna exakta format så att systemet kan fånga upp dem:**
 **Företagsnamn (TICKER)** - Kort motivering
@@ -709,7 +715,7 @@ Exempel:
 **Investor AB (INVE-B)** - Diversifierat investmentbolag  
 **Volvo AB (VOLV-B)** - Stabil lastbilstillverkare
 
-Svara i följande struktur (kortfattat men tydligt):
+Föreslagen struktur (anpassa fritt, kombinera rubriker eller hoppa över de som inte är relevanta):
 
 🏢 FÖRETAGSÖVERSIKT
 [Beskriv bolaget, dess affärsmodell, styrkor och marknadsposition]
@@ -736,31 +742,39 @@ Inkludera en **Disclaimer** om att råden är i utbildningssyfte.`,
 
   portfolio_optimization: `
 PORTFÖLJOPTIMERINGSUPPGIFT:
+- Välj en unik infallsvinkel (t.ex. riskbalans, kassaflödesbehov, scenarioplanering eller taktisk omallokering) baserat på portföljen och frågan.
 - Identifiera överexponering och luckor
 - Föreslå omviktningar med procentsatser
 - Om kassa eller månadssparande finns: inkludera allokeringsförslag
-- Ge enklare prioriteringssteg, men inte hela planen direkt`,
+- Ge enklare prioriteringssteg, men inte hela planen direkt
+- Anpassa rubriker och hoppa över sådant som inte är relevant`,
 
   buy_sell_decisions: `
 KÖP/SÄLJ-BESLUTSUPPGIFT:
+- Välj en vinkel (t.ex. katalysatorer, värderingsdrivare, tekniskt läge eller kassaflödespåverkan) för att göra resonemanget unikt.
 - Bedöm om tidpunkten är lämplig
 - Ange för- och nackdelar
 - Föreslå positionsstorlek i procent
-- Avsluta med en fråga tillbaka till användaren`,
+- Avsluta med en fråga tillbaka till användaren
+- Hoppa över sektioner som inte tillför värde`,
 
   market_analysis: `
 MARKNADSANALYSUPPGIFT:
+- Välj en tydlig huvudvinkel (makroläge, räntesituation, sektorsrotation eller sentiment) utifrån användarens behov.
 - Analysera trender kortfattat
 - Beskriv påverkan på användarens portfölj
 - Ge 1–2 möjliga justeringar
-- Avsluta med fråga om användaren vill ha en djupare analys`,
+- Avsluta med fråga om användaren vill ha en djupare analys
+- Anpassa struktur och hoppa över irrelevanta rubriker`,
 
   general_advice: `
 ALLMÄN INVESTERINGSRÅDGIVNING:
+- Välj en unik infallsvinkel (t.ex. långsiktigt sparmål, kassaflöde, tekniska nivåer eller scenario) för att individualisera svaret.
 - Ge råd i 2–4 meningar
 - Inkludera ALLTID konkreta aktieförslag i formatet **Företagsnamn (TICKER)** när relevant
 - Anpassa förslag till användarens riskprofil och intressen
 - Avsluta med öppen fråga för att driva dialog
+- Rubriker är valfria – använd dem endast när de tillför klarhet
 
 **VIKTIGT: Använd ALLTID denna exakta format för aktieförslag:**
 **Företagsnamn (TICKER)** - Kort motivering`
@@ -768,8 +782,198 @@ ALLMÄN INVESTERINGSRÅDGIVNING:
 
 contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
 
-// … här behåller du riskProfile och holdings-delen som du redan har …
+    if (conversationData && typeof conversationData === 'object' && Object.keys(conversationData).length > 0) {
+      type ConversationSection = { title: string; lines: string[] };
+      const sections: ConversationSection[] = [];
+      const toText = (value: unknown): string => {
+        if (typeof value === 'number') {
+          return Number.isFinite(value) ? value.toString() : '';
+        }
+        if (typeof value === 'string') {
+          return value.trim();
+        }
+        return '';
+      };
 
+      const profileLines: string[] = [];
+      if (typeof conversationData.isBeginnerInvestor === 'boolean') {
+        profileLines.push(`Erfarenhet: ${conversationData.isBeginnerInvestor ? 'Nybörjare' : 'Erfaren'}`);
+      }
+      const ageText = toText(conversationData.age);
+      if (ageText) {
+        profileLines.push(`Ålder: ${ageText}`);
+      }
+      const investmentGoalText = toText(conversationData.investmentGoal);
+      if (investmentGoalText) {
+        profileLines.push(`Investeringsmål: ${investmentGoalText}`);
+      }
+      const timeHorizonText = toText(conversationData.timeHorizon);
+      if (timeHorizonText) {
+        profileLines.push(`Tidshorisont: ${timeHorizonText}`);
+      }
+      const riskToleranceText = toText(conversationData.riskTolerance);
+      if (riskToleranceText) {
+        profileLines.push(`Risktolerans: ${riskToleranceText}`);
+      }
+      if (profileLines.length > 0) {
+        sections.push({ title: 'PROFIL & MÅL', lines: profileLines });
+      }
+
+      const cashflowLines: string[] = [];
+      const monthlyAmountText = toText(conversationData.monthlyAmount);
+      if (monthlyAmountText) {
+        cashflowLines.push(`Månatligt sparande: ${monthlyAmountText}`);
+      }
+      const monthlyIncomeText = toText(conversationData.monthlyIncome);
+      if (monthlyIncomeText) {
+        cashflowLines.push(`Månadsinkomst: ${monthlyIncomeText}`);
+      }
+      const availableCapitalText = toText(conversationData.availableCapital);
+      if (availableCapitalText) {
+        cashflowLines.push(`Tillgängligt kapital: ${availableCapitalText}`);
+      }
+      const emergencyFundText = toText(conversationData.emergencyFund);
+      if (emergencyFundText) {
+        cashflowLines.push(`Buffert: ${emergencyFundText}`);
+      }
+      if (Array.isArray(conversationData.financialObligations) && conversationData.financialObligations.length > 0) {
+        cashflowLines.push(`Ekonomiska förpliktelser: ${conversationData.financialObligations.join(', ')}`);
+      }
+      if (cashflowLines.length > 0) {
+        sections.push({ title: 'KASSA & KASSAFLÖDE', lines: cashflowLines });
+      }
+
+      const preferenceLines: string[] = [];
+      if (Array.isArray(conversationData.interests) && conversationData.interests.length > 0) {
+        preferenceLines.push(`Personliga intressen: ${conversationData.interests.join(', ')}`);
+      }
+      if (Array.isArray(conversationData.companies) && conversationData.companies.length > 0) {
+        preferenceLines.push(`Favoritbolag: ${conversationData.companies.join(', ')}`);
+      }
+      const investmentStyleText = toText(conversationData.investmentStyle);
+      if (investmentStyleText) {
+        preferenceLines.push(`Investeringsstil: ${investmentStyleText}`);
+      }
+      if (typeof conversationData.volatilityComfort === 'number' && Number.isFinite(conversationData.volatilityComfort)) {
+        preferenceLines.push(`Komfort med volatilitet: ${conversationData.volatilityComfort}/10`);
+      } else {
+        const volatilityComfortText = toText(conversationData.volatilityComfort);
+        if (volatilityComfortText) {
+          preferenceLines.push(`Komfort med volatilitet: ${volatilityComfortText}`);
+        }
+      }
+      const sustainabilityText = toText(conversationData.sustainabilityPreference);
+      if (sustainabilityText) {
+        preferenceLines.push(`Hållbarhetsfokus: ${sustainabilityText}`);
+      }
+      const geographicText = toText(conversationData.geographicPreference);
+      if (geographicText) {
+        preferenceLines.push(`Geografisk preferens: ${geographicText}`);
+      }
+      const dividendRequirementText = toText(conversationData.dividendYieldRequirement);
+      if (dividendRequirementText) {
+        preferenceLines.push(`Direktavkastningskrav: ${dividendRequirementText}`);
+      }
+      if (preferenceLines.length > 0) {
+        sections.push({ title: 'PREFERENSER & STIL', lines: preferenceLines });
+      }
+
+      const portfolioLines: string[] = [];
+      if (typeof conversationData.hasCurrentPortfolio === 'boolean') {
+        portfolioLines.push(`Har befintlig portfölj: ${conversationData.hasCurrentPortfolio ? 'Ja' : 'Nej'}`);
+      }
+      const portfolioSizeText = toText(conversationData.portfolioSize);
+      if (portfolioSizeText) {
+        portfolioLines.push(`Portföljstorlek: ${portfolioSizeText}`);
+      }
+      const currentAllocationText = toText(conversationData.currentAllocation);
+      if (currentAllocationText) {
+        portfolioLines.push(`Nuvarande allokering: ${currentAllocationText}`);
+      }
+      const previousPerformanceText = toText(conversationData.previousPerformance);
+      if (previousPerformanceText) {
+        portfolioLines.push(`Historisk prestanda: ${previousPerformanceText}`);
+      }
+      if (Array.isArray(conversationData.sectorExposure) && conversationData.sectorExposure.length > 0) {
+        portfolioLines.push(`Sektorexponering: ${conversationData.sectorExposure.join(', ')}`);
+      }
+      const rebalancingFrequencyText = toText(conversationData.rebalancingFrequency);
+      if (rebalancingFrequencyText) {
+        portfolioLines.push(`Rebalanseringsfrekvens: ${rebalancingFrequencyText}`);
+      }
+      if (Array.isArray(conversationData.currentHoldings) && conversationData.currentHoldings.length > 0) {
+        const holdingSummaries = conversationData.currentHoldings
+          .map((holding: { name?: string; symbol?: string; quantity?: string | number; purchasePrice?: string | number }) => {
+            const parts: string[] = [];
+            if (typeof holding?.name === 'string' && holding.name.trim().length > 0) {
+              parts.push(holding.name.trim());
+            }
+            if (typeof holding?.symbol === 'string' && holding.symbol.trim().length > 0) {
+              parts.push(`(${holding.symbol.trim().toUpperCase()})`);
+            }
+            const quantity = typeof holding?.quantity === 'string' || typeof holding?.quantity === 'number'
+              ? String(holding.quantity).trim()
+              : '';
+            const price = typeof holding?.purchasePrice === 'string' || typeof holding?.purchasePrice === 'number'
+              ? String(holding.purchasePrice).trim()
+              : '';
+            const meta: string[] = [];
+            if (quantity) meta.push(`${quantity} st`);
+            if (price) meta.push(`à ${price} SEK`);
+            if (meta.length > 0) {
+              parts.push(meta.join(' '));
+            }
+            return parts.join(' ').trim();
+          })
+          .filter((summary) => summary.length > 0);
+        if (holdingSummaries.length > 0) {
+          portfolioLines.push(`Nuvarande innehav: ${holdingSummaries.join(', ')}`);
+        }
+      }
+      if (portfolioLines.length > 0) {
+        sections.push({ title: 'PORTFÖLJ & POSITIONER', lines: portfolioLines });
+      }
+
+      const behaviourLines: string[] = [];
+      const marketCrashReactionText = toText(conversationData.marketCrashReaction);
+      if (marketCrashReactionText) {
+        behaviourLines.push(`Reaktion på börsfall: ${marketCrashReactionText}`);
+      }
+      if (typeof conversationData.maxDrawdownTolerance === 'number' && Number.isFinite(conversationData.maxDrawdownTolerance)) {
+        behaviourLines.push(`Max drawdown-tolerans: ${conversationData.maxDrawdownTolerance}/10`);
+      } else {
+        const maxDrawdownText = toText(conversationData.maxDrawdownTolerance);
+        if (maxDrawdownText) {
+          behaviourLines.push(`Max drawdown-tolerans: ${maxDrawdownText}`);
+        }
+      }
+      const portfolioHelpText = toText(conversationData.portfolioHelp);
+      if (portfolioHelpText) {
+        behaviourLines.push(`Behov av portföljhjälp: ${portfolioHelpText}`);
+      }
+      const marketExperienceText = toText(conversationData.marketExperience);
+      if (marketExperienceText) {
+        behaviourLines.push(`Marknadserfarenhet: ${marketExperienceText}`);
+      }
+      const specificGoalAmountText = toText(conversationData.specificGoalAmount);
+      if (specificGoalAmountText) {
+        behaviourLines.push(`Specifikt målbelopp: ${specificGoalAmountText}`);
+      }
+      if (behaviourLines.length > 0) {
+        sections.push({ title: 'BETEENDE & PRIORITERINGAR', lines: behaviourLines });
+      }
+
+      if (sections.length > 0) {
+        contextInfo += `\n\nKONSULTATIONSDATA (HÄMTA FRÅN SENASTE RÅDGIVNINGEN):`;
+        sections.forEach((section) => {
+          contextInfo += `\n- ${section.title}:`;
+          section.lines.forEach((line) => {
+            contextInfo += `\n  • ${line}`;
+          });
+        });
+        contextInfo += `\n- Utnyttja dessa datapunkter för att välja en ny infallsvinkel (t.ex. kassaflöde, riskbalans, scenario) och knyt råden till användarens läge utan att upprepa tidigare svar.`;
+      }
+    }
 
     // Enhanced user context with current holdings and performance
     if (riskProfile) {
@@ -933,17 +1137,91 @@ contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
       }
     }
 
+    if (aiMemory && typeof aiMemory === 'object') {
+      const memoryLines: string[] = [];
+
+      const communicationStyleRaw = typeof aiMemory.communication_style === 'string'
+        ? aiMemory.communication_style.trim().toLowerCase()
+        : '';
+      const communicationStyleDescription = communicationStyleRaw === 'detailed'
+        ? 'Uppskattar när du resonerar i detalj med tydliga mellanrubriker.'
+        : communicationStyleRaw === 'concise'
+          ? 'Föredrar raka och koncisa svar utan onödiga utvikningar.'
+          : communicationStyleRaw;
+      if (communicationStyleDescription) {
+        memoryLines.push(`- Kommunikationsstil: ${communicationStyleDescription}`);
+      }
+
+      const preferredLengthRaw = typeof aiMemory.preferred_response_length === 'string'
+        ? aiMemory.preferred_response_length.trim().toLowerCase()
+        : '';
+      const preferredLengthDescription = preferredLengthRaw === 'detailed'
+        ? 'Ge gärna längre, uppbyggda svar med fler resonemangsexempel.'
+        : preferredLengthRaw === 'concise'
+          ? 'Håll resonemangen korta och fokuserade.'
+          : preferredLengthRaw;
+      if (preferredLengthDescription) {
+        memoryLines.push(`- Önskad svarslängd: ${preferredLengthDescription}`);
+      }
+
+      const favoriteSectors = Array.isArray(aiMemory.favorite_sectors)
+        ? aiMemory.favorite_sectors
+        : typeof aiMemory.favorite_sectors === 'string'
+          ? aiMemory.favorite_sectors.split(',').map((sector: string) => sector.trim()).filter(Boolean)
+          : [];
+      if (favoriteSectors.length > 0) {
+        memoryLines.push(`- Favoritsektorer: ${favoriteSectors.join(', ')}`);
+      }
+
+      const preferredCompanies = Array.isArray(aiMemory.preferred_companies)
+        ? aiMemory.preferred_companies
+        : typeof aiMemory.preferred_companies === 'string'
+          ? aiMemory.preferred_companies.split(',').map((company: string) => company.trim()).filter(Boolean)
+          : [];
+      if (preferredCompanies.length > 0) {
+        memoryLines.push(`- Favoritbolag att återkoppla till: ${preferredCompanies.join(', ')}`);
+      }
+
+      const currentGoals = Array.isArray(aiMemory.current_goals)
+        ? aiMemory.current_goals
+        : typeof aiMemory.current_goals === 'string'
+          ? aiMemory.current_goals.split(',').map((goal: string) => goal.trim()).filter(Boolean)
+          : [];
+      if (currentGoals.length > 0) {
+        memoryLines.push(`- Aktuella mål: ${currentGoals.join(', ')}`);
+      }
+
+      const recurringTopics = Array.isArray(aiMemory.frequently_asked_topics)
+        ? aiMemory.frequently_asked_topics
+        : typeof aiMemory.frequently_asked_topics === 'string'
+          ? aiMemory.frequently_asked_topics.split(',').map((topic: string) => topic.trim()).filter(Boolean)
+          : [];
+      if (recurringTopics.length > 0) {
+        memoryLines.push(`- Återkommande teman: ${recurringTopics.join(', ')}`);
+      }
+
+      if (memoryLines.length > 0) {
+        contextInfo += `\n\nAI-MINNESANTECKNINGAR (ANVÄND FÖR VARIATION):`;
+        memoryLines.forEach(line => {
+          contextInfo += `\n${line}`;
+        });
+        contextInfo += `\n- Använd dessa preferenser för att variera ton, exempel och vinklar så att svaret känns personligt och inte upprepar tidigare svar.`;
+      }
+    }
+
 // Add response structure requirements
-contextInfo += `\n\nSVARSSTRUKTUR (OBLIGATORISK MEN FLEXIBEL):
+contextInfo += `\n\nSVARSSTRUKTUR (REKOMMENDERAD OCH ANPASSNINGSBAR):
 - Anpassa svar efter frågans komplexitet
 - Vid enkla frågor: ge ett kort konversationssvar (2–5 meningar) och avsluta med en öppen motfråga
-- Vid mer komplexa frågor eller när användaren ber om en detaljerad plan: använd den fulla strukturen nedan
+- Vid mer komplexa frågor eller när användaren ber om en detaljerad plan: använd elementen nedan i den ordning som passar bäst
+- Variera rubriker och emojis (synonymer, nya kombinationer) för att hålla svaren levande och individanpassade
+- Välj en tydlig huvudvinkel i varje svar (fundamental, teknisk, kassaflöde, scenario m.m.) och låt den styra valet av sektioner
 
 EMOJI-REGLER:
-- Vid aktieanalys: Använd ALLTID relevanta emojis för att göra svaret mer engagerande
+- Vid aktieanalys: Använd relevanta emojis för att göra svaret mer engagerande
 - Exempel: 📈 för positiva trender, 📉 för negativa, 💼 för företag, ⚠️ för risker, 🎯 för mål, 💡 för tips, 🔍 för analys, 🌟 för rekommendationer, 💪 för starka positioner, ⚖️ för balans, 🚀 för tillväxt
 
-FULL STRUKTUR (när relevant):
+FÖRSLAG PÅ SEKTIONER (plocka de som passar, kombinera eller byt namn vid behov):
 
 **Situation & Analys** 🔍
 [Kort sammanfattning av situationen/frågan]
@@ -954,7 +1232,7 @@ FULL STRUKTUR (när relevant):
 **Risker & Överväganden** ⚠️
 [Viktiga risker och faktorer att beakta]
 
-**Åtgärder (Checklista)** 📋
+**Åtgärdsplan / Checklista** 📋
 □ [Konkret åtgärd 1]
 □ [Konkret åtgärd 2]
 □ [Konkret åtgärd 3]
@@ -962,7 +1240,7 @@ FULL STRUKTUR (när relevant):
 **Disclaimer:** Detta är endast i utbildningssyfte. Konsultera alltid en licensierad rådgivare.
 
 VIKTIGT:
-- Ge bara en "Åtgärder (Checklista)" om frågan faktiskt kräver konkreta steg.
+- Ta endast med "Åtgärdsplan / Checklista" när frågan kräver konkreta steg.
 - Vid aktieanalys: Använd emojis genomgående för att göra analysen mer visuellt tilltalande och lättläst
 - Avsluta alltid svaret med en öppen fråga för att bjuda in till vidare dialog.`;
 
