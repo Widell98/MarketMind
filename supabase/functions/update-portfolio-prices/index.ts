@@ -1,6 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { parse } from "https://deno.land/std@0.168.0/csv/mod.ts";
+import { parse } from "https://deno.land/std@0.168.0/encoding/csv.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
 const corsHeaders = {
@@ -101,6 +101,42 @@ const convertToSEK = (amount: number, currency?: string | null) => {
   return typeof rate === "number" ? amount * rate : null;
 };
 
+const parseCsvRecords = (csvText: string) => {
+  const parsed = parse(csvText, { skipFirstRow: false }) as unknown;
+
+  if (!Array.isArray(parsed)) {
+    throw new Error("Kunde inte tolka CSV-innehållet");
+  }
+
+  if (parsed.length === 0) {
+    return { headers: [] as string[], records: [] as Array<Record<string, string>> };
+  }
+
+  const [rawHeaderRow, ...rawDataRows] = parsed;
+
+  if (!Array.isArray(rawHeaderRow)) {
+    throw new Error("CSV saknar en giltig header-rad");
+  }
+
+  const headers = rawHeaderRow.map((value, index) => {
+    const header = value === null || value === undefined ? "" : String(value).trim();
+    return header.length > 0 ? header : `column_${index}`;
+  });
+
+  const records = rawDataRows.map((row) => {
+    const record: Record<string, string> = {};
+    if (Array.isArray(row)) {
+      headers.forEach((header, index) => {
+        const cell = row[index];
+        record[header] = cell === null || cell === undefined ? "" : String(cell);
+      });
+    }
+    return record;
+  });
+
+  return { headers, records };
+};
+
 // === Edge Function ===
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -160,16 +196,11 @@ serve(async (req) => {
     if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
     const csvText = await res.text();
 
-    const rows = parse(csvText, {
-      skipFirstRow: false,
-      columns: true,
-    }) as Array<Record<string, string>>;
+    const { headers, records: rows } = parseCsvRecords(csvText);
 
     if (!rows.length) {
       throw new Error("CSV innehåller inga rader");
     }
-
-    const headers = Object.keys(rows[0]);
     const companyKey = headers.find((h) => /company/i.test(h));
     const tickerKey = headers.find((h) => /ticker/i.test(h));
     const currencyKey = headers.find((h) => /currency/i.test(h));
