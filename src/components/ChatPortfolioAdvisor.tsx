@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo, useId } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,7 +33,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
-import useSheetTickers, { SheetTicker } from '@/hooks/useSheetTickers';
+import TickerCombobox, { SheetTickersState } from '@/components/TickerCombobox';
+import { SheetTicker } from '@/hooks/useSheetTickers';
 
 interface Message {
   id: string;
@@ -296,9 +297,25 @@ const ChatPortfolioAdvisor = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const refinementEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
-  const { tickers, isLoading: tickersLoading, error: tickersError } = useSheetTickers();
-  const rawTickerListId = useId();
-  const tickerDatalistId = `advisor-sheet-tickers-${rawTickerListId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const [sheetTickersState, setSheetTickersState] = useState<SheetTickersState>({
+    tickers: [],
+    isLoading: false,
+    error: null,
+  });
+  const { tickers, isLoading: tickersLoading, error: tickersError } = sheetTickersState;
+  const handleSheetTickersStateChange = useCallback((nextState: SheetTickersState) => {
+    setSheetTickersState(prev => {
+      if (
+        prev.tickers === nextState.tickers &&
+        prev.isLoading === nextState.isLoading &&
+        prev.error === nextState.error
+      ) {
+        return prev;
+      }
+
+      return nextState;
+    });
+  }, []);
 
   const priceFormatter = useMemo(
     () => new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
@@ -312,31 +329,6 @@ const ChatPortfolioAdvisor = () => {
     });
     return map;
   }, [tickers]);
-
-  const tickerOptions = useMemo(
-    () =>
-      tickers.map(ticker => {
-        const label =
-          ticker.name && ticker.name !== ticker.symbol
-            ? `${ticker.name} (${ticker.symbol})`
-            : ticker.symbol;
-        const priceLabel =
-          typeof ticker.price === 'number' && Number.isFinite(ticker.price) && ticker.price > 0
-            ? ` – ${priceFormatter.format(ticker.price)}${
-                ticker.currency ? ` ${ticker.currency}` : ''
-              }`.trimEnd()
-            : '';
-
-        return (
-          <option
-            key={ticker.symbol}
-            value={ticker.symbol}
-            label={`${label}${priceLabel}`}
-          />
-        );
-      }),
-    [tickers, priceFormatter]
-  );
 
   const structuredResponse = useMemo(() => {
     if (!portfolioResult?.aiResponse) {
@@ -1849,12 +1841,14 @@ const ChatPortfolioAdvisor = () => {
                                   className="text-xs sm:text-sm"
                                   required
                                 />
-                                <Input
-                                  placeholder={tickersLoading ? 'Hämtar tickers...' : 'Symbol (t.ex. AAPL)'}
+                                <TickerCombobox
                                   value={holding.symbol}
-                                  onChange={(e) => handleHoldingSymbolChange(holding.id, e.target.value)}
+                                  onValueChange={(value) => handleHoldingSymbolChange(holding.id, value)}
+                                  placeholder="Symbol (t.ex. AAPL)"
+                                  loadingPlaceholder="Hämtar tickers..."
                                   className="text-xs sm:text-sm"
-                                  list={tickerDatalistId}
+                                  wrapperClassName="space-y-1"
+                                  onSheetTickersStateChange={handleSheetTickersStateChange}
                                 />
                                 <Input
                                   type="number"
@@ -1888,8 +1882,6 @@ const ChatPortfolioAdvisor = () => {
                             ))}
                           </div>
 
-                          <datalist id={tickerDatalistId}>{tickerOptions}</datalist>
-                          
                           {/* Holdings Summary */}
                           {holdings.some(h => h.name && h.quantity > 0 && h.purchasePrice > 0) && (
                             <div className="bg-green-50 border border-green-200 rounded-lg p-3">

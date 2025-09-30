@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -18,7 +18,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { UserHolding } from '@/hooks/useUserHoldings';
-import useSheetTickers, { SheetTicker } from '@/hooks/useSheetTickers';
+import TickerCombobox, { SheetTickersState } from '@/components/TickerCombobox';
+import { SheetTicker } from '@/hooks/useSheetTickers';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { ADD_HOLDING_FORM_STORAGE_KEY } from '@/constants/storageKeys';
 
@@ -69,9 +70,8 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   isOpen,
   onClose,
   onAdd,
-  initialData
+  initialData,
 }) => {
-  const { tickers, isLoading: tickersLoading, error: tickersError } = useSheetTickers();
   const [dialogState, setDialogState, resetDialogState] = useLocalStorage<AddHoldingFormState>(
     ADD_HOLDING_FORM_STORAGE_KEY,
     createDefaultFormState
@@ -79,6 +79,25 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const { formData, priceOverridden, currencyOverridden, nameOverridden } = dialogState;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [symbolError, setSymbolError] = useState<string | null>(null);
+  const [sheetTickersState, setSheetTickersState] = useState<SheetTickersState>({
+    tickers: [],
+    isLoading: false,
+    error: null,
+  });
+  const { tickers, isLoading: tickersLoading, error: tickersError } = sheetTickersState;
+  const handleSheetTickersStateChange = useCallback((nextState: SheetTickersState) => {
+    setSheetTickersState(prev => {
+      if (
+        prev.tickers === nextState.tickers &&
+        prev.isLoading === nextState.isLoading &&
+        prev.error === nextState.error
+      ) {
+        return prev;
+      }
+
+      return nextState;
+    });
+  }, []);
 
   const normalizedSymbol = useMemo(() => {
     const rawSymbol = formData.symbol?.trim();
@@ -248,25 +267,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     [priceFormatter]
   );
 
-  const deferredTickers = useDeferredValue(tickers);
-
-  const tickerOptions = useMemo(() => deferredTickers.map((ticker) => {
-    const label = ticker.name && ticker.name !== ticker.symbol
-      ? `${ticker.name} (${ticker.symbol})`
-      : ticker.symbol;
-    const priceLabel = typeof ticker.price === 'number' && Number.isFinite(ticker.price) && ticker.price > 0
-      ? ` – ${formatDisplayPrice(ticker.price)}${ticker.currency ? ` ${ticker.currency}` : ''}`.trimEnd()
-      : '';
-
-    return (
-      <option
-        key={ticker.symbol}
-        value={ticker.symbol}
-        label={`${label}${priceLabel}`}
-      />
-    );
-  }), [deferredTickers, formatDisplayPrice]);
-
   const resolvedSheetPrice = matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0
     ? matchedTicker.price
     : null;
@@ -430,26 +430,19 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
             </div>
             <div className="space-y-2">
               <Label htmlFor="symbol">Symbol</Label>
-              <Input
+              <TickerCombobox
                 id="symbol"
-                list="sheet-tickers"
                 value={formData.symbol}
-                onChange={(e) => handleInputChange('symbol', e.target.value)}
-                placeholder={tickersLoading ? 'Hämtar tickers...' : 't.ex. VOLV-B'}
+                onValueChange={(value) => handleInputChange('symbol', value)}
+                placeholder="t.ex. VOLV-B"
+                loadingPlaceholder="Hämtar tickers..."
                 required
+                errorMessage={symbolError}
+                helperMessage={tickersError}
+                onSheetTickersStateChange={handleSheetTickersStateChange}
               />
-              {symbolError && (
-                <p className="text-sm text-destructive">{symbolError}</p>
-              )}
-              {tickersError && (
-                <p className="text-sm text-muted-foreground">{tickersError}</p>
-              )}
             </div>
           </div>
-          <datalist id="sheet-tickers">
-            {tickerOptions}
-          </datalist>
-
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="holding_type">Typ</Label>
