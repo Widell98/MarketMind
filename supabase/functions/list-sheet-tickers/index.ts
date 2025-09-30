@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { parse } from "https://deno.land/std@0.168.0/encoding/csv.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,9 +28,13 @@ serve(async (req) => {
     if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
     const csvText = await res.text();
 
-    // Splitta rader och kolumner
-    const [headerLine, ...lines] = csvText.split("\n").filter((l) => l.trim() !== "");
-    const headers = headerLine.split(",").map((h) => h.trim());
+    const rawRows = parse(csvText, { skipFirstRow: false }) as string[][];
+    if (!rawRows.length) {
+      throw new Error("CSV saknar rader.");
+    }
+
+    const headers = rawRows[0].map((h) => (typeof h === "string" ? h.trim() : String(h).trim()));
+    const dataRows = rawRows.slice(1);
 
     const companyIdx = headers.findIndex((h) => /company/i.test(h));
     const simpleTickerIdx = headers.findIndex((h) => /simple\s*ticker/i.test(h));
@@ -46,8 +51,8 @@ serve(async (req) => {
       { name: string; symbol: string; currency: string | null; price: number | null }
     >();
 
-    for (const line of lines) {
-      const cols = line.split(",").map((c) => c.trim());
+    for (const row of dataRows) {
+      const cols = row.map((c) => (typeof c === "string" ? c.trim() : String(c).trim()));
       if (cols.length <= priceIdx) continue;
 
       const rawName = normalizeValue(cols[companyIdx]);
@@ -77,6 +82,7 @@ serve(async (req) => {
 
     const tickers = Array.from(tickerMap.values());
 
+    console.log("Antal rader i CSV:", rawRows.length);
     console.log("Antal tickers:", tickers.length);
 
     return new Response(JSON.stringify({ success: true, tickers }), {
