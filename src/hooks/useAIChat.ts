@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
 
+const DAILY_MESSAGE_CREDITS = 5;
+
 type ProfileUpdates = Record<string, unknown>;
 
 type MessageContext = {
@@ -34,6 +36,11 @@ export const useAIChat = (portfolioId?: string) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { checkUsageLimit, subscription, usage, fetchUsage, incrementUsage } = useSubscription();
+  const totalCredits = DAILY_MESSAGE_CREDITS;
+  const remainingCredits = useMemo(() => {
+    const usedCredits = usage?.ai_messages_count ?? 0;
+    return Math.max(0, totalCredits - usedCredits);
+  }, [usage?.ai_messages_count]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -1047,5 +1054,9 @@ export const useAIChat = (portfolioId?: string) => {
     getQuickAnalysis,
     dismissProfileUpdatePrompt,
     updateUserProfile,
+    usage,
+    subscription,
+    remainingCredits,
+    totalCredits,
   };
 };
