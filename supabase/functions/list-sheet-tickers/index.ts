@@ -4,7 +4,8 @@ import { parse } from "https://deno.land/std@0.168.0/encoding/csv.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -12,7 +13,7 @@ const corsHeaders = {
 const CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvOPfg5tZjaFqCu7b3Li80oPEEuje4tQTcnr6XjxCW_ItVbOGWCvfQfFvWDXRH544MkBKeI1dPyzJG/pub?output=csv";
 
-const normalizeValue = (value?: string | null) => {
+const normalizeValue = (value: string | null | undefined) => {
   if (!value) return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
@@ -26,57 +27,73 @@ serve(async (req) => {
   try {
     const res = await fetch(CSV_URL);
     if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
+
     const csvText = await res.text();
-    const normalizedCsvText = csvText.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
-    const parsedRows = parse(normalizedCsvText, {
+    // Använd stdlib CSV-parsern
+    const rawRows = parse(csvText, {
       skipFirstRow: false,
-      lazyQuotes: true,
-    }) as unknown[];
+      columns: false,
+    }) as string[][];
 
-    const rawRows = parsedRows.filter((row): row is string[] => Array.isArray(row));
-    if (!rawRows.length) {
-      throw new Error("CSV saknar rader.");
-    }
+    if (!rawRows.length) throw new Error("CSV saknar rader.");
 
-    const headers = rawRows[0].map((h) => (typeof h === "string" ? h.trim() : String(h).trim()));
+    const headers = rawRows[0].map((h) =>
+      typeof h === "string" ? h.trim() : String(h).trim()
+    );
     const dataRows = rawRows.slice(1);
 
     const companyIdx = headers.findIndex((h) => /company/i.test(h));
-    const simpleTickerIdx = headers.findIndex((h) => /simple\s*ticker/i.test(h));
-    const tickerIdx = headers.findIndex((h) => /ticker/i.test(h));
-    const currencyIdx = headers.findIndex((h) => /currency/i.test(h));
-    const priceIdx = headers.findIndex((h) => /price/i.test(h));
+    const simpleTickerIdx = headers.findIndex((h) =>
+      /simple\s*ticker/i.test(h)
+    );
+    const tickerIdx = headers.findIndex((h) =>
+      /ticker/i.test(h) && !/simple/i.test(h)
+    );
+    const currencyIdx = headers.findIndex((h) =>
+      /(currency|valuta)/i.test(h)
+    );
+    const priceIdx = headers.findIndex((h) =>
+      /(price|senast|last)/i.test(h)
+    );
 
-    if (companyIdx === -1 || tickerIdx === -1 || priceIdx === -1) {
-      throw new Error("CSV saknar nödvändiga kolumner (Company, Ticker, Price).");
+    if (tickerIdx === -1 && simpleTickerIdx === -1) {
+      throw new Error("CSV saknar nödvändiga kolumner (Ticker eller Simpel Ticker).");
     }
 
-    const tickerMap = new Map<
-      string,
-      { name: string; symbol: string; currency: string | null; price: number | null }
-    >();
+    const tickerMap = new Map<string, any>();
 
     for (const row of dataRows) {
-      const cols = row.map((c) => (typeof c === "string" ? c.trim() : String(c).trim()));
-      if (cols.length <= priceIdx) continue;
+      const cols = row.map((c) =>
+        typeof c === "string" ? c.trim() : String(c).trim()
+      );
 
-      const rawName = normalizeValue(cols[companyIdx]);
-      const rawSimpleSymbol = simpleTickerIdx !== -1 ? normalizeValue(cols[simpleTickerIdx]) : null;
-      const rawSymbol = normalizeValue(cols[tickerIdx]);
-      const rawCurrency = normalizeValue(cols[currencyIdx]);
-      const rawPrice = normalizeValue(cols[priceIdx]);
+      const rawName = normalizeValue(
+        companyIdx !== -1 ? cols[companyIdx] : null,
+      );
+      const rawSimpleSymbol = simpleTickerIdx !== -1
+        ? normalizeValue(cols[simpleTickerIdx])
+        : null;
+      const rawSymbol = tickerIdx !== -1
+        ? normalizeValue(cols[tickerIdx])
+        : null;
+      const rawCurrency = currencyIdx !== -1
+        ? normalizeValue(cols[currencyIdx])
+        : null;
+      const rawPrice = priceIdx !== -1
+        ? normalizeValue(cols[priceIdx])
+        : null;
 
       const selectedSymbol = rawSimpleSymbol ?? rawSymbol;
-      if (!selectedSymbol || !rawPrice) continue;
+      if (!selectedSymbol) continue;
 
-      // Ta bort ev. "STO:" prefix
       const cleanedSymbol = selectedSymbol.includes(":")
         ? selectedSymbol.split(":").pop()!.toUpperCase()
         : selectedSymbol.toUpperCase();
 
-      const price = parseFloat(rawPrice.replace(/\s/g, "").replace(",", "."));
-      if (isNaN(price)) continue;
+      const price = rawPrice
+        ? parseFloat(rawPrice.replace(/\s/g, "").replace(",", "."))
+        : null;
 
       tickerMap.set(cleanedSymbol, {
         symbol: cleanedSymbol,
@@ -90,10 +107,15 @@ serve(async (req) => {
 
     console.log("Antal rader i CSV:", rawRows.length);
     console.log("Antal tickers:", tickers.length);
+    console.log("Första 5:", tickers.slice(0, 5));
+    console.log("Sista 5:", tickers.slice(-5));
 
-    return new Response(JSON.stringify({ success: true, tickers }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ success: true, tickers }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   } catch (error) {
     console.error("Sheet parsing error:", error);
     return new Response(
@@ -101,7 +123,10 @@ serve(async (req) => {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 });
