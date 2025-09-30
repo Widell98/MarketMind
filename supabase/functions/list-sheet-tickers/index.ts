@@ -76,6 +76,15 @@ serve(async (req) => {
     );
     const maxRequiredIdx = relevantIndices.length > 0 ? Math.max(...relevantIndices) : -1;
 
+    const parsePrice = (value: string | null) => {
+      if (!value) return null;
+
+      const normalized = value.replace(/\s/g, "").replace(",", ".");
+      const parsed = parseFloat(normalized);
+
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
     for (const cols of dataRows) {
       if (!Array.isArray(cols)) continue;
       if (maxRequiredIdx >= 0 && cols.length <= maxRequiredIdx) continue;
@@ -86,10 +95,10 @@ serve(async (req) => {
         simpleTickerIdx !== -1 ? normalizeValue(cols[simpleTickerIdx]) : null;
       const rawCurrency =
         currencyIdx !== -1 ? normalizeValue(cols[currencyIdx]) : null;
-      const rawPrice = normalizeValue(cols[priceIdx]);
+      const rawPrice = priceIdx !== -1 ? normalizeValue(cols[priceIdx]) : null;
 
       const baseSymbol = rawSimpleTicker ?? rawTicker;
-      if (!baseSymbol || !rawPrice) continue;
+      if (!baseSymbol) continue;
 
       let cleanedSymbol: string;
       if (rawSimpleTicker) {
@@ -107,8 +116,7 @@ serve(async (req) => {
         cleanedSymbol = (stripped ?? tickerValue).toUpperCase();
       }
 
-      const price = parseFloat(rawPrice.replace(/\s/g, "").replace(",", "."));
-      if (isNaN(price)) continue;
+      const price = parsePrice(rawPrice);
 
       tickerMap.set(cleanedSymbol, {
         symbol: cleanedSymbol,
