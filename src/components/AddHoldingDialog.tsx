@@ -257,13 +257,16 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     const priceLabel = typeof ticker.price === 'number' && Number.isFinite(ticker.price) && ticker.price > 0
       ? ` – ${formatDisplayPrice(ticker.price)}${ticker.currency ? ` ${ticker.currency}` : ''}`.trimEnd()
       : '';
+    const optionLabel = `${label}${priceLabel}`;
 
     return (
       <option
         key={ticker.symbol}
         value={ticker.symbol}
-        label={`${label}${priceLabel}`}
-      />
+        label={optionLabel}
+      >
+        {optionLabel}
+      </option>
     );
   }), [deferredTickers, formatDisplayPrice]);
 
