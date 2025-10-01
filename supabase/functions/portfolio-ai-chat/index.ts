@@ -1295,7 +1295,7 @@ VIKTIGT:
 
     // Build messages array with enhanced context
     let tavilyContext = '';
-    if (requiresRealTimeSearch(message)) {
+    if (userIntent === 'news_update' || requiresRealTimeSearch(message)) {
       console.log('Fråga upptäckt som realtidsfråga – anropar Tavily.');
       tavilyContext = await fetchTavilyContext(message);
       if (tavilyContext) {
