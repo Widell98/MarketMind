@@ -650,9 +650,28 @@ serve(async (req) => {
       }
     };
 
+    const userHasPortfolio = Array.isArray(holdings) &&
+      holdings.some((holding: HoldingRecord) => holding?.holding_type !== 'recommendation');
+
     // ENHANCED INTENT ROUTING SYSTEM
     const detectIntent = (message: string) => {
       const msg = message.toLowerCase();
+
+      const newsUpdateKeywords = [
+        'kväll',
+        'ikväll',
+        'senaste',
+        'påverka min portfölj',
+        'portföljen'
+      ];
+
+      const generalNewsKeywords = [
+        'nyheter',
+        'marknadsbrev',
+        'dagens händelser',
+        'veckobrev',
+        'sammanfattning'
+      ];
       
       // Stock/Company Analysis Intent - enhanced to catch more stock mentions
       if (isStockMentionRequest || 
@@ -661,6 +680,16 @@ serve(async (req) => {
         return 'stock_analysis';
       }
       
+      // Portfolio news update intent
+      if (userHasPortfolio && newsUpdateKeywords.some(keyword => msg.includes(keyword))) {
+        return 'news_update';
+      }
+
+      // General market news intent
+      if (generalNewsKeywords.some(keyword => msg.includes(keyword))) {
+        return 'general_news';
+      }
+
       // Portfolio Rebalancing/Optimization Intent
       if (/(?:portfölj|portfolio)/i.test(message) && /(?:optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma|rebalansera)/i.test(message)) {
         return 'portfolio_optimization';
@@ -754,6 +783,24 @@ MARKNADSANALYSUPPGIFT:
 - Beskriv påverkan på användarens portfölj
 - Ge 1–2 möjliga justeringar
 - Avsluta med fråga om användaren vill ha en djupare analys`,
+
+  general_news: `
+NYHETSBREV:
+- Ge en bred marknadssammanfattning likt ett kort nyhetsbrev.
+- Dela upp i 2–3 sektioner (t.ex. "Globala marknader", "Sektorer", "Stora bolag").
+- Prioritera större trender och rubriker som påverkar sentimentet.
+- Lägg till 1–2 visuella emojis per sektion för att göra det lättläst.
+- Avsluta alltid med en öppen fråga: "Vill du att jag kollar hur detta kan påverka din portfölj?"
+`,
+
+  news_update: `
+NYHETSBEVAKNING:
+- Sammanfatta de viktigaste marknadsnyheterna som påverkar användarens portfölj på ett strukturerat sätt.
+- Prioritera nyheter från de senaste 24 timmarna och gruppera dem efter bolag, sektor eller tema.
+- Om Tavily-data finns i kontexten: referera tydligt till den och inkludera källa samt tidsangivelse.
+- Lyft fram hur varje nyhet påverkar användarens innehav eller strategi och föreslå konkreta uppföljningssteg.
+- Avsluta alltid med att fråga användaren om de vill ha en djupare analys av något specifikt bolag.
+`,
 
   general_advice: `
 ALLMÄN INVESTERINGSRÅDGIVNING:
