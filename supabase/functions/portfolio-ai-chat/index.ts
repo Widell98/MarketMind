@@ -8,6 +8,10 @@ const corsHeaders = {
 };
 
 const REALTIME_KEYWORDS = [
+  'kväll',
+  'kvällen',
+  'kvällens',
+  'ikväll',
   'senaste',
   'idag',
   'just nu',
@@ -217,6 +221,60 @@ const formatTavilyResults = (data: TavilySearchResponse | null): string => {
     : '';
 };
 
+const translateToEnglish = async (text: string): Promise<string> => {
+  if (!text || text.trim().length === 0) {
+    return text;
+  }
+
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openAIApiKey) {
+    console.warn('OPENAI_API_KEY saknas. Hoppar över översättning innan Tavily-sökning.');
+    return text;
+  }
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a translation engine. Translate the user message into English and respond with the translation only.'
+          },
+          {
+            role: 'user',
+            content: text,
+          }
+        ],
+        temperature: 0,
+        max_tokens: 300,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Fel vid översättning av fråga innan Tavily:', errorText);
+      return text;
+    }
+
+    const data = await response.json();
+    const translated = data?.choices?.[0]?.message?.content?.trim();
+    if (typeof translated === 'string' && translated.length > 0) {
+      return translated;
+    }
+
+    return text;
+  } catch (error) {
+    console.error('Undantag vid översättning av fråga innan Tavily:', error);
+    return text;
+  }
+};
+
 const fetchTavilyContext = async (message: string): Promise<string> => {
   const tavilyApiKey = Deno.env.get('TAVILY_API_KEY');
   if (!tavilyApiKey) {
@@ -225,6 +283,8 @@ const fetchTavilyContext = async (message: string): Promise<string> => {
   }
 
   try {
+    const translatedQuery = await translateToEnglish(message);
+
     const response = await fetch('https://api.tavily.com/search', {
       method: 'POST',
       headers: {
@@ -232,7 +292,7 @@ const fetchTavilyContext = async (message: string): Promise<string> => {
       },
       body: JSON.stringify({
         api_key: tavilyApiKey,
-        query: message,
+        query: translatedQuery,
         search_depth: 'advanced',
         include_answer: true,
         include_raw_content: false,
@@ -650,9 +710,28 @@ serve(async (req) => {
       }
     };
 
+    const userHasPortfolio = Array.isArray(holdings) &&
+      holdings.some((holding: HoldingRecord) => holding?.holding_type !== 'recommendation');
+
     // ENHANCED INTENT ROUTING SYSTEM
     const detectIntent = (message: string) => {
       const msg = message.toLowerCase();
+
+      const newsUpdateKeywords = [
+        'kväll',
+        'ikväll',
+        'senaste',
+        'påverka min portfölj',
+        'portföljen'
+      ];
+
+      const generalNewsKeywords = [
+        'nyheter',
+        'marknadsbrev',
+        'dagens händelser',
+        'veckobrev',
+        'sammanfattning'
+      ];
       
       // Stock/Company Analysis Intent - enhanced to catch more stock mentions
       if (isStockMentionRequest || 
@@ -661,6 +740,16 @@ serve(async (req) => {
         return 'stock_analysis';
       }
       
+      // Portfolio news update intent
+      if (userHasPortfolio && newsUpdateKeywords.some(keyword => msg.includes(keyword))) {
+        return 'news_update';
+      }
+
+      // General market news intent
+      if (generalNewsKeywords.some(keyword => msg.includes(keyword))) {
+        return 'general_news';
+      }
+
       // Portfolio Rebalancing/Optimization Intent
       if (/(?:portfölj|portfolio)/i.test(message) && /(?:optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma|rebalansera)/i.test(message)) {
         return 'portfolio_optimization';
@@ -754,6 +843,24 @@ MARKNADSANALYSUPPGIFT:
 - Beskriv påverkan på användarens portfölj
 - Ge 1–2 möjliga justeringar
 - Avsluta med fråga om användaren vill ha en djupare analys`,
+
+  general_news: `
+NYHETSBREV:
+- Ge en bred marknadssammanfattning likt ett kort nyhetsbrev.
+- Dela upp i 2–3 sektioner (t.ex. "Globala marknader", "Sektorer", "Stora bolag").
+- Prioritera större trender och rubriker som påverkar sentimentet.
+- Lägg till 1–2 visuella emojis per sektion för att göra det lättläst.
+- Avsluta alltid med en öppen fråga: "Vill du att jag kollar hur detta kan påverka din portfölj?"
+`,
+
+  news_update: `
+NYHETSBEVAKNING:
+- Sammanfatta de viktigaste marknadsnyheterna som påverkar användarens portfölj på ett strukturerat sätt.
+- Prioritera nyheter från de senaste 24 timmarna och gruppera dem efter bolag, sektor eller tema.
+- Om Tavily-data finns i kontexten: referera tydligt till den och inkludera källa samt tidsangivelse.
+- Lyft fram hur varje nyhet påverkar användarens innehav eller strategi och föreslå konkreta uppföljningssteg.
+- Avsluta alltid med att fråga användaren om de vill ha en djupare analys av något specifikt bolag.
+`,
 
   general_advice: `
 ALLMÄN INVESTERINGSRÅDGIVNING:
@@ -934,37 +1041,40 @@ contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
     }
 
 // Add response structure requirements
-contextInfo += `\n\nSVARSSTRUKTUR (OBLIGATORISK MEN FLEXIBEL):
-- Anpassa svar efter frågans komplexitet
-- Vid enkla frågor: ge ett kort konversationssvar (2–5 meningar) och avsluta med en öppen motfråga
-- Vid mer komplexa frågor eller när användaren ber om en detaljerad plan: använd den fulla strukturen nedan
+contextInfo += `
+SVARSSTRUKTUR (ANPASSNINGSBAR):
+- Anpassa alltid svarens format efter frågans karaktär
+- Vid enkla frågor: svara kort (2–4 meningar) och avsluta med en öppen motfråga
+- Vid generella marknadsfrågor: använd en nyhetsbrevsliknande ton med rubriker som "Dagens höjdpunkter" eller "Kvällens marknadsnyheter"
+- Vid djupgående analyser: använd en tydligare struktur med valda sektioner (se nedan), men ta bara med det som tillför värde
 
-EMOJI-REGLER:
-- Vid aktieanalys: Använd ALLTID relevanta emojis för att göra svaret mer engagerande
-- Exempel: 📈 för positiva trender, 📉 för negativa, 💼 för företag, ⚠️ för risker, 🎯 för mål, 💡 för tips, 🔍 för analys, 🌟 för rekommendationer, 💪 för starka positioner, ⚖️ för balans, 🚀 för tillväxt
+EMOJI-ANVÄNDNING:
+- Använd relevanta emojis för att förstärka budskapet, men variera mellan svar (t.ex. 📈/🚀 för tillväxt, ⚠️/🛑 för risker, 🔍/📊 för analys)
+- Byt ut emojis och rubriker för att undvika monotona svar
 
-FULL STRUKTUR (när relevant):
-
-**Situation & Analys** 🔍
-[Kort sammanfattning av situationen/frågan]
+MÖJLIGA SEKTIONER (välj flexibelt utifrån behov):
+**Analys** 🔍
+[Sammanfattning av situationen eller frågan]
 
 **Rekommendation** 🌟
-[Konkreta råd med specifika aktier/fonder och symboler där relevant]
+[Konkreta råd, inkl. aktier/fonder med ticker]
 
 **Risker & Överväganden** ⚠️
-[Viktiga risker och faktorer att beakta]
+[Endast om det finns relevanta risker]
 
-**Åtgärder (Checklista)** 📋
-□ [Konkret åtgärd 1]
-□ [Konkret åtgärd 2]
-□ [Konkret åtgärd 3]
+**Åtgärdsplan** 📋
+[Endast vid komplexa frågor som kräver steg-för-steg]
+
+**Nyhetsuppdatering** 📰
+[Vid frågor om senaste händelser – strukturera som ett kort nyhetsbrev]
 
 **Disclaimer:** Detta är endast i utbildningssyfte. Konsultera alltid en licensierad rådgivare.
 
 VIKTIGT:
-- Ge bara en "Åtgärder (Checklista)" om frågan faktiskt kräver konkreta steg.
-- Vid aktieanalys: Använd emojis genomgående för att göra analysen mer visuellt tilltalande och lättläst
-- Avsluta alltid svaret med en öppen fråga för att bjuda in till vidare dialog.`;
+- Använd ALDRIG hela strukturen slentrianmässigt – välj endast sektioner som ger värde
+- Variera rubriker och emojis för att undvika repetitiva svar
+- Avsluta alltid med en öppen fråga för att bjuda in till vidare dialog
+`;
 
 
     // Force using gpt-4o to avoid streaming restrictions and reduce cost
