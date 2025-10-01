@@ -23,6 +23,11 @@ const REALTIME_KEYWORDS = [
   'earnings',
   'resultat',
   'news',
+  'nyheter',
+  'senaste nytt',
+  'breaking',
+  'vad har hänt',
+  'uppdateringar',
   'rapporten',
   'report',
   'pris nu',
@@ -655,14 +660,14 @@ serve(async (req) => {
     // ENHANCED INTENT ROUTING SYSTEM
     const detectIntent = (message: string) => {
       const msg = message.toLowerCase();
-      
+
       // Stock/Company Analysis Intent - enhanced to catch more stock mentions
-      if (isStockMentionRequest || 
-          (/(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) && 
+      if (isStockMentionRequest ||
+          (/(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) &&
           /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5})/i.test(message))) {
         return 'stock_analysis';
       }
-      
+
       // Portfolio Rebalancing/Optimization Intent
       if (/(?:portfölj|portfolio)/i.test(message) && /(?:optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma|rebalansera)/i.test(message)) {
         return 'portfolio_optimization';
@@ -677,7 +682,25 @@ serve(async (req) => {
       if (/(?:marknad|index|trend|prognos|ekonomi|räntor|inflation|börsen)/i.test(message)) {
         return 'market_analysis';
       }
-      
+
+      const newsKeywords = [
+        'nyheter',
+        'senaste nytt',
+        'vad har hänt',
+        'breaking',
+        'pressmeddelande',
+        'press release',
+        'news update',
+        'news about',
+        'uppdateringar',
+        'hände över natten',
+        'vad är nytt'
+      ];
+
+      if (newsKeywords.some(keyword => msg.includes(keyword))) {
+        return 'news_update';
+      }
+
       return 'general_advice';
     };
 
@@ -773,6 +796,14 @@ FÖRSLAG PÅ SEKTIONER:
 - Marknadspuls
 - Påverkan på portföljen
 - Möjliga drag framåt`,
+
+      news_update: `
+NYHETSBEVAKNING:
+- Sammanfatta de viktigaste marknadsnyheterna som påverkar användarens portfölj på ett strukturerat sätt.
+- Prioritera nyheter från de senaste 24 timmarna och gruppera dem efter bolag, sektor eller tema.
+- Om Tavily-data finns i kontexten: referera tydligt till den och inkludera källa samt tidsangivelse.
+- Lyft fram hur varje nyhet påverkar användarens innehav eller strategi och föreslå konkreta uppföljningssteg.
+- Avsluta med en checklista eller nästa steg när det är relevant.`,
 
       general_advice: `
 ALLMÄN INVESTERINGSRÅDGIVNING:
@@ -1284,7 +1315,7 @@ VIKTIGT:
       requestId,
       userId,
       sessionId,
-      messageType: isStockAnalysisRequest ? 'stock_analysis' : isPersonalAdviceRequest ? 'personal_advice' : 'general',
+      messageType: userIntent,
       model,
       timestamp: new Date().toISOString(),
       hasMarketData: !!marketDataContext,
