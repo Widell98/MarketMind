@@ -1041,37 +1041,40 @@ contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
     }
 
 // Add response structure requirements
-contextInfo += `\n\nSVARSSTRUKTUR (OBLIGATORISK MEN FLEXIBEL):
-- Anpassa svar efter frågans komplexitet
-- Vid enkla frågor: ge ett kort konversationssvar (2–5 meningar) och avsluta med en öppen motfråga
-- Vid mer komplexa frågor eller när användaren ber om en detaljerad plan: använd den fulla strukturen nedan
+contextInfo += `
+SVARSSTRUKTUR (ANPASSNINGSBAR):
+- Anpassa alltid svarens format efter frågans karaktär
+- Vid enkla frågor: svara kort (2–4 meningar) och avsluta med en öppen motfråga
+- Vid generella marknadsfrågor: använd en nyhetsbrevsliknande ton med rubriker som "Dagens höjdpunkter" eller "Kvällens marknadsnyheter"
+- Vid djupgående analyser: använd en tydligare struktur med valda sektioner (se nedan), men ta bara med det som tillför värde
 
-EMOJI-REGLER:
-- Vid aktieanalys: Använd ALLTID relevanta emojis för att göra svaret mer engagerande
-- Exempel: 📈 för positiva trender, 📉 för negativa, 💼 för företag, ⚠️ för risker, 🎯 för mål, 💡 för tips, 🔍 för analys, 🌟 för rekommendationer, 💪 för starka positioner, ⚖️ för balans, 🚀 för tillväxt
+EMOJI-ANVÄNDNING:
+- Använd relevanta emojis för att förstärka budskapet, men variera mellan svar (t.ex. 📈/🚀 för tillväxt, ⚠️/🛑 för risker, 🔍/📊 för analys)
+- Byt ut emojis och rubriker för att undvika monotona svar
 
-FULL STRUKTUR (när relevant):
-
-**Situation & Analys** 🔍
-[Kort sammanfattning av situationen/frågan]
+MÖJLIGA SEKTIONER (välj flexibelt utifrån behov):
+**Analys** 🔍
+[Sammanfattning av situationen eller frågan]
 
 **Rekommendation** 🌟
-[Konkreta råd med specifika aktier/fonder och symboler där relevant]
+[Konkreta råd, inkl. aktier/fonder med ticker]
 
 **Risker & Överväganden** ⚠️
-[Viktiga risker och faktorer att beakta]
+[Endast om det finns relevanta risker]
 
-**Åtgärder (Checklista)** 📋
-□ [Konkret åtgärd 1]
-□ [Konkret åtgärd 2]
-□ [Konkret åtgärd 3]
+**Åtgärdsplan** 📋
+[Endast vid komplexa frågor som kräver steg-för-steg]
+
+**Nyhetsuppdatering** 📰
+[Vid frågor om senaste händelser – strukturera som ett kort nyhetsbrev]
 
 **Disclaimer:** Detta är endast i utbildningssyfte. Konsultera alltid en licensierad rådgivare.
 
 VIKTIGT:
-- Ge bara en "Åtgärder (Checklista)" om frågan faktiskt kräver konkreta steg.
-- Vid aktieanalys: Använd emojis genomgående för att göra analysen mer visuellt tilltalande och lättläst
-- Avsluta alltid svaret med en öppen fråga för att bjuda in till vidare dialog.`;
+- Använd ALDRIG hela strukturen slentrianmässigt – välj endast sektioner som ger värde
+- Variera rubriker och emojis för att undvika repetitiva svar
+- Avsluta alltid med en öppen fråga för att bjuda in till vidare dialog
+`;
 
 
     // Force using gpt-4o to avoid streaming restrictions and reduce cost
