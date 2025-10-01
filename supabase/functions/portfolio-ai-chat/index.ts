@@ -237,10 +237,9 @@ const fetchTavilyContext = async (message: string): Promise<string> => {
       body: JSON.stringify({
         api_key: tavilyApiKey,
         query: message,
-        search_depth: 'advanced',
+        search_depth: 'basic',
         include_answer: true,
         include_raw_content: false,
-        max_results: 5,
       }),
     });
 
