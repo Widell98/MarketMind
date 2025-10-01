@@ -8,6 +8,10 @@ const corsHeaders = {
 };
 
 const REALTIME_KEYWORDS = [
+  'kväll',
+  'kvällen',
+  'kvällens',
+  'ikväll',
   'senaste',
   'idag',
   'just nu',
