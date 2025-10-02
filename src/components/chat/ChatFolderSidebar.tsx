@@ -24,7 +24,8 @@ import {
   Sparkles,
   Plus,
 } from 'lucide-react';
-import { useChatFolders, ChatFolder, ChatSession } from '@/hooks/useChatFolders';
+import { useChatFolders } from '@/hooks/useChatFolders';
+import type { ChatFolder, ChatSession } from '@/hooks/useChatFolders';
 import { useGuideSession } from '@/hooks/useGuideSession';
 import CreateFolderDialog from './CreateFolderDialog';
 import EditSessionNameDialog from './EditSessionNameDialog';
