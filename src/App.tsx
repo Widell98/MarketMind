@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ChatSessionsProvider } from "@/contexts/ChatSessionsContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
@@ -38,12 +39,13 @@ function App() {
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <LanguageProvider>
           <AuthProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <ErrorBoundary>
-                <BrowserRouter>
-                  <Routes>
+            <ChatSessionsProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <ErrorBoundary>
+                  <BrowserRouter>
+                    <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/stock-cases" element={<StockCases />} />
                     <Route path="/stock-cases/:id" element={<StockCaseDetail />} />
@@ -68,10 +70,11 @@ function App() {
                     <Route path="/privacy" element={<Privacy />} />
                     <Route path="/watchlist" element={<Watchlist />} />
                     <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </BrowserRouter>
-              </ErrorBoundary>
-            </TooltipProvider>
+                    </Routes>
+                  </BrowserRouter>
+                </ErrorBoundary>
+              </TooltipProvider>
+            </ChatSessionsProvider>
           </AuthProvider>
         </LanguageProvider>
       </ThemeProvider>
