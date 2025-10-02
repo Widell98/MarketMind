@@ -19,7 +19,8 @@ import FloatingActionButton from '@/components/FloatingActionButton';
 import Breadcrumb from '@/components/Breadcrumb';
 const PortfolioImplementation = () => {
   const {
-    actualHoldings
+    actualHoldings,
+    refetch: refetchHoldings
   } = useUserHoldings();
   const {
     activePortfolio,
@@ -37,7 +38,9 @@ const PortfolioImplementation = () => {
     loading: riskProfileLoading
   } = useRiskProfile();
   const {
-    performance
+    performance,
+    updatePrices,
+    updating: updatingPrices
   } = usePortfolioPerformance();
   const {
     totalCash
@@ -46,6 +49,7 @@ const PortfolioImplementation = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [hasAutoUpdatedPrices, setHasAutoUpdatedPrices] = useState(false);
   useEffect(() => {
     // Only show login modal if auth has finished loading and user is not authenticated
     if (!authLoading && !user) {
@@ -65,6 +69,52 @@ const PortfolioImplementation = () => {
       minute: '2-digit'
     }));
   }, [performance, totalCash]);
+
+  useEffect(() => {
+    if (!user || updatingPrices || hasAutoUpdatedPrices) {
+      return;
+    }
+
+    if (!actualHoldings || actualHoldings.length === 0) {
+      return;
+    }
+
+    const uniqueSymbols = Array.from(new Set(
+      actualHoldings
+        .map(holding => holding.symbol?.trim().toUpperCase())
+        .filter((symbol): symbol is string => Boolean(symbol))
+    ));
+
+    if (uniqueSymbols.length === 0) {
+      return;
+    }
+
+    setHasAutoUpdatedPrices(true);
+
+    const updateAllPrices = async () => {
+      try {
+        for (const symbol of uniqueSymbols) {
+          await updatePrices(symbol, { silent: true });
+        }
+
+        if (typeof refetchHoldings === 'function') {
+          await refetchHoldings({ silent: true });
+        }
+      } catch (error) {
+        console.error('Automatic price update failed:', error);
+        setHasAutoUpdatedPrices(false);
+      }
+    };
+
+    void updateAllPrices();
+  }, [
+    user,
+    actualHoldings,
+    updatePrices,
+    updatingPrices,
+    refetchHoldings,
+    hasAutoUpdatedPrices
+  ]);
   const handleQuickChat = (message: string) => {
     if (!riskProfile) {
       return;

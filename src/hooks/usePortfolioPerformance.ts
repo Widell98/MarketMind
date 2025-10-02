@@ -338,7 +338,11 @@ export const usePortfolioPerformance = () => {
     }
   };
 
-  const updatePrices = async (ticker?: string): Promise<PriceUpdateSummary | null> => {
+  interface UpdatePriceOptions {
+    silent?: boolean;
+  }
+
+  const updatePrices = async (ticker?: string, options?: UpdatePriceOptions): Promise<PriceUpdateSummary | null> => {
     if (!user || updating) {
       return null;
     }
@@ -346,10 +350,12 @@ export const usePortfolioPerformance = () => {
     const normalizedTicker = ticker?.trim().toUpperCase();
 
     if (!normalizedTicker) {
-      toast({
-        title: 'Välj innehav att uppdatera',
-        description: 'Klicka på ett innehavs ticker i listan för att uppdatera priset.',
-      });
+      if (!options?.silent) {
+        toast({
+          title: 'Välj innehav att uppdatera',
+          description: 'Klicka på ett innehavs ticker i listan för att uppdatera priset.',
+        });
+      }
       return null;
     }
 
@@ -373,11 +379,13 @@ export const usePortfolioPerformance = () => {
       const matchedTicker = findTickerMatch(tickerList, normalizedTicker);
 
       if (!matchedTicker) {
-        toast({
-          title: 'Tickern hittades inte',
-          description: 'Tickern finns inte i Google Sheets-listan. Kontrollera stavningen eller välj en annan ticker.',
-          variant: 'destructive',
-        });
+        if (!options?.silent) {
+          toast({
+            title: 'Tickern hittades inte',
+            description: 'Tickern finns inte i Google Sheets-listan. Kontrollera stavningen eller välj en annan ticker.',
+            variant: 'destructive',
+          });
+        }
         return {
           updated: 0,
           errors: 0,
@@ -413,11 +421,13 @@ export const usePortfolioPerformance = () => {
       }
 
       if (!holdings || holdings.length === 0) {
-        toast({
-          title: 'Inget innehav att uppdatera',
-          description: `Tickern ${canonicalSymbol} finns inte i din portfölj.`,
-          variant: 'destructive',
-        });
+        if (!options?.silent) {
+          toast({
+            title: 'Inget innehav att uppdatera',
+            description: `Tickern ${canonicalSymbol} finns inte i din portfölj.`,
+            variant: 'destructive',
+          });
+        }
         return {
           updated: 0,
           errors: 0,
@@ -486,11 +496,13 @@ export const usePortfolioPerformance = () => {
         ? `Pris uppdaterat för ${canonicalSymbol}`
         : `Inget pris uppdaterades för ${canonicalSymbol}`;
 
-      toast({
-        title: toastTitle,
-        description: descriptionParts.join(' · ') || undefined,
-        variant: updatedCount === 0 && (errorCount > 0) ? 'destructive' : 'default',
-      });
+      if (!options?.silent) {
+        toast({
+          title: toastTitle,
+          description: descriptionParts.join(' · ') || undefined,
+          variant: updatedCount === 0 && (errorCount > 0) ? 'destructive' : 'default',
+        });
+      }
 
       await calculatePerformance();
 
@@ -504,11 +516,13 @@ export const usePortfolioPerformance = () => {
 
     } catch (error) {
       console.error('Error updating prices:', error);
-      toast({
-        title: 'Fel vid prisuppdatering',
-        description: error instanceof Error ? error.message : 'Kunde inte uppdatera priserna',
-        variant: 'destructive',
-      });
+      if (!options?.silent) {
+        toast({
+          title: 'Fel vid prisuppdatering',
+          description: error instanceof Error ? error.message : 'Kunde inte uppdatera priserna',
+          variant: 'destructive',
+        });
+      }
       return null;
     } finally {
       setUpdating(false);
