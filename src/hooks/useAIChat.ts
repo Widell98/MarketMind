@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useChatSessions } from '@/contexts/ChatSessionsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -25,24 +26,21 @@ interface Message {
   context?: MessageContext;
 }
 
-interface ChatSession {
-  id: string;
-  session_name: string;
-  created_at: string;
-  is_active: boolean;
-}
-
 export const useAIChat = (portfolioId?: string) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { checkUsageLimit, subscription, usage, fetchUsage, incrementUsage } = useSubscription();
+  const {
+    sessions,
+    setSessions,
+    loadSessions: loadChatSessions,
+  } = useChatSessions();
   const totalCredits = DAILY_MESSAGE_CREDITS;
   const remainingCredits = useMemo(() => {
     const usedCredits = usage?.ai_messages_count ?? 0;
     return Math.max(0, totalCredits - usedCredits);
   }, [usage?.ai_messages_count]);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -115,40 +113,17 @@ export const useAIChat = (portfolioId?: string) => {
 
   const loadSessions = useCallback(async () => {
     if (!user) return;
-    
+
     console.log('=== LOADING SESSIONS ===');
     console.log('User ID:', user.id);
-    
+
     try {
-      const { data, error } = await supabase
-        .from('ai_chat_sessions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error loading sessions:', error);
-        throw error;
-      }
-
-      console.log('Raw sessions from database:', data);
-
-      const formattedSessions = data.map(session => ({
-        id: session.id,
-        session_name: session.session_name || 'Ny Session',
-        created_at: session.created_at,
-        is_active: session.is_active || false,
-      }));
+      const formattedSessions = await loadChatSessions();
 
       console.log('Formatted sessions:', formattedSessions);
-      setSessions(formattedSessions);
 
-      // Only auto-load if no session is currently selected
-      if (!currentSessionId && formattedSessions.length > 0) {
-        const mostRecentSession = formattedSessions[0];
-        console.log('Auto-loading most recent session:', mostRecentSession.id);
-        setCurrentSessionId(mostRecentSession.id);
-        await loadMessages(mostRecentSession.id);
+      if (!formattedSessions || formattedSessions.length === 0) {
+        return;
       }
     } catch (error) {
       console.error('Error loading sessions:', error);
@@ -158,7 +133,7 @@ export const useAIChat = (portfolioId?: string) => {
         variant: "destructive",
       });
     }
-  }, [user, toast, loadMessages]);
+  }, [user, toast, loadChatSessions]);
 
   const loadSession = useCallback(async (sessionId: string) => {
     console.log('=== MANUALLY LOADING SESSION ===');
@@ -1024,16 +999,16 @@ export const useAIChat = (portfolioId?: string) => {
     setMessages([]);
   }, []);
 
-  // Stabilize the loadSessions reference to prevent infinite loops - but only call once
-  const hasInitialized = useMemo(() => sessions.length > 0, [sessions.length]);
-
-  // Load sessions when component mounts - but only once!
   useEffect(() => {
-    if (user && !hasInitialized) {
-      console.log('Component mounted, loading sessions...');
-      loadSessions();
+    if (!user || currentSessionId || sessions.length === 0) {
+      return;
     }
-  }, [user, hasInitialized, loadSessions]);
+
+    const mostRecentSession = sessions[0];
+    console.log('Auto-loading most recent session from context:', mostRecentSession.id);
+    setCurrentSessionId(mostRecentSession.id);
+    loadMessages(mostRecentSession.id);
+  }, [user, sessions, currentSessionId, loadMessages]);
 
   return {
     messages,
