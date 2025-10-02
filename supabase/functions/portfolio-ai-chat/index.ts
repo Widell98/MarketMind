@@ -223,60 +223,6 @@ const formatTavilyResults = (data: TavilySearchResponse | null): string => {
   return `\n\nREALTIME NYHETER & KÄLLOR:\n${sections.join('\n\n')}\n- Prioritera dessa datapunkter när frågan rör aktuella händelser eller nyheter.\n- Kombinera dem med portfölj- och användardata för att skapa unika insikter.`;
 };
 
-const translateToEnglish = async (text: string): Promise<string> => {
-  if (!text || text.trim().length === 0) {
-    return text;
-  }
-
-  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-  if (!openAIApiKey) {
-    console.warn('OPENAI_API_KEY saknas. Hoppar över översättning innan Tavily-sökning.');
-    return text;
-  }
-
-  try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a translation engine. Translate the user message into English and respond with the translation only.'
-          },
-          {
-            role: 'user',
-            content: text,
-          }
-        ],
-        temperature: 0,
-        max_tokens: 300,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Fel vid översättning av fråga innan Tavily:', errorText);
-      return text;
-    }
-
-    const data = await response.json();
-    const translated = data?.choices?.[0]?.message?.content?.trim();
-    if (typeof translated === 'string' && translated.length > 0) {
-      return translated;
-    }
-
-    return text;
-  } catch (error) {
-    console.error('Undantag vid översättning av fråga innan Tavily:', error);
-    return text;
-  }
-};
-
 const fetchTavilyContext = async (message: string): Promise<string> => {
   const tavilyApiKey = Deno.env.get('TAVILY_API_KEY');
   if (!tavilyApiKey) {
@@ -285,8 +231,6 @@ const fetchTavilyContext = async (message: string): Promise<string> => {
   }
 
   try {
-    const translatedQuery = await translateToEnglish(message);
-
     const response = await fetch('https://api.tavily.com/search', {
       method: 'POST',
       headers: {
@@ -294,7 +238,7 @@ const fetchTavilyContext = async (message: string): Promise<string> => {
       },
       body: JSON.stringify({
         api_key: tavilyApiKey,
-        query: translatedQuery,
+        query: message,
         search_depth: 'advanced',
         include_answer: true,
         include_raw_content: false,
