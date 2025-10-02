@@ -93,6 +93,23 @@ const normalizeIdentifier = (value?: string | null): string | null => {
   return normalized.length > 0 ? normalized : null;
 };
 
+const removeDiacritics = (value: string): string =>
+  value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+
+const escapeRegExp = (value: string): string =>
+  value.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&');
+
+type SheetTickerEdgeItem = {
+  symbol?: string | null;
+  name?: string | null;
+  price?: number | null;
+  currency?: string | null;
+};
+
+type SheetTickerEdgeResponse = {
+  tickers?: SheetTickerEdgeItem[];
+};
+
 type HoldingRecord = {
   symbol?: string | null;
   name?: string | null;
@@ -179,6 +196,11 @@ type TavilySearchResult = {
 type TavilySearchResponse = {
   answer?: string;
   results?: TavilySearchResult[];
+};
+
+type StockDetectionPattern = {
+  regex: RegExp;
+  requiresContext?: boolean;
 };
 
 const formatTavilyResults = (data: TavilySearchResponse | null): string => {
@@ -339,6 +361,64 @@ serve(async (req) => {
         .eq('user_id', userId)
         .maybeSingle()
     ]);
+
+    let sheetTickerSymbols: string[] = [];
+    let sheetTickerNames: string[] = [];
+
+    try {
+      const { data: sheetTickerData, error: sheetTickerError } = await supabase.functions.invoke('list-sheet-tickers');
+
+      if (sheetTickerError) {
+        console.error('Failed to fetch Google Sheets tickers:', sheetTickerError);
+      } else {
+        const typedData = sheetTickerData as SheetTickerEdgeResponse | null;
+        const rawTickers = Array.isArray(typedData?.tickers)
+          ? (typedData?.tickers as SheetTickerEdgeItem[])
+          : [];
+
+        const symbolSet = new Set<string>();
+        const nameSet = new Set<string>();
+
+        for (const item of rawTickers) {
+          if (!item || typeof item !== 'object') continue;
+
+          const rawSymbol = typeof item.symbol === 'string' ? item.symbol : null;
+          if (rawSymbol) {
+            const trimmedSymbol = rawSymbol.trim();
+            const withoutPrefix = trimmedSymbol.includes(':')
+              ? trimmedSymbol.split(':').pop() ?? trimmedSymbol
+              : trimmedSymbol;
+            const cleanedSymbol = withoutPrefix.replace(/\s+/g, '').toUpperCase();
+            if (cleanedSymbol.length > 0) {
+              symbolSet.add(cleanedSymbol);
+            }
+          }
+
+          const rawName = typeof item.name === 'string' ? item.name : null;
+          if (rawName) {
+            const normalizedWhitespaceName = rawName.replace(/\s+/g, ' ').trim();
+            if (normalizedWhitespaceName.length > 0) {
+              nameSet.add(normalizedWhitespaceName);
+
+              const diacriticsStripped = removeDiacritics(normalizedWhitespaceName).trim();
+              if (diacriticsStripped.length > 0 && diacriticsStripped !== normalizedWhitespaceName) {
+                nameSet.add(diacriticsStripped);
+              }
+            }
+          }
+        }
+
+        sheetTickerSymbols = Array.from(symbolSet);
+        sheetTickerNames = Array.from(nameSet);
+
+        console.log('Loaded Google Sheets tickers:', {
+          symbols: sheetTickerSymbols.length,
+          names: sheetTickerNames.length,
+        });
+      }
+    } catch (error) {
+      console.error('Unexpected error when loading Google Sheets tickers:', error);
+    }
 
     // ENHANCED INTENT DETECTION FOR PROFILE UPDATES
     const detectProfileUpdates = (message: string) => {
@@ -546,28 +626,93 @@ serve(async (req) => {
     const isPremium = subscriber?.subscribed || false;
     console.log('User premium status:', isPremium);
 
+    const investmentContextPattern = /(aktie|aktier|börs|portfölj|fond|investera|bolag|innehav|kurs|marknad|stock|share|equity)/i;
+    const hasInvestmentContext = investmentContextPattern.test(message);
+
+    const companyIntentPattern = /(?:analysera|analys av|vad tycker du om|hur ser du på|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|information om|företagsinfo|köpvärd|sälj|köpa|sälja|investera)/i;
+    const hasCompanyIntent = companyIntentPattern.test(message);
+
+    const hasStockContext = hasInvestmentContext || hasCompanyIntent;
+
     // Check if this is a stock exchange request
-    const isExchangeRequest = /(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|amerikanska|svenska|europeiska|asiatiska|aktier|innehav)/i.test(message);
-    
+    const isExchangeRequest = /(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av)/i.test(message) &&
+      /(?:aktie|aktier|innehav|portfölj)/i.test(message);
+
     // Enhanced stock detection - detect both analysis requests AND stock mentions
-    const stockMentionPatterns = [
-      // Direct stock mentions with company names
-      /(?:investor|volvo|ericsson|sandvik|atlas|kinnevik|hex|alfa laval|skf|telia|seb|handelsbanken|nordea|abb|astra|electrolux|husqvarna|getinge|boliden|ssab|stora enso|svenska cellulosa|lund|billerud|holmen|nibe|beijer|essity|kindred|evolution|betsson|net entertainment|fingerprint|sinch|tobii|xvivo|medivir|orexo|camurus|diamyd|raysearch|elekta|sectra|bactiguard|vitrolife|bioinvent|immunovia|hansa|cantargia|oncopeptides|wilson therapeutics|solberg|probi|biovica|addlife|duni|traction|embracer|stillfront|paradox|starbreeze|remedy|gaming|saab|h&m|hennes|mauritz|getinge|elekta|assa abloy|atlas copco|epiroc|trelleborg|lifco|indutrade|fagerhult|munters|sweco|ramboll|hexagon|addtech|bufab|nolato|elanders)/i,
-      // Ticker symbols (2-6 characters)
-      /\b([A-Z]{2,6})(?:\s|$)/g,
-      // Company mentions in investment context
-      /(?:köpa|sälja|investera|aktier?|bolag|företag)\s+(?:i\s+)?([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,30})/gi,
-      // "aktie + company name" patterns
-      /(?:aktien?|bolaget)\s+([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,30})/gi,
-      // Direct questions about companies
-      /(?:vad tycker du om|hur ser du på|bra aktie|dålig aktie|köpvärd|sälj)\s+([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,30})/gi
+    const createBoundaryPattern = (pattern: string) => `(?:^|[^A-Za-z0-9])${pattern}(?=$|[^A-Za-z0-9])`;
+
+    const sheetTickerSymbolSet = new Set(sheetTickerSymbols.map(symbol => symbol.toUpperCase()));
+
+    const sheetTickerSymbolPatterns: StockDetectionPattern[] = sheetTickerSymbols.map(symbol =>
+      ({
+        regex: new RegExp(createBoundaryPattern(escapeRegExp(symbol)), 'i'),
+        requiresContext: true,
+      })
+    );
+
+    const sheetTickerNamePatterns: StockDetectionPattern[] = sheetTickerNames.map(name => {
+      const collapsedName = name.replace(/\s+/g, ' ');
+      const escapedName = escapeRegExp(collapsedName).replace(/\s+/g, '\\s+');
+      return {
+        regex: new RegExp(createBoundaryPattern(escapedName), 'i'),
+        requiresContext: true,
+      };
+    });
+
+    const staticCompanyPattern: StockDetectionPattern = {
+      regex: new RegExp(
+        createBoundaryPattern('(?:investor|volvo|ericsson|sandvik|atlas|kinnevik|hex|alfa\\s+laval|skf|telia|seb|handelsbanken|nordea|abb|astra|electrolux|husqvarna|getinge|boliden|ssab|stora\\s+enso|svenska\\s+cellulosa|lund|billerud|holmen|nibe|beijer|essity|kindred|evolution|betsson|net\\s+entertainment|fingerprint|sinch|tobii|xvivo|medivir|orexo|camurus|diamyd|raysearch|elekta|sectra|bactiguard|vitrolife|bioinvent|immunovia|hansa|cantargia|oncopeptides|wilson\\s+therapeutics|solberg|probi|biovica|addlife|duni|traction|embracer|stillfront|paradox|starbreeze|remedy|gaming|saab|h&m|hennes|mauritz|assa\\s+abloy|atlas\\s+copco|epiroc|trelleborg|lifco|indutrade|fagerhult|munters|sweco|ramboll|hexagon|addtech|bufab|nolato|elanders)'),
+        'i'
+      ),
+      requiresContext: true,
+    };
+
+    const stockMentionPatterns: StockDetectionPattern[] = [
+      staticCompanyPattern,
+      {
+        regex: /(?:köpa|sälja|investera|aktier?|bolag|företag)\s+(?:i\s+)?([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,30})/i,
+        requiresContext: false,
+      },
+      {
+        regex: /(?:aktien?|bolaget)\s+([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,30})/i,
+        requiresContext: false,
+      },
+      {
+        regex: /(?:vad tycker du om|hur ser du på|bra aktie|dålig aktie|köpvärd|sälj)\s+([A-ZÅÄÖ][a-zåäöA-Z\s&.-]{2,30})/i,
+        requiresContext: false,
+      },
+      ...sheetTickerSymbolPatterns,
+      ...sheetTickerNamePatterns,
     ];
-    
-    const isStockAnalysisRequest = /(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) && 
+
+    const isStockAnalysisRequest = /(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) &&
       /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity)/i.test(message);
-      
+
+    const hasTickerSymbolMention = (() => {
+      const tickerMatches = Array.from(message.matchAll(/\b([A-Z]{2,6})\b/g));
+      if (tickerMatches.length === 0) return false;
+
+      const matchedTickers = tickerMatches
+        .map(match => match[1]?.toUpperCase())
+        .filter((symbol): symbol is string => Boolean(symbol) && sheetTickerSymbolSet.has(symbol));
+
+      if (matchedTickers.length === 0) return false;
+
+      const tokens = message.trim().split(/\s+/);
+      const allTokensAreTickers = tokens.length > 0 && tokens.every(token => sheetTickerSymbolSet.has(token.toUpperCase()));
+
+      return hasStockContext || allTokensAreTickers;
+    })();
+
     // Check for stock mentions in user message
-    const stockMentionsInMessage = stockMentionPatterns.some(pattern => pattern.test(message));
+    const stockMentionsInMessage = stockMentionPatterns.some(({ regex, requiresContext }) => {
+      regex.lastIndex = 0;
+      if (requiresContext && !hasStockContext) {
+        return false;
+      }
+      return regex.test(message);
+    }) || hasTickerSymbolMention;
+
     const isStockMentionRequest = stockMentionsInMessage || isStockAnalysisRequest;
      
     // Check if user wants personal investment advice/recommendations
