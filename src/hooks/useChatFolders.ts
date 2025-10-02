@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
-import { ChatFolder, ChatSession, useChatSessions } from '@/contexts/ChatSessionsContext';
+import type { ChatFolder, ChatSession } from '@/contexts/ChatSessionsContext';
+import { useChatSessions } from '@/contexts/ChatSessionsContext';
 
-export { ChatFolder, ChatSession } from '@/contexts/ChatSessionsContext';
+export type { ChatFolder, ChatSession } from '@/contexts/ChatSessionsContext';
 
 export const useChatFolders = () => {
   const {
