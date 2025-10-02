@@ -719,19 +719,18 @@ serve(async (req) => {
     const isPersonalAdviceRequest = /(?:rekommendation|förslag|vad ska jag|bör jag|passar mig|min portfölj|mina intressen|för mig|personlig|skräddarsy|baserat på|investera|köpa|sälja|portföljanalys|investeringsstrategi)/i.test(message);
     const isPortfolioOptimizationRequest = /portfölj/i.test(message) && /optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma/i.test(message);
 
-    // Fetch real-time market data if stock analysis or stock mention request
-    let marketDataContext = '';
-    if (isStockMentionRequest) {
-      try {
-        const { data: marketData } = await supabase.functions.invoke('fetch-market-data');
-        if (marketData) {
-          marketDataContext = `\n\nREALTIDSMARKNADSDATA:
-- Senaste uppdatering: ${marketData.lastUpdated}
-- Marknadsindex: ${JSON.stringify(marketData.marketIndices?.slice(0, 3) || [])}
-- Toppresterande aktier: ${JSON.stringify(marketData.topStocks?.slice(0, 5) || [])}`;
-        }
-      } catch (error) {
-        console.log('Could not fetch market data:', error);
+    // Fetch Tavily context when the user mentions stocks or requests real-time insights
+    let tavilyContext = '';
+    const shouldFetchTavily = isStockMentionRequest || requiresRealTimeSearch(message);
+    if (shouldFetchTavily) {
+      const logMessage = isStockMentionRequest
+        ? 'Aktieomnämnande upptäckt – anropar Tavily för relevanta nyheter.'
+        : 'Fråga upptäckt som realtidsfråga – anropar Tavily.';
+      console.log(logMessage);
+
+      tavilyContext = await fetchTavilyContext(message);
+      if (tavilyContext) {
+        console.log('Tavily-kontent hämtad och läggs till i kontexten.');
       }
     }
 
@@ -1182,17 +1181,8 @@ VIKTIGT:
     });
 
     // Build messages array with enhanced context
-    let tavilyContext = '';
-    if (requiresRealTimeSearch(message)) {
-      console.log('Fråga upptäckt som realtidsfråga – anropar Tavily.');
-      tavilyContext = await fetchTavilyContext(message);
-      if (tavilyContext) {
-        console.log('Tavily-kontent hämtad och läggs till i kontexten.');
-      }
-    }
-
     const messages = [
-      { role: 'system', content: contextInfo + marketDataContext + tavilyContext },
+      { role: 'system', content: contextInfo + tavilyContext },
       ...chatHistory,
       { role: 'user', content: message }
     ];
@@ -1206,7 +1196,7 @@ VIKTIGT:
       messageType: isStockAnalysisRequest ? 'stock_analysis' : isPersonalAdviceRequest ? 'personal_advice' : 'general',
       model,
       timestamp: new Date().toISOString(),
-      hasMarketData: !!marketDataContext,
+      hasMarketData: !!tavilyContext,
       isPremium
     };
 
@@ -1274,7 +1264,7 @@ VIKTIGT:
               analysisType,
               model,
               requestId,
-              hasMarketData: !!marketDataContext,
+              hasMarketData: !!tavilyContext,
               profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
               requiresConfirmation: profileChangeDetection.requiresConfirmation,
               confidence: 0.8
@@ -1362,7 +1352,7 @@ VIKTIGT:
                           analysisType,
                           model,
                           requestId,
-                          hasMarketData: !!marketDataContext,
+                          hasMarketData: !!tavilyContext,
                           profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
                           requiresConfirmation: profileChangeDetection.requiresConfirmation,
                           confidence: 0.8
