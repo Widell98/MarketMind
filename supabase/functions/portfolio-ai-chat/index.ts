@@ -881,39 +881,30 @@ PERSONA & STIL:
 const intentPrompts = {
   stock_analysis: `
 AKTIEANALYSUPPGIFT:
-Om användaren nämner specifika aktier eller företag - GE ALLTID KONKRETA AKTIEFÖRSLAG!
+- Anpassa alltid svarslängd och struktur efter användarens fråga.
+- Om frågan är snäv (ex. "vilka triggers?" eller "vad är riskerna?") → ge bara det relevanta svaret i 2–5 meningar.
+- Om frågan är bred eller allmän (ex. "kan du analysera bolaget X?") → använd hela analysstrukturen nedan.
+- Var alltid tydlig och koncis i motiveringarna.
 
-**VIKTIGT: När du rekommenderar aktier, använd ALLTID denna exakta format så att systemet kan fånga upp dem:**
+**OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:**
 **Företagsnamn (TICKER)** - Kort motivering
 
 Exempel:
-**Evolution AB (EVO)** - Stark position inom online gaming
+**Evolution AB (EVO)** - Stark position inom online gaming  
 **Investor AB (INVE-B)** - Diversifierat investmentbolag  
-**Volvo AB (VOLV-B)** - Stabil lastbilstillverkare
+**Volvo AB (VOLV-B)** - Stabil lastbilstillverkare  
 
-Svara i följande struktur (kortfattat men tydligt):
+📌 **FLEXIBEL STRUKTUR (välj delar beroende på fråga):**
+🏢 Företagsöversikt – Endast vid breda analysfrågor  
+📊 Finansiell bild – Endast om relevant för frågan  
+📈 Kursläge/Värdering – Endast om användaren frågar om värdering eller prisnivåer  
+🎯 Rekommendation – Alltid om användaren vill veta om aktien är köpvärd  
+⚡ Triggers – Alltid om användaren frågar om kommande händelser/katalysatorer  
+⚠️ Risker & Möjligheter – Endast om användaren efterfrågar risker eller helhetsanalys  
+💡 Relaterade förslag – Endast om användaren vill ha alternativ/komplement  
 
-🏢 FÖRETAGSÖVERSIKT
-[Beskriv bolaget, dess affärsmodell, styrkor och marknadsposition]
-
-📊 FINANSIELL ANALYS
-[Sammanfatta intäkter, lönsamhet, skuldsättning och kassaflöde]
-
-📈 VÄRDERING & KURSUTVECKLING
-[Diskutera P/E-tal, substansvärde, historisk kursutveckling, tekniska nivåer]
-
-🎯 INVESTERINGSREKOMMENDATION
-[Ge KÖP/BEHÅLL/SÄLJ med tydlig motivering, samt ev. kursmål och tidshorisont]
-[Inkludera ALLTID relaterade aktieförslag i formatet **Företag (TICKER)**]
-
-⚠️ RISKER & MÖJLIGHETER
-[List de största riskerna och möjligheterna kopplat till aktien]
-
-💡 SLUTSATS & RELATERADE FÖRSLAG
-[Sammanfatta och ge 2-3 relaterade aktieförslag i formatet **Företag (TICKER)**]
-
-Avsluta alltid med en **öppen fråga** för att bjuda in till dialog.
-Inkludera en **Disclaimer** om att råden är i utbildningssyfte.`,
+Avsluta med en öppen fråga **endast när det är relevant** för att driva vidare dialog.  
+Avsluta alltid med en **Disclaimer** om att råden är i utbildningssyfte.`,
 
 
   portfolio_optimization: `
