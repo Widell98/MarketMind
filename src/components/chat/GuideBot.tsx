@@ -17,7 +17,7 @@ interface GuideMessage {
   id: string;
   type: 'welcome' | 'guide' | 'interactive';
   title: string;
-  content: string;
+  content: React.ReactNode;
   buttons?: GuideButton[];
   isBot: true;
 }
@@ -40,7 +40,14 @@ const WELCOME_MESSAGE: GuideMessage = {
   id: 'guide-welcome',
   type: 'welcome',
   title: 'Market Mind Guide',
-  content: 'Hej 👋 Jag är här för att visa dig hur Market Mind funkar!\n\nVill du att vi ska testa hur du kan få AI att skapa en investeringsidé åt dig, och sedan lägga till den i din portfölj?',
+  content: (
+    <div className="space-y-3">
+      <p>Hej 👋 Jag är här för att visa dig hur Market Mind funkar!</p>
+      <p>
+        Vill du att vi ska testa hur du kan få AI att skapa en investeringsidé åt dig, och sedan lägga till den i din portfölj?
+      </p>
+    </div>
+  ),
   buttons: [
     {
       text: 'Ja, visa mig!',
@@ -79,7 +86,44 @@ const GUIDE_FLOWS: Record<string, GuideMessage> = {
     id: 'guide-ai-chat',
     type: 'guide',
     title: 'Så fungerar AI-chatten',
-    content: '🤖 **AI Portfolio Assistent** hjälper dig med:\n\n• **Personliga råd** baserat på din riskprofil\n• **Portföljanalys** och optimeringsförslag\n• **Marknadsinsikter** och trendanalys\n• **Investeringsidéer** anpassade för dig\n\n💡 **Tips:** Var specifik i dina frågor för bästa svar!',
+    content: (
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <p>
+            🤖 <span className="font-semibold text-foreground">AI Portfolio Assistent</span> hjälper dig med:
+          </p>
+          <ul className="space-y-2">
+            <li className="flex gap-2">
+              <span className="select-none">•</span>
+              <span>
+                <span className="font-semibold text-foreground">Personliga råd</span> baserat på din riskprofil
+              </span>
+            </li>
+            <li className="flex gap-2">
+              <span className="select-none">•</span>
+              <span>
+                <span className="font-semibold text-foreground">Portföljanalys</span> och optimeringsförslag
+              </span>
+            </li>
+            <li className="flex gap-2">
+              <span className="select-none">•</span>
+              <span>
+                <span className="font-semibold text-foreground">Marknadsinsikter</span> och trendanalys
+              </span>
+            </li>
+            <li className="flex gap-2">
+              <span className="select-none">•</span>
+              <span>
+                <span className="font-semibold text-foreground">Investeringsidéer</span> anpassade för dig
+              </span>
+            </li>
+          </ul>
+        </div>
+        <p className="text-ai-text-muted">
+          💡 <span className="font-semibold text-foreground">Tips:</span> Var specifik i dina frågor för bästa svar!
+        </p>
+      </div>
+    ),
     buttons: [
       {
         text: 'Testa med exempelfråga',
@@ -100,7 +144,34 @@ const GUIDE_FLOWS: Record<string, GuideMessage> = {
     id: 'guide-more-features',
     type: 'guide',
     title: 'Fler funktioner att utforska',
-    content: '🎯 **Upptäck mer av Market Mind:**\n\n📊 **Portföljöversikt** - Se hela din investeringsresa\n📈 **Aktiefall & Analyser** - Community-driven investeringsidéer\n🔍 **Marknadsanalys** - Håll koll på trender\n📚 **Lärande** - Förbättra dina investeringskunskaper',
+    content: (
+      <div className="space-y-4">
+        <p className="font-semibold text-foreground">🎯 Upptäck mer av Market Mind:</p>
+        <ul className="space-y-3">
+          <li className="flex gap-3">
+            <span className="text-lg leading-6">📊</span>
+            <div className="space-y-1">
+              <p className="font-semibold text-foreground">Portföljöversikt</p>
+              <p>Se hela din investeringsresa</p>
+            </div>
+          </li>
+          <li className="flex gap-3">
+            <span className="text-lg leading-6">📈</span>
+            <div className="space-y-1">
+              <p className="font-semibold text-foreground">Aktiefall &amp; Analyser</p>
+              <p>Community-driven investeringsidéer</p>
+            </div>
+          </li>
+          <li className="flex gap-3">
+            <span className="text-lg leading-6">🔍</span>
+            <div className="space-y-1">
+              <p className="font-semibold text-foreground">Marknadsanalys</p>
+              <p>Håll koll på trender</p>
+            </div>
+          </li>
+        </ul>
+      </div>
+    ),
     buttons: [
       {
         text: 'Visa min portfölj',
@@ -111,7 +182,7 @@ const GUIDE_FLOWS: Record<string, GuideMessage> = {
       {
         text: 'Utforska aktiefall',
         action: 'navigate',
-        value: '/stock-cases',
+        value: '/discover',
         icon: <TrendingUp className="w-4 h-4" />
       },
       {
@@ -174,9 +245,13 @@ const GuideBot: React.FC<GuideBotProps> = ({ onPromptExample, onNavigate, onShow
               </Badge>
             </div>
 
-            <p className="whitespace-pre-line text-sm leading-6 text-ai-text-muted">
-              {currentMessage.content}
-            </p>
+            <div className="text-sm leading-6 text-ai-text-muted">
+              {typeof currentMessage.content === 'string' ? (
+                <p className="whitespace-pre-line">{currentMessage.content}</p>
+              ) : (
+                currentMessage.content
+              )}
+            </div>
 
             {currentMessage.buttons && (
               <div className="grid gap-3 sm:grid-cols-2">
