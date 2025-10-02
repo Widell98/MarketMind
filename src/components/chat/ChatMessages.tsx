@@ -35,7 +35,26 @@ const ChatMessages = ({
   onExamplePrompt,
   showGuideBot = false,
 }: ChatMessagesProps) => {
-  const { shouldShowGuide, handlePromptExample, handleNavigate, handleShowDemo } = useGuideSession();
+  const {
+    shouldShowGuide,
+    handlePromptExample,
+    handleNavigate,
+    handleShowDemo,
+    updateGuideSession,
+  } = useGuideSession();
+
+  const handleGuidePrompt = React.useCallback(
+    (prompt: string) => {
+      if (onExamplePrompt) {
+        onExamplePrompt(prompt);
+        updateGuideSession({ hasSeenWelcome: true });
+        return;
+      }
+
+      handlePromptExample(prompt);
+    },
+    [onExamplePrompt, handlePromptExample, updateGuideSession]
+  );
 
   const examplePrompts = [
     {
@@ -93,7 +112,7 @@ const ChatMessages = ({
       <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-9 sm:space-y-10 sm:px-6 lg:max-w-4xl lg:space-y-12 lg:px-8 lg:py-12 xl:max-w-5xl xl:px-10 xl:py-14 2xl:max-w-6xl 2xl:space-y-14 2xl:px-12">
         {showGuideBot && (
           <GuideBot
-            onPromptExample={onExamplePrompt || handlePromptExample}
+            onPromptExample={handleGuidePrompt}
             onNavigate={handleNavigate}
             onShowDemo={handleShowDemo}
           />

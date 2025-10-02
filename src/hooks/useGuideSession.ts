@@ -104,7 +104,10 @@ export const useGuideSession = () => {
   const handleShowDemo = useCallback((demoType: string) => {
     // Track demo interactions
     markGuideCompleted(`demo-${demoType}`);
-  }, [markGuideCompleted]);
+
+    // Mark interaction
+    updateGuideSession({ hasSeenWelcome: true });
+  }, [markGuideCompleted, updateGuideSession]);
 
   // Show guide for new users or when explicitly requested
   const shouldShowGuide = useCallback(() => {
