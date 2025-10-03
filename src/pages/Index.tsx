@@ -101,6 +101,7 @@ const Index = () => {
     loading: morningBriefLoading,
     error: morningBriefError,
     refresh: refreshMorningBrief,
+    isFreshToday: morningBriefIsFreshToday,
   } = useMorningBrief();
   const progressData = useFinancialProgress();
   const hasPortfolio = !loading && !!activePortfolio;
@@ -494,12 +495,16 @@ const Index = () => {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={refreshMorningBrief}
-                        disabled={morningBriefLoading}
+                        onClick={() => refreshMorningBrief()}
+                        disabled={morningBriefLoading || morningBriefIsFreshToday}
                         className="justify-center"
                       >
                         <RefreshCw className={`mr-2 h-4 w-4 ${morningBriefLoading ? 'animate-spin' : ''}`} />
-                        {morningBriefLoading ? 'Hämtar...' : 'Uppdatera'}
+                        {morningBriefLoading
+                          ? 'Hämtar...'
+                          : morningBriefIsFreshToday
+                            ? 'Uppdaterad idag'
+                            : 'Uppdatera'}
                       </Button>
                       {morningBriefReadMoreUrl ? (
                         <Button asChild variant="outline" size="sm" className="justify-center">
@@ -578,22 +583,15 @@ const Index = () => {
                                 <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
                                   {item.summary}
                                 </p>
-                                {item.recommendedActions.length > 0 && (
+                                {item.reflection && (
                                   <div className="mt-4 space-y-2">
                                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                      Ta med till AI-chatten
+                                      Reflektion
                                     </p>
-                                    <ul className="space-y-2 text-sm text-muted-foreground">
-                                      {item.recommendedActions.map((action, actionIndex) => (
-                                        <li
-                                          key={`${item.id}-action-${actionIndex}`}
-                                          className="flex items-start gap-2"
-                                        >
-                                          <MessageSquare className="mt-0.5 h-4 w-4 text-primary" />
-                                          <span>{action}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
+                                    <p className="flex items-start gap-2 text-sm leading-relaxed text-muted-foreground">
+                                      <MessageSquare className="mt-0.5 h-4 w-4 text-primary" />
+                                      <span>{item.reflection}</span>
+                                    </p>
                                   </div>
                                 )}
                               </div>

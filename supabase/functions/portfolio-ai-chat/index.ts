@@ -210,7 +210,7 @@ type MorningBriefItem = {
   id: number;
   headline: string;
   summary: string;
-  recommendedActions: string[];
+  reflection?: string;
   sourceUrl?: string;
   publishedAt?: string;
 };
@@ -439,22 +439,37 @@ const normalizeMorningBrief = (
 
     const relatedNews = newsItems.find((news) => news.id === id) ?? newsItems[index];
 
-    const recommended = Array.isArray(item.recommendedActions)
-      ? (item.recommendedActions as unknown[]).map((value) => value?.toString?.().trim()).filter(Boolean) as string[]
-      : Array.isArray(item.recommended_actions)
-        ? (item.recommended_actions as unknown[]).map((value) => value?.toString?.().trim()).filter(Boolean) as string[]
-        : [];
+    const reflectionCandidates: string[] = [];
 
-    const limitedRecommended = recommended
-      .map((action) => action.replace(/\s+/g, ' ').trim())
-      .filter(Boolean)
-      .slice(0, 1)
-      .map((action) => {
-        const lower = action.toLowerCase();
-        return lower.includes('ai-chatt') || lower.includes('ai chat') || lower.includes('aichat')
-          ? action
-          : `${action} Fortsätt diskussionen i AI-chatten för att få guidning.`;
-      });
+    if (typeof (item as { reflection?: unknown }).reflection === 'string') {
+      reflectionCandidates.push(((item as { reflection: string }).reflection).trim());
+    }
+
+    if (Array.isArray((item as { reflections?: unknown[] }).reflections)) {
+      reflectionCandidates.push(
+        ...((item as { reflections: unknown[] }).reflections)
+          .map((value) => value?.toString?.().trim())
+          .filter((value): value is string => Boolean(value))
+      );
+    }
+
+    if (Array.isArray(item.recommendedActions)) {
+      reflectionCandidates.push(
+        ...(item.recommendedActions as unknown[])
+          .map((value) => value?.toString?.().trim())
+          .filter((value): value is string => Boolean(value))
+      );
+    } else if (Array.isArray(item.recommended_actions)) {
+      reflectionCandidates.push(
+        ...(item.recommended_actions as unknown[])
+          .map((value) => value?.toString?.().trim())
+          .filter((value): value is string => Boolean(value))
+      );
+    }
+
+    const reflection = reflectionCandidates
+      .map((candidate) => candidate.replace(/\s+/g, ' ').trim())
+      .filter(Boolean)[0];
 
     return {
       id,
@@ -464,11 +479,11 @@ const normalizeMorningBrief = (
       summary: typeof item.summary === 'string' && item.summary.trim().length > 0
         ? item.summary.trim()
         : relatedNews?.snippet ?? 'Ingen sammanfattning tillgänglig.',
-      recommendedActions: limitedRecommended.length > 0
-        ? limitedRecommended
+      reflection: reflection
+        ? reflection
         : relatedNews?.title
-          ? [`Utforska i AI-chatten hur "${relatedNews.title}" påverkar din portfölj.`]
-          : ['Utforska vidare i AI-chatten hur nyheten påverkar din portfölj.'],
+          ? `Fundera på hur "${relatedNews.title}" kan påverka din strategi.`
+          : 'Fundera på hur detta kan påverka din portfölj på kort och lång sikt.',
       sourceUrl: typeof item.sourceUrl === 'string' && item.sourceUrl.trim().length > 0
         ? item.sourceUrl.trim()
         : typeof item.source_url === 'string' && item.source_url.trim().length > 0
@@ -488,9 +503,9 @@ const normalizeMorningBrief = (
       id: news.id,
       headline: news.title || 'Marknadsuppdatering',
       summary: news.snippet || 'Ingen sammanfattning tillgänglig.',
-      recommendedActions: news.title
-        ? [`Utforska i AI-chatten hur "${news.title}" påverkar din portfölj.`]
-        : ['Utforska vidare i AI-chatten hur nyheten påverkar din portfölj.'],
+      reflection: news.title
+        ? `Fundera på hur "${news.title}" kan påverka din strategi.`
+        : 'Fundera på hur detta kan påverka din portfölj på kort och lång sikt.',
       sourceUrl: news.url || undefined,
       publishedAt: news.publishedAt || undefined,
     }));
@@ -572,7 +587,7 @@ Struktur:
       "id": <samma id som i indata>,
       "headline": "rubrik",
       "summary": "kort sammanfattning",
-      "recommended_actions": ["åtgärd"...],
+      "reflection": "kort reflektion",
       "source_url": "url från indata",
       "published_at": "datum"
     }
@@ -582,9 +597,8 @@ Struktur:
 Regler:
 - Håll språket på svenska och professionellt men lättillgängligt.
 - Fokusera på vad som har hänt i varje nyhet och varför det är relevant för användarens portfölj, minst två meningar per sammanfattning.
-- Lyfta fram hur nyheterna kan påverka användarens portfölj.
-- Inkludera högst en punkt i "recommended_actions" per nyhet och formulera den som en inbjudan att fortsätta analysen i AI-chatten.
-- Om ingen tydlig rekommendation finns, använd "Utforska vidare i AI-chatten hur detta påverkar din portfölj.".
+- Lyft hur nyheten kan påverka användarens portfölj eller marknadsposition.
+- Använd fältet "reflection" för en kort personlig reflektion (1–2 meningar) som hjälper användaren att fundera vidare, utan uppmaningar till handling.
 - Använd informationen från portföljdatan och nyhetslistan. Återanvänd id och URL exakt.`;
 
   const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
