@@ -5,11 +5,10 @@ import {
   UserPlus,
   BarChart3,
   Users,
-  ArrowUpRight,
+  ExternalLink,
   TrendingUp,
   Wallet,
   Shield,
-  MessageCircle,
   CheckCircle,
   Star,
   Heart,
@@ -24,10 +23,12 @@ import {
   Settings,
   Building2,
   RefreshCw,
+  Sun,
   Sparkles,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -36,6 +37,7 @@ import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAIInsights } from '@/hooks/useAIInsights';
+import { useMorningBrief } from '@/hooks/useMorningBrief';
 import { useFinancialProgress } from '@/hooks/useFinancialProgress';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -95,6 +97,12 @@ const Index = () => {
     lastUpdated: insightsLastUpdated,
     refreshInsights,
   } = useAIInsights();
+  const {
+    brief: morningBrief,
+    loading: morningBriefLoading,
+    error: morningBriefError,
+    refresh: refreshMorningBrief,
+  } = useMorningBrief();
   const progressData = useFinancialProgress();
   const hasPortfolio = !loading && !!activePortfolio;
   const totalPortfolioValue = performance.totalPortfolioValue;
@@ -171,6 +179,44 @@ const Index = () => {
       });
     }
   }, [insightsLastUpdated]);
+  const morningBriefTimestamp = React.useMemo(() => {
+    if (!morningBrief?.generatedAt) {
+      return null;
+    }
+
+    try {
+      return new Intl.DateTimeFormat('sv-SE', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }).format(new Date(morningBrief.generatedAt));
+    } catch {
+      return new Date(morningBrief.generatedAt).toLocaleString('sv-SE');
+    }
+  }, [morningBrief?.generatedAt]);
+
+  const morningBriefReadMoreUrl = React.useMemo(() => {
+    if (!morningBrief?.items?.length) {
+      return null;
+    }
+
+    const itemWithLink = morningBrief.items.find(item => item.sourceUrl);
+    return itemWithLink?.sourceUrl ?? null;
+  }, [morningBrief?.items]);
+
+  const formatPublishedAt = React.useCallback((value?: string | null) => {
+    if (!value) {
+      return null;
+    }
+
+    try {
+      return new Intl.DateTimeFormat('sv-SE', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      }).format(new Date(value));
+    } catch {
+      return value;
+    }
+  }, []);
   return <Layout>
       <div className="min-h-0 bg-background">
         <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-8 lg:py-12">
@@ -425,6 +471,144 @@ const Index = () => {
                 </div>
               </div>
             </div>}
+
+          {user && (
+            <div className="mb-12 sm:mb-16">
+              <Card className="rounded-3xl border border-border/60 bg-card/80 shadow-sm">
+                <div className="p-5 sm:p-8">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-primary">
+                        <Sun className="h-5 w-5" />
+                        <span className="text-xs font-semibold uppercase tracking-wide">Morgonbrief</span>
+                      </div>
+                      <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">Din uppdatering för dagen</h2>
+                      {morningBriefTimestamp && (
+                        <p className="text-sm text-muted-foreground">Uppdaterad {morningBriefTimestamp}</p>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={refreshMorningBrief}
+                        disabled={morningBriefLoading}
+                        className="justify-center"
+                      >
+                        <RefreshCw className={`mr-2 h-4 w-4 ${morningBriefLoading ? 'animate-spin' : ''}`} />
+                        {morningBriefLoading ? 'Hämtar...' : 'Uppdatera'}
+                      </Button>
+                      {morningBriefReadMoreUrl ? (
+                        <Button asChild variant="outline" size="sm" className="justify-center">
+                          <a
+                            href={morningBriefReadMoreUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <ExternalLink className="mr-2 h-4 w-4" />
+                            Läs mer
+                          </a>
+                        </Button>
+                      ) : (
+                        <Button variant="outline" size="sm" disabled className="justify-center text-muted-foreground">
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          Läs mer
+                        </Button>
+                      )}
+                      <Button asChild size="sm" className="justify-center bg-primary text-primary-foreground hover:bg-primary/90">
+                        <Link to="/ai-chatt">
+                          <MessageSquare className="mr-2 h-4 w-4" />
+                          Starta AI-chatten
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="mt-6 space-y-6">
+                    {morningBriefLoading ? (
+                      <div className="space-y-4">
+                        <Skeleton className="h-6 w-3/4 rounded-xl" />
+                        <Skeleton className="h-4 w-full rounded-xl" />
+                        <Skeleton className="h-4 w-2/3 rounded-xl" />
+                      </div>
+                    ) : morningBriefError ? (
+                      <div className="rounded-2xl border border-dashed border-border/60 bg-muted/30 p-4 text-sm text-muted-foreground">
+                        {morningBriefError}
+                      </div>
+                    ) : morningBrief ? (
+                      <>
+                        {morningBrief.marketOverview && (
+                          <p className="text-sm leading-relaxed text-muted-foreground">
+                            {morningBrief.marketOverview}
+                          </p>
+                        )}
+                        {morningBrief.portfolioHighlights.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {morningBrief.portfolioHighlights.map((highlight, index) => (
+                              <Badge
+                                key={`${highlight}-${index}`}
+                                variant="outline"
+                                className="rounded-full border-primary/20 bg-primary/5 text-primary"
+                              >
+                                {highlight}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        <div className="space-y-4">
+                          {morningBrief.items.slice(0, 3).map((item) => {
+                            const publishedLabel = formatPublishedAt(item.publishedAt);
+                            return (
+                              <div
+                                key={`${item.id}-${item.headline}`}
+                                className="rounded-2xl border border-border/60 bg-background/60 p-4 sm:p-5"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <h3 className="text-base font-semibold text-foreground sm:text-lg">
+                                      {item.headline}
+                                    </h3>
+                                    {publishedLabel && (
+                                      <p className="text-xs text-muted-foreground">Publicerad {publishedLabel}</p>
+                                    )}
+                                  </div>
+                                </div>
+                                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                                  {item.summary}
+                                </p>
+                                {item.recommendedActions.length > 0 && (
+                                  <div className="mt-4 space-y-2">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                      Rekommenderade åtgärder
+                                    </p>
+                                    <ul className="space-y-2 text-sm text-muted-foreground">
+                                      {item.recommendedActions.map((action, actionIndex) => (
+                                        <li
+                                          key={`${item.id}-action-${actionIndex}`}
+                                          className="flex items-start gap-2"
+                                        >
+                                          <CheckCircle className="mt-0.5 h-4 w-4 text-primary" />
+                                          <span>{action}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-border/60 bg-muted/30 p-4 text-sm text-muted-foreground">
+                        Inga morgoninsikter tillgängliga ännu. Försök uppdatera om en stund.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            </div>
+          )}
 
           {/* Enhanced personal welcome for users without portfolio */}
           {user && !hasPortfolio && !loading && <div className="mb-12 sm:mb-16">

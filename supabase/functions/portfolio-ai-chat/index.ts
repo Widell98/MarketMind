@@ -198,6 +198,43 @@ type TavilySearchResponse = {
   results?: TavilySearchResult[];
 };
 
+type MorningBriefNewsItem = {
+  id: number;
+  title: string;
+  snippet: string;
+  url: string;
+  publishedAt: string;
+};
+
+type MorningBriefItem = {
+  id: number;
+  headline: string;
+  summary: string;
+  recommendedActions: string[];
+  sourceUrl?: string;
+  publishedAt?: string;
+};
+
+type MorningBriefPayload = {
+  generatedAt: string;
+  marketOverview?: string;
+  portfolioHighlights?: string[];
+  items: MorningBriefItem[];
+};
+
+type PortfolioSnapshot = {
+  totalValueSEK: number;
+  holdingsCount: number;
+  topHoldings: {
+    id: number;
+    label: string;
+    symbol: string | null;
+    name: string | null;
+    allocation: number;
+    valueSEK: number;
+  }[];
+};
+
 type StockDetectionPattern = {
   regex: RegExp;
   requiresContext?: boolean;
@@ -280,6 +317,323 @@ const fetchTavilyContext = async (message: string): Promise<string> => {
   }
 };
 
+const buildPortfolioSnapshot = (holdings: HoldingRecord[] | null): PortfolioSnapshot => {
+  if (!Array.isArray(holdings)) {
+    return {
+      totalValueSEK: 0,
+      holdingsCount: 0,
+      topHoldings: [],
+    };
+  }
+
+  const resolvedHoldings = holdings
+    .map((holding) => {
+      if (!holding || typeof holding !== 'object') return null;
+
+      const breakdown = resolveHoldingValue(holding);
+      const label = typeof holding.name === 'string' && holding.name.trim().length > 0
+        ? holding.name.trim()
+        : typeof holding.symbol === 'string' && holding.symbol.trim().length > 0
+          ? holding.symbol.trim()
+          : 'Okänt innehav';
+
+      return {
+        holding,
+        breakdown,
+        label,
+        symbol: typeof holding.symbol === 'string' ? holding.symbol : null,
+        name: typeof holding.name === 'string' ? holding.name : null,
+      };
+    })
+    .filter((item): item is {
+      holding: HoldingRecord;
+      breakdown: HoldingValueBreakdown;
+      label: string;
+      symbol: string | null;
+      name: string | null;
+    } => Boolean(item))
+    .filter((item) => item.breakdown.valueInSEK > 0);
+
+  const totalValueSEK = resolvedHoldings.reduce((sum, item) => sum + item.breakdown.valueInSEK, 0);
+
+  const sorted = [...resolvedHoldings].sort((a, b) => b.breakdown.valueInSEK - a.breakdown.valueInSEK);
+
+  const topHoldings = sorted.slice(0, 5).map((item, index) => ({
+    id: index + 1,
+    label: item.label,
+    symbol: item.symbol,
+    name: item.name,
+    allocation: totalValueSEK > 0
+      ? Number(((item.breakdown.valueInSEK / totalValueSEK) * 100).toFixed(2))
+      : 0,
+    valueSEK: Number(item.breakdown.valueInSEK.toFixed(2)),
+  }));
+
+  return {
+    totalValueSEK: Number(totalValueSEK.toFixed(2)),
+    holdingsCount: resolvedHoldings.length,
+    topHoldings,
+  };
+};
+
+const fetchMorningBriefNews = async (topics: string[]): Promise<TavilySearchResult[]> => {
+  const tavilyApiKey = Deno.env.get('TAVILY_API_KEY');
+  if (!tavilyApiKey) {
+    console.warn('TAVILY_API_KEY saknas i miljövariablerna. Hoppar över morgonbrevets nyhetssökning.');
+    return [];
+  }
+
+  const uniqueTopics = Array.from(new Set(topics.filter(Boolean))).slice(0, 5);
+  const queryBase = uniqueTopics.length > 0
+    ? `Latest market news today about ${uniqueTopics.join(', ')}`
+    : 'Latest global stock market news today';
+
+  try {
+    const response = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        api_key: tavilyApiKey,
+        query: queryBase,
+        search_depth: 'advanced',
+        include_answer: false,
+        include_raw_content: false,
+        max_results: 6,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Fel vid morgonbrevets Tavily-anrop:', errorText);
+      return [];
+    }
+
+    const tavilyData = await response.json() as TavilySearchResponse;
+    return Array.isArray(tavilyData.results) ? tavilyData.results : [];
+  } catch (error) {
+    console.error('Undantag vid morgonbrevets Tavily-anrop:', error);
+    return [];
+  }
+};
+
+const normalizeMorningBrief = (
+  rawBrief: unknown,
+  newsItems: MorningBriefNewsItem[],
+  snapshot: PortfolioSnapshot,
+): MorningBriefPayload => {
+  const nowIso = new Date().toISOString();
+  const parsed = typeof rawBrief === 'object' && rawBrief !== null ? rawBrief as Record<string, unknown> : {};
+
+  const rawItems = Array.isArray(parsed.items)
+    ? parsed.items as Record<string, unknown>[]
+    : [];
+
+  const normalizedItems: MorningBriefItem[] = rawItems.map((item, index) => {
+    const id = typeof item.id === 'number'
+      ? item.id
+      : typeof item.id === 'string' && !Number.isNaN(Number(item.id))
+        ? Number(item.id)
+        : (newsItems[index]?.id ?? index + 1);
+
+    const relatedNews = newsItems.find((news) => news.id === id) ?? newsItems[index];
+
+    const recommended = Array.isArray(item.recommendedActions)
+      ? (item.recommendedActions as unknown[]).map((value) => value?.toString?.().trim()).filter(Boolean) as string[]
+      : Array.isArray(item.recommended_actions)
+        ? (item.recommended_actions as unknown[]).map((value) => value?.toString?.().trim()).filter(Boolean) as string[]
+        : [];
+
+    return {
+      id,
+      headline: typeof item.headline === 'string' && item.headline.trim().length > 0
+        ? item.headline.trim()
+        : relatedNews?.title ?? `Nyhet ${index + 1}`,
+      summary: typeof item.summary === 'string' && item.summary.trim().length > 0
+        ? item.summary.trim()
+        : relatedNews?.snippet ?? 'Ingen sammanfattning tillgänglig.',
+      recommendedActions: recommended.length > 0
+        ? recommended
+        : relatedNews?.title
+          ? [`Bevaka utvecklingen för ${relatedNews.title}`]
+          : ['Fortsätt följa marknadsutvecklingen.'],
+      sourceUrl: typeof item.sourceUrl === 'string' && item.sourceUrl.trim().length > 0
+        ? item.sourceUrl.trim()
+        : typeof item.source_url === 'string' && item.source_url.trim().length > 0
+          ? item.source_url.trim()
+          : relatedNews?.url || undefined,
+      publishedAt: typeof item.publishedAt === 'string' && item.publishedAt.trim().length > 0
+        ? item.publishedAt.trim()
+        : typeof item.published_at === 'string' && item.published_at.trim().length > 0
+          ? item.published_at.trim()
+          : relatedNews?.publishedAt || undefined,
+    };
+  });
+
+  const fallbackItems = normalizedItems.length > 0
+    ? normalizedItems
+    : newsItems.slice(0, 3).map((news) => ({
+      id: news.id,
+      headline: news.title || 'Marknadsuppdatering',
+      summary: news.snippet || 'Ingen sammanfattning tillgänglig.',
+      recommendedActions: [`Följ utvecklingen för ${news.title || 'marknaden'}.`],
+      sourceUrl: news.url || undefined,
+      publishedAt: news.publishedAt || undefined,
+    }));
+
+  const portfolioHighlights = Array.isArray(parsed.portfolioHighlights)
+    ? (parsed.portfolioHighlights as unknown[]).map((value) => value?.toString?.().trim()).filter(Boolean) as string[]
+    : Array.isArray(parsed.portfolio_highlights)
+      ? (parsed.portfolio_highlights as unknown[]).map((value) => value?.toString?.().trim()).filter(Boolean) as string[]
+      : snapshot.topHoldings.length > 0
+        ? snapshot.topHoldings.map((holding) => `${holding.label}: ${holding.allocation.toFixed(1)}% av portföljen`)
+        : [];
+
+  const marketOverview = typeof parsed.marketOverview === 'string' && parsed.marketOverview.trim().length > 0
+    ? parsed.marketOverview.trim()
+    : typeof parsed.market_overview === 'string' && parsed.market_overview.trim().length > 0
+      ? parsed.market_overview.trim()
+      : undefined;
+
+  return {
+    generatedAt: typeof parsed.generatedAt === 'string' && parsed.generatedAt.trim().length > 0
+      ? parsed.generatedAt.trim()
+      : typeof parsed.generated_at === 'string' && parsed.generated_at.trim().length > 0
+        ? parsed.generated_at.trim()
+        : nowIso,
+    marketOverview,
+    portfolioHighlights,
+    items: fallbackItems,
+  };
+};
+
+const handleMorningBrief = async (
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  openAIApiKey: string,
+  portfolioId?: string | null,
+) => {
+  const [{ data: portfolio }, { data: holdings }] = await Promise.all([
+    supabase
+      .from('user_portfolios')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .maybeSingle(),
+    supabase
+      .from('user_holdings')
+      .select('*')
+      .eq('user_id', userId),
+  ]);
+
+  const snapshot = buildPortfolioSnapshot(Array.isArray(holdings) ? holdings as HoldingRecord[] : []);
+
+  const topTopics = snapshot.topHoldings
+    .map((holding) => holding.symbol || holding.name)
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+
+  const tavilyResults = await fetchMorningBriefNews(topTopics);
+
+  const newsItems: MorningBriefNewsItem[] = tavilyResults.slice(0, 5).map((result, index) => ({
+    id: index + 1,
+    title: typeof result.title === 'string' ? result.title : `Nyhet ${index + 1}`,
+    snippet: typeof result.content === 'string'
+      ? result.content
+      : typeof result.snippet === 'string'
+        ? result.snippet
+        : 'Ingen ytterligare information tillgänglig.',
+    url: typeof result.url === 'string' ? result.url : '',
+    publishedAt: typeof result.published_date === 'string' ? result.published_date : '',
+  }));
+
+  const morningBriefPrompt = `Du är en finansanalytiker som skapar ett kort morgonbrev på svenska. Svara enbart med giltig JSON.
+
+Struktur:
+{
+  "generated_at": "ISO-datum",
+  "market_overview": "kort marknadsöverblick",
+  "portfolio_highlights": ["punkt"...],
+  "items": [
+    {
+      "id": <samma id som i indata>,
+      "headline": "rubrik",
+      "summary": "kort sammanfattning",
+      "recommended_actions": ["åtgärd"...],
+      "source_url": "url från indata",
+      "published_at": "datum"
+    }
+  ]
+}
+
+Regler:
+- Håll språket på svenska och professionellt men lättillgängligt.
+- Lyfta fram hur nyheterna kan påverka användarens portfölj.
+- Rekommenderade åtgärder ska vara konkreta men ej ge investeringsråd.
+- Använd informationen från portföljdatan och nyhetslistan. Återanvänd id och URL exakt.`;
+
+  const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openAIApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      temperature: 0.4,
+      max_tokens: 900,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content: morningBriefPrompt,
+        },
+        {
+          role: 'user',
+          content: JSON.stringify({
+            portfolio: {
+              id: portfolio?.id ?? portfolioId ?? null,
+              name: portfolio?.name ?? 'Portfölj',
+              riskScore: portfolio?.risk_score ?? null,
+              expectedReturn: portfolio?.expected_return ?? null,
+              snapshot,
+            },
+            news: newsItems,
+          }),
+        },
+      ],
+    }),
+  });
+
+  if (!aiResponse.ok) {
+    const errorBody = await aiResponse.text();
+    console.error('OpenAI fel vid morgonbrev:', errorBody);
+    throw new Error(`OpenAI API error: ${aiResponse.status}`);
+  }
+
+  const aiJson = await aiResponse.json();
+  const rawContent = aiJson?.choices?.[0]?.message?.content;
+
+  let parsedBrief: unknown = null;
+
+  if (typeof rawContent === 'string') {
+    try {
+      parsedBrief = JSON.parse(rawContent);
+    } catch (error) {
+      console.warn('Kunde inte parsa AI-svar för morgonbrev:', error);
+    }
+  }
+
+  const brief = normalizeMorningBrief(parsedBrief, newsItems, snapshot);
+
+  return {
+    success: true,
+    brief,
+    news: newsItems,
+    portfolioSnapshot: snapshot,
+  };
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -296,17 +650,17 @@ serve(async (req) => {
     
     const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData, stream } = requestBody;
 
-    console.log('Portfolio AI Chat function called with:', { 
-      message: message?.substring(0, 50) + '...', 
-      userId, 
-      portfolioId, 
+    console.log('Portfolio AI Chat function called with:', {
+      message: message?.substring(0, 50) + '...',
+      userId,
+      portfolioId,
       sessionId,
-      analysisType 
+      analysisType
     });
 
-    if (!message || !userId) {
-      console.error('Missing required fields:', { message: !!message, userId: !!userId });
-      throw new Error('Message and userId are required');
+    if (!userId) {
+      console.error('Missing required userId');
+      throw new Error('userId is required');
     }
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -324,6 +678,21 @@ serve(async (req) => {
     );
 
     console.log('Supabase client initialized');
+
+    if (analysisType === 'morning_brief') {
+      console.log('Handling morning brief request');
+      const morningBriefResult = await handleMorningBrief(supabase, userId, openAIApiKey, portfolioId);
+
+      return new Response(
+        JSON.stringify(morningBriefResult),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!message) {
+      console.error('Missing message for standard chat request');
+      throw new Error('Message is required');
+    }
 
     // Fetch all user data in parallel for better performance
     const [
