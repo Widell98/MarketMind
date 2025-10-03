@@ -13,7 +13,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [step, setStep] = useState(1);
   const [level, setLevel] = useState<string>('');
   const [interests, setInterests] = useState<string[]>([]);
-  const [displayName, setDisplayName] = useState<string>(user?.user_metadata?.display_name || '');
+  const initialDisplayName =
+    user?.user_metadata?.display_name ||
+    (user?.email ? user.email.toLowerCase().replace('@', '') : '');
+
+  const [displayName, setDisplayName] = useState<string>(initialDisplayName);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const handleLevelSelect = (selectedLevel: string) => {

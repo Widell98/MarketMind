@@ -265,7 +265,12 @@ const Profile = () => {
       <EditProfileDialog 
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
-        currentName={profileData?.display_name || profileData?.username || user?.email || ''}
+        currentName={
+          profileData?.display_name ||
+          profileData?.username ||
+          user?.email?.toLowerCase().replace('@', '') ||
+          ''
+        }
         userId={user?.id || ''}
         profileData={profileData || user}
         onSaved={handleProfileSaved}
