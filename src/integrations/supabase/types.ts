@@ -97,6 +97,57 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_cases: {
+        Row: {
+          case_date: string
+          company_name: string
+          created_at: string
+          downside: number | null
+          gpt_raw: Json | null
+          id: string
+          summary: string
+          tavily_payload: Json | null
+          thesis: Json | null
+          ticker: string
+          updated_at: string
+          upvotes: number
+          downvotes: number
+          upside: number | null
+        }
+        Insert: {
+          case_date: string
+          company_name: string
+          created_at?: string
+          downside?: number | null
+          gpt_raw?: Json | null
+          id?: string
+          summary: string
+          tavily_payload?: Json | null
+          thesis?: Json | null
+          ticker: string
+          updated_at?: string
+          upvotes?: number
+          downvotes?: number
+          upside?: number | null
+        }
+        Update: {
+          case_date?: string
+          company_name?: string
+          created_at?: string
+          downside?: number | null
+          gpt_raw?: Json | null
+          id?: string
+          summary?: string
+          tavily_payload?: Json | null
+          thesis?: Json | null
+          ticker?: string
+          updated_at?: string
+          upvotes?: number
+          downvotes?: number
+          upside?: number | null
+        }
+        Relationships: []
+      }
       analyses: {
         Row: {
           ai_generated: boolean | null
@@ -355,6 +406,48 @@ export type Database = {
           data?: Json
           expires_at?: string
           id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      market_snapshots: {
+        Row: {
+          created_at: string
+          gpt_raw: Json | null
+          highlights: Json | null
+          id: string
+          indices: Json
+          narrative: string
+          sector_heatmap: Json | null
+          sentiment_label: string
+          snapshot_date: string
+          tavily_payload: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          gpt_raw?: Json | null
+          highlights?: Json | null
+          id?: string
+          indices: Json
+          narrative: string
+          sector_heatmap?: Json | null
+          sentiment_label: string
+          snapshot_date: string
+          tavily_payload?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          gpt_raw?: Json | null
+          highlights?: Json | null
+          id?: string
+          indices?: Json
+          narrative?: string
+          sector_heatmap?: Json | null
+          sentiment_label?: string
+          snapshot_date?: string
+          tavily_payload?: Json | null
           updated_at?: string
         }
         Relationships: []
@@ -1779,6 +1872,10 @@ export type Database = {
       get_stock_case_like_count: {
         Args: { case_id: string }
         Returns: number
+      }
+      increment_vote: {
+        Args: { case_id: string; direction: string }
+        Returns: Database["public"]["Tables"]["daily_cases"]["Row"]
       }
       has_role: {
         Args: {

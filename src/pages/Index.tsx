@@ -39,6 +39,10 @@ import { useAIInsights } from '@/hooks/useAIInsights';
 import { useFinancialProgress } from '@/hooks/useFinancialProgress';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import DailyCaseCard from '@/components/DailyCaseCard';
+import MarketPulseWidget from '@/components/MarketPulseWidget';
+import { useDailyCase } from '@/hooks/useDailyCase';
+import { useMarketSnapshot } from '@/hooks/useMarketSnapshot';
 
 type QuickAction = {
   icon: React.ComponentType<{ className?: string }>;
@@ -95,6 +99,22 @@ const Index = () => {
     lastUpdated: insightsLastUpdated,
     refreshInsights,
   } = useAIInsights();
+  const {
+    data: dailyCase,
+    loading: dailyCaseLoading,
+    refreshing: dailyCaseRefreshing,
+    voting: dailyCaseVoting,
+    error: dailyCaseError,
+    refresh: refreshDailyCase,
+    vote: voteDailyCase,
+  } = useDailyCase();
+  const {
+    data: marketSnapshot,
+    loading: marketSnapshotLoading,
+    refreshing: marketSnapshotRefreshing,
+    error: marketSnapshotError,
+    refresh: refreshMarketSnapshot,
+  } = useMarketSnapshot();
   const progressData = useFinancialProgress();
   const hasPortfolio = !loading && !!activePortfolio;
   const totalPortfolioValue = performance.totalPortfolioValue;
@@ -254,6 +274,28 @@ const Index = () => {
               {/* Final CTA - Apple style */}
               
             </div>}
+
+          <section className="mb-10">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <DailyCaseCard
+                data={dailyCase}
+                loading={dailyCaseLoading}
+                refreshing={dailyCaseRefreshing}
+                voting={dailyCaseVoting}
+                error={dailyCaseError}
+                onRefresh={refreshDailyCase}
+                onVote={user ? voteDailyCase : undefined}
+                canVote={Boolean(user)}
+              />
+              <MarketPulseWidget
+                data={marketSnapshot}
+                loading={marketSnapshotLoading}
+                refreshing={marketSnapshotRefreshing}
+                error={marketSnapshotError}
+                onRefresh={refreshMarketSnapshot}
+              />
+            </div>
+          </section>
 
           {/* Clean Dashboard for logged-in users */}
           {user && hasPortfolio && <div className="min-h-0 bg-background">
