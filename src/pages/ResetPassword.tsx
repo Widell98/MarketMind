@@ -1,187 +1,158 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import { useToast } from '@/hooks/use-toast';
-import * as z from 'zod';
-import { Loader2, CheckCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-
-const resetPasswordSchema = z.object({
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
-  confirmPassword: z.string().min(6, { message: "Password must be at least 6 characters" }),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
-
-type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 const ResetPassword = () => {
-  const [searchParams] = useSearchParams();
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const location = useLocation();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [initializing, setInitializing] = useState(true);
 
-  const form = useForm<ResetPasswordFormValues>({
-    resolver: zodResolver(resetPasswordSchema),
-    defaultValues: {
-      password: '',
-      confirmPassword: '',
-    },
-  });
+  const authParams = useMemo(() => {
+    const hashParams = new URLSearchParams(location.hash.replace(/^#/, ""));
+    const searchParams = new URLSearchParams(location.search);
+
+    return {
+      code: searchParams.get("code"),
+      accessToken: hashParams.get("access_token") ?? searchParams.get("access_token"),
+      refreshToken: hashParams.get("refresh_token") ?? searchParams.get("refresh_token"),
+    };
+  }, [location.hash, location.search]);
 
   useEffect(() => {
-    // Check if we have the necessary tokens in the URL
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
-    
-    if (!accessToken || !refreshToken) {
-      toast({
-        title: "Invalid reset link",
-        description: "The password reset link is invalid or has expired. Please request a new one.",
-        variant: "destructive",
-      });
-      navigate('/auth');
+    let isMounted = true;
+
+    const establishSession = async () => {
+      try {
+        setInitializing(true);
+        setErrorMessage(null);
+
+        if (authParams.code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(authParams.code);
+          if (error) throw error;
+          return;
+        }
+
+        if (authParams.accessToken && authParams.refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: authParams.accessToken,
+            refresh_token: authParams.refreshToken,
+          });
+
+          if (error) throw error;
+          return;
+        }
+
+        throw new Error("This password reset link is invalid or has expired. Request a new reset email.");
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        const message = error instanceof Error
+          ? error.message
+          : "We couldn't validate your password reset link.";
+
+        setErrorMessage(message);
+      } finally {
+        if (isMounted) {
+          setInitializing(false);
+        }
+      }
+    };
+
+    establishSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [authParams]);
+
+  useEffect(() => {
+    if (status === "success") {
+      const timeout = setTimeout(() => navigate("/login"), 3000);
+      return () => clearTimeout(timeout);
     }
-  }, [searchParams, navigate, toast]);
+  }, [status, navigate]);
 
-  const onSubmit = async (data: ResetPasswordFormValues) => {
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-    if (!accessToken || !refreshToken) {
-      toast({
-        title: "Invalid reset link",
-        description: "The password reset link is invalid. Please request a new one.",
-        variant: "destructive",
-      });
+    if (!password) {
+      setErrorMessage("Please enter a new password.");
       return;
     }
 
-    setLoading(true);
-
     try {
-      // Set the session using the tokens from the URL
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
+      setStatus("loading");
+      setErrorMessage(null);
 
-      if (sessionError) throw sessionError;
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
 
-      // Update the password
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: data.password
-      });
-
-      if (updateError) throw updateError;
-
-      setSuccess(true);
-      
-      toast({
-        title: "Password updated",
-        description: "Your password has been successfully updated. You can now sign in with your new password.",
-      });
-
-      // Redirect to auth page after a short delay
-      setTimeout(() => {
-        navigate('/auth');
-      }, 3000);
-
-    } catch (error: any) {
-      console.error('Password reset error:', error);
-      toast({
-        title: "Password reset failed",
-        description: error.message || "Failed to reset password. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+      setStatus("success");
+    } catch (error) {
+      setStatus("idle");
+      const message = error instanceof Error
+        ? error.message
+        : "We couldn't update your password. Please try again.";
+      setErrorMessage(message);
     }
   };
 
-  if (success) {
-    return (
-      <div className="flex min-h-screen items-center justify-center p-4 bg-gray-50 dark:bg-gray-900">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900">
-              <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
-            </div>
-            <CardTitle className="text-2xl font-bold text-finance-navy dark:text-gray-200">
-              Password Updated
-            </CardTitle>
-            <CardDescription>
-              Your password has been successfully updated. You will be redirected to the login page shortly.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
+  const isDisabled = status === "loading" || initializing;
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-gray-50 dark:bg-gray-900">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4 dark:bg-gray-900">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-finance-navy dark:text-gray-200">
-            Reset Password
+        <CardHeader className="space-y-2 text-center">
+          <CardTitle className="text-2xl font-semibold text-finance-navy dark:text-gray-100">
+            Reset your password
           </CardTitle>
           <CardDescription>
-            Enter your new password below
+            Choose a new password to finish resetting your account.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>New Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="confirmPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirm Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <Button 
-                type="submit" 
-                className="w-full bg-finance-navy hover:bg-finance-blue text-white"
-                disabled={loading}
-              >
-                {loading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
-                Update Password
+          {initializing && (
+            <p className="mb-4 text-sm text-muted-foreground">Checking your reset link…</p>
+          )}
+          {errorMessage && (
+            <p className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/40 dark:text-red-200">
+              {errorMessage}
+            </p>
+          )}
+          {status === "success" ? (
+            <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
+              Password updated! You will be redirected to the login page in a moment.
+            </p>
+          ) : (
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <div className="space-y-2 text-left">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-200" htmlFor="password">
+                  New password
+                </label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter a new password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  disabled={isDisabled}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={isDisabled}>
+                {status === "loading" ? "Saving…" : "Save password"}
               </Button>
             </form>
-          </Form>
+          )}
         </CardContent>
       </Card>
     </div>

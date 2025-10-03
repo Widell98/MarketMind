@@ -53,6 +53,8 @@ function App() {
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/profile/:userId" element={<UserProfile />} />
                     <Route path="/auth" element={<Auth />} />
+                    <Route path="/login" element={<Auth />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/auth/reset-password" element={<ResetPassword />} />
                     <Route path="/portfolio-implementation" element={<PortfolioImplementation />} />
                     <Route path="/portfolio-advisor" element={<PortfolioAdvisor />} />
