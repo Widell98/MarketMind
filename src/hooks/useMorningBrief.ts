@@ -57,7 +57,12 @@ const normalizeMorningBrief = (payload: MorningBriefResponse['brief']): MorningB
   const items: MorningBriefItem[] = itemsRaw.map((item, index) => {
     const recommendedRaw = item.recommendedActions || item.recommended_actions || [];
     const recommended = Array.isArray(recommendedRaw)
-      ? recommendedRaw.map(action => action?.toString?.().trim()).filter(Boolean) as string[]
+      ? recommendedRaw
+          .map(action => action?.toString?.().trim())
+          .filter(Boolean)
+          .map(action => action?.replace?.(/\s+/g, ' ')?.trim?.() ?? '')
+          .filter(Boolean)
+          .slice(0, 1) as string[]
       : [];
 
     return {

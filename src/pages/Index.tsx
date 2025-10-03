@@ -9,7 +9,6 @@ import {
   TrendingUp,
   Wallet,
   Shield,
-  CheckCircle,
   Star,
   Heart,
   Target,
@@ -483,6 +482,9 @@ const Index = () => {
                         <span className="text-xs font-semibold uppercase tracking-wide">Morgonbrief</span>
                       </div>
                       <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">Din uppdatering för dagen</h2>
+                      <p className="text-sm text-muted-foreground sm:text-base">
+                        Håll koll på de viktigaste bolagsnyheterna och förbered frågor till AI-chatten för att få djupare insikter.
+                      </p>
                       {morningBriefTimestamp && (
                         <p className="text-sm text-muted-foreground">Uppdaterad {morningBriefTimestamp}</p>
                       )}
@@ -519,7 +521,7 @@ const Index = () => {
                       <Button asChild size="sm" className="justify-center bg-primary text-primary-foreground hover:bg-primary/90">
                         <Link to="/ai-chatt">
                           <MessageSquare className="mr-2 h-4 w-4" />
-                          Starta AI-chatten
+                          Öppna AI-chatten
                         </Link>
                       </Button>
                     </div>
@@ -579,7 +581,7 @@ const Index = () => {
                                 {item.recommendedActions.length > 0 && (
                                   <div className="mt-4 space-y-2">
                                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                      Rekommenderade åtgärder
+                                      Ta med till AI-chatten
                                     </p>
                                     <ul className="space-y-2 text-sm text-muted-foreground">
                                       {item.recommendedActions.map((action, actionIndex) => (
@@ -587,7 +589,7 @@ const Index = () => {
                                           key={`${item.id}-action-${actionIndex}`}
                                           className="flex items-start gap-2"
                                         >
-                                          <CheckCircle className="mt-0.5 h-4 w-4 text-primary" />
+                                          <MessageSquare className="mt-0.5 h-4 w-4 text-primary" />
                                           <span>{action}</span>
                                         </li>
                                       ))}
@@ -597,6 +599,19 @@ const Index = () => {
                               </div>
                             );
                           })}
+                        </div>
+                        <div className="mt-6">
+                          <Button
+                            asChild
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-center sm:w-auto"
+                          >
+                            <Link to="/ai-chatt">
+                              <MessageSquare className="mr-2 h-4 w-4" />
+                              Diskutera nyheterna i AI-chatten
+                            </Link>
+                          </Button>
                         </div>
                       </>
                     ) : (

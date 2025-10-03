@@ -445,6 +445,17 @@ const normalizeMorningBrief = (
         ? (item.recommended_actions as unknown[]).map((value) => value?.toString?.().trim()).filter(Boolean) as string[]
         : [];
 
+    const limitedRecommended = recommended
+      .map((action) => action.replace(/\s+/g, ' ').trim())
+      .filter(Boolean)
+      .slice(0, 1)
+      .map((action) => {
+        const lower = action.toLowerCase();
+        return lower.includes('ai-chatt') || lower.includes('ai chat') || lower.includes('aichat')
+          ? action
+          : `${action} Fortsätt diskussionen i AI-chatten för att få guidning.`;
+      });
+
     return {
       id,
       headline: typeof item.headline === 'string' && item.headline.trim().length > 0
@@ -453,11 +464,11 @@ const normalizeMorningBrief = (
       summary: typeof item.summary === 'string' && item.summary.trim().length > 0
         ? item.summary.trim()
         : relatedNews?.snippet ?? 'Ingen sammanfattning tillgänglig.',
-      recommendedActions: recommended.length > 0
-        ? recommended
+      recommendedActions: limitedRecommended.length > 0
+        ? limitedRecommended
         : relatedNews?.title
-          ? [`Bevaka utvecklingen för ${relatedNews.title}`]
-          : ['Fortsätt följa marknadsutvecklingen.'],
+          ? [`Utforska i AI-chatten hur "${relatedNews.title}" påverkar din portfölj.`]
+          : ['Utforska vidare i AI-chatten hur nyheten påverkar din portfölj.'],
       sourceUrl: typeof item.sourceUrl === 'string' && item.sourceUrl.trim().length > 0
         ? item.sourceUrl.trim()
         : typeof item.source_url === 'string' && item.source_url.trim().length > 0
@@ -477,7 +488,9 @@ const normalizeMorningBrief = (
       id: news.id,
       headline: news.title || 'Marknadsuppdatering',
       summary: news.snippet || 'Ingen sammanfattning tillgänglig.',
-      recommendedActions: [`Följ utvecklingen för ${news.title || 'marknaden'}.`],
+      recommendedActions: news.title
+        ? [`Utforska i AI-chatten hur "${news.title}" påverkar din portfölj.`]
+        : ['Utforska vidare i AI-chatten hur nyheten påverkar din portfölj.'],
       sourceUrl: news.url || undefined,
       publishedAt: news.publishedAt || undefined,
     }));
@@ -568,8 +581,10 @@ Struktur:
 
 Regler:
 - Håll språket på svenska och professionellt men lättillgängligt.
+- Fokusera på vad som har hänt i varje nyhet och varför det är relevant för användarens portfölj, minst två meningar per sammanfattning.
 - Lyfta fram hur nyheterna kan påverka användarens portfölj.
-- Rekommenderade åtgärder ska vara konkreta men ej ge investeringsråd.
+- Inkludera högst en punkt i "recommended_actions" per nyhet och formulera den som en inbjudan att fortsätta analysen i AI-chatten.
+- Om ingen tydlig rekommendation finns, använd "Utforska vidare i AI-chatten hur detta påverkar din portfölj.".
 - Använd informationen från portföljdatan och nyhetslistan. Återanvänd id och URL exakt.`;
 
   const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
