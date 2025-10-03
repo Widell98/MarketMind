@@ -243,6 +243,67 @@ const formatTavilyResults = (data: TavilySearchResponse | null): string => {
     : '';
 };
 
+const sanitizeDailyBriefBullets = (bullets: unknown): string[] => {
+  if (!Array.isArray(bullets)) return [];
+  return bullets
+    .map(entry => typeof entry === 'string' ? entry.trim() : '')
+    .filter(entry => entry.length > 0)
+    .slice(0, 4);
+};
+
+const sanitizeDailyBriefSources = (sources: unknown) => {
+  if (!Array.isArray(sources)) return [] as Array<{ title: string; url: string }>;
+  return sources
+    .map((item: unknown) => {
+      if (!item || typeof item !== 'object') return null;
+      const candidate = item as { title?: unknown; url?: unknown };
+      const title = typeof candidate.title === 'string' ? candidate.title.trim() : null;
+      const url = typeof candidate.url === 'string' ? candidate.url.trim() : null;
+      if (!url) return null;
+      return {
+        title: title && title.length > 0 ? title : 'Källa',
+        url,
+      };
+    })
+    .filter((item): item is { title: string; url: string } => Boolean(item))
+    .slice(0, 5);
+};
+
+const parseDailyBriefContent = (raw: unknown) => {
+  if (!raw) return {} as Record<string, unknown>;
+  if (typeof raw === 'string') {
+    try {
+      const cleaned = raw.replace(/```json|```/g, '').trim();
+      return JSON.parse(cleaned) as Record<string, unknown>;
+    } catch (error) {
+      console.warn('Failed to parse daily brief string payload:', error);
+      return {} as Record<string, unknown>;
+    }
+  }
+  if (typeof raw === 'object') {
+    return raw as Record<string, unknown>;
+  }
+  return {} as Record<string, unknown>;
+};
+
+const mapRiskToleranceLabel = (value?: string | null): string | null => {
+  switch (value) {
+    case 'conservative':
+      return 'Konservativ riskprofil';
+    case 'moderate':
+      return 'Måttlig riskprofil';
+    case 'aggressive':
+      return 'Hög riskprofil';
+    default:
+      return null;
+  }
+};
+
+const DAILY_BRIEF_DEFAULT_CTA = {
+  label: 'Fördjupa i AI-chatten',
+  url: '/ai-chatt?message=Kan%20du%20f%C3%B6rdjupa%20dagens%20brief%3F',
+};
+
 const fetchTavilyContext = async (message: string): Promise<string> => {
   const tavilyApiKey = Deno.env.get('TAVILY_API_KEY');
   if (!tavilyApiKey) {
@@ -721,7 +782,7 @@ serve(async (req) => {
 
     // Fetch Tavily context when the user mentions stocks or requests real-time insights
     let tavilyContext = '';
-    const shouldFetchTavily = isStockMentionRequest || requiresRealTimeSearch(message);
+    const shouldFetchTavily = analysisType === 'daily_brief' || isStockMentionRequest || requiresRealTimeSearch(message);
     if (shouldFetchTavily) {
       const logMessage = isStockMentionRequest
         ? 'Aktieomnämnande upptäckt – anropar Tavily för relevanta nyheter.'
@@ -732,6 +793,156 @@ serve(async (req) => {
       if (tavilyContext) {
         console.log('Tavily-kontent hämtad och läggs till i kontexten.');
       }
+    }
+
+    if (analysisType === 'daily_brief') {
+      const holdingsArray = Array.isArray(holdings) ? holdings : [];
+      const holdingsWithValues = holdingsArray.map(holding => ({
+        holding,
+        value: resolveHoldingValue(holding as HoldingRecord),
+      }));
+
+      const totalValue = holdingsWithValues.reduce((sum, { value }) => sum + (Number.isFinite(value.valueInSEK) ? value.valueInSEK : 0), 0);
+      const safeTotalValue = Number.isFinite(totalValue) ? totalValue : 0;
+      const totalValueFormatted = safeTotalValue > 0
+        ? new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0 }).format(Math.round(safeTotalValue))
+        : null;
+
+      const topHoldings = holdingsWithValues
+        .filter(({ value }) => value.valueInSEK > 0)
+        .sort((a, b) => b.value.valueInSEK - a.value.valueInSEK)
+        .slice(0, 5)
+        .map(({ holding, value }) => {
+          const label = holding.symbol || holding.name || 'Okänt innehav';
+          const percentage = safeTotalValue > 0 ? (value.valueInSEK / safeTotalValue) * 100 : 0;
+          return `${label} (${percentage.toFixed(1)}%)`;
+        });
+
+      const riskLabel = mapRiskToleranceLabel(riskProfile?.risk_tolerance);
+      const horizonLabel = (() => {
+        switch (riskProfile?.investment_horizon) {
+          case 'short':
+            return 'Tidshorisont: 1–3 år';
+          case 'medium':
+            return 'Tidshorisont: 3–7 år';
+          case 'long':
+            return 'Tidshorisont: 7+ år';
+          default:
+            return null;
+        }
+      })();
+
+      const briefContext: string[] = [];
+      briefContext.push(`Portföljnamn: ${portfolio?.name ?? 'Aktiv portfölj'}`);
+      if (totalValueFormatted) {
+        briefContext.push(`Totalt portföljvärde: ${totalValueFormatted} SEK`);
+      }
+      if (topHoldings.length > 0) {
+        briefContext.push(`Största innehav: ${topHoldings.join(', ')}`);
+      }
+      if (riskLabel) {
+        briefContext.push(riskLabel);
+      }
+      if (horizonLabel) {
+        briefContext.push(horizonLabel);
+      }
+
+      const dailySystemPrompt = `Du är en senior finansjournalist som varje morgon skriver en kort och slagkraftig marknadsbrief för svenska sparare. Svara alltid på naturlig svenska.
+
+Svara endast med giltigt JSON i följande format:
+{
+  "headline": "Kort rubrik (max 80 tecken)",
+  "summary": "Två meningar som sammanfattar dagens marknad", 
+  "bullets": ["Faktapunkt 1", "Faktapunkt 2", "Faktapunkt 3"],
+  "cta": { "label": "${DAILY_BRIEF_DEFAULT_CTA.label}", "url": "${DAILY_BRIEF_DEFAULT_CTA.url}" },
+  "sources": [{ "title": "Källa", "url": "https://..." }]
+}
+
+REGLER:
+- Håll dig till 3–4 bullets, varje punkt ska vara max 140 tecken.
+- Lyft händelser från det senaste dygnet och koppla minst en punkt till portföljens största innehav.
+- Om realtidsdata med källor finns, återanvänd deras URL:er i sources.
+- Sammanfattningen ska vara konkret och ange varför det är viktigt idag.
+- Inga extra texter utanför JSON.`;
+
+      const userContextLines = [`Fokusera på vad investeraren bör veta idag och hur marknadsläget påverkar deras portfölj.`];
+      if (briefContext.length > 0) {
+        userContextLines.push(`Portföljfakta: ${briefContext.join(' | ')}`);
+      }
+      if (tavilyContext) {
+        userContextLines.push(`Realtidsunderlag från sökning:\n${tavilyContext}`);
+      }
+
+      const dailyUserPrompt = userContextLines.join('\n\n');
+
+      const dailyResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: dailySystemPrompt },
+            { role: 'user', content: dailyUserPrompt },
+          ],
+          temperature: 0.5,
+          max_tokens: 600,
+        }),
+      });
+
+      if (!dailyResponse.ok) {
+        const errorBody = await dailyResponse.text();
+        console.error('OpenAI daily brief error:', errorBody);
+        throw new Error(`OpenAI daily brief error: ${dailyResponse.status}`);
+      }
+
+      const dailyData = await dailyResponse.json();
+      const aiContent = dailyData?.choices?.[0]?.message?.content ?? '';
+      const parsedBrief = parseDailyBriefContent(aiContent);
+
+      const headlineCandidate = parsedBrief['headline'] as unknown;
+      const summaryCandidate = parsedBrief['summary'] as unknown;
+      const bulletsCandidate = parsedBrief['bullets'] as unknown;
+      const ctaCandidate = parsedBrief['cta'] as unknown;
+      const sourcesCandidate = parsedBrief['sources'] as unknown;
+
+      const headline = typeof headlineCandidate === 'string' && headlineCandidate.trim().length > 0
+        ? headlineCandidate.trim()
+        : 'Detta bör du veta idag';
+      const summary = typeof summaryCandidate === 'string' ? summaryCandidate.trim() : '';
+      const bullets = sanitizeDailyBriefBullets(bulletsCandidate);
+      const rawCtaLabel = typeof (ctaCandidate as { label?: string })?.label === 'string'
+        ? (ctaCandidate as { label: string }).label.trim()
+        : '';
+      const rawCtaUrl = typeof (ctaCandidate as { url?: string })?.url === 'string'
+        ? (ctaCandidate as { url: string }).url.trim()
+        : '';
+      const ctaLabel = rawCtaLabel.length > 0 ? rawCtaLabel : DAILY_BRIEF_DEFAULT_CTA.label;
+      const ctaUrl = rawCtaUrl.length > 0 ? rawCtaUrl : DAILY_BRIEF_DEFAULT_CTA.url;
+      const sources = sanitizeDailyBriefSources(sourcesCandidate);
+
+      return new Response(
+        JSON.stringify({
+          response: {
+            headline,
+            summary,
+            bullets,
+            cta: {
+              label: ctaLabel,
+              url: ctaUrl,
+            },
+            sources,
+            generatedAt: new Date().toISOString(),
+          },
+          tavilyContext,
+          success: true,
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      );
     }
 
     // AI Memory update function

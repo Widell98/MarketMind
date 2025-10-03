@@ -6,13 +6,7 @@ import { useUserHoldings } from './useUserHoldings';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { getNormalizedValue } from '@/utils/currencyUtils';
-
-interface AIInsight {
-  title: string;
-  message: string;
-  type: 'performance' | 'allocation' | 'risk' | 'opportunity';
-  confidence: number;
-}
+import { AIInsight, parsePortfolioAIResponse } from './utils/aiInsights';
 
 export const useAIInsights = () => {
   const [insights, setInsights] = useState<AIInsight[]>([]);
@@ -98,7 +92,7 @@ export const useAIInsights = () => {
 
       // Parse AI response into structured insights
       const aiResponse = data.response;
-      const parsedInsights = parseAIResponse(aiResponse);
+      const parsedInsights = parsePortfolioAIResponse(aiResponse);
       
       setInsights(parsedInsights);
       setLastUpdated(new Date());
@@ -121,43 +115,6 @@ export const useAIInsights = () => {
     const weights = holdings.map(h => getNormalizedValue(h) / totalValue);
     const herfindahl = weights.reduce((sum, w) => sum + w * w, 0);
     return 1 - herfindahl; // Higher = more diversified
-  };
-
-  const parseAIResponse = (response: string): AIInsight[] => {
-    const insights: AIInsight[] = [];
-    const lines = response.split('\n').filter(line => line.trim());
-    
-    let currentInsight: Partial<AIInsight> = {};
-    
-    for (const line of lines) {
-      if (line.includes('Insikt:') || line.includes('Rekommendation:') || line.includes('•')) {
-        if (currentInsight.message) {
-          insights.push({
-            title: currentInsight.title || 'AI-insikt',
-            message: currentInsight.message,
-            type: 'opportunity',
-            confidence: 0.85
-          });
-        }
-        currentInsight = {
-          title: 'AI-insikt',
-          message: line.replace(/^[•-]\s*/, '').replace(/Insikt:\s*/, '').replace(/Rekommendation:\s*/, '')
-        };
-      } else if (currentInsight.message && line.trim()) {
-        currentInsight.message += ' ' + line.trim();
-      }
-    }
-    
-    if (currentInsight.message) {
-      insights.push({
-        title: currentInsight.title || 'AI-insikt',
-        message: currentInsight.message,
-        type: 'opportunity',
-        confidence: 0.85
-      });
-    }
-
-    return insights.slice(0, 3); // Max 3 insights
   };
 
   const generateFallbackInsights = (): AIInsight[] => {

@@ -305,6 +305,57 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_ai_briefs: {
+        Row: {
+          created_at: string
+          cta_url: string | null
+          headline: string
+          highlights: Json | null
+          id: string
+          portfolio_id: string
+          summary: string | null
+          tavily_results: Json | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          cta_url?: string | null
+          headline: string
+          highlights?: Json | null
+          id?: string
+          portfolio_id: string
+          summary?: string | null
+          tavily_results?: Json | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          cta_url?: string | null
+          headline?: string
+          highlights?: Json | null
+          id?: string
+          portfolio_id?: string
+          summary?: string | null
+          tavily_results?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_ai_briefs_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "user_portfolios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_ai_briefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_calendar_cache: {
         Row: {
           cache_key: string

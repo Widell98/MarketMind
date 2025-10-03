@@ -36,6 +36,7 @@ import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAIInsights } from '@/hooks/useAIInsights';
+import { useDailyAIBrief } from '@/hooks/useDailyAIBrief';
 import { useFinancialProgress } from '@/hooks/useFinancialProgress';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -95,6 +96,12 @@ const Index = () => {
     lastUpdated: insightsLastUpdated,
     refreshInsights,
   } = useAIInsights();
+  const {
+    brief: dailyBrief,
+    isLoading: dailyBriefLoading,
+    error: dailyBriefError,
+    refresh: refreshDailyBrief,
+  } = useDailyAIBrief();
   const progressData = useFinancialProgress();
   const hasPortfolio = !loading && !!activePortfolio;
   const totalPortfolioValue = performance.totalPortfolioValue;
@@ -171,6 +178,29 @@ const Index = () => {
       });
     }
   }, [insightsLastUpdated]);
+
+  const dailyBriefUpdatedLabel = React.useMemo(() => {
+    if (!dailyBrief?.createdAt) {
+      return null;
+    }
+
+    try {
+      return new Intl.DateTimeFormat('sv-SE', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(dailyBrief.createdAt);
+    } catch {
+      return dailyBrief.createdAt.toLocaleTimeString('sv-SE', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    }
+  }, [dailyBrief?.createdAt]);
+
+  const isDailyBriefExternalCTA = React.useMemo(() => {
+    if (!dailyBrief?.ctaUrl) return false;
+    return /^https?:\/\//i.test(dailyBrief.ctaUrl);
+  }, [dailyBrief?.ctaUrl]);
   return <Layout>
       <div className="min-h-0 bg-background">
         <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-8 lg:py-12">
@@ -290,6 +320,96 @@ const Index = () => {
                       </div>
                     </div>
                   </div>
+
+                  <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex flex-1 items-start gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary sm:h-12 sm:w-12">
+                          <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />
+                        </div>
+                        <div className="space-y-1">
+                          <h2 className="text-base font-semibold text-foreground sm:text-lg">Detta bör du veta idag</h2>
+                          <p className="text-sm text-muted-foreground sm:text-base">Din AI-kuraterade morgonbrief.</p>
+                          {dailyBriefUpdatedLabel && <span className="block text-xs text-muted-foreground/80 sm:text-sm">Uppdaterad {dailyBriefUpdatedLabel}</span>}
+                        </div>
+                      </div>
+                      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={refreshDailyBrief}
+                          disabled={dailyBriefLoading}
+                          className="w-full justify-center sm:w-auto"
+                        >
+                          <RefreshCw className={`mr-2 h-4 w-4 ${dailyBriefLoading ? 'animate-spin' : ''}`} />
+                          {dailyBriefLoading ? 'Uppdaterar...' : 'Uppdatera'}
+                        </Button>
+                        {dailyBrief?.ctaUrl && (
+                          <Button asChild size="sm" className="w-full justify-center bg-primary hover:bg-primary/90 sm:w-auto">
+                            {isDailyBriefExternalCTA ? (
+                              <a href={dailyBrief.ctaUrl} target="_blank" rel="noopener noreferrer" className="flex items-center">
+                                <ArrowUpRight className="mr-2 h-4 w-4" />
+                                {dailyBrief.ctaLabel}
+                              </a>
+                            ) : (
+                              <Link to={dailyBrief.ctaUrl} className="flex items-center">
+                                <ArrowUpRight className="mr-2 h-4 w-4" />
+                                {dailyBrief.ctaLabel}
+                              </Link>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-4 space-y-4">
+                      {dailyBriefLoading && !dailyBrief ? (
+                        <div className="space-y-3">
+                          <div className="h-4 w-2/3 rounded bg-muted animate-pulse" />
+                          <div className="h-3 w-full rounded bg-muted animate-pulse" />
+                          <div className="h-3 w-5/6 rounded bg-muted animate-pulse" />
+                        </div>
+                      ) : dailyBriefError ? (
+                        <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
+                          {dailyBriefError}
+                        </div>
+                      ) : dailyBrief ? (
+                        <div className="space-y-4">
+                          {dailyBrief.summary && <p className="text-sm leading-relaxed text-muted-foreground">{dailyBrief.summary}</p>}
+                          {dailyBrief.bullets.length > 0 && (
+                            <ul className="space-y-2">
+                              {dailyBrief.bullets.map((bullet, index) => (
+                                <li key={`${bullet}-${index}`} className="flex items-start gap-2 text-sm text-muted-foreground">
+                                  <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary/60" />
+                                  <span>{bullet}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {dailyBrief.sources.length > 0 && (
+                            <div className="flex flex-wrap gap-2 pt-2">
+                              {dailyBrief.sources.map((source, index) => (
+                                <a
+                                  key={`${source.url}-${index}`}
+                                  href={source.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 rounded-full border border-border/50 px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                                >
+                                  <ArrowUpRight className="h-3 w-3" />
+                                  <span>{source.title}</span>
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
+                          Ingen AI-brief har sparats ännu. Kom tillbaka senare i dag för en uppdatering.
+                        </div>
+                      )}
+                    </div>
+                  </section>
 
                   <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
