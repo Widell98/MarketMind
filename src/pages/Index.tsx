@@ -36,6 +36,7 @@ import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAIInsights } from '@/hooks/useAIInsights';
+import { useDailySentimentCheck } from '@/hooks/useDailySentimentCheck';
 import { useFinancialProgress } from '@/hooks/useFinancialProgress';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -95,6 +96,13 @@ const Index = () => {
     lastUpdated: insightsLastUpdated,
     refreshInsights,
   } = useAIInsights();
+  const {
+    data: sentimentData,
+    isLoading: sentimentLoading,
+    isFetching: sentimentFetching,
+    refetch: refetchSentiment,
+    error: sentimentError,
+  } = useDailySentimentCheck(!!user);
   const progressData = useFinancialProgress();
   const hasPortfolio = !loading && !!activePortfolio;
   const totalPortfolioValue = performance.totalPortfolioValue;
@@ -102,6 +110,48 @@ const Index = () => {
   const holdingsCount = actualHoldings?.length ?? 0;
   const safeTotalPortfolioValue = typeof totalPortfolioValue === 'number' && Number.isFinite(totalPortfolioValue) ? totalPortfolioValue : 0;
   const safeTotalCash = typeof totalCash === 'number' && Number.isFinite(totalCash) ? totalCash : 0;
+  const sentimentResults = sentimentData?.results ?? [];
+  const sentimentGeneratedAt = React.useMemo(() => {
+    if (!sentimentData?.generated_at) {
+      return null;
+    }
+
+    const parsed = new Date(sentimentData.generated_at);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }, [sentimentData?.generated_at]);
+  const sentimentUpdatedLabel = React.useMemo(() => {
+    if (!sentimentGeneratedAt) {
+      return null;
+    }
+
+    try {
+      return new Intl.DateTimeFormat('sv-SE', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(sentimentGeneratedAt);
+    } catch {
+      return sentimentGeneratedAt.toLocaleTimeString('sv-SE', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    }
+  }, [sentimentGeneratedAt]);
+  const sentimentErrorMessage = React.useMemo(() => {
+    if (!sentimentError) {
+      return null;
+    }
+
+    if (sentimentError instanceof Error) {
+      return sentimentError.message;
+    }
+
+    if (typeof sentimentError === 'string') {
+      return sentimentError;
+    }
+
+    return 'Kunde inte hämta marknadspulsen just nu.';
+  }, [sentimentError]);
+  const isRefreshingSentiment = sentimentFetching && !sentimentLoading;
 
   const summaryCards = React.useMemo<SummaryCard[]>(() => [
     {
@@ -180,9 +230,9 @@ const Index = () => {
               {/* Hero Content */}
               <div className="max-w-4xl mx-auto mb-16">
                 <div className="mb-6">
-                  
+
                 </div>
-                
+
                 <h1 className="text-5xl sm:text-6xl lg:text-7xl font-medium text-foreground mb-8 leading-tight tracking-tight">
                   {t('hero.title1')}
                   <br />
@@ -251,9 +301,110 @@ const Index = () => {
             {/* Clean Examples Section */}
               
 
-              {/* Final CTA - Apple style */}
-              
-            </div>}
+            {/* Final CTA - Apple style */}
+
+          </div>}
+
+          {user && <section className="mb-8 rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:mb-10 sm:p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary sm:h-12 sm:w-12">
+                    <Zap className="h-5 w-5 sm:h-6 sm:w-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-foreground sm:text-lg">Daglig marknadspuls</h2>
+                    <p className="text-sm text-muted-foreground sm:text-base">Stora kursrörelser och AI-analys från senaste timmen.</p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                  {sentimentUpdatedLabel && <span className="text-xs text-muted-foreground sm:text-sm">Senast uppdaterad {sentimentUpdatedLabel}</span>}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refetchSentiment()}
+                    disabled={sentimentLoading || isRefreshingSentiment}
+                    className="w-full justify-center sm:w-auto"
+                  >
+                    <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshingSentiment ? 'animate-spin' : ''}`} />
+                    {sentimentLoading || isRefreshingSentiment ? 'Hämtar...' : 'Uppdatera'}
+                  </Button>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+                {sentimentLoading && sentimentResults.length === 0 ? (
+                  Array.from({ length: 3 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="animate-pulse rounded-2xl border border-border/60 bg-muted/20 p-4 shadow-sm sm:p-5"
+                    >
+                      <div className="h-5 w-24 rounded-full bg-muted" />
+                      <div className="mt-4 h-4 w-full rounded bg-muted" />
+                      <div className="mt-2 h-3 w-3/4 rounded bg-muted" />
+                      <div className="mt-2 h-3 w-1/2 rounded bg-muted" />
+                    </div>
+                  ))
+                ) : sentimentErrorMessage ? (
+                  <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground sm:p-6">
+                    <p>{sentimentErrorMessage}</p>
+                    <p className="mt-2">Försök igen om en liten stund.</p>
+                  </div>
+                ) : sentimentResults.length > 0 ? (
+                  sentimentResults.map((insight) => {
+                    const normalizedChange = insight.change || '';
+                    const changeValue = parseFloat(normalizedChange.replace('%', '').replace('+', '').replace(',', '.'));
+                    const isPositive = Number.isFinite(changeValue)
+                      ? changeValue >= 0
+                      : normalizedChange.trim().startsWith('+');
+                    const changeClassName = isPositive
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-rose-500/10 text-rose-600 dark:text-rose-400';
+
+                    return (
+                      <div
+                        key={insight.symbol}
+                        className="flex h-full flex-col rounded-2xl border border-border/60 bg-background/80 p-4 shadow-sm sm:p-5"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground sm:text-base">
+                              {insight.name} <span className="text-muted-foreground">({insight.symbol})</span>
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {insight.summary || 'Ingen sammanfattning tillgänglig.'}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className={`border-transparent ${changeClassName}`}>
+                            {normalizedChange || '—'}
+                          </Badge>
+                        </div>
+                        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                          {insight.ai_insight || 'Ingen AI-analys tillgänglig just nu.'}
+                        </p>
+                        {insight.follow_up.length > 0 && (
+                          <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+                            {insight.follow_up.map((item) => (
+                              <li key={item} className="flex items-start gap-2">
+                                <CheckCircle className="mt-0.5 h-4 w-4 text-primary" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground sm:p-6">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      <span>Inga större kursrörelser just nu.</span>
+                    </div>
+                    <p className="mt-2">Vi meddelar dig så snart något intressant händer.</p>
+                  </div>
+                )}
+              </div>
+            </section>}
 
           {/* Clean Dashboard for logged-in users */}
           {user && hasPortfolio && <div className="min-h-0 bg-background">
