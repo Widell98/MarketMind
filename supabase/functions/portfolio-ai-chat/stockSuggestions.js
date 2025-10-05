@@ -1,6 +1,10 @@
 /**
- * @typedef {{name: string, ticker: string, reason?: string}} StockSuggestion
+ * @typedef {{name?: string, symbol: string, reason?: string}} StockSuggestion
  */
+
+const SYMBOL_KEYS = ['symbol', 'ticker'];
+const NAME_KEYS = ['name'];
+const REASON_KEYS = ['reason'];
 
 /**
  * Ensure Aktieförslag line contains only tickers mentioned by AI
@@ -21,37 +25,148 @@ export const ensureStockSuggestions = async (supabase, userMessage, aiMessage) =
     return tickers;
   };
 
+  const extractSuggestionsSection = (text) => {
+    const marker = 'Aktieförslag:';
+    const start = text.indexOf(marker);
+    if (start === -1) {
+      return null;
+    }
+
+    let index = start + marker.length;
+    while (index < text.length && /\s/.test(text[index])) {
+      index += 1;
+    }
+
+    if (index >= text.length || text[index] !== '[') {
+      return null;
+    }
+
+    const jsonStart = index;
+    let depth = 0;
+    let inString = false;
+    let escaping = false;
+
+    for (; index < text.length; index += 1) {
+      const char = text[index];
+
+      if (inString) {
+        if (escaping) {
+          escaping = false;
+          continue;
+        }
+
+        if (char === '\\') {
+          escaping = true;
+          continue;
+        }
+
+        if (char === '"') {
+          inString = false;
+        }
+
+        continue;
+      }
+
+      if (char === '"') {
+        inString = true;
+        continue;
+      }
+
+      if (char === '[') {
+        depth += 1;
+      } else if (char === ']') {
+        depth -= 1;
+        if (depth === 0) {
+          return {
+            start,
+            end: index + 1,
+            jsonText: text.slice(jsonStart, index + 1),
+          };
+        }
+      }
+    }
+
+    return null;
+  };
+
   const userTickers = extractTickers(userMessage);
-  const suggestionsMatch = aiMessage.match(/Aktieförslag:\s*(\[[^\]]*\])/);
+  const suggestionsSection = extractSuggestionsSection(aiMessage);
+  const applyLine = (line) =>
+    suggestionsSection
+      ? `${aiMessage.slice(0, suggestionsSection.start)}${line}${aiMessage.slice(
+          suggestionsSection.end
+        )}`
+      : `${aiMessage.trim()}\n\n${line}`;
   let suggestions = [];
-  if (suggestionsMatch) {
+  if (suggestionsSection) {
     try {
-      suggestions = JSON.parse(suggestionsMatch[1]);
+      suggestions = JSON.parse(suggestionsSection.jsonText);
     } catch {
       suggestions = [];
     }
   }
 
-  const messageWithoutSuggestions = suggestionsMatch
-    ? aiMessage.replace(suggestionsMatch[0], '')
+  const normaliseSuggestion = (value) => {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+
+    const findField = (targets) => {
+      for (const key of Object.keys(value)) {
+        if (targets.includes(key.toLowerCase())) {
+          const fieldValue = value[key];
+          if (typeof fieldValue === 'string') {
+            const trimmed = fieldValue.trim();
+            if (trimmed) {
+              return trimmed;
+            }
+          }
+        }
+      }
+
+      return null;
+    };
+
+    const symbol = findField(SYMBOL_KEYS);
+
+    if (!symbol) {
+      return null;
+    }
+
+    const name = findField(NAME_KEYS);
+    const reason = findField(REASON_KEYS);
+
+    return {
+      symbol: symbol.toUpperCase(),
+      ...(name ? { name } : {}),
+      ...(reason ? { reason } : {}),
+    };
+  };
+
+  suggestions = suggestions
+    .map(normaliseSuggestion)
+    .filter((suggestion) => suggestion !== null);
+
+  const messageWithoutSuggestions = suggestionsSection
+    ? `${aiMessage.slice(0, suggestionsSection.start)}${aiMessage.slice(
+        suggestionsSection.end
+      )}`
     : aiMessage;
   const aiTickers = extractTickers(messageWithoutSuggestions);
 
   suggestions = suggestions.filter(
-    (s) => aiTickers.has(s.ticker) || !userTickers.has(s.ticker)
+    (s) => aiTickers.has(s.symbol) || !userTickers.has(s.symbol)
   );
 
   const candidateTickers = new Set([
     ...aiTickers,
-    ...suggestions.map((s) => s.ticker),
+    ...suggestions.map((s) => s.symbol),
   ]);
 
   if (candidateTickers.size === 0) {
     const line = 'Aktieförslag: []';
     return {
-      message: suggestionsMatch
-        ? aiMessage.replace(suggestionsMatch[0], line)
-        : `${aiMessage.trim()}\n\n${line}`,
+      message: applyLine(line),
       suggestions: [],
     };
   }
@@ -71,33 +186,42 @@ export const ensureStockSuggestions = async (supabase, userMessage, aiMessage) =
     }
   }
 
-  suggestions = suggestions.filter((s) => validTickers.has(s.ticker));
+  suggestions = suggestions.filter((s) => validTickers.has(s.symbol));
 
   if (validTickers.size === 0) {
     const line = 'Aktieförslag: []';
     return {
-      message: suggestionsMatch
-        ? aiMessage.replace(suggestionsMatch[0], line)
-        : `${aiMessage.trim()}\n\n${line}`,
+      message: applyLine(line),
       suggestions: [],
     };
   }
 
-  const finalSuggestions = Array.from(validTickers).map((t) => {
-    const existing = suggestions.find((s) => s.ticker === t);
-    return (
-      existing || {
-        name: nameMap.get(t) || t,
-        ticker: t,
-        reason: existing?.reason || '',
-      }
-    );
-  });
+  const suggestionMap = new Map(
+    suggestions.map((suggestion) => [suggestion.symbol, suggestion])
+  );
+
+  const finalSuggestions = [];
+
+  for (const ticker of candidateTickers) {
+    if (!validTickers.has(ticker)) {
+      continue;
+    }
+
+    const existing = suggestionMap.get(ticker);
+    const name =
+      existing && Object.prototype.hasOwnProperty.call(existing, 'name')
+        ? existing.name
+        : nameMap.get(ticker) || ticker;
+    const reason =
+      existing && Object.prototype.hasOwnProperty.call(existing, 'reason')
+        ? existing.reason
+        : '';
+
+    finalSuggestions.push({ symbol: ticker, name, reason });
+  }
 
   const line = `Aktieförslag: ${JSON.stringify(finalSuggestions)}`;
-  const newMessage = suggestionsMatch
-    ? aiMessage.replace(suggestionsMatch[0], line)
-    : `${aiMessage.trim()}\n\n${line}`;
+  const newMessage = applyLine(line);
 
   return { message: newMessage, suggestions: finalSuggestions };
 };
