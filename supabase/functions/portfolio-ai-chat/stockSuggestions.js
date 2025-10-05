@@ -5,6 +5,54 @@
 const SYMBOL_KEYS = ['symbol', 'ticker'];
 const NAME_KEYS = ['name'];
 const REASON_KEYS = ['reason'];
+const INLINE_REASON_PATTERN = /^[\s]*[-–—:]\s*(.+)$/;
+
+function extractInlineSuggestions(text) {
+  const result = new Map();
+  const lines = text.split(/\r?\n/);
+  const regex = /([\p{L}0-9][^()\n]{0,120}?)[ \t]*\(([A-Z0-9]{1,5}(?:[.-][A-Z0-9]{1,2})?)\)/gu;
+
+  for (const rawLine of lines) {
+    const trimmed = rawLine.trim();
+    if (!trimmed) {
+      continue;
+    }
+
+    const line = trimmed.replace(/^[-*•]\s+/, '').trim();
+
+    let match;
+    while ((match = regex.exec(line)) !== null) {
+      const name = match[1].trim().replace(/[-–—,:;]+$/, '').trim();
+      const symbol = match[2].toUpperCase();
+      if (!name) {
+        continue;
+      }
+
+      const remainder = line.slice(match.index + match[0].length);
+      let reason = '';
+      const reasonMatch = remainder.match(INLINE_REASON_PATTERN);
+      if (reasonMatch && reasonMatch[1]) {
+        reason = reasonMatch[1].trim();
+      }
+
+      const payload = {};
+      if (name) {
+        payload.name = name;
+      }
+      if (reason) {
+        payload.reason = reason;
+      }
+
+      if (Object.keys(payload).length > 0) {
+        result.set(symbol, payload);
+      } else {
+        result.set(symbol, {});
+      }
+    }
+  }
+
+  return result;
+}
 
 /**
  * Ensure Aktieförslag line contains only tickers mentioned by AI
@@ -153,6 +201,7 @@ export const ensureStockSuggestions = async (supabase, userMessage, aiMessage) =
       )}`
     : aiMessage;
   const aiTickers = extractTickers(messageWithoutSuggestions);
+  const inlineSuggestions = extractInlineSuggestions(messageWithoutSuggestions);
 
   suggestions = suggestions.filter(
     (s) => aiTickers.has(s.symbol) || !userTickers.has(s.symbol)
@@ -162,6 +211,10 @@ export const ensureStockSuggestions = async (supabase, userMessage, aiMessage) =
     ...aiTickers,
     ...suggestions.map((s) => s.symbol),
   ]);
+
+  for (const symbol of inlineSuggestions.keys()) {
+    candidateTickers.add(symbol);
+  }
 
   if (candidateTickers.size === 0) {
     const line = 'Aktieförslag: []';
@@ -208,14 +261,24 @@ export const ensureStockSuggestions = async (supabase, userMessage, aiMessage) =
     }
 
     const existing = suggestionMap.get(ticker);
-    const name =
-      existing && Object.prototype.hasOwnProperty.call(existing, 'name')
-        ? existing.name
-        : nameMap.get(ticker) || ticker;
-    const reason =
-      existing && Object.prototype.hasOwnProperty.call(existing, 'reason')
-        ? existing.reason
-        : '';
+    const inline = inlineSuggestions.get(ticker);
+    const existingHasName =
+      existing && Object.prototype.hasOwnProperty.call(existing, 'name');
+    const inlineHasName = inline && Object.prototype.hasOwnProperty.call(inline, 'name');
+    const existingHasReason =
+      existing && Object.prototype.hasOwnProperty.call(existing, 'reason');
+    const inlineHasReason = inline && Object.prototype.hasOwnProperty.call(inline, 'reason');
+
+    const name = existingHasName
+      ? existing.name
+      : inlineHasName
+      ? inline.name
+      : nameMap.get(ticker) || ticker;
+    const reason = existingHasReason
+      ? existing.reason
+      : inlineHasReason
+      ? inline.reason
+      : '';
 
     finalSuggestions.push({ symbol: ticker, name, reason });
   }

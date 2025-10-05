@@ -125,3 +125,43 @@ test('preserves symbol-based suggestions with reasons', async () => {
   assert.ok(message.includes('"reason":"Stark efterfrågan"'));
 });
 
+test('extracts inline fund mentions including name and reason', async () => {
+  const mockSupabase = {
+    from: () => ({
+      select: () => ({
+        in: (_column, values) =>
+          Promise.resolve({
+            data: values
+              .filter((symbol) => symbol === 'EEM')
+              .map((symbol) => ({ symbol, name: symbol }))
+          })
+      })
+    })
+  };
+
+  const aiMessage =
+    'iShares MSCI Emerging Markets ETF (EEM) - Ger exponering mot tillväxtmarknader, vilket kan ge diversifiering och potentiell hög avkastning.';
+
+  const { message, suggestions } = await ensureStockSuggestions(
+    mockSupabase,
+    '',
+    aiMessage
+  );
+
+  assert.deepEqual(suggestions, [
+    {
+      symbol: 'EEM',
+      name: 'iShares MSCI Emerging Markets ETF',
+      reason:
+        'Ger exponering mot tillväxtmarknader, vilket kan ge diversifiering och potentiell hög avkastning.'
+    }
+  ]);
+  assert.ok(message.includes('"symbol":"EEM"'));
+  assert.ok(message.includes('"name":"iShares MSCI Emerging Markets ETF"'));
+  assert.ok(
+    message.includes(
+      'Ger exponering mot tillväxtmarknader, vilket kan ge diversifiering och potentiell hög avkastning.'
+    )
+  );
+});
+
