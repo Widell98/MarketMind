@@ -418,6 +418,153 @@ const fetchMorningBriefNews = async (topics: string[]): Promise<TavilySearchResu
   }
 };
 
+const ENGLISH_MARKER_REGEX = /(\b|_)(the|and|for|with|company|shares|stock|expected|will|has|have|to|from|market|investors|price|growth|quarter|revenue|profit|loss|trading|announcement|guidance|outlook|update|reports?)(\b|_)/i;
+
+const containsLikelyEnglish = (value: string | undefined | null): boolean => {
+  if (!value) return false;
+
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return false;
+
+  const normalized = removeDiacritics(trimmed.toLowerCase());
+  return ENGLISH_MARKER_REGEX.test(normalized);
+};
+
+const briefNeedsTranslation = (brief: MorningBriefPayload): boolean => {
+  if (containsLikelyEnglish(brief.marketOverview)) {
+    return true;
+  }
+
+  if (Array.isArray(brief.portfolioHighlights)) {
+    for (const highlight of brief.portfolioHighlights) {
+      if (containsLikelyEnglish(highlight)) {
+        return true;
+      }
+    }
+  }
+
+  for (const item of brief.items) {
+    if (
+      containsLikelyEnglish(item.headline) ||
+      containsLikelyEnglish(item.summary) ||
+      containsLikelyEnglish(item.reflection)
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+const translateBriefToSwedish = async (
+  brief: MorningBriefPayload,
+  openAIApiKey: string,
+): Promise<MorningBriefPayload> => {
+  const translationPrompt = `Du är en professionell finansiell översättare. Du får ett JSON-objekt med ett morgonbrev.\n\n` +
+    `Översätt alla texter i JSON:et till svenska med korrekt finansterminologi. Behåll exakt samma nycklar och id:n.\n` +
+    `Svara enbart med giltig JSON i samma struktur.`;
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openAIApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      temperature: 0,
+      max_tokens: 1000,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: translationPrompt },
+        { role: 'user', content: JSON.stringify(brief) },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.warn('Kunde inte översätta morgonbrevet till svenska:', errorBody);
+    return brief;
+  }
+
+  try {
+    const json = await response.json();
+    const translatedContent = json?.choices?.[0]?.message?.content;
+    if (typeof translatedContent === 'string') {
+      const parsed = JSON.parse(translatedContent) as Record<string, unknown>;
+
+      const translatedHighlights = Array.isArray(parsed.portfolioHighlights)
+        ? (parsed.portfolioHighlights as unknown[]).map((value) => value?.toString?.().trim()).filter(Boolean) as string[]
+        : Array.isArray(parsed.portfolio_highlights)
+          ? (parsed.portfolio_highlights as unknown[]).map((value) => value?.toString?.().trim()).filter(Boolean) as string[]
+          : brief.portfolioHighlights;
+
+      const parsedItems = Array.isArray(parsed.items)
+        ? parsed.items as Array<Record<string, unknown>>
+        : [];
+
+      const translatedItems = parsedItems.length === brief.items.length
+        ? parsedItems.map((item, index) => ({
+          id: brief.items[index].id,
+          headline: typeof item.headline === 'string' && item.headline.trim().length > 0
+            ? item.headline.trim()
+            : typeof item.title === 'string' && item.title.trim().length > 0
+              ? item.title.trim()
+              : brief.items[index].headline,
+          summary: typeof item.summary === 'string' && item.summary.trim().length > 0
+            ? item.summary.trim()
+            : brief.items[index].summary,
+          reflection: typeof item.reflection === 'string' && item.reflection.trim().length > 0
+            ? item.reflection.trim()
+            : brief.items[index].reflection,
+          sourceUrl: brief.items[index].sourceUrl,
+          publishedAt: brief.items[index].publishedAt,
+        }))
+        : brief.items;
+
+      return {
+        generatedAt: typeof parsed.generatedAt === 'string' && parsed.generatedAt.trim().length > 0
+          ? parsed.generatedAt.trim()
+          : typeof parsed.generated_at === 'string' && parsed.generated_at.trim().length > 0
+            ? parsed.generated_at.trim()
+            : brief.generatedAt,
+        marketOverview: typeof parsed.marketOverview === 'string' && parsed.marketOverview.trim().length > 0
+          ? parsed.marketOverview.trim()
+          : typeof parsed.market_overview === 'string' && parsed.market_overview.trim().length > 0
+            ? parsed.market_overview.trim()
+            : brief.marketOverview,
+        portfolioHighlights: translatedHighlights,
+        items: translatedItems,
+      };
+    }
+  } catch (error) {
+    console.warn('Fel vid tolkning av översatt morgonbrev:', error);
+  }
+
+  return brief;
+};
+
+const ensureSwedishBrief = async (
+  brief: MorningBriefPayload,
+  openAIApiKey: string,
+): Promise<MorningBriefPayload> => {
+  if (!openAIApiKey) {
+    return brief;
+  }
+
+  if (!briefNeedsTranslation(brief)) {
+    return brief;
+  }
+
+  try {
+    return await translateBriefToSwedish(brief, openAIApiKey);
+  } catch (error) {
+    console.warn('Fel vid översättning till svenska:', error);
+    return brief;
+  }
+};
+
 const normalizeMorningBrief = (
   rawBrief: unknown,
   newsItems: MorningBriefNewsItem[],
@@ -478,7 +625,9 @@ const normalizeMorningBrief = (
         : relatedNews?.title ?? `Nyhet ${index + 1}`,
       summary: typeof item.summary === 'string' && item.summary.trim().length > 0
         ? item.summary.trim()
-        : relatedNews?.snippet ?? 'Ingen sammanfattning tillgänglig.',
+        : relatedNews?.title
+          ? `Ingen svensk sammanfattning tillgänglig. Läs mer i källan om "${relatedNews.title}".`
+          : 'Ingen svensk sammanfattning tillgänglig.',
       reflection: reflection
         ? reflection
         : relatedNews?.title
@@ -502,7 +651,9 @@ const normalizeMorningBrief = (
     : newsItems.slice(0, 3).map((news) => ({
       id: news.id,
       headline: news.title || 'Marknadsuppdatering',
-      summary: news.snippet || 'Ingen sammanfattning tillgänglig.',
+      summary: news.title
+        ? `Ingen svensk sammanfattning tillgänglig. Läs mer i källan om "${news.title}".`
+        : 'Ingen svensk sammanfattning tillgänglig.',
       reflection: news.title
         ? `Fundera på hur "${news.title}" kan påverka din strategi.`
         : 'Fundera på hur detta kan påverka din portfölj på kort och lång sikt.',
@@ -596,6 +747,7 @@ Struktur:
 
 Regler:
 - Håll språket på svenska och professionellt men lättillgängligt.
+- Översätt rubriker, sammanfattningar, marknadsöversikt och reflektioner till svenska även om originalkällan är på ett annat språk.
 - Fokusera på vad som har hänt i varje nyhet och varför det är relevant för användarens portfölj, minst två meningar per sammanfattning.
 - Lyft hur nyheten kan påverka användarens portfölj eller marknadsposition.
 - Använd fältet "reflection" för en kort personlig reflektion (1–2 meningar) som hjälper användaren att fundera vidare, utan uppmaningar till handling.
@@ -654,10 +806,11 @@ Regler:
   }
 
   const brief = normalizeMorningBrief(parsedBrief, newsItems, snapshot);
+  const localizedBrief = await ensureSwedishBrief(brief, openAIApiKey);
 
   return {
     success: true,
-    brief,
+    brief: localizedBrief,
     news: newsItems,
     portfolioSnapshot: snapshot,
   };

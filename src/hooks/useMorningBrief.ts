@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
 const STORAGE_PREFIX = 'marketmind:morning-brief:';
+const STORAGE_VERSION = 2;
 
 const getStorageKey = (userId: string) => `${STORAGE_PREFIX}${userId}`;
 
@@ -137,7 +138,7 @@ export const useMorningBrief = () => {
 
     try {
       const storageKey = getStorageKey(userId);
-      window.localStorage.setItem(storageKey, JSON.stringify({ brief: data }));
+      window.localStorage.setItem(storageKey, JSON.stringify({ version: STORAGE_VERSION, brief: data }));
     } catch (storageError) {
       console.warn('Kunde inte spara morgonbrevet i cache:', storageError);
     }
@@ -151,8 +152,8 @@ export const useMorningBrief = () => {
       const cachedRaw = window.localStorage.getItem(storageKey);
       if (!cachedRaw) return null;
 
-      const cached = JSON.parse(cachedRaw) as { brief?: MorningBriefData } | null;
-      if (cached?.brief) {
+      const cached = JSON.parse(cachedRaw) as { version?: number; brief?: MorningBriefData } | null;
+      if (cached?.version === STORAGE_VERSION && cached?.brief) {
         return cached.brief;
       }
     } catch (storageError) {
