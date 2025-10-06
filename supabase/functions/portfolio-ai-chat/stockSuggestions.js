@@ -6,6 +6,129 @@ const SYMBOL_KEYS = ['symbol', 'ticker'];
 const NAME_KEYS = ['name'];
 const REASON_KEYS = ['reason'];
 const INLINE_REASON_PATTERN = /^[\s]*[-–—:]\s*(.+)$/;
+const FUND_NAME_PATTERN = /([A-Za-zÅÄÖåäö0-9&'’\-]+(?:\s+[A-Za-zÅÄÖåäö0-9&'’\-]+)+\s+(?:ETF|fonden))\b/gu;
+
+function extractFundMentionsWithoutTicker(text) {
+  const paragraphs = text.split(/\n{2,}/);
+  const mentions = [];
+  const seen = new Set();
+
+  for (const paragraph of paragraphs) {
+    const trimmedParagraph = paragraph.trim();
+    if (!trimmedParagraph) {
+      continue;
+    }
+
+    let match;
+    while ((match = FUND_NAME_PATTERN.exec(trimmedParagraph)) !== null) {
+      const rawName = match[1].trim().replace(/[,:;\-–—]+$/, '').trim();
+      if (!rawName) {
+        continue;
+      }
+
+      const afterMatch = trimmedParagraph.slice(
+        match.index + match[1].length
+      );
+
+      if (afterMatch.trim().startsWith('(')) {
+        continue;
+      }
+
+      const words = rawName.split(/\s+/).filter(Boolean);
+      if (words.length < 3) {
+        continue;
+      }
+
+      const suffix = words[words.length - 1];
+      if (!suffix) {
+        continue;
+      }
+
+      const coreWords = words.slice(0, -1);
+      const trimmedCoreWords = coreWords.slice();
+      while (
+        trimmedCoreWords.length > 0 &&
+        trimmedCoreWords[0] === trimmedCoreWords[0].toLowerCase()
+      ) {
+        trimmedCoreWords.shift();
+      }
+
+      if (trimmedCoreWords.length < 2) {
+        continue;
+      }
+
+      const hasUppercaseWord = trimmedCoreWords.some((word) =>
+        /[A-ZÅÄÖ]/.test(word)
+      );
+      if (!hasUppercaseWord) {
+        continue;
+      }
+
+      const normalisedName = `${trimmedCoreWords.join(' ')} ${suffix}`.trim();
+
+      const key = normalisedName.toLowerCase();
+      if (seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+
+      let reason = '';
+      const reasonMatch = afterMatch.match(INLINE_REASON_PATTERN);
+      if (reasonMatch && reasonMatch[1]) {
+        reason = reasonMatch[1].trim();
+      } else {
+        const fallback = afterMatch
+          .trim()
+          .replace(/^[\s]*[.,;:–—-]+\s*/, '');
+        if (fallback) {
+          const sentenceMatch = fallback.match(
+            /^(.+?)(?:(?<=[.!?])\s+|$)/u
+          );
+          reason = (sentenceMatch ? sentenceMatch[1] : fallback).trim();
+        }
+      }
+
+      mentions.push({ name: normalisedName, reason });
+    }
+  }
+
+  return mentions;
+}
+
+const escapeForILike = (value) => value.replace(/[%_\\]/g, (match) => `\\${match}`);
+
+async function resolveFundMentionsWithoutTickers(supabase, text) {
+  const mentions = extractFundMentionsWithoutTicker(text);
+  const resolved = [];
+
+  for (const mention of mentions) {
+    const pattern = `%${escapeForILike(mention.name)}%`;
+    const { data } = await supabase
+      .from('stock_symbols')
+      .select('symbol,name')
+      .ilike('name', pattern);
+
+    if (data && data.length === 1) {
+      const symbol = data[0].symbol.toUpperCase();
+      const inline = {};
+      if (mention.name) {
+        inline.name = mention.name;
+      }
+      if (mention.reason) {
+        inline.reason = mention.reason;
+      }
+
+      resolved.push({
+        symbol,
+        supabaseName: data[0].name,
+        inline,
+      });
+    }
+  }
+
+  return resolved;
+}
 
 function extractInlineSuggestions(text) {
   const result = new Map();
@@ -220,6 +343,32 @@ export const ensureStockSuggestions = async (supabase, userMessage, aiMessage) =
     : aiMessage;
   const aiTickers = extractTickers(messageWithoutSuggestions);
   const inlineSuggestions = extractInlineSuggestions(messageWithoutSuggestions);
+  const resolvedFundSuggestions = await resolveFundMentionsWithoutTickers(
+    supabase,
+    messageWithoutSuggestions
+  );
+
+  for (const { symbol, inline } of resolvedFundSuggestions) {
+    if (inlineSuggestions.has(symbol)) {
+      const existing = inlineSuggestions.get(symbol);
+      const merged = { ...existing };
+      if (
+        inline.name &&
+        !Object.prototype.hasOwnProperty.call(existing, 'name')
+      ) {
+        merged.name = inline.name;
+      }
+      if (
+        inline.reason &&
+        !Object.prototype.hasOwnProperty.call(existing, 'reason')
+      ) {
+        merged.reason = inline.reason;
+      }
+      inlineSuggestions.set(symbol, merged);
+    } else {
+      inlineSuggestions.set(symbol, inline);
+    }
+  }
 
   suggestions = suggestions.filter(
     (s) => aiTickers.has(s.symbol) || !userTickers.has(s.symbol)
@@ -228,6 +377,7 @@ export const ensureStockSuggestions = async (supabase, userMessage, aiMessage) =
   const candidateTickers = new Set([
     ...aiTickers,
     ...suggestions.map((s) => s.symbol),
+    ...resolvedFundSuggestions.map((item) => item.symbol),
   ]);
 
   for (const symbol of inlineSuggestions.keys()) {
@@ -247,8 +397,13 @@ export const ensureStockSuggestions = async (supabase, userMessage, aiMessage) =
     .select('symbol,name')
     .in('symbol', Array.from(candidateTickers));
 
-  const nameMap = new Map();
-  const validTickers = new Set();
+  const nameMap = new Map(
+    resolvedFundSuggestions.map((item) => [item.symbol, item.supabaseName])
+  );
+  const validTickers = new Set(
+    resolvedFundSuggestions.map((item) => item.symbol)
+  );
+
   if (data) {
     for (const row of data) {
       const symbol = row.symbol.toUpperCase();

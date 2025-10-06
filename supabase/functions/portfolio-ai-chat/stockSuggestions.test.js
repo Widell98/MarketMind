@@ -201,3 +201,75 @@ test('falls back to inline suggestions when Supabase returns no matches', async 
   );
 });
 
+test('resolves fund mentions without explicit tickers via name lookup', async () => {
+  const ilikeCalls = [];
+  const mockSupabase = {
+    from: () => ({
+      select: () => ({
+        ilike: (column, pattern) => {
+          ilikeCalls.push({ column, pattern });
+          if (pattern === '%iShares Diversified Commodity Swap UCITS ETF%') {
+            return Promise.resolve({
+              data: [
+                {
+                  symbol: 'ICOM',
+                  name: 'iShares Diversified Commodity Swap UCITS ETF'
+                }
+              ]
+            });
+          }
+
+          return Promise.resolve({ data: [] });
+        },
+        in: (_column, values) =>
+          Promise.resolve({
+            data: values
+              .filter((symbol) => symbol === 'GLD' || symbol === 'ICOM')
+              .map((symbol) => ({
+                symbol,
+                name:
+                  symbol === 'GLD'
+                    ? 'SPDR Gold Shares ETF'
+                    : 'iShares Diversified Commodity Swap UCITS ETF'
+              }))
+          })
+      })
+    })
+  };
+
+  const aiMessage =
+    'Rekommendation 🌟\n\n' +
+    'Ett alternativ för exponering mot råvaror, med fokus på en låg avgift, är fonden SPDR Gold Shares ETF (GLD). Denna fond investerar i fysiskt guld och erbjuder en kostnadseffektiv struktur för investerare som vill äga guld som en del av sin portfölj, vilket kan fungera som en hedge mot inflation och valutafluktuationer.\n\n' +
+    'Utöver guld kan det också vara intressant att titta på bredare råvarufonder som inkluderar olika metaller, jordbruksprodukter och energiresurser, exempelvis iShares Diversified Commodity Swap UCITS ETF. Dessa fonder erbjuder en mer allsidig exponering mot råvarumarknaderna.';
+
+  const { suggestions, message } = await ensureStockSuggestions(
+    mockSupabase,
+    '',
+    aiMessage
+  );
+
+  const sorted = suggestions.slice().sort((a, b) => a.symbol.localeCompare(b.symbol));
+  assert.deepEqual(sorted, [
+    {
+      symbol: 'GLD',
+      name: 'SPDR Gold Shares ETF',
+      reason:
+        'Denna fond investerar i fysiskt guld och erbjuder en kostnadseffektiv struktur för investerare som vill äga guld som en del av sin portfölj, vilket kan fungera som en hedge mot inflation och valutafluktuationer.'
+    },
+    {
+      symbol: 'ICOM',
+      name: 'iShares Diversified Commodity Swap UCITS ETF',
+      reason: 'Dessa fonder erbjuder en mer allsidig exponering mot råvarumarknaderna.'
+    }
+  ]);
+
+  assert.ok(message.includes('"symbol":"ICOM"'));
+  assert.ok(
+    ilikeCalls.some(
+      (call) =>
+        call.column === 'name' &&
+        call.pattern === '%iShares Diversified Commodity Swap UCITS ETF%'
+    )
+  );
+});
+
