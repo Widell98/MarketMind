@@ -23,6 +23,8 @@ function extractInlineSuggestions(text) {
     let match;
     while ((match = regex.exec(line)) !== null) {
       const name = match[1].trim().replace(/[-–—,:;]+$/, '').trim();
+      const trailingNameMatch = name.match(/([\p{L}0-9][^,.;:]*?)$/u);
+      const refinedName = trailingNameMatch ? trailingNameMatch[1].trim() : name;
       const symbol = match[2].toUpperCase();
       if (!name) {
         continue;
@@ -33,11 +35,27 @@ function extractInlineSuggestions(text) {
       const reasonMatch = remainder.match(INLINE_REASON_PATTERN);
       if (reasonMatch && reasonMatch[1]) {
         reason = reasonMatch[1].trim();
+      } else {
+        const fallback = remainder.trim().replace(/^[\s]*[.,;:–—-]+\s*/, '');
+        if (fallback) {
+          reason = fallback.trim();
+        }
+      }
+
+      let finalName = refinedName;
+      if (finalName) {
+        const tokens = finalName.split(/\s+/).filter(Boolean);
+        while (tokens.length > 0 && tokens[0] === tokens[0].toLowerCase()) {
+          tokens.shift();
+        }
+        if (tokens.length > 0) {
+          finalName = tokens.join(' ');
+        }
       }
 
       const payload = {};
-      if (name) {
-        payload.name = name;
+      if (finalName) {
+        payload.name = finalName;
       }
       if (reason) {
         payload.reason = reason;
@@ -242,6 +260,28 @@ export const ensureStockSuggestions = async (supabase, userMessage, aiMessage) =
   suggestions = suggestions.filter((s) => validTickers.has(s.symbol));
 
   if (validTickers.size === 0) {
+    const inlineFallback = Array.from(inlineSuggestions.entries())
+      .filter(([symbol]) => !userTickers.has(symbol))
+      .map(([symbol, inline]) => ({
+        symbol,
+        name:
+          inline && Object.prototype.hasOwnProperty.call(inline, 'name')
+            ? inline.name
+            : symbol,
+        reason:
+          inline && Object.prototype.hasOwnProperty.call(inline, 'reason')
+            ? inline.reason
+            : '',
+      }));
+
+    if (inlineFallback.length > 0) {
+      const line = `Aktieförslag: ${JSON.stringify(inlineFallback)}`;
+      return {
+        message: applyLine(line),
+        suggestions: inlineFallback,
+      };
+    }
+
     const line = 'Aktieförslag: []';
     return {
       message: applyLine(line),

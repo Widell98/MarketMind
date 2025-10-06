@@ -165,3 +165,39 @@ test('extracts inline fund mentions including name and reason', async () => {
   );
 });
 
+test('falls back to inline suggestions when Supabase returns no matches', async () => {
+  const mockSupabase = {
+    from: () => ({
+      select: () => ({
+        in: () => Promise.resolve({ data: [] })
+      })
+    })
+  };
+
+  const aiMessage =
+    'Rekommendation 🌟\n\n' +
+    'Ett alternativ för exponering mot råvaror, med fokus på en låg avgift, är fonden SPDR Gold Shares ETF (GLD). Denna fond investerar i fysiskt guld och erbjuder en kostnadseffektiv struktur för investerare som vill äga guld som en del av sin portfölj, vilket kan fungera som en hedge mot inflation och valutafluktuationer.';
+
+  const { message, suggestions } = await ensureStockSuggestions(
+    mockSupabase,
+    '',
+    aiMessage
+  );
+
+  assert.deepEqual(suggestions, [
+    {
+      symbol: 'GLD',
+      name: 'SPDR Gold Shares ETF',
+      reason:
+        'Denna fond investerar i fysiskt guld och erbjuder en kostnadseffektiv struktur för investerare som vill äga guld som en del av sin portfölj, vilket kan fungera som en hedge mot inflation och valutafluktuationer.'
+    }
+  ]);
+  assert.ok(message.includes('"symbol":"GLD"'));
+  assert.ok(message.includes('"name":"SPDR Gold Shares ETF"'));
+  assert.ok(
+    message.includes(
+      'Denna fond investerar i fysiskt guld och erbjuder en kostnadseffektiv struktur för investerare som vill äga guld som en del av sin portfölj, vilket kan fungera som en hedge mot inflation och valutafluktuationer.'
+    )
+  );
+});
+
