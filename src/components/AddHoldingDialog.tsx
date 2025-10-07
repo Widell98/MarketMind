@@ -21,6 +21,7 @@ import { UserHolding } from '@/hooks/useUserHoldings';
 import useSheetTickers, { SheetTicker } from '@/hooks/useSheetTickers';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { ADD_HOLDING_FORM_STORAGE_KEY } from '@/constants/storageKeys';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AddHoldingDialogProps {
   isOpen: boolean;
@@ -65,6 +66,32 @@ const createDefaultFormState = (): AddHoldingFormState => ({
   lastInitialDataSignature: null,
 });
 
+interface AlphaQuote {
+  symbol: string;
+  price: number;
+  currency: string | null;
+  changePercent: number | null;
+  fetchedAt: string | null;
+}
+
+type QuoteState =
+  | { status: 'idle'; symbol: null; data: null; error: null }
+  | { status: 'loading'; symbol: string; data: null; error: null }
+  | { status: 'success'; symbol: string; data: AlphaQuote; error: null }
+  | { status: 'error'; symbol: string; data: null; error: string };
+
+interface FetchAlphaQuoteResponse {
+  success: boolean;
+  symbol?: string;
+  quote?: {
+    pricePerUnit: number;
+    currency: string | null;
+    changePercent: number | null;
+    fetchedAt?: string;
+  };
+  error?: string;
+}
+
 const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   isOpen,
   onClose,
@@ -78,7 +105,12 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   );
   const { formData, priceOverridden, currencyOverridden, nameOverridden } = dialogState;
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [symbolError, setSymbolError] = useState<string | null>(null);
+  const [quoteState, setQuoteState] = useState<QuoteState>({
+    status: 'idle',
+    symbol: null,
+    data: null,
+    error: null,
+  });
 
   const normalizedSymbol = useMemo(() => {
     const rawSymbol = formData.symbol?.trim();
@@ -94,6 +126,154 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   }, [tickers]);
 
   const matchedTicker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) ?? null : null;
+  const activeQuote = quoteState.symbol === normalizedSymbol && quoteState.status === 'success'
+    ? quoteState.data
+    : null;
+  const isQuoteLoading = quoteState.symbol === normalizedSymbol && quoteState.status === 'loading';
+  const quoteError = quoteState.symbol === normalizedSymbol && quoteState.status === 'error'
+    ? quoteState.error
+    : null;
+
+  useEffect(() => {
+    if (!normalizedSymbol) {
+      setQuoteState(prev => {
+        if (prev.status === 'idle' && prev.symbol === null) {
+          return prev;
+        }
+
+        return {
+          status: 'idle',
+          symbol: null,
+          data: null,
+          error: null,
+        };
+      });
+      return;
+    }
+
+    if (quoteState.symbol === normalizedSymbol && quoteState.status !== 'idle') {
+      return;
+    }
+
+    let isActive = true;
+    const timeoutId = window.setTimeout(async () => {
+      setQuoteState({ status: 'loading', symbol: normalizedSymbol, data: null, error: null });
+
+      try {
+        const { data, error } = await supabase.functions.invoke<FetchAlphaQuoteResponse>('fetch-alpha-quote', {
+          body: { symbol: normalizedSymbol },
+        });
+
+        if (!isActive) {
+          return;
+        }
+
+        if (error) {
+          console.error('Failed to fetch Alpha Vantage quote:', error);
+          setQuoteState({
+            status: 'error',
+            symbol: normalizedSymbol,
+            data: null,
+            error: error.message ?? 'Kunde inte hämta pris från Alpha Vantage.',
+          });
+          return;
+        }
+
+        if (!data?.success || !data.quote || typeof data.quote.pricePerUnit !== 'number') {
+          setQuoteState({
+            status: 'error',
+            symbol: normalizedSymbol,
+            data: null,
+            error: data?.error ?? 'Kunde inte hämta pris från Alpha Vantage.',
+          });
+          return;
+        }
+
+        setQuoteState({
+          status: 'success',
+          symbol: normalizedSymbol,
+          data: {
+            symbol: normalizedSymbol,
+            price: data.quote.pricePerUnit,
+            currency: data.quote.currency ?? null,
+            changePercent: typeof data.quote.changePercent === 'number' ? data.quote.changePercent : null,
+            fetchedAt: data.quote.fetchedAt ?? null,
+          },
+          error: null,
+        });
+      } catch (err) {
+        if (!isActive) {
+          return;
+        }
+
+        console.error('Unexpected error fetching Alpha Vantage quote:', err);
+        const message = err instanceof Error ? err.message : 'Kunde inte hämta pris från Alpha Vantage.';
+        setQuoteState({
+          status: 'error',
+          symbol: normalizedSymbol,
+          data: null,
+          error: message,
+        });
+      }
+    }, 400);
+
+    return () => {
+      isActive = false;
+      window.clearTimeout(timeoutId);
+    };
+  }, [normalizedSymbol, quoteState.symbol, quoteState.status]);
+
+  useEffect(() => {
+    if (!activeQuote || priceOverridden) {
+      return;
+    }
+
+    const nextPrice = activeQuote.price.toString();
+
+    setDialogState(prev => {
+      if (prev.priceOverridden) {
+        return prev;
+      }
+
+      if (prev.formData.purchase_price === nextPrice) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        formData: {
+          ...prev.formData,
+          purchase_price: nextPrice,
+        },
+      };
+    });
+  }, [activeQuote, priceOverridden, setDialogState]);
+
+  useEffect(() => {
+    if (!activeQuote?.currency || currencyOverridden) {
+      return;
+    }
+
+    const normalizedCurrency = activeQuote.currency.toUpperCase();
+
+    setDialogState(prev => {
+      if (prev.currencyOverridden) {
+        return prev;
+      }
+
+      if (prev.formData.currency === normalizedCurrency) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        formData: {
+          ...prev.formData,
+          currency: normalizedCurrency,
+        },
+      };
+    });
+  }, [activeQuote?.currency, currencyOverridden, setDialogState]);
 
   // Update form data when initialData changes
   useEffect(() => {
@@ -167,36 +347,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   }, [matchedTicker, nameOverridden, setDialogState]);
 
   useEffect(() => {
-    if (!matchedTicker || priceOverridden) {
-      return;
-    }
-
-    if (typeof matchedTicker.price !== 'number' || !Number.isFinite(matchedTicker.price) || matchedTicker.price <= 0) {
-      return;
-    }
-
-    const nextPrice = matchedTicker.price.toString();
-
-    setDialogState(prev => {
-      if (prev.priceOverridden) {
-        return prev;
-      }
-
-      if (prev.formData.purchase_price === nextPrice) {
-        return prev;
-      }
-
-      return {
-        ...prev,
-        formData: {
-          ...prev.formData,
-          purchase_price: nextPrice,
-        },
-      };
-    });
-  }, [matchedTicker, priceOverridden, setDialogState]);
-
-  useEffect(() => {
     if (!matchedTicker?.symbol) {
       return;
     }
@@ -215,6 +365,10 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   }, [matchedTicker?.symbol, setDialogState]);
 
   useEffect(() => {
+    if (activeQuote?.currency) {
+      return;
+    }
+
     if (!matchedTicker?.currency || currencyOverridden) {
       return;
     }
@@ -237,7 +391,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         },
       };
     });
-  }, [matchedTicker?.currency, currencyOverridden, setDialogState]);
+  }, [activeQuote?.currency, matchedTicker?.currency, currencyOverridden, setDialogState]);
   const priceFormatter = useMemo(
     () => new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     []
@@ -267,19 +421,19 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     );
   }), [deferredTickers, formatDisplayPrice]);
 
-  const resolvedSheetPrice = matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0
-    ? matchedTicker.price
+  const resolvedQuotePrice = activeQuote?.price ?? null;
+  const quoteCurrency = activeQuote?.currency ?? (formData.currency || undefined);
+
+  const quotePriceDisplay = resolvedQuotePrice !== null
+    ? `${formatDisplayPrice(resolvedQuotePrice)}${quoteCurrency ? ` ${quoteCurrency}` : ''}`.trim()
+    : '';
+  const quoteChangePercent = activeQuote && typeof activeQuote.changePercent === 'number' && Number.isFinite(activeQuote.changePercent)
+    ? activeQuote.changePercent
     : null;
 
-  const sheetPriceCurrency = matchedTicker?.currency ?? (formData.currency || undefined);
-
-  const sheetPriceDisplay = resolvedSheetPrice !== null
-    ? `${formatDisplayPrice(resolvedSheetPrice)}${sheetPriceCurrency ? ` ${sheetPriceCurrency}` : ''}`.trim()
-    : '';
-
   const handleInputChange = (field: string, value: string) => {
-    if (field === 'symbol' && symbolError) {
-      setSymbolError(null);
+    if (field === 'symbol') {
+      setQuoteState({ status: 'idle', symbol: null, data: null, error: null });
     }
 
     setDialogState(prev => {
@@ -337,17 +491,24 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) return;
-
-    if (!normalizedSymbol || !tickerLookup.has(normalizedSymbol)) {
-      setSymbolError('Tickern finns inte i Google Sheets. Välj en ticker från listan.');
-      return;
-    }
+    if (!formData.name.trim() || !normalizedSymbol) return;
 
     setIsSubmitting(true);
 
-    const quantity = formData.quantity ? parseFloat(formData.quantity) : undefined;
-    const purchasePrice = formData.purchase_price ? parseFloat(formData.purchase_price) : undefined;
+    let quantity = formData.quantity ? parseFloat(formData.quantity) : undefined;
+    if (quantity !== undefined && !Number.isFinite(quantity)) {
+      quantity = undefined;
+    }
+    const activePrice = activeQuote?.price ?? null;
+    const activeCurrency = activeQuote?.currency ?? null;
+
+    let purchasePrice = formData.purchase_price ? parseFloat(formData.purchase_price) : undefined;
+    if (purchasePrice !== undefined && !Number.isFinite(purchasePrice)) {
+      purchasePrice = undefined;
+    }
+    if (activePrice !== null && (!priceOverridden || !Number.isFinite(purchasePrice))) {
+      purchasePrice = activePrice;
+    }
 
     const holdingData: Omit<UserHolding, 'id' | 'user_id' | 'created_at' | 'updated_at'> = {
       name: formData.name.trim(),
@@ -358,15 +519,23 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       purchase_date: formData.purchase_date || undefined,
       sector: formData.sector.trim() || undefined,
       market: formData.market.trim() || undefined,
-      currency: formData.currency || 'SEK'
+      currency: formData.currency || activeCurrency || 'SEK'
     };
 
-    if (quantity !== undefined && purchasePrice !== undefined) {
+    if (quantity !== undefined && purchasePrice !== undefined && Number.isFinite(purchasePrice)) {
       const calculatedValue = Math.round(quantity * purchasePrice * 100) / 100;
       holdingData.current_value = calculatedValue;
     }
 
-    if (matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0) {
+    if (activePrice !== null) {
+      holdingData.current_price_per_unit = activePrice;
+      holdingData.price_currency = activeCurrency ?? holdingData.currency;
+
+      if (quantity !== undefined && typeof holdingData.current_value !== 'number') {
+        const computedCurrentValue = Math.round(quantity * activePrice * 100) / 100;
+        holdingData.current_value = computedCurrentValue;
+      }
+    } else if (matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0) {
       holdingData.current_price_per_unit = matchedTicker.price;
       holdingData.price_currency = matchedTicker.currency ?? holdingData.currency;
 
@@ -380,7 +549,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
     if (success) {
       resetDialogState();
-      setSymbolError(null);
+      setQuoteState({ status: 'idle', symbol: null, data: null, error: null });
       onClose();
     }
 
@@ -390,7 +559,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const handleClose = () => {
     if (!isSubmitting) {
       resetDialogState();
-      setSymbolError(null);
+      setQuoteState({ status: 'idle', symbol: null, data: null, error: null });
       onClose();
     }
   };
@@ -432,21 +601,18 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
               <Label htmlFor="symbol">Symbol</Label>
               <Input
                 id="symbol"
-                list="sheet-tickers"
+                list="ticker-suggestions"
                 value={formData.symbol}
                 onChange={(e) => handleInputChange('symbol', e.target.value)}
-                placeholder={tickersLoading ? 'Hämtar tickers...' : 't.ex. VOLV-B'}
+                placeholder={tickersLoading ? 'Hämtar förslag...' : 't.ex. VOLV-B'}
                 required
               />
-              {symbolError && (
-                <p className="text-sm text-destructive">{symbolError}</p>
-              )}
               {tickersError && (
                 <p className="text-sm text-muted-foreground">{tickersError}</p>
               )}
             </div>
           </div>
-          <datalist id="sheet-tickers">
+          <datalist id="ticker-suggestions">
             {tickerOptions}
           </datalist>
 
@@ -514,18 +680,28 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="sheet_price">Aktuellt pris (Google Sheets)</Label>
+            <Label htmlFor="alpha_price">Aktuellt pris (Alpha Vantage)</Label>
             <Input
-              id="sheet_price"
-              value={sheetPriceDisplay}
+              id="alpha_price"
+              value={quotePriceDisplay}
               readOnly
-              placeholder={tickersLoading ? 'Hämtar pris...' : 'Välj en ticker för att hämta priset'}
+              placeholder={isQuoteLoading ? 'Hämtar pris från Alpha Vantage...' : 'Skriv en symbol för att hämta pris'}
             />
             <p className="text-xs text-muted-foreground">
-              {sheetPriceDisplay
-                ? 'Priset läggs in som förvalt köppris men kan justeras innan du sparar.'
-                : 'Priset hämtas automatiskt när du väljer en ticker från listan.'}
+              {isQuoteLoading
+                ? 'Hämtar pris från Alpha Vantage baserat på den angivna symbolen...'
+                : quotePriceDisplay
+                  ? 'Priset hämtas från Alpha Vantage och kan justeras innan du sparar.'
+                  : 'Priset hämtas automatiskt från Alpha Vantage när du skriver in en symbol.'}
             </p>
+            {quoteChangePercent !== null && (
+              <p className="text-xs text-muted-foreground">
+                {`Senaste förändring: ${quoteChangePercent.toFixed(2)}%`}
+              </p>
+            )}
+            {quoteError && (
+              <p className="text-sm text-destructive">{quoteError}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
