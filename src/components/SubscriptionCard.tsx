@@ -143,7 +143,7 @@ const SubscriptionCard: React.FC = () => {
                 className="w-full bg-blue-600 hover:bg-blue-700"
               >
                 <Crown className="w-4 h-4 mr-2" />
-                Uppgradera till Premium - 99 SEK/mån
+                Uppgradera till Premium - 69 SEK/mån
               </Button>
               <Button 
                 onClick={() => handleUpgrade('pro')}
@@ -151,7 +151,7 @@ const SubscriptionCard: React.FC = () => {
                 className="w-full"
               >
                 <Zap className="w-4 h-4 mr-2" />
-                Uppgradera till Pro - 199 SEK/mån
+                Uppgradera till Pro - 149 SEK/mån
               </Button>
             </div>
           </>
