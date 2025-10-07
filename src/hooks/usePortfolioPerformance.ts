@@ -132,6 +132,18 @@ interface HoldingRow {
   name?: string | null;
 }
 
+interface FetchAlphaQuoteResponse {
+  success: boolean;
+  symbol?: string;
+  quote?: {
+    pricePerUnit: number;
+    currency: string | null;
+    changePercent: number | null;
+    fetchedAt?: string;
+  };
+  error?: string;
+}
+
 export const usePortfolioPerformance = () => {
   const [performance, setPerformance] = useState<PerformanceData>({
     totalValue: 0,
@@ -373,17 +385,143 @@ export const usePortfolioPerformance = () => {
       const matchedTicker = findTickerMatch(tickerList, normalizedTicker);
 
       if (!matchedTicker) {
-        toast({
-          title: 'Tickern hittades inte',
-          description: 'Tickern finns inte i Google Sheets-listan. Kontrollera stavningen eller välj en annan ticker.',
-          variant: 'destructive',
+        const canonicalSymbol = stripSymbolPrefix(normalizedTicker) ?? normalizedTicker;
+        const symbolVariants = getSymbolVariants(normalizedTicker);
+
+        let holdingsQuery = supabase
+          .from('user_holdings')
+          .select('id, quantity, symbol, name, holding_type')
+          .eq('user_id', user.id)
+          .neq('holding_type', 'cash');
+
+        if (symbolVariants.length > 1) {
+          holdingsQuery = holdingsQuery.or(symbolVariants.map((variant) => `symbol.ilike.${variant}`).join(','));
+        } else if (symbolVariants.length === 1) {
+          holdingsQuery = holdingsQuery.ilike('symbol', symbolVariants[0]);
+        }
+
+        const { data: holdings, error: holdingsError } = await holdingsQuery;
+
+        if (holdingsError) {
+          throw holdingsError;
+        }
+
+        if (!holdings || holdings.length === 0) {
+          toast({
+            title: 'Inget innehav att uppdatera',
+            description: `Tickern ${canonicalSymbol} finns inte i din portfölj.`,
+            variant: 'destructive',
+          });
+          return {
+            updated: 0,
+            errors: 0,
+            unmatched: [],
+            tickerFound: false,
+            requestedTicker: canonicalSymbol,
+          };
+        }
+
+        const { data: alphaResponse, error: alphaError } = await supabase.functions.invoke<FetchAlphaQuoteResponse>('fetch-alpha-quote', {
+          body: { symbol: normalizedTicker },
         });
+
+        if (alphaError) {
+          throw new Error(alphaError.message || 'Kunde inte hämta pris från Alpha Vantage.');
+        }
+
+        const alphaQuote = alphaResponse?.quote;
+
+        if (!alphaResponse?.success || !alphaQuote || typeof alphaQuote.pricePerUnit !== 'number') {
+          toast({
+            title: 'Pris saknas',
+            description: alphaResponse?.error || 'Kunde inte hämta pris från Alpha Vantage.',
+            variant: 'destructive',
+          });
+          return {
+            updated: 0,
+            errors: 0,
+            unmatched: [],
+            tickerFound: false,
+            requestedTicker: canonicalSymbol,
+          };
+        }
+
+        const priceCurrency = alphaQuote.currency ? alphaQuote.currency.toUpperCase() : 'USD';
+        const pricePerUnit = alphaQuote.pricePerUnit;
+        const pricePerUnitInSEK = convertToSEK(pricePerUnit, priceCurrency);
+        const timestamp = new Date().toISOString();
+
+        let updatedCount = 0;
+        let errorCount = 0;
+        const failedHoldings: Array<{ symbol?: string; name?: string }> = [];
+
+        for (const holding of holdings as HoldingRow[]) {
+          const quantity = parseNumeric(holding.quantity) ?? 0;
+          const computedValue = Number.isFinite(pricePerUnitInSEK)
+            ? quantity > 0
+              ? quantity * pricePerUnitInSEK
+              : 0
+            : null;
+
+          const updatePayload: Record<string, unknown> = {
+            current_price_per_unit: pricePerUnit,
+            price_currency: priceCurrency,
+            updated_at: timestamp,
+          };
+
+          if (computedValue !== null) {
+            updatePayload.current_value = computedValue;
+          }
+
+          if (typeof alphaQuote.changePercent === 'number' && Number.isFinite(alphaQuote.changePercent)) {
+            updatePayload.daily_change_pct = alphaQuote.changePercent;
+          }
+
+          const { error: updateError } = await supabase
+            .from('user_holdings')
+            .update(updatePayload)
+            .eq('id', holding.id);
+
+          if (updateError) {
+            errorCount++;
+            failedHoldings.push({
+              symbol: holding.symbol ?? undefined,
+              name: holding.name ?? undefined,
+            });
+            console.error(`Error updating holding ${holding.id} via Alpha Vantage:`, updateError);
+          } else {
+            updatedCount++;
+          }
+        }
+
+        const toastDescription: string[] = [];
+
+        if (updatedCount > 0) {
+          toastDescription.push(`${updatedCount} innehav uppdaterades`);
+        }
+
+        if (errorCount > 0) {
+          toastDescription.push(`${errorCount} uppdateringar misslyckades`);
+        }
+
+        const toastTitle = updatedCount > 0
+          ? `Pris uppdaterat via Alpha Vantage (${canonicalSymbol})`
+          : `Inget pris uppdaterades för ${canonicalSymbol}`;
+
+        toast({
+          title: toastTitle,
+          description: toastDescription.join(' · ') || undefined,
+          variant: updatedCount === 0 && errorCount > 0 ? 'destructive' : 'default',
+        });
+
+        await calculatePerformance();
+
         return {
-          updated: 0,
-          errors: 0,
-          unmatched: [],
-          tickerFound: false,
-          requestedTicker: normalizedTicker,
+          updated: updatedCount,
+          errors: errorCount,
+          unmatched: failedHoldings,
+          tickerFound: updatedCount > 0,
+          requestedTicker: canonicalSymbol,
         };
       }
 
