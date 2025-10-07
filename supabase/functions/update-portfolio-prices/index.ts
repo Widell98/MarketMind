@@ -100,6 +100,52 @@ const convertToSEK = (amount: number, currency?: string | null) => {
   return typeof rate === "number" ? amount * rate : null;
 };
 
+type QuoteResult = {
+  pricePerUnit: number | null;
+  currency: string | null;
+  changePercent: number | null;
+};
+
+const fetchAlphaVantageQuote = async (symbol: string): Promise<QuoteResult | null> => {
+  const apiKey = normalizeValue(Deno.env.get("ALPHAVANTAGE_API_KEY"));
+  if (!apiKey) {
+    console.warn("Alpha Vantage API key is not configured");
+    return null;
+  }
+
+  const url =
+    `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(symbol)}&apikey=${apiKey}`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.warn(`Alpha Vantage request failed for ${symbol}: ${response.status}`);
+      return null;
+    }
+
+    const json = await response.json();
+    const quote = json?.["Global Quote"] ?? null;
+    if (!quote || typeof quote !== "object") {
+      console.warn(`Alpha Vantage did not return a quote for ${symbol}`);
+      return null;
+    }
+
+    const pricePerUnit = parsePrice(quote["05. price"] ?? quote["05. Price"]);
+    const changePercent = parseChangePercent(quote["10. change percent"] ?? quote["10. Change Percent"]);
+    const currency = normalizeValue(quote["08. currency"] ?? quote["08. Currency"])?.toUpperCase() ?? "USD";
+
+    if (pricePerUnit === null || pricePerUnit <= 0) {
+      console.warn(`Alpha Vantage returned invalid price for ${symbol}`);
+      return null;
+    }
+
+    return { pricePerUnit, currency, changePercent };
+  } catch (error) {
+    console.error(`Alpha Vantage request threw for ${symbol}:`, error);
+    return null;
+  }
+};
+
 // === Edge Function ===
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -262,6 +308,90 @@ serve(async (req) => {
           console.error(`Error updating holding ${holding.id}:`, updateErr);
           errors++;
         } else updated++;
+      }
+    }
+
+    if (requestedTicker && !processedRequestedTicker) {
+      const sanitizedRequested = stripSymbolPrefix(requestedTicker) ?? requestedTicker;
+      const alphaVariants = getSymbolVariants(requestedTicker, sanitizedRequested);
+      let alphaQuote: QuoteResult | null = null;
+      let usedAlphaSymbol: string | null = null;
+
+      for (const variant of alphaVariants) {
+        alphaQuote = await fetchAlphaVantageQuote(variant);
+        if (alphaQuote) {
+          usedAlphaSymbol = variant;
+          break;
+        }
+      }
+
+      if (!alphaQuote && sanitizedRequested !== requestedTicker) {
+        alphaQuote = await fetchAlphaVantageQuote(sanitizedRequested);
+        if (alphaQuote) usedAlphaSymbol = sanitizedRequested;
+      }
+
+      if (alphaQuote && alphaQuote.pricePerUnit !== null) {
+        const priceCurrency = alphaQuote.currency ?? "USD";
+        const pricePerUnitInSEK =
+          priceCurrency === "SEK"
+            ? alphaQuote.pricePerUnit
+            : convertToSEK(alphaQuote.pricePerUnit, priceCurrency);
+
+        let query = supabase.from("user_holdings").select("id, quantity");
+
+        if (!isServiceRequest && userId) {
+          query = query.eq("user_id", userId);
+        }
+
+        query = query.neq("holding_type", "cash");
+
+        if (alphaVariants.length > 1) {
+          query = query.or(alphaVariants.map((v) => `symbol.ilike.${v}`).join(","));
+        } else {
+          query = query.ilike("symbol", alphaVariants[0] ?? sanitizedRequested);
+        }
+
+        const { data: holdings, error: selectErr } = await query;
+        if (selectErr) {
+          console.error(`Error selecting holdings for ${usedAlphaSymbol ?? sanitizedRequested}:`, selectErr);
+          errors++;
+        } else if (holdings && holdings.length > 0) {
+          for (const holding of holdings) {
+            const q = Number.isFinite(holding.quantity)
+              ? holding.quantity
+              : parseFloat(String(holding.quantity ?? "").replace(",", "."));
+            const quantity = Number.isFinite(q) ? q : 0;
+            const computedValue =
+              pricePerUnitInSEK !== null && Number.isFinite(quantity)
+                ? quantity * pricePerUnitInSEK
+                : quantity === 0
+                  ? 0
+                  : null;
+
+            const payload: Record<string, unknown> = {
+              current_price_per_unit: alphaQuote.pricePerUnit,
+              price_currency: priceCurrency,
+              updated_at: timestamp,
+            };
+
+            if (computedValue !== null) {
+              payload.current_value = computedValue;
+            }
+            if (alphaQuote.changePercent !== null) payload.daily_change_pct = alphaQuote.changePercent;
+
+            const { error: updateErr } = await supabase
+              .from("user_holdings")
+              .update(payload)
+              .eq("id", holding.id);
+            if (updateErr) {
+              console.error(`Error updating holding ${holding.id} from Alpha Vantage:`, updateErr);
+              errors++;
+            } else {
+              updated++;
+              processedRequestedTicker = true;
+            }
+          }
+        }
       }
     }
 

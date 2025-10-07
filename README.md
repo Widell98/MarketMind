@@ -86,6 +86,7 @@ The portfolio features rely on two Supabase Edge Functions: `update-portfolio-pr
 3. Make sure the environment variables below are available to both functions (e.g. via a `.env` file or the Supabase dashboard):
    - `GOOGLE_SERVICE_ACCOUNT` – JSON credentials for a service account with Google Sheets read access.
    - `GOOGLE_SHEET_ID` – The spreadsheet ID that holds the ticker and price data.
+   - `ALPHAVANTAGE_API_KEY` – Optional, used as a fallback price source when a ticker is missing from Google Sheets.
    - `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` – Needed by `update-portfolio-prices` to update the database.
 4. Confirm that the frontend points to the same Supabase project by verifying the URL and anon key configured in `src/integrations/supabase/client.ts`.
 5. You can manually test that the functions respond by running:
