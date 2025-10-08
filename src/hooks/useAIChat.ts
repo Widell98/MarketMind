@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
 
-const DAILY_MESSAGE_CREDITS = 5;
+const DAILY_MESSAGE_CREDITS = 10;
 
 type ProfileUpdates = Record<string, unknown>;
 
@@ -460,7 +460,7 @@ export const useAIChat = (portfolioId?: string) => {
     const canSendMessage = checkUsageLimit('ai_message');
     const isPremium = subscription?.subscribed;
     const currentUsage = usage?.ai_messages_count || 0;
-    const dailyLimit = 10;
+    const dailyLimit = DAILY_MESSAGE_CREDITS;
 
     if (!canSendMessage && !isPremium) {
       console.log('Usage limit reached:', { currentUsage, dailyLimit, isPremium });
@@ -613,7 +613,7 @@ export const useAIChat = (portfolioId?: string) => {
         setQuotaExceeded(true);
         toast({
           title: "Daglig gräns nådd",
-          description: "Du har använt alla dina 5 gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.",
+          description: `Du har använt alla dina ${DAILY_MESSAGE_CREDITS} gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.`,
           variant: "destructive",
         });
         setMessages(prev => prev.filter(msg => !msg.id.includes('_temp')));
@@ -986,7 +986,7 @@ export const useAIChat = (portfolioId?: string) => {
     if (!canSendMessage && !isPremium) {
       toast({
         title: "Daglig gräns nådd",
-        description: "Du har använt alla dina 5 gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.",
+        description: `Du har använt alla dina ${DAILY_MESSAGE_CREDITS} gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.`,
         variant: "destructive",
       });
       return;
