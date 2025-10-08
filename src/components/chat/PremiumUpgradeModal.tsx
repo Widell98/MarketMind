@@ -164,7 +164,7 @@ const PremiumUpgradeModal = ({ isOpen, onClose, currentUsage, dailyLimit }: Prem
                 </div>
                 <div className="space-y-2">
                   {[
-                    "5 AI-meddelanden/dag",
+                    `${dailyLimit} AI-meddelanden/dag`,
                     "Grundläggande funktioner",
                     "Community support"
                   ].map((feature, i) => (
