@@ -156,14 +156,14 @@ export const useSubscription = () => {
     if (!subscription || !usage) return false;
     if (subscription.subscribed) return true;
     
-    const limit = 5;
+    const limit = 10;
     const currentUsage = usage[`${type}_count` as keyof UsageData] || 0;
     return currentUsage < limit;
   };
 
   const getRemainingUsage = (type: 'ai_message' | 'analysis' | 'insights' | 'predictive_analysis'): number => {
     if (!usage || subscription?.subscribed) return Infinity;
-    const limit = 5;
+    const limit = 10;
     const currentUsage = usage[`${type}_count` as keyof UsageData] || 0;
     return Math.max(0, limit - currentUsage);
   };

@@ -33,7 +33,7 @@ const ChatInput = memo(({
   const { usage, subscription } = useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
-  const dailyLimit = 5;
+  const dailyLimit = 10;
   const currentUsage = usage?.ai_messages_count || 0;
   const isPremium = subscription?.subscribed;
   const isAtLimit = !isPremium && currentUsage >= dailyLimit;

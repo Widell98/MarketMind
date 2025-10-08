@@ -460,7 +460,7 @@ export const useAIChat = (portfolioId?: string) => {
     const canSendMessage = checkUsageLimit('ai_message');
     const isPremium = subscription?.subscribed;
     const currentUsage = usage?.ai_messages_count || 0;
-    const dailyLimit = 5;
+    const dailyLimit = 10;
 
     if (!canSendMessage && !isPremium) {
       console.log('Usage limit reached:', { currentUsage, dailyLimit, isPremium });
