@@ -183,6 +183,27 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const searchError = useMemo(() => (
     searchState.status === 'error' ? searchState.error : null
   ), [searchState]);
+  const searchMatchLookup = useMemo(() => {
+    const map = new Map<string, AlphaSearchMatch>();
+
+    searchResults.forEach((result) => {
+      const primary = result.symbol.toUpperCase();
+      map.set(primary, result);
+
+      if (result.sheet?.symbol) {
+        map.set(result.sheet.symbol.toUpperCase(), result);
+      }
+
+      if (primary.endsWith('.ST')) {
+        map.set(primary.replace(/\.ST$/, ''), result);
+      } else {
+        map.set(`${primary}.ST`, result);
+      }
+    });
+
+    return map;
+  }, [searchResults]);
+  const activeSearchMatch = normalizedSymbol ? searchMatchLookup.get(normalizedSymbol) ?? null : null;
 
   useEffect(() => {
     if (!normalizedSymbol) {
@@ -657,29 +678,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     () => [...sheetTickerOptions, ...searchTickerOptions],
     [sheetTickerOptions, searchTickerOptions],
   );
-
-  const searchMatchLookup = useMemo(() => {
-    const map = new Map<string, AlphaSearchMatch>();
-
-    searchResults.forEach((result) => {
-      const primary = result.symbol.toUpperCase();
-      map.set(primary, result);
-
-      if (result.sheet?.symbol) {
-        map.set(result.sheet.symbol.toUpperCase(), result);
-      }
-
-      if (primary.endsWith('.ST')) {
-        map.set(primary.replace(/\.ST$/, ''), result);
-      } else {
-        map.set(`${primary}.ST`, result);
-      }
-    });
-
-    return map;
-  }, [searchResults]);
-
-  const activeSearchMatch = normalizedSymbol ? searchMatchLookup.get(normalizedSymbol) ?? null : null;
 
   const resolvedQuotePrice = activeQuote?.price ?? null;
   const quoteCurrency = activeQuote?.currency ?? (formData.currency || undefined);
