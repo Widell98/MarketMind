@@ -72,6 +72,7 @@ interface AlphaQuote {
   currency: string | null;
   changePercent: number | null;
   fetchedAt: string | null;
+  source: 'alpha' | 'sheet';
 }
 
 type QuoteState =
@@ -165,6 +166,21 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   }, [tickers]);
 
   const matchedTicker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) ?? null : null;
+  const sheetQuote = useMemo(() => {
+    if (!matchedTicker) {
+      return null;
+    }
+
+    const price = matchedTicker.price;
+    if (typeof price !== 'number' || !Number.isFinite(price) || price <= 0) {
+      return null;
+    }
+
+    return {
+      price,
+      currency: matchedTicker.currency ?? null,
+    };
+  }, [matchedTicker]);
   const activeQuote = quoteState.symbol === normalizedSymbol && quoteState.status === 'success'
     ? quoteState.data
     : null;
@@ -206,19 +222,78 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const activeSearchMatch = normalizedSymbol ? searchMatchLookup.get(normalizedSymbol) ?? null : null;
 
   useEffect(() => {
+    if (normalizedSymbol) {
+      return;
+    }
+
+    setQuoteState(prev => {
+      if (prev.status === 'idle' && prev.symbol === null) {
+        return prev;
+      }
+
+      return {
+        status: 'idle',
+        symbol: null,
+        data: null,
+        error: null,
+      };
+    });
+  }, [normalizedSymbol]);
+
+  useEffect(() => {
     if (!normalizedSymbol) {
+      return;
+    }
+
+    if (!sheetQuote) {
       setQuoteState(prev => {
-        if (prev.status === 'idle' && prev.symbol === null) {
-          return prev;
+        if (
+          prev.status === 'success' &&
+          prev.symbol === normalizedSymbol &&
+          prev.data?.source === 'sheet'
+        ) {
+          return {
+            status: 'idle',
+            symbol: null,
+            data: null,
+            error: null,
+          };
         }
 
-        return {
-          status: 'idle',
-          symbol: null,
-          data: null,
-          error: null,
-        };
+        return prev;
       });
+      return;
+    }
+
+    setQuoteState(prev => {
+      if (
+        prev.status === 'success' &&
+        prev.symbol === normalizedSymbol &&
+        prev.data?.source === 'sheet' &&
+        prev.data.price === sheetQuote.price &&
+        prev.data.currency === (sheetQuote.currency ?? null)
+      ) {
+        return prev;
+      }
+
+      return {
+        status: 'success',
+        symbol: normalizedSymbol,
+        data: {
+          symbol: normalizedSymbol,
+          price: sheetQuote.price,
+          currency: sheetQuote.currency ?? null,
+          changePercent: null,
+          fetchedAt: null,
+          source: 'sheet',
+        },
+        error: null,
+      };
+    });
+  }, [normalizedSymbol, sheetQuote]);
+
+  useEffect(() => {
+    if (!normalizedSymbol || sheetQuote) {
       return;
     }
 
@@ -269,6 +344,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
             currency: data.quote.currency ?? null,
             changePercent: typeof data.quote.changePercent === 'number' ? data.quote.changePercent : null,
             fetchedAt: data.quote.fetchedAt ?? null,
+            source: 'alpha',
           },
           error: null,
         });
@@ -292,7 +368,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       isActive = false;
       window.clearTimeout(timeoutId);
     };
-  }, [normalizedSymbol, quoteState.symbol, quoteState.status]);
+  }, [normalizedSymbol, sheetQuote, quoteState.symbol, quoteState.status]);
 
   useEffect(() => {
     if (!deferredSymbolInput) {
@@ -688,6 +764,11 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const quoteChangePercent = activeQuote && typeof activeQuote.changePercent === 'number' && Number.isFinite(activeQuote.changePercent)
     ? activeQuote.changePercent
     : null;
+  const quoteSourceLabel = activeQuote?.source === 'sheet'
+    ? 'Google Sheets'
+    : activeQuote?.source === 'alpha'
+      ? 'Alpha Vantage'
+      : null;
 
   const handleInputChange = (field: string, value: string) => {
     if (field === 'symbol') {
@@ -956,19 +1037,23 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="alpha_price">Aktuellt pris (Alpha Vantage)</Label>
+            <Label htmlFor="current_price">{quoteSourceLabel ? `Aktuellt pris (${quoteSourceLabel})` : 'Aktuellt pris'}</Label>
             <Input
-              id="alpha_price"
+              id="current_price"
               value={quotePriceDisplay}
               readOnly
-              placeholder={isQuoteLoading ? 'Hämtar pris från Alpha Vantage...' : 'Skriv en symbol för att hämta pris'}
+              placeholder={isQuoteLoading
+                ? 'Hämtar pris från Alpha Vantage...'
+                : quoteSourceLabel
+                  ? `Priset hämtas från ${quoteSourceLabel}.`
+                  : 'Skriv en symbol för att hämta pris'}
             />
             <p className="text-xs text-muted-foreground">
               {isQuoteLoading
                 ? 'Hämtar pris från Alpha Vantage baserat på den angivna symbolen...'
-                : quotePriceDisplay
-                  ? 'Priset hämtas från Alpha Vantage och kan justeras innan du sparar.'
-                  : 'Priset hämtas automatiskt från Alpha Vantage när du skriver in en symbol.'}
+                : activeQuote
+                  ? `Priset är hämtat från ${quoteSourceLabel ?? 'vald källa'} och kan justeras innan du sparar.`
+                  : 'Priset hämtas automatiskt från Google Sheets eller Alpha Vantage när du skriver in en symbol.'}
             </p>
             {quoteChangePercent !== null && (
               <p className="text-xs text-muted-foreground">
