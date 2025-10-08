@@ -81,6 +81,7 @@ The portfolio features rely on two Supabase Edge Functions: `update-portfolio-pr
    ```bash
    supabase functions serve update-portfolio-prices
    supabase functions serve list-sheet-tickers
+   supabase functions serve search-alpha-tickers
    ```
    Each command runs the function on `http://localhost:54321/functions/v1/<function-name>`.
 3. Make sure the environment variables below are available to both functions (e.g. via a `.env` file or the Supabase dashboard):

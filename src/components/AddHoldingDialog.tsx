@@ -92,6 +92,35 @@ interface FetchAlphaQuoteResponse {
   error?: string;
 }
 
+interface AlphaSearchMatch {
+  symbol: string;
+  name: string;
+  region: string | null;
+  currency: string | null;
+  matchScore: number | null;
+  assetType: string | null;
+  sheet?: {
+    symbol: string;
+    name: string;
+    currency: string | null;
+    price: number | null;
+  } | null;
+}
+
+type SearchState =
+  | { status: 'idle'; query: null; results: AlphaSearchMatch[]; error: null }
+  | { status: 'loading'; query: string; results: AlphaSearchMatch[]; error: null }
+  | { status: 'success'; query: string; results: AlphaSearchMatch[]; error: null }
+  | { status: 'error'; query: string; results: AlphaSearchMatch[]; error: string };
+
+interface SearchAlphaResponse {
+  success: boolean;
+  query?: string;
+  matches?: AlphaSearchMatch[];
+  note?: string | null;
+  error?: string;
+}
+
 const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   isOpen,
   onClose,
@@ -111,11 +140,21 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     data: null,
     error: null,
   });
+  const [searchState, setSearchState] = useState<SearchState>({
+    status: 'idle',
+    query: null,
+    results: [],
+    error: null,
+  });
+  const [searchNote, setSearchNote] = useState<string | null>(null);
 
   const normalizedSymbol = useMemo(() => {
     const rawSymbol = formData.symbol?.trim();
     return rawSymbol ? rawSymbol.toUpperCase() : '';
   }, [formData.symbol]);
+
+  const rawSymbolInput = useMemo(() => formData.symbol?.trim() ?? '', [formData.symbol]);
+  const deferredSymbolInput = useDeferredValue(rawSymbolInput);
 
   const tickerLookup = useMemo(() => {
     const map = new Map<string, SheetTicker>();
@@ -133,6 +172,17 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const quoteError = quoteState.symbol === normalizedSymbol && quoteState.status === 'error'
     ? quoteState.error
     : null;
+  const emptySearchResults = useMemo(() => [] as AlphaSearchMatch[], []);
+  const searchResults = useMemo(() => {
+    if (searchState.status === 'success' || searchState.status === 'loading') {
+      return searchState.results;
+    }
+
+    return emptySearchResults;
+  }, [searchState, emptySearchResults]);
+  const searchError = useMemo(() => (
+    searchState.status === 'error' ? searchState.error : null
+  ), [searchState]);
 
   useEffect(() => {
     if (!normalizedSymbol) {
@@ -222,6 +272,86 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       window.clearTimeout(timeoutId);
     };
   }, [normalizedSymbol, quoteState.symbol, quoteState.status]);
+
+  useEffect(() => {
+    if (!deferredSymbolInput) {
+      setSearchState({ status: 'idle', query: null, results: [], error: null });
+      setSearchNote(null);
+      return;
+    }
+
+    if (matchedTicker) {
+      setSearchState(prev => (prev.status === 'idle' && prev.results.length === 0
+        ? prev
+        : { status: 'idle', query: null, results: [], error: null }));
+      setSearchNote(null);
+      return;
+    }
+
+    if (deferredSymbolInput.length < 2) {
+      setSearchState({ status: 'idle', query: null, results: [], error: null });
+      setSearchNote(null);
+      return;
+    }
+
+    let isActive = true;
+    const timeoutId = window.setTimeout(async () => {
+      setSearchState({ status: 'loading', query: deferredSymbolInput, results: [], error: null });
+      setSearchNote(null);
+
+      try {
+        const { data, error } = await supabase.functions.invoke<SearchAlphaResponse>('search-alpha-tickers', {
+          body: { query: deferredSymbolInput },
+        });
+
+        if (!isActive) {
+          return;
+        }
+
+        if (error) {
+          console.error('Failed to invoke search-alpha-tickers:', error);
+          setSearchState({
+            status: 'error',
+            query: deferredSymbolInput,
+            results: [],
+            error: error.message ?? 'Kunde inte söka tickers via Alpha Vantage.',
+          });
+          return;
+        }
+
+        if (!data?.success || !Array.isArray(data.matches)) {
+          setSearchState({
+            status: 'error',
+            query: deferredSymbolInput,
+            results: [],
+            error: data?.error ?? 'Kunde inte söka tickers via Alpha Vantage.',
+          });
+          return;
+        }
+
+        setSearchNote(data.note ?? null);
+        setSearchState({
+          status: 'success',
+          query: data.query ?? deferredSymbolInput,
+          results: data.matches,
+          error: null,
+        });
+      } catch (err) {
+        if (!isActive) {
+          return;
+        }
+
+        console.error('Unexpected error searching Alpha Vantage:', err);
+        const message = err instanceof Error ? err.message : 'Kunde inte söka tickers via Alpha Vantage.';
+        setSearchState({ status: 'error', query: deferredSymbolInput, results: [], error: message });
+      }
+    }, 350);
+
+    return () => {
+      isActive = false;
+      window.clearTimeout(timeoutId);
+    };
+  }, [deferredSymbolInput, matchedTicker]);
 
   useEffect(() => {
     if (!activeQuote || priceOverridden) {
@@ -347,6 +477,38 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   }, [matchedTicker, nameOverridden, setDialogState]);
 
   useEffect(() => {
+    if (matchedTicker || !activeSearchMatch || nameOverridden) {
+      return;
+    }
+
+    const resolvedName = activeSearchMatch.sheet?.name?.trim()
+      || activeSearchMatch.name?.trim()
+      || activeSearchMatch.symbol;
+
+    if (!resolvedName) {
+      return;
+    }
+
+    setDialogState(prev => {
+      if (prev.nameOverridden) {
+        return prev;
+      }
+
+      if (prev.formData.name === resolvedName) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        formData: {
+          ...prev.formData,
+          name: resolvedName,
+        },
+      };
+    });
+  }, [matchedTicker, activeSearchMatch, nameOverridden, setDialogState]);
+
+  useEffect(() => {
     if (!matchedTicker?.symbol) {
       return;
     }
@@ -392,6 +554,37 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       };
     });
   }, [activeQuote?.currency, matchedTicker?.currency, currencyOverridden, setDialogState]);
+
+  useEffect(() => {
+    if (matchedTicker || !activeSearchMatch || currencyOverridden) {
+      return;
+    }
+
+    const candidateCurrency = activeSearchMatch.sheet?.currency ?? activeSearchMatch.currency;
+    if (!candidateCurrency) {
+      return;
+    }
+
+    const normalizedCurrency = candidateCurrency.toUpperCase();
+
+    setDialogState(prev => {
+      if (prev.currencyOverridden) {
+        return prev;
+      }
+
+      if (prev.formData.currency === normalizedCurrency) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        formData: {
+          ...prev.formData,
+          currency: normalizedCurrency,
+        },
+      };
+    });
+  }, [matchedTicker, activeSearchMatch, currencyOverridden, setDialogState]);
   const priceFormatter = useMemo(
     () => new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     []
@@ -404,7 +597,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
   const deferredTickers = useDeferredValue(tickers);
 
-  const tickerOptions = useMemo(() => deferredTickers.map((ticker) => {
+  const sheetTickerOptions = useMemo(() => deferredTickers.map((ticker) => {
     const label = ticker.name && ticker.name !== ticker.symbol
       ? `${ticker.name} (${ticker.symbol})`
       : ticker.symbol;
@@ -420,6 +613,73 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       />
     );
   }), [deferredTickers, formatDisplayPrice]);
+
+  const searchTickerOptions = useMemo(() => {
+    if (searchResults.length === 0) {
+      return [] as React.ReactNode[];
+    }
+
+    return searchResults.map((result) => {
+      const sheetInfo = result.sheet ?? null;
+      const displayName = result.name && result.name !== result.symbol
+        ? `${result.name} (${result.symbol})`
+        : result.symbol;
+      const currency = sheetInfo?.currency ?? result.currency ?? undefined;
+      const hasSheetPrice = typeof sheetInfo?.price === 'number' && Number.isFinite(sheetInfo.price) && sheetInfo.price > 0;
+      const priceLabel = hasSheetPrice && currency
+        ? `${formatDisplayPrice(sheetInfo!.price!)} ${currency}`
+        : hasSheetPrice
+          ? formatDisplayPrice(sheetInfo!.price!)
+          : null;
+      const originLabel = sheetInfo ? 'Google Sheets' : 'Alpha Vantage';
+      const suffixParts = [originLabel];
+      if (priceLabel) {
+        suffixParts.unshift(priceLabel);
+      } else if (currency) {
+        suffixParts.unshift(currency);
+      }
+
+      const label = suffixParts.length > 0
+        ? `${displayName} – ${suffixParts.join(' • ')}`
+        : displayName;
+
+      return (
+        <option
+          key={`alpha-${result.symbol}`}
+          value={result.symbol}
+          label={label}
+        />
+      );
+    });
+  }, [searchResults, formatDisplayPrice]);
+
+  const combinedTickerOptions = useMemo(
+    () => [...sheetTickerOptions, ...searchTickerOptions],
+    [sheetTickerOptions, searchTickerOptions],
+  );
+
+  const searchMatchLookup = useMemo(() => {
+    const map = new Map<string, AlphaSearchMatch>();
+
+    searchResults.forEach((result) => {
+      const primary = result.symbol.toUpperCase();
+      map.set(primary, result);
+
+      if (result.sheet?.symbol) {
+        map.set(result.sheet.symbol.toUpperCase(), result);
+      }
+
+      if (primary.endsWith('.ST')) {
+        map.set(primary.replace(/\.ST$/, ''), result);
+      } else {
+        map.set(`${primary}.ST`, result);
+      }
+    });
+
+    return map;
+  }, [searchResults]);
+
+  const activeSearchMatch = normalizedSymbol ? searchMatchLookup.get(normalizedSymbol) ?? null : null;
 
   const resolvedQuotePrice = activeQuote?.price ?? null;
   const quoteCurrency = activeQuote?.currency ?? (formData.currency || undefined);
@@ -560,6 +820,8 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     if (!isSubmitting) {
       resetDialogState();
       setQuoteState({ status: 'idle', symbol: null, data: null, error: null });
+      setSearchState({ status: 'idle', query: null, results: [], error: null });
+      setSearchNote(null);
       onClose();
     }
   };
@@ -610,10 +872,26 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
               {tickersError && (
                 <p className="text-sm text-muted-foreground">{tickersError}</p>
               )}
+              {searchError && (
+                <p className="text-sm text-destructive">{searchError}</p>
+              )}
+              {!searchError && searchState.status === 'success' && searchResults.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Inga träffar hittades via Alpha Vantage-sökningen. Kontrollera symbolen eller försök med ett annat namn.
+                </p>
+              )}
+              {!searchError && searchState.status === 'success' && searchResults.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Förslag hämtas från Alpha Vantage och kopplas till dina Google Sheets-data.
+                </p>
+              )}
+              {searchNote && (
+                <p className="text-xs text-muted-foreground">{searchNote}</p>
+              )}
             </div>
           </div>
           <datalist id="ticker-suggestions">
-            {tickerOptions}
+            {combinedTickerOptions}
           </datalist>
 
           <div className="grid grid-cols-2 gap-4">
