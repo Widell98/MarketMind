@@ -158,24 +158,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const deferredSymbolInput = useDeferredValue(rawSymbolInput);
   const deferredTickers = useDeferredValue(tickers);
 
-  const hasSheetSuggestions = useMemo(() => {
-    if (!deferredSymbolInput) {
-      return false;
-    }
-
-    const query = deferredSymbolInput.toUpperCase();
-
-    return deferredTickers.some((ticker) => {
-      const symbol = ticker.symbol?.toUpperCase();
-      if (symbol && symbol.includes(query)) {
-        return true;
-      }
-
-      const name = ticker.name?.toUpperCase();
-      return Boolean(name && name.includes(query));
-    });
-  }, [deferredSymbolInput, deferredTickers]);
-
   const tickerLookup = useMemo(() => {
     const map = new Map<string, SheetTicker>();
     tickers.forEach((ticker) => {
@@ -396,7 +378,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       return;
     }
 
-    if (matchedTicker || hasSheetSuggestions) {
+    if (matchedTicker) {
       setSearchState(prev => (prev.status === 'idle' && prev.results.length === 0
         ? prev
         : { status: 'idle', query: null, results: [], error: null }));
@@ -467,7 +449,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       isActive = false;
       window.clearTimeout(timeoutId);
     };
-  }, [deferredSymbolInput, matchedTicker, hasSheetSuggestions]);
+  }, [deferredSymbolInput, matchedTicker]);
 
   useEffect(() => {
     if (!activeQuote || priceOverridden) {
