@@ -340,7 +340,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     if (!formData.name.trim()) return;
 
     if (!normalizedSymbol || !tickerLookup.has(normalizedSymbol)) {
-      setSymbolError('Tickern finns inte i Google Sheets. Välj en ticker från listan.');
+      setSymbolError('Tickern finns inte i listan Välj en ticker från listan eller lägg in manuellt.');
       return;
     }
 
@@ -514,7 +514,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="sheet_price">Aktuellt pris (Google Sheets)</Label>
+            <Label htmlFor="sheet_price">Aktuellt pris</Label>
             <Input
               id="sheet_price"
               value={sheetPriceDisplay}
