@@ -65,6 +65,14 @@ const createDefaultFormState = (): AddHoldingFormState => ({
   lastInitialDataSignature: null,
 });
 
+type AlphaVantageSearchResult = {
+  symbol: string;
+  name: string | null;
+  region: string | null;
+  currency: string | null;
+  matchScore: number | null;
+};
+
 const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   isOpen,
   onClose,
@@ -79,6 +87,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const { formData, priceOverridden, currencyOverridden, nameOverridden } = dialogState;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [symbolError, setSymbolError] = useState<string | null>(null);
+  const [alphaSearchMessage, setAlphaSearchMessage] = useState<string | null>(null);
 
   const normalizedSymbol = useMemo(() => {
     const rawSymbol = formData.symbol?.trim();
@@ -94,6 +103,80 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   }, [tickers]);
 
   const matchedTicker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) ?? null : null;
+
+  const searchAlphaVantageTicker = useCallback(async (keywords: string): Promise<AlphaVantageSearchResult | null> => {
+    const apiKey = import.meta.env.VITE_ALPHA_VANTAGE_API_KEY;
+
+    if (!apiKey) {
+      throw new Error('VITE_ALPHA_VANTAGE_API_KEY saknas. Lägg till din Alpha Vantage-nyckel i miljövariablerna för att aktivera fallback-sökningen.');
+    }
+
+    const params = new URLSearchParams({
+      function: 'SYMBOL_SEARCH',
+      keywords,
+      apikey: apiKey,
+    });
+
+    const response = await fetch(`https://www.alphavantage.co/query?${params.toString()}`);
+
+    if (!response.ok) {
+      throw new Error('Kunde inte nå Alpha Vantage för att söka tickern. Försök igen senare.');
+    }
+
+    const payload = await response.json();
+
+    if (payload?.Note) {
+      throw new Error('Alpha Vantage rapporterar att API-gränsen är uppnådd. Försök igen om en stund.');
+    }
+
+    if (payload?.Information) {
+      throw new Error(typeof payload.Information === 'string' ? payload.Information : 'Kunde inte söka tickern via Alpha Vantage.');
+    }
+
+    const bestMatches = Array.isArray(payload?.bestMatches) ? payload.bestMatches : [];
+    const normalizedKeywords = keywords.toUpperCase();
+
+    const sanitizedMatches: AlphaVantageSearchResult[] = bestMatches
+      .map((match): AlphaVantageSearchResult | null => {
+        if (!match || typeof match !== 'object') {
+          return null;
+        }
+
+        const rawSymbol = typeof match['1. symbol'] === 'string' ? match['1. symbol'].trim() : '';
+
+        if (!rawSymbol) {
+          return null;
+        }
+
+        const rawName = typeof match['2. name'] === 'string' ? match['2. name'].trim() : '';
+        const rawRegion = typeof match['4. region'] === 'string' ? match['4. region'].trim() : '';
+        const rawCurrency = typeof match['8. currency'] === 'string' ? match['8. currency'].trim() : '';
+        const matchScoreValue = typeof match['9. matchScore'] === 'string' ? Number.parseFloat(match['9. matchScore']) : NaN;
+
+        return {
+          symbol: rawSymbol.toUpperCase(),
+          name: rawName || null,
+          region: rawRegion || null,
+          currency: rawCurrency ? rawCurrency.toUpperCase() : null,
+          matchScore: Number.isFinite(matchScoreValue) ? matchScoreValue : null,
+        };
+      })
+      .filter((match): match is AlphaVantageSearchResult => match !== null);
+
+    if (sanitizedMatches.length === 0) {
+      return null;
+    }
+
+    const exactMatch = sanitizedMatches.find((match) => match.symbol.toUpperCase() === normalizedKeywords);
+
+    if (exactMatch) {
+      return exactMatch;
+    }
+
+    const partialMatch = sanitizedMatches.find((match) => match.symbol.toUpperCase().includes(normalizedKeywords));
+
+    return partialMatch ?? sanitizedMatches[0];
+  }, []);
 
   // Update form data when initialData changes
   useEffect(() => {
@@ -278,8 +361,14 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     : '';
 
   const handleInputChange = (field: string, value: string) => {
-    if (field === 'symbol' && symbolError) {
-      setSymbolError(null);
+    if (field === 'symbol') {
+      if (symbolError) {
+        setSymbolError(null);
+      }
+
+      if (alphaSearchMessage) {
+        setAlphaSearchMessage(null);
+      }
     }
 
     setDialogState(prev => {
@@ -337,28 +426,88 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) return;
 
-    if (!normalizedSymbol || !tickerLookup.has(normalizedSymbol)) {
-      setSymbolError('Tickern finns inte i Google Sheets. Välj en ticker från listan.');
+    if (!normalizedSymbol) {
+      setSymbolError('Ange en ticker för att lägga till innehavet.');
       return;
     }
 
     setIsSubmitting(true);
+    setSymbolError(null);
+
+    const sheetTicker = matchedTicker;
+    let alphaMatch: AlphaVantageSearchResult | null = null;
+
+    if (!sheetTicker) {
+      try {
+        alphaMatch = await searchAlphaVantageTicker(normalizedSymbol);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Kunde inte söka tickern via Alpha Vantage.';
+        setIsSubmitting(false);
+        setSymbolError(message);
+        return;
+      }
+
+      if (!alphaMatch) {
+        setIsSubmitting(false);
+        setSymbolError('Tickern finns inte i Google Sheets eller via Alpha Vantage-sökningen. Kontrollera stavningen och försök igen.');
+        return;
+      }
+
+      const regionMessage = alphaMatch.region ? ` (${alphaMatch.region})` : '';
+      setAlphaSearchMessage(`Tickern hittades via Alpha Vantage${regionMessage}. Komplettera gärna med pris och övriga uppgifter manuellt.`);
+
+      setDialogState(prev => {
+        const nextFormData = {
+          ...prev.formData,
+          symbol: alphaMatch ? alphaMatch.symbol : prev.formData.symbol,
+        };
+
+        if (!prev.nameOverridden && alphaMatch?.name) {
+          nextFormData.name = alphaMatch.name;
+        }
+
+        if (!prev.formData.market.trim() && alphaMatch?.region) {
+          nextFormData.market = alphaMatch.region;
+        }
+
+        if (!prev.currencyOverridden && alphaMatch?.currency) {
+          nextFormData.currency = alphaMatch.currency;
+        }
+
+        return {
+          ...prev,
+          formData: nextFormData,
+          priceOverridden: false,
+          currencyOverridden: false,
+          nameOverridden: prev.nameOverridden,
+          lastInitialDataSignature: null,
+        };
+      });
+    } else if (alphaSearchMessage) {
+      setAlphaSearchMessage(null);
+    }
 
     const quantity = formData.quantity ? parseFloat(formData.quantity) : undefined;
     const purchasePrice = formData.purchase_price ? parseFloat(formData.purchase_price) : undefined;
 
+    const resolvedSymbol = sheetTicker?.symbol ?? alphaMatch?.symbol ?? normalizedSymbol;
+    const resolvedName = formData.name.trim() || alphaMatch?.name || resolvedSymbol;
+    const resolvedCurrency = currencyOverridden
+      ? (formData.currency || 'SEK')
+      : (alphaMatch?.currency ?? formData.currency ?? 'SEK');
+    const resolvedMarket = formData.market.trim() || alphaMatch?.region || undefined;
+
     const holdingData: Omit<UserHolding, 'id' | 'user_id' | 'created_at' | 'updated_at'> = {
-      name: formData.name.trim(),
-      symbol: normalizedSymbol,
+      name: resolvedName,
+      symbol: resolvedSymbol,
       holding_type: formData.holding_type as UserHolding['holding_type'],
       quantity,
       purchase_price: purchasePrice,
       purchase_date: formData.purchase_date || undefined,
       sector: formData.sector.trim() || undefined,
-      market: formData.market.trim() || undefined,
-      currency: formData.currency || 'SEK'
+      market: resolvedMarket,
+      currency: resolvedCurrency
     };
 
     if (quantity !== undefined && purchasePrice !== undefined) {
@@ -366,12 +515,12 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       holdingData.current_value = calculatedValue;
     }
 
-    if (matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0) {
-      holdingData.current_price_per_unit = matchedTicker.price;
-      holdingData.price_currency = matchedTicker.currency ?? holdingData.currency;
+    if (sheetTicker && typeof sheetTicker.price === 'number' && Number.isFinite(sheetTicker.price) && sheetTicker.price > 0) {
+      holdingData.current_price_per_unit = sheetTicker.price;
+      holdingData.price_currency = sheetTicker.currency ?? holdingData.currency;
 
       if (quantity !== undefined && typeof holdingData.current_value !== 'number') {
-        const computedCurrentValue = Math.round(quantity * matchedTicker.price * 100) / 100;
+        const computedCurrentValue = Math.round(quantity * sheetTicker.price * 100) / 100;
         holdingData.current_value = computedCurrentValue;
       }
     }
@@ -381,6 +530,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     if (success) {
       resetDialogState();
       setSymbolError(null);
+      setAlphaSearchMessage(null);
       onClose();
     }
 
@@ -391,6 +541,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     if (!isSubmitting) {
       resetDialogState();
       setSymbolError(null);
+      setAlphaSearchMessage(null);
       onClose();
     }
   };
@@ -440,6 +591,9 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
               />
               {symbolError && (
                 <p className="text-sm text-destructive">{symbolError}</p>
+              )}
+              {!symbolError && alphaSearchMessage && (
+                <p className="text-xs text-muted-foreground">{alphaSearchMessage}</p>
               )}
               {tickersError && (
                 <p className="text-sm text-muted-foreground">{tickersError}</p>
