@@ -117,6 +117,38 @@ interface RefinementMessage {
   content: string;
 }
 
+const formatInlineMarkdown = (text: string): React.ReactNode => {
+  if (!text) {
+    return null;
+  }
+
+  const tokens = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean);
+
+  if (tokens.length === 0) {
+    return text;
+  }
+
+  return tokens.map((token, index) => {
+    if (token.startsWith('**') && token.endsWith('**')) {
+      return (
+        <strong key={`bold-${index}`} className="font-semibold text-foreground">
+          {token.slice(2, -2)}
+        </strong>
+      );
+    }
+
+    if (token.startsWith('*') && token.endsWith('*')) {
+      return (
+        <em key={`italic-${index}`} className="italic">
+          {token.slice(1, -1)}
+        </em>
+      );
+    }
+
+    return <React.Fragment key={`text-${index}`}>{token}</React.Fragment>;
+  });
+};
+
 const parseAdvisorResponse = (content: string): ParsedAdvisorResponse | null => {
   if (!content || typeof content !== 'string') {
     return null;
@@ -162,7 +194,7 @@ const parseAdvisorResponse = (content: string): ParsedAdvisorResponse | null => 
   const parseParagraphs = (text: string) =>
     text
       .split(/\n{2,}/)
-      .map(paragraph => paragraph.replace(/\n+/g, ' ').trim())
+      .map(paragraph => paragraph.trim())
       .filter(Boolean);
 
   const parseList = (text: string) =>
@@ -1628,21 +1660,79 @@ const ChatPortfolioAdvisor = () => {
       );
     }
 
+    const highlightPattern = /^\s*[-•]?\s*\*\*(.+?)\*\*:\s*(.+)$/;
+    const introLines: string[] = [];
+    const highlightMap = new Map<string, string>();
+
+    structured.summary.forEach(paragraph => {
+      if (!paragraph) {
+        return;
+      }
+
+      const normalizedParagraph = paragraph.replace(/\s+-\s+\*\*/g, '\n- **').trim();
+      const lines = normalizedParagraph
+        .split(/\n+/)
+        .map(line => line.trim())
+        .filter(Boolean);
+
+      if (lines.length === 0) {
+        return;
+      }
+
+      lines.forEach(line => {
+        const highlightMatch = line.match(highlightPattern);
+        if (highlightMatch) {
+          const title = highlightMatch[1]?.trim();
+          const detail = highlightMatch[2]?.trim() ?? '';
+          if (title && !highlightMap.has(title)) {
+            highlightMap.set(title, detail);
+          }
+        } else {
+          introLines.push(line);
+        }
+      });
+    });
+
+    const summaryIntroLines = introLines.filter((line, index, allLines) => allLines.indexOf(line) === index);
+    const summaryHighlights = Array.from(highlightMap.entries()).map(([title, detail]) => ({
+      title,
+      detail,
+    }));
+
     return (
       <div className="space-y-6 text-sm leading-relaxed text-foreground/90">
-        {structured.summary.length > 0 ? (
-          <section className="space-y-3">
+        {summaryIntroLines.length > 0 || summaryHighlights.length > 0 ? (
+          <section className="space-y-4">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
               <Sparkles className="h-3.5 w-3.5" />
               <span>Din strategi</span>
             </div>
-            <div className="space-y-2 text-sm sm:text-base">
-              {structured.summary.map((paragraph, index) => (
-                <p key={`summary-${index}`} className="text-foreground/90">
-                  {paragraph}
-                </p>
-              ))}
-            </div>
+            {summaryIntroLines.length > 0 && (
+              <div className="space-y-2 text-sm sm:text-base">
+                {summaryIntroLines.map((line, index) => (
+                  <p key={`summary-intro-${index}`} className="text-foreground/90">
+                    {formatInlineMarkdown(line)}
+                  </p>
+                ))}
+              </div>
+            )}
+            {summaryHighlights.length > 0 && (
+              <dl className="grid gap-3 sm:grid-cols-2">
+                {summaryHighlights.map(({ title, detail }, index) => (
+                  <div
+                    key={`summary-highlight-${index}`}
+                    className="rounded-2xl border border-border/40 bg-muted/40 p-3 shadow-sm"
+                  >
+                    <dt className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground/70">
+                      {title}
+                    </dt>
+                    <dd className="mt-1 text-sm font-medium text-foreground/90">
+                      {formatInlineMarkdown(detail || '–')}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
           </section>
         ) : (
           <p className="text-foreground/80">{aiContent}</p>
