@@ -15,7 +15,6 @@ import {
   Trash2,
   Check,
   Sparkles,
-  ShieldAlert,
   ClipboardList,
   Clock,
   PiggyBank,
@@ -117,6 +116,71 @@ interface RefinementMessage {
   content: string;
 }
 
+const formatInlineMarkdown = (text: string): React.ReactNode => {
+  if (!text) {
+    return null;
+  }
+
+  const tokens = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean);
+
+  if (tokens.length === 0) {
+    return text;
+  }
+
+  return tokens.map((token, index) => {
+    if (token.startsWith('**') && token.endsWith('**')) {
+      return (
+        <strong key={`bold-${index}`} className="font-semibold text-foreground">
+          {token.slice(2, -2)}
+        </strong>
+      );
+    }
+
+    if (token.startsWith('*') && token.endsWith('*')) {
+      return (
+        <em key={`italic-${index}`} className="italic">
+          {token.slice(1, -1)}
+        </em>
+      );
+    }
+
+    return <React.Fragment key={`text-${index}`}>{token}</React.Fragment>;
+  });
+};
+
+const renderMultilineMarkdown = (text: string): React.ReactNode => {
+  if (!text) {
+    return null;
+  }
+
+  return text
+    .split(/\n{2,}/)
+    .map(paragraph => paragraph.trim())
+    .filter(paragraph => paragraph.length > 0)
+    .map((paragraph, index) => {
+      const lines = paragraph.split(/\n/).filter(Boolean);
+
+      if (lines.length <= 1) {
+        return (
+          <p key={`paragraph-${index}`} className="mb-2 last:mb-0">
+            {formatInlineMarkdown(paragraph)}
+          </p>
+        );
+      }
+
+      return (
+        <p key={`paragraph-${index}`} className="mb-2 last:mb-0">
+          {lines.map((line, lineIndex) => (
+            <React.Fragment key={`paragraph-${index}-line-${lineIndex}`}>
+              {formatInlineMarkdown(line.trim())}
+              {lineIndex < lines.length - 1 && <br />}
+            </React.Fragment>
+          ))}
+        </p>
+      );
+    });
+};
+
 const parseAdvisorResponse = (content: string): ParsedAdvisorResponse | null => {
   if (!content || typeof content !== 'string') {
     return null;
@@ -162,7 +226,7 @@ const parseAdvisorResponse = (content: string): ParsedAdvisorResponse | null => 
   const parseParagraphs = (text: string) =>
     text
       .split(/\n{2,}/)
-      .map(paragraph => paragraph.replace(/\n+/g, ' ').trim())
+      .map(paragraph => paragraph.trim())
       .filter(Boolean);
 
   const parseList = (text: string) =>
@@ -249,24 +313,22 @@ const renderListSection = (
   }
 
   return (
-    <Card className="bg-card/80 border border-border/60 shadow-sm">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
-          <IconComponent className={`h-4 w-4 ${accentTextClass}`} />
-          <span>{title}</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <ul className="space-y-2">
-          {items.map((item, index) => (
-            <li key={`${title}-${index}`} className="flex items-start gap-3 text-sm text-muted-foreground">
-              <span className={`mt-1 h-2.5 w-2.5 rounded-full ${accentBgClass}`} />
-              <span className="leading-relaxed">{item}</span>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
+    <section className="rounded-2xl border border-border/40 bg-background/80 p-4 shadow-sm">
+      <header className="flex items-center gap-3 text-sm font-semibold text-foreground">
+        <span className={`flex h-8 w-8 items-center justify-center rounded-xl bg-muted/70 ${accentTextClass}`}>
+          <IconComponent className="h-4 w-4" />
+        </span>
+        <span>{title}</span>
+      </header>
+      <ul className="mt-3 space-y-2">
+        {items.map((item, index) => (
+          <li key={`${title}-${index}`} className="flex items-start gap-3 text-sm text-muted-foreground">
+            <span className={`mt-1 inline-flex h-2 w-2 flex-shrink-0 rounded-full ${accentBgClass}`} />
+            <span className="leading-relaxed text-foreground/90">{formatInlineMarkdown(item)}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 };
 
@@ -293,7 +355,7 @@ const ChatPortfolioAdvisor = () => {
   const { refetch: refetchHoldings } = useUserHoldings();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const refinementEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { tickers, isLoading: tickersLoading, error: tickersError } = useSheetTickers();
@@ -594,7 +656,11 @@ const ChatPortfolioAdvisor = () => {
   ];
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesContainerRef.current;
+
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    }
   };
 
   useEffect(() => {
@@ -1569,7 +1635,9 @@ const ChatPortfolioAdvisor = () => {
                         : 'bg-primary text-primary-foreground'
                     }`}
                   >
-                    <p className="whitespace-pre-line">{message.content}</p>
+                    <div className="space-y-1">
+                      {renderMultilineMarkdown(message.content)}
+                    </div>
                   </div>
                   {message.role === 'user' && (
                     <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
@@ -1618,141 +1686,202 @@ const ChatPortfolioAdvisor = () => {
     if (!structured) {
       return (
         <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
-          {aiContent
-            .split(/\n{2,}/)
-            .map(paragraph => paragraph.trim())
-            .filter(Boolean)
-            .map((paragraph, index) => (
-              <p key={`fallback-${index}`}>{paragraph}</p>
-            ))}
+          {renderMultilineMarkdown(aiContent)}
           {renderRefinementChat()}
         </div>
       );
     }
 
+    const introLines: string[] = [];
+    const highlightMap = new Map<string, string>();
+
+    structured.summary.forEach(paragraph => {
+      if (!paragraph) {
+        return;
+      }
+
+      const workingParagraph = paragraph.replace(/\r/g, '').replace(/^#+\s*/gm, '').trim();
+
+      if (!workingParagraph) {
+        return;
+      }
+
+      const segments = workingParagraph
+        .split(/\n+/)
+        .flatMap(line => line.split(/\s+[-•]\s+/))
+        .map(segment => segment.trim())
+        .filter(Boolean);
+
+      if (segments.length === 0) {
+        return;
+      }
+
+      segments.forEach(segment => {
+        if (!segment) {
+          return;
+        }
+
+        const segmentWithoutBullet = segment.replace(/^[-•]\s*/, '').trim();
+
+        if (segmentWithoutBullet.startsWith('**')) {
+          const closingIndex = segmentWithoutBullet.indexOf('**', 2);
+          if (closingIndex !== -1) {
+            const rawTitle = segmentWithoutBullet.slice(2, closingIndex).trim();
+            let detail = segmentWithoutBullet.slice(closingIndex + 2).trim();
+
+            if (detail.startsWith(':')) {
+              detail = detail.slice(1).trim();
+            }
+
+            const title = rawTitle.replace(/[:：]\s*$/, '').trim();
+
+            if (title && detail && !highlightMap.has(title)) {
+              highlightMap.set(title, detail);
+              return;
+            }
+          }
+
+          const cleanedSegment = segmentWithoutBullet.replace(/\*\*(.+?)\*\*/g, '$1').trim();
+          if (cleanedSegment) {
+            introLines.push(cleanedSegment);
+          }
+          return;
+        }
+
+        const cleanedSegment = segmentWithoutBullet.replace(/\*\*(.+?)\*\*/g, '$1').trim();
+        if (cleanedSegment) {
+          introLines.push(cleanedSegment);
+        }
+      });
+    });
+
+    const summaryIntroLines = introLines.filter((line, index, allLines) => allLines.indexOf(line) === index);
+    const summaryHighlights = Array.from(highlightMap.entries()).map(([title, detail]) => ({
+      title,
+      detail,
+    }));
+
     return (
-      <div className="space-y-6">
-        <Card className="border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-white shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg font-semibold text-blue-900">
-              <Sparkles className="h-5 w-5 text-blue-500" />
-              Professionell sammanfattning
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Baseras på din riskprofil och rådgivningssamtalet
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {structured.summary.length > 0 ? (
-              structured.summary.map((paragraph, index) => (
-                <p key={`summary-${index}`} className="text-sm leading-relaxed text-muted-foreground">
-                  {paragraph}
-                </p>
-              ))
-            ) : (
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Din portföljanalys presenteras i sektionerna nedan.
-              </p>
+      <div className="space-y-6 text-sm leading-relaxed text-foreground/90">
+        {summaryIntroLines.length > 0 || summaryHighlights.length > 0 ? (
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Din strategi</span>
+            </div>
+            {summaryIntroLines.length > 0 && (
+              <div className="space-y-2 text-sm sm:text-base">
+                {summaryIntroLines.map((line, index) => (
+                  <p key={`summary-intro-${index}`} className="text-foreground/90">
+                    {formatInlineMarkdown(line)}
+                  </p>
+                ))}
+              </div>
             )}
-          </CardContent>
-        </Card>
+            {summaryHighlights.length > 0 && (
+              <dl className="grid gap-3 sm:grid-cols-2">
+                {summaryHighlights.map(({ title, detail }, index) => (
+                  <div
+                    key={`summary-highlight-${index}`}
+                    className="rounded-2xl border border-border/40 bg-muted/40 p-3 shadow-sm"
+                  >
+                    <dt className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground/70">
+                      {title}
+                    </dt>
+                    <dd className="mt-1 text-sm font-medium text-foreground/90">
+                      {formatInlineMarkdown(detail || '–')}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </section>
+        ) : (
+          <p className="text-foreground/80">{aiContent}</p>
+        )}
 
         {structured.recommendations.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h4 className="flex items-center gap-2 text-base font-semibold text-foreground">
-                <TrendingUp className="h-4 w-4 text-primary" />
-                Rekommenderad portföljstrategi
-              </h4>
-              <Badge variant="outline" className="border-primary/20 bg-primary/10 text-primary">
-                Totalt 100% allokering
+          <section className="space-y-3">
+            <header className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground/70">
+              <Badge variant="outline" className="rounded-full border-border/40 bg-background/70 text-[0.65rem] font-medium uppercase tracking-[0.4em]">
+                Rekommendationer
               </Badge>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+              <span className="text-muted-foreground/80">{structured.recommendations.length} förslag</span>
+            </header>
+            <div className="space-y-3">
               {structured.recommendations.map((recommendation, index) => (
-                <Card
-                  key={`${recommendation.name}-${index}`}
-                  className="border border-border/60 bg-background/95 shadow-sm transition-shadow duration-200 hover:shadow-md"
+                <div
+                  key={`recommendation-${index}`}
+                  className="rounded-2xl border border-border/40 bg-background/80 p-4 shadow-sm"
                 >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <CardTitle className="text-base font-semibold text-foreground">
-                          {recommendation.name}
-                        </CardTitle>
-                        {recommendation.ticker && (
-                          <p className="mt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                            {recommendation.ticker}
-                          </p>
-                        )}
-                      </div>
-                      {recommendation.allocation && (
-                        <Badge className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
-                          {recommendation.allocation}
-                        </Badge>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium uppercase tracking-[0.25em] text-muted-foreground/60">
+                        {recommendation.category || 'Innehav'}
+                      </p>
+                      <h4 className="text-base font-semibold text-foreground sm:text-lg">{recommendation.name}</h4>
+                      {recommendation.ticker && (
+                        <p className="text-xs font-medium text-muted-foreground/80">{recommendation.ticker}</p>
                       )}
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-                    {recommendation.analysis && (
-                      <div className="rounded-xl border border-border/60 bg-muted/40 p-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Analys</p>
-                        <p className="mt-1 text-foreground">{recommendation.analysis}</p>
+                    {recommendation.allocation && (
+                      <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                        {recommendation.allocation}
                       </div>
                     )}
-                    {recommendation.role && (
-                      <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-primary">Roll i portföljen</p>
-                        <p className="mt-1 text-foreground">{recommendation.role}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                  </div>
+
+                  {recommendation.analysis && (
+                    <div className="mt-3 text-sm text-muted-foreground/90">
+                      {renderMultilineMarkdown(recommendation.analysis)}
+                    </div>
+                  )}
+
+                  {recommendation.role && (
+                    <div className="mt-3 flex items-center gap-2 rounded-xl bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                      <ClipboardList className="h-3.5 w-3.5 text-muted-foreground/70" />
+                      <span className="text-foreground/85">{formatInlineMarkdown(recommendation.role)}</span>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
-        {(structured.portfolioAnalysis.length > 0 || structured.riskAnalysis.length > 0) && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {renderListSection('Portföljanalys', structured.portfolioAnalysis, 'text-blue-600', 'bg-blue-500/80', BarChart3)}
-            {renderListSection('Riskanalys & stresstest', structured.riskAnalysis, 'text-rose-600', 'bg-rose-500/80', ShieldAlert)}
-          </div>
-        )}
+        {structured.portfolioAnalysis.length > 0 &&
+          renderListSection('Portföljanalys', structured.portfolioAnalysis, 'text-blue-600', 'bg-blue-500/80', BarChart3)}
 
-        {(structured.implementationPlan.length > 0 || structured.followUp.length > 0) && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {renderListSection('Implementationsplan', structured.implementationPlan, 'text-emerald-600', 'bg-emerald-500/80', ClipboardList)}
-            {renderListSection('Uppföljning', structured.followUp, 'text-purple-600', 'bg-purple-500/80', Clock)}
-          </div>
-        )}
+        {structured.followUp.length > 0 &&
+          renderListSection('Uppföljning', structured.followUp, 'text-purple-600', 'bg-purple-500/80', Clock)}
 
         {structured.savingsPlan.length > 0 &&
           renderListSection('Personlig sparrekommendation', structured.savingsPlan, 'text-amber-600', 'bg-amber-500/80', PiggyBank)}
 
         {structured.closingQuestion && (
-          <Card className="border border-primary/30 bg-primary/5">
-            <CardContent className="flex items-center gap-3 py-4 text-sm font-medium text-primary">
-              <MessageCircleQuestion className="h-5 w-5" />
-              <span>{structured.closingQuestion}</span>
-            </CardContent>
-          </Card>
+          <section className="flex flex-col gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
+            <div className="flex items-center gap-2">
+              <MessageCircleQuestion className="h-4 w-4" />
+              <span className="font-medium text-primary/90">{formatInlineMarkdown(structured.closingQuestion)}</span>
+            </div>
+            <p className="text-xs text-primary/70">Svara med vad du vill ändra så hjälper jag dig vidare.</p>
+          </section>
         )}
 
         {renderRefinementChat()}
 
         {structured.disclaimer && (
-          <Alert className="border-amber-200 bg-amber-50 text-amber-900">
+          <Alert className="border border-amber-200/70 bg-amber-50/80 text-amber-900">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Disclaimer</AlertTitle>
-            <AlertDescription className="space-y-1 text-sm leading-relaxed">
+            <AlertTitle className="text-sm font-semibold tracking-wide">Viktig information</AlertTitle>
+            <AlertDescription className="space-y-2 text-sm leading-relaxed">
               {structured.disclaimer
                 .split(/\n+/)
                 .map(line => line.trim())
                 .filter(Boolean)
                 .map((line, index) => (
-                  <span key={`disclaimer-${index}`} className="block">
-                    {line}
+                  <span key={`disclaimer-${index}`} className="block text-foreground/80">
+                    {formatInlineMarkdown(line)}
                   </span>
                 ))}
             </AlertDescription>
@@ -1783,7 +1912,7 @@ const ChatPortfolioAdvisor = () => {
       </div>
 
       {/* Messages Container - matching AIChat style */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" ref={messagesContainerRef}>
         <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
           {messages.map((message) => (
             <div key={message.id} className="space-y-2">
@@ -1795,7 +1924,7 @@ const ChatPortfolioAdvisor = () => {
                   <div className="flex-1 min-w-0">
                     <div className="bg-muted/50 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border shadow-sm">
                       <div className="prose prose-sm max-w-none text-foreground">
-                        <p className="text-sm sm:text-base leading-relaxed mb-0">{message.content}</p>
+                        {renderMultilineMarkdown(message.content)}
                       </div>
                       
                       {/* Show predefined options if available */}
@@ -1984,7 +2113,6 @@ const ChatPortfolioAdvisor = () => {
             </div>
           )}
 
-          <div ref={messagesEndRef} />
         </div>
       </div>
 

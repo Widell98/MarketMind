@@ -429,6 +429,51 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
     setLoading(true);
 
     try {
+      // Clear any previously saved risk profile so the new assessment fully replaces it
+      const { data: existingProfiles, error: existingProfilesError } = await supabase
+        .from('user_risk_profiles')
+        .select('id')
+        .eq('user_id', user.id);
+
+      if (existingProfilesError) {
+        console.error('Error checking existing risk profiles:', existingProfilesError);
+        toast({
+          title: "Error",
+          description: "Kunde inte kontrollera din befintliga riskprofil",
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      if (existingProfiles && existingProfiles.length > 0) {
+        const existingIds = existingProfiles.map(profile => profile.id);
+        const { error: clearProfileError } = await supabase
+          .from('user_risk_profiles')
+          .delete()
+          .in('id', existingIds);
+
+        if (clearProfileError) {
+          console.error('Error clearing previous risk profile:', clearProfileError);
+          toast({
+            title: "Error",
+            description: "Kunde inte ersätta din tidigare riskprofil. Försök igen senare.",
+            variant: "destructive",
+          });
+          return null;
+        }
+
+        // Also clear previously generated AI recommendations linked to the old profile
+        const { error: clearRecommendationsError } = await supabase
+          .from('user_holdings')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('holding_type', 'recommendation');
+
+        if (clearRecommendationsError) {
+          console.error('Error clearing previous AI recommendations:', clearRecommendationsError);
+        }
+      }
+
       const enhancedPrompt = buildEnhancedAIPrompt(conversationData);
       console.log('Generated enhanced AI prompt:', enhancedPrompt);
       
