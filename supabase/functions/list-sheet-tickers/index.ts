@@ -18,6 +18,44 @@ const normalizeValue = (value?: string | null) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
+const buildTickerVariants = (ticker: string | null) => {
+  if (!ticker) return new Set<string>();
+  const base = ticker.trim().toUpperCase();
+  if (!base) return new Set<string>();
+
+  const variants = new Set<string>();
+  const queue = [base];
+
+  const pushVariant = (value: string | null | undefined) => {
+    if (!value) return;
+    const normalized = value.trim().toUpperCase();
+    if (!normalized) return;
+    if (!variants.has(normalized)) {
+      variants.add(normalized);
+      queue.push(normalized);
+    }
+  };
+
+  while (queue.length > 0) {
+    const current = queue.pop();
+    if (!current) continue;
+
+    // Remove exchange prefix (e.g., "STO:ABB")
+    if (current.includes(":")) {
+      const [, suffix] = current.split(/:(.+)/);
+      pushVariant(suffix ?? null);
+    }
+
+    if (current.endsWith(".ST")) {
+      pushVariant(current.replace(/\.ST$/, ""));
+    } else {
+      pushVariant(`${current}.ST`);
+    }
+  }
+
+  return variants;
+};
+
 type AlphaTickerMatch = {
   symbol: string;
   name: string;
@@ -126,7 +164,9 @@ serve(async (req) => {
       }
     }
 
-    const requestedTicker = payload?.ticker ? String(payload.ticker).trim().toUpperCase() : null;
+    const requestedTickerRaw = payload?.ticker ? String(payload.ticker) : null;
+    const requestedTicker = requestedTickerRaw ? requestedTickerRaw.trim().toUpperCase() : null;
+    const requestedTickerVariants = requestedTicker ? buildTickerVariants(requestedTicker) : null;
 
     const res = await fetch(CSV_URL);
     if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
@@ -192,10 +232,14 @@ serve(async (req) => {
     const tickers = Array.from(tickerMap.values()).map((item) => ({ ...item, source: "google_sheets" as const }));
 
     let fallbackTicker: AlphaTickerMatch | null = null;
-    if (requestedTicker) {
-      const existsInSheet = tickers.some((t) => t.symbol.toUpperCase() === requestedTicker);
+    if (requestedTicker && requestedTickerVariants) {
+      const existsInSheet = tickers.some((t) => requestedTickerVariants.has(t.symbol.toUpperCase()));
       if (!existsInSheet) {
-        fallbackTicker = await fetchAlphaVantageMatch(requestedTicker);
+        const tickerForLookup =
+          Array.from(requestedTickerVariants).find((variant) => !variant.includes(":")) ??
+          Array.from(requestedTickerVariants)[0] ??
+          requestedTicker;
+        fallbackTicker = await fetchAlphaVantageMatch(tickerForLookup);
         if (fallbackTicker) {
           const alreadyIncluded = tickers.some((t) => t.symbol.toUpperCase() === fallbackTicker.symbol.toUpperCase());
           if (!alreadyIncluded) {

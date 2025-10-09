@@ -212,6 +212,14 @@ serve(async (req) => {
     }
 
     const requestedTicker = payload?.ticker ? String(payload.ticker).trim().toUpperCase() : null;
+    const requestedTickerVariants = requestedTicker
+      ? new Set(getSymbolVariants(requestedTicker).map((variant) => variant.toUpperCase()))
+      : null;
+    const tickerForAlphaLookup = requestedTickerVariants
+      ? Array.from(requestedTickerVariants).find((variant) => !variant.includes(":")) ??
+        Array.from(requestedTickerVariants)[0] ??
+        requestedTicker
+      : requestedTicker;
     let processedRequestedTicker = false;
 
     const supabase = getSupabaseClient();
@@ -276,8 +284,10 @@ serve(async (req) => {
       const sanitizedSymbol = stripSymbolPrefix(rawSymbolValue);
       const symbolVariants = getSymbolVariants(rawSymbolValue, sanitizedSymbol);
       const canonicalSymbol = sanitizedSymbol ?? normalizedSymbol;
-      if (requestedTicker) {
-        const matchesTicker = symbolVariants.some((variant) => variant.toUpperCase() === requestedTicker);
+      if (requestedTickerVariants) {
+        const matchesTicker = symbolVariants.some((variant) =>
+          requestedTickerVariants.has(variant.toUpperCase())
+        );
         if (!matchesTicker) continue;
         processedRequestedTicker = true;
       }
@@ -362,8 +372,8 @@ serve(async (req) => {
       }
     }
 
-    if (requestedTicker && !processedRequestedTicker) {
-      const alphaQuote = await fetchAlphaVantageQuote(requestedTicker);
+    if (tickerForAlphaLookup && requestedTicker && !processedRequestedTicker) {
+      const alphaQuote = await fetchAlphaVantageQuote(tickerForAlphaLookup);
       if (alphaQuote) {
         processedRequestedTicker = true;
 
