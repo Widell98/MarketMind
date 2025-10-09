@@ -24,6 +24,12 @@ const normalizeValue = (v?: string | null) => (v?.trim()?.length ? v.trim() : nu
 const normalizeSymbol = (v?: string | null) => normalizeValue(v)?.toUpperCase() ?? null;
 const normalizeName = (v?: string | null) => normalizeValue(v)?.toUpperCase() ?? null;
 
+const toNullableString = (value: unknown): string | null => {
+  if (value === null || value === undefined) return null;
+  const str = String(value).trim();
+  return str.length > 0 ? str : null;
+};
+
 const stripSymbolPrefix = (symbol?: string | null) => {
   const normalized = normalizeValue(symbol);
   if (!normalized) return null;
@@ -79,6 +85,25 @@ const getSymbolVariants = (symbol: string | null, alternative?: string | null) =
   return [...variants];
 };
 
+const isLikelyTicker = (value: string | null | undefined) => {
+  if (!value) return false;
+  const candidate = value.trim();
+  if (!candidate || candidate.length > 15) return false;
+  return /^[A-Z0-9._-]+$/.test(candidate);
+};
+
+const toNumericQuantity = (value: unknown): number => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = parseFloat(value.replace(",", "."));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  if (value && typeof value === "object" && "value" in value) {
+    return toNumericQuantity((value as { value: unknown }).value);
+  }
+  return 0;
+};
+
 const EXCHANGE_RATES: Record<string, number> = {
   SEK: 1,
   USD: 10.5,
@@ -101,6 +126,7 @@ const convertToSEK = (amount: number, currency?: string | null) => {
 };
 
 type QuoteResult = {
+  symbol: string | null;
   pricePerUnit: number | null;
   currency: string | null;
   changePercent: number | null;
@@ -130,6 +156,7 @@ const fetchAlphaVantageQuote = async (symbol: string): Promise<QuoteResult | nul
       return null;
     }
 
+    const resolvedSymbol = normalizeSymbol(quote["01. symbol"] ?? quote["01. Symbol"] ?? symbol);
     const pricePerUnit = parsePrice(quote["05. price"] ?? quote["05. Price"]);
     const changePercent = parseChangePercent(quote["10. change percent"] ?? quote["10. Change Percent"]);
     const currency = normalizeValue(quote["08. currency"] ?? quote["08. Currency"])?.toUpperCase() ?? "USD";
@@ -139,7 +166,7 @@ const fetchAlphaVantageQuote = async (symbol: string): Promise<QuoteResult | nul
       return null;
     }
 
-    return { pricePerUnit, currency, changePercent };
+    return { symbol: resolvedSymbol ?? symbol.toUpperCase(), pricePerUnit, currency, changePercent };
   } catch (error) {
     console.error(`Alpha Vantage request threw for ${symbol}:`, error);
     return null;
@@ -211,6 +238,7 @@ serve(async (req) => {
     let updated = 0;
     let errors = 0;
     const unmatched: Array<{ symbol?: string; name?: string }> = [];
+    const updatedHoldingIds = new Set<string>();
 
     for (const row of rows) {
       // Anpassa index efter din CSV-struktur (B2:H tidigare)
@@ -307,7 +335,10 @@ serve(async (req) => {
         if (updateErr) {
           console.error(`Error updating holding ${holding.id}:`, updateErr);
           errors++;
-        } else updated++;
+        } else {
+          updated++;
+          updatedHoldingIds.add(String(holding.id));
+        }
       }
     }
 
@@ -318,6 +349,7 @@ serve(async (req) => {
       let usedAlphaSymbol: string | null = null;
 
       for (const variant of alphaVariants) {
+        if (!isLikelyTicker(variant)) continue;
         alphaQuote = await fetchAlphaVantageQuote(variant);
         if (alphaQuote) {
           usedAlphaSymbol = variant;
@@ -325,7 +357,7 @@ serve(async (req) => {
         }
       }
 
-      if (!alphaQuote && sanitizedRequested !== requestedTicker) {
+      if (!alphaQuote && sanitizedRequested !== requestedTicker && isLikelyTicker(sanitizedRequested)) {
         alphaQuote = await fetchAlphaVantageQuote(sanitizedRequested);
         if (alphaQuote) usedAlphaSymbol = sanitizedRequested;
       }
@@ -357,10 +389,7 @@ serve(async (req) => {
           errors++;
         } else if (holdings && holdings.length > 0) {
           for (const holding of holdings) {
-            const q = Number.isFinite(holding.quantity)
-              ? holding.quantity
-              : parseFloat(String(holding.quantity ?? "").replace(",", "."));
-            const quantity = Number.isFinite(q) ? q : 0;
+            const quantity = toNumericQuantity(holding.quantity);
             const computedValue =
               pricePerUnitInSEK !== null && Number.isFinite(quantity)
                 ? quantity * pricePerUnitInSEK
@@ -389,7 +418,142 @@ serve(async (req) => {
             } else {
               updated++;
               processedRequestedTicker = true;
+              updatedHoldingIds.add(String(holding.id));
             }
+          }
+        }
+      }
+    }
+
+    const alphaQuoteCache = new Map<string, QuoteResult | null>();
+    const fetchAlphaWithCache = async (symbol: string) => {
+      if (!isLikelyTicker(symbol)) return null;
+      const cached = alphaQuoteCache.get(symbol);
+      if (cached !== undefined) return cached;
+      const quote = await fetchAlphaVantageQuote(symbol);
+      alphaQuoteCache.set(symbol, quote);
+      return quote;
+    };
+
+    const tryUpdateHoldingFromAlpha = async (
+      holding: { id: unknown; quantity: unknown },
+      quote: QuoteResult,
+    ) => {
+      if (quote.pricePerUnit === null) return false;
+
+      const priceCurrency = quote.currency ?? "USD";
+      const pricePerUnitInSEK =
+        priceCurrency === "SEK"
+          ? quote.pricePerUnit
+          : convertToSEK(quote.pricePerUnit, priceCurrency);
+
+      const quantity = toNumericQuantity(holding.quantity);
+      const computedValue =
+        pricePerUnitInSEK !== null && Number.isFinite(quantity)
+          ? quantity * pricePerUnitInSEK
+          : quantity === 0
+            ? 0
+            : null;
+
+      const payload: Record<string, unknown> = {
+        current_price_per_unit: quote.pricePerUnit,
+        price_currency: priceCurrency,
+        updated_at: timestamp,
+      };
+
+      if (computedValue !== null) {
+        payload.current_value = computedValue;
+      }
+      if (quote.changePercent !== null) {
+        payload.daily_change_pct = quote.changePercent;
+      }
+
+      const { error: updateErr } = await supabase
+        .from("user_holdings")
+        .update(payload)
+        .eq("id", holding.id);
+
+      if (updateErr) {
+        console.error(`Error updating holding ${holding.id} from Alpha fallback:`, updateErr);
+        errors++;
+        return false;
+      }
+
+      updated++;
+      updatedHoldingIds.add(String(holding.id));
+      return true;
+    };
+
+    let fallbackQuery = supabase
+      .from("user_holdings")
+      .select("id, symbol, name, quantity")
+      .neq("holding_type", "cash");
+
+    if (!isServiceRequest && userId) {
+      fallbackQuery = fallbackQuery.eq("user_id", userId);
+    }
+
+    const { data: alphaCandidatesRaw, error: alphaCandidatesError } = await fallbackQuery;
+    if (alphaCandidatesError) {
+      console.error("Failed to fetch holdings for Alpha fallback:", alphaCandidatesError);
+    } else if (alphaCandidatesRaw && alphaCandidatesRaw.length > 0) {
+      const alphaCandidates = alphaCandidatesRaw as Array<{
+        id: string | number;
+        symbol?: string | null;
+        name?: string | null;
+        quantity?: number | string | null;
+      }>;
+
+      const normalizedRequestedTicker = requestedTicker ?? null;
+
+      for (const candidate of alphaCandidates) {
+        if (updatedHoldingIds.has(String(candidate.id))) continue;
+
+        const symbolValue = toNullableString(candidate.symbol);
+        const sanitizedSymbol = stripSymbolPrefix(symbolValue);
+        const nameValue = toNullableString(candidate.name);
+        const sanitizedName = stripSymbolPrefix(nameValue);
+
+        const variantSeeds = new Set<string>();
+        for (const variant of getSymbolVariants(symbolValue, sanitizedSymbol)) {
+          if (isLikelyTicker(variant)) variantSeeds.add(variant);
+        }
+        for (const variant of getSymbolVariants(nameValue, sanitizedName)) {
+          if (isLikelyTicker(variant)) variantSeeds.add(variant);
+        }
+
+        if (variantSeeds.size === 0) continue;
+
+        let holdingUpdated = false;
+        for (const variant of variantSeeds) {
+          const quote = await fetchAlphaWithCache(variant);
+          if (!quote) continue;
+
+          const success = await tryUpdateHoldingFromAlpha(candidate, quote);
+          if (success) {
+            holdingUpdated = true;
+            if (normalizedRequestedTicker && variant.toUpperCase() === normalizedRequestedTicker) {
+              processedRequestedTicker = true;
+            } else if (
+              normalizedRequestedTicker &&
+              quote.symbol &&
+              normalizeSymbol(quote.symbol) === normalizedRequestedTicker
+            ) {
+              processedRequestedTicker = true;
+            }
+            break;
+          }
+        }
+
+        if (!holdingUpdated && normalizedRequestedTicker) {
+          const matchesRequested = [...variantSeeds].some(
+            (variant) => variant.toUpperCase() === normalizedRequestedTicker,
+          );
+          if (matchesRequested) {
+            unmatched.push({
+              symbol: symbolValue ?? undefined,
+              name: nameValue ?? undefined,
+            });
           }
         }
       }
