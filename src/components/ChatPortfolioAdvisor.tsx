@@ -15,7 +15,6 @@ import {
   Trash2,
   Check,
   Sparkles,
-  ShieldAlert,
   ClipboardList,
   Clock,
   PiggyBank,
@@ -292,7 +291,7 @@ const renderListSection = (
         {items.map((item, index) => (
           <li key={`${title}-${index}`} className="flex items-start gap-3 text-sm text-muted-foreground">
             <span className={`mt-1 inline-flex h-2 w-2 flex-shrink-0 rounded-full ${accentBgClass}`} />
-            <span className="leading-relaxed text-foreground/90">{item}</span>
+            <span className="leading-relaxed text-foreground/90">{formatInlineMarkdown(item)}</span>
           </li>
         ))}
       </ul>
@@ -1785,19 +1784,11 @@ const ChatPortfolioAdvisor = () => {
           </section>
         )}
 
-        {(structured.portfolioAnalysis.length > 0 || structured.riskAnalysis.length > 0) && (
-          <div className="grid gap-3 lg:grid-cols-2">
-            {renderListSection('Portföljanalys', structured.portfolioAnalysis, 'text-blue-600', 'bg-blue-500/80', BarChart3)}
-            {renderListSection('Riskanalys & stresstest', structured.riskAnalysis, 'text-rose-600', 'bg-rose-500/80', ShieldAlert)}
-          </div>
-        )}
+        {structured.portfolioAnalysis.length > 0 &&
+          renderListSection('Portföljanalys', structured.portfolioAnalysis, 'text-blue-600', 'bg-blue-500/80', BarChart3)}
 
-        {(structured.implementationPlan.length > 0 || structured.followUp.length > 0) && (
-          <div className="grid gap-3 lg:grid-cols-2">
-            {renderListSection('Implementationsplan', structured.implementationPlan, 'text-emerald-600', 'bg-emerald-500/80', ClipboardList)}
-            {renderListSection('Uppföljning', structured.followUp, 'text-purple-600', 'bg-purple-500/80', Clock)}
-          </div>
-        )}
+        {structured.followUp.length > 0 &&
+          renderListSection('Uppföljning', structured.followUp, 'text-purple-600', 'bg-purple-500/80', Clock)}
 
         {structured.savingsPlan.length > 0 &&
           renderListSection('Personlig sparrekommendation', structured.savingsPlan, 'text-amber-600', 'bg-amber-500/80', PiggyBank)}
