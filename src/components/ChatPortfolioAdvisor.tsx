@@ -148,6 +148,39 @@ const formatInlineMarkdown = (text: string): React.ReactNode => {
   });
 };
 
+const renderMultilineMarkdown = (text: string): React.ReactNode => {
+  if (!text) {
+    return null;
+  }
+
+  return text
+    .split(/\n{2,}/)
+    .map(paragraph => paragraph.trim())
+    .filter(paragraph => paragraph.length > 0)
+    .map((paragraph, index) => {
+      const lines = paragraph.split(/\n/).filter(Boolean);
+
+      if (lines.length <= 1) {
+        return (
+          <p key={`paragraph-${index}`} className="mb-2 last:mb-0">
+            {formatInlineMarkdown(paragraph)}
+          </p>
+        );
+      }
+
+      return (
+        <p key={`paragraph-${index}`} className="mb-2 last:mb-0">
+          {lines.map((line, lineIndex) => (
+            <React.Fragment key={`paragraph-${index}-line-${lineIndex}`}>
+              {formatInlineMarkdown(line.trim())}
+              {lineIndex < lines.length - 1 && <br />}
+            </React.Fragment>
+          ))}
+        </p>
+      );
+    });
+};
+
 const parseAdvisorResponse = (content: string): ParsedAdvisorResponse | null => {
   if (!content || typeof content !== 'string') {
     return null;
@@ -322,7 +355,7 @@ const ChatPortfolioAdvisor = () => {
   const { refetch: refetchHoldings } = useUserHoldings();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const refinementEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { tickers, isLoading: tickersLoading, error: tickersError } = useSheetTickers();
@@ -623,7 +656,11 @@ const ChatPortfolioAdvisor = () => {
   ];
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesContainerRef.current;
+
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    }
   };
 
   useEffect(() => {
@@ -1598,7 +1635,9 @@ const ChatPortfolioAdvisor = () => {
                         : 'bg-primary text-primary-foreground'
                     }`}
                   >
-                    <p className="whitespace-pre-line">{message.content}</p>
+                    <div className="space-y-1">
+                      {renderMultilineMarkdown(message.content)}
+                    </div>
                   </div>
                   {message.role === 'user' && (
                     <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
@@ -1647,19 +1686,12 @@ const ChatPortfolioAdvisor = () => {
     if (!structured) {
       return (
         <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
-          {aiContent
-            .split(/\n{2,}/)
-            .map(paragraph => paragraph.trim())
-            .filter(Boolean)
-            .map((paragraph, index) => (
-              <p key={`fallback-${index}`}>{paragraph}</p>
-            ))}
+          {renderMultilineMarkdown(aiContent)}
           {renderRefinementChat()}
         </div>
       );
     }
 
-    const highlightPattern = /^\s*[-•]?\s*\*\*(.+?)\*\*:\s*(.+)$/;
     const introLines: string[] = [];
     const highlightMap = new Map<string, string>();
 
@@ -1668,26 +1700,57 @@ const ChatPortfolioAdvisor = () => {
         return;
       }
 
-      const normalizedParagraph = paragraph.replace(/\s+-\s+\*\*/g, '\n- **').trim();
-      const lines = normalizedParagraph
-        .split(/\n+/)
-        .map(line => line.trim())
-        .filter(Boolean);
+      const workingParagraph = paragraph.replace(/\r/g, '').replace(/^#+\s*/gm, '').trim();
 
-      if (lines.length === 0) {
+      if (!workingParagraph) {
         return;
       }
 
-      lines.forEach(line => {
-        const highlightMatch = line.match(highlightPattern);
-        if (highlightMatch) {
-          const title = highlightMatch[1]?.trim();
-          const detail = highlightMatch[2]?.trim() ?? '';
-          if (title && !highlightMap.has(title)) {
-            highlightMap.set(title, detail);
+      const segments = workingParagraph
+        .split(/\n+/)
+        .flatMap(line => line.split(/\s+[-•]\s+/))
+        .map(segment => segment.trim())
+        .filter(Boolean);
+
+      if (segments.length === 0) {
+        return;
+      }
+
+      segments.forEach(segment => {
+        if (!segment) {
+          return;
+        }
+
+        const segmentWithoutBullet = segment.replace(/^[-•]\s*/, '').trim();
+
+        if (segmentWithoutBullet.startsWith('**')) {
+          const closingIndex = segmentWithoutBullet.indexOf('**', 2);
+          if (closingIndex !== -1) {
+            const rawTitle = segmentWithoutBullet.slice(2, closingIndex).trim();
+            let detail = segmentWithoutBullet.slice(closingIndex + 2).trim();
+
+            if (detail.startsWith(':')) {
+              detail = detail.slice(1).trim();
+            }
+
+            const title = rawTitle.replace(/[:：]\s*$/, '').trim();
+
+            if (title && detail && !highlightMap.has(title)) {
+              highlightMap.set(title, detail);
+              return;
+            }
           }
-        } else {
-          introLines.push(line);
+
+          const cleanedSegment = segmentWithoutBullet.replace(/\*\*(.+?)\*\*/g, '$1').trim();
+          if (cleanedSegment) {
+            introLines.push(cleanedSegment);
+          }
+          return;
+        }
+
+        const cleanedSegment = segmentWithoutBullet.replace(/\*\*(.+?)\*\*/g, '$1').trim();
+        if (cleanedSegment) {
+          introLines.push(cleanedSegment);
         }
       });
     });
@@ -1769,13 +1832,15 @@ const ChatPortfolioAdvisor = () => {
                   </div>
 
                   {recommendation.analysis && (
-                    <p className="mt-3 text-sm text-muted-foreground/90">{recommendation.analysis}</p>
+                    <div className="mt-3 text-sm text-muted-foreground/90">
+                      {renderMultilineMarkdown(recommendation.analysis)}
+                    </div>
                   )}
 
                   {recommendation.role && (
                     <div className="mt-3 flex items-center gap-2 rounded-xl bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
                       <ClipboardList className="h-3.5 w-3.5 text-muted-foreground/70" />
-                      <span className="text-foreground/85">{recommendation.role}</span>
+                      <span className="text-foreground/85">{formatInlineMarkdown(recommendation.role)}</span>
                     </div>
                   )}
                 </div>
@@ -1797,7 +1862,7 @@ const ChatPortfolioAdvisor = () => {
           <section className="flex flex-col gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
             <div className="flex items-center gap-2">
               <MessageCircleQuestion className="h-4 w-4" />
-              <span className="font-medium text-primary/90">{structured.closingQuestion}</span>
+              <span className="font-medium text-primary/90">{formatInlineMarkdown(structured.closingQuestion)}</span>
             </div>
             <p className="text-xs text-primary/70">Svara med vad du vill ändra så hjälper jag dig vidare.</p>
           </section>
@@ -1816,7 +1881,7 @@ const ChatPortfolioAdvisor = () => {
                 .filter(Boolean)
                 .map((line, index) => (
                   <span key={`disclaimer-${index}`} className="block text-foreground/80">
-                    {line}
+                    {formatInlineMarkdown(line)}
                   </span>
                 ))}
             </AlertDescription>
@@ -1847,7 +1912,7 @@ const ChatPortfolioAdvisor = () => {
       </div>
 
       {/* Messages Container - matching AIChat style */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" ref={messagesContainerRef}>
         <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
           {messages.map((message) => (
             <div key={message.id} className="space-y-2">
@@ -1859,7 +1924,7 @@ const ChatPortfolioAdvisor = () => {
                   <div className="flex-1 min-w-0">
                     <div className="bg-muted/50 backdrop-blur-sm rounded-2xl rounded-tl-lg p-3 sm:p-4 border shadow-sm">
                       <div className="prose prose-sm max-w-none text-foreground">
-                        <p className="text-sm sm:text-base leading-relaxed mb-0">{message.content}</p>
+                        {renderMultilineMarkdown(message.content)}
                       </div>
                       
                       {/* Show predefined options if available */}
@@ -2048,7 +2113,6 @@ const ChatPortfolioAdvisor = () => {
             </div>
           )}
 
-          <div ref={messagesEndRef} />
         </div>
       </div>
 
