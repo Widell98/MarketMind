@@ -201,6 +201,7 @@ serve(async (req) => {
       string,
       { name: string; symbol: string; currency: string | null; price: number | null }
     >();
+    const sheetTickerVariants = new Set<string>();
 
     for (const cols of dataRows) {
       const rawName = normalizeValue(companyIdx !== -1 ? cols[companyIdx] : null);
@@ -227,24 +228,31 @@ serve(async (req) => {
         currency: rawCurrency ?? null,
         price,
       });
+
+      const variants = buildTickerVariants(cleanedSymbol);
+      for (const variant of variants) {
+        sheetTickerVariants.add(variant.toUpperCase());
+      }
+      sheetTickerVariants.add(cleanedSymbol.toUpperCase());
     }
 
     const tickers = Array.from(tickerMap.values()).map((item) => ({ ...item, source: "google_sheets" as const }));
 
     let fallbackTicker: AlphaTickerMatch | null = null;
-    if (requestedTicker && requestedTickerVariants) {
-      const existsInSheet = tickers.some((t) => requestedTickerVariants.has(t.symbol.toUpperCase()));
-      if (!existsInSheet) {
-        const tickerForLookup =
-          Array.from(requestedTickerVariants).find((variant) => !variant.includes(":")) ??
-          Array.from(requestedTickerVariants)[0] ??
-          requestedTicker;
-        fallbackTicker = await fetchAlphaVantageMatch(tickerForLookup);
-        if (fallbackTicker) {
-          const alreadyIncluded = tickers.some((t) => t.symbol.toUpperCase() === fallbackTicker.symbol.toUpperCase());
-          if (!alreadyIncluded) {
-            tickers.push(fallbackTicker);
-          }
+    const sheetHasRequestedTicker = requestedTickerVariants
+      ? Array.from(requestedTickerVariants).some((variant) => sheetTickerVariants.has(variant))
+      : false;
+
+    if (requestedTicker && requestedTickerVariants && !sheetHasRequestedTicker) {
+      const tickerForLookup =
+        Array.from(requestedTickerVariants).find((variant) => !variant.includes(":")) ??
+        Array.from(requestedTickerVariants)[0] ??
+        requestedTicker;
+      fallbackTicker = await fetchAlphaVantageMatch(tickerForLookup);
+      if (fallbackTicker) {
+        const alreadyIncluded = tickers.some((t) => t.symbol.toUpperCase() === fallbackTicker.symbol.toUpperCase());
+        if (!alreadyIncluded) {
+          tickers.push(fallbackTicker);
         }
       }
     }
@@ -256,7 +264,13 @@ serve(async (req) => {
     // console.log("Sista 3:", tickers.slice(-3));
 
     return new Response(
-      JSON.stringify({ success: true, tickers, requestedTicker: requestedTicker ?? undefined, fallbackTicker: fallbackTicker ?? undefined }),
+      JSON.stringify({
+        success: true,
+        tickers,
+        requestedTicker: requestedTicker ?? undefined,
+        sheetHasRequestedTicker: requestedTicker ? sheetHasRequestedTicker : undefined,
+        fallbackTicker: fallbackTicker ?? undefined,
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },

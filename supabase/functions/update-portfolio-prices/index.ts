@@ -220,7 +220,10 @@ serve(async (req) => {
         Array.from(requestedTickerVariants)[0] ??
         requestedTicker
       : requestedTicker;
-    let processedRequestedTicker = false;
+
+    let fallbackApplied = false;
+    let fallbackQuote: AlphaQuote | null = null;
+    const sheetTickerVariants = new Set<string>();
 
     const supabase = getSupabaseClient();
 
@@ -282,14 +285,21 @@ serve(async (req) => {
       const normalizedSymbol = normalizeSymbol(rawSymbolValue);
       const normalizedName = normalizeName(rawNameValue);
       const sanitizedSymbol = stripSymbolPrefix(rawSymbolValue);
-      const symbolVariants = getSymbolVariants(rawSymbolValue, sanitizedSymbol);
       const canonicalSymbol = sanitizedSymbol ?? normalizedSymbol;
+      const symbolVariants = getSymbolVariants(rawSymbolValue, sanitizedSymbol);
+      for (const variant of symbolVariants) {
+        if (variant) {
+          sheetTickerVariants.add(variant.toUpperCase());
+        }
+      }
+      if (canonicalSymbol) {
+        sheetTickerVariants.add(canonicalSymbol.toUpperCase());
+      }
       if (requestedTickerVariants) {
         const matchesTicker = symbolVariants.some((variant) =>
           requestedTickerVariants.has(variant.toUpperCase())
         );
         if (!matchesTicker) continue;
-        processedRequestedTicker = true;
       }
       const namePattern = normalizedName ? `${normalizedName}%` : null;
       const price = parsePrice(rawPrice);
@@ -372,10 +382,15 @@ serve(async (req) => {
       }
     }
 
-    if (tickerForAlphaLookup && requestedTicker && !processedRequestedTicker) {
+    const sheetHasRequestedTicker = requestedTickerVariants
+      ? Array.from(requestedTickerVariants).some((variant) => sheetTickerVariants.has(variant))
+      : false;
+
+    if (tickerForAlphaLookup && requestedTicker && !sheetHasRequestedTicker) {
       const alphaQuote = await fetchAlphaVantageQuote(tickerForAlphaLookup);
       if (alphaQuote) {
-        processedRequestedTicker = true;
+        fallbackQuote = alphaQuote;
+        fallbackApplied = true;
 
         const canonicalSymbol = normalizeSymbol(alphaQuote.symbol);
         const normalizedName = normalizeName(alphaQuote.name ?? alphaQuote.symbol);
@@ -457,6 +472,8 @@ serve(async (req) => {
       }
     }
 
+    const tickerFound = requestedTicker ? sheetHasRequestedTicker || fallbackApplied : undefined;
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -464,7 +481,9 @@ serve(async (req) => {
         errors,
         unmatched,
         requestedTicker,
-        tickerFound: requestedTicker ? processedRequestedTicker : undefined,
+        tickerFound,
+        sheetHasRequestedTicker: requestedTicker ? sheetHasRequestedTicker : undefined,
+        fallbackQuote: fallbackQuote ?? undefined,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
