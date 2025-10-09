@@ -1632,30 +1632,41 @@ const ChatPortfolioAdvisor = () => {
 
     return (
       <div className="space-y-6">
-        <Card className="border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-white shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg font-semibold text-blue-900">
-              <Sparkles className="h-5 w-5 text-blue-500" />
-              Professionell sammanfattning
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Baseras på din riskprofil och rådgivningssamtalet
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {structured.summary.length > 0 ? (
-              structured.summary.map((paragraph, index) => (
-                <p key={`summary-${index}`} className="text-sm leading-relaxed text-muted-foreground">
-                  {paragraph}
-                </p>
-              ))
-            ) : (
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Din portföljanalys presenteras i sektionerna nedan.
+        <div className="flex justify-center">
+          <Card className="relative w-full max-w-xl overflow-hidden border border-border/40 bg-gradient-to-br from-white/95 via-white to-slate-50/80 shadow-[0_10px_40px_-24px_rgba(15,23,42,0.45)] backdrop-blur">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.08),_transparent_55%)]" />
+            <CardHeader className="relative pb-2">
+              <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground/80">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <span>AI-Summering</span>
+              </div>
+              <CardTitle className="mt-2 text-base font-semibold text-foreground">
+                Din personliga portföljöverblick
+              </CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground/80">
+                Ett destillat av rådgivningen och din riskprofil
               </p>
-            )}
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent className="relative space-y-2">
+              <div className="rounded-2xl border border-white/60 bg-white/80 p-4 shadow-[0_6px_18px_-16px_rgba(15,23,42,0.45)] dark:border-slate-800/60 dark:bg-slate-900/70">
+                {structured.summary.length > 0 ? (
+                  structured.summary.map((paragraph, index) => (
+                    <p
+                      key={`summary-${index}`}
+                      className="text-[13px] leading-relaxed text-muted-foreground/90"
+                    >
+                      {paragraph}
+                    </p>
+                  ))
+                ) : (
+                  <p className="text-[13px] leading-relaxed text-muted-foreground/90">
+                    Din portföljanalys presenteras i sektionerna nedan.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {structured.recommendations.length > 0 && (
           <div className="space-y-4">
