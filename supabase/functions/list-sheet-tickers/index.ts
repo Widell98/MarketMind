@@ -18,12 +18,116 @@ const normalizeValue = (value?: string | null) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
+type AlphaTickerMatch = {
+  symbol: string;
+  name: string;
+  currency: string | null;
+  price: number | null;
+  source: "alpha_vantage";
+};
+
+const fetchAlphaVantageMatch = async (ticker: string): Promise<AlphaTickerMatch | null> => {
+  const apiKey = Deno.env.get("ALPHA_VANTAGE_API_KEY");
+  if (!apiKey) {
+    console.warn("Missing ALPHA_VANTAGE_API_KEY – cannot search Alpha Vantage for ticker", ticker);
+    return null;
+  }
+
+  const normalizedTicker = ticker.trim().toUpperCase();
+  let resolvedSymbol = normalizedTicker;
+  let resolvedName: string | null = null;
+  let resolvedCurrency: string | null = null;
+
+  try {
+    const searchUrl =
+      "https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=" +
+      encodeURIComponent(normalizedTicker) +
+      `&apikey=${apiKey}`;
+    const searchResponse = await fetch(searchUrl);
+    if (searchResponse.ok) {
+      const searchJson = await searchResponse.json();
+      const matches: Array<Record<string, string>> = Array.isArray(searchJson?.bestMatches)
+        ? searchJson.bestMatches
+        : [];
+      const exactMatch = matches.find((match) =>
+        typeof match?.["1. symbol"] === "string" && match["1. symbol"].toUpperCase() === normalizedTicker
+      );
+      const bestMatch = exactMatch ?? matches[0];
+      if (bestMatch) {
+        const matchSymbol = bestMatch["1. symbol"];
+        if (typeof matchSymbol === "string" && matchSymbol.trim().length > 0) {
+          resolvedSymbol = matchSymbol.trim().toUpperCase();
+        }
+        const matchName = bestMatch["2. name"];
+        if (typeof matchName === "string" && matchName.trim().length > 0) {
+          resolvedName = matchName.trim();
+        }
+        const matchCurrency = bestMatch["8. currency"];
+        if (typeof matchCurrency === "string" && matchCurrency.trim().length > 0) {
+          resolvedCurrency = matchCurrency.trim().toUpperCase();
+        }
+      }
+    } else {
+      console.warn("Alpha Vantage SYMBOL_SEARCH failed:", searchResponse.status, searchResponse.statusText);
+    }
+  } catch (err) {
+    console.error("Alpha Vantage SYMBOL_SEARCH error:", err);
+  }
+
+  let resolvedPrice: number | null = null;
+  try {
+    const quoteUrl =
+      "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=" +
+      encodeURIComponent(resolvedSymbol) +
+      `&apikey=${apiKey}`;
+    const quoteResponse = await fetch(quoteUrl);
+    if (quoteResponse.ok) {
+      const quoteJson = await quoteResponse.json();
+      const globalQuote = quoteJson?.["Global Quote"] ?? quoteJson?.GlobalQuote ?? null;
+      if (globalQuote && typeof globalQuote === "object") {
+        const priceRaw = globalQuote["05. price"] ?? globalQuote["05. Price"] ?? null;
+        const parsedPrice = priceRaw !== null ? parseFloat(String(priceRaw)) : NaN;
+        if (Number.isFinite(parsedPrice) && parsedPrice > 0) {
+          resolvedPrice = parsedPrice;
+        }
+      }
+    } else {
+      console.warn("Alpha Vantage GLOBAL_QUOTE failed:", quoteResponse.status, quoteResponse.statusText);
+    }
+  } catch (err) {
+    console.error("Alpha Vantage GLOBAL_QUOTE error:", err);
+  }
+
+  if (!resolvedName && !resolvedSymbol) {
+    return null;
+  }
+
+  return {
+    symbol: resolvedSymbol,
+    name: resolvedName ?? resolvedSymbol,
+    currency: resolvedCurrency,
+    price: resolvedPrice,
+    source: "alpha_vantage",
+  };
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    let payload: { ticker?: string | null } | null = null;
+    if (req.method === "POST") {
+      try {
+        payload = await req.json();
+      } catch {
+        payload = null;
+      }
+    }
+
+    const requestedTicker = payload?.ticker ? String(payload.ticker).trim().toUpperCase() : null;
+
     const res = await fetch(CSV_URL);
     if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
     const csvText = await res.text();
@@ -85,7 +189,21 @@ serve(async (req) => {
       });
     }
 
-    const tickers = Array.from(tickerMap.values());
+    const tickers = Array.from(tickerMap.values()).map((item) => ({ ...item, source: "google_sheets" as const }));
+
+    let fallbackTicker: AlphaTickerMatch | null = null;
+    if (requestedTicker) {
+      const existsInSheet = tickers.some((t) => t.symbol.toUpperCase() === requestedTicker);
+      if (!existsInSheet) {
+        fallbackTicker = await fetchAlphaVantageMatch(requestedTicker);
+        if (fallbackTicker) {
+          const alreadyIncluded = tickers.some((t) => t.symbol.toUpperCase() === fallbackTicker.symbol.toUpperCase());
+          if (!alreadyIncluded) {
+            tickers.push(fallbackTicker);
+          }
+        }
+      }
+    }
 
     // 🔍 Debug-loggar
     // console.log("Antal rader i CSV:", rawRows.length);
@@ -93,9 +211,12 @@ serve(async (req) => {
     // console.log("Första 3:", tickers.slice(0, 3));
     // console.log("Sista 3:", tickers.slice(-3));
 
-    return new Response(JSON.stringify({ success: true, tickers }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ success: true, tickers, requestedTicker: requestedTicker ?? undefined, fallbackTicker: fallbackTicker ?? undefined }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   } catch (error) {
     console.error("Sheet parsing error:", error);
     return new Response(
