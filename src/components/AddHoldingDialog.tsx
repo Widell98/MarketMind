@@ -71,7 +71,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   onAdd,
   initialData
 }) => {
-  const { tickers, isLoading: tickersLoading, error: tickersError } = useSheetTickers();
+  const { tickers, isLoading: tickersLoading, error: tickersError, ensureTicker } = useSheetTickers();
   const [dialogState, setDialogState, resetDialogState] = useLocalStorage<AddHoldingFormState>(
     ADD_HOLDING_FORM_STORAGE_KEY,
     createDefaultFormState
@@ -94,6 +94,14 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   }, [tickers]);
 
   const matchedTicker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) ?? null : null;
+
+  useEffect(() => {
+    if (!normalizedSymbol || matchedTicker) {
+      return;
+    }
+
+    void ensureTicker(normalizedSymbol);
+  }, [ensureTicker, matchedTicker, normalizedSymbol]);
 
   // Update form data when initialData changes
   useEffect(() => {
@@ -339,12 +347,19 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     e.preventDefault();
     if (!formData.name.trim()) return;
 
-    if (!normalizedSymbol || !tickerLookup.has(normalizedSymbol)) {
-      setSymbolError('Tickern finns inte i Google Sheets. Välj en ticker från listan.');
-      return;
+    setIsSubmitting(true);
+
+    let resolvedTicker = matchedTicker;
+
+    if (!resolvedTicker && normalizedSymbol) {
+      resolvedTicker = await ensureTicker(normalizedSymbol);
     }
 
-    setIsSubmitting(true);
+    if (!normalizedSymbol || !resolvedTicker) {
+      setSymbolError('Tickern kunde inte hittas i Google Sheets eller Alpha Vantage. Kontrollera symbolen och försök igen.');
+      setIsSubmitting(false);
+      return;
+    }
 
     const quantity = formData.quantity ? parseFloat(formData.quantity) : undefined;
     const purchasePrice = formData.purchase_price ? parseFloat(formData.purchase_price) : undefined;
@@ -366,12 +381,12 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       holdingData.current_value = calculatedValue;
     }
 
-    if (matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0) {
-      holdingData.current_price_per_unit = matchedTicker.price;
-      holdingData.price_currency = matchedTicker.currency ?? holdingData.currency;
+    if (resolvedTicker && typeof resolvedTicker.price === 'number' && Number.isFinite(resolvedTicker.price) && resolvedTicker.price > 0) {
+      holdingData.current_price_per_unit = resolvedTicker.price;
+      holdingData.price_currency = resolvedTicker.currency ?? holdingData.currency;
 
       if (quantity !== undefined && typeof holdingData.current_value !== 'number') {
-        const computedCurrentValue = Math.round(quantity * matchedTicker.price * 100) / 100;
+        const computedCurrentValue = Math.round(quantity * resolvedTicker.price * 100) / 100;
         holdingData.current_value = computedCurrentValue;
       }
     }

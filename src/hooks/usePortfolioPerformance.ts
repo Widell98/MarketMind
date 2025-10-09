@@ -356,7 +356,9 @@ export const usePortfolioPerformance = () => {
     try {
       setUpdating(true);
 
-      const { data: tickerResponse, error: tickerError } = await supabase.functions.invoke('list-sheet-tickers');
+      const { data: tickerResponse, error: tickerError } = await supabase.functions.invoke('list-sheet-tickers', {
+        body: { ticker: normalizedTicker },
+      });
 
       if (tickerError) {
         throw new Error(tickerError.message || 'Kunde inte hämta tickers från Google Sheets.');
@@ -375,7 +377,7 @@ export const usePortfolioPerformance = () => {
       if (!matchedTicker) {
         toast({
           title: 'Tickern hittades inte',
-          description: 'Tickern finns inte i Google Sheets-listan. Kontrollera stavningen eller välj en annan ticker.',
+        description: 'Tickern hittades inte i Google Sheets eller Alpha Vantage. Kontrollera stavningen eller försök igen.',
           variant: 'destructive',
         });
         return {
