@@ -1635,6 +1635,84 @@ const ChatPortfolioAdvisor = () => {
           .filter(Boolean)
       : [];
 
+    const riskTolerance = conversationData.riskTolerance;
+    const riskProfileLabels: Record<string, string> = {
+      conservative: 'konservativ',
+      balanced: 'balanserad',
+      aggressive: 'aggressiv',
+    };
+
+    const riskNarrativeParts: string[] = [];
+    if (riskTolerance && riskProfileLabels[riskTolerance]) {
+      riskNarrativeParts.push(
+        `Din riskprofil klassas som ${riskProfileLabels[riskTolerance]}, så strategin fokuserar på att matcha din risktålighet med lämplig exponering.`
+      );
+
+      if (riskTolerance === 'aggressive') {
+        riskNarrativeParts.push(
+          'Med en aggressiv profil prioriterar vi tydlig uppsida framför maximal diversifiering och accepterar kortsiktig volatilitet för chans till högre avkastning.'
+        );
+      } else if (riskTolerance === 'conservative') {
+        riskNarrativeParts.push(
+          'För att skydda kapitalet håller vi ett lugnare tempo, men med konkreta steg för att successivt öka exponeringen utan att kompromissa med tryggheten.'
+        );
+      } else if (riskTolerance === 'balanced') {
+        riskNarrativeParts.push(
+          'Vi balanserar stabilitet och tillväxt, så att portföljen kan utvecklas utan att risknivån drar iväg åt något håll.'
+        );
+      }
+    }
+
+    if (structured.riskAnalysis.length > 0) {
+      structured.riskAnalysis.slice(0, 2).forEach((item, index) => {
+        const formatted = index === 0 ? item : item.replace(/^[-•\d.\s]+/, '');
+        riskNarrativeParts.push(formatted);
+      });
+    }
+
+    const implementationIntro = (() => {
+      if (implementationItems.length === 0) {
+        return '';
+      }
+
+      if (riskTolerance === 'aggressive') {
+        return 'Följ stegen metodiskt men med snabb återkoppling – för en mer offensiv portfölj är tajming och konsekvent uppföljning avgörande.';
+      }
+
+      if (riskTolerance === 'conservative') {
+        return 'Genomför punkterna nedan i lugn takt och se till att utvärdera varje steg så att du bevarar tryggheten i portföljen.';
+      }
+
+      if (riskTolerance === 'balanced') {
+        return 'Stegen nedan hjälper dig att komma igång utan att tappa kontrollen – håll dig till rytmen och följ upp varje månad.';
+      }
+
+      return 'Gör så här för att växla från rekommendationen till konkret handling och skapa momentum i ditt sparande.';
+    })();
+
+    const recommendationIntro = (() => {
+      const count = structured.recommendations.length;
+      if (count === 0) {
+        return '';
+      }
+
+      if (riskTolerance === 'aggressive') {
+        return count <= 3
+          ? 'Jag väljer ett koncentrerat urval som kan ge tydlig hävstång på ditt kapital när du är bekväm med högre svängningar.'
+          : 'Trots din aggressiva profil lyfter vi fram de starkaste idéerna, med fokus på aktier som kan bära portföljen framåt.';
+      }
+
+      if (riskTolerance === 'conservative') {
+        return 'Urvalet prioriterar stabila och kvalitativa bolag som passar en mer försiktig placeringsstil.';
+      }
+
+      if (riskTolerance === 'balanced') {
+        return 'Det här är en mix av kvalitet och tillväxt som håller risknivån i schack men ändå ger potential till god avkastning.';
+      }
+
+      return 'Nedan hittar du aktierna som är mest intressanta att börja med i den här strategin.';
+    })();
+
     return (
       <div className="space-y-4">
         <div className="flex items-start gap-3 sm:gap-4">
@@ -1654,9 +1732,22 @@ const ChatPortfolioAdvisor = () => {
               </p>
             )}
 
+            {riskNarrativeParts.length > 0 && (
+              <div className="space-y-2">
+                {riskNarrativeParts.map((paragraph, index) => (
+                  <p key={`risk-${index}`} className="text-sm leading-relaxed text-muted-foreground">
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+            )}
+
             {implementationItems.length > 0 && (
               <div className="space-y-2">
                 <p className="text-sm font-semibold text-foreground">Så genomför du strategin:</p>
+                {implementationIntro && (
+                  <p className="text-sm leading-relaxed text-muted-foreground">{implementationIntro}</p>
+                )}
                 <ul className="space-y-1.5 text-sm text-muted-foreground list-disc pl-4">
                   {implementationItems.map((item, index) => (
                     <li key={`implementation-${index}`}>{item}</li>
@@ -1668,6 +1759,9 @@ const ChatPortfolioAdvisor = () => {
             {structured.recommendations.length > 0 && (
               <div className="space-y-2">
                 <p className="text-sm font-semibold text-foreground">Aktier att fokusera på:</p>
+                {recommendationIntro && (
+                  <p className="text-sm leading-relaxed text-muted-foreground">{recommendationIntro}</p>
+                )}
                 <div className="space-y-2">
                   {structured.recommendations.map((recommendation, index) => (
                     <div
