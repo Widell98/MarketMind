@@ -67,6 +67,11 @@ const AIChatPage = () => {
   return (
     <Layout>
       <AIChatLayout>
+        <div className="flex justify-end px-6 pt-4">
+          <Button variant="outline" onClick={() => navigate('/portfolio-implementation')}>
+            {t('aiChat.goToPortfolioImplementation')}
+          </Button>
+        </div>
         <AIChat
           portfolioId={activePortfolio?.id}
           initialStock={stockName}
