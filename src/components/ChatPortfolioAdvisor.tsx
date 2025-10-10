@@ -1621,7 +1621,7 @@ const ChatPortfolioAdvisor = () => {
       );
     }
 
-    const implementationItems =
+    const relevantImplementationPoints =
       structured.implementationPlan.length > 0
         ? structured.implementationPlan
         : structured.followUp.length > 0
@@ -1671,23 +1671,47 @@ const ChatPortfolioAdvisor = () => {
     }
 
     const implementationIntro = (() => {
-      if (implementationItems.length === 0) {
-        return '';
-      }
-
       if (riskTolerance === 'aggressive') {
-        return 'Följ stegen metodiskt men med snabb återkoppling – för en mer offensiv portfölj är tajming och konsekvent uppföljning avgörande.';
+        return 'Gå snabbt från plan till handling – en offensiv profil mår bra av att kapitalet får arbeta koncentrerat, men följ upp utvecklingen noga.';
       }
 
       if (riskTolerance === 'conservative') {
-        return 'Genomför punkterna nedan i lugn takt och se till att utvärdera varje steg så att du bevarar tryggheten i portföljen.';
+        return 'Ta stegen i lugn takt och håll fokus på disciplinerat sparande så att tryggheten i portföljen bibehålls samtidigt som du kommer igång.';
       }
 
       if (riskTolerance === 'balanced') {
-        return 'Stegen nedan hjälper dig att komma igång utan att tappa kontrollen – håll dig till rytmen och följ upp varje månad.';
+        return 'Följ genomförandet i jämn takt och håll rutinerna för månadssparandet så får du en portfölj som växer utan att svänga onödigt mycket.';
       }
 
-      return 'Gör så här för att växla från rekommendationen till konkret handling och skapa momentum i ditt sparande.';
+      return 'Så här växlar du från rekommendationen till konkret handling utan onödiga omvägar.';
+    })();
+
+    const implementationGuidance = (() => {
+      const baseSteps = [
+        'Öppna eller använd ett investeringskonto hos exempelvis Avanza eller Nordnet – se till att depån tillåter handel i de aktier som lyfts fram ovan.',
+      ];
+
+      const allocationStep = (() => {
+        if (riskTolerance === 'aggressive') {
+          return 'Sätt upp ett automatiskt månadssparande där en större del går mot de mest övertygande idéerna för att hålla portföljen koncentrerad och dra nytta av din högre risktålighet.';
+        }
+
+        if (riskTolerance === 'conservative') {
+          return 'Avsätt en del av månadssparandet till de rekommenderade aktierna och fyll på successivt – håll vikterna jämna och bygg positionerna varsamt.';
+        }
+
+        if (riskTolerance === 'balanced') {
+          return 'Automatisera ditt månadssparande och fördela insättningarna proportionerligt mot aktierna ovan så att balansen mellan stabilitet och tillväxt bibehålls.';
+        }
+
+        return 'Planera ett månadssparande och fördela insättningarna mot aktierna ovan så att du kontinuerligt bygger positioner utan att behöva tajma marknaden.';
+      })();
+
+      const reinforcement = relevantImplementationPoints
+        .filter(point => !/scenario|0-30|30-90|>90/i.test(point))
+        .slice(0, 1);
+
+      return [...baseSteps, allocationStep, ...reinforcement];
     })();
 
     const recommendationIntro = (() => {
@@ -1742,14 +1766,14 @@ const ChatPortfolioAdvisor = () => {
               </div>
             )}
 
-            {implementationItems.length > 0 && (
+            {implementationGuidance.length > 0 && (
               <div className="space-y-2">
                 <p className="text-sm font-semibold text-foreground">Så genomför du strategin:</p>
                 {implementationIntro && (
                   <p className="text-sm leading-relaxed text-muted-foreground">{implementationIntro}</p>
                 )}
                 <ul className="space-y-1.5 text-sm text-muted-foreground list-disc pl-4">
-                  {implementationItems.map((item, index) => (
+                  {implementationGuidance.map((item, index) => (
                     <li key={`implementation-${index}`}>{item}</li>
                   ))}
                 </ul>
