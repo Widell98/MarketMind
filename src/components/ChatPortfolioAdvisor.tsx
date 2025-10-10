@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Brain,
   Send,
@@ -14,15 +13,7 @@ import {
   Plus,
   Trash2,
   Check,
-  Sparkles,
-  ShieldAlert,
-  ClipboardList,
-  Clock,
-  PiggyBank,
-  BarChart3,
-  MessageCircleQuestion,
   MessageSquare,
-  AlertTriangle,
   Loader2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -1630,134 +1621,95 @@ const ChatPortfolioAdvisor = () => {
       );
     }
 
+    const implementationItems =
+      structured.implementationPlan.length > 0
+        ? structured.implementationPlan
+        : structured.followUp.length > 0
+          ? structured.followUp
+          : structured.portfolioAnalysis.slice(0, 3);
+
+    const disclaimerLines = structured.disclaimer
+      ? structured.disclaimer
+          .split(/\n+/)
+          .map(line => line.trim())
+          .filter(Boolean)
+      : [];
+
     return (
-      <div className="space-y-6">
-        <Card className="border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-white shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg font-semibold text-blue-900">
-              <Sparkles className="h-5 w-5 text-blue-500" />
-              Professionell sammanfattning
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Baseras på din riskprofil och rådgivningssamtalet
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
+      <div className="space-y-4">
+        <div className="flex items-start gap-3 sm:gap-4">
+          <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <Bot className="w-4 h-4 text-primary" />
+          </div>
+          <div className="flex-1 space-y-4 rounded-2xl rounded-tl-lg border border-border/60 bg-muted/40 p-4 sm:p-5 shadow-sm">
             {structured.summary.length > 0 ? (
               structured.summary.map((paragraph, index) => (
-                <p key={`summary-${index}`} className="text-sm leading-relaxed text-muted-foreground">
+                <p key={`summary-${index}`} className="text-sm sm:text-base leading-relaxed text-foreground">
                   {paragraph}
                 </p>
               ))
             ) : (
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Din portföljanalys presenteras i sektionerna nedan.
+              <p className="text-sm sm:text-base leading-relaxed text-foreground">
+                Här är hur du kan implementera strategin baserat på din riskprofil.
               </p>
             )}
-          </CardContent>
-        </Card>
 
-        {structured.recommendations.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h4 className="flex items-center gap-2 text-base font-semibold text-foreground">
-                <TrendingUp className="h-4 w-4 text-primary" />
-                Rekommenderad portföljstrategi
-              </h4>
-              <Badge variant="outline" className="border-primary/20 bg-primary/10 text-primary">
-                Totalt 100% allokering
-              </Badge>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {structured.recommendations.map((recommendation, index) => (
-                <Card
-                  key={`${recommendation.name}-${index}`}
-                  className="border border-border/60 bg-background/95 shadow-sm transition-shadow duration-200 hover:shadow-md"
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <CardTitle className="text-base font-semibold text-foreground">
-                          {recommendation.name}
-                        </CardTitle>
-                        {recommendation.ticker && (
-                          <p className="mt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                            {recommendation.ticker}
-                          </p>
-                        )}
-                      </div>
-                      {recommendation.allocation && (
-                        <Badge className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
-                          {recommendation.allocation}
-                        </Badge>
+            {implementationItems.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-foreground">Så genomför du strategin:</p>
+                <ul className="space-y-1.5 text-sm text-muted-foreground list-disc pl-4">
+                  {implementationItems.map((item, index) => (
+                    <li key={`implementation-${index}`}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {structured.recommendations.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-foreground">Aktier att fokusera på:</p>
+                <div className="space-y-2">
+                  {structured.recommendations.map((recommendation, index) => (
+                    <div
+                      key={`${recommendation.name}-${index}`}
+                      className="rounded-xl border border-border/60 bg-background/70 p-3"
+                    >
+                      <p className="text-sm font-semibold text-foreground">
+                        {recommendation.name}
+                        {recommendation.ticker && ` (${recommendation.ticker})`}
+                        {recommendation.allocation && ` · ${recommendation.allocation}`}
+                      </p>
+                      {recommendation.analysis && (
+                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                          {recommendation.analysis}
+                        </p>
+                      )}
+                      {recommendation.role && (
+                        <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-primary">
+                          {recommendation.role}
+                        </p>
                       )}
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-                    {recommendation.analysis && (
-                      <div className="rounded-xl border border-border/60 bg-muted/40 p-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Analys</p>
-                        <p className="mt-1 text-foreground">{recommendation.analysis}</p>
-                      </div>
-                    )}
-                    {recommendation.role && (
-                      <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-primary">Roll i portföljen</p>
-                        <p className="mt-1 text-foreground">{recommendation.role}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {structured.closingQuestion && (
+              <p className="text-sm font-medium text-primary">{structured.closingQuestion}</p>
+            )}
+
+            {disclaimerLines.length > 0 && (
+              <div className="space-y-1 border-t border-border/60 pt-3 text-xs text-muted-foreground/80">
+                {disclaimerLines.map((line, index) => (
+                  <p key={`disclaimer-${index}`}>{line}</p>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-
-        {(structured.portfolioAnalysis.length > 0 || structured.riskAnalysis.length > 0) && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {renderListSection('Portföljanalys', structured.portfolioAnalysis, 'text-blue-600', 'bg-blue-500/80', BarChart3)}
-            {renderListSection('Riskanalys & stresstest', structured.riskAnalysis, 'text-rose-600', 'bg-rose-500/80', ShieldAlert)}
-          </div>
-        )}
-
-        {(structured.implementationPlan.length > 0 || structured.followUp.length > 0) && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {renderListSection('Implementationsplan', structured.implementationPlan, 'text-emerald-600', 'bg-emerald-500/80', ClipboardList)}
-            {renderListSection('Uppföljning', structured.followUp, 'text-purple-600', 'bg-purple-500/80', Clock)}
-          </div>
-        )}
-
-        {structured.savingsPlan.length > 0 &&
-          renderListSection('Personlig sparrekommendation', structured.savingsPlan, 'text-amber-600', 'bg-amber-500/80', PiggyBank)}
-
-        {structured.closingQuestion && (
-          <Card className="border border-primary/30 bg-primary/5">
-            <CardContent className="flex items-center gap-3 py-4 text-sm font-medium text-primary">
-              <MessageCircleQuestion className="h-5 w-5" />
-              <span>{structured.closingQuestion}</span>
-            </CardContent>
-          </Card>
-        )}
+        </div>
 
         {renderRefinementChat()}
-
-        {structured.disclaimer && (
-          <Alert className="border-amber-200 bg-amber-50 text-amber-900">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Disclaimer</AlertTitle>
-            <AlertDescription className="space-y-1 text-sm leading-relaxed">
-              {structured.disclaimer
-                .split(/\n+/)
-                .map(line => line.trim())
-                .filter(Boolean)
-                .map((line, index) => (
-                  <span key={`disclaimer-${index}`} className="block">
-                    {line}
-                  </span>
-                ))}
-            </AlertDescription>
-          </Alert>
-        )}
       </div>
     );
   };
