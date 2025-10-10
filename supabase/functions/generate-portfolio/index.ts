@@ -14,7 +14,13 @@ serve(async (req) => {
   }
 
   try {
-    const { riskProfileId, userId } = await req.json();
+    const payload = await req.json();
+    const {
+      riskProfileId,
+      userId,
+      conversationData = null,
+      enhancedPrompt = null
+    } = payload ?? {};
     
     console.log('Generate portfolio request:', { riskProfileId, userId });
 
@@ -75,9 +81,11 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured');
     }
 
+    const conversationDetails = formatConversationDetails(conversationData);
+
     // Enhanced system persona for initial portfolio advisor
 // Enhanced system persona for initial portfolio advisor
-let contextInfo = `Du är en licensierad och auktoriserad svensk investeringsrådgivare 
+let contextInfo = `Du är en licensierad och auktoriserad svensk investeringsrådgivare
 med över 15 års erfarenhet av att bygga skräddarsydda portföljer. 
 Du arbetar enligt svensk finanslagstiftning och MiFID II-reglerna och 
 fokuserar alltid på att skapa trygghet och långsiktigt värde för klienten.
@@ -155,6 +163,10 @@ KVALITETSKRAV:
       if (riskProfile.market_crash_reaction) {
         contextInfo += `\n- Reaktion på börskrasch: ${riskProfile.market_crash_reaction}`;
       }
+
+      if (conversationDetails) {
+        contextInfo += `\n\nFÖRDJUPADE SVAR FRÅN KONVERSATIONEN:\n${conversationDetails}`;
+      }
     }
 
     // Add AI memory to personalize further
@@ -231,7 +243,12 @@ VIKTIGA RÅDGIVARKRAV:
 EXEMPEL PÅ PROFESSIONELL REKOMMENDATION:
 **Handelsbanken A (SHB-A)**: Stabil svensk storbank med stark kapitalbas och konservativ riskprofil. Passar din preferens för svenska kvalitetsbolag och ger stadig direktavkastning (~4%). Utmärkt kärninnehav för långsiktigt sparande. Rekommenderad allokering: 12%`;
 
-    const userMessage = `Skapa en komplett portfölj baserat på denna riskprofil:
+    const sanitizedEnhancedPrompt = typeof enhancedPrompt === 'string' ? enhancedPrompt.trim() : '';
+    const fallbackDetails = conversationDetails
+      ? `\n\nFördjupade dialogdetaljer:\n${conversationDetails}`
+      : '';
+
+    const userMessage = sanitizedEnhancedPrompt || `Skapa en komplett portfölj baserat på denna riskprofil:
 
 Ålder: ${riskProfile.age || 'Ej angiven'}
 Årsinkomst: ${riskProfile.annual_income || 'Ej angiven'} SEK
@@ -242,7 +259,7 @@ Tidshorisont: ${riskProfile.investment_horizon || 'Lång'}
 Erfarenhet: ${riskProfile.investment_experience || 'Medel'}
 Sektorintressen: ${JSON.stringify(riskProfile.sector_interests || [])}
 Nuvarande portföljvärde: ${riskProfile.current_portfolio_value || 0} SEK
-Riskkomfort: ${riskProfile.risk_comfort_level || 5}/10
+Riskkomfort: ${riskProfile.risk_comfort_level || 5}/10${fallbackDetails}
 
 Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga på svenska marknader. Fokusera på att ge konkreta rekommendationer med symboler.`;
 
@@ -379,7 +396,7 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
     }
 
     console.log('Returning response with AI recommendations:', aiRecommendations?.substring(0, 200));
-    
+
     return new Response(JSON.stringify({
       success: true,
       portfolio: portfolio,
@@ -416,6 +433,303 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
     });
   }
 });
+
+function formatConversationDetails(rawData: unknown): string {
+  if (!rawData || typeof rawData !== 'object') {
+    return '';
+  }
+
+  const data = rawData as Record<string, unknown>;
+  const lines: string[] = [];
+
+  const mapValue = (value: unknown, dictionary: Record<string, string>) => {
+    if (typeof value !== 'string' || value.trim().length === 0) {
+      return undefined;
+    }
+    const direct = dictionary[value];
+    if (direct) {
+      return direct;
+    }
+    const lowerKey = value.toLowerCase();
+    const lower = dictionary[lowerKey];
+    return lower || value;
+  };
+
+  const joinArray = (value: unknown) => {
+    if (!Array.isArray(value)) {
+      return undefined;
+    }
+    const parts = value
+      .map(item => (typeof item === 'string' ? item.trim() : ''))
+      .filter(Boolean);
+    return parts.length ? parts.join(', ') : undefined;
+  };
+
+  const formatBoolean = (value: unknown, trueLabel: string, falseLabel: string) => {
+    if (typeof value !== 'boolean') {
+      return undefined;
+    }
+    return value ? trueLabel : falseLabel;
+  };
+
+  const formatNumber = (value: number) => {
+    if (!Number.isFinite(value)) {
+      return undefined;
+    }
+    return Number.isInteger(value) ? value.toString() : value.toFixed(2);
+  };
+
+  const defaultFormat = (value: unknown): string | undefined => {
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed.length ? trimmed : undefined;
+    }
+    if (typeof value === 'number') {
+      return formatNumber(value);
+    }
+    if (typeof value === 'boolean') {
+      return value ? 'Ja' : 'Nej';
+    }
+    if (Array.isArray(value)) {
+      return joinArray(value);
+    }
+    return undefined;
+  };
+
+  const pushLine = (label: string, value: unknown, formatter?: (value: unknown) => string | undefined) => {
+    const formatted = formatter ? formatter(value) : defaultFormat(value);
+    if (formatted && formatted.trim().length > 0) {
+      lines.push(`- ${label}: ${formatted.trim()}`);
+    }
+  };
+
+  const goalMap = {
+    pension: 'Pensionssparande',
+    wealth: 'Förmögenhetsuppbyggnad',
+    income: 'Regelbunden inkomst',
+    house: 'Bostadsköp',
+    education: 'Utbildning/Barn'
+  };
+
+  const horizonMap = {
+    short: 'Kort (1-3 år)',
+    medium: 'Medel (3-7 år)',
+    long: 'Lång (7-15 år)',
+    very_long: 'Mycket lång (15+ år)'
+  };
+
+  const riskMap = {
+    conservative: 'Konservativ',
+    balanced: 'Balanserad',
+    aggressive: 'Aggressiv'
+  };
+
+  const monthlyIncomeMap = {
+    '20000-30000': '20 000 - 30 000 kr',
+    '30000-45000': '30 000 - 45 000 kr',
+    '45000-60000': '45 000 - 60 000 kr',
+    '60000+': 'Över 60 000 kr'
+  };
+
+  const availableCapitalMap = {
+    '10000-50000': '10 000 - 50 000 kr',
+    '50000-100000': '50 000 - 100 000 kr',
+    '100000-250000': '100 000 - 250 000 kr',
+    '250000+': 'Över 250 000 kr'
+  };
+
+  const emergencyFundMap = {
+    yes_full: '6+ månaders buffert',
+    yes_partial: '1-3 månaders buffert',
+    no: 'Ingen buffert'
+  };
+
+  const sustainabilityMap = {
+    very_important: 'Mycket viktigt',
+    somewhat_important: 'Ganska viktigt',
+    not_priority: 'Inte prioritet'
+  };
+
+  const geographicMap = {
+    sweden_only: 'Mest svenska bolag',
+    europe: 'Europa',
+    usa: 'USA',
+    global: 'Global spridning'
+  };
+
+  const crashMap = {
+    sell_all: 'Säljer allt vid kraftigt fall',
+    sell_some: 'Säljer en del',
+    hold: 'Behåller positioner',
+    buy_more: 'Köper mer vid nedgång'
+  };
+
+  const marketExperienceMap = {
+    '2-5': '2–5 år',
+    '5-10': '5–10 år',
+    '10-20': '10–20 år',
+    '20+': 'Över 20 år'
+  };
+
+  const performanceMap = {
+    outperformed: 'Bättre än marknaden',
+    matched: 'I linje med marknaden',
+    underperformed: 'Sämre än marknaden',
+    unsure: 'Osäker/ej mätt'
+  };
+
+  const styleMap = {
+    value: 'Value (värdebolag)',
+    growth: 'Growth (tillväxt)',
+    dividend: 'Utdelningsfokus',
+    momentum: 'Momentum',
+    mixed: 'Blandad strategi'
+  };
+
+  const dividendMap = {
+    high: 'Hög (4%+)',
+    moderate: 'Måttlig (2-4%)',
+    low: 'Låg (<2%)',
+    none: 'Ingen specifik'
+  };
+
+  const obligationMap = {
+    mortgage: 'Bolån',
+    car_loan: 'Billån',
+    student_loan: 'Studiemedel/lån',
+    child_support: 'Underhåll',
+    other: 'Övriga åtaganden'
+  };
+
+  const portfolioHelpMap = {
+    simple_start: 'Kom igång enkelt',
+    diverse_portfolio: 'Skapa diversifierad portfölj',
+    growth_focused: 'Fokusera på tillväxt',
+    dividend_income: 'Prioritera utdelning'
+  };
+
+  const portfolioSizeMap = {
+    small: 'Liten (<100 000 SEK)',
+    medium: 'Mellan (100 000 - 500 000 SEK)',
+    large: 'Stor (500 000 - 1 000 000 SEK)',
+    very_large: 'Mycket stor (>1 000 000 SEK)'
+  };
+
+  const rebalancingMap = {
+    monthly: 'Månadsvis',
+    quarterly: 'Kvartalsvis',
+    yearly: 'Årligen',
+    rarely: 'Sällan'
+  };
+
+  const formatHoldings = (value: unknown) => {
+    if (!Array.isArray(value)) {
+      return undefined;
+    }
+
+    const entries = value
+      .map(item => {
+        if (!item || typeof item !== 'object') {
+          return '';
+        }
+        const holding = item as Record<string, unknown>;
+        const name = typeof holding.name === 'string' ? holding.name.trim() : '';
+        if (!name) {
+          return '';
+        }
+        const symbol = typeof holding.symbol === 'string' && holding.symbol.trim().length > 0
+          ? holding.symbol.trim().toUpperCase()
+          : '';
+        const quantity = typeof holding.quantity === 'number' ? formatNumber(holding.quantity) : undefined;
+        const purchasePrice = typeof holding.purchasePrice === 'number' ? formatNumber(holding.purchasePrice) : undefined;
+
+        const descriptorParts: string[] = [];
+        if (quantity) {
+          descriptorParts.push(`${quantity} st`);
+        }
+        if (purchasePrice) {
+          descriptorParts.push(`à ${purchasePrice} SEK`);
+        }
+
+        const descriptor = descriptorParts.join(' ');
+        const nameWithSymbol = symbol ? `${name} (${symbol})` : name;
+        return descriptor ? `${nameWithSymbol} – ${descriptor}` : nameWithSymbol;
+      })
+      .filter(entry => entry && entry.length > 0);
+
+    return entries.length ? entries.join('; ') : undefined;
+  };
+
+  pushLine('Erfarenhetsnivå (dialog)', data.isBeginnerInvestor, value => formatBoolean(value, 'Nybörjare', 'Erfaren'));
+  pushLine('Har befintlig portfölj', data.hasCurrentPortfolio, value => formatBoolean(value, 'Ja', 'Nej'));
+  pushLine('Investeringsmål (dialog)', data.investmentGoal, value => mapValue(value, goalMap));
+  pushLine('Tidshorisont (dialog)', data.timeHorizon, value => mapValue(value, horizonMap));
+  pushLine('Risktolerans (dialog)', data.riskTolerance, value => mapValue(value, riskMap));
+  pushLine('Månatligt sparande', data.monthlyAmount, value => {
+    if (typeof value === 'number') {
+      return `${formatNumber(value)} SEK`;
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return undefined;
+      }
+      return /sek/i.test(trimmed) ? trimmed : `${trimmed} SEK`;
+    }
+    return undefined;
+  });
+  pushLine('Månadsinkomst', data.monthlyIncome, value => mapValue(value, monthlyIncomeMap));
+  pushLine('Tillgängligt kapital', data.availableCapital, value => mapValue(value, availableCapitalMap));
+  pushLine('Buffertnivå', data.emergencyFund, value => mapValue(value, emergencyFundMap));
+  pushLine('Finansiella förpliktelser', data.financialObligations, value => {
+    if (!Array.isArray(value)) {
+      return undefined;
+    }
+    const mapped = value
+      .map(item => mapValue(item, obligationMap))
+      .filter((entry): entry is string => Boolean(entry));
+    if (mapped.length === 0) {
+      return undefined;
+    }
+    return Array.from(new Set(mapped)).join(', ');
+  });
+  pushLine('Hållbarhetspreferens', data.sustainabilityPreference, value => mapValue(value, sustainabilityMap));
+  pushLine('Geografisk preferens', data.geographicPreference, value => mapValue(value, geographicMap));
+  pushLine('Reaktion vid börsfall', data.marketCrashReaction, value => mapValue(value, crashMap));
+  pushLine('Komfort med volatilitet', data.volatilityComfort, value => {
+    if (typeof value === 'number') {
+      return `${formatNumber(value)}/10`;
+    }
+    return undefined;
+  });
+  pushLine('Investeringserfarenhet (år)', data.marketExperience, value => mapValue(value, marketExperienceMap));
+  pushLine('Nuvarande allokering (egen beskrivning)', data.currentAllocation);
+  pushLine('Tidigare portföljprestanda', data.previousPerformance, value => mapValue(value, performanceMap));
+  pushLine('Nuvarande sektorexponering', data.sectorExposure, joinArray);
+  pushLine('Önskade sektorer', data.sectors, joinArray);
+  pushLine('Investeringsstil', data.investmentStyle, value => mapValue(value, styleMap));
+  pushLine('Direktavkastningskrav', data.dividendYieldRequirement, value => mapValue(value, dividendMap));
+  pushLine('Max drawdown-tolerans', data.maxDrawdownTolerance, value => {
+    if (typeof value === 'number') {
+      return `${formatNumber(value)}/10`;
+    }
+    return undefined;
+  });
+  pushLine('Specifikt sparmål', data.specificGoalAmount);
+  pushLine('Skattehänsyn', data.taxConsideration);
+  pushLine('Önskad portföljhjälp', data.portfolioHelp, value => mapValue(value, portfolioHelpMap));
+  pushLine('Portföljstorlek (självrapporterad)', data.portfolioSize, value => mapValue(value, portfolioSizeMap));
+  pushLine('Rebalanseringsfrekvens', data.rebalancingFrequency, value => mapValue(value, rebalancingMap));
+  pushLine('Personliga intressen', data.interests, joinArray);
+  pushLine('Favoritföretag', data.companies, joinArray);
+  pushLine('Övrig investerarerfarenhet', data.experience);
+  pushLine('Aktuella innehav', data.currentHoldings, formatHoldings);
+
+  return lines.join('\n');
+}
 
 function parseAIRecommendations(text: string): Array<{name: string, symbol?: string, allocation: number, sector?: string}> {
   const stocks: Array<{name: string, symbol?: string, allocation: number, sector?: string}> = [];
