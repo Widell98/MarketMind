@@ -67,11 +67,24 @@ const AIChatPage = () => {
   return (
     <Layout>
       <AIChatLayout>
-        <AIChat
-          portfolioId={activePortfolio?.id}
-          initialStock={stockName}
-          initialMessage={message}
-        />
+        <div className="flex h-full min-h-0 flex-1 flex-col">
+          <div className="flex items-center justify-end gap-3 border-b border-ai-border/60 bg-ai-surface-muted/40 px-6 py-4 dark:border-ai-border/40 dark:bg-ai-surface-muted/30">
+            <Button
+              variant="outline"
+              className="border-ai-border/40 bg-white/80 text-foreground shadow-sm transition-colors hover:bg-white dark:border-ai-border/50 dark:bg-ai-surface dark:text-ai-text hover:dark:bg-ai-surface/80"
+              onClick={() => navigate('/portfolio-implementation')}
+            >
+              portfölj
+            </Button>
+          </div>
+          <div className="flex min-h-0 flex-1">
+            <AIChat
+              portfolioId={activePortfolio?.id}
+              initialStock={stockName}
+              initialMessage={message}
+            />
+          </div>
+        </div>
       </AIChatLayout>
     </Layout>
   );
