@@ -11,16 +11,12 @@ import {
   Bot,
   CheckCircle,
   TrendingUp,
+  ArrowUpRight,
   Plus,
   Trash2,
   Check,
   Sparkles,
-  ShieldAlert,
-  ClipboardList,
   Clock,
-  PiggyBank,
-  BarChart3,
-  MessageCircleQuestion,
   MessageSquare,
   AlertTriangle,
   Loader2,
@@ -299,6 +295,8 @@ const ChatPortfolioAdvisor = () => {
   const { tickers, isLoading: tickersLoading, error: tickersError } = useSheetTickers();
   const rawTickerListId = useId();
   const tickerDatalistId = `advisor-sheet-tickers-${rawTickerListId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const rawProgressId = useId();
+  const progressLabelId = `advisor-progress-${rawProgressId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
   const priceFormatter = useMemo(
     () => new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
@@ -592,6 +590,49 @@ const ChatPortfolioAdvisor = () => {
       ]
     }
   ];
+
+  const visibleQuestions = questions.filter(question => {
+    if (!question.showIf) {
+      return true;
+    }
+
+    try {
+      return question.showIf();
+    } catch (error) {
+      console.warn('Failed to evaluate question visibility', { questionId: question.id, error });
+      return false;
+    }
+  });
+
+  const answeredCount = useMemo(() => {
+    return visibleQuestions.reduce((count, question) => {
+      const value = (conversationData as Record<string, unknown>)[question.key as keyof ConversationData];
+
+      if (Array.isArray(value)) {
+        return value.length > 0 ? count + 1 : count;
+      }
+
+      if (typeof value === 'boolean') {
+        return count + 1;
+      }
+
+      if (typeof value === 'number') {
+        return Number.isFinite(value) ? count + 1 : count;
+      }
+
+      if (typeof value === 'string') {
+        return value.trim().length > 0 ? count + 1 : count;
+      }
+
+      if (value && typeof value === 'object') {
+        return count + 1;
+      }
+
+      return count;
+    }, 0);
+  }, [conversationData, visibleQuestions]);
+
+  const totalSteps = visibleQuestions.length;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -925,6 +966,44 @@ const ChatPortfolioAdvisor = () => {
     }
     return null;
   };
+
+  const activeQuestion = getCurrentQuestion();
+  const activeQuestionIndex = activeQuestion
+    ? Math.max(
+        visibleQuestions.findIndex(question => question.id === activeQuestion.id),
+        0
+      )
+    : -1;
+  const currentStepDisplay = activeQuestion && activeQuestionIndex >= 0 ? activeQuestionIndex + 1 : totalSteps;
+  const normalizedProgress = totalSteps > 0 ? Math.min(answeredCount, totalSteps) : 0;
+  const progressPercentage = totalSteps > 0
+    ? Math.min(100, Math.round((normalizedProgress / totalSteps) * 100))
+    : 0;
+
+  const inputPlaceholder = useMemo(() => {
+    if (!activeQuestion) {
+      return 'Skriv ditt svar här...';
+    }
+
+    if (activeQuestion.hasOptions) {
+      return 'Välj ett av alternativen ovan eller skriv ditt svar...';
+    }
+
+    switch (activeQuestion.id) {
+      case 'age':
+        return 'Exempel: 35';
+      case 'monthlyAmount':
+        return 'Exempel: 2000';
+      case 'portfolioSize':
+        return 'Exempel: 150000';
+      case 'interests':
+        return 'Lista separerad med kommatecken, t.ex. teknik, hälsa';
+      case 'companies':
+        return 'Nämn ett eller flera företag du gillar';
+      default:
+        return 'Skriv ditt svar här...';
+    }
+  }, [activeQuestion]);
 
   const handleAnswer = (answer: string) => {
     if (!waitingForAnswer || isComplete) return;
@@ -1631,110 +1710,94 @@ const ChatPortfolioAdvisor = () => {
     }
 
     return (
-      <div className="space-y-6">
-        <Card className="border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-white shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg font-semibold text-blue-900">
-              <Sparkles className="h-5 w-5 text-blue-500" />
-              Professionell sammanfattning
+      <div className="space-y-4">
+        <Card className="border border-primary/20 bg-background/60 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Snabb rekommendation
             </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Baseras på din riskprofil och rådgivningssamtalet
-            </p>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {structured.summary.length > 0 ? (
-              structured.summary.map((paragraph, index) => (
-                <p key={`summary-${index}`} className="text-sm leading-relaxed text-muted-foreground">
-                  {paragraph}
-                </p>
-              ))
-            ) : (
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Din portföljanalys presenteras i sektionerna nedan.
-              </p>
+          <CardContent className="space-y-3 text-sm text-foreground">
+            {structured.summary.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Viktigaste åtgärder</p>
+                <ul className="space-y-1">
+                  {structured.summary.map((item, index) => (
+                    <li key={`summary-${index}`} className="flex gap-2">
+                      <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {structured.implementationPlan.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Så här kommer du igång</p>
+                <ul className="space-y-1">
+                  {structured.implementationPlan.map((item, index) => (
+                    <li key={`plan-${index}`} className="flex gap-2">
+                      <ArrowUpRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary/80" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {structured.followUp.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nästa steg</p>
+                <ul className="space-y-1">
+                  {structured.followUp.map((item, index) => (
+                    <li key={`follow-${index}`} className="flex gap-2">
+                      <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary/60" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </CardContent>
         </Card>
 
         {structured.recommendations.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h4 className="flex items-center gap-2 text-base font-semibold text-foreground">
+          <Card className="border border-primary/20 bg-background/80 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
                 <TrendingUp className="h-4 w-4 text-primary" />
-                Rekommenderad portföljstrategi
-              </h4>
-              <Badge variant="outline" className="border-primary/20 bg-primary/10 text-primary">
-                Totalt 100% allokering
-              </Badge>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+                Rekommenderade innehav
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
               {structured.recommendations.map((recommendation, index) => (
-                <Card
+                <div
                   key={`${recommendation.name}-${index}`}
-                  className="border border-border/60 bg-background/95 shadow-sm transition-shadow duration-200 hover:shadow-md"
+                  className="rounded-xl border border-border/60 bg-card/50 p-3 text-sm text-foreground"
                 >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <CardTitle className="text-base font-semibold text-foreground">
-                          {recommendation.name}
-                        </CardTitle>
-                        {recommendation.ticker && (
-                          <p className="mt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                            {recommendation.ticker}
-                          </p>
-                        )}
-                      </div>
-                      {recommendation.allocation && (
-                        <Badge className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
-                          {recommendation.allocation}
-                        </Badge>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="font-semibold">{recommendation.name}</p>
+                      {recommendation.ticker && (
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">{recommendation.ticker}</p>
                       )}
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-                    {recommendation.analysis && (
-                      <div className="rounded-xl border border-border/60 bg-muted/40 p-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Analys</p>
-                        <p className="mt-1 text-foreground">{recommendation.analysis}</p>
-                      </div>
+                    {recommendation.allocation && (
+                      <Badge variant="secondary" className="text-xs">
+                        {recommendation.allocation}
+                      </Badge>
                     )}
-                    {recommendation.role && (
-                      <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-primary">Roll i portföljen</p>
-                        <p className="mt-1 text-foreground">{recommendation.role}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                  </div>
+                  {(recommendation.analysis || recommendation.role) && (
+                    <div className="mt-2 space-y-1 text-muted-foreground">
+                      {recommendation.analysis && <p>{recommendation.analysis}</p>}
+                      {recommendation.role && <p className="text-xs">Roll: {recommendation.role}</p>}
+                    </div>
+                  )}
+                </div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {(structured.portfolioAnalysis.length > 0 || structured.riskAnalysis.length > 0) && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {renderListSection('Portföljanalys', structured.portfolioAnalysis, 'text-blue-600', 'bg-blue-500/80', BarChart3)}
-            {renderListSection('Riskanalys & stresstest', structured.riskAnalysis, 'text-rose-600', 'bg-rose-500/80', ShieldAlert)}
-          </div>
-        )}
-
-        {(structured.implementationPlan.length > 0 || structured.followUp.length > 0) && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {renderListSection('Implementationsplan', structured.implementationPlan, 'text-emerald-600', 'bg-emerald-500/80', ClipboardList)}
-            {renderListSection('Uppföljning', structured.followUp, 'text-purple-600', 'bg-purple-500/80', Clock)}
-          </div>
-        )}
-
-        {structured.savingsPlan.length > 0 &&
-          renderListSection('Personlig sparrekommendation', structured.savingsPlan, 'text-amber-600', 'bg-amber-500/80', PiggyBank)}
-
-        {structured.closingQuestion && (
-          <Card className="border border-primary/30 bg-primary/5">
-            <CardContent className="flex items-center gap-3 py-4 text-sm font-medium text-primary">
-              <MessageCircleQuestion className="h-5 w-5" />
-              <span>{structured.closingQuestion}</span>
             </CardContent>
           </Card>
         )}
@@ -1766,24 +1829,49 @@ const ChatPortfolioAdvisor = () => {
     <div className="flex flex-col h-[75vh] lg:h-[80vh] xl:h-[85vh] bg-transparent overflow-hidden">
       {/* Chat Header - matching AIChat style */}
       <div className="flex-shrink-0 p-3 sm:p-4 border-b bg-card/50 backdrop-blur-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-primary shadow-sm">
-              <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-primary shadow-sm">
+                <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-semibold text-sm sm:text-base">AI Portfolio Rådgivare</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">Personlig konsultation</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h3 className="font-semibold text-sm sm:text-base">AI Portfolio Rådgivare</h3>
-              <p className="text-xs sm:text-sm text-muted-foreground">Personlig konsultation</p>
-            </div>
+            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs sm:text-sm">
+              Konsultation
+            </Badge>
           </div>
-          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs sm:text-sm">
-            Konsultation
-          </Badge>
+
+          {totalSteps > 0 && (
+            <div className="space-y-1" aria-labelledby={progressLabelId}>
+              <div id={progressLabelId} className="flex items-center justify-between text-[11px] sm:text-xs text-muted-foreground">
+                <span>
+                  Steg {Math.min(currentStepDisplay, totalSteps)} av {totalSteps}
+                </span>
+                <span>{progressPercentage}% klart</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
+                  style={{ width: `${progressPercentage}%` }}
+                  aria-hidden="true"
+                />
+              </div>
+              {activeQuestion?.question && (
+                <p className="text-[11px] sm:text-xs text-muted-foreground/90 line-clamp-2">
+                  Pågående fråga: {activeQuestion.question}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Messages Container - matching AIChat style */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" role="log" aria-live="polite" aria-relevant="additions text">
         <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
           {messages.map((message) => (
             <div key={message.id} className="space-y-2">
@@ -1996,7 +2084,7 @@ const ChatPortfolioAdvisor = () => {
               <Input
                 value={currentInput}
                 onChange={(e) => setCurrentInput(e.target.value)}
-                placeholder="Skriv ditt svar här..."
+                placeholder={inputPlaceholder}
                 className="pr-12 bg-background/80 backdrop-blur-sm border-border/50 focus:border-primary/50 transition-colors text-sm sm:text-base h-9 sm:h-10"
                 disabled={isComplete}
               />
