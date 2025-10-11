@@ -11,16 +11,12 @@ import {
   Bot,
   CheckCircle,
   TrendingUp,
+  ArrowUpRight,
   Plus,
   Trash2,
   Check,
   Sparkles,
-  ShieldAlert,
-  ClipboardList,
   Clock,
-  PiggyBank,
-  BarChart3,
-  MessageCircleQuestion,
   MessageSquare,
   AlertTriangle,
   Loader2,
@@ -1714,110 +1710,94 @@ const ChatPortfolioAdvisor = () => {
     }
 
     return (
-      <div className="space-y-6">
-        <Card className="border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-white shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg font-semibold text-blue-900">
-              <Sparkles className="h-5 w-5 text-blue-500" />
-              Professionell sammanfattning
+      <div className="space-y-4">
+        <Card className="border border-primary/20 bg-background/60 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Snabb rekommendation
             </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Baseras på din riskprofil och rådgivningssamtalet
-            </p>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {structured.summary.length > 0 ? (
-              structured.summary.map((paragraph, index) => (
-                <p key={`summary-${index}`} className="text-sm leading-relaxed text-muted-foreground">
-                  {paragraph}
-                </p>
-              ))
-            ) : (
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Din portföljanalys presenteras i sektionerna nedan.
-              </p>
+          <CardContent className="space-y-3 text-sm text-foreground">
+            {structured.summary.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Viktigaste åtgärder</p>
+                <ul className="space-y-1">
+                  {structured.summary.map((item, index) => (
+                    <li key={`summary-${index}`} className="flex gap-2">
+                      <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {structured.implementationPlan.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Så här kommer du igång</p>
+                <ul className="space-y-1">
+                  {structured.implementationPlan.map((item, index) => (
+                    <li key={`plan-${index}`} className="flex gap-2">
+                      <ArrowUpRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary/80" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {structured.followUp.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nästa steg</p>
+                <ul className="space-y-1">
+                  {structured.followUp.map((item, index) => (
+                    <li key={`follow-${index}`} className="flex gap-2">
+                      <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary/60" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </CardContent>
         </Card>
 
         {structured.recommendations.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h4 className="flex items-center gap-2 text-base font-semibold text-foreground">
+          <Card className="border border-primary/20 bg-background/80 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
                 <TrendingUp className="h-4 w-4 text-primary" />
-                Rekommenderad portföljstrategi
-              </h4>
-              <Badge variant="outline" className="border-primary/20 bg-primary/10 text-primary">
-                Totalt 100% allokering
-              </Badge>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+                Rekommenderade innehav
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
               {structured.recommendations.map((recommendation, index) => (
-                <Card
+                <div
                   key={`${recommendation.name}-${index}`}
-                  className="border border-border/60 bg-background/95 shadow-sm transition-shadow duration-200 hover:shadow-md"
+                  className="rounded-xl border border-border/60 bg-card/50 p-3 text-sm text-foreground"
                 >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <CardTitle className="text-base font-semibold text-foreground">
-                          {recommendation.name}
-                        </CardTitle>
-                        {recommendation.ticker && (
-                          <p className="mt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                            {recommendation.ticker}
-                          </p>
-                        )}
-                      </div>
-                      {recommendation.allocation && (
-                        <Badge className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
-                          {recommendation.allocation}
-                        </Badge>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="font-semibold">{recommendation.name}</p>
+                      {recommendation.ticker && (
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">{recommendation.ticker}</p>
                       )}
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-                    {recommendation.analysis && (
-                      <div className="rounded-xl border border-border/60 bg-muted/40 p-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Analys</p>
-                        <p className="mt-1 text-foreground">{recommendation.analysis}</p>
-                      </div>
+                    {recommendation.allocation && (
+                      <Badge variant="secondary" className="text-xs">
+                        {recommendation.allocation}
+                      </Badge>
                     )}
-                    {recommendation.role && (
-                      <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-primary">Roll i portföljen</p>
-                        <p className="mt-1 text-foreground">{recommendation.role}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                  </div>
+                  {(recommendation.analysis || recommendation.role) && (
+                    <div className="mt-2 space-y-1 text-muted-foreground">
+                      {recommendation.analysis && <p>{recommendation.analysis}</p>}
+                      {recommendation.role && <p className="text-xs">Roll: {recommendation.role}</p>}
+                    </div>
+                  )}
+                </div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {(structured.portfolioAnalysis.length > 0 || structured.riskAnalysis.length > 0) && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {renderListSection('Portföljanalys', structured.portfolioAnalysis, 'text-blue-600', 'bg-blue-500/80', BarChart3)}
-            {renderListSection('Riskanalys & stresstest', structured.riskAnalysis, 'text-rose-600', 'bg-rose-500/80', ShieldAlert)}
-          </div>
-        )}
-
-        {(structured.implementationPlan.length > 0 || structured.followUp.length > 0) && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {renderListSection('Implementationsplan', structured.implementationPlan, 'text-emerald-600', 'bg-emerald-500/80', ClipboardList)}
-            {renderListSection('Uppföljning', structured.followUp, 'text-purple-600', 'bg-purple-500/80', Clock)}
-          </div>
-        )}
-
-        {structured.savingsPlan.length > 0 &&
-          renderListSection('Personlig sparrekommendation', structured.savingsPlan, 'text-amber-600', 'bg-amber-500/80', PiggyBank)}
-
-        {structured.closingQuestion && (
-          <Card className="border border-primary/30 bg-primary/5">
-            <CardContent className="flex items-center gap-3 py-4 text-sm font-medium text-primary">
-              <MessageCircleQuestion className="h-5 w-5" />
-              <span>{structured.closingQuestion}</span>
             </CardContent>
           </Card>
         )}
