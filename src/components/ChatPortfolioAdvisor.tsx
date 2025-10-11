@@ -299,6 +299,8 @@ const ChatPortfolioAdvisor = () => {
   const { tickers, isLoading: tickersLoading, error: tickersError } = useSheetTickers();
   const rawTickerListId = useId();
   const tickerDatalistId = `advisor-sheet-tickers-${rawTickerListId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const rawProgressId = useId();
+  const progressLabelId = `advisor-progress-${rawProgressId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
   const priceFormatter = useMemo(
     () => new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
@@ -592,6 +594,49 @@ const ChatPortfolioAdvisor = () => {
       ]
     }
   ];
+
+  const visibleQuestions = questions.filter(question => {
+    if (!question.showIf) {
+      return true;
+    }
+
+    try {
+      return question.showIf();
+    } catch (error) {
+      console.warn('Failed to evaluate question visibility', { questionId: question.id, error });
+      return false;
+    }
+  });
+
+  const answeredCount = useMemo(() => {
+    return visibleQuestions.reduce((count, question) => {
+      const value = (conversationData as Record<string, unknown>)[question.key as keyof ConversationData];
+
+      if (Array.isArray(value)) {
+        return value.length > 0 ? count + 1 : count;
+      }
+
+      if (typeof value === 'boolean') {
+        return count + 1;
+      }
+
+      if (typeof value === 'number') {
+        return Number.isFinite(value) ? count + 1 : count;
+      }
+
+      if (typeof value === 'string') {
+        return value.trim().length > 0 ? count + 1 : count;
+      }
+
+      if (value && typeof value === 'object') {
+        return count + 1;
+      }
+
+      return count;
+    }, 0);
+  }, [conversationData, visibleQuestions]);
+
+  const totalSteps = visibleQuestions.length;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -925,6 +970,44 @@ const ChatPortfolioAdvisor = () => {
     }
     return null;
   };
+
+  const activeQuestion = getCurrentQuestion();
+  const activeQuestionIndex = activeQuestion
+    ? Math.max(
+        visibleQuestions.findIndex(question => question.id === activeQuestion.id),
+        0
+      )
+    : -1;
+  const currentStepDisplay = activeQuestion && activeQuestionIndex >= 0 ? activeQuestionIndex + 1 : totalSteps;
+  const normalizedProgress = totalSteps > 0 ? Math.min(answeredCount, totalSteps) : 0;
+  const progressPercentage = totalSteps > 0
+    ? Math.min(100, Math.round((normalizedProgress / totalSteps) * 100))
+    : 0;
+
+  const inputPlaceholder = useMemo(() => {
+    if (!activeQuestion) {
+      return 'Skriv ditt svar här...';
+    }
+
+    if (activeQuestion.hasOptions) {
+      return 'Välj ett av alternativen ovan eller skriv ditt svar...';
+    }
+
+    switch (activeQuestion.id) {
+      case 'age':
+        return 'Exempel: 35';
+      case 'monthlyAmount':
+        return 'Exempel: 2000';
+      case 'portfolioSize':
+        return 'Exempel: 150000';
+      case 'interests':
+        return 'Lista separerad med kommatecken, t.ex. teknik, hälsa';
+      case 'companies':
+        return 'Nämn ett eller flera företag du gillar';
+      default:
+        return 'Skriv ditt svar här...';
+    }
+  }, [activeQuestion]);
 
   const handleAnswer = (answer: string) => {
     if (!waitingForAnswer || isComplete) return;
@@ -1766,24 +1849,49 @@ const ChatPortfolioAdvisor = () => {
     <div className="flex flex-col h-[75vh] lg:h-[80vh] xl:h-[85vh] bg-transparent overflow-hidden">
       {/* Chat Header - matching AIChat style */}
       <div className="flex-shrink-0 p-3 sm:p-4 border-b bg-card/50 backdrop-blur-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-primary shadow-sm">
-              <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-primary shadow-sm">
+                <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-semibold text-sm sm:text-base">AI Portfolio Rådgivare</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">Personlig konsultation</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h3 className="font-semibold text-sm sm:text-base">AI Portfolio Rådgivare</h3>
-              <p className="text-xs sm:text-sm text-muted-foreground">Personlig konsultation</p>
-            </div>
+            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs sm:text-sm">
+              Konsultation
+            </Badge>
           </div>
-          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs sm:text-sm">
-            Konsultation
-          </Badge>
+
+          {totalSteps > 0 && (
+            <div className="space-y-1" aria-labelledby={progressLabelId}>
+              <div id={progressLabelId} className="flex items-center justify-between text-[11px] sm:text-xs text-muted-foreground">
+                <span>
+                  Steg {Math.min(currentStepDisplay, totalSteps)} av {totalSteps}
+                </span>
+                <span>{progressPercentage}% klart</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
+                  style={{ width: `${progressPercentage}%` }}
+                  aria-hidden="true"
+                />
+              </div>
+              {activeQuestion?.question && (
+                <p className="text-[11px] sm:text-xs text-muted-foreground/90 line-clamp-2">
+                  Pågående fråga: {activeQuestion.question}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Messages Container - matching AIChat style */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" role="log" aria-live="polite" aria-relevant="additions text">
         <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
           {messages.map((message) => (
             <div key={message.id} className="space-y-2">
@@ -1996,7 +2104,7 @@ const ChatPortfolioAdvisor = () => {
               <Input
                 value={currentInput}
                 onChange={(e) => setCurrentInput(e.target.value)}
-                placeholder="Skriv ditt svar här..."
+                placeholder={inputPlaceholder}
                 className="pr-12 bg-background/80 backdrop-blur-sm border-border/50 focus:border-primary/50 transition-colors text-sm sm:text-base h-9 sm:h-10"
                 disabled={isComplete}
               />
