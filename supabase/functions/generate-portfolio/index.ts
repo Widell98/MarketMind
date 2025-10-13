@@ -613,7 +613,12 @@ function buildSectorRationale(stock: { name: string; sector?: string }, riskProf
 
 function extractStructuredPlan(rawText: string, riskProfile: any): { plan: any | null; recommendedStocks: Array<{ name: string; symbol?: string; allocation: number; sector?: string; reasoning?: string }> } {
   try {
-    const parsed = JSON.parse(rawText);
+    const sanitized = sanitizeJsonLikeString(rawText);
+    if (!sanitized) {
+      return { plan: null, recommendedStocks: [] };
+    }
+
+    const parsed = JSON.parse(sanitized);
     const planCandidate = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
     if (!planCandidate) {
       return { plan: null, recommendedStocks: [] };
@@ -680,6 +685,32 @@ function extractStructuredPlan(rawText: string, riskProfile: any): { plan: any |
     console.warn('Failed to parse structured plan JSON:', error);
     return { plan: null, recommendedStocks: [] };
   }
+}
+
+function sanitizeJsonLikeString(rawText: string): string | null {
+  if (!rawText) return null;
+  const trimmed = rawText.trim();
+  if (!trimmed) return null;
+
+  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fencedMatch && fencedMatch[1].trim()) {
+    return fencedMatch[1].trim();
+  }
+
+  if (trimmed.startsWith('```')) {
+    const withoutLeadingFence = trimmed.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+    if (withoutLeadingFence) {
+      return withoutLeadingFence;
+    }
+  }
+
+  const startIndex = trimmed.indexOf('{');
+  const endIndex = trimmed.lastIndexOf('}');
+  if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+    return trimmed.slice(startIndex, endIndex + 1).trim();
+  }
+
+  return trimmed;
 }
 
 function buildFallbackPlan(riskProfile: any, stocks: Array<{ name: string; symbol?: string; allocation: number; sector?: string }>, rawText: string): any {
