@@ -459,9 +459,8 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
     let { plan: structuredPlan, recommendedStocks } = extractStructuredPlan(aiRecommendationsRaw, riskProfile);
 
     if (!structuredPlan || recommendedStocks.length === 0) {
-      console.warn('Structured plan was missing or incomplete – using default mix based on risk profile');
-      recommendedStocks = defaultRecommendations(riskProfile);
-      structuredPlan = buildFallbackPlan(riskProfile, recommendedStocks, aiRecommendationsRaw);
+      console.error('AI response was missing structured recommendations. Raw output:', aiRecommendationsRaw);
+      throw new Error('AI kunde inte generera några portföljförslag');
     }
 
     ensureSum100(recommendedStocks);
@@ -876,56 +875,5 @@ function sanitizeJsonLikeString(rawText: string): string | null {
   }
 
   return trimmed;
-}
-
-function buildFallbackPlan(riskProfile: any, stocks: Array<{ name: string; symbol?: string; allocation: number; sector?: string }>, rawText: string): any {
-  ensureSum100(stocks);
-  const recommended_assets = stocks.map(stock => ({
-    name: stock.name,
-    ticker: stock.symbol || '',
-    allocation_percent: stock.allocation,
-    rationale: buildSectorRationale(stock, riskProfile),
-    risk_role: determineRiskRole(stock, riskProfile)
-  }));
-
-  return {
-    action_summary: fallbackActionSummary(riskProfile),
-    risk_alignment: fallbackRiskAlignment(riskProfile),
-    next_steps: buildDefaultNextSteps(riskProfile),
-    recommended_assets,
-    disclaimer: 'Råden är utbildningsmaterial och ersätter inte personlig rådgivning. Investeringar innebär risk och värdet kan både öka och minska.',
-    raw_model_output: rawText
-  };
-}
-
-function defaultRecommendations(riskProfile: any): Array<{name: string, symbol?: string, allocation: number, sector?: string}> {
-  // Simple defaults tuned by risk tolerance
-  const rt = (riskProfile?.risk_tolerance || 'moderate').toLowerCase();
-  let base: Array<{name: string, symbol?: string, allocation: number, sector?: string}> = [
-    { name: 'Länsförsäkringar Global Indexnära', allocation: 40, sector: 'Indexfond' },
-    { name: 'Spiltan Aktiefond Investmentbolag', allocation: 25, sector: 'Investmentbolag' },
-    { name: 'XACT OMXS30', symbol: 'XACT30', allocation: 20, sector: 'Indexfond' },
-    { name: 'Handelsbanken A', symbol: 'SHB-A', allocation: 15, sector: 'Bank' },
-  ];
-
-  if (rt === 'aggressive') {
-    base = [
-      { name: 'Länsförsäkringar Global Indexnära', allocation: 30, sector: 'Indexfond' },
-      { name: 'Spiltan Aktiefond Investmentbolag', allocation: 25, sector: 'Investmentbolag' },
-      { name: 'Swedbank Robur Ny Teknik A', allocation: 20, sector: 'Teknik' },
-      { name: 'XACT OMXS30', symbol: 'XACT30', allocation: 15, sector: 'Indexfond' },
-      { name: 'Handelsbanken A', symbol: 'SHB-A', allocation: 10, sector: 'Bank' },
-    ];
-  } else if (rt === 'conservative') {
-    base = [
-      { name: 'Länsförsäkringar Global Indexnära', allocation: 45, sector: 'Indexfond' },
-      { name: 'Spiltan Aktiefond Investmentbolag', allocation: 25, sector: 'Investmentbolag' },
-      { name: 'XACT OMXS30', symbol: 'XACT30', allocation: 15, sector: 'Indexfond' },
-      { name: 'Handelsbanken A', symbol: 'SHB-A', allocation: 15, sector: 'Bank' },
-    ];
-  }
-
-  ensureSum100(base);
-  return base;
 }
 
