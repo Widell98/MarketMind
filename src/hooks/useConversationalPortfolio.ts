@@ -11,6 +11,7 @@ export interface ConversationData {
   monthlyAmount?: string;
   monthlyAmountNumeric?: number;
   hasCurrentPortfolio?: boolean;
+  tradingFrequency?: string;
   currentHoldings?: Array<{
     id: string;
     name: string;
@@ -21,6 +22,7 @@ export interface ConversationData {
   age?: number;
   experience?: string;
   sectors?: string[];
+  sectorInterests?: string[];
   interests?: string[];
   companies?: string[];
   portfolioHelp?: string;
@@ -45,6 +47,7 @@ export interface ConversationData {
   volatilityComfort?: number;
   marketExperience?: string;
   investmentExperienceLevel?: 'beginner' | 'intermediate' | 'advanced';
+  preferredAssets?: string;
   currentAllocation?: string | Record<string, any>;
   currentPortfolioValue?: string;
   previousPerformance?: string;
@@ -249,6 +252,13 @@ export const useConversationalPortfolio = () => {
       income: 'Regelbunden inkomst',
       house: 'Bostadsköp',
       education: 'Utbildning/Barn',
+      long_term_savings: 'Bygga ett långsiktigt sparande',
+      learn_and_test: 'Lära mig mer och testa på',
+      specific_goal: 'Spara till något specifikt (t.ex. bostad, resa)',
+      quick_return: 'Snabb avkastning',
+      long_term_growth: 'Bygga långsiktigt sparande',
+      dividend_income: 'Extra inkomst via utdelningar',
+      other: 'Annat mål',
     }) ?? 'Ej angivet';
 
     const timeHorizonText = mapValue(conversationData.timeHorizon, {
@@ -256,6 +266,7 @@ export const useConversationalPortfolio = () => {
       medium: '3-7 år (medellång sikt)',
       long: '7-15 år (lång sikt)',
       very_long: '15+ år (mycket lång sikt)',
+      unknown: 'Vet inte än',
     }) ?? 'Ej angiven';
 
     const riskToleranceText = mapValue(conversationData.riskTolerance, {
@@ -279,6 +290,10 @@ export const useConversationalPortfolio = () => {
     }) ?? formatCurrency(conversationData.monthlyIncome);
 
     const availableCapitalText = mapValue(conversationData.availableCapital, {
+      under_1000: 'Mindre än 1 000 kr',
+      '1000_10000': '1 000 – 10 000 kr',
+      '10000_50000': '10 000 – 50 000 kr',
+      over_50000: 'Mer än 50 000 kr',
       '10000-50000': '10 000 - 50 000 kr',
       '50000-100000': '50 000 - 100 000 kr',
       '100000-250000': '100 000 - 250 000 kr',
@@ -308,7 +323,9 @@ export const useConversationalPortfolio = () => {
       sell_all: 'Sälja allt för att stoppa förlusterna',
       sell_some: 'Sälja en del av innehaven',
       hold: 'Behålla allt och vänta',
-      buy_more: 'Köpa mer medan det är billigt',
+      buy_more: 'Jag ser det som ett köptillfälle',
+      sell: 'Jag blir orolig och vill sälja',
+      wait: 'Jag försöker avvakta',
     });
 
     const portfolioHelpText = mapValue(conversationData.portfolioHelp, {
@@ -316,7 +333,39 @@ export const useConversationalPortfolio = () => {
       diverse_portfolio: 'Skapa diversifierad portfölj',
       growth_focused: 'Fokusera på tillväxt',
       dividend_income: 'Prioritera utdelning',
+      long_term_portfolio: 'Bygga en långsiktig portfölj',
+      analyze_holdings: 'Ge analyser på mina aktier',
+      find_new_investments: 'Hitta nya intressanta investeringar',
+      learn_more: 'Lära mig mer om investeringar',
+      step_by_step: 'Komma igång steg-för-steg',
+      learn_basics: 'Lära mig grunderna om aktier & fonder',
+      starter_portfolio: 'Få förslag på en enkel startportfölj',
+      investment_inspiration: 'Inspiration till olika investeringstyper',
     });
+
+    const portfolioSizeText = mapValue(conversationData.portfolioSize, {
+      under_10000: 'Under 10 000 kr',
+      '10000_50000': '10 000 – 50 000 kr',
+      '50000_200000': '50 000 – 200 000 kr',
+      over_200000: 'Mer än 200 000 kr',
+      small: 'Liten portfölj',
+      medium: 'Medelstor portfölj',
+      large: 'Stor portfölj',
+      very_large: 'Mycket stor portfölj',
+    }) ?? conversationData.portfolioSize;
+
+    const preferredAssetsText = mapValue(conversationData.preferredAssets, {
+      stocks: 'Aktier',
+      funds_etfs: 'Fonder/ETF:er',
+      crypto: 'Kryptovalutor',
+      commodities: 'Råvaror (t.ex. guld, olja)',
+    }) ?? conversationData.preferredAssets;
+
+    const tradingFrequencyText = mapValue(conversationData.tradingFrequency, {
+      rarely: 'Sällan (några gånger per år)',
+      monthly: 'Någon gång i månaden',
+      weekly: 'Varje vecka eller oftare',
+    }) ?? conversationData.tradingFrequency;
 
     const rebalancingText = mapValue(conversationData.rebalancingFrequency, {
       monthly: 'Månadsvis',
@@ -362,12 +411,20 @@ export const useConversationalPortfolio = () => {
     const liquidCapitalText = formatCurrency(conversationData.liquidCapital);
     const currentPortfolioValueText = formatCurrency(conversationData.currentPortfolioValue);
 
+    const formattedAge = typeof conversationData.age === 'number'
+      ? `${conversationData.age} år`
+      : 'Ej angiven';
+
+    const formattedMonthlyInvestment = monthlyInvestmentText === 'Ej angivet'
+      ? 'Ej angivet'
+      : `${monthlyInvestmentText} SEK`;
+
     let prompt = `Skapa en detaljerad och personlig portföljstrategi baserat på följande omfattande konsultation:
 
 GRUNDLÄGGANDE PROFIL:
 - Erfarenhetsnivå: ${conversationData.isBeginnerInvestor ? 'Nybörjare (första gången investera)' : 'Erfaren investerare (flera års erfarenhet)'}
-- Ålder: ${conversationData.age || 'Ej angiven'}
-- Månatligt investeringsbelopp: ${monthlyInvestmentText} SEK
+- Ålder: ${formattedAge}
+- Månatligt investeringsbelopp: ${formattedMonthlyInvestment}
 - Investeringsmål: ${investmentGoalText}
 - Tidshorisont: ${timeHorizonText}
 - Risktolerans: ${riskToleranceText}
@@ -386,6 +443,11 @@ GRUNDLÄGGANDE PROFIL:
     if (availableCapitalText && availableCapitalText !== 'Ej angivet') {
       prompt += `
 - Tillgängligt kapital för investeringar: ${availableCapitalText}`;
+    }
+
+    if (preferredAssetsText) {
+      prompt += `
+- Mest intresserad av: ${preferredAssetsText}`;
     }
 
     if (liquidCapitalText && liquidCapitalText !== 'Ej angivet') {
@@ -547,9 +609,14 @@ ERFAREN INVESTERARE - AVANCERAD PROFIL:`;
 - Skatteoptimering: ${conversationData.taxConsideration}`;
       }
 
-      if (conversationData.portfolioSize) {
+      if (portfolioSizeText) {
         prompt += `
-- Portföljstorlek: ${conversationData.portfolioSize}`;
+- Portföljstorlek: ${portfolioSizeText}`;
+      }
+
+      if (tradingFrequencyText) {
+        prompt += `
+- Handelsfrekvens: ${tradingFrequencyText}`;
       }
 
       if (rebalancingText) {
@@ -931,6 +998,17 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       if (sectorInterests) {
         normalized.sectorExposure = sectorInterests;
         normalized.sectors = sectorInterests;
+        normalized.sectorInterests = sectorInterests;
+      }
+
+      const preferredAssets = ensureStringArray(profile.preferred_assets);
+      if (preferredAssets && preferredAssets.length > 0) {
+        normalized.preferredAssets = preferredAssets[0];
+      } else {
+        const singlePreferredAsset = ensureString(profile.preferred_assets);
+        if (singlePreferredAsset) {
+          normalized.preferredAssets = singlePreferredAsset;
+        }
       }
 
       const holdings = ensureHoldingsArray(profile.current_holdings);
@@ -1146,15 +1224,137 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       }
 
       // Create enhanced risk profile data with all new fields
-      const combinedSectorInterests = Array.from(new Set([
-        ...(mergedConversationData.sectors || []),
-        ...(mergedConversationData.interests || []),
-        ...(mergedConversationData.sectorExposure || []),
-        ...(existingProfileData.sectors || []),
-        mergedConversationData.sustainabilityPreference ? `Hållbarhetsfokus: ${mergedConversationData.sustainabilityPreference}` : null,
-        mergedConversationData.geographicPreference ? `Geografisk inriktning: ${mergedConversationData.geographicPreference}` : null,
-        mergedConversationData.dividendYieldRequirement ? `Utdelningskrav: ${mergedConversationData.dividendYieldRequirement}` : null,
-      ].filter(Boolean)));
+      const normalizeSectorLabel = (value: unknown): string | null => {
+        if (typeof value !== 'string') {
+          return null;
+        }
+        const trimmed = value.trim();
+        if (!trimmed) {
+          return null;
+        }
+        if (/Hållbarhetsfokus/i.test(trimmed)) {
+          return 'Hållbarhet & Miljö';
+        }
+        if (/Geografisk/i.test(trimmed)) {
+          const region = trimmed.split(':')[1]?.trim();
+          return region && region.length > 0 ? region : 'Geografisk spridning';
+        }
+        if (/Utdelningskrav/i.test(trimmed)) {
+          return null;
+        }
+        return trimmed;
+      };
+
+      const aggregatedSectorSources = [
+        ...(Array.isArray(mergedConversationData.sectors) ? mergedConversationData.sectors : []),
+        ...(Array.isArray(mergedConversationData.interests) ? mergedConversationData.interests : []),
+        ...(Array.isArray(mergedConversationData.sectorExposure) ? mergedConversationData.sectorExposure : []),
+        ...(Array.isArray(existingProfileData.sectors) ? existingProfileData.sectors : []),
+      ];
+
+      const sanitizedInterestSources = aggregatedSectorSources
+        .map(normalizeSectorLabel)
+        .filter((label): label is string => Boolean(label));
+
+      const interestSignalText = sanitizedInterestSources.join(' ').toLowerCase();
+
+      const resolvedPreferredAsset = (() => {
+        const directPreferred = typeof mergedConversationData.preferredAssets === 'string' && mergedConversationData.preferredAssets.trim()
+          ? mergedConversationData.preferredAssets.trim()
+          : typeof existingProfileData.preferredAssets === 'string' && existingProfileData.preferredAssets.trim()
+            ? existingProfileData.preferredAssets.trim()
+            : undefined;
+
+        if (directPreferred) {
+          return directPreferred;
+        }
+
+        if (interestSignalText.includes('krypto') || interestSignalText.includes('crypto')) {
+          return 'crypto';
+        }
+        if (interestSignalText.includes('tech') || interestSignalText.includes('it') || interestSignalText.includes('innovation')) {
+          return 'stocks';
+        }
+        if (interestSignalText.includes('råvar') || interestSignalText.includes('commodity')) {
+          return 'commodities';
+        }
+        if (mergedConversationData.sustainabilityPreference && mergedConversationData.sustainabilityPreference !== 'not_priority') {
+          return 'funds_etfs';
+        }
+        if (mergedConversationData.riskTolerance === 'conservative') {
+          return 'funds_etfs';
+        }
+        if (mergedConversationData.riskTolerance === 'aggressive') {
+          return 'stocks';
+        }
+        return mergedConversationData.isBeginnerInvestor ? 'funds_etfs' : 'stocks';
+      })();
+
+      mergedConversationData.preferredAssets = resolvedPreferredAsset;
+
+      const derivedSectorSignals: string[] = [];
+
+      if (resolvedPreferredAsset === 'crypto') {
+        derivedSectorSignals.push('Kryptovalutor');
+      } else if (resolvedPreferredAsset === 'funds_etfs') {
+        derivedSectorSignals.push('Fonder & ETF:er');
+      } else if (resolvedPreferredAsset === 'commodities') {
+        derivedSectorSignals.push('Råvaror');
+      } else if (resolvedPreferredAsset === 'stocks') {
+        derivedSectorSignals.push('Aktier & Tillväxt');
+      }
+
+      if (mergedConversationData.sustainabilityPreference && mergedConversationData.sustainabilityPreference !== 'not_priority') {
+        derivedSectorSignals.push('Hållbarhet & Miljö');
+      }
+
+      switch (mergedConversationData.geographicPreference) {
+        case 'sweden_only':
+          derivedSectorSignals.push('Svenska marknaden');
+          break;
+        case 'europe':
+          derivedSectorSignals.push('Europa & Industri');
+          break;
+        case 'usa':
+          derivedSectorSignals.push('USA & Tech');
+          break;
+        case 'global':
+          derivedSectorSignals.push('Global diversifiering');
+          break;
+        default:
+          break;
+      }
+
+      if (interestSignalText.includes('energi')) {
+        derivedSectorSignals.push('Energi');
+      }
+      if (interestSignalText.includes('bank') || interestSignalText.includes('finans')) {
+        derivedSectorSignals.push('Bank & Finans');
+      }
+      if (interestSignalText.includes('fastighet')) {
+        derivedSectorSignals.push('Fastigheter');
+      }
+      if (interestSignalText.includes('industri')) {
+        derivedSectorSignals.push('Industri & Verkstad');
+      }
+      if (interestSignalText.includes('hälsa') || interestSignalText.includes('life science')) {
+        derivedSectorSignals.push('Hälsa & Life Science');
+      }
+      if (interestSignalText.includes('konsument') || interestSignalText.includes('handel')) {
+        derivedSectorSignals.push('Konsument & Handel');
+      }
+
+      const sectorInterestsForProfile = Array.from(new Set([
+        ...sanitizedInterestSources,
+        ...derivedSectorSignals
+      ].map(label => label.trim()).filter(Boolean)));
+
+      if (sectorInterestsForProfile.length === 0) {
+        sectorInterestsForProfile.push('Bred diversifiering');
+      }
+
+      mergedConversationData.sectors = sectorInterestsForProfile;
+      mergedConversationData.sectorInterests = sectorInterestsForProfile;
 
       const emergencyBufferMonths = typeof mergedConversationData.emergencyBufferMonths === 'number'
         ? mergedConversationData.emergencyBufferMonths
@@ -1219,17 +1419,32 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
           ? resolvedMonthlyIncome * 12
           : null;
 
+      const estimatedPortfolioValue = (() => {
+        switch (mergedConversationData.portfolioSize) {
+          case 'under_10000':
+            return 5000;
+          case '10000_50000':
+            return 30000;
+          case '50000_200000':
+            return 125000;
+          case 'over_200000':
+            return 300000;
+          case 'small':
+            return 50000;
+          case 'medium':
+            return 300000;
+          case 'large':
+            return 750000;
+          case 'very_large':
+            return 1500000;
+          default:
+            return null;
+        }
+      })();
+
       const currentPortfolioValue = resolvedCurrentPortfolioValue !== null
         ? resolvedCurrentPortfolioValue
-        : mergedConversationData.portfolioSize === 'small'
-          ? 50000
-          : mergedConversationData.portfolioSize === 'medium'
-            ? 300000
-            : mergedConversationData.portfolioSize === 'large'
-              ? 750000
-              : mergedConversationData.portfolioSize === 'very_large'
-                ? 1500000
-                : null;
+        : estimatedPortfolioValue;
 
       const currentAllocationValue = typeof mergedConversationData.currentAllocation === 'string'
         ? { self_reported: mergedConversationData.currentAllocation }
@@ -1249,7 +1464,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         investment_goal: mergedConversationData.investmentGoal || 'growth',
         risk_tolerance: mergedConversationData.riskTolerance || null,
         investment_experience: investmentExperienceLevel,
-        sector_interests: combinedSectorInterests,
+        sector_interests: sectorInterestsForProfile,
         current_holdings: mergedConversationData.currentHoldings || [],
         current_allocation: currentAllocationValue,
         housing_situation: mergedConversationData.housingSituation || null,
@@ -1291,13 +1506,15 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         return null;
       }
 
-      // Generate AI response with enhanced risk profile using proper endpoint
+      // Generate AI response with enhanced risk profile using proper endpoint.
+      // The backend now owns the full system directive for OpenAI, so we only pass
+      // through structured conversation data here to avoid conflicting prompts.
       const { data: aiResponse, error: aiError } = await supabase.functions.invoke('generate-portfolio', {
         body: {
           riskProfileId: riskProfile.id,
           userId: user.id,
-          conversationPrompt: enhancedPrompt,
-          conversationData: mergedConversationData
+          conversationData: mergedConversationData,
+          conversationPrompt: enhancedPrompt
         }
       });
 
