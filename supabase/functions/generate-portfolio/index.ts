@@ -38,9 +38,14 @@ serve(async (req) => {
   }
 
   try {
-    const { riskProfileId, userId, conversationPrompt } = await req.json();
+    const { riskProfileId, userId, conversationPrompt, conversationData } = await req.json();
 
-    console.log('Generate portfolio request:', { riskProfileId, userId, hasConversationPrompt: Boolean(conversationPrompt) });
+    console.log('Generate portfolio request:', {
+      riskProfileId,
+      userId,
+      hasConversationPrompt: Boolean(conversationPrompt),
+      hasConversationData: conversationData && typeof conversationData === 'object'
+    });
 
     if (!riskProfileId || !userId) {
       throw new Error('Missing required parameters: riskProfileId and userId');
@@ -151,6 +156,90 @@ KVALITETSKRAV:
 **Disclaimer:** Alla råd är endast i utbildningssyfte. Konsultera alltid en licensierad rådgivare innan du fattar beslut.
 `;
 
+    let conversationSummary = '';
+
+    if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+      const rawData = conversationData as Record<string, unknown>;
+      const details: string[] = [];
+
+      const asString = (value: unknown) => typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+      const asNumber = (value: unknown) => {
+        if (typeof value === 'number' && !Number.isNaN(value)) return value;
+        if (typeof value === 'string') {
+          const numeric = Number(value.replace(/[^\d.-]/g, ''));
+          return Number.isFinite(numeric) ? numeric : null;
+        }
+        return null;
+      };
+      const asStringArray = (value: unknown) => {
+        if (!Array.isArray(value)) return null;
+        const parsed = value
+          .map(item => (typeof item === 'string' && item.trim().length > 0 ? item.trim() : null))
+          .filter((item): item is string => Boolean(item));
+        return parsed.length > 0 ? parsed : null;
+      };
+
+      const addDetail = (label: string, value: string | number | null) => {
+        if (value !== null && value !== '') {
+          details.push(`${label}: ${value}`);
+        }
+      };
+
+      const addArrayDetail = (label: string, value: unknown) => {
+        const arr = asStringArray(value);
+        if (arr) {
+          details.push(`${label}: ${arr.join(', ')}`);
+        }
+      };
+
+      const experienceLabel = asString(rawData.marketExperience)
+        || (typeof rawData.isBeginnerInvestor === 'boolean'
+          ? rawData.isBeginnerInvestor ? 'Nybörjare' : 'Erfaren'
+          : null);
+
+      addDetail('Investeringsmål', asString(rawData.investmentGoal));
+      addDetail('Sökt portföljstorlek', asString(rawData.portfolioSize));
+      addDetail('Investerarens erfarenhet', experienceLabel);
+      addDetail('Önskad investeringsstil', asString(rawData.investmentStyle));
+      addDetail('Utdelningskrav', asString(rawData.dividendYieldRequirement));
+      addDetail('Hållbarhetsfokus', asString(rawData.sustainabilityPreference));
+      addDetail('Geografisk inriktning', asString(rawData.geographicPreference));
+      addDetail('Reaktion på börsras', asString(rawData.marketCrashReaction));
+
+      const comfort = typeof rawData.volatilityComfort === 'number' ? rawData.volatilityComfort
+        : typeof rawData.volatilityComfort === 'string' ? Number(rawData.volatilityComfort) : null;
+      addDetail('Volatilitetskomfort (1-10)', comfort !== null && Number.isFinite(comfort) ? comfort : null);
+
+      const monthlyIncome = asNumber(rawData.monthlyIncome);
+      addDetail('Månadsinkomst', monthlyIncome !== null && Number.isFinite(monthlyIncome) ? `${monthlyIncome.toLocaleString('sv-SE')} SEK` : null);
+
+      const capital = asNumber(rawData.availableCapital);
+      addDetail('Tillgängligt kapital', capital !== null && Number.isFinite(capital) ? `${capital.toLocaleString('sv-SE')} SEK` : null);
+
+      if (typeof rawData.emergencyFund === 'string') {
+        const emergencyMap: Record<string, string> = {
+          yes_full: 'Full buffert',
+          yes_partial: 'Delvis buffert',
+          no: 'Ingen buffert'
+        };
+        addDetail('Buffertstatus', emergencyMap[rawData.emergencyFund] || rawData.emergencyFund);
+      }
+
+      addArrayDetail('Ekonomiska åtaganden', rawData.financialObligations);
+      addArrayDetail('Föredragna sektorer', rawData.sectors || rawData.sectorExposure);
+      addArrayDetail('Särskilda intressen', rawData.interests);
+      addArrayDetail('Föredragna bolag', rawData.companies);
+
+      const helpNeeded = asString(rawData.portfolioHelp);
+      if (helpNeeded) {
+        details.push(`Specifikt stöd som efterfrågas: ${helpNeeded}`);
+      }
+
+      if (details.length > 0) {
+        conversationSummary = details.map(detail => `- ${detail}`).join('\n');
+        contextInfo += `\n\nFÖRDJUPAD KUNDKONVERSATION:\n${conversationSummary}`;
+      }
+    }
 
     // Add detailed user profile information
     if (riskProfile) {
@@ -249,16 +338,28 @@ Riskkomfort: ${riskProfile.risk_comfort_level || 5}/10
 
 Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga på svenska marknader. Fokusera på att ge konkreta rekommendationer med symboler.`;
 
-    console.log('Calling OpenAI API with gpt-4o...');
-    
     const messages: Array<{ role: 'system' | 'user'; content: string }> = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userMessage }
     ];
 
+    if (conversationSummary) {
+      messages.push({ role: 'user', content: `Fördjupad samtalskontext:\n${conversationSummary}` });
+    }
+
     if (conversationPrompt && typeof conversationPrompt === 'string' && conversationPrompt.trim().length > 0) {
       messages.push({ role: 'user', content: conversationPrompt });
     }
+
+    if (conversationData && typeof conversationData === 'object') {
+      try {
+        messages.push({ role: 'user', content: `Rå konsultationsdata (JSON):\n${JSON.stringify(conversationData)}` });
+      } catch (jsonError) {
+        console.warn('Could not serialize conversationData for OpenAI message:', jsonError);
+      }
+    }
+
+    console.log('Calling OpenAI API with gpt-4o...');
 
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',

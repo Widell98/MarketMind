@@ -443,19 +443,28 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
     try {
       const enhancedPrompt = buildEnhancedAIPrompt(conversationData);
       console.log('Generated enhanced AI prompt:', enhancedPrompt);
-      
+
       // Create enhanced risk profile data with all new fields
+      const combinedSectorInterests = Array.from(new Set([
+        ...(conversationData.sectors || []),
+        ...(conversationData.interests || []),
+        ...(conversationData.sectorExposure || []),
+        conversationData.sustainabilityPreference ? `Hållbarhetsfokus: ${conversationData.sustainabilityPreference}` : null,
+        conversationData.geographicPreference ? `Geografisk inriktning: ${conversationData.geographicPreference}` : null,
+        conversationData.dividendYieldRequirement ? `Utdelningskrav: ${conversationData.dividendYieldRequirement}` : null,
+      ].filter(Boolean)));
+
       const riskProfileData = {
         age: conversationData.age || 25,
-        monthly_investment_amount: conversationData.monthlyAmount ? 
+        monthly_investment_amount: conversationData.monthlyAmount ?
           parseInt(conversationData.monthlyAmount.replace(/[^\d]/g, '')) || 5000 : 5000,
         investment_horizon: conversationData.timeHorizon || null,
         investment_goal: conversationData.investmentGoal || 'growth',
         risk_tolerance: conversationData.riskTolerance || null,
         investment_experience: conversationData.isBeginnerInvestor ? 'beginner' : 'advanced',
-        sector_interests: conversationData.interests || [],
+        sector_interests: combinedSectorInterests,
         current_holdings: conversationData.currentHoldings || [],
-        current_allocation: {},
+        current_allocation: conversationData.currentAllocation ? { self_reported: conversationData.currentAllocation } : {},
         housing_situation: null,
         has_loans: conversationData.financialObligations?.includes('mortgage') || conversationData.financialObligations?.includes('car_loan') || conversationData.financialObligations?.includes('student_loan') || false,
         loan_details: conversationData.financialObligations ? conversationData.financialObligations.join(', ') : null,
@@ -503,7 +512,8 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         body: {
           riskProfileId: riskProfile.id,
           userId: user.id,
-          conversationPrompt: enhancedPrompt
+          conversationPrompt: enhancedPrompt,
+          conversationData
         }
       });
 
