@@ -90,6 +90,37 @@ const findTickerMatch = (tickers: SheetTicker[], ticker: string): SheetTicker | 
   return null;
 };
 
+const buildTickerVariantLookup = (tickers: SheetTicker[]) => {
+  const lookup = new Map<string, SheetTicker>();
+
+  tickers.forEach((ticker) => {
+    const variants = getSymbolVariants(ticker.symbol);
+    variants.forEach((variant) => {
+      lookup.set(variant.toUpperCase(), ticker);
+    });
+
+    const canonical = stripSymbolPrefix(ticker.symbol);
+    if (canonical) {
+      lookup.set(canonical.toUpperCase(), ticker);
+    }
+
+    if (ticker.symbol) {
+      lookup.set(ticker.symbol.toUpperCase(), ticker);
+    }
+  });
+
+  return lookup;
+};
+
+const normalizeNameKey = (name?: string | null) => {
+  if (typeof name !== 'string') {
+    return null;
+  }
+
+  const trimmed = name.trim();
+  return trimmed.length > 0 ? trimmed.toLowerCase() : null;
+};
+
 export interface PerformanceData {
   totalValue: number;
   totalInvested: number;
@@ -338,6 +369,189 @@ export const usePortfolioPerformance = () => {
     }
   };
 
+  const updateAllPrices = async (): Promise<PriceUpdateSummary | null> => {
+    if (!user || updating) {
+      return null;
+    }
+
+    try {
+      setUpdating(true);
+
+      const { data: tickerResponse, error: tickerError } = await supabase.functions.invoke('list-sheet-tickers');
+
+      if (tickerError) {
+        throw new Error(tickerError.message || 'Kunde inte hämta tickers från Google Sheets.');
+      }
+
+      const tickerList = Array.isArray(tickerResponse?.tickers)
+        ? (tickerResponse.tickers as SheetTicker[])
+        : [];
+
+      if (tickerList.length === 0) {
+        throw new Error('Kunde inte hämta tickers från Google Sheets.');
+      }
+
+      const { data: holdings, error: holdingsError } = await supabase
+        .from('user_holdings')
+        .select('id, quantity, symbol, name, holding_type')
+        .eq('user_id', user.id)
+        .neq('holding_type', 'cash')
+        .neq('holding_type', 'recommendation');
+
+      if (holdingsError) {
+        throw holdingsError;
+      }
+
+      if (!holdings || holdings.length === 0) {
+        return {
+          updated: 0,
+          errors: 0,
+          unmatched: [],
+        };
+      }
+
+      const typedHoldings = holdings as HoldingRow[];
+      const tickerLookup = buildTickerVariantLookup(tickerList);
+      const nameLookup = new Map<string, SheetTicker>();
+
+      tickerList.forEach((ticker) => {
+        const key = normalizeNameKey(ticker.name);
+        if (key && !nameLookup.has(key)) {
+          nameLookup.set(key, ticker);
+        }
+      });
+
+      const timestamp = new Date().toISOString();
+      let updatedCount = 0;
+      let errorCount = 0;
+      const failedHoldings: Array<{ symbol?: string; name?: string }> = [];
+      const unmatchedHoldings: Array<{ symbol?: string; name?: string }> = [];
+
+      for (const holding of typedHoldings) {
+        const symbolVariants = getSymbolVariants(holding.symbol);
+        let matchedTicker: SheetTicker | undefined;
+
+        for (const variant of symbolVariants) {
+          matchedTicker = tickerLookup.get(variant.toUpperCase());
+          if (matchedTicker) {
+            break;
+          }
+        }
+
+        if (!matchedTicker && holding.symbol) {
+          const canonical = stripSymbolPrefix(holding.symbol);
+          if (canonical) {
+            matchedTicker = tickerLookup.get(canonical.toUpperCase());
+          }
+        }
+
+        if (!matchedTicker && typeof holding.symbol === 'string') {
+          matchedTicker = tickerLookup.get(holding.symbol.toUpperCase());
+        }
+
+        if (!matchedTicker) {
+          const nameKey = normalizeNameKey(holding.name);
+          if (nameKey) {
+            matchedTicker = nameLookup.get(nameKey);
+          }
+        }
+
+        if (!matchedTicker) {
+          unmatchedHoldings.push({
+            symbol: holding.symbol ?? undefined,
+            name: holding.name ?? undefined,
+          });
+          continue;
+        }
+
+        if (typeof matchedTicker.price !== 'number' || !Number.isFinite(matchedTicker.price) || matchedTicker.price <= 0) {
+          unmatchedHoldings.push({
+            symbol: holding.symbol ?? undefined,
+            name: holding.name ?? undefined,
+          });
+          continue;
+        }
+
+        const priceCurrency = matchedTicker.currency ? matchedTicker.currency.toUpperCase() : 'SEK';
+        const pricePerUnit = matchedTicker.price;
+        const pricePerUnitInSEK = convertToSEK(pricePerUnit, priceCurrency);
+        const quantity = parseNumeric(holding.quantity) ?? 0;
+        const computedValue = Number.isFinite(pricePerUnitInSEK)
+          ? quantity > 0
+            ? quantity * pricePerUnitInSEK
+            : 0
+          : null;
+
+        const { error: updateError } = await supabase
+          .from('user_holdings')
+          .update({
+            current_price_per_unit: pricePerUnit,
+            price_currency: priceCurrency,
+            ...(computedValue !== null ? { current_value: computedValue } : {}),
+            updated_at: timestamp,
+          })
+          .eq('id', holding.id);
+
+        if (updateError) {
+          errorCount++;
+          failedHoldings.push({
+            symbol: holding.symbol ?? undefined,
+            name: holding.name ?? undefined,
+          });
+          console.error(`Error updating holding ${holding.id}:`, updateError);
+        } else {
+          updatedCount++;
+        }
+      }
+
+      const descriptionParts: string[] = [];
+
+      if (updatedCount > 0) {
+        descriptionParts.push(`${updatedCount} innehav uppdaterades`);
+      }
+
+      if (errorCount > 0) {
+        descriptionParts.push(`${errorCount} uppdateringar misslyckades`);
+      }
+
+      if (unmatchedHoldings.length > 0) {
+        descriptionParts.push(`${unmatchedHoldings.length} innehav saknade prisdata`);
+      }
+
+      const toastTitle = updatedCount > 0
+        ? 'Portföljpriser uppdaterade'
+        : 'Inga portföljpriser uppdaterades';
+
+      if (updatedCount > 0 || errorCount > 0 || unmatchedHoldings.length > 0) {
+        toast({
+          title: toastTitle,
+          description: descriptionParts.join(' · ') || undefined,
+          variant: updatedCount === 0 && (errorCount > 0 || unmatchedHoldings.length > 0)
+            ? 'destructive'
+            : 'default',
+        });
+      }
+
+      await calculatePerformance();
+
+      return {
+        updated: updatedCount,
+        errors: errorCount,
+        unmatched: [...failedHoldings, ...unmatchedHoldings],
+      };
+    } catch (error) {
+      console.error('Error updating all prices:', error);
+      toast({
+        title: 'Fel vid prisuppdatering',
+        description: error instanceof Error ? error.message : 'Kunde inte uppdatera priserna',
+        variant: 'destructive',
+      });
+      return null;
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const updatePrices = async (ticker?: string): Promise<PriceUpdateSummary | null> => {
     if (!user || updating) {
       return null;
@@ -520,6 +734,7 @@ export const usePortfolioPerformance = () => {
     holdingsPerformance,
     loading,
     updating,
+    updateAllPrices,
     updatePrices,
     refetch: calculatePerformance
   };

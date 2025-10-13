@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import PortfolioOverview from '@/components/PortfolioOverview';
@@ -19,7 +19,9 @@ import FloatingActionButton from '@/components/FloatingActionButton';
 import Breadcrumb from '@/components/Breadcrumb';
 const PortfolioImplementation = () => {
   const {
-    actualHoldings
+    actualHoldings,
+    loading: holdingsLoading,
+    refetch: refetchHoldings
   } = useUserHoldings();
   const {
     activePortfolio,
@@ -37,7 +39,8 @@ const PortfolioImplementation = () => {
     loading: riskProfileLoading
   } = useRiskProfile();
   const {
-    performance
+    performance,
+    updateAllPrices
   } = usePortfolioPerformance();
   const {
     totalCash
@@ -46,6 +49,7 @@ const PortfolioImplementation = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const hasTriggeredAutoUpdate = useRef(false);
   useEffect(() => {
     // Only show login modal if auth has finished loading and user is not authenticated
     if (!authLoading && !user) {
@@ -65,6 +69,31 @@ const PortfolioImplementation = () => {
       minute: '2-digit'
     }));
   }, [performance, totalCash]);
+  useEffect(() => {
+    hasTriggeredAutoUpdate.current = false;
+  }, [user?.id]);
+  useEffect(() => {
+    if (!user || holdingsLoading) {
+      return;
+    }
+
+    if (actualHoldings.length === 0) {
+      return;
+    }
+
+    if (hasTriggeredAutoUpdate.current) {
+      return;
+    }
+
+    hasTriggeredAutoUpdate.current = true;
+
+    void (async () => {
+      const summary = await updateAllPrices();
+      if (summary && typeof refetchHoldings === 'function') {
+        await refetchHoldings({ silent: true });
+      }
+    })();
+  }, [user, holdingsLoading, actualHoldings.length, updateAllPrices, refetchHoldings]);
   const handleQuickChat = (message: string) => {
     if (!riskProfile) {
       return;
