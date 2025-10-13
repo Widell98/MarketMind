@@ -38,9 +38,14 @@ serve(async (req) => {
   }
 
   try {
-    const { riskProfileId, userId } = await req.json();
-    
-    console.log('Generate portfolio request:', { riskProfileId, userId });
+    const { riskProfileId, userId, conversationPrompt, conversationData } = await req.json();
+
+    console.log('Generate portfolio request:', {
+      riskProfileId,
+      userId,
+      hasConversationPrompt: Boolean(conversationPrompt),
+      hasConversationData: conversationData && typeof conversationData === 'object'
+    });
 
     if (!riskProfileId || !userId) {
       throw new Error('Missing required parameters: riskProfileId and userId');
@@ -151,6 +156,148 @@ KVALITETSKRAV:
 **Disclaimer:** Alla råd är endast i utbildningssyfte. Konsultera alltid en licensierad rådgivare innan du fattar beslut.
 `;
 
+    let conversationSummary = '';
+
+    if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+      const rawData = conversationData as Record<string, unknown>;
+      const details: string[] = [];
+
+      const asString = (value: unknown) => typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+      const asNumber = (value: unknown) => {
+        if (typeof value === 'number' && !Number.isNaN(value)) return value;
+        if (typeof value === 'string') {
+          const numeric = Number(value.replace(/[^\d.-]/g, ''));
+          return Number.isFinite(numeric) ? numeric : null;
+        }
+        return null;
+      };
+      const asStringArray = (value: unknown) => {
+        if (!Array.isArray(value)) return null;
+        const parsed = value
+          .map(item => (typeof item === 'string' && item.trim().length > 0 ? item.trim() : null))
+          .filter((item): item is string => Boolean(item));
+        return parsed.length > 0 ? parsed : null;
+      };
+
+      const addDetail = (label: string, value: string | number | null) => {
+        if (value !== null && value !== '') {
+          details.push(`${label}: ${value}`);
+        }
+      };
+
+      const addArrayDetail = (label: string, value: unknown) => {
+        const arr = asStringArray(value);
+        if (arr) {
+          details.push(`${label}: ${arr.join(', ')}`);
+        }
+      };
+
+      const experienceLabel = asString(rawData.marketExperience)
+        || (typeof rawData.isBeginnerInvestor === 'boolean'
+          ? rawData.isBeginnerInvestor ? 'Nybörjare' : 'Erfaren'
+          : null);
+
+      addDetail('Investeringsmål', asString(rawData.investmentGoal));
+      addDetail('Sökt portföljstorlek', asString(rawData.portfolioSize));
+      addDetail('Investerarens erfarenhet', experienceLabel);
+      addDetail('Önskad investeringsstil', asString(rawData.investmentStyle));
+      addDetail('Utdelningskrav', asString(rawData.dividendYieldRequirement));
+      addDetail('Hållbarhetsfokus', asString(rawData.sustainabilityPreference));
+      addDetail('Geografisk inriktning', asString(rawData.geographicPreference));
+      addDetail('Reaktion på börsras', asString(rawData.marketCrashReaction));
+
+      const comfort = typeof rawData.volatilityComfort === 'number' ? rawData.volatilityComfort
+        : typeof rawData.volatilityComfort === 'string' ? Number(rawData.volatilityComfort) : null;
+      addDetail('Volatilitetskomfort (1-10)', comfort !== null && Number.isFinite(comfort) ? comfort : null);
+
+      const monthlyIncome = asNumber(rawData.monthlyIncome);
+      addDetail('Månadsinkomst', monthlyIncome !== null && Number.isFinite(monthlyIncome) ? `${monthlyIncome.toLocaleString('sv-SE')} SEK` : null);
+
+      const annualIncome = asNumber(rawData.annualIncome);
+      addDetail('Årsinkomst', annualIncome !== null && Number.isFinite(annualIncome) ? `${annualIncome.toLocaleString('sv-SE')} SEK` : null);
+
+      const capital = asNumber(rawData.availableCapital);
+      addDetail('Tillgängligt kapital', capital !== null && Number.isFinite(capital) ? `${capital.toLocaleString('sv-SE')} SEK` : null);
+
+      const liquidCapital = asNumber(rawData.liquidCapital);
+      addDetail('Likvida medel', liquidCapital !== null && Number.isFinite(liquidCapital) ? `${liquidCapital.toLocaleString('sv-SE')} SEK` : null);
+
+      if (typeof rawData.housingSituation === 'string') {
+        addDetail('Bostadssituation', rawData.housingSituation);
+      }
+
+      if (typeof rawData.hasLoans === 'boolean') {
+        addDetail('Har lån', rawData.hasLoans ? 'Ja' : 'Nej');
+      }
+
+      if (typeof rawData.loanDetails === 'string' && rawData.loanDetails.trim().length > 0) {
+        addDetail('Lånedetaljer', rawData.loanDetails);
+      }
+
+      if (typeof rawData.hasChildren === 'boolean') {
+        addDetail('Har försörjningsansvar', rawData.hasChildren ? 'Ja' : 'Nej');
+      }
+
+      if (typeof rawData.emergencyFund === 'string') {
+        const emergencyMap: Record<string, string> = {
+          yes_full: 'Full buffert',
+          yes_partial: 'Delvis buffert',
+          no: 'Ingen buffert'
+        };
+        addDetail('Buffertstatus', emergencyMap[rawData.emergencyFund] || rawData.emergencyFund);
+      }
+
+      if (typeof rawData.emergencyBufferMonths === 'number' && Number.isFinite(rawData.emergencyBufferMonths)) {
+        addDetail('Buffert (månader)', rawData.emergencyBufferMonths);
+      }
+
+      addArrayDetail('Ekonomiska åtaganden', rawData.financialObligations);
+      addArrayDetail('Föredragna sektorer', rawData.sectors || rawData.sectorExposure);
+      addArrayDetail('Särskilda intressen', rawData.interests);
+      addArrayDetail('Föredragna bolag', rawData.companies);
+      addArrayDetail('Investeringssyften', rawData.investmentPurpose);
+
+      const targetAmount = asNumber(rawData.targetAmount ?? rawData.specificGoalAmount);
+      addDetail('Målbelopp', targetAmount !== null && Number.isFinite(targetAmount) ? `${targetAmount.toLocaleString('sv-SE')} SEK` : null);
+
+      addDetail('Måldatum', asString(rawData.targetDate));
+
+      if (typeof rawData.preferredStockCount === 'number' && Number.isFinite(rawData.preferredStockCount)) {
+        addDetail('Önskat antal innehav', rawData.preferredStockCount);
+      }
+
+      if (typeof rawData.controlImportance === 'number' && Number.isFinite(rawData.controlImportance)) {
+        addDetail('Kontrollbehov (1-5)', rawData.controlImportance);
+      }
+
+      if (typeof rawData.panicSellingHistory === 'boolean') {
+        addDetail('Historik av panikförsäljning', rawData.panicSellingHistory ? 'Ja' : 'Nej');
+      }
+
+      addDetail('Aktivitetsnivå', asString(rawData.activityPreference));
+      addDetail('Ombalanseringsfrekvens', asString(rawData.portfolioChangeFrequency || rawData.rebalancingFrequency));
+      addDetail('Medvetenhet om överexponering', asString(rawData.overexposureAwareness));
+
+      const currentPortfolioValue = asNumber(rawData.currentPortfolioValue);
+      addDetail('Nuvarande portföljvärde (rapport)', currentPortfolioValue !== null && Number.isFinite(currentPortfolioValue) ? `${currentPortfolioValue.toLocaleString('sv-SE')} SEK` : null);
+
+      const helpNeeded = asString(rawData.portfolioHelp);
+      if (helpNeeded) {
+        details.push(`Specifikt stöd som efterfrågas: ${helpNeeded}`);
+      }
+
+      addDetail('Önskad kommunikationsstil', asString(rawData.communicationStyle));
+      addDetail('Önskad svarslängd', asString(rawData.preferredResponseLength));
+
+      if (typeof rawData.additionalNotes === 'string' && rawData.additionalNotes.trim().length > 0) {
+        details.push(`Ytterligare anteckningar: ${rawData.additionalNotes.trim()}`);
+      }
+
+      if (details.length > 0) {
+        conversationSummary = details.map(detail => `- ${detail}`).join('\n');
+        contextInfo += `\n\nFÖRDJUPAD KUNDKONVERSATION:\n${conversationSummary}`;
+      }
+    }
 
     // Add detailed user profile information
     if (riskProfile) {
@@ -249,8 +396,29 @@ Riskkomfort: ${riskProfile.risk_comfort_level || 5}/10
 
 Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga på svenska marknader. Fokusera på att ge konkreta rekommendationer med symboler.`;
 
+    const messages: Array<{ role: 'system' | 'user'; content: string }> = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage }
+    ];
+
+    if (conversationSummary) {
+      messages.push({ role: 'user', content: `Fördjupad samtalskontext:\n${conversationSummary}` });
+    }
+
+    if (conversationPrompt && typeof conversationPrompt === 'string' && conversationPrompt.trim().length > 0) {
+      messages.push({ role: 'user', content: conversationPrompt });
+    }
+
+    if (conversationData && typeof conversationData === 'object') {
+      try {
+        messages.push({ role: 'user', content: `Rå konsultationsdata (JSON):\n${JSON.stringify(conversationData)}` });
+      } catch (jsonError) {
+        console.warn('Could not serialize conversationData for OpenAI message:', jsonError);
+      }
+    }
+
     console.log('Calling OpenAI API with gpt-4o...');
-    
+
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -259,10 +427,7 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
       },
       body: JSON.stringify({
         model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage }
-        ],
+        messages,
         temperature: 0.85,
         max_tokens: 2000,
       }),
@@ -294,9 +459,8 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
     let { plan: structuredPlan, recommendedStocks } = extractStructuredPlan(aiRecommendationsRaw, riskProfile);
 
     if (!structuredPlan || recommendedStocks.length === 0) {
-      console.warn('Structured plan was missing or incomplete – using default mix based on risk profile');
-      recommendedStocks = defaultRecommendations(riskProfile);
-      structuredPlan = buildFallbackPlan(riskProfile, recommendedStocks, aiRecommendationsRaw);
+      console.error('AI response was missing structured recommendations. Raw output:', aiRecommendationsRaw);
+      throw new Error('AI kunde inte generera några portföljförslag');
     }
 
     ensureSum100(recommendedStocks);
@@ -711,56 +875,5 @@ function sanitizeJsonLikeString(rawText: string): string | null {
   }
 
   return trimmed;
-}
-
-function buildFallbackPlan(riskProfile: any, stocks: Array<{ name: string; symbol?: string; allocation: number; sector?: string }>, rawText: string): any {
-  ensureSum100(stocks);
-  const recommended_assets = stocks.map(stock => ({
-    name: stock.name,
-    ticker: stock.symbol || '',
-    allocation_percent: stock.allocation,
-    rationale: buildSectorRationale(stock, riskProfile),
-    risk_role: determineRiskRole(stock, riskProfile)
-  }));
-
-  return {
-    action_summary: fallbackActionSummary(riskProfile),
-    risk_alignment: fallbackRiskAlignment(riskProfile),
-    next_steps: buildDefaultNextSteps(riskProfile),
-    recommended_assets,
-    disclaimer: 'Råden är utbildningsmaterial och ersätter inte personlig rådgivning. Investeringar innebär risk och värdet kan både öka och minska.',
-    raw_model_output: rawText
-  };
-}
-
-function defaultRecommendations(riskProfile: any): Array<{name: string, symbol?: string, allocation: number, sector?: string}> {
-  // Simple defaults tuned by risk tolerance
-  const rt = (riskProfile?.risk_tolerance || 'moderate').toLowerCase();
-  let base: Array<{name: string, symbol?: string, allocation: number, sector?: string}> = [
-    { name: 'Länsförsäkringar Global Indexnära', allocation: 40, sector: 'Indexfond' },
-    { name: 'Spiltan Aktiefond Investmentbolag', allocation: 25, sector: 'Investmentbolag' },
-    { name: 'XACT OMXS30', symbol: 'XACT30', allocation: 20, sector: 'Indexfond' },
-    { name: 'Handelsbanken A', symbol: 'SHB-A', allocation: 15, sector: 'Bank' },
-  ];
-
-  if (rt === 'aggressive') {
-    base = [
-      { name: 'Länsförsäkringar Global Indexnära', allocation: 30, sector: 'Indexfond' },
-      { name: 'Spiltan Aktiefond Investmentbolag', allocation: 25, sector: 'Investmentbolag' },
-      { name: 'Swedbank Robur Ny Teknik A', allocation: 20, sector: 'Teknik' },
-      { name: 'XACT OMXS30', symbol: 'XACT30', allocation: 15, sector: 'Indexfond' },
-      { name: 'Handelsbanken A', symbol: 'SHB-A', allocation: 10, sector: 'Bank' },
-    ];
-  } else if (rt === 'conservative') {
-    base = [
-      { name: 'Länsförsäkringar Global Indexnära', allocation: 45, sector: 'Indexfond' },
-      { name: 'Spiltan Aktiefond Investmentbolag', allocation: 25, sector: 'Investmentbolag' },
-      { name: 'XACT OMXS30', symbol: 'XACT30', allocation: 15, sector: 'Indexfond' },
-      { name: 'Handelsbanken A', symbol: 'SHB-A', allocation: 15, sector: 'Bank' },
-    ];
-  }
-
-  ensureSum100(base);
-  return base;
 }
 

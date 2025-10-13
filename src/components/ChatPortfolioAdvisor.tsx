@@ -14,7 +14,7 @@ import {
   Check,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useConversationalPortfolio } from '@/hooks/useConversationalPortfolio';
+import { useConversationalPortfolio, type ConversationData } from '@/hooks/useConversationalPortfolio';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,41 +42,6 @@ interface Holding {
   priceManuallyEdited: boolean;
 }
 
-interface ConversationData {
-  isBeginnerInvestor?: boolean;
-  investmentGoal?: string;
-  timeHorizon?: string;
-  riskTolerance?: string;
-  monthlyAmount?: string;
-  hasCurrentPortfolio?: boolean;
-  currentHoldings?: Holding[];
-  age?: number;
-  experience?: string;
-  sectors?: string[];
-  interests?: string[];
-  companies?: string[];
-  portfolioHelp?: string;
-  portfolioSize?: string;
-  rebalancingFrequency?: string;
-  // Enhanced fields
-  monthlyIncome?: string;
-  availableCapital?: string;
-  emergencyFund?: string;
-  financialObligations?: string[];
-  sustainabilityPreference?: string;
-  geographicPreference?: string;
-  marketCrashReaction?: string;
-  volatilityComfort?: number;
-  marketExperience?: string;
-  currentAllocation?: string;
-  previousPerformance?: string;
-  sectorExposure?: string[];
-  investmentStyle?: string;
-  dividendYieldRequirement?: string;
-  maxDrawdownTolerance?: number;
-  specificGoalAmount?: string;
-  taxConsideration?: string;
-}
 
 interface AdvisorPlanAsset {
   name: string;
@@ -849,6 +814,28 @@ const ChatPortfolioAdvisor = () => {
       ...conversationData,
       [currentQuestion.key]: processedAnswer
     };
+
+    if (currentQuestion.key === 'monthlyAmount') {
+      let numericAnswer: number | null = null;
+
+      if (typeof processedAnswer === 'string') {
+        const cleaned = processedAnswer.replace(/[^0-9.,-]/g, '').replace(',', '.');
+        if (cleaned.length > 0) {
+          const parsed = Number(cleaned);
+          if (!Number.isNaN(parsed)) {
+            numericAnswer = parsed;
+          }
+        }
+      } else if (typeof processedAnswer === 'number' && Number.isFinite(processedAnswer)) {
+        numericAnswer = processedAnswer;
+      }
+
+      if (numericAnswer !== null) {
+        (updatedData as ConversationData).monthlyAmountNumeric = Math.round(numericAnswer);
+      } else {
+        delete (updatedData as ConversationData).monthlyAmountNumeric;
+      }
+    }
     setConversationData(updatedData);
 
     // Move to next question
