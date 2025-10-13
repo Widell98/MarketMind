@@ -230,6 +230,46 @@ const UserInvestmentAnalysis = ({
   const handleCreateNewProfile = () => {
     navigate('/portfolio-advisor');
   };
+  const aiStrategyData = activePortfolio?.asset_allocation?.ai_strategy;
+  const aiStrategyRaw = activePortfolio?.asset_allocation?.ai_strategy_raw;
+  const structuredPlan = activePortfolio?.asset_allocation?.structured_plan;
+  const conversationData = activePortfolio?.asset_allocation?.conversation_data || {};
+
+  const advisorPlan = useMemo(() => {
+    return parseAdvisorPlan(structuredPlan)
+      || parseAdvisorPlan(aiStrategyData)
+      || parseAdvisorPlan(aiStrategyRaw);
+  }, [aiStrategyData, aiStrategyRaw, structuredPlan]);
+
+  const aiStrategyText = useMemo(() => {
+    if (advisorPlan) {
+      return '';
+    }
+
+    const candidate = typeof aiStrategyData === 'string' && aiStrategyData.trim()
+      ? aiStrategyData
+      : typeof aiStrategyRaw === 'string'
+        ? aiStrategyRaw
+        : '';
+
+    const trimmed = candidate.trim();
+    if (!trimmed) return '';
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        JSON.parse(trimmed);
+        return '';
+      } catch (error) {
+        console.warn('Failed to parse AI strategy JSON:', error);
+      }
+    }
+
+    if (/https:\/\/deno\.land\//.test(trimmed)) {
+      return '';
+    }
+
+    return trimmed;
+  }, [advisorPlan, aiStrategyData, aiStrategyRaw]);
+
   if (riskLoading || portfolioLoading) {
     return <div className="space-y-8 animate-fade-in">
         <div className="flex items-center justify-center p-12">
@@ -319,45 +359,6 @@ const UserInvestmentAnalysis = ({
         return experience || 'Ej angiven';
     }
   };
-  const aiStrategyData = activePortfolio?.asset_allocation?.ai_strategy;
-  const aiStrategyRaw = activePortfolio?.asset_allocation?.ai_strategy_raw;
-  const structuredPlan = activePortfolio?.asset_allocation?.structured_plan;
-  const conversationData = activePortfolio?.asset_allocation?.conversation_data || {};
-
-  const advisorPlan = useMemo(() => {
-    return parseAdvisorPlan(structuredPlan)
-      || parseAdvisorPlan(aiStrategyData)
-      || parseAdvisorPlan(aiStrategyRaw);
-  }, [aiStrategyData, aiStrategyRaw, structuredPlan]);
-
-  const aiStrategyText = useMemo(() => {
-    if (advisorPlan) {
-      return '';
-    }
-
-    const candidate = typeof aiStrategyData === 'string' && aiStrategyData.trim()
-      ? aiStrategyData
-      : typeof aiStrategyRaw === 'string'
-        ? aiStrategyRaw
-        : '';
-
-    const trimmed = candidate.trim();
-    if (!trimmed) return '';
-    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-      try {
-        JSON.parse(trimmed);
-        return '';
-      } catch (error) {
-        console.warn('Failed to parse AI strategy JSON:', error);
-      }
-    }
-
-    if (/https:\/\/deno\.land\//.test(trimmed)) {
-      return '';
-    }
-
-    return trimmed;
-  }, [advisorPlan, aiStrategyData, aiStrategyRaw]);
   return <div className="space-y-10 animate-fade-in">
       <ResetProfileConfirmDialog isOpen={showResetDialog} onClose={() => setShowResetDialog(false)} onConfirm={handleResetProfile} />
 
