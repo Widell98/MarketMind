@@ -229,6 +229,25 @@ const ChatPortfolioAdvisor = () => {
       ]
     },
     {
+      id: 'age',
+      question: 'Hur gammal är du?',
+      key: 'age',
+      hasOptions: false,
+      processAnswer: (answer: string) => {
+        const digitsOnly = answer.replace(/[^0-9]/g, '');
+        if (digitsOnly.length === 0) {
+          return conversationData.age;
+        }
+
+        const parsedAge = parseInt(digitsOnly, 10);
+        if (Number.isFinite(parsedAge) && parsedAge >= 18 && parsedAge <= 100) {
+          return parsedAge;
+        }
+
+        return conversationData.age;
+      }
+    },
+    {
       id: 'hasPortfolio',
       question: 'Har du redan några investeringar som du vill optimera?',
       key: 'hasCurrentPortfolio',
@@ -363,6 +382,13 @@ const ChatPortfolioAdvisor = () => {
         { value: 'balanced', label: 'Medelrisk (±10–20%)' },
         { value: 'aggressive', label: 'Hög risk (±30% eller mer)' }
       ]
+    },
+    {
+      id: 'monthlyInvestment',
+      question: 'Hur mycket planerar du att investera varje månad?',
+      key: 'monthlyAmount',
+      hasOptions: false,
+      processAnswer: (answer: string) => answer.trim()
     },
     {
       id: 'marketReaction',

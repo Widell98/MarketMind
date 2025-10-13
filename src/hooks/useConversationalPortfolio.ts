@@ -410,12 +410,20 @@ export const useConversationalPortfolio = () => {
     const liquidCapitalText = formatCurrency(conversationData.liquidCapital);
     const currentPortfolioValueText = formatCurrency(conversationData.currentPortfolioValue);
 
+    const formattedAge = typeof conversationData.age === 'number'
+      ? `${conversationData.age} år`
+      : 'Ej angiven';
+
+    const formattedMonthlyInvestment = monthlyInvestmentText === 'Ej angivet'
+      ? 'Ej angivet'
+      : `${monthlyInvestmentText} SEK`;
+
     let prompt = `Skapa en detaljerad och personlig portföljstrategi baserat på följande omfattande konsultation:
 
 GRUNDLÄGGANDE PROFIL:
 - Erfarenhetsnivå: ${conversationData.isBeginnerInvestor ? 'Nybörjare (första gången investera)' : 'Erfaren investerare (flera års erfarenhet)'}
-- Ålder: ${conversationData.age || 'Ej angiven'}
-- Månatligt investeringsbelopp: ${monthlyInvestmentText} SEK
+- Ålder: ${formattedAge}
+- Månatligt investeringsbelopp: ${formattedMonthlyInvestment}
 - Investeringsmål: ${investmentGoalText}
 - Tidshorisont: ${timeHorizonText}
 - Risktolerans: ${riskToleranceText}
