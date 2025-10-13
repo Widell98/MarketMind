@@ -105,42 +105,7 @@ serve(async (req) => {
     }
 
     // Enhanced system persona for initial portfolio advisor
-    let contextInfo = `Du är en licensierad och auktoriserad svensk investeringsrådgivare
-med över 15 års erfarenhet av att bygga skräddarsydda portföljer.
-Du arbetar enligt svensk finanslagstiftning och MiFID II-reglerna och
-fokuserar alltid på att skapa trygghet och långsiktigt värde för klienten.
-
-UPPDRAG:
-- Bygg en komplett portfölj baserad på användarens riskprofil, horisont och mål
-- Portföljen ska bestå av 6–8 unika investeringar
-- Endast investeringar tillgängliga via svenska plattformar (Avanza, Nordnet)
-- Alltid korrekt ticker-symbol: **Företag (TICKER)**
-- Balansera mellan svenska aktier, nordiska fonder och globala ETF:er
-- Anpassa rekommendationer för ISK/KF-optimering och kundens skattesituation
-
-FORMAT- OCH KVALITETSKRAV:
-- Svara ENDAST med giltig JSON på svenska.
-- Följ strukturen nedan (du kan använda nyckeln "allocation" eller "allocation_percent"):
-{
-  "recommendations": [
-    {
-      "name": "",
-      "symbol": "",
-      "sector": "",
-      "reasoning": "",
-      "allocation_percent": 0
-    }
-  ],
-  "summary": "",
-  "risk_alignment": "",
-  "next_steps": [""],
-  "disclaimer": ""
-}
-- Summan av allokeringarna ska vara exakt 100%.
-- Varje rekommendation ska beskriva varför den passar kundens mål, horisont och riskprofil.
-- Undvik generiska råd och säkerställ att varje innehav är handlingsbart på svenska plattformar.
-- Föreslå aldrig identiska portföljer till olika användare.
-`;
+    let contextInfo = 'KLIENTDATA OCH TIDIGARE SAMTAL:';
 
     let conversationSummary = '';
 
@@ -331,20 +296,178 @@ FORMAT- OCH KVALITETSKRAV:
       contextInfo += `\n\nVIKTIGT: Föreslå ALDRIG aktier som användaren redan äger.`;
     }
 
-    // Enhanced system prompt with professional advisor structure and JSON output
-    const systemPrompt = `${contextInfo}
+    const interestList = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        const collected: string[] = [];
+        const maybePushArray = (value: unknown) => {
+          if (Array.isArray(value)) {
+            value.forEach((entry) => {
+              if (typeof entry === 'string' && entry.trim()) {
+                collected.push(entry.trim());
+              }
+            });
+          }
+        };
+        maybePushArray(raw.interests);
+        maybePushArray(raw.sectors);
+        maybePushArray(raw.sectorInterests);
+        if (collected.length > 0) {
+          return Array.from(new Set(collected)).join(', ');
+        }
+      }
+      if (riskProfile?.sector_interests && riskProfile.sector_interests.length) {
+        return riskProfile.sector_interests.join(', ');
+      }
+      return 'Ej angivet';
+    })();
 
-Ytterligare instruktioner:
-- Utgå från kundens riskprofil och tidigare svar nedan.
-- Variera sektorer och riskroller så att helheten känns balanserad mot kundens preferenser.
-- När kunden redan äger specifika värdepapper ska du undvika att rekommendera dem igen.
-- Alla texter ska vara på svenska och utan extra kommentarer utanför JSON-formatet.
+    const preferredAssets = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (Array.isArray(raw.preferredAssets)) {
+          const parsed = raw.preferredAssets.filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+          if (parsed.length > 0) {
+            return parsed.join(', ');
+          }
+        }
+        if (typeof raw.preferredAssets === 'string' && raw.preferredAssets.trim().length > 0) {
+          return raw.preferredAssets.trim();
+        }
+      }
+      return riskProfile?.preferred_assets && riskProfile.preferred_assets.length
+        ? riskProfile.preferred_assets.join(', ')
+        : 'Ej angivet';
+    })();
+
+    const riskToleranceSummary = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (typeof raw.riskTolerance === 'string' && raw.riskTolerance.trim().length > 0) {
+          return raw.riskTolerance.trim();
+        }
+      }
+      return riskProfile?.risk_tolerance || 'Medel';
+    })();
+
+    const investmentGoalSummary = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (typeof raw.investmentGoal === 'string' && raw.investmentGoal.trim().length > 0) {
+          return raw.investmentGoal.trim();
+        }
+      }
+      return riskProfile?.investment_goal || 'Långsiktig tillväxt';
+    })();
+
+    const horizonSummary = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (typeof raw.timeHorizon === 'string' && raw.timeHorizon.trim().length > 0) {
+          return raw.timeHorizon.trim();
+        }
+      }
+      return riskProfile?.investment_horizon || 'Lång';
+    })();
+
+    const availableCapitalSummary = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (typeof raw.availableCapital === 'number' && Number.isFinite(raw.availableCapital)) {
+          return `${raw.availableCapital.toLocaleString('sv-SE')} SEK`;
+        }
+        if (typeof raw.availableCapital === 'string' && raw.availableCapital.trim().length > 0) {
+          return raw.availableCapital.trim();
+        }
+      }
+      if (typeof riskProfile?.liquid_capital === 'number') {
+        return `${riskProfile.liquid_capital.toLocaleString('sv-SE')} SEK`;
+      }
+      return 'Ej angivet';
+    })();
+
+    const experienceSummary = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (typeof raw.investmentExperienceLevel === 'string' && raw.investmentExperienceLevel.trim().length > 0) {
+          return raw.investmentExperienceLevel.trim();
+        }
+        if (typeof raw.marketExperience === 'string' && raw.marketExperience.trim().length > 0) {
+          return raw.marketExperience.trim();
+        }
+      }
+      return riskProfile?.investment_experience || 'Ej angivet';
+    })();
+
+    const monthlyInvestmentSummary = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (typeof raw.monthlyInvestmentAmount === 'number' && Number.isFinite(raw.monthlyInvestmentAmount)) {
+          return `${raw.monthlyInvestmentAmount.toLocaleString('sv-SE')} SEK`;
+        }
+        if (typeof raw.monthlyInvestmentAmount === 'string' && raw.monthlyInvestmentAmount.trim().length > 0) {
+          return raw.monthlyInvestmentAmount.trim();
+        }
+      }
+      if (riskProfile?.monthly_investment_amount) {
+        return `${riskProfile.monthly_investment_amount.toLocaleString('sv-SE')} SEK`;
+      }
+      return 'Ej angivet';
+    })();
+
+    const serializedConversationData = conversationData && typeof conversationData === 'object'
+      ? JSON.stringify(conversationData, null, 2)
+      : '{}';
+
+    const systemPrompt = `Du är en svensk licensierad och auktoriserad investeringsrådgivare med lång erfarenhet av att skapa skräddarsydda portföljer. Du följer Finansinspektionens regler och MiFID II, prioriterar kundens mål, tidshorisont och riskkapacitet samt kommunicerar tydligt på svenska.
+
+Tillgänglig klientinformation:
+${contextInfo}
+
+Rådgivningsregler:
+- Basera alltid rekommendationerna på användarens riskprofil, mål, tidsram, likvida medel och intressen.
+- Säkerställ att portföljen är diversifierad och att varje innehav har en tydlig roll (Bas, Tillväxt, Skydd eller Kassaflöde).
+- Justera antalet tillgångar efter kundens önskemål (normalt 6–8 poster) och undvik dubletter mot befintliga innehav.
+- Alla förslag ska vara tillgängliga via svenska handelsplattformar (Avanza, Nordnet) och lämpa sig för ISK/KF när det är relevant.
+
+Regler för preferenser:
+- Om användaren visar intresse för krypto, teknik eller tillväxt: inkludera kryptorelaterade och högbeta-tillgångar (t.ex. Ethereum-ETF, Coinbase, Tesla, ARK Innovation) i rimlig andel.
+- Om användaren har hållbarhetsfokus: inkludera ESG-fonder och gröna bolag (t.ex. Handelsbanken Hållbar Energi, iShares Clean Energy).
+- Om risktoleransen är konservativ: prioritera investmentbolag, defensiva aktier (Investor, Axfood) och breda indexfonder.
+- Om risktoleransen är balanserad: kombinera svenska fonder, investmentbolag och globala ETF:er.
+- Om risktoleransen är aggressiv: inkludera tillväxt, småbolag, krypto och innovativa sektorer.
+- Om användaren efterfrågar investmentbolag: inkludera exempelvis Investor, Latour eller Kinnevik.
+- Om kunden vill ha svenska företag: fokusera på OMX-noterade bolag och svenska fonder.
+
+Formatkrav:
+- Leverera svaret som giltig JSON utan extra text.
+- Använd exakt strukturen:
+{
+  "summary": "2–3 meningar om varför portföljen passar användaren",
+  "risk_alignment": "Hur portföljen matchar risktolerans och mål",
+  "next_steps": ["Konkreta råd för nästa steg"],
+  "recommended_assets": [
+    {
+      "name": "Exakt namn på aktie/fond/ETF",
+      "ticker": "Ticker eller fondkod",
+      "sector": "Sektor",
+      "allocation_percent": 0,
+      "rationale": "Analys kopplad till användarens mål och risk",
+      "risk_role": "Bas / Tillväxt / Skydd / Kassaflöde"
+    }
+  ],
+  "disclaimer": "Kort juridiskt förbehåll på svenska"
+}
+- Summan av allocation_percent ska vara 100 och varje post måste innehålla analys, portföljroll och tydlig koppling till kundprofilen.
+- Föreslå aldrig identiska portföljer till olika användare och återanvänd inte samma textblock.
+- Ange alltid korrekt ticker eller fondkod för varje rekommendation.
+- Undvik överdrivna varningar men påminn om risk och att historisk avkastning inte garanterar framtida resultat.
 `;
 
     const baseRiskProfileSummary = `Riskprofil (sammanfattning):
 - Ålder: ${riskProfile.age || 'Ej angiven'}
 - Årsinkomst: ${riskProfile.annual_income ? riskProfile.annual_income.toLocaleString('sv-SE') + ' SEK' : 'Ej angiven'}
-- Månatligt investeringsbelopp: ${riskProfile.monthly_investment_amount ? riskProfile.monthly_investment_amount.toLocaleString('sv-SE') + ' SEK' : 'Ej angivet'}
+- Månatligt investeringsbelopp: ${monthlyInvestmentSummary}
 - Risktolerans: ${riskProfile.risk_tolerance || 'Medel'}
 - Investeringsmål: ${riskProfile.investment_goal || 'Långsiktig tillväxt'}
 - Tidshorisont: ${riskProfile.investment_horizon || 'Lång'}
@@ -353,16 +476,38 @@ Ytterligare instruktioner:
 - Intressesektorer: ${riskProfile.sector_interests && riskProfile.sector_interests.length ? riskProfile.sector_interests.join(', ') : 'Ej angivet'}
 - Nuvarande portföljvärde: ${riskProfile.current_portfolio_value ? riskProfile.current_portfolio_value.toLocaleString('sv-SE') + ' SEK' : '0 SEK'}`;
 
-    const defaultUserMessage = `Skapa en komplett portfölj till denna kund. Följ alla formatinstruktioner i systemmeddelandet.`;
+    const userMessage = `Skapa en personlig portfölj baserad på följande användardata:
+
+${serializedConversationData}
+
+Tänk särskilt på:
+
+Risktolerans: ${riskToleranceSummary}
+Investeringsmål: ${investmentGoalSummary}
+Tidshorisont: ${horizonSummary}
+Intressen/Sektorer: ${interestList}
+Mest intresserad av: ${preferredAssets}
+Tillgängligt kapital: ${availableCapitalSummary}
+Månatligt investeringsbelopp: ${monthlyInvestmentSummary}
+Erfarenhetsnivå: ${experienceSummary}
+
+⚙️ Anpassa rekommendationerna:
+- Om användaren gillar krypto eller teknik → inkludera mer risk och tillväxt.
+- Om användaren prioriterar hållbarhet → fokusera på ESG-fonder och gröna bolag.
+- Om användaren är konservativ → ge defensiva och stabila innehav.
+- Om användaren är balanserad → kombinera investmentbolag, svenska fonder och globala ETF:er.
+- Om användaren är aggressiv → inkludera tillväxtaktier, krypto och innovativa ETF:er.
+
+Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerställ att all text är på svenska.`;
 
     const messages: Array<{ role: 'system' | 'user'; content: string }> = [
       { role: 'system', content: systemPrompt }
     ];
 
+    messages.push({ role: 'user', content: userMessage });
+
     if (conversationPrompt && typeof conversationPrompt === 'string' && conversationPrompt.trim().length > 0) {
       messages.push({ role: 'user', content: conversationPrompt.trim() });
-    } else {
-      messages.push({ role: 'user', content: defaultUserMessage });
     }
 
     messages.push({ role: 'user', content: baseRiskProfileSummary });
