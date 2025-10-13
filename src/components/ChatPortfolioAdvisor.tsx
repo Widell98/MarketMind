@@ -1084,18 +1084,20 @@ const ChatPortfolioAdvisor = () => {
       const parsed = JSON.parse(aiResponse);
       const recs = Array.isArray(parsed) ? parsed : parsed.recommendations;
       if (Array.isArray(recs)) {
-        return recs.map((rec: any) => ({
-          name: rec.name,
-          symbol: rec.symbol,
-          sector: rec.sector,
-          expected_price: rec.expected_price
-        })).slice(0, 8);
+        return recs
+          .map((rec: any) => ({
+            name: rec.name,
+            symbol: rec.symbol,
+            sector: rec.sector,
+            expected_price: rec.expected_price
+          }))
+          .slice(0, 8);
       }
     } catch (e) {
       console.warn('AI response not valid JSON, returning empty list');
     }
 
-  return [];
+    return [];
   };
 
   const buildAdvisorSummaryPrompt = (data: ConversationData, existingAnalysis?: string) => {
@@ -1166,6 +1168,22 @@ const ChatPortfolioAdvisor = () => {
         ...result,
         aiResponse: aiResponseToUse
       };
+
+      // Persist the personalised advisor output alongside the generated portfolio
+      const parsedAdvisorOutput = parseAdvisorResponse(aiResponseToUse);
+      if (result.portfolio?.id && (parsedAdvisorOutput.summary || parsedAdvisorOutput.recommendations.length > 0)) {
+        try {
+          await supabase
+            .from('user_portfolios')
+            .update({
+              advisor_summary: parsedAdvisorOutput.summary,
+              advisor_recommendations: parsedAdvisorOutput.recommendations
+            })
+            .eq('id', result.portfolio.id);
+        } catch (updateError) {
+          console.error('Failed to attach advisor output to portfolio:', updateError);
+        }
+      }
 
       setPortfolioResult(updatedResult);
       setIsComplete(true);
