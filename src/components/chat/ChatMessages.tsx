@@ -55,30 +55,42 @@ const ChatMessages = ({
     [onExamplePrompt, handlePromptExample, updateGuideSession]
   );
 
-  const examplePrompts = [
+  const promptCollections = [
     {
-      title: 'Portföljanalys',
+      id: 'portfolio-deep-dive',
+      eyebrow: 'Portföljstrategi',
+      title: 'Finslipa portföljen',
       prompt: 'Ge mig en komplett analys av min portfölj med rekommendationer för optimering',
       icon: <PieChart className="h-4 w-4" />,
       description: 'Få en genomgång av din portföljs prestanda och struktur',
+      highlights: ['Allokering', 'Avkastning', 'Balans'],
     },
     {
-      title: 'Riskhantering',
+      id: 'risk-balance',
+      eyebrow: 'Riskkontroll',
+      title: 'Säkra balans i risken',
       prompt: 'Analysera riskerna i min portfölj och föreslå strategier för bättre diversifiering',
       icon: <Activity className="h-4 w-4" />,
       description: 'Identifiera och minimera risker för en mer balanserad portfölj',
+      highlights: ['Stress-test', 'Diversifiering'],
     },
     {
-      title: 'Investeringsförslag',
+      id: 'ideas',
+      eyebrow: 'Investeringsidéer',
+      title: 'Bygg nästa move',
       prompt: 'Vilka aktier och tillgångar borde jag överväga nästa baserat på min profil?',
       icon: <Zap className="h-4 w-4" />,
       description: 'Få personliga rekommendationer baserade på din riskprofil',
+      highlights: ['Rekommendationer', 'Matchning'],
     },
     {
-      title: 'Marknadsinsikter',
+      id: 'market-pulse',
+      eyebrow: 'Marknadspuls',
+      title: 'Håll koll på läget',
       prompt: 'Vad händer på marknaden just nu och hur påverkar det min investeringsstrategi?',
       icon: <TrendingUp className="h-4 w-4" />,
       description: 'Håll dig uppdaterad med aktuella marknadstrender',
+      highlights: ['Makro', 'Signals'],
     },
   ];
 
@@ -129,22 +141,45 @@ const ChatMessages = ({
               </p>
             </div>
 
-            <div className="flex flex-wrap justify-center gap-2.5 sm:gap-3">
-              {examplePrompts.map((example, index) => (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
+              {promptCollections.map((collection) => (
                 <button
-                  key={index}
+                  key={collection.id}
                   type="button"
-                  onClick={() => onExamplePrompt(example.prompt)}
-                  className="group flex min-w-[220px] max-w-xs flex-1 cursor-pointer flex-col gap-2 rounded-[22px] border border-transparent bg-white/75 px-4 py-3 text-left shadow-[0_14px_35px_rgba(15,23,42,0.06)] ring-1 ring-[#144272]/10 transition-all hover:-translate-y-0.5 hover:border-[#205295]/30 hover:bg-white/90 hover:shadow-[0_22px_45px_rgba(15,23,42,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:bg-ai-surface/85 dark:text-foreground dark:hover:bg-ai-surface dark:ring-ai-border/60"
+                  onClick={() => onExamplePrompt(collection.prompt)}
+                  className="group relative flex h-full flex-col justify-between overflow-hidden rounded-[26px] border border-ai-border/50 bg-white/80 p-4 text-left shadow-[0_16px_35px_rgba(15,23,42,0.06)] transition-all hover:-translate-y-1 hover:border-primary/30 hover:bg-white/90 hover:shadow-[0_22px_45px_rgba(15,23,42,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:border-ai-border/60 dark:bg-ai-surface/90 dark:hover:bg-ai-surface"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#144272]/12 text-primary shadow-sm transition-colors group-hover:bg-[#144272]/16 dark:bg-ai-surface-muted/70 dark:text-ai-text-muted">
-                      {example.icon}
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ai-text-muted">
+                    {collection.eyebrow}
+                  </span>
+                  <div className="mt-3 flex items-start gap-3">
+                    <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-[#144272]/10 text-primary shadow-sm transition-colors group-hover:bg-[#144272]/16 dark:bg-ai-surface-muted/70 dark:text-ai-text-muted">
+                      {collection.icon}
                     </span>
-                    <span className="text-sm font-medium text-foreground">{example.title}</span>
+                    <div className="flex-1 space-y-1">
+                      <span className="block text-base font-semibold text-foreground">
+                        {collection.title}
+                      </span>
+                      <p className="text-sm leading-5 text-ai-text-muted">
+                        {collection.description}
+                      </p>
+                    </div>
                   </div>
-                  <span className="pl-1 text-xs text-ai-text-muted">
-                    {example.description}
+                  {collection.highlights && (
+                    <div className="mt-4 flex flex-wrap gap-1.5">
+                      {collection.highlights.map((item) => (
+                        <span
+                          key={item}
+                          className="rounded-full border border-ai-border/50 bg-white/70 px-3 py-1 text-[11px] font-medium text-ai-text-muted transition group-hover:border-primary/30 group-hover:text-primary dark:bg-ai-surface"
+                        >
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <span className="mt-4 flex items-center gap-2 text-sm font-semibold text-primary">
+                    Starta flöde
+                    <span className="translate-x-0 transition-transform group-hover:translate-x-1">→</span>
                   </span>
                 </button>
               ))}
