@@ -3,29 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Brain,
   Send,
   User,
   Bot,
-  CheckCircle,
   TrendingUp,
   Plus,
   Trash2,
   Check,
-  Sparkles,
-  ShieldAlert,
-  ClipboardList,
-  Clock,
-  PiggyBank,
-  BarChart3,
-  MessageCircleQuestion,
-  MessageSquare,
-  AlertTriangle,
-  Loader2,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationalPortfolio } from '@/hooks/useConversationalPortfolio';
 import { usePortfolio } from '@/hooks/usePortfolio';
@@ -91,183 +78,96 @@ interface ConversationData {
   taxConsideration?: string;
 }
 
-interface ParsedAdvisorRecommendation {
+interface AdvisorPlanAsset {
   name: string;
   ticker?: string;
-  analysis?: string;
-  role?: string;
-  allocation?: string;
+  allocationPercent: number;
+  rationale?: string;
+  riskRole?: string;
 }
 
-interface ParsedAdvisorResponse {
-  summary: string[];
-  recommendations: ParsedAdvisorRecommendation[];
-  portfolioAnalysis: string[];
-  riskAnalysis: string[];
-  implementationPlan: string[];
-  followUp: string[];
-  savingsPlan: string[];
-  closingQuestion?: string;
+interface AdvisorPlan {
+  actionSummary: string;
+  riskAlignment: string;
+  nextSteps: string[];
+  assets: AdvisorPlanAsset[];
   disclaimer?: string;
+  rawText?: string;
 }
 
-interface RefinementMessage {
-  id: string;
-  role: 'assistant' | 'user';
-  content: string;
-}
-
-const parseAdvisorResponse = (content: string): ParsedAdvisorResponse | null => {
-  if (!content || typeof content !== 'string') {
+const normalizeAdvisorPlan = (plan: any, fallbackText?: string): AdvisorPlan | null => {
+  if (!plan || typeof plan !== 'object') {
     return null;
   }
 
-  const sanitized = content.replace(/\r/g, '').trim();
-  if (!sanitized) {
-    return null;
-  }
+  const assetCandidates = Array.isArray(plan.recommended_assets)
+    ? plan.recommended_assets
+    : Array.isArray(plan.recommendations)
+      ? plan.recommendations
+      : [];
 
-  let disclaimer: string | undefined;
-  let body = sanitized;
-  const disclaimerMatch = sanitized.match(/\*\*Disclaimer:\*\*\s*([\s\S]+)$/i);
-  if (disclaimerMatch && disclaimerMatch.index !== undefined) {
-    disclaimer = disclaimerMatch[1].trim();
-    body = sanitized.slice(0, disclaimerMatch.index).trim();
-  }
-
-  const sectionRegex = /\*\*(\d\.\s+[^*]+)\*\*/g;
-  const matches = [...body.matchAll(sectionRegex)];
-  if (matches.length === 0) {
-    return null;
-  }
-
-  const sectionMap: Record<string, string> = {};
-  matches.forEach((match, index) => {
-    const start = (match.index ?? 0) + match[0].length;
-    const end = index + 1 < matches.length ? matches[index + 1].index ?? body.length : body.length;
-    const key = match[1].trim().toLowerCase();
-    sectionMap[key] = body.slice(start, end).trim();
-  });
-
-  const getSection = (...candidates: string[]) => {
-    for (const candidate of candidates) {
-      const normalized = candidate.trim().toLowerCase();
-      if (sectionMap[normalized]) {
-        return sectionMap[normalized];
+  const assets: AdvisorPlanAsset[] = assetCandidates
+    .map((asset: any) => {
+      if (!asset || !asset.name) {
+        return null;
       }
+
+      const allocation = typeof asset.allocation_percent === 'number'
+        ? asset.allocation_percent
+        : typeof asset.allocation_percent === 'string'
+        ? parseInt(asset.allocation_percent.replace(/[^\d]/g, ''), 10)
+        : typeof asset.allocation === 'number'
+        ? asset.allocation
+        : typeof asset.allocation === 'string'
+        ? parseInt(asset.allocation.replace(/[^\d]/g, ''), 10)
+        : 0;
+
+      return {
+        name: String(asset.name).trim(),
+        ticker: asset.ticker || asset.symbol || undefined,
+        allocationPercent: Number.isFinite(allocation) ? allocation : 0,
+        rationale: asset.rationale || asset.reasoning || asset.analysis || undefined,
+        riskRole: asset.risk_role || asset.role || undefined,
+      };
+    })
+    .filter((asset): asset is AdvisorPlanAsset => Boolean(asset));
+
+  const toList = (value: any): string[] => {
+    if (!value) return [];
+    if (Array.isArray(value)) {
+      return value.map(item => String(item).trim()).filter(Boolean);
     }
-    return '';
+    if (typeof value === 'string') {
+      return value
+        .split(/\n+/)
+        .map(item => item.trim())
+        .filter(Boolean);
+    }
+    return [];
   };
 
-  const parseParagraphs = (text: string) =>
-    text
-      .split(/\n{2,}/)
-      .map(paragraph => paragraph.replace(/\n+/g, ' ').trim())
-      .filter(Boolean);
+  const actionSummary =
+    (typeof plan.action_summary === 'string' && plan.action_summary.trim()) ||
+    (typeof plan.summary === 'string' && plan.summary.trim()) ||
+    (Array.isArray(plan.summary) ? plan.summary.map((item: any) => String(item).trim()).join(' ') : '');
 
-  const parseList = (text: string) =>
-    text
-      .split(/\n+/)
-      .map(item => item.replace(/^\s*[-•\d.]+\s*/, '').trim())
-      .filter(Boolean);
+  const riskAlignment =
+    (typeof plan.risk_alignment === 'string' && plan.risk_alignment.trim()) ||
+    (typeof plan.riskAnalysis === 'string' && plan.riskAnalysis.trim()) ||
+    (Array.isArray(plan.risk_analysis)
+      ? plan.risk_analysis.map((item: any) => String(item).trim()).join(' ')
+      : '');
 
-  const summary = parseParagraphs(getSection('1. professionell sammanfattning'));
-
-  const strategyRaw = getSection('2. rekommenderad portföljstrategi');
-  const recommendations: ParsedAdvisorRecommendation[] = [];
-  if (strategyRaw) {
-    const investmentRegex = /###\s*([^\n(]+?)\s*(?:\(([^)\n]+)\))?\s*\n([\s\S]*?)(?=(?:\n###|\n\*\*\d\.)|$)/g;
-    let match: RegExpExecArray | null;
-    while ((match = investmentRegex.exec(strategyRaw)) !== null) {
-      const name = match[1]?.trim();
-      if (!name) {
-        continue;
-      }
-      const ticker = match[2]?.trim();
-      const details = match[3] ?? '';
-      const normalizedDetails = details
-        .replace(/\r/g, '')
-        .split('\n')
-        .map(line => line.replace(/^\s*[-•]\s*/, '').replace(/\*\*/g, '').trim())
-        .join('\n');
-
-      const analysisMatch = normalizedDetails.match(/Analys:\s*([\s\S]*?)(?:\n(?:Roll i portföljen|Rekommenderad allokering|Allokering)\b|\n$)/i);
-      const roleMatch = normalizedDetails.match(/Roll i portföljen:\s*([\s\S]*?)(?:\n(?:Rekommenderad allokering|Allokering)\b|\n$)/i);
-      const allocationMatch = normalizedDetails.match(/(?:Rekommenderad\s+)?Allokering:\s*([0-9]{1,3})(?:\s*%| procent)?/i);
-
-      recommendations.push({
-        name,
-        ticker,
-        analysis: analysisMatch ? analysisMatch[1].trim() : undefined,
-        role: roleMatch ? roleMatch[1].trim() : undefined,
-        allocation: allocationMatch ? `${allocationMatch[1].trim()}%` : undefined,
-      });
-    }
-  }
-
-  const portfolioAnalysis = parseList(getSection('3. portföljanalys'));
-  const riskAnalysis = parseList(getSection('4. riskanalys & stresstest', '4. riskanalys och stresstest'));
-  const implementationPlan = parseList(getSection('5. implementationsplan'));
-  const followUp = parseList(getSection('6. uppföljning'));
-  let savingsPlan = parseList(getSection('7. personlig sparrekommendation'));
-
-  let closingQuestion: string | undefined;
-  const questionMatch = body.match(/([^\n]+?\?)\s*$/);
-  if (questionMatch) {
-    closingQuestion = questionMatch[1].trim();
-    if (closingQuestion) {
-      const normalizedQuestion = closingQuestion.replace(/\s+/g, ' ').toLowerCase();
-      savingsPlan = savingsPlan.filter((item, index) => {
-        const normalizedItem = item.replace(/\s+/g, ' ').toLowerCase();
-        return !(index === savingsPlan.length - 1 && normalizedItem === normalizedQuestion);
-      });
-    }
-  }
+  const nextSteps = toList(plan.next_steps || plan.action_plan || plan.implementation_plan);
 
   return {
-    summary,
-    recommendations,
-    portfolioAnalysis,
-    riskAnalysis,
-    implementationPlan,
-    followUp,
-    savingsPlan,
-    closingQuestion,
-    disclaimer,
+    actionSummary,
+    riskAlignment,
+    nextSteps,
+    assets,
+    disclaimer: typeof plan.disclaimer === 'string' ? plan.disclaimer.trim() : undefined,
+    rawText: fallbackText,
   };
-};
-
-const renderListSection = (
-  title: string,
-  items: string[],
-  accentTextClass: string,
-  accentBgClass: string,
-  IconComponent: LucideIcon
-): JSX.Element | null => {
-  if (!items || items.length === 0) {
-    return null;
-  }
-
-  return (
-    <Card className="bg-card/80 border border-border/60 shadow-sm">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
-          <IconComponent className={`h-4 w-4 ${accentTextClass}`} />
-          <span>{title}</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <ul className="space-y-2">
-          {items.map((item, index) => (
-            <li key={`${title}-${index}`} className="flex items-start gap-3 text-sm text-muted-foreground">
-              <span className={`mt-1 h-2.5 w-2.5 rounded-full ${accentBgClass}`} />
-              <span className="leading-relaxed">{item}</span>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
-  );
 };
 
 const ChatPortfolioAdvisor = () => {
@@ -282,10 +182,6 @@ const ChatPortfolioAdvisor = () => {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [showHoldingsInput, setShowHoldingsInput] = useState(false);
   const [localLoading, setLoading] = useState(false);
-  const [refinementMessages, setRefinementMessages] = useState<RefinementMessage[]>([]);
-  const [refinementInput, setRefinementInput] = useState('');
-  const [isRefinementLoading, setIsRefinementLoading] = useState(false);
-  const [hasInitializedRefinement, setHasInitializedRefinement] = useState(false);
   const isInitialized = useRef(false);
 
   const { generatePortfolioFromConversation, loading } = useConversationalPortfolio();
@@ -294,7 +190,6 @@ const ChatPortfolioAdvisor = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const refinementEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { tickers, isLoading: tickersLoading, error: tickersError } = useSheetTickers();
   const rawTickerListId = useId();
@@ -339,11 +234,22 @@ const ChatPortfolioAdvisor = () => {
   );
 
   const structuredResponse = useMemo(() => {
+    if (portfolioResult?.plan) {
+      return normalizeAdvisorPlan(portfolioResult.plan, portfolioResult.aiResponse);
+    }
+
     if (!portfolioResult?.aiResponse) {
       return null;
     }
-    return parseAdvisorResponse(portfolioResult.aiResponse);
-  }, [portfolioResult?.aiResponse]);
+
+    try {
+      const parsed = JSON.parse(portfolioResult.aiResponse);
+      return normalizeAdvisorPlan(parsed, portfolioResult.aiResponse);
+    } catch (error) {
+      console.warn('Kunde inte tolka AI-svaret som JSON:', error);
+      return null;
+    }
+  }, [portfolioResult?.plan, portfolioResult?.aiResponse]);
 
   const questions = [
     {
@@ -616,66 +522,6 @@ const ChatPortfolioAdvisor = () => {
       setWaitingForAnswer(true);
     }
   }, []); // Empty dependency array
-
-  useEffect(() => {
-    if (!isComplete) {
-      setRefinementMessages([]);
-      setRefinementInput('');
-      setHasInitializedRefinement(false);
-      setIsRefinementLoading(false);
-    }
-  }, [isComplete]);
-
-  useEffect(() => {
-    if (!isComplete || hasInitializedRefinement) {
-      return;
-    }
-
-    if (structuredResponse) {
-      const summaryText = structuredResponse.summary?.join(' ') ?? '';
-      const recommendationLines = structuredResponse.recommendations
-        ?.map(recommendation => {
-          const parts = [
-            recommendation.name,
-            recommendation.ticker ? `(${recommendation.ticker})` : '',
-            recommendation.allocation ? `– ${recommendation.allocation}` : ''
-          ].filter(Boolean);
-          return `• ${parts.join(' ')}`.trim();
-        })
-        .filter(Boolean)
-        .join('\n');
-
-      const introParts = [
-        structuredResponse.closingQuestion || 'Vad tycker du om dessa förslag?',
-        summaryText ? `Sammanfattning: ${summaryText}` : null,
-        recommendationLines ? `Föreslagen allokering:\n${recommendationLines}` : null,
-        'Berätta vad du vill justera, så hjälper jag dig att finjustera portföljen.'
-      ].filter(Boolean);
-
-      setRefinementMessages([
-        {
-          id: `assistant-intro-${Date.now()}`,
-          role: 'assistant',
-          content: introParts.join('\n\n')
-        }
-      ]);
-      setHasInitializedRefinement(true);
-    } else if (portfolioResult?.aiResponse) {
-      setRefinementMessages([
-        {
-          id: `assistant-intro-${Date.now()}`,
-          role: 'assistant',
-          content:
-            'Vad tycker du om rekommendationen ovan? Beskriv gärna vad du vill ändra eller fördjupa så hjälper jag dig vidare.'
-        }
-      ]);
-      setHasInitializedRefinement(true);
-    }
-  }, [isComplete, structuredResponse, hasInitializedRefinement, portfolioResult?.aiResponse]);
-
-  useEffect(() => {
-    refinementEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [refinementMessages]);
 
   const addBotMessage = (content: string, hasOptions: boolean = false, options?: Array<{ value: string; label: string }>, hasHoldingsInput: boolean = false) => {
     console.log('addBotMessage called with content:', content.substring(0, 50) + '...');
@@ -1394,102 +1240,6 @@ const ChatPortfolioAdvisor = () => {
     }
   };
 
-  const handleRefinementSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-
-    const trimmedInput = refinementInput.trim();
-    if (!trimmedInput) {
-      return;
-    }
-
-    if (!user) {
-      toast({
-        title: 'Logga in krävs',
-        description: 'Du behöver vara inloggad för att kunna fortsätta dialogen med rådgivaren.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    const chatHistoryForAPI = refinementMessages.map(message => ({
-      role: message.role,
-      content: message.content
-    }));
-
-    const userMessage: RefinementMessage = {
-      id: `refinement-user-${Date.now()}`,
-      role: 'user',
-      content: trimmedInput
-    };
-
-    setRefinementMessages(prev => [...prev, userMessage]);
-    setRefinementInput('');
-    setIsRefinementLoading(true);
-
-    try {
-      const followUpInstruction = structuredResponse
-        ? `Utgå från den portföljstrategi du precis presenterade och anpassa den utifrån följande feedback från klienten: "${trimmedInput}". Beskriv tydligt om några allokeringar bör justeras, om något ska läggas till eller tas bort, och motivera förändringarna kort.`
-        : trimmedInput;
-
-      const { data, error } = await supabase.functions.invoke<Record<string, unknown> | string>('portfolio-ai-chat', {
-        body: {
-          message: followUpInstruction,
-          userId: user.id,
-          portfolioId: portfolioResult?.portfolio?.id,
-          chatHistory: chatHistoryForAPI,
-          analysisType: 'portfolio_followup',
-          stream: false
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message || 'Kunde inte få svar från rådgivaren.');
-      }
-
-      let aiMessageContent = '';
-      if (typeof data === 'string') {
-        aiMessageContent = data;
-      } else if (data && typeof data === 'object') {
-        const payload = data as Record<string, unknown>;
-        aiMessageContent =
-          (typeof payload['response'] === 'string' && (payload['response'] as string)) ||
-          (typeof payload['message'] === 'string' && (payload['message'] as string)) ||
-          (typeof payload['content'] === 'string' && (payload['content'] as string)) ||
-          (typeof payload['aiResponse'] === 'string' && (payload['aiResponse'] as string)) ||
-          '';
-      }
-
-      if (!aiMessageContent) {
-        aiMessageContent =
-          'Jag kunde inte generera ett uppdaterat svar just nu. Försök gärna igen eller formulera om din önskade ändring.';
-      }
-
-      setRefinementMessages(prev => [
-        ...prev,
-        {
-          id: `refinement-assistant-${Date.now()}`,
-          role: 'assistant',
-          content: aiMessageContent
-        }
-      ]);
-    } catch (error) {
-      console.error('Error sending refinement message:', error);
-      const description =
-        error instanceof Error
-          ? error.message
-          : 'Ett oväntat fel uppstod. Försök igen lite senare.';
-      toast({
-        title: 'Meddelandet skickades inte',
-        description,
-        variant: 'destructive'
-      });
-      setRefinementMessages(prev => prev.filter(message => message.id !== userMessage.id));
-      setRefinementInput(trimmedInput);
-    } finally {
-      setIsRefinementLoading(false);
-    }
-  };
-
   const handleImplementStrategy = async () => {
     try {
       // Show immediate feedback
@@ -1534,90 +1284,11 @@ const ChatPortfolioAdvisor = () => {
       return <div className="text-muted-foreground">Inget svar mottaget från AI.</div>;
     }
 
-    const renderRefinementChat = () => {
-      if (refinementMessages.length === 0) {
-        return null;
-      }
+    const plan = structuredResponse;
 
+    if (!plan) {
       return (
-        <Card className="border border-border/60 bg-background/95 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
-              <MessageSquare className="h-4 w-4 text-primary" />
-              Finjustera rekommendationen
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Fortsätt dialogen om du vill göra ändringar eller ställa följdfrågor kring strategin.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="max-h-64 space-y-3 overflow-y-auto pr-1">
-              {refinementMessages.map(message => (
-                <div
-                  key={message.id}
-                  className={`flex gap-2 ${message.role === 'assistant' ? 'justify-start' : 'justify-end'}`}
-                >
-                  {message.role === 'assistant' && (
-                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
-                      <MessageSquare className="h-4 w-4 text-primary" />
-                    </div>
-                  )}
-                  <div
-                    className={`max-w-full rounded-2xl px-3 py-2 text-sm leading-relaxed shadow-sm sm:max-w-md ${
-                      message.role === 'assistant'
-                        ? 'bg-muted/60 text-foreground'
-                        : 'bg-primary text-primary-foreground'
-                    }`}
-                  >
-                    <p className="whitespace-pre-line">{message.content}</p>
-                  </div>
-                  {message.role === 'user' && (
-                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
-                      <User className="h-4 w-4 text-primary" />
-                    </div>
-                  )}
-                </div>
-              ))}
-              <div ref={refinementEndRef} />
-            </div>
-            <form
-              onSubmit={handleRefinementSubmit}
-              className="flex flex-col gap-3 border-t border-border/60 pt-3 sm:flex-row sm:items-end"
-            >
-              <div className="flex-1">
-                <Input
-                  value={refinementInput}
-                  onChange={(event) => setRefinementInput(event.target.value)}
-                  placeholder="Berätta vad du vill justera eller fråga om portföljen..."
-                  className="bg-background/80"
-                  disabled={isRefinementLoading}
-                />
-              </div>
-              <Button
-                type="submit"
-                disabled={!refinementInput.trim() || isRefinementLoading}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm sm:w-auto"
-              >
-                {isRefinementLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Send className="mr-2 h-4 w-4" />
-                    Skicka
-                  </>
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      );
-    };
-
-    const structured = structuredResponse;
-
-    if (!structured) {
-      return (
-        <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
+        <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
           {aiContent
             .split(/\n{2,}/)
             .map(paragraph => paragraph.trim())
@@ -1625,138 +1296,71 @@ const ChatPortfolioAdvisor = () => {
             .map((paragraph, index) => (
               <p key={`fallback-${index}`}>{paragraph}</p>
             ))}
-          {renderRefinementChat()}
         </div>
       );
     }
 
     return (
-      <div className="space-y-6">
-        <Card className="border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-white shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg font-semibold text-blue-900">
-              <Sparkles className="h-5 w-5 text-blue-500" />
-              Professionell sammanfattning
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Baseras på din riskprofil och rådgivningssamtalet
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {structured.summary.length > 0 ? (
-              structured.summary.map((paragraph, index) => (
-                <p key={`summary-${index}`} className="text-sm leading-relaxed text-muted-foreground">
-                  {paragraph}
-                </p>
-              ))
-            ) : (
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Din portföljanalys presenteras i sektionerna nedan.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+      <div className="space-y-5 text-sm leading-relaxed text-foreground">
+        {plan.actionSummary && (
+          <p className="text-base font-medium text-foreground">{plan.actionSummary}</p>
+        )}
 
-        {structured.recommendations.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h4 className="flex items-center gap-2 text-base font-semibold text-foreground">
-                <TrendingUp className="h-4 w-4 text-primary" />
-                Rekommenderad portföljstrategi
-              </h4>
-              <Badge variant="outline" className="border-primary/20 bg-primary/10 text-primary">
-                Totalt 100% allokering
-              </Badge>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {structured.recommendations.map((recommendation, index) => (
-                <Card
-                  key={`${recommendation.name}-${index}`}
-                  className="border border-border/60 bg-background/95 shadow-sm transition-shadow duration-200 hover:shadow-md"
+        {plan.riskAlignment && (
+          <p className="text-muted-foreground">{plan.riskAlignment}</p>
+        )}
+
+        {plan.nextSteps.length > 0 && (
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Så går du vidare</h4>
+            <ol className="mt-2 space-y-1 list-decimal list-inside">
+              {plan.nextSteps.map((step, index) => (
+                <li key={`step-${index}`} className="text-foreground">
+                  {step}
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+
+        {plan.assets.length > 0 && (
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Köpplan & allokering</h4>
+            <div className="mt-2 space-y-2">
+              {plan.assets.map((asset, index) => (
+                <div
+                  key={`${asset.name}-${asset.ticker ?? index}`}
+                  className="rounded-lg border border-border/60 bg-background/70 p-3"
                 >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <CardTitle className="text-base font-semibold text-foreground">
-                          {recommendation.name}
-                        </CardTitle>
-                        {recommendation.ticker && (
-                          <p className="mt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                            {recommendation.ticker}
-                          </p>
-                        )}
-                      </div>
-                      {recommendation.allocation && (
-                        <Badge className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
-                          {recommendation.allocation}
-                        </Badge>
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <div>
+                      <span className="font-semibold text-foreground">{asset.name}</span>
+                      {asset.ticker && (
+                        <span className="ml-2 text-xs uppercase tracking-wide text-muted-foreground">
+                          {asset.ticker}
+                        </span>
                       )}
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-                    {recommendation.analysis && (
-                      <div className="rounded-xl border border-border/60 bg-muted/40 p-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Analys</p>
-                        <p className="mt-1 text-foreground">{recommendation.analysis}</p>
-                      </div>
-                    )}
-                    {recommendation.role && (
-                      <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-primary">Roll i portföljen</p>
-                        <p className="mt-1 text-foreground">{recommendation.role}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                    <span className="text-sm font-semibold text-primary">{asset.allocationPercent}%</span>
+                  </div>
+                  {asset.rationale && (
+                    <p className="mt-2 text-sm text-muted-foreground">{asset.rationale}</p>
+                  )}
+                  {asset.riskRole && (
+                    <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
+                      Roll i portföljen: {asset.riskRole}
+                    </p>
+                  )}
+                </div>
               ))}
             </div>
           </div>
         )}
 
-        {(structured.portfolioAnalysis.length > 0 || structured.riskAnalysis.length > 0) && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {renderListSection('Portföljanalys', structured.portfolioAnalysis, 'text-blue-600', 'bg-blue-500/80', BarChart3)}
-            {renderListSection('Riskanalys & stresstest', structured.riskAnalysis, 'text-rose-600', 'bg-rose-500/80', ShieldAlert)}
-          </div>
-        )}
-
-        {(structured.implementationPlan.length > 0 || structured.followUp.length > 0) && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {renderListSection('Implementationsplan', structured.implementationPlan, 'text-emerald-600', 'bg-emerald-500/80', ClipboardList)}
-            {renderListSection('Uppföljning', structured.followUp, 'text-purple-600', 'bg-purple-500/80', Clock)}
-          </div>
-        )}
-
-        {structured.savingsPlan.length > 0 &&
-          renderListSection('Personlig sparrekommendation', structured.savingsPlan, 'text-amber-600', 'bg-amber-500/80', PiggyBank)}
-
-        {structured.closingQuestion && (
-          <Card className="border border-primary/30 bg-primary/5">
-            <CardContent className="flex items-center gap-3 py-4 text-sm font-medium text-primary">
-              <MessageCircleQuestion className="h-5 w-5" />
-              <span>{structured.closingQuestion}</span>
-            </CardContent>
-          </Card>
-        )}
-
-        {renderRefinementChat()}
-
-        {structured.disclaimer && (
-          <Alert className="border-amber-200 bg-amber-50 text-amber-900">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Disclaimer</AlertTitle>
-            <AlertDescription className="space-y-1 text-sm leading-relaxed">
-              {structured.disclaimer
-                .split(/\n+/)
-                .map(line => line.trim())
-                .filter(Boolean)
-                .map((line, index) => (
-                  <span key={`disclaimer-${index}`} className="block">
-                    {line}
-                  </span>
-                ))}
-            </AlertDescription>
-          </Alert>
+        {plan.disclaimer && (
+          <p className="text-xs text-muted-foreground italic border-t border-border/60 pt-3">
+            {plan.disclaimer}
+          </p>
         )}
       </div>
     );

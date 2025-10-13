@@ -65,16 +65,24 @@ export const useConversationalPortfolio = () => {
 
     try {
       const parsed = JSON.parse(aiResponse);
-      const recs = Array.isArray(parsed) ? parsed : parsed.recommendations;
+      const recs = Array.isArray(parsed)
+        ? parsed
+        : parsed.recommendations || parsed.recommended_assets;
       if (Array.isArray(recs)) {
         recs.forEach((rec: any) => {
           if (rec && rec.name) {
             recommendations.push({
               name: rec.name,
-              symbol: rec.symbol,
+              symbol: rec.symbol || rec.ticker,
               sector: rec.sector,
-              reasoning: rec.reasoning,
-              allocation: rec.allocation,
+              reasoning: rec.reasoning || rec.rationale,
+              allocation: typeof rec.allocation_percent === 'string'
+                ? parseInt(rec.allocation_percent.replace(/[^\d]/g, ''))
+                : typeof rec.allocation_percent === 'number'
+                ? rec.allocation_percent
+                : typeof rec.allocation === 'string'
+                ? parseInt(rec.allocation.replace(/[^\d]/g, ''))
+                : rec.allocation,
               isin: rec.isin
             });
           }
@@ -280,9 +288,9 @@ VIKTIGT: Använd EXAKT detta format för varje rekommendation och INKLUDERA ALLT
 1. **Företagsnamn (BÖRSSYMBOL)**: Beskrivning av varför denna investering passar din profil. Allokering: XX%
 2. **Fondnamn (FONDKOD)**: Beskrivning av fonden och varför den passar. Allokering: XX%
 
-EXEMPEL:
-1. **Evolution Gaming (EVO)**: Ledande inom online-gaming med stark tillväxt. Allokering: 15%
-2. **Avanza Global (AVZ-GLOBAL)**: Indexfond för global diversifiering. Allokering: 20%`;
+EXEMPEL (ANPASSA MED ANVÄNDARSPECIFIKA DATA):
+1. **Företag A (TICKER-A)**: Kort beskrivning kopplad till användarens profil. Allokering: 15%
+2. **Fond B (FOND-B)**: Kort beskrivning kopplad till användarens mål. Allokering: 20%`;
 
     } else {
       prompt += `
@@ -365,7 +373,11 @@ UPPDRAG FÖR ERFAREN INVESTERARE:
 
 VIKTIGT: Använd EXAKT detta format för varje rekommendation och INKLUDERA ALLTID SYMBOLER:
 1. **Företagsnamn (BÖRSSYMBOL)**: Beskrivning av varför denna investering passar din profil. Allokering: XX%
-2. **Fondnamn (FONDKOD)**: Beskrivning av fonden och varför den passar. Allokering: XX%`;
+2. **Fondnamn (FONDKOD)**: Beskrivning av fonden och varför den passar. Allokering: XX%
+
+EXEMPEL (ANPASSA MED ANVÄNDARSPECIFIKA DATA):
+1. **Företag A (TICKER-A)**: Kort beskrivning kopplad till användarens profil. Allokering: 15%
+2. **Fond B (FOND-B)**: Kort beskrivning kopplad till användarens mål. Allokering: 20%`;
     }
 
     // Add common goals and specifications
@@ -507,13 +519,46 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       console.log('Response from generate-portfolio:', aiResponse);
       console.log('AI Response received:', aiResponse.aiRecommendations || aiResponse.aiResponse || aiResponse.response);
 
+      const structuredPlan = aiResponse.plan;
+
       // Extract AI response from multiple possible fields for compatibility
-      const aiRecommendationText = aiResponse.aiRecommendations || aiResponse.aiResponse || aiResponse.response || '';
-      
+      const aiRecommendationText = structuredPlan
+        ? JSON.stringify(structuredPlan)
+        : aiResponse.aiRecommendations || aiResponse.aiResponse || aiResponse.response || '';
+
       console.log('Extracting recommendations from AI response:', aiRecommendationText?.substring(0, 100));
 
-      // Extract stock recommendations from AI response
-      const stockRecommendations = extractStockRecommendations(aiRecommendationText);
+      // Extract stock recommendations from AI response or structured plan
+      let stockRecommendations = extractStockRecommendations(aiRecommendationText);
+
+      if (structuredPlan?.recommended_assets?.length) {
+        const mapped = structuredPlan.recommended_assets
+          .map((asset: any) => {
+            if (!asset?.name) return null;
+            const allocation = typeof asset.allocation_percent === 'number'
+              ? asset.allocation_percent
+              : typeof asset.allocation_percent === 'string'
+              ? parseInt(asset.allocation_percent.replace(/[^\d]/g, ''))
+              : typeof asset.allocation === 'number'
+              ? asset.allocation
+              : typeof asset.allocation === 'string'
+              ? parseInt(asset.allocation.replace(/[^\d]/g, ''))
+              : 0;
+            return {
+              name: asset.name,
+              symbol: asset.ticker || asset.symbol || undefined,
+              sector: asset.sector,
+              reasoning: asset.rationale || asset.reasoning,
+              allocation,
+              isin: asset.isin
+            };
+          })
+          .filter(Boolean);
+
+        if (mapped.length > 0) {
+          stockRecommendations = mapped as typeof stockRecommendations;
+        }
+      }
       console.log('Final extracted recommendations:', stockRecommendations);
 
       if (stockRecommendations.length === 0) {
@@ -549,11 +594,19 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         }
       }
 
+      const riskTolerance = conversationData.riskTolerance?.toLowerCase();
+      const expectedReturn = riskTolerance === 'aggressive' ? 0.12 : riskTolerance === 'conservative' ? 0.05 : 0.08;
+      const comfortScore = conversationData.volatilityComfort ?? (conversationData.isBeginnerInvestor ? 3 : 5);
+      const baseRiskScore = riskTolerance === 'aggressive' ? 7 : riskTolerance === 'conservative' ? 3 : 5;
+      const combinedRiskScore = Math.round((baseRiskScore + comfortScore) / 2);
+
       // Create enhanced asset allocation with all conversation data and AI analysis
       const assetAllocation = {
         conversation_data: JSON.parse(JSON.stringify(conversationData)),
-        ai_strategy: aiRecommendationText,
+        ai_strategy: structuredPlan || aiRecommendationText,
+        ai_strategy_raw: aiRecommendationText,
         ai_prompt_used: enhancedPrompt,
+        structured_plan: structuredPlan,
         stock_recommendations: stockRecommendations,
         risk_profile_summary: {
           experience_level: conversationData.isBeginnerInvestor ? 'beginner' : 'advanced',
@@ -580,8 +633,8 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         asset_allocation: assetAllocation,
         recommended_stocks: stockRecommendations,
         total_value: 0,
-        expected_return: conversationData.isBeginnerInvestor ? 0.08 : 0.10,
-        risk_score: conversationData.volatilityComfort || (conversationData.isBeginnerInvestor ? 3 : 5),
+        expected_return: expectedReturn,
+        risk_score: combinedRiskScore,
         is_active: true
       };
 
@@ -608,6 +661,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
 
       return {
         aiResponse: aiRecommendationText,
+        plan: structuredPlan || null,
         portfolio: aiResponse.portfolio || portfolio,
         riskProfile,
         enhancedPrompt,
