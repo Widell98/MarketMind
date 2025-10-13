@@ -395,7 +395,8 @@ export const usePortfolioPerformance = () => {
         .from('user_holdings')
         .select('id, quantity, symbol, name, holding_type')
         .eq('user_id', user.id)
-        .neq('holding_type', 'cash');
+        .neq('holding_type', 'cash')
+        .neq('holding_type', 'recommendation');
 
       if (holdingsError) {
         throw holdingsError;
