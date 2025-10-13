@@ -87,290 +87,69 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
   const sendMessageToAI = async () => {
     if (!message.trim()) return;
 
-    setLoading(true);
-    try {
-      console.log('Sending AI request with message:', message);
-      
-      const jsonPrompt = `${message}\n\nSvara ENDAST med giltig JSON med fältet \"recommendations\" som en array av objekt {name, symbol, sector, reasoning, allocation}`;
-
-      const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
-        body: {
-          message: jsonPrompt,
-          userId: user?.id,
-          chatHistory: [],
-          analysisType: 'risk_assessment',
-          stream: false,
-        },
-      });
-
-      if (error) {
-        console.error('AI function error:', error);
-        throw new Error(error.message || 'Edge function error');
-      }
-
-      // Handle JSON response
-      let fullResponse = '';
-      const payload: any = data;
-      if (payload && typeof payload === 'object') {
-        if (payload.response) fullResponse = payload.response;
-        else if (payload.message) fullResponse = payload.message;
-        else if (payload.content) fullResponse = payload.content;
-        else fullResponse = JSON.stringify(payload);
-      } else if (typeof payload === 'string') {
-        fullResponse = payload;
-      }
-
-      console.log('AI Response received:', fullResponse ? fullResponse.substring(0, 200) + '...' : 'undefined');
-
-      // Validate and process final response
-      if (fullResponse && fullResponse.trim().length > 0) {
-        console.log('Processing valid AI response...');
-        setAiResponse(fullResponse);
-        
-        console.log('Extracting recommendations from AI response:', fullResponse.substring(0, 100) + '...');
-        const recommendations = extractRecommendations(fullResponse);
-        console.log('Final extracted recommendations:', recommendations);
-        setAiRecommendations(recommendations);
-        
-        // Show success message
-        toast({
-          title: "AI-analys slutförd",
-          description: "Dina personliga investeringsrekommendationer är redo!",
-          variant: "default",
-        });
-
-      } else {
-        console.error('Empty or invalid AI response received');
-        const fallbackMessage = `Baserat på din riskprofil som konservativ investerare med medellång tidshorisont och pensionsmål, rekommenderar jag en diversifierad portfölj med fokus på stabila, svenska företag och fonder:
-
-**Investeringsrekommendationer:**
-
-1. **Avanza Global (AVZ-GLOBAL)**: Bred global indexfond med låga avgifter som ger dig exponering mot världsmarknaden. Perfekt för nybörjare. Allokering: 40%
-
-2. **Investor B (INVE-B)**: Svenskt investmentbolag med lång historia och stabila utdelningar. Allokering: 20%
-
-3. **Handelsbanken A (SHB-A)**: Välskött svensk storbank med stark position. Allokering: 15%
-
-4. **Volvo B (VOLV-B)**: Stabilt industriföretag med fokus på hållbarhet. Allokering: 15%
-
-5. **Castellum (CAST)**: Svenskt fastighetsbolag för diversifiering. Allokering: 10%
-
-**Månadsplan:**
-- Börja med 5000 SEK/månad enligt din budget
-- Köp genom Avanza eller Nordnet för låga avgifter
-- Använd månadssparande för automatisering
-- Se över portföljen var 6:e månad
-
-Detta är en konservativ portfölj som passar din profil som nybörjare med fokus på långsiktig pension.`;
-        
-        setAiResponse(fallbackMessage);
-        
-        toast({
-          title: "Portföljstrategi genererad",
-          description: "En fallback-strategi har genererats baserat på din profil.",
-          variant: "default",
-        });
-      }
-    } catch (error: any) {
-      console.error('Error sending message:', error);
-      
-      // Enhanced error handling with fallback message
-      const errorMessage = error.message || 'Unknown error occurred';
-      const fallbackResponse = `Ett tekniskt problem uppstod, men här är en grundläggande portföljstrategi baserat på din profil:
-
-**Rekommenderad startportfölj för konservativ investerare:**
-
-1. **Avanza Global (AVZ-GLOBAL)**: Global indexfond - 50%
-2. **Handelsbanken Sverige Index (HSEIX)**: Svensk indexfond - 30% 
-3. **Investor B (INVE-B)**: Svenskt investmentbolag - 20%
-
-Börja med 5000 SEK/månad enligt din budget. Kontakta rådgivning för mer detaljerad hjälp.`;
-
-      setAiResponse(fallbackResponse);
-      
+    if (!user) {
       toast({
-        title: "Tekniskt problem",
-        description: "En grundläggande strategi har genererats. För bästa resultat, försök igen senare.",
+        title: "Fel",
+        description: "Du måste vara inloggad för att använda AI-analysen.",
         variant: "destructive",
       });
-      
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const conversationData = {
+        isBeginnerInvestor: false,
+        hasCurrentPortfolio: false,
+        age: riskProfile.age || undefined,
+        investmentGoal: 'wealth',
+        timeHorizon: riskProfile.investment_horizon || undefined,
+        riskTolerance: riskProfile.risk_tolerance || undefined,
+        monthlyAmount: riskProfile.monthly_investment_amount?.toString(),
+        interests: [],
+        companies: [],
+        portfolioHelp: message,
+      };
+
+      const result = await generatePortfolioFromConversation(conversationData);
+
+      if (!result) {
+        toast({
+          title: "Fel",
+          description: "Kunde inte generera några rekommendationer just nu.",
+          variant: "destructive",
+        });
+        setAiRecommendations([]);
+        setAiResponse('');
+        return;
+      }
+
+      const aiText = result.aiResponse || '';
+      const formattedResponse = formatAIResponseWithSummary(
+        aiText,
+        result.stockRecommendations || []
+      );
+
+      setAiResponse(formattedResponse || aiText);
+      setAiRecommendations(result.stockRecommendations || []);
+      setMessage('');
+
+      toast({
+        title: "AI-analys slutförd",
+        description: "Dina personliga investeringsrekommendationer är redo!",
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Tekniskt problem",
+        description: "Kunde inte hämta rekommendationer. Försök igen senare.",
+        variant: "destructive",
+      });
+      setAiResponse('');
       setAiRecommendations([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  const extractRecommendations = (text: string): RecommendedStock[] => {
-    if (!text) return [];
-
-    console.log('Extracting stock recommendations from AI response:', text);
-
-    const recommendations: RecommendedStock[] = [];
-
-    try {
-      const parsed = JSON.parse(text);
-      const recs = Array.isArray(parsed) ? parsed : parsed.recommendations;
-      if (Array.isArray(recs)) {
-        recs.forEach((rec: any) => {
-          if (rec && rec.name) {
-            recommendations.push({
-              name: rec.name,
-              symbol: rec.symbol,
-              allocation: rec.allocation,
-              sector: rec.sector,
-              reasoning: rec.reasoning,
-              isin: rec.isin,
-              fee: rec.fee
-            });
-          }
-        });
-        return recommendations.slice(0, 10);
-      }
-    } catch (e) {
-      console.warn('AI response not valid JSON, using regex fallback');
-    }
-
-    // Enhanced patterns to match various recommendation formats
-    const patterns = [
-      // Pattern 1: **Company Name (Symbol)**: Description with percentage
-      /\*\*([^*]+?)\s*\(([^)]+?)\)\*\*:?\s*[^.]*?(\d+)%/gi,
-      // Pattern 2: **Company Name**: Description with symbol somewhere
-      /\*\*([^*]+?)\*\*:?\s*[^.]*?(?:\(([A-Z]{2,8})\))?[^.]*?(\d+)%/gi,
-      // Pattern 3: Company Name (Symbol) with percentage
-      /([A-ZÅÄÖ][a-zåäö\s&.-]+)\s*\(([A-Z]{2,8})\)[^.]*?(\d+)%/g,
-      // Pattern 4: Look for ISIN codes
-      /([^:]+?):\s*.*?ISIN:\s*([A-Z]{2}\d{10})[^.]*?(\d+(?:\.\d+)?)%/gi,
-      // Pattern 5: Simple format with allocation
-      /([A-ZÅÄÖ][a-zåäö\s&.-]+)\s*(?:\(([A-Z]{2,8})\))?\s*[:-]?\s*(\d+)%/g
-    ];
-
-    // Extract structured recommendations
-    const lines = text.split('\n');
-    let currentSection = '';
-    let allocationPercentage = 0;
-    
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      
-      // Detect sections with percentages
-      const sectionMatch = line.match(/^#+\s*(.+?)\s*\((\d+)%\)/) || 
-                          line.match(/^(\d+)\.\s*\*\*(.+?)\s*\((\d+)%\)\*\*/);
-      
-      if (sectionMatch) {
-        currentSection = sectionMatch[1] || sectionMatch[2];
-        allocationPercentage = parseInt(sectionMatch[2] || sectionMatch[3]);
-        console.log(`Found section: ${currentSection} with ${allocationPercentage}%`);
-        continue;
-      }
-      
-      // Look for individual stocks within sections
-      if (currentSection && allocationPercentage > 0) {
-        // Pattern for stocks with ISIN and fees
-        const isinMatch = line.match(/\*\*([^*]+?)\s*\(ISIN:\s*([A-Z]{2}\d{10})\)\*\*:?\s*(.+?)(?:avgift|fee)\s*\(([^)]+)\)/i);
-        if (isinMatch) {
-          const [, name, isin, description, fee] = isinMatch;
-          recommendations.push({
-            name: name.trim(),
-            symbol: extractSymbolFromName(name.trim()),
-            allocation: allocationPercentage,
-            sector: currentSection,
-            reasoning: description.trim(),
-            isin: isin,
-            fee: fee
-          });
-          console.log('Added ISIN recommendation:', { name: name.trim(), isin, fee });
-          continue;
-        }
-        
-        // Pattern for stocks with symbols
-        const stockMatch = line.match(/\*\*([^*]+?)\s*(?:\(([A-Z]{2,8})\))?\*\*:?\s*(.+)/i) ||
-                          line.match(/[-•]\s*\*\*([^*]+?)\s*(?:\(([A-Z]{2,8})\))?\*\*:?\s*(.+)/i);
-        
-        if (stockMatch) {
-          const [, name, symbol, description] = stockMatch;
-          recommendations.push({
-            name: name.trim(),
-            symbol: symbol || extractSymbolFromName(name.trim()),
-            allocation: Math.round(allocationPercentage / 2), // Split allocation if multiple stocks
-            sector: currentSection,
-            reasoning: description.trim()
-          });
-          console.log('Added stock recommendation:', { name: name.trim(), symbol: symbol || 'N/A' });
-        }
-      }
-    }
-    
-    // Fallback: Use general patterns if structured extraction didn't work
-    if (recommendations.length === 0) {
-      patterns.forEach(pattern => {
-        let match;
-        while ((match = pattern.exec(text)) !== null) {
-          const [, name, symbolOrPercentage, percentageOrSymbol] = match;
-          
-          let actualName = name.trim();
-          let actualSymbol = '';
-          let actualPercentage = 0;
-          
-          // Determine which capture group contains what
-          if (/^\d+$/.test(symbolOrPercentage)) {
-            actualPercentage = parseInt(symbolOrPercentage);
-            actualSymbol = extractSymbolFromName(actualName);
-          } else {
-            actualSymbol = symbolOrPercentage || extractSymbolFromName(actualName);
-            actualPercentage = parseInt(percentageOrSymbol) || 0;
-          }
-          
-          if (actualName.length > 2 && !recommendations.find(r => 
-            r.name.toLowerCase() === actualName.toLowerCase() || 
-            r.symbol.toLowerCase() === actualSymbol.toLowerCase()
-          )) {
-            recommendations.push({
-              name: actualName,
-              symbol: actualSymbol,
-              allocation: actualPercentage,
-              sector: 'Allmän',
-              reasoning: `AI-rekommenderad med ${actualPercentage}% allokering`
-            });
-          }
-        }
-      });
-    }
-    
-    console.log('Final extracted recommendations:', recommendations);
-    return recommendations.slice(0, 10);
-  };
-
-  const extractSymbolFromName = (name: string): string => {
-    // Map common Swedish company names to their symbols
-    const symbolMap: { [key: string]: string } = {
-      'proethos fond': 'PROETHOS',
-      'spiltan aktiefond investmentbolag': 'SPILTAN',
-      'nvidia': 'NVDA',
-      'embracer group': 'EMBRAC B',
-      'essity': 'ESSITY B',
-      'orkla': 'ORK',
-      'volvo': 'VOLV B',
-      'abb': 'ABB',
-      'ericsson': 'ERIC B',
-      'h&m': 'HM B',
-      'atlas copco': 'ATCO A'
-    };
-    
-    const lowerName = name.toLowerCase();
-    for (const [key, symbol] of Object.entries(symbolMap)) {
-      if (lowerName.includes(key)) {
-        return symbol;
-      }
-    }
-    
-    // Extract symbol from parentheses if present
-    const symbolMatch = name.match(/\(([A-Z]{2,8})\)/);
-    if (symbolMatch) {
-      return symbolMatch[1];
-    }
-    
-    // Generate symbol from name
-    return name.toUpperCase().replace(/[^A-Z]/g, '').substring(0, 5);
   };
 
   const formatAIResponseWithSummary = (response: string, recommendations: RecommendedStock[]) => {
