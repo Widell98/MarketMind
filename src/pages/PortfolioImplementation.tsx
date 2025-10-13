@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import PortfolioOverview from '@/components/PortfolioOverview';
@@ -16,10 +16,11 @@ import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { Button } from '@/components/ui/button';
 import { Brain, AlertCircle, User } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
-import Breadcrumb from '@/components/Breadcrumb';
 const PortfolioImplementation = () => {
   const {
-    actualHoldings
+    actualHoldings,
+    loading: holdingsLoading,
+    refetch: refetchHoldings
   } = useUserHoldings();
   const {
     activePortfolio,
@@ -37,7 +38,8 @@ const PortfolioImplementation = () => {
     loading: riskProfileLoading
   } = useRiskProfile();
   const {
-    performance
+    performance,
+    updateAllPrices
   } = usePortfolioPerformance();
   const {
     totalCash
@@ -46,6 +48,7 @@ const PortfolioImplementation = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const hasTriggeredAutoUpdate = useRef(false);
   useEffect(() => {
     // Only show login modal if auth has finished loading and user is not authenticated
     if (!authLoading && !user) {
@@ -65,6 +68,31 @@ const PortfolioImplementation = () => {
       minute: '2-digit'
     }));
   }, [performance, totalCash]);
+  useEffect(() => {
+    hasTriggeredAutoUpdate.current = false;
+  }, [user?.id]);
+  useEffect(() => {
+    if (!user || holdingsLoading) {
+      return;
+    }
+
+    if (actualHoldings.length === 0) {
+      return;
+    }
+
+    if (hasTriggeredAutoUpdate.current) {
+      return;
+    }
+
+    hasTriggeredAutoUpdate.current = true;
+
+    void (async () => {
+      const summary = await updateAllPrices();
+      if (summary && typeof refetchHoldings === 'function') {
+        await refetchHoldings({ silent: true });
+      }
+    })();
+  }, [user, holdingsLoading, actualHoldings.length, updateAllPrices, refetchHoldings]);
   const handleQuickChat = (message: string) => {
     if (!riskProfile) {
       return;
@@ -148,11 +176,6 @@ const PortfolioImplementation = () => {
       
       <div className="min-h-0 bg-gradient-to-br from-background to-secondary/5">
         <div className="mx-auto w-full max-w-6xl space-y-8 sm:space-y-10 lg:space-y-12 px-2 pb-8 sm:px-4 sm:pb-12 lg:px-6 lg:pb-16">
-          {/* Breadcrumb Navigation */}
-          <div>
-            <Breadcrumb />
-          </div>
-          
           {/* Page Header */}
           <section className="rounded-3xl border border-border/60 bg-card/70 px-6 py-8 text-center shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:px-10 sm:py-12">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 sm:h-14 sm:w-14">

@@ -38,9 +38,14 @@ serve(async (req) => {
   }
 
   try {
-    const { riskProfileId, userId } = await req.json();
-    
-    console.log('Generate portfolio request:', { riskProfileId, userId });
+    const { riskProfileId, userId, conversationPrompt, conversationData } = await req.json();
+
+    console.log('Generate portfolio request:', {
+      riskProfileId,
+      userId,
+      hasConversationPrompt: Boolean(conversationPrompt),
+      hasConversationData: conversationData && typeof conversationData === 'object'
+    });
 
     if (!riskProfileId || !userId) {
       throw new Error('Missing required parameters: riskProfileId and userId');
@@ -100,57 +105,150 @@ serve(async (req) => {
     }
 
     // Enhanced system persona for initial portfolio advisor
-    let contextInfo = `Du är en licensierad och auktoriserad svensk investeringsrådgivare
-med över 15 års erfarenhet av att bygga skräddarsydda portföljer.
-Du arbetar enligt svensk finanslagstiftning och MiFID II-reglerna och
-fokuserar alltid på att skapa trygghet och långsiktigt värde för klienten.
+    let contextInfo = 'KLIENTDATA OCH TIDIGARE SAMTAL:';
 
-DITT UPPDRAG:
-- Bygg en komplett portfölj baserad på användarens riskprofil, horisont och mål
-- Portföljen ska bestå av **6–8 unika investeringar**
-- Endast investeringar tillgängliga via svenska plattformar (Avanza, Nordnet)
-- Alltid korrekt ticker-symbol: **Företag (TICKER)**
-- Balansera mellan svenska aktier, nordiska fonder och globala ETF:er
-- Anpassa rekommendationer för ISK/KF-optimering
-- Summera allokeringar till exakt **100%**
+    let conversationSummary = '';
 
-OBLIGATORISKT FORMAT FÖR VARJE INVESTERING:
-### Exakt företagsnamn (TICKER)
-- **Analys:** Varför denna investering passar användaren (fundamental analys + riskbedömning)
-- **Roll i portföljen:** Hur den kompletterar helheten
-- **Rekommenderad allokering:** XX%
+    if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+      const rawData = conversationData as Record<string, unknown>;
+      const details: string[] = [];
 
-KONKRETA EXEMPEL:
-### Investor AB (INVE-B)
-- **Analys:** Svenskt investmentbolag med diversifierad portfölj och stark historik
-- **Roll i portföljen:** Basexponering mot stabila svenska storbolag
-- **Allokering:** 15%
+      const asString = (value: unknown) => typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+      const asNumber = (value: unknown) => {
+        if (typeof value === 'number' && !Number.isNaN(value)) return value;
+        if (typeof value === 'string') {
+          const numeric = Number(value.replace(/[^\d.-]/g, ''));
+          return Number.isFinite(numeric) ? numeric : null;
+        }
+        return null;
+      };
+      const asStringArray = (value: unknown) => {
+        if (!Array.isArray(value)) return null;
+        const parsed = value
+          .map(item => (typeof item === 'string' && item.trim().length > 0 ? item.trim() : null))
+          .filter((item): item is string => Boolean(item));
+        return parsed.length > 0 ? parsed : null;
+      };
 
-### Spiltan Aktiefond Investmentbolag
-- **Analys:** Aktivt förvaltad fond med fokus på nordiska investmentbolag, låg avgift
-- **Roll i portföljen:** Diversifiering och långsiktig stabilitet
-- **Allokering:** 20%
+      const addDetail = (label: string, value: string | number | null) => {
+        if (value !== null && value !== '') {
+          details.push(`${label}: ${value}`);
+        }
+      };
 
-### XACT OMXS30 (XACT30)
-- **Analys:** Indexfond som speglar Stockholmsbörsens 30 största bolag
-- **Roll i portföljen:** Kostnadseffektiv bred bas
-- **Allokering:** 25%
+      const addArrayDetail = (label: string, value: unknown) => {
+        const arr = asStringArray(value);
+        if (arr) {
+          details.push(`${label}: ${arr.join(', ')}`);
+        }
+      };
 
-FÖRBJUDET:
-- Generella råd utan tickers
-- Att repetera samma investering flera gånger
-- Allmän diversifiering som "råd"
-- Icke-investerbara koncept
+      const experienceLabel = asString(rawData.marketExperience)
+        || (typeof rawData.isBeginnerInvestor === 'boolean'
+          ? rawData.isBeginnerInvestor ? 'Nybörjare' : 'Erfaren'
+          : null);
 
-KVALITETSKRAV:
-- Alla investeringar ska vara verifierbara med tickers
-- Variera sektorer och ge en balanserad portfölj
-- Anpassa risknivån exakt till användarens profil
-- Avsluta alltid med en **öppen fråga** som bjuder in till vidare dialog
+      addDetail('Investeringsmål', asString(rawData.investmentGoal));
+      addDetail('Sökt portföljstorlek', asString(rawData.portfolioSize));
+      addDetail('Investerarens erfarenhet', experienceLabel);
+      addDetail('Önskad investeringsstil', asString(rawData.investmentStyle));
+      addDetail('Utdelningskrav', asString(rawData.dividendYieldRequirement));
+      addDetail('Hållbarhetsfokus', asString(rawData.sustainabilityPreference));
+      addDetail('Geografisk inriktning', asString(rawData.geographicPreference));
+      addDetail('Reaktion på börsras', asString(rawData.marketCrashReaction));
 
-**Disclaimer:** Alla råd är endast i utbildningssyfte. Konsultera alltid en licensierad rådgivare innan du fattar beslut.
-`;
+      const comfort = typeof rawData.volatilityComfort === 'number' ? rawData.volatilityComfort
+        : typeof rawData.volatilityComfort === 'string' ? Number(rawData.volatilityComfort) : null;
+      addDetail('Volatilitetskomfort (1-10)', comfort !== null && Number.isFinite(comfort) ? comfort : null);
 
+      const monthlyIncome = asNumber(rawData.monthlyIncome);
+      addDetail('Månadsinkomst', monthlyIncome !== null && Number.isFinite(monthlyIncome) ? `${monthlyIncome.toLocaleString('sv-SE')} SEK` : null);
+
+      const annualIncome = asNumber(rawData.annualIncome);
+      addDetail('Årsinkomst', annualIncome !== null && Number.isFinite(annualIncome) ? `${annualIncome.toLocaleString('sv-SE')} SEK` : null);
+
+      const capital = asNumber(rawData.availableCapital);
+      addDetail('Tillgängligt kapital', capital !== null && Number.isFinite(capital) ? `${capital.toLocaleString('sv-SE')} SEK` : null);
+
+      const liquidCapital = asNumber(rawData.liquidCapital);
+      addDetail('Likvida medel', liquidCapital !== null && Number.isFinite(liquidCapital) ? `${liquidCapital.toLocaleString('sv-SE')} SEK` : null);
+
+      if (typeof rawData.housingSituation === 'string') {
+        addDetail('Bostadssituation', rawData.housingSituation);
+      }
+
+      if (typeof rawData.hasLoans === 'boolean') {
+        addDetail('Har lån', rawData.hasLoans ? 'Ja' : 'Nej');
+      }
+
+      if (typeof rawData.loanDetails === 'string' && rawData.loanDetails.trim().length > 0) {
+        addDetail('Lånedetaljer', rawData.loanDetails);
+      }
+
+      if (typeof rawData.hasChildren === 'boolean') {
+        addDetail('Har försörjningsansvar', rawData.hasChildren ? 'Ja' : 'Nej');
+      }
+
+      if (typeof rawData.emergencyFund === 'string') {
+        const emergencyMap: Record<string, string> = {
+          yes_full: 'Full buffert',
+          yes_partial: 'Delvis buffert',
+          no: 'Ingen buffert'
+        };
+        addDetail('Buffertstatus', emergencyMap[rawData.emergencyFund] || rawData.emergencyFund);
+      }
+
+      if (typeof rawData.emergencyBufferMonths === 'number' && Number.isFinite(rawData.emergencyBufferMonths)) {
+        addDetail('Buffert (månader)', rawData.emergencyBufferMonths);
+      }
+
+      addArrayDetail('Ekonomiska åtaganden', rawData.financialObligations);
+      addArrayDetail('Föredragna sektorer', rawData.sectors || rawData.sectorExposure);
+      addArrayDetail('Särskilda intressen', rawData.interests);
+      addArrayDetail('Föredragna bolag', rawData.companies);
+      addArrayDetail('Investeringssyften', rawData.investmentPurpose);
+
+      const targetAmount = asNumber(rawData.targetAmount ?? rawData.specificGoalAmount);
+      addDetail('Målbelopp', targetAmount !== null && Number.isFinite(targetAmount) ? `${targetAmount.toLocaleString('sv-SE')} SEK` : null);
+
+      addDetail('Måldatum', asString(rawData.targetDate));
+
+      if (typeof rawData.preferredStockCount === 'number' && Number.isFinite(rawData.preferredStockCount)) {
+        addDetail('Önskat antal innehav', rawData.preferredStockCount);
+      }
+
+      if (typeof rawData.controlImportance === 'number' && Number.isFinite(rawData.controlImportance)) {
+        addDetail('Kontrollbehov (1-5)', rawData.controlImportance);
+      }
+
+      if (typeof rawData.panicSellingHistory === 'boolean') {
+        addDetail('Historik av panikförsäljning', rawData.panicSellingHistory ? 'Ja' : 'Nej');
+      }
+
+      addDetail('Aktivitetsnivå', asString(rawData.activityPreference));
+      addDetail('Ombalanseringsfrekvens', asString(rawData.portfolioChangeFrequency || rawData.rebalancingFrequency));
+      addDetail('Medvetenhet om överexponering', asString(rawData.overexposureAwareness));
+
+      const currentPortfolioValue = asNumber(rawData.currentPortfolioValue);
+      addDetail('Nuvarande portföljvärde (rapport)', currentPortfolioValue !== null && Number.isFinite(currentPortfolioValue) ? `${currentPortfolioValue.toLocaleString('sv-SE')} SEK` : null);
+
+      const helpNeeded = asString(rawData.portfolioHelp);
+      if (helpNeeded) {
+        details.push(`Specifikt stöd som efterfrågas: ${helpNeeded}`);
+      }
+
+      addDetail('Önskad kommunikationsstil', asString(rawData.communicationStyle));
+      addDetail('Önskad svarslängd', asString(rawData.preferredResponseLength));
+
+      if (typeof rawData.additionalNotes === 'string' && rawData.additionalNotes.trim().length > 0) {
+        details.push(`Ytterligare anteckningar: ${rawData.additionalNotes.trim()}`);
+      }
+
+      if (details.length > 0) {
+        conversationSummary = details.map(detail => `- ${detail}`).join('\n');
+        contextInfo += `\n\nFÖRDJUPAD KUNDKONVERSATION:\n${conversationSummary}`;
+      }
+    }
 
     // Add detailed user profile information
     if (riskProfile) {
@@ -198,59 +296,234 @@ KVALITETSKRAV:
       contextInfo += `\n\nVIKTIGT: Föreslå ALDRIG aktier som användaren redan äger.`;
     }
 
-    // Enhanced system prompt with professional advisor structure and JSON output
-    const systemPrompt = `${contextInfo}
+    const interestList = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        const collected: string[] = [];
+        const maybePushArray = (value: unknown) => {
+          if (Array.isArray(value)) {
+            value.forEach((entry) => {
+              if (typeof entry === 'string' && entry.trim()) {
+                collected.push(entry.trim());
+              }
+            });
+          }
+        };
+        maybePushArray(raw.interests);
+        maybePushArray(raw.sectors);
+        maybePushArray(raw.sectorInterests);
+        if (collected.length > 0) {
+          return Array.from(new Set(collected)).join(', ');
+        }
+      }
+      if (riskProfile?.sector_interests && riskProfile.sector_interests.length) {
+        return riskProfile.sector_interests.join(', ');
+      }
+      return 'Ej angivet';
+    })();
 
-DU ÄR EN LICENSIERAD SVENSK PORTFÖLJRÅDGIVARE:
-- Anpassa varje rekommendation efter kundens riskprofil, mål, tidshorisont och tidigare innehav
-- Tillåt endast investeringar som är handlingsbara via svenska plattformar (Avanza, Nordnet) och kompatibla med ISK/KF
-- Säkerställ att portföljen innehåller 6–8 unika innehav med kompletterande riskroller
-- Variera sektorer, ge tydlig motivering och knyt alltid tillbaka till kundens svar och riskkomfort
+    const preferredAssets = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (Array.isArray(raw.preferredAssets)) {
+          const parsed = raw.preferredAssets.filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+          if (parsed.length > 0) {
+            return parsed.join(', ');
+          }
+        }
+        if (typeof raw.preferredAssets === 'string' && raw.preferredAssets.trim().length > 0) {
+          return raw.preferredAssets.trim();
+        }
+      }
+      return 'Ej angivet';
+    })();
 
-SVARSKRAV (RETURNERA ENDAST GILTIG JSON):
+    const riskToleranceSummary = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (typeof raw.riskTolerance === 'string' && raw.riskTolerance.trim().length > 0) {
+          return raw.riskTolerance.trim();
+        }
+      }
+      return riskProfile?.risk_tolerance || 'Medel';
+    })();
+
+    const investmentGoalSummary = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (typeof raw.investmentGoal === 'string' && raw.investmentGoal.trim().length > 0) {
+          return raw.investmentGoal.trim();
+        }
+      }
+      return riskProfile?.investment_goal || 'Långsiktig tillväxt';
+    })();
+
+    const horizonSummary = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (typeof raw.timeHorizon === 'string' && raw.timeHorizon.trim().length > 0) {
+          return raw.timeHorizon.trim();
+        }
+      }
+      return riskProfile?.investment_horizon || 'Lång';
+    })();
+
+    const availableCapitalSummary = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (typeof raw.availableCapital === 'number' && Number.isFinite(raw.availableCapital)) {
+          return `${raw.availableCapital.toLocaleString('sv-SE')} SEK`;
+        }
+        if (typeof raw.availableCapital === 'string' && raw.availableCapital.trim().length > 0) {
+          return raw.availableCapital.trim();
+        }
+      }
+      if (typeof riskProfile?.liquid_capital === 'number') {
+        return `${riskProfile.liquid_capital.toLocaleString('sv-SE')} SEK`;
+      }
+      return 'Ej angivet';
+    })();
+
+    const experienceSummary = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (typeof raw.investmentExperienceLevel === 'string' && raw.investmentExperienceLevel.trim().length > 0) {
+          return raw.investmentExperienceLevel.trim();
+        }
+        if (typeof raw.marketExperience === 'string' && raw.marketExperience.trim().length > 0) {
+          return raw.marketExperience.trim();
+        }
+      }
+      return riskProfile?.investment_experience || 'Ej angivet';
+    })();
+
+    const monthlyInvestmentSummary = (() => {
+      if (conversationData && typeof conversationData === 'object' && !Array.isArray(conversationData)) {
+        const raw = conversationData as Record<string, unknown>;
+        if (typeof raw.monthlyInvestmentAmount === 'number' && Number.isFinite(raw.monthlyInvestmentAmount)) {
+          return `${raw.monthlyInvestmentAmount.toLocaleString('sv-SE')} SEK`;
+        }
+        if (typeof raw.monthlyInvestmentAmount === 'string' && raw.monthlyInvestmentAmount.trim().length > 0) {
+          return raw.monthlyInvestmentAmount.trim();
+        }
+      }
+      if (riskProfile?.monthly_investment_amount) {
+        return `${riskProfile.monthly_investment_amount.toLocaleString('sv-SE')} SEK`;
+      }
+      return 'Ej angivet';
+    })();
+
+    const serializedConversationData = conversationData && typeof conversationData === 'object'
+      ? JSON.stringify(conversationData, null, 2)
+      : '{}';
+
+    const systemPrompt = `Du är en svensk licensierad och auktoriserad investeringsrådgivare med lång erfarenhet av att skapa skräddarsydda portföljer. Du följer Finansinspektionens regler och MiFID II, prioriterar kundens mål, tidshorisont och riskkapacitet samt kommunicerar tydligt på svenska.
+
+Tillgänglig klientinformation:
+${contextInfo}
+
+Rådgivningsregler:
+- Basera alltid rekommendationerna på användarens riskprofil, mål, tidsram, likvida medel och intressen.
+- Säkerställ att portföljen är diversifierad och att varje innehav har en tydlig roll (Bas, Tillväxt, Skydd eller Kassaflöde).
+- Justera antalet tillgångar efter kundens önskemål (normalt 3–8 poster) och undvik dubletter mot befintliga innehav.
+- Alla förslag ska vara tillgängliga via svenska handelsplattformar (Avanza, Nordnet) och lämpa sig för ISK/KF när det är relevant.
+
+Regler för preferenser:
+- Om användaren visar intresse för krypto, teknik eller tillväxt: inkludera kryptorelaterade och högbeta-tillgångar (t.ex. Ethereum-ETF, Coinbase, Tesla, ARK Innovation) i rimlig andel.
+- Om användaren har hållbarhetsfokus: inkludera ESG-fonder och gröna bolag (t.ex. Handelsbanken Hållbar Energi, iShares Clean Energy).
+- Om risktoleransen är konservativ: prioritera investmentbolag, defensiva aktier (Investor, Axfood) och breda indexfonder.
+- Om risktoleransen är balanserad: kombinera svenska fonder, investmentbolag och globala ETF:er.
+- Om risktoleransen är aggressiv: inkludera tillväxt, småbolag, krypto och innovativa sektorer.
+- Om användaren efterfrågar investmentbolag: inkludera exempelvis Investor, Latour eller Kinnevik.
+- Om kunden vill ha svenska företag: fokusera på OMX-noterade bolag och svenska fonder.
+
+Formatkrav:
+- Leverera svaret som giltig JSON utan extra text.
+- Använd exakt strukturen:
 {
-  "action_summary": "2–3 meningar om varför portföljen passar kunden",
-  "risk_alignment": "Hur portföljen möter risktoleransen och tidshorisonten",
-  "next_steps": [
-    "Konkreta åtgärder kunden ska ta inom de kommande månaderna"
-  ],
+  "summary": "2–3 meningar om varför portföljen passar användaren",
+  "risk_alignment": "Hur portföljen matchar risktolerans och mål",
+  "next_steps": ["Konkreta råd för nästa steg"],
   "recommended_assets": [
     {
       "name": "Exakt namn på aktie/fond/ETF",
-      "ticker": "Ticker eller fondkod (lämna tom sträng om saknas)",
+      "ticker": "Ticker eller fondkod",
+      "sector": "Sektor",
       "allocation_percent": 0,
-      "rationale": "Professionell analys kopplad till kundens profil",
-      "risk_role": "Vilken roll innehavet fyller (bas, tillväxt, skydd, satellit, kassaflöde, etc.)"
+      "rationale": "Analys kopplad till användarens mål och risk",
+      "risk_role": "Bas / Tillväxt / Skydd / Kassaflöde"
     }
   ],
   "disclaimer": "Kort juridiskt förbehåll på svenska"
 }
-
-VIKTIGT:
-- Summan av allocation_percent måste vara exakt 100
-- Beskrivningar ska vara handlingsinriktade och använda svensk terminologi
-- Minst en rekommendation ska adressera kundens uttalade intressen/sektorfokus om sådana finns
-- Ange alltid unika tickers och undvik innehav som kunden redan äger
-- Justera risknivån: konservativt = mer defensiva/obligationsliknande, måttligt = balanserad mix, aggressivt = högre tillväxtandel
+- Summan av allocation_percent ska vara 100 och varje post måste innehålla analys, portföljroll och tydlig koppling till kundprofilen.
+- Föreslå aldrig identiska portföljer till olika användare och återanvänd inte samma textblock.
+- Ange alltid korrekt ticker eller fondkod för varje rekommendation.
+- Undvik överdrivna varningar men påminn om risk och att historisk avkastning inte garanterar framtida resultat.
 `;
 
-    const userMessage = `Skapa en komplett portfölj baserat på denna riskprofil:
+    const baseRiskProfileSummary = `Riskprofil (sammanfattning):
+- Ålder: ${riskProfile.age || 'Ej angiven'}
+- Årsinkomst: ${riskProfile.annual_income ? riskProfile.annual_income.toLocaleString('sv-SE') + ' SEK' : 'Ej angiven'}
+- Månatligt investeringsbelopp: ${monthlyInvestmentSummary}
+- Risktolerans: ${riskProfile.risk_tolerance || 'Medel'}
+- Investeringsmål: ${riskProfile.investment_goal || 'Långsiktig tillväxt'}
+- Tidshorisont: ${riskProfile.investment_horizon || 'Lång'}
+- Erfarenhet: ${riskProfile.investment_experience || 'Medel'}
+- Riskkomfort: ${riskProfile.risk_comfort_level || 5}/10
+- Intressesektorer: ${riskProfile.sector_interests && riskProfile.sector_interests.length ? riskProfile.sector_interests.join(', ') : 'Ej angivet'}
+- Nuvarande portföljvärde: ${riskProfile.current_portfolio_value ? riskProfile.current_portfolio_value.toLocaleString('sv-SE') + ' SEK' : '0 SEK'}`;
 
-Ålder: ${riskProfile.age || 'Ej angiven'}
-Årsinkomst: ${riskProfile.annual_income || 'Ej angiven'} SEK
-Månatligt investeringsbelopp: ${riskProfile.monthly_investment_amount || 'Ej angiven'} SEK
-Risktolerans: ${riskProfile.risk_tolerance || 'Medel'}
-Investeringsmål: ${riskProfile.investment_goal || 'Långsiktig tillväxt'}
-Tidshorisont: ${riskProfile.investment_horizon || 'Lång'}
-Erfarenhet: ${riskProfile.investment_experience || 'Medel'}
-Sektorintressen: ${JSON.stringify(riskProfile.sector_interests || [])}
-Nuvarande portföljvärde: ${riskProfile.current_portfolio_value || 0} SEK
-Riskkomfort: ${riskProfile.risk_comfort_level || 5}/10
+    const userMessage = `Skapa en personlig portfölj baserad på följande användardata:
 
-Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga på svenska marknader. Fokusera på att ge konkreta rekommendationer med symboler.`;
+${serializedConversationData}
+
+Tänk särskilt på:
+
+Risktolerans: ${riskToleranceSummary}
+Investeringsmål: ${investmentGoalSummary}
+Tidshorisont: ${horizonSummary}
+Intressen/Sektorer: ${interestList}
+Mest intresserad av: ${preferredAssets}
+Tillgängligt kapital: ${availableCapitalSummary}
+Månatligt investeringsbelopp: ${monthlyInvestmentSummary}
+Erfarenhetsnivå: ${experienceSummary}
+
+⚙️ Anpassa rekommendationerna:
+- Om användaren gillar krypto eller teknik → inkludera mer risk och tillväxt.
+- Om användaren prioriterar hållbarhet → fokusera på ESG-fonder och gröna bolag.
+- Om användaren är konservativ → ge defensiva och stabila innehav.
+- Om användaren är balanserad → kombinera investmentbolag, svenska fonder och globala ETF:er.
+- Om användaren är aggressiv → inkludera tillväxtaktier, krypto och innovativa ETF:er.
+
+Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerställ att all text är på svenska.`;
+
+    const messages: Array<{ role: 'system' | 'user'; content: string }> = [
+      { role: 'system', content: systemPrompt }
+    ];
+
+    messages.push({ role: 'user', content: userMessage });
+
+    if (conversationPrompt && typeof conversationPrompt === 'string' && conversationPrompt.trim().length > 0) {
+      messages.push({ role: 'user', content: conversationPrompt.trim() });
+    }
+
+    messages.push({ role: 'user', content: baseRiskProfileSummary });
+
+    if (conversationSummary) {
+      messages.push({ role: 'user', content: `Fördjupad samtalskontext:\n${conversationSummary}` });
+    }
+
+    if (conversationData && typeof conversationData === 'object') {
+      try {
+        messages.push({ role: 'user', content: `Rå konsultationsdata (JSON):\n${JSON.stringify(conversationData)}` });
+      } catch (jsonError) {
+        console.warn('Could not serialize conversationData for OpenAI message:', jsonError);
+      }
+    }
 
     console.log('Calling OpenAI API with gpt-4o...');
-    
+
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -259,10 +532,7 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
       },
       body: JSON.stringify({
         model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage }
-        ],
+        messages,
         temperature: 0.85,
         max_tokens: 2000,
       }),
@@ -294,9 +564,27 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
     let { plan: structuredPlan, recommendedStocks } = extractStructuredPlan(aiRecommendationsRaw, riskProfile);
 
     if (!structuredPlan || recommendedStocks.length === 0) {
-      console.warn('Structured plan was missing or incomplete – using default mix based on risk profile');
-      recommendedStocks = defaultRecommendations(riskProfile);
-      structuredPlan = buildFallbackPlan(riskProfile, recommendedStocks, aiRecommendationsRaw);
+      console.warn('Structured plan missing, attempting fallback parsing of AI response.');
+      const fallbackPlan = buildFallbackPlanFromText(aiRecommendationsRaw, riskProfile);
+      if (fallbackPlan) {
+        structuredPlan = fallbackPlan.plan;
+        recommendedStocks = fallbackPlan.recommendedStocks;
+      }
+    }
+
+    if (!structuredPlan || recommendedStocks.length === 0) {
+      console.error('AI response was missing structured recommendations even after fallback. Raw output:', aiRecommendationsRaw);
+      return jsonResponse({
+        success: true,
+        aiRecommendations: aiRecommendationsRaw,
+        aiResponse: aiRecommendationsRaw,
+        aiResponseRaw: aiRecommendationsRaw,
+        plan: null,
+        confidence: 0,
+        recommendedStocks: [],
+        portfolio: null,
+        warning: 'AI kunde inte struktureras till en portfölj. Råtext returneras utan att skapa portfölj.'
+      });
     }
 
     ensureSum100(recommendedStocks);
@@ -687,6 +975,128 @@ function extractStructuredPlan(rawText: string, riskProfile: any): { plan: any |
   }
 }
 
+function buildFallbackPlanFromText(rawText: string, riskProfile: any): { plan: any; recommendedStocks: Array<{ name: string; symbol?: string; allocation: number; sector?: string; reasoning?: string }> } | null {
+  const fallbackStocks = extractFallbackStocksFromText(rawText, riskProfile);
+  if (fallbackStocks.length === 0) {
+    return null;
+  }
+
+  ensureSum100(fallbackStocks);
+
+  const plan = {
+    action_summary: fallbackActionSummary(riskProfile),
+    risk_alignment: fallbackRiskAlignment(riskProfile),
+    next_steps: buildDefaultNextSteps(riskProfile),
+    recommended_assets: fallbackStocks.map(stock => ({
+      name: stock.name,
+      ticker: stock.symbol || '',
+      allocation_percent: stock.allocation,
+      rationale: stock.reasoning || buildSectorRationale(stock, riskProfile),
+      risk_role: determineRiskRole(stock, riskProfile)
+    })),
+    disclaimer: 'Råden är utbildningsmaterial och ersätter inte personlig rådgivning. Investeringar innebär risk och värdet kan både öka och minska.'
+  };
+
+  return { plan, recommendedStocks: fallbackStocks };
+}
+
+function extractFallbackStocksFromText(rawText: string, riskProfile: any): Array<{ name: string; symbol?: string; allocation: number; sector?: string; reasoning?: string }> {
+  if (!rawText || typeof rawText !== 'string') {
+    return [];
+  }
+
+  const stocks: Array<{ name: string; symbol?: string; allocation: number; sector?: string; reasoning?: string }> = [];
+  const seen = new Set<string>();
+
+  const allocationRegex = /(?:\d+\.\s*|[-*•]\s*)?([A-Za-zÅÄÖåäö0-9 .,&'’\/-]{3,}?)(?:\s*\(([^)]+)\))?(?:\s*[-–—:]\s*(?:Analys|Varför|Reasoning|Roll|Rekommendation)?\s*)?(?:Allokering|Allokation|Vikt|Allocation|Andel)?\s*:?\s*(\d{1,3})\s*%/gim;
+  let match: RegExpExecArray | null;
+
+  while ((match = allocationRegex.exec(rawText)) !== null) {
+    const name = match[1]?.trim();
+    if (!name) continue;
+
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+
+    const rawTicker = match[2]?.trim();
+    const ticker = rawTicker && rawTicker.length <= 10 ? rawTicker.replace(/[^A-Za-z0-9]/g, '').toUpperCase() : undefined;
+    const allocation = Math.max(0, Math.min(100, parseInt(match[3] || '0', 10)));
+    const sector = detectSector(name, ticker);
+
+    stocks.push({
+      name,
+      symbol: ticker,
+      allocation,
+      sector,
+      reasoning: buildSectorRationale({ name, sector }, riskProfile)
+    });
+    seen.add(key);
+  }
+
+  if (stocks.length === 0) {
+    const bulletRegex = /(?:\d+\.\s*|[-*•]\s*)([A-Za-zÅÄÖåäö0-9 .,&'’\/-]{3,}?)(?:\s*\(([^)]+)\))?(?:\s*[-–—:]\s*(.*))?/gim;
+    let bulletMatch: RegExpExecArray | null;
+
+    while ((bulletMatch = bulletRegex.exec(rawText)) !== null) {
+      const name = bulletMatch[1]?.trim();
+      if (!name) continue;
+
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
+
+      const rawTicker = bulletMatch[2]?.trim();
+      const ticker = rawTicker && rawTicker.length <= 10 ? rawTicker.replace(/[^A-Za-z0-9]/g, '').toUpperCase() : undefined;
+      const reasoningText = bulletMatch[3]?.trim();
+      const sector = detectSector(name, ticker);
+
+      stocks.push({
+        name,
+        symbol: ticker,
+        allocation: 0,
+        sector,
+        reasoning: reasoningText && reasoningText.length > 0 ? reasoningText : buildSectorRationale({ name, sector }, riskProfile)
+      });
+      seen.add(key);
+    }
+  }
+
+  if (stocks.length === 0) {
+    return [];
+  }
+
+  let total = stocks.reduce((sum, item) => sum + (Number.isFinite(item.allocation) ? item.allocation : 0), 0);
+  if (!Number.isFinite(total) || total === 0) {
+    const equalWeight = Math.floor(100 / stocks.length);
+    stocks.forEach(stock => {
+      stock.allocation = equalWeight;
+    });
+    let remainder = 100 - equalWeight * stocks.length;
+    let index = 0;
+    while (remainder > 0 && stocks.length > 0) {
+      stocks[index % stocks.length].allocation += 1;
+      remainder -= 1;
+      index += 1;
+    }
+  } else if (total !== 100) {
+    const scale = 100 / total;
+    stocks.forEach(stock => {
+      stock.allocation = Math.round(stock.allocation * scale);
+    });
+    ensureSum100(stocks);
+  }
+
+  stocks.forEach(stock => {
+    if (!stock.sector) {
+      stock.sector = detectSector(stock.name, stock.symbol);
+    }
+    if (!stock.reasoning) {
+      stock.reasoning = buildSectorRationale(stock, riskProfile);
+    }
+  });
+
+  return stocks;
+}
+
 function sanitizeJsonLikeString(rawText: string): string | null {
   if (!rawText) return null;
   const trimmed = rawText.trim();
@@ -711,56 +1121,5 @@ function sanitizeJsonLikeString(rawText: string): string | null {
   }
 
   return trimmed;
-}
-
-function buildFallbackPlan(riskProfile: any, stocks: Array<{ name: string; symbol?: string; allocation: number; sector?: string }>, rawText: string): any {
-  ensureSum100(stocks);
-  const recommended_assets = stocks.map(stock => ({
-    name: stock.name,
-    ticker: stock.symbol || '',
-    allocation_percent: stock.allocation,
-    rationale: buildSectorRationale(stock, riskProfile),
-    risk_role: determineRiskRole(stock, riskProfile)
-  }));
-
-  return {
-    action_summary: fallbackActionSummary(riskProfile),
-    risk_alignment: fallbackRiskAlignment(riskProfile),
-    next_steps: buildDefaultNextSteps(riskProfile),
-    recommended_assets,
-    disclaimer: 'Råden är utbildningsmaterial och ersätter inte personlig rådgivning. Investeringar innebär risk och värdet kan både öka och minska.',
-    raw_model_output: rawText
-  };
-}
-
-function defaultRecommendations(riskProfile: any): Array<{name: string, symbol?: string, allocation: number, sector?: string}> {
-  // Simple defaults tuned by risk tolerance
-  const rt = (riskProfile?.risk_tolerance || 'moderate').toLowerCase();
-  let base: Array<{name: string, symbol?: string, allocation: number, sector?: string}> = [
-    { name: 'Länsförsäkringar Global Indexnära', allocation: 40, sector: 'Indexfond' },
-    { name: 'Spiltan Aktiefond Investmentbolag', allocation: 25, sector: 'Investmentbolag' },
-    { name: 'XACT OMXS30', symbol: 'XACT30', allocation: 20, sector: 'Indexfond' },
-    { name: 'Handelsbanken A', symbol: 'SHB-A', allocation: 15, sector: 'Bank' },
-  ];
-
-  if (rt === 'aggressive') {
-    base = [
-      { name: 'Länsförsäkringar Global Indexnära', allocation: 30, sector: 'Indexfond' },
-      { name: 'Spiltan Aktiefond Investmentbolag', allocation: 25, sector: 'Investmentbolag' },
-      { name: 'Swedbank Robur Ny Teknik A', allocation: 20, sector: 'Teknik' },
-      { name: 'XACT OMXS30', symbol: 'XACT30', allocation: 15, sector: 'Indexfond' },
-      { name: 'Handelsbanken A', symbol: 'SHB-A', allocation: 10, sector: 'Bank' },
-    ];
-  } else if (rt === 'conservative') {
-    base = [
-      { name: 'Länsförsäkringar Global Indexnära', allocation: 45, sector: 'Indexfond' },
-      { name: 'Spiltan Aktiefond Investmentbolag', allocation: 25, sector: 'Investmentbolag' },
-      { name: 'XACT OMXS30', symbol: 'XACT30', allocation: 15, sector: 'Indexfond' },
-      { name: 'Handelsbanken A', symbol: 'SHB-A', allocation: 15, sector: 'Bank' },
-    ];
-  }
-
-  ensureSum100(base);
-  return base;
 }
 
