@@ -502,7 +502,8 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       const { data: aiResponse, error: aiError } = await supabase.functions.invoke('generate-portfolio', {
         body: {
           riskProfileId: riskProfile.id,
-          userId: user.id
+          userId: user.id,
+          conversationPrompt: enhancedPrompt
         }
       });
 

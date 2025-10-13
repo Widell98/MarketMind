@@ -38,9 +38,9 @@ serve(async (req) => {
   }
 
   try {
-    const { riskProfileId, userId } = await req.json();
-    
-    console.log('Generate portfolio request:', { riskProfileId, userId });
+    const { riskProfileId, userId, conversationPrompt } = await req.json();
+
+    console.log('Generate portfolio request:', { riskProfileId, userId, hasConversationPrompt: Boolean(conversationPrompt) });
 
     if (!riskProfileId || !userId) {
       throw new Error('Missing required parameters: riskProfileId and userId');
@@ -251,6 +251,15 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
 
     console.log('Calling OpenAI API with gpt-4o...');
     
+    const messages: Array<{ role: 'system' | 'user'; content: string }> = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage }
+    ];
+
+    if (conversationPrompt && typeof conversationPrompt === 'string' && conversationPrompt.trim().length > 0) {
+      messages.push({ role: 'user', content: conversationPrompt });
+    }
+
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -259,10 +268,7 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
       },
       body: JSON.stringify({
         model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage }
-        ],
+        messages,
         temperature: 0.85,
         max_tokens: 2000,
       }),
