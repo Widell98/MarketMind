@@ -759,7 +759,7 @@ Svara enbart med giltig JSON enligt följande struktur:
   "disclaimer": ""
 }
 
-Inkludera alltid minst 6 och max 8 rekommendationer med tydliga tickers (om tillgängligt), sektor, och tydlig motivering för varje tillgång.
+Inkludera alltid minst 3 och max 8 rekommendationer beroende på risknivå, med tydliga tickers (om tillgängligt), sektor, och tydlig motivering för varje tillgång.
 
 Fokusera extra mycket på att motivera hur varje rekommendation kopplar till användarens mål, tidshorisont, risktolerans och finansiella situation.
 

@@ -378,9 +378,9 @@ const ChatPortfolioAdvisor = () => {
       hasOptions: true,
       showIf: () => conversationData.isBeginnerInvestor === false,
       options: [
-        { value: 'conservative', label: 'Låg risk (±5–10%)' },
-        { value: 'balanced', label: 'Medelrisk (±10–20%)' },
-        { value: 'aggressive', label: 'Hög risk (±30% eller mer)' }
+        { value: 'conservative', label: 'Låg risk' },
+        { value: 'balanced', label: 'Medelrisk' },
+        { value: 'aggressive', label: 'Hög risk' }
       ]
     },
     {
@@ -430,7 +430,7 @@ const ChatPortfolioAdvisor = () => {
     },
     {
       id: 'sectorInterests',
-      question: 'Vilka branscher intresserar dig mest? Lista gärna flera separerade med kommatecken. Exempel: Tech & IT, Hälsa & Life Science, Energi, Konsument & Handel, Fordon & Transport, Industri & Verkstad, Fastigheter, Bank & Finans, Resor & Fritid, Media & Kommunikation, Hållbarhet & Miljö, Råvaror.',
+      question: 'Vilka branscher intresserar dig mest? Lista gärna flera separerade med kommatecken. Exempel: Tech & IT, Hälsa & Life Science, Energi, Konsument & Handel, Fordon & Transport',
       key: 'sectors',
       hasOptions: false,
       processAnswer: (answer: string) => answer.split(',').map(item => item.trim()).filter(item => item.length > 0)
