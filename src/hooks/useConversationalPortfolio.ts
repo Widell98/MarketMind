@@ -1379,7 +1379,8 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         body: {
           riskProfileId: riskProfile.id,
           userId: user.id,
-          conversationData: mergedConversationData
+          conversationData: mergedConversationData,
+          conversationPrompt: enhancedPrompt
         }
       });
 

@@ -110,50 +110,36 @@ med över 15 års erfarenhet av att bygga skräddarsydda portföljer.
 Du arbetar enligt svensk finanslagstiftning och MiFID II-reglerna och
 fokuserar alltid på att skapa trygghet och långsiktigt värde för klienten.
 
-DITT UPPDRAG:
+UPPDRAG:
 - Bygg en komplett portfölj baserad på användarens riskprofil, horisont och mål
-- Portföljen ska bestå av **6–8 unika investeringar**
+- Portföljen ska bestå av 6–8 unika investeringar
 - Endast investeringar tillgängliga via svenska plattformar (Avanza, Nordnet)
 - Alltid korrekt ticker-symbol: **Företag (TICKER)**
 - Balansera mellan svenska aktier, nordiska fonder och globala ETF:er
-- Anpassa rekommendationer för ISK/KF-optimering
-- Summera allokeringar till exakt **100%**
+- Anpassa rekommendationer för ISK/KF-optimering och kundens skattesituation
 
-OBLIGATORISKT FORMAT FÖR VARJE INVESTERING:
-### Exakt företagsnamn (TICKER)
-- **Analys:** Varför denna investering passar användaren (fundamental analys + riskbedömning)
-- **Roll i portföljen:** Hur den kompletterar helheten
-- **Rekommenderad allokering:** XX%
-
-KONKRETA EXEMPEL:
-### Investor AB (INVE-B)
-- **Analys:** Svenskt investmentbolag med diversifierad portfölj och stark historik
-- **Roll i portföljen:** Basexponering mot stabila svenska storbolag
-- **Allokering:** 15%
-
-### Spiltan Aktiefond Investmentbolag
-- **Analys:** Aktivt förvaltad fond med fokus på nordiska investmentbolag, låg avgift
-- **Roll i portföljen:** Diversifiering och långsiktig stabilitet
-- **Allokering:** 20%
-
-### XACT OMXS30 (XACT30)
-- **Analys:** Indexfond som speglar Stockholmsbörsens 30 största bolag
-- **Roll i portföljen:** Kostnadseffektiv bred bas
-- **Allokering:** 25%
-
-FÖRBJUDET:
-- Generella råd utan tickers
-- Att repetera samma investering flera gånger
-- Allmän diversifiering som "råd"
-- Icke-investerbara koncept
-
-KVALITETSKRAV:
-- Alla investeringar ska vara verifierbara med tickers
-- Variera sektorer och ge en balanserad portfölj
-- Anpassa risknivån exakt till användarens profil
-- Avsluta alltid med en **öppen fråga** som bjuder in till vidare dialog
-
-**Disclaimer:** Alla råd är endast i utbildningssyfte. Konsultera alltid en licensierad rådgivare innan du fattar beslut.
+FORMAT- OCH KVALITETSKRAV:
+- Svara ENDAST med giltig JSON på svenska.
+- Följ strukturen nedan (du kan använda nyckeln "allocation" eller "allocation_percent"):
+{
+  "recommendations": [
+    {
+      "name": "",
+      "symbol": "",
+      "sector": "",
+      "reasoning": "",
+      "allocation_percent": 0
+    }
+  ],
+  "summary": "",
+  "risk_alignment": "",
+  "next_steps": [""],
+  "disclaimer": ""
+}
+- Summan av allokeringarna ska vara exakt 100%.
+- Varje rekommendation ska beskriva varför den passar kundens mål, horisont och riskprofil.
+- Undvik generiska råd och säkerställ att varje innehav är handlingsbart på svenska plattformar.
+- Föreslå aldrig identiska portföljer till olika användare.
 `;
 
     let conversationSummary = '';
@@ -348,65 +334,41 @@ KVALITETSKRAV:
     // Enhanced system prompt with professional advisor structure and JSON output
     const systemPrompt = `${contextInfo}
 
-DU ÄR EN LICENSIERAD SVENSK PORTFÖLJRÅDGIVARE:
-- Anpassa varje rekommendation efter kundens riskprofil, mål, tidshorisont och tidigare innehav
-- Tillåt endast investeringar som är handlingsbara via svenska plattformar (Avanza, Nordnet) och kompatibla med ISK/KF
-- Säkerställ att portföljen innehåller 6–8 unika innehav med kompletterande riskroller
-- Variera sektorer, ge tydlig motivering och knyt alltid tillbaka till kundens svar och riskkomfort
-
-SVARSKRAV (RETURNERA ENDAST GILTIG JSON):
-{
-  "action_summary": "2–3 meningar om varför portföljen passar kunden",
-  "risk_alignment": "Hur portföljen möter risktoleransen och tidshorisonten",
-  "next_steps": [
-    "Konkreta åtgärder kunden ska ta inom de kommande månaderna"
-  ],
-  "recommended_assets": [
-    {
-      "name": "Exakt namn på aktie/fond/ETF",
-      "ticker": "Ticker eller fondkod (lämna tom sträng om saknas)",
-      "allocation_percent": 0,
-      "rationale": "Professionell analys kopplad till kundens profil",
-      "risk_role": "Vilken roll innehavet fyller (bas, tillväxt, skydd, satellit, kassaflöde, etc.)"
-    }
-  ],
-  "disclaimer": "Kort juridiskt förbehåll på svenska"
-}
-
-VIKTIGT:
-- Summan av allocation_percent måste vara exakt 100
-- Beskrivningar ska vara handlingsinriktade och använda svensk terminologi
-- Minst en rekommendation ska adressera kundens uttalade intressen/sektorfokus om sådana finns
-- Ange alltid unika tickers och undvik innehav som kunden redan äger
-- Justera risknivån: konservativt = mer defensiva/obligationsliknande, måttligt = balanserad mix, aggressivt = högre tillväxtandel
+Ytterligare instruktioner:
+- Utgå från kundens riskprofil och tidigare svar nedan.
+- Variera sektorer och riskroller så att helheten känns balanserad mot kundens preferenser.
+- När kunden redan äger specifika värdepapper ska du undvika att rekommendera dem igen.
+- Alla texter ska vara på svenska och utan extra kommentarer utanför JSON-formatet.
 `;
 
-    const userMessage = `Skapa en komplett portfölj baserat på denna riskprofil:
+    const baseRiskProfileSummary = `Riskprofil (sammanfattning):
+- Ålder: ${riskProfile.age || 'Ej angiven'}
+- Årsinkomst: ${riskProfile.annual_income ? riskProfile.annual_income.toLocaleString('sv-SE') + ' SEK' : 'Ej angiven'}
+- Månatligt investeringsbelopp: ${riskProfile.monthly_investment_amount ? riskProfile.monthly_investment_amount.toLocaleString('sv-SE') + ' SEK' : 'Ej angivet'}
+- Risktolerans: ${riskProfile.risk_tolerance || 'Medel'}
+- Investeringsmål: ${riskProfile.investment_goal || 'Långsiktig tillväxt'}
+- Tidshorisont: ${riskProfile.investment_horizon || 'Lång'}
+- Erfarenhet: ${riskProfile.investment_experience || 'Medel'}
+- Riskkomfort: ${riskProfile.risk_comfort_level || 5}/10
+- Intressesektorer: ${riskProfile.sector_interests && riskProfile.sector_interests.length ? riskProfile.sector_interests.join(', ') : 'Ej angivet'}
+- Nuvarande portföljvärde: ${riskProfile.current_portfolio_value ? riskProfile.current_portfolio_value.toLocaleString('sv-SE') + ' SEK' : '0 SEK'}`;
 
-Ålder: ${riskProfile.age || 'Ej angiven'}
-Årsinkomst: ${riskProfile.annual_income || 'Ej angiven'} SEK
-Månatligt investeringsbelopp: ${riskProfile.monthly_investment_amount || 'Ej angiven'} SEK
-Risktolerans: ${riskProfile.risk_tolerance || 'Medel'}
-Investeringsmål: ${riskProfile.investment_goal || 'Långsiktig tillväxt'}
-Tidshorisont: ${riskProfile.investment_horizon || 'Lång'}
-Erfarenhet: ${riskProfile.investment_experience || 'Medel'}
-Sektorintressen: ${JSON.stringify(riskProfile.sector_interests || [])}
-Nuvarande portföljvärde: ${riskProfile.current_portfolio_value || 0} SEK
-Riskkomfort: ${riskProfile.risk_comfort_level || 5}/10
-
-Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga på svenska marknader. Fokusera på att ge konkreta rekommendationer med symboler.`;
+    const defaultUserMessage = `Skapa en komplett portfölj till denna kund. Följ alla formatinstruktioner i systemmeddelandet.`;
 
     const messages: Array<{ role: 'system' | 'user'; content: string }> = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userMessage }
+      { role: 'system', content: systemPrompt }
     ];
+
+    if (conversationPrompt && typeof conversationPrompt === 'string' && conversationPrompt.trim().length > 0) {
+      messages.push({ role: 'user', content: conversationPrompt.trim() });
+    } else {
+      messages.push({ role: 'user', content: defaultUserMessage });
+    }
+
+    messages.push({ role: 'user', content: baseRiskProfileSummary });
 
     if (conversationSummary) {
       messages.push({ role: 'user', content: `Fördjupad samtalskontext:\n${conversationSummary}` });
-    }
-
-    if (conversationPrompt && typeof conversationPrompt === 'string' && conversationPrompt.trim().length > 0) {
-      messages.push({ role: 'user', content: conversationPrompt });
     }
 
     if (conversationData && typeof conversationData === 'object') {
