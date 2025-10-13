@@ -25,24 +25,45 @@ interface ConversationData {
   portfolioHelp?: string;
   portfolioSize?: string;
   rebalancingFrequency?: string;
+  portfolioChangeFrequency?: string;
   // Enhanced fields
   monthlyIncome?: string;
+  annualIncome?: string;
   availableCapital?: string;
+  liquidCapital?: string;
   emergencyFund?: string;
+  emergencyBufferMonths?: number;
   financialObligations?: string[];
+  housingSituation?: string;
+  hasLoans?: boolean;
+  loanDetails?: string;
+  hasChildren?: boolean;
   sustainabilityPreference?: string;
   geographicPreference?: string;
   marketCrashReaction?: string;
   volatilityComfort?: number;
   marketExperience?: string;
-  currentAllocation?: string;
+  investmentExperienceLevel?: 'beginner' | 'intermediate' | 'advanced';
+  currentAllocation?: string | Record<string, any>;
+  currentPortfolioValue?: string;
   previousPerformance?: string;
   sectorExposure?: string[];
   investmentStyle?: string;
   dividendYieldRequirement?: string;
   maxDrawdownTolerance?: number;
   specificGoalAmount?: string;
+  targetAmount?: string;
+  targetDate?: string;
   taxConsideration?: string;
+  investmentPurpose?: string[];
+  preferredStockCount?: number;
+  panicSellingHistory?: boolean;
+  controlImportance?: number;
+  activityPreference?: string;
+  overexposureAwareness?: string;
+  communicationStyle?: string;
+  preferredResponseLength?: string;
+  additionalNotes?: string;
 }
 
 export const useConversationalPortfolio = () => {
@@ -189,30 +210,70 @@ GRUNDLÄGGANDE PROFIL:
 - Ålder: ${conversationData.age || 'Ej angiven'}
 - Månatligt investeringsbelopp: ${conversationData.monthlyAmount || 'Ej angiven'} SEK`;
 
+    if (conversationData.annualIncome) {
+      prompt += `
+- Årsinkomst: ${conversationData.annualIncome} SEK`;
+    }
+
+    if (conversationData.monthlyIncome) {
+      prompt += `
+- Månadsinkomst: ${conversationData.monthlyIncome} SEK`;
+    }
+
+    if (conversationData.availableCapital) {
+      prompt += `
+- Tillgängligt kapital för investeringar: ${conversationData.availableCapital}`;
+    }
+
+    if (conversationData.liquidCapital) {
+      prompt += `
+- Likvida medel: ${conversationData.liquidCapital}`;
+    }
+
+    if (typeof conversationData.emergencyBufferMonths === 'number') {
+      prompt += `
+- Buffert (antal månader): ${conversationData.emergencyBufferMonths}`;
+    }
+
+    if (conversationData.emergencyFund) {
+      prompt += `
+- Buffertstatus: ${conversationData.emergencyFund}`;
+    }
+
+    if (conversationData.financialObligations && conversationData.financialObligations.length > 0) {
+      prompt += `
+- Ekonomiska förpliktelser: ${conversationData.financialObligations.join(', ')}`;
+    }
+
+    if (conversationData.housingSituation) {
+      prompt += `
+- Bostadssituation: ${conversationData.housingSituation}`;
+    }
+
+    if (typeof conversationData.hasLoans === 'boolean') {
+      prompt += `
+- Har ytterligare lån: ${conversationData.hasLoans ? 'Ja' : 'Nej'}`;
+    }
+
+    if (conversationData.loanDetails) {
+      prompt += `
+- Lånedetaljer: ${conversationData.loanDetails}`;
+    }
+
+    if (typeof conversationData.hasChildren === 'boolean') {
+      prompt += `
+- Har barn/försörjningsansvar: ${conversationData.hasChildren ? 'Ja' : 'Nej'}`;
+    }
+
+    if (conversationData.currentPortfolioValue) {
+      prompt += `
+- Nuvarande portföljvärde: ${conversationData.currentPortfolioValue}`;
+    }
+
     if (conversationData.isBeginnerInvestor === true) {
       prompt += `
 
 NYBÖRJARE - UTFÖRLIG EKONOMISK PROFIL:`;
-      
-      if (conversationData.monthlyIncome) {
-        prompt += `
-- Månadsinkomst: ${conversationData.monthlyIncome}`;
-      }
-      
-      if (conversationData.availableCapital) {
-        prompt += `
-- Tillgängligt kapital: ${conversationData.availableCapital}`;
-      }
-      
-      if (conversationData.emergencyFund) {
-        prompt += `
-- Ekonomisk buffert: ${conversationData.emergencyFund}`;
-      }
-      
-      if (conversationData.financialObligations && conversationData.financialObligations.length > 0) {
-        prompt += `
-- Ekonomiska förpliktelser: ${conversationData.financialObligations.join(', ')}`;
-      }
       
       prompt += `
 
@@ -380,12 +441,96 @@ EXEMPEL (ANPASSA MED ANVÄNDARSPECIFIKA DATA):
 2. **Fond B (FOND-B)**: Kort beskrivning kopplad till användarens mål. Allokering: 20%`;
     }
 
+    const investmentPurposes = conversationData.investmentPurpose && conversationData.investmentPurpose.length > 0
+      ? conversationData.investmentPurpose
+      : undefined;
+    const combinedGoalAmount = conversationData.specificGoalAmount || conversationData.targetAmount;
+
+    if (
+      investmentPurposes ||
+      combinedGoalAmount ||
+      conversationData.targetDate ||
+      typeof conversationData.preferredStockCount === 'number' ||
+      typeof conversationData.controlImportance === 'number' ||
+      typeof conversationData.panicSellingHistory === 'boolean' ||
+      conversationData.activityPreference ||
+      conversationData.portfolioChangeFrequency ||
+      conversationData.overexposureAwareness ||
+      conversationData.communicationStyle ||
+      conversationData.preferredResponseLength ||
+      conversationData.additionalNotes
+    ) {
+      prompt += `
+
+FÖRDJUPADE PREFERENSER:`;
+
+      if (investmentPurposes) {
+        prompt += `
+- Investeringssyften: ${investmentPurposes.join(', ')}`;
+      }
+
+      if (combinedGoalAmount) {
+        prompt += `
+- Specifikt målbelopp: ${combinedGoalAmount}`;
+      }
+
+      if (conversationData.targetDate) {
+        prompt += `
+- Måldatum för uppnått mål: ${conversationData.targetDate}`;
+      }
+
+      if (typeof conversationData.preferredStockCount === 'number') {
+        prompt += `
+- Önskat antal innehav i portföljen: ${conversationData.preferredStockCount}`;
+      }
+
+      if (typeof conversationData.controlImportance === 'number') {
+        prompt += `
+- Kontrollbehov (1-5): ${conversationData.controlImportance}`;
+      }
+
+      if (typeof conversationData.panicSellingHistory === 'boolean') {
+        prompt += `
+- Har paniksålt tidigare: ${conversationData.panicSellingHistory ? 'Ja' : 'Nej'}`;
+      }
+
+      if (conversationData.activityPreference) {
+        prompt += `
+- Aktivitetspreferens: ${conversationData.activityPreference}`;
+      }
+
+      if (conversationData.portfolioChangeFrequency || conversationData.rebalancingFrequency) {
+        prompt += `
+- Föredragen ombalanseringsfrekvens: ${conversationData.portfolioChangeFrequency || conversationData.rebalancingFrequency}`;
+      }
+
+      if (conversationData.overexposureAwareness) {
+        prompt += `
+- Medvetenhet kring överexponering: ${conversationData.overexposureAwareness}`;
+      }
+
+      if (conversationData.communicationStyle) {
+        prompt += `
+- Önskad kommunikationsstil: ${conversationData.communicationStyle}`;
+      }
+
+      if (conversationData.preferredResponseLength) {
+        prompt += `
+- Önskad svarslängd från rådgivaren: ${conversationData.preferredResponseLength}`;
+      }
+
+      if (conversationData.additionalNotes) {
+        prompt += `
+- Extra anteckningar: ${conversationData.additionalNotes}`;
+      }
+    }
+
     // Add common goals and specifications
-    if (conversationData.specificGoalAmount) {
+    if (combinedGoalAmount) {
       prompt += `
 
 SPECIFIKT MÅL:
-- Målbeskrivning: ${conversationData.specificGoalAmount}`;
+- Målbeskrivning: ${combinedGoalAmount}`;
     }
 
     prompt += `
@@ -438,56 +583,496 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       return null;
     }
 
+    const ensureString = (value: unknown): string | undefined =>
+      typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+
+    const ensureNumber = (value: unknown): number | undefined =>
+      typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
+    const ensureBoolean = (value: unknown): boolean | undefined =>
+      typeof value === 'boolean' ? value : undefined;
+
+    const ensureStringArray = (value: unknown): string[] | undefined => {
+      if (!value) return undefined;
+      if (Array.isArray(value)) {
+        const parsed = value
+          .map(item => (typeof item === 'string' ? item.trim() : undefined))
+          .filter((item): item is string => Boolean(item && item.length > 0));
+        return parsed.length > 0 ? Array.from(new Set(parsed)) : undefined;
+      }
+      if (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          return ensureStringArray(parsed);
+        } catch {
+          const splitted = value
+            .split(/[,;]/)
+            .map(part => part.trim())
+            .filter(part => part.length > 0);
+          return splitted.length > 0 ? Array.from(new Set(splitted)) : undefined;
+        }
+      }
+      return undefined;
+    };
+
+    const ensureHoldingsArray = (
+      value: unknown
+    ): ConversationData['currentHoldings'] | undefined => {
+      if (!value) return undefined;
+      if (Array.isArray(value)) {
+        return value.filter(item => item && typeof item === 'object') as ConversationData['currentHoldings'];
+      }
+      if (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (Array.isArray(parsed)) {
+            return parsed.filter(item => item && typeof item === 'object') as ConversationData['currentHoldings'];
+          }
+        } catch (error) {
+          console.warn('Could not parse holdings JSON from existing profile', error);
+        }
+      }
+      return undefined;
+    };
+
+    const extractNumericValue = (value: string | number | undefined): number | null => {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+      }
+
+      if (typeof value !== 'string') {
+        return null;
+      }
+
+      const normalized = value.replace(/\s+/g, '');
+      const rangeParts = normalized.split(/[-–—]/).map(part => part.replace(/[^\d.,]/g, ''));
+      const numbers = rangeParts
+        .map(part => {
+          if (!part) return NaN;
+          const withDecimal = part.replace(',', '.');
+          const parsed = Number(withDecimal);
+          return Number.isFinite(parsed) ? parsed : NaN;
+        })
+        .filter(num => Number.isFinite(num));
+
+      if (numbers.length === 0) {
+        return null;
+      }
+
+      if (numbers.length === 1) {
+        return Math.round(numbers[0]);
+      }
+
+      const sum = numbers.reduce((total, num) => total + num, 0);
+      return Math.round(sum / numbers.length);
+    };
+
+    const normalizeExistingProfile = (profile: any): ConversationData => {
+      if (!profile) {
+        return {};
+      }
+
+      const normalized: ConversationData = {};
+
+      const age = ensureNumber(profile.age);
+      if (typeof age === 'number') {
+        normalized.age = age;
+      }
+
+      normalized.investmentGoal = ensureString(profile.investment_goal);
+      normalized.timeHorizon = ensureString(profile.investment_horizon);
+      normalized.riskTolerance = ensureString(profile.risk_tolerance);
+
+      const monthlyInvestment = ensureNumber(profile.monthly_investment_amount);
+      if (typeof monthlyInvestment === 'number') {
+        normalized.monthlyAmount = monthlyInvestment.toString();
+      }
+
+      const annualIncome = ensureNumber(profile.annual_income);
+      if (typeof annualIncome === 'number') {
+        normalized.annualIncome = annualIncome.toString();
+        normalized.monthlyIncome = Math.round(annualIncome / 12).toString();
+      }
+
+      const liquidCapital = ensureNumber(profile.liquid_capital);
+      if (typeof liquidCapital === 'number') {
+        normalized.availableCapital = liquidCapital.toString();
+        normalized.liquidCapital = liquidCapital.toString();
+      }
+
+      const emergencyBuffer = ensureNumber(profile.emergency_buffer_months);
+      if (typeof emergencyBuffer === 'number') {
+        normalized.emergencyBufferMonths = emergencyBuffer;
+      }
+
+      const investmentPurpose = ensureStringArray(profile.investment_purpose);
+      if (investmentPurpose) {
+        normalized.investmentPurpose = investmentPurpose;
+      }
+
+      const targetAmount = ensureNumber(profile.target_amount);
+      if (typeof targetAmount === 'number') {
+        normalized.targetAmount = targetAmount.toString();
+        normalized.specificGoalAmount = targetAmount.toString();
+      }
+
+      const targetDate = ensureString(profile.target_date);
+      if (targetDate) {
+        normalized.targetDate = targetDate;
+      }
+
+      const preferredStockCount = ensureNumber(profile.preferred_stock_count);
+      if (typeof preferredStockCount === 'number') {
+        normalized.preferredStockCount = preferredStockCount;
+      }
+
+      const riskComfort = ensureNumber(profile.risk_comfort_level);
+      if (typeof riskComfort === 'number') {
+        normalized.volatilityComfort = riskComfort;
+      }
+
+      const panicSellingHistory = ensureBoolean(profile.panic_selling_history);
+      if (typeof panicSellingHistory === 'boolean') {
+        normalized.panicSellingHistory = panicSellingHistory;
+      }
+
+      const controlImportance = ensureNumber(profile.control_importance);
+      if (typeof controlImportance === 'number') {
+        normalized.controlImportance = controlImportance;
+      }
+
+      const crashReaction = ensureString(profile.market_crash_reaction);
+      if (crashReaction) {
+        normalized.marketCrashReaction = crashReaction;
+      }
+
+      const changeFrequency = ensureString(profile.portfolio_change_frequency);
+      if (changeFrequency) {
+        normalized.portfolioChangeFrequency = changeFrequency;
+        normalized.rebalancingFrequency = changeFrequency;
+      }
+
+      const activityPreference = ensureString(profile.activity_preference);
+      if (activityPreference) {
+        normalized.activityPreference = activityPreference;
+      }
+
+      const stylePreference = ensureString(profile.investment_style_preference);
+      if (stylePreference) {
+        normalized.investmentStyle = stylePreference;
+      }
+
+      const investmentExperience = ensureString(profile.investment_experience) as ConversationData['investmentExperienceLevel'] | undefined;
+      if (investmentExperience) {
+        normalized.investmentExperienceLevel = investmentExperience;
+        normalized.isBeginnerInvestor = investmentExperience === 'beginner';
+      }
+
+      const currentPortfolioValue = ensureNumber(profile.current_portfolio_value);
+      if (typeof currentPortfolioValue === 'number') {
+        normalized.currentPortfolioValue = currentPortfolioValue.toString();
+      }
+
+      const overexposureAwareness = ensureString(profile.overexposure_awareness);
+      if (overexposureAwareness) {
+        normalized.overexposureAwareness = overexposureAwareness;
+      }
+
+      const sectorInterests = ensureStringArray(profile.sector_interests);
+      if (sectorInterests) {
+        normalized.sectorExposure = sectorInterests;
+        normalized.sectors = sectorInterests;
+      }
+
+      const holdings = ensureHoldingsArray(profile.current_holdings);
+      if (holdings) {
+        normalized.currentHoldings = holdings;
+      }
+
+      if (profile.current_allocation) {
+        normalized.currentAllocation = profile.current_allocation;
+      }
+
+      const housingSituation = ensureString(profile.housing_situation);
+      if (housingSituation) {
+        normalized.housingSituation = housingSituation;
+      }
+
+      const hasLoans = ensureBoolean(profile.has_loans);
+      if (typeof hasLoans === 'boolean') {
+        normalized.hasLoans = hasLoans;
+      }
+
+      const loanDetails = ensureString(profile.loan_details);
+      if (loanDetails) {
+        normalized.loanDetails = loanDetails;
+      }
+
+      const hasChildren = ensureBoolean(profile.has_children);
+      if (typeof hasChildren === 'boolean') {
+        normalized.hasChildren = hasChildren;
+      }
+
+      return normalized;
+    };
+
+    const mergeProfiles = (base: ConversationData, updates: ConversationData): ConversationData => {
+      const merged: ConversationData = { ...base };
+
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === undefined || value === null) {
+          return;
+        }
+
+        if (typeof value === 'string' && value.trim().length === 0) {
+          return;
+        }
+
+        if (Array.isArray(value)) {
+          if (value.length === 0) {
+            return;
+          }
+          (merged as any)[key] = value;
+          return;
+        }
+
+        (merged as any)[key] = value;
+      });
+
+      return merged;
+    };
+
+    const resolveInvestmentExperience = (data: ConversationData): 'beginner' | 'intermediate' | 'advanced' => {
+      if (data.investmentExperienceLevel) {
+        return data.investmentExperienceLevel;
+      }
+
+      if (data.experience) {
+        const experienceMap: Record<string, 'beginner' | 'intermediate' | 'advanced'> = {
+          beginner: 'beginner',
+          intermediate: 'intermediate',
+          advanced: 'advanced',
+          expert: 'advanced',
+          novice: 'beginner',
+        };
+        const normalized = data.experience.toLowerCase();
+        if (experienceMap[normalized]) {
+          return experienceMap[normalized];
+        }
+      }
+
+      if (data.marketExperience) {
+        const marketMap: Record<string, 'beginner' | 'intermediate' | 'advanced'> = {
+          '0-2': 'beginner',
+          '0-3': 'beginner',
+          '2-5': 'intermediate',
+          '3-5': 'intermediate',
+          '5-10': 'advanced',
+          '10-20': 'advanced',
+          '20+': 'advanced',
+        };
+        if (marketMap[data.marketExperience]) {
+          return marketMap[data.marketExperience];
+        }
+      }
+
+      if (data.isBeginnerInvestor === true) {
+        return 'beginner';
+      }
+
+      if (data.isBeginnerInvestor === false) {
+        return 'advanced';
+      }
+
+      return 'intermediate';
+    };
+
     setLoading(true);
 
     try {
-      const enhancedPrompt = buildEnhancedAIPrompt(conversationData);
+      const { data: latestRiskProfile } = await supabase
+        .from('user_risk_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const existingProfileData = normalizeExistingProfile(latestRiskProfile);
+      let mergedConversationData = mergeProfiles(existingProfileData, conversationData);
+
+      if (!mergedConversationData.liquidCapital && mergedConversationData.availableCapital) {
+        mergedConversationData.liquidCapital = mergedConversationData.availableCapital;
+      }
+
+      if (!mergedConversationData.availableCapital && mergedConversationData.liquidCapital) {
+        mergedConversationData.availableCapital = mergedConversationData.liquidCapital;
+      }
+
+      if (!mergedConversationData.portfolioChangeFrequency && mergedConversationData.rebalancingFrequency) {
+        mergedConversationData.portfolioChangeFrequency = mergedConversationData.rebalancingFrequency;
+      }
+
+      if (!mergedConversationData.rebalancingFrequency && mergedConversationData.portfolioChangeFrequency) {
+        mergedConversationData.rebalancingFrequency = mergedConversationData.portfolioChangeFrequency;
+      }
+
+      if (!mergedConversationData.targetAmount && mergedConversationData.specificGoalAmount) {
+        mergedConversationData.targetAmount = mergedConversationData.specificGoalAmount;
+      }
+
+      if (!mergedConversationData.specificGoalAmount && mergedConversationData.targetAmount) {
+        mergedConversationData.specificGoalAmount = mergedConversationData.targetAmount;
+      }
+
+      if (!mergedConversationData.investmentPurpose && mergedConversationData.investmentGoal) {
+        mergedConversationData.investmentPurpose = [mergedConversationData.investmentGoal];
+      }
+
+      if (!mergedConversationData.monthlyIncome && mergedConversationData.annualIncome) {
+        const annualNumeric = extractNumericValue(mergedConversationData.annualIncome);
+        if (annualNumeric !== null) {
+          mergedConversationData.monthlyIncome = Math.round(annualNumeric / 12).toString();
+        }
+      }
+
+      if (!mergedConversationData.annualIncome && mergedConversationData.monthlyIncome) {
+        const monthlyNumeric = extractNumericValue(mergedConversationData.monthlyIncome);
+        if (monthlyNumeric !== null) {
+          mergedConversationData.annualIncome = (monthlyNumeric * 12).toString();
+        }
+      }
+
+      if (!mergedConversationData.volatilityComfort && typeof mergedConversationData.emergencyBufferMonths === 'number') {
+        mergedConversationData.volatilityComfort = mergedConversationData.isBeginnerInvestor ? 3 : 5;
+      }
+
+      const enhancedPrompt = buildEnhancedAIPrompt(mergedConversationData);
       console.log('Generated enhanced AI prompt:', enhancedPrompt);
 
       // Create enhanced risk profile data with all new fields
       const combinedSectorInterests = Array.from(new Set([
-        ...(conversationData.sectors || []),
-        ...(conversationData.interests || []),
-        ...(conversationData.sectorExposure || []),
-        conversationData.sustainabilityPreference ? `Hållbarhetsfokus: ${conversationData.sustainabilityPreference}` : null,
-        conversationData.geographicPreference ? `Geografisk inriktning: ${conversationData.geographicPreference}` : null,
-        conversationData.dividendYieldRequirement ? `Utdelningskrav: ${conversationData.dividendYieldRequirement}` : null,
+        ...(mergedConversationData.sectors || []),
+        ...(mergedConversationData.interests || []),
+        ...(mergedConversationData.sectorExposure || []),
+        ...(existingProfileData.sectors || []),
+        mergedConversationData.sustainabilityPreference ? `Hållbarhetsfokus: ${mergedConversationData.sustainabilityPreference}` : null,
+        mergedConversationData.geographicPreference ? `Geografisk inriktning: ${mergedConversationData.geographicPreference}` : null,
+        mergedConversationData.dividendYieldRequirement ? `Utdelningskrav: ${mergedConversationData.dividendYieldRequirement}` : null,
       ].filter(Boolean)));
 
+      const resolvedMonthlyInvestment = extractNumericValue(mergedConversationData.monthlyAmount);
+      const resolvedLiquidCapital = extractNumericValue(mergedConversationData.liquidCapital || mergedConversationData.availableCapital);
+      const resolvedTargetAmount = extractNumericValue(mergedConversationData.targetAmount || mergedConversationData.specificGoalAmount);
+      const resolvedAnnualIncome = extractNumericValue(mergedConversationData.annualIncome);
+      const resolvedMonthlyIncome = extractNumericValue(mergedConversationData.monthlyIncome);
+      const resolvedCurrentPortfolioValue = extractNumericValue(mergedConversationData.currentPortfolioValue);
+
+      const emergencyBufferMonths = typeof mergedConversationData.emergencyBufferMonths === 'number'
+        ? mergedConversationData.emergencyBufferMonths
+        : mergedConversationData.emergencyFund === 'yes_full'
+          ? 6
+          : mergedConversationData.emergencyFund === 'yes_partial'
+            ? 2
+            : 0;
+
+      const investmentPurpose = mergedConversationData.investmentPurpose && mergedConversationData.investmentPurpose.length > 0
+        ? mergedConversationData.investmentPurpose
+        : undefined;
+
+      const panicSellingHistory = typeof mergedConversationData.panicSellingHistory === 'boolean'
+        ? mergedConversationData.panicSellingHistory
+        : mergedConversationData.marketCrashReaction === 'sell_all' || mergedConversationData.marketCrashReaction === 'sell_some';
+
+      const controlImportance = typeof mergedConversationData.controlImportance === 'number'
+        ? mergedConversationData.controlImportance
+        : 3;
+
+      const activityPreference = mergedConversationData.activityPreference || (mergedConversationData.isBeginnerInvestor ? 'passive' : 'active');
+
+      const overexposureAwareness = mergedConversationData.overexposureAwareness || (mergedConversationData.isBeginnerInvestor ? 'low' : 'high');
+
+      const preferredStockCount = typeof mergedConversationData.preferredStockCount === 'number'
+        ? mergedConversationData.preferredStockCount
+        : mergedConversationData.isBeginnerInvestor ? 5 : 12;
+
+      const riskComfortLevel = mergedConversationData.volatilityComfort || (mergedConversationData.isBeginnerInvestor ? 3 : 5);
+
+      const investmentExperienceLevel = resolveInvestmentExperience(mergedConversationData);
+
+      const hasLoans = typeof mergedConversationData.hasLoans === 'boolean'
+        ? mergedConversationData.hasLoans
+        : Boolean(mergedConversationData.financialObligations?.some(obligation =>
+            ['mortgage', 'car_loan', 'student_loan'].includes(obligation)
+          ));
+
+      const hasChildren = typeof mergedConversationData.hasChildren === 'boolean'
+        ? mergedConversationData.hasChildren
+        : Boolean(mergedConversationData.financialObligations?.includes('child_support'));
+
+      const loanDetails = mergedConversationData.loanDetails
+        || (mergedConversationData.financialObligations && mergedConversationData.financialObligations.length > 0
+          ? mergedConversationData.financialObligations.join(', ')
+          : null);
+
+      const portfolioChangeFrequency = mergedConversationData.portfolioChangeFrequency || mergedConversationData.rebalancingFrequency || null;
+
+      const annualIncomeValue = resolvedAnnualIncome !== null
+        ? resolvedAnnualIncome
+        : resolvedMonthlyIncome !== null
+          ? resolvedMonthlyIncome * 12
+          : null;
+
+      const currentPortfolioValue = resolvedCurrentPortfolioValue !== null
+        ? resolvedCurrentPortfolioValue
+        : mergedConversationData.portfolioSize === 'small'
+          ? 50000
+          : mergedConversationData.portfolioSize === 'medium'
+            ? 300000
+            : mergedConversationData.portfolioSize === 'large'
+              ? 750000
+              : mergedConversationData.portfolioSize === 'very_large'
+                ? 1500000
+                : null;
+
+      const currentAllocationValue = typeof mergedConversationData.currentAllocation === 'string'
+        ? { self_reported: mergedConversationData.currentAllocation }
+        : mergedConversationData.currentAllocation || {};
+
+      const monthlyInvestmentAmount = resolvedMonthlyInvestment !== null ? resolvedMonthlyInvestment : 5000;
+      const liquidCapitalValue = resolvedLiquidCapital !== null ? resolvedLiquidCapital : null;
+      const targetAmountValue = resolvedTargetAmount !== null ? resolvedTargetAmount : null;
+
       const riskProfileData = {
-        age: conversationData.age || 25,
-        monthly_investment_amount: conversationData.monthlyAmount ?
-          parseInt(conversationData.monthlyAmount.replace(/[^\d]/g, '')) || 5000 : 5000,
-        investment_horizon: conversationData.timeHorizon || null,
-        investment_goal: conversationData.investmentGoal || 'growth',
-        risk_tolerance: conversationData.riskTolerance || null,
-        investment_experience: conversationData.isBeginnerInvestor ? 'beginner' : 'advanced',
+        age: mergedConversationData.age ?? existingProfileData.age ?? 25,
+        monthly_investment_amount: monthlyInvestmentAmount,
+        investment_horizon: mergedConversationData.timeHorizon || null,
+        investment_goal: mergedConversationData.investmentGoal || 'growth',
+        risk_tolerance: mergedConversationData.riskTolerance || null,
+        investment_experience: investmentExperienceLevel,
         sector_interests: combinedSectorInterests,
-        current_holdings: conversationData.currentHoldings || [],
-        current_allocation: conversationData.currentAllocation ? { self_reported: conversationData.currentAllocation } : {},
-        housing_situation: null,
-        has_loans: conversationData.financialObligations?.includes('mortgage') || conversationData.financialObligations?.includes('car_loan') || conversationData.financialObligations?.includes('student_loan') || false,
-        loan_details: conversationData.financialObligations ? conversationData.financialObligations.join(', ') : null,
-        has_children: conversationData.financialObligations?.includes('child_support') || false,
-        liquid_capital: conversationData.availableCapital ? parseInt(conversationData.availableCapital.replace(/[^\d]/g, '')) || null : null,
-        emergency_buffer_months: conversationData.emergencyFund === 'yes_full' ? 6 : conversationData.emergencyFund === 'yes_partial' ? 2 : 0,
-        investment_purpose: [conversationData.investmentGoal || 'wealth_building'],
-        target_amount: conversationData.specificGoalAmount ? parseInt(conversationData.specificGoalAmount.replace(/[^\d]/g, '')) || null : null,
-        target_date: null,
-        risk_comfort_level: conversationData.volatilityComfort || (conversationData.isBeginnerInvestor ? 3 : 5),
-        panic_selling_history: conversationData.marketCrashReaction === 'sell_all' || conversationData.marketCrashReaction === 'sell_some',
-        control_importance: 3,
-        market_crash_reaction: conversationData.marketCrashReaction || null,
-        portfolio_change_frequency: conversationData.rebalancingFrequency || null,
-        activity_preference: conversationData.isBeginnerInvestor ? 'passive' : 'active',
-        investment_style_preference: conversationData.investmentStyle || (conversationData.isBeginnerInvestor ? 'long_term' : 'balanced'),
-        overexposure_awareness: conversationData.isBeginnerInvestor ? 'low' : 'high',
-        preferred_stock_count: conversationData.isBeginnerInvestor ? 5 : 12,
-        annual_income: conversationData.monthlyIncome ? parseInt(conversationData.monthlyIncome.replace(/[^\d]/g, '')) * 12 || null : null,
-        current_portfolio_value: conversationData.portfolioSize === 'small' ? 50000 : 
-                                conversationData.portfolioSize === 'medium' ? 300000 : 
-                                conversationData.portfolioSize === 'large' ? 750000 : 
-                                conversationData.portfolioSize === 'very_large' ? 1500000 : null,
+        current_holdings: mergedConversationData.currentHoldings || [],
+        current_allocation: currentAllocationValue,
+        housing_situation: mergedConversationData.housingSituation || null,
+        has_loans: hasLoans,
+        loan_details: loanDetails,
+        has_children: hasChildren,
+        liquid_capital: liquidCapitalValue,
+        emergency_buffer_months: emergencyBufferMonths,
+        investment_purpose: investmentPurpose || (mergedConversationData.investmentGoal ? [mergedConversationData.investmentGoal] : ['wealth_building']),
+        target_amount: targetAmountValue,
+        target_date: mergedConversationData.targetDate || null,
+        risk_comfort_level: riskComfortLevel,
+        panic_selling_history: panicSellingHistory,
+        control_importance: controlImportance,
+        market_crash_reaction: mergedConversationData.marketCrashReaction || null,
+        portfolio_change_frequency: portfolioChangeFrequency,
+        activity_preference: activityPreference,
+        investment_style_preference: mergedConversationData.investmentStyle || (investmentExperienceLevel === 'beginner' ? 'long_term' : 'balanced'),
+        overexposure_awareness: overexposureAwareness,
+        preferred_stock_count: preferredStockCount,
+        annual_income: annualIncomeValue,
+        current_portfolio_value: currentPortfolioValue,
         user_id: user.id
       };
 
@@ -513,7 +1098,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
           riskProfileId: riskProfile.id,
           userId: user.id,
           conversationPrompt: enhancedPrompt,
-          conversationData
+          conversationData: mergedConversationData
         }
       });
 
@@ -605,27 +1190,28 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         }
       }
 
-      const riskTolerance = conversationData.riskTolerance?.toLowerCase();
+      const riskTolerance = mergedConversationData.riskTolerance?.toLowerCase();
       const expectedReturn = riskTolerance === 'aggressive' ? 0.12 : riskTolerance === 'conservative' ? 0.05 : 0.08;
-      const comfortScore = conversationData.volatilityComfort ?? (conversationData.isBeginnerInvestor ? 3 : 5);
+      const comfortScore = riskComfortLevel ?? 5;
       const baseRiskScore = riskTolerance === 'aggressive' ? 7 : riskTolerance === 'conservative' ? 3 : 5;
       const combinedRiskScore = Math.round((baseRiskScore + comfortScore) / 2);
 
       // Create enhanced asset allocation with all conversation data and AI analysis
       const assetAllocation = {
-        conversation_data: JSON.parse(JSON.stringify(conversationData)),
+        conversation_data: JSON.parse(JSON.stringify(mergedConversationData)),
+        original_conversation_data: JSON.parse(JSON.stringify(conversationData)),
         ai_strategy: structuredPlan || aiRecommendationText,
         ai_strategy_raw: aiRecommendationText,
         ai_prompt_used: enhancedPrompt,
         structured_plan: structuredPlan,
         stock_recommendations: stockRecommendations,
         risk_profile_summary: {
-          experience_level: conversationData.isBeginnerInvestor ? 'beginner' : 'advanced',
-          risk_comfort: conversationData.volatilityComfort || 5,
-          geographic_preference: conversationData.geographicPreference,
-          sustainability_focus: conversationData.sustainabilityPreference,
-          investment_style: conversationData.investmentStyle,
-          market_crash_behavior: conversationData.marketCrashReaction
+          experience_level: investmentExperienceLevel,
+          risk_comfort: riskComfortLevel,
+          geographic_preference: mergedConversationData.geographicPreference,
+          sustainability_focus: mergedConversationData.sustainabilityPreference,
+          investment_style: mergedConversationData.investmentStyle,
+          market_crash_behavior: mergedConversationData.marketCrashReaction
         },
         analysis_metadata: {
           created_at: new Date().toISOString(),

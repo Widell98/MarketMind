@@ -213,8 +213,30 @@ KVALITETSKRAV:
       const monthlyIncome = asNumber(rawData.monthlyIncome);
       addDetail('Månadsinkomst', monthlyIncome !== null && Number.isFinite(monthlyIncome) ? `${monthlyIncome.toLocaleString('sv-SE')} SEK` : null);
 
+      const annualIncome = asNumber(rawData.annualIncome);
+      addDetail('Årsinkomst', annualIncome !== null && Number.isFinite(annualIncome) ? `${annualIncome.toLocaleString('sv-SE')} SEK` : null);
+
       const capital = asNumber(rawData.availableCapital);
       addDetail('Tillgängligt kapital', capital !== null && Number.isFinite(capital) ? `${capital.toLocaleString('sv-SE')} SEK` : null);
+
+      const liquidCapital = asNumber(rawData.liquidCapital);
+      addDetail('Likvida medel', liquidCapital !== null && Number.isFinite(liquidCapital) ? `${liquidCapital.toLocaleString('sv-SE')} SEK` : null);
+
+      if (typeof rawData.housingSituation === 'string') {
+        addDetail('Bostadssituation', rawData.housingSituation);
+      }
+
+      if (typeof rawData.hasLoans === 'boolean') {
+        addDetail('Har lån', rawData.hasLoans ? 'Ja' : 'Nej');
+      }
+
+      if (typeof rawData.loanDetails === 'string' && rawData.loanDetails.trim().length > 0) {
+        addDetail('Lånedetaljer', rawData.loanDetails);
+      }
+
+      if (typeof rawData.hasChildren === 'boolean') {
+        addDetail('Har försörjningsansvar', rawData.hasChildren ? 'Ja' : 'Nej');
+      }
 
       if (typeof rawData.emergencyFund === 'string') {
         const emergencyMap: Record<string, string> = {
@@ -225,14 +247,50 @@ KVALITETSKRAV:
         addDetail('Buffertstatus', emergencyMap[rawData.emergencyFund] || rawData.emergencyFund);
       }
 
+      if (typeof rawData.emergencyBufferMonths === 'number' && Number.isFinite(rawData.emergencyBufferMonths)) {
+        addDetail('Buffert (månader)', rawData.emergencyBufferMonths);
+      }
+
       addArrayDetail('Ekonomiska åtaganden', rawData.financialObligations);
       addArrayDetail('Föredragna sektorer', rawData.sectors || rawData.sectorExposure);
       addArrayDetail('Särskilda intressen', rawData.interests);
       addArrayDetail('Föredragna bolag', rawData.companies);
+      addArrayDetail('Investeringssyften', rawData.investmentPurpose);
+
+      const targetAmount = asNumber(rawData.targetAmount ?? rawData.specificGoalAmount);
+      addDetail('Målbelopp', targetAmount !== null && Number.isFinite(targetAmount) ? `${targetAmount.toLocaleString('sv-SE')} SEK` : null);
+
+      addDetail('Måldatum', asString(rawData.targetDate));
+
+      if (typeof rawData.preferredStockCount === 'number' && Number.isFinite(rawData.preferredStockCount)) {
+        addDetail('Önskat antal innehav', rawData.preferredStockCount);
+      }
+
+      if (typeof rawData.controlImportance === 'number' && Number.isFinite(rawData.controlImportance)) {
+        addDetail('Kontrollbehov (1-5)', rawData.controlImportance);
+      }
+
+      if (typeof rawData.panicSellingHistory === 'boolean') {
+        addDetail('Historik av panikförsäljning', rawData.panicSellingHistory ? 'Ja' : 'Nej');
+      }
+
+      addDetail('Aktivitetsnivå', asString(rawData.activityPreference));
+      addDetail('Ombalanseringsfrekvens', asString(rawData.portfolioChangeFrequency || rawData.rebalancingFrequency));
+      addDetail('Medvetenhet om överexponering', asString(rawData.overexposureAwareness));
+
+      const currentPortfolioValue = asNumber(rawData.currentPortfolioValue);
+      addDetail('Nuvarande portföljvärde (rapport)', currentPortfolioValue !== null && Number.isFinite(currentPortfolioValue) ? `${currentPortfolioValue.toLocaleString('sv-SE')} SEK` : null);
 
       const helpNeeded = asString(rawData.portfolioHelp);
       if (helpNeeded) {
         details.push(`Specifikt stöd som efterfrågas: ${helpNeeded}`);
+      }
+
+      addDetail('Önskad kommunikationsstil', asString(rawData.communicationStyle));
+      addDetail('Önskad svarslängd', asString(rawData.preferredResponseLength));
+
+      if (typeof rawData.additionalNotes === 'string' && rawData.additionalNotes.trim().length > 0) {
+        details.push(`Ytterligare anteckningar: ${rawData.additionalNotes.trim()}`);
       }
 
       if (details.length > 0) {
