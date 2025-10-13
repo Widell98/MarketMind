@@ -335,9 +335,7 @@ serve(async (req) => {
           return raw.preferredAssets.trim();
         }
       }
-      return riskProfile?.preferred_assets && riskProfile.preferred_assets.length
-        ? riskProfile.preferred_assets.join(', ')
-        : 'Ej angivet';
+      return 'Ej angivet';
     })();
 
     const riskToleranceSummary = (() => {

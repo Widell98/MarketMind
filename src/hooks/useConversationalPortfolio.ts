@@ -22,6 +22,7 @@ export interface ConversationData {
   age?: number;
   experience?: string;
   sectors?: string[];
+  sectorInterests?: string[];
   interests?: string[];
   companies?: string[];
   portfolioHelp?: string;
@@ -997,6 +998,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       if (sectorInterests) {
         normalized.sectorExposure = sectorInterests;
         normalized.sectors = sectorInterests;
+        normalized.sectorInterests = sectorInterests;
       }
 
       const preferredAssets = ensureStringArray(profile.preferred_assets);
@@ -1352,6 +1354,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       }
 
       mergedConversationData.sectors = sectorInterestsForProfile;
+      mergedConversationData.sectorInterests = sectorInterestsForProfile;
 
       const emergencyBufferMonths = typeof mergedConversationData.emergencyBufferMonths === 'number'
         ? mergedConversationData.emergencyBufferMonths
@@ -1462,7 +1465,6 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         risk_tolerance: mergedConversationData.riskTolerance || null,
         investment_experience: investmentExperienceLevel,
         sector_interests: sectorInterestsForProfile,
-        preferred_assets: resolvedPreferredAsset ? [resolvedPreferredAsset] : null,
         current_holdings: mergedConversationData.currentHoldings || [],
         current_allocation: currentAllocationValue,
         housing_situation: mergedConversationData.housingSituation || null,
