@@ -1100,13 +1100,20 @@ const ChatPortfolioAdvisor = () => {
     return [];
   };
 
-  const buildAdvisorSummaryPrompt = (data: ConversationData, existingAnalysis?: string) => {
+  const buildAdvisorSummaryPrompt = (
+    data: ConversationData,
+    existingAnalysis?: string,
+    riskProfile?: Record<string, unknown>
+  ) => {
     const conversationJson = JSON.stringify(data, null, 2);
     const previousAnalysis = existingAnalysis
       ? `Tidigare AI-analys att ta hänsyn till:\n${existingAnalysis}\n\n`
       : '';
+    const riskProfileSection = riskProfile
+      ? `Riskprofil från databasen:\n${JSON.stringify(riskProfile, null, 2)}\n\n`
+      : '';
 
-    return `Du är en erfaren svensk investeringsrådgivare som analyserar en användares profil och ger personliga rekommendationer.\n\nAnalysera följande data:\n${conversationJson}\n\n${previousAnalysis}Skriv ett svar på svenska i två delar:\n\nEn sammanhängande rådgivartext (3–6 meningar) där du förklarar:\n\nanvändarens riskprofil och sparhorisont,\n\nhur användaren bör tänka och agera kring investeringar,\n\nvilka typer av tillgångar (aktier, fonder, räntor, indexfonder etc.) som passar,\n\noch avsluta med en trygg slutsats som passar användarens profil.\n\nEn JSON-lista med 5–8 rekommenderade investeringar:\n{\n"recommendations": [\n{ "name": "Bolag eller fondnamn", "ticker": "TICKER", "reason": "Kort motivering" }\n]\n}\n\nSeparera textdelen och JSON-delen med raden:\n---JSON---\n\nSkapa alltid unika, datadrivna rekommendationer baserat på användarens profil. Ingen hårdkodning.`;
+    return `Du är en erfaren svensk investeringsrådgivare som analyserar en användares profil och ger personliga rekommendationer.\n\nAnalysera följande data:\n${conversationJson}\n\n${riskProfileSection}${previousAnalysis}Skriv ett svar på svenska i två delar:\n\nEn sammanhängande rådgivartext (3–6 meningar) där du förklarar:\n\nanvändarens riskprofil och sparhorisont,\n\nhur användaren bör tänka och agera kring investeringar,\n\nvilka typer av tillgångar (aktier, fonder, räntor, indexfonder etc.) som passar,\n\noch avsluta med en trygg slutsats som passar användarens profil.\n\nEn JSON-lista med 5–8 rekommenderade investeringar:\n{\n"recommendations": [\n{ "name": "Bolag eller fondnamn", "ticker": "TICKER", "reason": "Kort motivering" }\n]\n}\n\nSeparera textdelen och JSON-delen med raden:\n---JSON---\n\nSkapa alltid unika, datadrivna rekommendationer baserat på användarens profil. Ingen hårdkodning.`;
   };
 
   const completeConversation = async () => {
@@ -1125,7 +1132,7 @@ const ChatPortfolioAdvisor = () => {
 
       if (user) {
         try {
-          const summaryPrompt = buildAdvisorSummaryPrompt(conversationData, aiResponseToUse);
+          const summaryPrompt = buildAdvisorSummaryPrompt(conversationData, aiResponseToUse, result.riskProfile);
           const { data: summaryData, error: summaryError } = await supabase.functions.invoke<Record<string, unknown> | string>(
             'portfolio-ai-chat',
             {

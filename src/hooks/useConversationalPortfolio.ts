@@ -164,17 +164,40 @@ Skapa alltid unika, datadrivna rekommendationer baserat på användarens profil.
     try {
       const enhancedPrompt = buildEnhancedAIPrompt(conversationData);
       console.log('Generated enhanced AI prompt:', enhancedPrompt);
-      
+
       // Create enhanced risk profile data with all new fields
+      const normalizedRiskTolerance = conversationData.riskTolerance === 'balanced'
+        ? 'moderate'
+        : conversationData.riskTolerance || null;
+
+      const industryInterestList = conversationData.industryInterests
+        ? conversationData.industryInterests
+            .split(',')
+            .map(item => item.trim())
+            .filter(item => item.length > 0)
+        : [];
+
+      const combinedSectorInterests = Array.from(
+        new Set(
+          [
+            ...(Array.isArray(conversationData.interests) ? conversationData.interests : []),
+            ...(Array.isArray(conversationData.sectorExposure) ? conversationData.sectorExposure : []),
+            ...industryInterestList,
+          ]
+            .map(entry => entry.trim())
+            .filter(entry => entry.length > 0)
+        )
+      );
+
       const riskProfileData = {
         age: conversationData.age || 25,
-        monthly_investment_amount: conversationData.monthlyAmount ? 
+        monthly_investment_amount: conversationData.monthlyAmount ?
           parseInt(conversationData.monthlyAmount.replace(/[^\d]/g, '')) || 5000 : 5000,
         investment_horizon: conversationData.timeHorizon || null,
         investment_goal: conversationData.investmentGoal || 'growth',
-        risk_tolerance: conversationData.riskTolerance || null,
+        risk_tolerance: normalizedRiskTolerance,
         investment_experience: conversationData.isBeginnerInvestor ? 'beginner' : 'advanced',
-        sector_interests: conversationData.interests || [],
+        sector_interests: combinedSectorInterests,
         current_holdings: conversationData.currentHoldings || [],
         current_allocation: {},
         housing_situation: null,
@@ -291,10 +314,12 @@ Skapa alltid unika, datadrivna rekommendationer baserat på användarens profil.
         risk_profile_summary: {
           experience_level: conversationData.isBeginnerInvestor ? 'beginner' : 'advanced',
           risk_comfort: conversationData.volatilityComfort || 5,
+          risk_tolerance: normalizedRiskTolerance,
           geographic_preference: conversationData.geographicPreference,
           sustainability_focus: conversationData.sustainabilityPreference,
           investment_style: conversationData.investmentStyle,
-          market_crash_behavior: conversationData.marketCrashReaction
+          market_crash_behavior: conversationData.marketCrashReaction,
+          industry_interests: combinedSectorInterests,
         },
         analysis_metadata: {
           created_at: new Date().toISOString(),
