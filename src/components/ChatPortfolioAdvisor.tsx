@@ -1061,14 +1061,49 @@ const ChatPortfolioAdvisor = () => {
 
     try {
       const parsed = JSON.parse(aiResponse);
-      const recs = Array.isArray(parsed) ? parsed : parsed.recommendations;
-      if (Array.isArray(recs)) {
-        return recs.map((rec: any) => ({
-          name: rec.name,
-          symbol: rec.symbol,
-          sector: rec.sector,
-          expected_price: rec.expected_price
-        })).slice(0, 8);
+
+      const candidateArrays: any[][] = [];
+
+      if (Array.isArray(parsed)) {
+        candidateArrays.push(parsed);
+      }
+
+      if (parsed && typeof parsed === 'object') {
+        const directRecommendations = parsed.recommendations || parsed.recommended_assets || parsed.assets;
+        if (Array.isArray(directRecommendations)) {
+          candidateArrays.push(directRecommendations);
+        }
+
+        if (parsed.plan && typeof parsed.plan === 'object') {
+          const planRecommendations = parsed.plan.recommended_assets || parsed.plan.recommendations;
+          if (Array.isArray(planRecommendations)) {
+            candidateArrays.push(planRecommendations);
+          }
+        }
+      }
+
+      for (const recs of candidateArrays) {
+        if (!Array.isArray(recs)) continue;
+
+        const normalized = recs
+          .map((rec: any) => {
+            if (!rec) return null;
+            const name = rec.name || rec.asset || rec.title;
+            if (!name) return null;
+
+            const symbol = rec.symbol || rec.ticker || rec.code || '';
+            return {
+              name,
+              symbol: symbol || undefined,
+              sector: rec.sector,
+              expected_price: rec.expected_price || rec.target_price || rec.price_target
+            };
+          })
+          .filter(Boolean) as Array<{ name: string; symbol?: string; sector?: string; expected_price?: number }>;
+
+        if (normalized.length > 0) {
+          return normalized.slice(0, 8);
+        }
       }
     } catch (e) {
       console.warn('AI response not valid JSON, using regex extraction');
