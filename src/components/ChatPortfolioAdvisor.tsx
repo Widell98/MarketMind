@@ -1067,7 +1067,7 @@ const ChatPortfolioAdvisor = () => {
       if (matches) {
         matches.forEach(match => {
           // Extract company name and potential symbol
-          const cleanMatch = match.replace(/^[-•\d+\.\s]+/, '').trim();
+          const cleanMatch = match.replace(/^[-•\d+.\s]+/, '').trim();
           const symbolMatch = cleanMatch.match(/\(([A-Z]+)\)/);
           const symbol = symbolMatch ? symbolMatch[1] : undefined;
           const name = cleanMatch.replace(/\s*\([A-Z]+\).*$/, '').trim();
@@ -1088,27 +1088,6 @@ const ChatPortfolioAdvisor = () => {
         });
       }
     }
-
-    // Also look for well-known Swedish companies mentioned in context
-    const knownSwedishStocks = [
-      'Investor', 'Volvo', 'Ericsson', 'H&M', 'Spotify', 'Evolution Gaming',
-      'Elekta', 'Atlas Copco', 'Sandvik', 'SKF', 'Telia', 'Nordea',
-      'SEB', 'Handelsbanken', 'Swedbank', 'Kinnevik', 'ICA Gruppen',
-      'Getinge', 'Boliden', 'SSAB', 'Saab', 'Autoliv'
-    ];
-
-    knownSwedishStocks.forEach(stock => {
-      const regex = new RegExp(`\\b${stock}\\b`, 'gi');
-      if (regex.test(aiResponse)) {
-        const exists = recommendations.some(r => r.name.toLowerCase() === stock.toLowerCase());
-        if (!exists) {
-          recommendations.push({
-            name: stock,
-            sector: getKnownStockSector(stock),
-          });
-        }
-      }
-    });
 
     console.log('Extracted recommendations:', recommendations);
     return recommendations.slice(0, 8); // Limit to 8 recommendations
@@ -1142,28 +1121,6 @@ const ChatPortfolioAdvisor = () => {
     return undefined;
   };
 
-  const getKnownStockSector = (stockName: string): string => {
-    const sectorMap: Record<string, string> = {
-      'Investor': 'Finans',
-      'Volvo': 'Industri', 
-      'Ericsson': 'Teknologi',
-      'H&M': 'Konsument',
-      'Spotify': 'Teknologi',
-      'Evolution Gaming': 'Teknologi',
-      'Elekta': 'Hälsa',
-      'Atlas Copco': 'Industri',
-      'Sandvik': 'Industri',
-      'SKF': 'Industri',
-      'Telia': 'Teknologi',
-      'Nordea': 'Finans',
-      'SEB': 'Finans',
-      'Handelsbanken': 'Finans',
-      'Swedbank': 'Finans',
-      'Saab': 'Industri'
-    };
-    return sectorMap[stockName] || 'Övrigt';
-  };
-
   const completeConversation = async () => {
     setIsGenerating(true);
     addBotMessage('Tack för alla svar! Jag skapar nu din personliga portföljstrategi...');
@@ -1182,9 +1139,9 @@ const ChatPortfolioAdvisor = () => {
         const conversationDataString = JSON.stringify(conversationData, null, 2);
         const summaryPrompt = `Du är en erfaren svensk investeringsrådgivare som sammanfattar användarens profil.
 Skriv 3–6 meningar på svenska, i naturlig samtalston, som förklarar:
-- användarens risknivå och sparhorisont
+- användarens risknivå och sparhorisont och hur dessa påverkar dina råd
 - lämpliga investeringsstrategier eller typer (t.ex. aktier, fonder, indexfonder, räntepapper)
-- konkreta rekommendationer genom att nämna minst ett exempel på branscher eller bolag som passar användarens intressen
+- konkreta rekommendationer genom att nämna minst ett exempel på branscher eller bolag som passar användarens intressen och riskprofil
 - avsluta med en positiv och vägledande mening
 Utgå från följande användardata:
 ${conversationDataString}
@@ -1396,8 +1353,21 @@ Returnera endast den sammanhängande texten utan rubriker, markdown eller emojis
   };
 
   const renderAdvisorResponse = () => {
-    const aiContent = typeof portfolioResult?.aiResponse === 'string' ? portfolioResult.aiResponse : '';
+    if (!portfolioResult) {
+      return null;
+    }
+
     const summaryText = typeof portfolioResult?.summary === 'string' ? portfolioResult.summary.trim() : '';
+    const fallbackText =
+      !summaryText && typeof portfolioResult?.aiResponse === 'string'
+        ? portfolioResult.aiResponse
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line && !/^#+\s*/.test(line) && !/^[\p{L}\p{N}\s]+:$/u.test(line))
+            .join(' ')
+            .trim()
+        : '';
+    const advisorText = summaryText || fallbackText;
 
     const renderRefinementChat = () => {
       if (refinementMessages.length === 0) {
@@ -1478,28 +1448,15 @@ Returnera endast den sammanhängande texten utan rubriker, markdown eller emojis
       );
     };
 
-    const paragraphs = aiContent
-      .split(/\n{2,}/)
-      .map(paragraph => paragraph.trim())
-      .filter(Boolean);
-
     return (
       <div className="space-y-4">
-        {summaryText && (
+        {advisorText && (
           <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4 text-primary shadow-sm">
-            <p className="whitespace-pre-line text-sm leading-relaxed sm:text-base">{summaryText}</p>
+            <p className="whitespace-pre-line text-sm leading-relaxed sm:text-base">{advisorText}</p>
           </div>
         )}
 
-        {paragraphs.length > 0 && (
-          <div className="space-y-2 rounded-2xl border border-border/50 bg-background/90 p-4 text-sm leading-relaxed text-foreground shadow-sm">
-            {paragraphs.map((paragraph, index) => (
-              <p key={`advisor-detail-${index}`}>{paragraph}</p>
-            ))}
-          </div>
-        )}
-
-        {!summaryText && paragraphs.length === 0 && (
+        {!advisorText && (
           <div className="text-sm text-muted-foreground">Inget svar mottaget från rådgivaren.</div>
         )}
         {renderRefinementChat()}
