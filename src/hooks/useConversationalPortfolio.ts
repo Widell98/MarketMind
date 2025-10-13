@@ -22,6 +22,7 @@ interface ConversationData {
   sectors?: string[];
   interests?: string[];
   companies?: string[];
+  industryInterests?: string;
   portfolioHelp?: string;
   portfolioSize?: string;
   rebalancingFrequency?: string;
@@ -51,6 +52,7 @@ export const useConversationalPortfolio = () => {
   const { toast } = useToast();
 
   // Enhanced stock recommendation extraction - completely dynamic
+
   const extractStockRecommendations = (aiResponse: string) => {
     const recommendations: Array<{
       name: string;
@@ -64,6 +66,31 @@ export const useConversationalPortfolio = () => {
     console.log('Extracting recommendations from AI response:', aiResponse);
 
     try {
+      const [, jsonPart] = aiResponse.split('---JSON---');
+      if (jsonPart) {
+        const parsed = JSON.parse(jsonPart.trim());
+        const recs = Array.isArray(parsed) ? parsed : parsed.recommendations;
+        if (Array.isArray(recs)) {
+          recs.forEach((rec: any) => {
+            if (rec && rec.name) {
+              recommendations.push({
+                name: rec.name,
+                symbol: rec.ticker || rec.symbol,
+                reasoning: rec.reason || rec.reasoning,
+                allocation: rec.allocation,
+                sector: rec.sector,
+                isin: rec.isin
+              });
+            }
+          });
+          return recommendations.slice(0, 10);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to parse advisor JSON section:', error);
+    }
+
+    try {
       const parsed = JSON.parse(aiResponse);
       const recs = Array.isArray(parsed) ? parsed : parsed.recommendations;
       if (Array.isArray(recs)) {
@@ -71,349 +98,55 @@ export const useConversationalPortfolio = () => {
           if (rec && rec.name) {
             recommendations.push({
               name: rec.name,
-              symbol: rec.symbol,
-              sector: rec.sector,
-              reasoning: rec.reasoning,
+              symbol: rec.ticker || rec.symbol,
+              reasoning: rec.reason || rec.reasoning,
               allocation: rec.allocation,
+              sector: rec.sector,
               isin: rec.isin
             });
           }
         });
         return recommendations.slice(0, 10);
       }
-    } catch (e) {
-      console.warn('AI response not valid JSON, using regex fallback');
+    } catch (error) {
+      console.warn('AI response not valid JSON, returning empty list');
     }
 
-    // Enhanced patterns for parsing AI recommendations with numbered lists
-    const patterns = [
-      // Pattern: 1. **Company Name (SYMBOL)**: Description... Allokering: XX%
-      /(?:\d+\.\s*)?\*\*([^*\(\)]+?)\s*\(([A-Z\s-]+?)\)\*\*:\s*([^.]+(?:\.[^.]*)*?)(?:.*?Allokering:\s*(\d+)%)?/gi,
-      // Pattern: **Company Name (SYMBOL)**: Description (without explicit allocation)
-      /(?:\d+\.\s*)?\*\*([^*\(\)]+?)\s*\(([A-Z\s-]+?)\)\*\*:\s*([^.]+(?:\.[^.]*)*?)/gi,
-      // Pattern: **Company Name**: Description (for funds without symbols)
-      /(?:\d+\.\s*)?\*\*([^*\(\)]+?)\*\*:\s*([^.]+(?:\.[^.]*)*?)(?:.*?Allokering:\s*(\d+)%)?/gi,
-      // Pattern: Company Name (SYMBOL): Description (simple format)
-      /(?:\d+\.\s*)?([A-ZÅÄÖ][a-zåäö\s&.-]+)\s*\(([A-Z\s-]+)\):\s*([^.\n]+)/g,
-    ];
-
-    // Extract using enhanced patterns
-    patterns.forEach((pattern, patternIndex) => {
-      let match;
-      const regex = new RegExp(pattern.source, pattern.flags);
-      
-      while ((match = regex.exec(aiResponse)) !== null) {
-        let name = '';
-        let symbol = '';
-        let reasoning = '';
-        let allocation = 10; // Default allocation
-        
-        if (patternIndex === 0) {
-          // Pattern: 1. **Company Name (SYMBOL)**: Description... Allokering: XX%
-          [, name, symbol, reasoning] = match;
-          const allocationMatch = match[4];
-          allocation = allocationMatch ? parseInt(allocationMatch) : 12;
-        } else if (patternIndex === 1) {
-          // Pattern: **Company Name (SYMBOL)**: Description (without explicit allocation)
-          [, name, symbol, reasoning] = match;
-          allocation = 10; // Default for this pattern
-        } else if (patternIndex === 2) {
-          // Pattern: **Company Name**: Description (for funds)
-          [, name, reasoning] = match;
-          const allocationMatch = match[3];
-          allocation = allocationMatch ? parseInt(allocationMatch) : 15;
-          // No predefined symbol lookup - let AI provide it or leave empty
-        } else if (patternIndex === 3) {
-          // Pattern: Company Name (SYMBOL): Description
-          [, name, symbol, reasoning] = match;
-        }
-
-        if (name && name.trim().length > 2) {
-          const cleanName = name.trim();
-          const cleanSymbol = symbol ? symbol.trim().replace(/\s+/g, '').replace(/^([A-Z]+)\s*([A-Z])$/, '$1-$2') : '';
-          
-          // Determine sector from AI reasoning or name context
-          let detectedSector = 'Allmän';
-          const reasoningLower = reasoning?.toLowerCase() || '';
-          const nameLower = cleanName.toLowerCase();
-          
-          // Simple sector detection based on keywords
-          if (reasoningLower.includes('teknologi') || reasoningLower.includes('tech') || nameLower.includes('gaming') || nameLower.includes('hexagon')) {
-            detectedSector = 'Teknologi';
-          } else if (reasoningLower.includes('fastighet') || reasoningLower.includes('real estate') || nameLower.includes('castellum') || nameLower.includes('sbb')) {
-            detectedSector = 'Fastighet';
-          } else if (reasoningLower.includes('bank') || nameLower.includes('bank') || nameLower.includes('swedbank') || nameLower.includes('handelsbanken')) {
-            detectedSector = 'Bank';
-          } else if (reasoningLower.includes('industri') || reasoningLower.includes('industrial') || nameLower.includes('volvo') || nameLower.includes('atlas copco')) {
-            detectedSector = 'Industri';
-          } else if (reasoningLower.includes('fond') || reasoningLower.includes('fund') || reasoningLower.includes('index') || nameLower.includes('fond')) {
-            detectedSector = 'Fond';
-          } else if (reasoningLower.includes('investmentbolag') || nameLower.includes('investor') || nameLower.includes('kinnevik')) {
-            detectedSector = 'Investmentbolag';
-          }
-
-          // Avoid duplicates
-          if (!recommendations.find(r => 
-            r.name.toLowerCase() === cleanName.toLowerCase() || 
-            (r.symbol && cleanSymbol && r.symbol.toLowerCase() === cleanSymbol.toLowerCase())
-          )) {
-            recommendations.push({
-              name: cleanName,
-              symbol: cleanSymbol || undefined,
-              sector: detectedSector,
-              reasoning: reasoning ? reasoning.trim() : 'AI-rekommenderad investering',
-              allocation: allocation || 10
-            });
-          }
-        }
-      }
-    });
-
-    console.log('Final extracted recommendations:', recommendations);
-    return recommendations.slice(0, 10); // Limit to 10 recommendations
+    return recommendations;
   };
 
+
   const buildEnhancedAIPrompt = (conversationData: ConversationData) => {
-    let prompt = `Skapa en detaljerad och personlig portföljstrategi baserat på följande omfattande konsultation:
+    const conversationJson = JSON.stringify(conversationData, null, 2);
 
-GRUNDLÄGGANDE PROFIL:
-- Erfarenhetsnivå: ${conversationData.isBeginnerInvestor ? 'Nybörjare (första gången investera)' : 'Erfaren investerare (flera års erfarenhet)'}
-- Ålder: ${conversationData.age || 'Ej angiven'}
-- Månatligt investeringsbelopp: ${conversationData.monthlyAmount || 'Ej angiven'} SEK`;
+    return `Du är en erfaren svensk investeringsrådgivare som analyserar en användares profil och ger personliga rekommendationer.
 
-    if (conversationData.isBeginnerInvestor === true) {
-      prompt += `
+Analysera följande data:
+${conversationJson}
 
-NYBÖRJARE - UTFÖRLIG EKONOMISK PROFIL:`;
-      
-      if (conversationData.monthlyIncome) {
-        prompt += `
-- Månadsinkomst: ${conversationData.monthlyIncome}`;
-      }
-      
-      if (conversationData.availableCapital) {
-        prompt += `
-- Tillgängligt kapital: ${conversationData.availableCapital}`;
-      }
-      
-      if (conversationData.emergencyFund) {
-        prompt += `
-- Ekonomisk buffert: ${conversationData.emergencyFund}`;
-      }
-      
-      if (conversationData.financialObligations && conversationData.financialObligations.length > 0) {
-        prompt += `
-- Ekonomiska förpliktelser: ${conversationData.financialObligations.join(', ')}`;
-      }
-      
-      prompt += `
+Skriv ett svar på svenska i två delar:
 
-PERSONLIGA INTRESSEN OCH PREFERENSER:`;
-      
-      if (conversationData.interests && conversationData.interests.length > 0) {
-        prompt += `
-- Personliga intressen: ${conversationData.interests.join(', ')}`;
-      }
-      
-      if (conversationData.companies && conversationData.companies.length > 0) {
-        prompt += `
-- Företag de gillar: ${conversationData.companies.join(', ')}`;
-      }
-      
-      if (conversationData.sustainabilityPreference) {
-        prompt += `
-- Hållbarhetspreferens: ${conversationData.sustainabilityPreference}`;
-      }
-      
-      if (conversationData.geographicPreference) {
-        prompt += `
-- Geografisk preferens: ${conversationData.geographicPreference}`;
-      }
-      
-      prompt += `
+En sammanhängande rådgivartext (3–6 meningar) där du förklarar:
 
-RISKBETEENDE OCH PSYKOLOGI:`;
-      
-      if (conversationData.marketCrashReaction) {
-        prompt += `
-- Reaktion på börskrasch: ${conversationData.marketCrashReaction}`;
-      }
-      
-      if (conversationData.volatilityComfort) {
-        prompt += `
-- Komfort med volatilitet: ${conversationData.volatilityComfort}/10`;
-      }
-      
-      prompt += `
-- Investeringsmål: ${conversationData.investmentGoal || 'Ej angivet'}
-- Tidshorisont: ${conversationData.timeHorizon || 'Ej angiven'}
-- Risktolerans: ${conversationData.riskTolerance || 'Ej angiven'}
-- Befintlig portfölj: ${conversationData.hasCurrentPortfolio ? 'Ja' : 'Nej'}`;
+användarens riskprofil och sparhorisont,
 
-      if (conversationData.portfolioHelp) {
-        prompt += `
-- Hjälp med portfölj: ${conversationData.portfolioHelp}`;
-      }
+hur användaren bör tänka och agera kring investeringar,
 
-      if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
-        prompt += `
-- Nuvarande innehav: ${conversationData.currentHoldings.map(h => 
-          `${h.name} (${h.quantity} st à ${h.purchasePrice} SEK)`
-        ).join(', ')}`;
-      }
+vilka typer av tillgångar (aktier, fonder, räntor, indexfonder etc.) som passar,
 
-      prompt += `
+och avsluta med en trygg slutsats som passar användarens profil.
 
-UPPDRAG FÖR NYBÖRJARE:
-1. Skapa en nybörjarvänlig portfölj som STARKT kopplar till användarens ekonomiska situation och intressen
-2. Föreslå konkreta svenska och nordiska företag/fonder som matchar deras intressen och geografi
-3. Ta STOR hänsyn till deras ekonomiska buffert och förpliktelser
-4. Anpassa riskexponering baserat på deras psykologiska profil och reaktionsmönster
-5. Förklara VARFÖR varje innehav passar deras specifika profil
-6. Inkludera utbildande element om diversifiering
-7. Ge enkla, actionable steg för att komma igång
-8. Föreslå specifika svenska fonder och ETF:er som är lätta att köpa på Avanza/Nordnet
-9. Förklara risker på ett förståeligt sätt kopplat till deras komfortnivå
-10. Föreslå en detaljerad månadsplan baserad på deras inkomst och tillgängliga kapital
-
-VIKTIGT: Använd EXAKT detta format för varje rekommendation och INKLUDERA ALLTID SYMBOLER:
-1. **Företagsnamn (BÖRSSYMBOL)**: Beskrivning av varför denna investering passar din profil. Allokering: XX%
-2. **Fondnamn (FONDKOD)**: Beskrivning av fonden och varför den passar. Allokering: XX%
-
-EXEMPEL:
-1. **Evolution Gaming (EVO)**: Ledande inom online-gaming med stark tillväxt. Allokering: 15%
-2. **Avanza Global (AVZ-GLOBAL)**: Indexfond för global diversifiering. Allokering: 20%`;
-
-    } else {
-      prompt += `
-
-ERFAREN INVESTERARE - AVANCERAD PROFIL:`;
-      
-      if (conversationData.marketExperience) {
-        prompt += `
-- Investeringserfarenhet: ${conversationData.marketExperience}`;
-      }
-      
-      if (conversationData.currentAllocation) {
-        prompt += `
-- Nuvarande allokering: ${conversationData.currentAllocation}`;
-      }
-      
-      if (conversationData.previousPerformance) {
-        prompt += `
-- Historisk prestanda vs marknad: ${conversationData.previousPerformance}`;
-      }
-      
-      if (conversationData.sectorExposure && conversationData.sectorExposure.length > 0) {
-        prompt += `
-- Befintlig sektorexponering: ${conversationData.sectorExposure.join(', ')}`;
-      }
-      
-      if (conversationData.investmentStyle) {
-        prompt += `
-- Investeringsstil: ${conversationData.investmentStyle}`;
-      }
-      
-      if (conversationData.dividendYieldRequirement) {
-        prompt += `
-- Direktavkastningskrav: ${conversationData.dividendYieldRequirement}`;
-      }
-      
-      if (conversationData.maxDrawdownTolerance) {
-        prompt += `
-- Max drawdown tolerans: ${conversationData.maxDrawdownTolerance}/10`;
-      }
-      
-      if (conversationData.taxConsideration) {
-        prompt += `
-- Skatteoptimering: ${conversationData.taxConsideration}`;
-      }
-      
-      if (conversationData.portfolioSize) {
-        prompt += `
-- Portföljstorlek: ${conversationData.portfolioSize}`;
-      }
-      
-      if (conversationData.rebalancingFrequency) {
-        prompt += `
-- Rebalanseringsfrekvens: ${conversationData.rebalancingFrequency}`;
-      }
-      
-      prompt += `
-- Befintlig portfölj: ${conversationData.hasCurrentPortfolio ? 'Ja' : 'Nej'}`;
-
-      if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
-        prompt += `
-- Nuvarande innehav: ${conversationData.currentHoldings.map(h => 
-          `${h.name} (${h.quantity} st à ${h.purchasePrice} SEK)`
-        ).join(', ')}`;
-      }
-
-      prompt += `
-
-UPPDRAG FÖR ERFAREN INVESTERARE:
-1. Analysera den nuvarande strategin och identifiera SPECIFIKA optimeringsmöjligheter
-2. Föreslå avancerade portföljtekniker baserat på deras erfarenhet och prestanda
-3. Ta hänsyn till deras befintliga sektorexponering och föreslå diversifieringsstrategi
-4. Inkludera sofistikerade allokeringsstrategier anpassade till deras stil
-5. Föreslå specifika instrument som passar deras riskprofil och drawdown-tolerans
-6. Diskutera skatteoptimering och ISK/KF-strategi baserat på deras prioriteringar
-7. Analysera korrelationer och riskjusterad avkastning kopplat till deras historiska prestanda
-8. Föreslå rebalanceringsstrategier som matchar deras frekvens och stil
-9. Ge konkreta exit-strategier och optimeringsregler
-10. Inkludera avancerade metriker och uppföljning
-
-VIKTIGT: Använd EXAKT detta format för varje rekommendation och INKLUDERA ALLTID SYMBOLER:
-1. **Företagsnamn (BÖRSSYMBOL)**: Beskrivning av varför denna investering passar din profil. Allokering: XX%
-2. **Fondnamn (FONDKOD)**: Beskrivning av fonden och varför den passar. Allokering: XX%`;
-    }
-
-    // Add common goals and specifications
-    if (conversationData.specificGoalAmount) {
-      prompt += `
-
-SPECIFIKT MÅL:
-- Målbeskrivning: ${conversationData.specificGoalAmount}`;
-    }
-
-    prompt += `
-
-GEMENSAMMA KRAV FÖR BÅDA PROFILER:
-- Alla rekommendationer ska vara tillgängliga på svenska marknaden (Avanza, Nordnet etc.)
-- INKLUDERA ALLTID specifika symboler/ticker codes för alla aktier och fonder
-- Ange konkreta procentsatser för allokering som summerar till 100%
-- Förklara avgiftsstrukturer och kostnader
-- Inkludera både kortsiktiga och långsiktiga strategier
-- Ge detaljerad månadsvis action plan
-- Diskutera när portföljen bör ses över nästa gång
-- Ta hänsyn till användarens SPECIFIKA ekonomiska situation och psykologiska profil
-- Anpassa komplexiteten till användarens erfarenhetsnivå
-- Basera rekommendationerna HELT på användarens profil och intressen - INGA förutbestämda listor
-
-KRITISKT VIKTIGT: 
-- VARJE aktie och fond MÅSTE ha en symbol/ticker i parenteser
-- Rekommendationerna ska vara unika för varje användare baserat på deras svar
-- Använd din kunskap om svenska marknaden för att hitta de BÄSTA matcherna
-- Föreslå ALDRIG samma portfölj till olika användare
-
-**ANVÄND NUMRERADE LISTA FÖR INVESTERINGSREKOMMENDATIONER:**
-
-**Investeringsrekommendationer:**
-
-1. **Företagsnamn (SYMBOL)**: Detaljerad beskrivning. Allokering: XX%
-2. **Fondnamn (FONDKOD)**: Detaljerad beskrivning. Allokering: XX%
-
-Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska som är perfekt anpassad för användarens specifika situation, erfarenhetsnivå och psykologiska profil.
-
-SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
+En JSON-lista med 5–8 rekommenderade investeringar:
 {
-  "recommendations": [
-    { "name": "", "symbol": "", "sector": "", "reasoning": "", "allocation": 0 }
-  ],
-  "summary": ""
-}`;
+"recommendations": [
+{ "name": "Bolag eller fondnamn", "ticker": "TICKER", "reason": "Kort motivering" }
+]
+}
 
-    return prompt;
+Separera textdelen och JSON-delen med raden:
+---JSON---
+
+Skapa alltid unika, datadrivna rekommendationer baserat på användarens profil. Ingen hårdkodning.`;
   };
 
   const generatePortfolioFromConversation = async (conversationData: ConversationData) => {
