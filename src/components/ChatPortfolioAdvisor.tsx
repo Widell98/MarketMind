@@ -1184,7 +1184,7 @@ const ChatPortfolioAdvisor = () => {
 Skriv 3–6 meningar på svenska, i naturlig samtalston, som förklarar:
 - användarens risknivå och sparhorisont
 - lämpliga investeringsstrategier eller typer (t.ex. aktier, fonder, indexfonder, räntepapper)
-- exempel på branscher eller bolag användaren kan gilla baserat på deras intressen
+- konkreta rekommendationer genom att nämna minst ett exempel på branscher eller bolag som passar användarens intressen
 - avsluta med en positiv och vägledande mening
 Utgå från följande användardata:
 ${conversationDataString}
@@ -1478,23 +1478,28 @@ Returnera endast den sammanhängande texten utan rubriker, markdown eller emojis
       );
     };
 
+    const paragraphs = aiContent
+      .split(/\n{2,}/)
+      .map(paragraph => paragraph.trim())
+      .filter(Boolean);
+
     return (
       <div className="space-y-4">
-        {summaryText ? (
+        {summaryText && (
           <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4 text-primary shadow-sm">
             <p className="whitespace-pre-line text-sm leading-relaxed sm:text-base">{summaryText}</p>
           </div>
-        ) : aiContent.trim() ? (
-          <div className="space-y-2 text-sm leading-relaxed text-muted-foreground">
-            {aiContent
-              .split(/\n{2,}/)
-              .map(paragraph => paragraph.trim())
-              .filter(Boolean)
-              .map((paragraph, index) => (
-                <p key={`fallback-${index}`}>{paragraph}</p>
-              ))}
+        )}
+
+        {paragraphs.length > 0 && (
+          <div className="space-y-2 rounded-2xl border border-border/50 bg-background/90 p-4 text-sm leading-relaxed text-foreground shadow-sm">
+            {paragraphs.map((paragraph, index) => (
+              <p key={`advisor-detail-${index}`}>{paragraph}</p>
+            ))}
           </div>
-        ) : (
+        )}
+
+        {!summaryText && paragraphs.length === 0 && (
           <div className="text-sm text-muted-foreground">Inget svar mottaget från rådgivaren.</div>
         )}
         {renderRefinementChat()}
