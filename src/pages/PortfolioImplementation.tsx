@@ -16,7 +16,6 @@ import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { Button } from '@/components/ui/button';
 import { Brain, AlertCircle, User } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
-import Breadcrumb from '@/components/Breadcrumb';
 const PortfolioImplementation = () => {
   const {
     actualHoldings,
@@ -177,11 +176,6 @@ const PortfolioImplementation = () => {
       
       <div className="min-h-0 bg-gradient-to-br from-background to-secondary/5">
         <div className="mx-auto w-full max-w-6xl space-y-8 sm:space-y-10 lg:space-y-12 px-2 pb-8 sm:px-4 sm:pb-12 lg:px-6 lg:pb-16">
-          {/* Breadcrumb Navigation */}
-          <div>
-            <Breadcrumb />
-          </div>
-          
           {/* Page Header */}
           <section className="rounded-3xl border border-border/60 bg-card/70 px-6 py-8 text-center shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:px-10 sm:py-12">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 sm:h-14 sm:w-14">
