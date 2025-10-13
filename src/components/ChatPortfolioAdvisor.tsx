@@ -14,7 +14,7 @@ import {
   Check,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useConversationalPortfolio } from '@/hooks/useConversationalPortfolio';
+import { useConversationalPortfolio, type ConversationData } from '@/hooks/useConversationalPortfolio';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,62 +42,6 @@ interface Holding {
   priceManuallyEdited: boolean;
 }
 
-interface ConversationData {
-  isBeginnerInvestor?: boolean;
-  investmentGoal?: string;
-  timeHorizon?: string;
-  riskTolerance?: string;
-  monthlyAmount?: string;
-  hasCurrentPortfolio?: boolean;
-  currentHoldings?: Holding[];
-  age?: number;
-  experience?: string;
-  sectors?: string[];
-  interests?: string[];
-  companies?: string[];
-  portfolioHelp?: string;
-  portfolioSize?: string;
-  rebalancingFrequency?: string;
-  portfolioChangeFrequency?: string;
-  // Enhanced fields
-  monthlyIncome?: string;
-  annualIncome?: string;
-  availableCapital?: string;
-  liquidCapital?: string;
-  emergencyFund?: string;
-  emergencyBufferMonths?: number;
-  financialObligations?: string[];
-  housingSituation?: string;
-  hasLoans?: boolean;
-  loanDetails?: string;
-  hasChildren?: boolean;
-  sustainabilityPreference?: string;
-  geographicPreference?: string;
-  marketCrashReaction?: string;
-  volatilityComfort?: number;
-  marketExperience?: string;
-  investmentExperienceLevel?: 'beginner' | 'intermediate' | 'advanced';
-  currentAllocation?: string | Record<string, any>;
-  currentPortfolioValue?: string;
-  previousPerformance?: string;
-  sectorExposure?: string[];
-  investmentStyle?: string;
-  dividendYieldRequirement?: string;
-  maxDrawdownTolerance?: number;
-  specificGoalAmount?: string;
-  targetAmount?: string;
-  targetDate?: string;
-  taxConsideration?: string;
-  investmentPurpose?: string[];
-  preferredStockCount?: number;
-  panicSellingHistory?: boolean;
-  controlImportance?: number;
-  activityPreference?: string;
-  overexposureAwareness?: string;
-  communicationStyle?: string;
-  preferredResponseLength?: string;
-  additionalNotes?: string;
-}
 
 interface AdvisorPlanAsset {
   name: string;

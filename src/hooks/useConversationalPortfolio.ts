@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
-interface ConversationData {
+export interface ConversationData {
   isBeginnerInvestor?: boolean;
   investmentGoal?: string;
   timeHorizon?: string;
@@ -204,46 +204,203 @@ export const useConversationalPortfolio = () => {
   };
 
   const buildEnhancedAIPrompt = (conversationData: ConversationData) => {
-    const monthlyAmountText = conversationData.monthlyAmount
-      || (typeof conversationData.monthlyAmountNumeric === 'number'
-        ? conversationData.monthlyAmountNumeric.toString()
-        : 'Ej angiven');
+    const mapValue = (value: string | undefined, mapping: Record<string, string>) => {
+      if (!value) return undefined;
+      const normalized = value.toLowerCase();
+      return mapping[normalized] ?? mapping[value] ?? value;
+    };
+
+    const resolveNumericString = (value?: string | number): string | null => {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return Math.round(value).toString();
+      }
+
+      if (typeof value === 'string' && value.trim().length > 0) {
+        const digits = value.replace(/[^\d]/g, '');
+        if (digits.length > 0) {
+          return digits;
+        }
+        return value.trim();
+      }
+
+      return null;
+    };
+
+    const formatCurrency = (value?: string | number) => {
+      const numericString = resolveNumericString(value);
+      if (!numericString) {
+        return 'Ej angivet';
+      }
+
+      const parsed = Number(numericString);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        return numericString;
+      }
+
+      return new Intl.NumberFormat('sv-SE').format(parsed);
+    };
+
+    const formatBoolean = (value: boolean | undefined) =>
+      typeof value === 'boolean' ? (value ? 'Ja' : 'Nej') : 'Ej angivet';
+
+    const investmentGoalText = mapValue(conversationData.investmentGoal, {
+      pension: 'Pensionssparande',
+      wealth: 'Förmögenhetsuppbyggnad',
+      income: 'Regelbunden inkomst',
+      house: 'Bostadsköp',
+      education: 'Utbildning/Barn',
+    }) ?? 'Ej angivet';
+
+    const timeHorizonText = mapValue(conversationData.timeHorizon, {
+      short: '1-3 år (kort sikt)',
+      medium: '3-7 år (medellång sikt)',
+      long: '7-15 år (lång sikt)',
+      very_long: '15+ år (mycket lång sikt)',
+    }) ?? 'Ej angiven';
+
+    const riskToleranceText = mapValue(conversationData.riskTolerance, {
+      conservative: 'Konservativ (låg risk)',
+      balanced: 'Balanserad (måttlig risk)',
+      aggressive: 'Aggressiv (hög risk)',
+    }) ?? 'Ej angiven';
+
+    const monthlyInvestmentText = formatCurrency(
+      conversationData.monthlyAmount ?? conversationData.monthlyAmountNumeric
+    );
+
+    const annualIncomeText = mapValue(conversationData.annualIncome, {})
+      ?? formatCurrency(conversationData.annualIncome);
+
+    const monthlyIncomeText = mapValue(conversationData.monthlyIncome, {
+      '20000-30000': '20 000 - 30 000 kr',
+      '30000-45000': '30 000 - 45 000 kr',
+      '45000-60000': '45 000 - 60 000 kr',
+      '60000+': 'Över 60 000 kr',
+    }) ?? formatCurrency(conversationData.monthlyIncome);
+
+    const availableCapitalText = mapValue(conversationData.availableCapital, {
+      '10000-50000': '10 000 - 50 000 kr',
+      '50000-100000': '50 000 - 100 000 kr',
+      '100000-250000': '100 000 - 250 000 kr',
+      '250000+': 'Över 250 000 kr',
+    }) ?? formatCurrency(conversationData.availableCapital);
+
+    const emergencyFundText = mapValue(conversationData.emergencyFund, {
+      yes_full: 'Ja, 6+ månaders utgifter',
+      yes_partial: 'Ja, 1-3 månaders utgifter',
+      no: 'Nej, ingen buffert än',
+    });
+
+    const sustainabilityText = mapValue(conversationData.sustainabilityPreference, {
+      very_important: 'Mycket viktigt - bara hållbara investeringar',
+      somewhat_important: 'Ganska viktigt - föredrar hållbara alternativ',
+      not_priority: 'Inte prioritet - fokuserar på avkastning',
+    });
+
+    const geographicText = mapValue(conversationData.geographicPreference, {
+      sweden_only: 'Mest svenska företag',
+      europe: 'Europiska marknader',
+      usa: 'Amerikanska marknaden',
+      global: 'Global spridning',
+    });
+
+    const marketCrashText = mapValue(conversationData.marketCrashReaction, {
+      sell_all: 'Sälja allt för att stoppa förlusterna',
+      sell_some: 'Sälja en del av innehaven',
+      hold: 'Behålla allt och vänta',
+      buy_more: 'Köpa mer medan det är billigt',
+    });
+
+    const portfolioHelpText = mapValue(conversationData.portfolioHelp, {
+      simple_start: 'Hjälp mig börja enkelt',
+      diverse_portfolio: 'Skapa diversifierad portfölj',
+      growth_focused: 'Fokusera på tillväxt',
+      dividend_income: 'Prioritera utdelning',
+    });
+
+    const rebalancingText = mapValue(conversationData.rebalancingFrequency, {
+      monthly: 'Månadsvis',
+      quarterly: 'Kvartalsvis',
+      yearly: 'Årligen',
+      rarely: 'Sällan',
+    });
+
+    const investmentStyleText = mapValue(conversationData.investmentStyle, {
+      value: 'Value - undervärderade företag',
+      growth: 'Growth - snabbt växande företag',
+      dividend: 'Dividend - fokus på utdelningar',
+      momentum: 'Momentum - trender och teknisk analys',
+      mixed: 'Blandad strategi',
+    });
+
+    const dividendRequirementText = mapValue(conversationData.dividendYieldRequirement, {
+      high: 'Hög (4%+)',
+      moderate: 'Måttlig (2-4%)',
+      low: 'Låg (<2%)',
+      none: 'Ingen - återinvestering prioriteras',
+    });
+
+    const marketExperienceText = mapValue(conversationData.marketExperience, {
+      '2-5': '2-5 år',
+      '5-10': '5-10 år',
+      '10-20': '10-20 år',
+      '20+': 'Över 20 år',
+    });
+
+    const previousPerformanceText = mapValue(conversationData.previousPerformance, {
+      outperformed: 'Bättre än marknaden',
+      matched: 'Samma som marknaden',
+      underperformed: 'Sämre än marknaden',
+      unsure: 'Osäker/har inte mätt',
+    });
+
+    const emergencyBufferText =
+      typeof conversationData.emergencyBufferMonths === 'number'
+        ? `${conversationData.emergencyBufferMonths} månader`
+        : undefined;
+
+    const liquidCapitalText = formatCurrency(conversationData.liquidCapital);
+    const currentPortfolioValueText = formatCurrency(conversationData.currentPortfolioValue);
 
     let prompt = `Skapa en detaljerad och personlig portföljstrategi baserat på följande omfattande konsultation:
 
 GRUNDLÄGGANDE PROFIL:
 - Erfarenhetsnivå: ${conversationData.isBeginnerInvestor ? 'Nybörjare (första gången investera)' : 'Erfaren investerare (flera års erfarenhet)'}
 - Ålder: ${conversationData.age || 'Ej angiven'}
-- Månatligt investeringsbelopp: ${monthlyAmountText} SEK`;
+- Månatligt investeringsbelopp: ${monthlyInvestmentText} SEK
+- Investeringsmål: ${investmentGoalText}
+- Tidshorisont: ${timeHorizonText}
+- Risktolerans: ${riskToleranceText}
+- Befintlig portfölj: ${formatBoolean(conversationData.hasCurrentPortfolio)}`;
 
-    if (conversationData.annualIncome) {
+    if (annualIncomeText && annualIncomeText !== 'Ej angivet') {
       prompt += `
-- Årsinkomst: ${conversationData.annualIncome} SEK`;
+- Årsinkomst: ${annualIncomeText} SEK`;
     }
 
-    if (conversationData.monthlyIncome) {
+    if (monthlyIncomeText && monthlyIncomeText !== 'Ej angivet') {
       prompt += `
-- Månadsinkomst: ${conversationData.monthlyIncome} SEK`;
+- Månadsinkomst: ${monthlyIncomeText}`;
     }
 
-    if (conversationData.availableCapital) {
+    if (availableCapitalText && availableCapitalText !== 'Ej angivet') {
       prompt += `
-- Tillgängligt kapital för investeringar: ${conversationData.availableCapital}`;
+- Tillgängligt kapital för investeringar: ${availableCapitalText}`;
     }
 
-    if (conversationData.liquidCapital) {
+    if (liquidCapitalText && liquidCapitalText !== 'Ej angivet') {
       prompt += `
-- Likvida medel: ${conversationData.liquidCapital}`;
+- Likvida medel: ${liquidCapitalText} SEK`;
     }
 
-    if (typeof conversationData.emergencyBufferMonths === 'number') {
+    if (emergencyBufferText) {
       prompt += `
-- Buffert (antal månader): ${conversationData.emergencyBufferMonths}`;
+- Buffert (antal månader): ${emergencyBufferText}`;
     }
 
-    if (conversationData.emergencyFund) {
+    if (emergencyFundText) {
       prompt += `
-- Buffertstatus: ${conversationData.emergencyFund}`;
+- Buffertstatus: ${emergencyFundText}`;
     }
 
     if (conversationData.financialObligations && conversationData.financialObligations.length > 0) {
@@ -271,68 +428,54 @@ GRUNDLÄGGANDE PROFIL:
 - Har barn/försörjningsansvar: ${conversationData.hasChildren ? 'Ja' : 'Nej'}`;
     }
 
-    if (conversationData.currentPortfolioValue) {
+    if (currentPortfolioValueText && currentPortfolioValueText !== 'Ej angivet') {
       prompt += `
-- Nuvarande portföljvärde: ${conversationData.currentPortfolioValue}`;
+- Nuvarande portföljvärde: ${currentPortfolioValueText} SEK`;
     }
 
     if (conversationData.isBeginnerInvestor === true) {
       prompt += `
 
 NYBÖRJARE - UTFÖRLIG EKONOMISK PROFIL:`;
-      
-      prompt += `
 
-PERSONLIGA INTRESSEN OCH PREFERENSER:`;
-      
       if (conversationData.interests && conversationData.interests.length > 0) {
         prompt += `
 - Personliga intressen: ${conversationData.interests.join(', ')}`;
       }
-      
+
       if (conversationData.companies && conversationData.companies.length > 0) {
         prompt += `
 - Företag de gillar: ${conversationData.companies.join(', ')}`;
       }
-      
-      if (conversationData.sustainabilityPreference) {
-        prompt += `
-- Hållbarhetspreferens: ${conversationData.sustainabilityPreference}`;
-      }
-      
-      if (conversationData.geographicPreference) {
-        prompt += `
-- Geografisk preferens: ${conversationData.geographicPreference}`;
-      }
-      
-      prompt += `
 
-RISKBETEENDE OCH PSYKOLOGI:`;
-      
-      if (conversationData.marketCrashReaction) {
+      if (sustainabilityText) {
         prompt += `
-- Reaktion på börskrasch: ${conversationData.marketCrashReaction}`;
+- Hållbarhetspreferens: ${sustainabilityText}`;
       }
-      
+
+      if (geographicText) {
+        prompt += `
+- Geografisk preferens: ${geographicText}`;
+      }
+
+      if (marketCrashText) {
+        prompt += `
+- Reaktion på börskrasch: ${marketCrashText}`;
+      }
+
       if (conversationData.volatilityComfort) {
         prompt += `
 - Komfort med volatilitet: ${conversationData.volatilityComfort}/10`;
       }
-      
-      prompt += `
-- Investeringsmål: ${conversationData.investmentGoal || 'Ej angivet'}
-- Tidshorisont: ${conversationData.timeHorizon || 'Ej angiven'}
-- Risktolerans: ${conversationData.riskTolerance || 'Ej angiven'}
-- Befintlig portfölj: ${conversationData.hasCurrentPortfolio ? 'Ja' : 'Nej'}`;
 
-      if (conversationData.portfolioHelp) {
+      if (portfolioHelpText) {
         prompt += `
-- Hjälp med portfölj: ${conversationData.portfolioHelp}`;
+- Önskad hjälp från rådgivaren: ${portfolioHelpText}`;
       }
 
       if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
         prompt += `
-- Nuvarande innehav: ${conversationData.currentHoldings.map(h => 
+- Nuvarande innehav: ${conversationData.currentHoldings.map(h =>
           `${h.name} (${h.quantity} st à ${h.purchasePrice} SEK)`
         ).join(', ')}`;
       }
@@ -363,63 +506,65 @@ EXEMPEL (ANPASSA MED ANVÄNDARSPECIFIKA DATA):
       prompt += `
 
 ERFAREN INVESTERARE - AVANCERAD PROFIL:`;
-      
-      if (conversationData.marketExperience) {
+
+      if (marketExperienceText) {
         prompt += `
-- Investeringserfarenhet: ${conversationData.marketExperience}`;
+- Investeringserfarenhet: ${marketExperienceText}`;
       }
-      
+
+      if (previousPerformanceText) {
+        prompt += `
+- Historisk prestanda vs marknad: ${previousPerformanceText}`;
+      }
+
       if (conversationData.currentAllocation) {
         prompt += `
 - Nuvarande allokering: ${conversationData.currentAllocation}`;
       }
-      
-      if (conversationData.previousPerformance) {
-        prompt += `
-- Historisk prestanda vs marknad: ${conversationData.previousPerformance}`;
-      }
-      
+
       if (conversationData.sectorExposure && conversationData.sectorExposure.length > 0) {
         prompt += `
 - Befintlig sektorexponering: ${conversationData.sectorExposure.join(', ')}`;
       }
-      
-      if (conversationData.investmentStyle) {
+
+      if (investmentStyleText) {
         prompt += `
-- Investeringsstil: ${conversationData.investmentStyle}`;
+- Investeringsstil: ${investmentStyleText}`;
       }
-      
-      if (conversationData.dividendYieldRequirement) {
+
+      if (dividendRequirementText) {
         prompt += `
-- Direktavkastningskrav: ${conversationData.dividendYieldRequirement}`;
+- Direktavkastningskrav: ${dividendRequirementText}`;
       }
-      
+
       if (conversationData.maxDrawdownTolerance) {
         prompt += `
-- Max drawdown tolerans: ${conversationData.maxDrawdownTolerance}/10`;
+- Maximal drawdown-tolerans: ${conversationData.maxDrawdownTolerance}/10`;
       }
-      
+
       if (conversationData.taxConsideration) {
         prompt += `
 - Skatteoptimering: ${conversationData.taxConsideration}`;
       }
-      
+
       if (conversationData.portfolioSize) {
         prompt += `
 - Portföljstorlek: ${conversationData.portfolioSize}`;
       }
-      
-      if (conversationData.rebalancingFrequency) {
+
+      if (rebalancingText) {
         prompt += `
-- Rebalanseringsfrekvens: ${conversationData.rebalancingFrequency}`;
+- Rebalanseringsfrekvens: ${rebalancingText}`;
       }
-      
-      prompt += `
-- Befintlig portfölj: ${conversationData.hasCurrentPortfolio ? 'Ja' : 'Nej'}`;
+
+      if (marketCrashText) {
+        prompt += `
+- Reaktion på börskrasch: ${marketCrashText}`;
+      }
 
       if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
         prompt += `
-- Nuvarande innehav: ${conversationData.currentHoldings.map(h => 
+- Nuvarande innehav: ${conversationData.currentHoldings.map(h =>
           `${h.name} (${h.quantity} st à ${h.purchasePrice} SEK)`
         ).join(', ')}`;
       }
@@ -434,7 +579,7 @@ UPPDRAG FÖR ERFAREN INVESTERARE:
 5. Föreslå specifika instrument som passar deras riskprofil och drawdown-tolerans
 6. Diskutera skatteoptimering och ISK/KF-strategi baserat på deras prioriteringar
 7. Analysera korrelationer och riskjusterad avkastning kopplat till deras historiska prestanda
-8. Föreslå rebalanceringsstrategier som matchar deras frekvens och stil
+8. Föreslå rebalanseringsstrategier som matchar deras frekvens och stil
 9. Ge konkreta exit-strategier och optimeringsregler
 10. Inkludera avancerade metriker och uppföljning
 
@@ -450,6 +595,7 @@ EXEMPEL (ANPASSA MED ANVÄNDARSPECIFIKA DATA):
     const investmentPurposes = conversationData.investmentPurpose && conversationData.investmentPurpose.length > 0
       ? conversationData.investmentPurpose
       : undefined;
+
     const combinedGoalAmount = conversationData.specificGoalAmount || conversationData.targetAmount;
 
     if (
@@ -507,7 +653,7 @@ FÖRDJUPADE PREFERENSER:`;
 
       if (conversationData.portfolioChangeFrequency || conversationData.rebalancingFrequency) {
         prompt += `
-- Föredragen ombalanseringsfrekvens: ${conversationData.portfolioChangeFrequency || conversationData.rebalancingFrequency}`;
+- Föredragen ombalanseringsfrekvens: ${conversationData.portfolioChangeFrequency || rebalancingText || conversationData.rebalancingFrequency}`;
       }
 
       if (conversationData.overexposureAwareness) {
@@ -522,42 +668,39 @@ FÖRDJUPADE PREFERENSER:`;
 
       if (conversationData.preferredResponseLength) {
         prompt += `
-- Önskad svarslängd från rådgivaren: ${conversationData.preferredResponseLength}`;
+- Önskad svarslängd: ${conversationData.preferredResponseLength}`;
       }
 
       if (conversationData.additionalNotes) {
         prompt += `
-- Extra anteckningar: ${conversationData.additionalNotes}`;
+- Ytterligare anteckningar: ${conversationData.additionalNotes}`;
       }
-    }
-
-    // Add common goals and specifications
-    if (combinedGoalAmount) {
-      prompt += `
-
-SPECIFIKT MÅL:
-- Målbeskrivning: ${combinedGoalAmount}`;
     }
 
     prompt += `
 
-GEMENSAMMA KRAV FÖR BÅDA PROFILER:
-- Alla rekommendationer ska vara tillgängliga på svenska marknaden (Avanza, Nordnet etc.)
-- INKLUDERA ALLTID specifika symboler/ticker codes för alla aktier och fonder
-- Ange konkreta procentsatser för allokering som summerar till 100%
-- Förklara avgiftsstrukturer och kostnader
-- Inkludera både kortsiktiga och långsiktiga strategier
-- Ge detaljerad månadsvis action plan
-- Diskutera när portföljen bör ses över nästa gång
-- Ta hänsyn till användarens SPECIFIKA ekonomiska situation och psykologiska profil
-- Anpassa komplexiteten till användarens erfarenhetsnivå
-- Basera rekommendationerna HELT på användarens profil och intressen - INGA förutbestämda listor
+VIKTIGT: Du får INTE återanvända identiska portföljer till olika användare. Varje rekommendation måste vara unik och tydligt kopplad till den här användarens profil.
 
-KRITISKT VIKTIGT: 
-- VARJE aktie och fond MÅSTE ha en symbol/ticker i parenteser
-- Rekommendationerna ska vara unika för varje användare baserat på deras svar
-- Använd din kunskap om svenska marknaden för att hitta de BÄSTA matcherna
-- Föreslå ALDRIG samma portfölj till olika användare
+Svara enbart med giltig JSON enligt följande struktur:
+{
+  "recommendations": [
+    { "name": "", "symbol": "", "sector": "", "reasoning": "", "allocation_percent": 0 }
+  ],
+  "summary": "",
+  "risk_alignment": "",
+  "next_steps": [""],
+  "disclaimer": ""
+}
+
+Inkludera alltid minst 6 och max 8 rekommendationer med tydliga tickers (om tillgängligt), sektor, och tydlig motivering för varje tillgång.
+
+Fokusera extra mycket på att motivera hur varje rekommendation kopplar till användarens mål, tidshorisont, risktolerans och finansiella situation.
+
+UNDVIK generiska svar. Använd den detaljerade profilen för att ge en portfölj som känns skräddarsydd för just den här användaren.
+
+Påminn användaren om att investeringar innebär risk och att historisk avkastning inte garanterar framtida resultat.
+
+Föreslå ALDRIG samma portfölj till olika användare
 
 **ANVÄND NUMRERADE LISTA FÖR INVESTERINGSREKOMMENDATIONER:**
 
@@ -578,7 +721,6 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
 
     return prompt;
   };
-
   const generatePortfolioFromConversation = async (conversationData: ConversationData) => {
     if (!user) {
       toast({
