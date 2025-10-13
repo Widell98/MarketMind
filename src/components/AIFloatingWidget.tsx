@@ -43,7 +43,7 @@ const AIFloatingWidget = () => {
 
   const currentUsage = usage?.ai_messages_count || 0;
   const isPremium = subscription?.subscribed;
-  const dailyLimit = 5;
+  const dailyLimit = 10;
 
   const quickActions = [
     'Analysera min portfölj',

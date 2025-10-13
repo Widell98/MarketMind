@@ -99,19 +99,19 @@ serve(async (req) => {
 
     const priceData = tier === 'premium' ? {
       currency: "sek",
-      product_data: { 
+      product_data: {
         name: "AI Portfolio Advisor Premium",
         description: "Obegränsad AI-analys och alla funktioner"
       },
-      unit_amount: 9900, // 99 SEK
+      unit_amount: 6900, // 69 SEK
       recurring: { interval: "month" },
     } : {
-      currency: "sek", 
-      product_data: { 
+      currency: "sek",
+      product_data: {
         name: "AI Portfolio Advisor Pro",
         description: "Alla funktioner plus prioriterad support"
       },
-      unit_amount: 19900, // 199 SEK
+      unit_amount: 14900, // 149 SEK
       recurring: { interval: "month" },
     };
 

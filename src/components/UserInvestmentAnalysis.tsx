@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,107 @@ import { useToast } from '@/hooks/use-toast';
 interface UserInvestmentAnalysisProps {
   onUpdateProfile?: () => void;
 }
+
+type AdvisorPlanAsset = {
+  name: string;
+  ticker?: string;
+  allocation_percent: number;
+  rationale?: string;
+  risk_role?: string;
+};
+
+type AdvisorPlan = {
+  action_summary?: string;
+  risk_alignment?: string;
+  next_steps: string[];
+  recommended_assets: AdvisorPlanAsset[];
+  disclaimer?: string;
+};
+
+const toStringArray = (value: unknown): string[] => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value
+      .map(entry => (entry != null ? String(entry).trim() : ''))
+      .filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    return value
+      .split(/\r?\n+|\.\s+/)
+      .map(entry => entry.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
+const parseAdvisorPlan = (value: unknown): AdvisorPlan | null => {
+  if (!value) return null;
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    try {
+      const parsed = JSON.parse(trimmed);
+      return parseAdvisorPlan(parsed);
+    } catch (error) {
+      console.warn('Failed to parse AI plan string as JSON:', error);
+      return null;
+    }
+  }
+
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  const plan = value as Record<string, unknown>;
+  const rawAssets = Array.isArray(plan.recommended_assets)
+    ? plan.recommended_assets
+    : Array.isArray(plan.recommendations)
+      ? plan.recommendations
+      : [];
+
+  const recommended_assets: AdvisorPlanAsset[] = rawAssets
+    .map((asset: any) => {
+      if (!asset || !asset.name) return null;
+      const allocationValue = asset.allocation_percent ?? asset.allocation ?? asset.weight;
+      const allocation = typeof allocationValue === 'number'
+        ? allocationValue
+        : typeof allocationValue === 'string'
+          ? parseFloat(allocationValue.replace(/[^\d.,-]/g, '').replace(',', '.'))
+          : 0;
+
+      return {
+        name: String(asset.name).trim(),
+        ticker: asset.ticker || asset.symbol || '',
+        allocation_percent: Number.isFinite(allocation) ? Math.round(allocation) : 0,
+        rationale: asset.rationale || asset.reasoning || asset.analysis || '',
+        risk_role: asset.risk_role || asset.role || '',
+      };
+    })
+    .filter(Boolean) as AdvisorPlanAsset[];
+
+  const next_steps = toStringArray(plan.next_steps || plan.action_plan || plan.implementation_plan || plan.follow_up);
+
+  return {
+    action_summary: typeof plan.action_summary === 'string'
+      ? plan.action_summary
+      : typeof plan.summary === 'string'
+        ? plan.summary
+        : undefined,
+    risk_alignment: typeof plan.risk_alignment === 'string'
+      ? plan.risk_alignment
+      : typeof plan.risk_analysis === 'string'
+        ? plan.risk_analysis
+        : undefined,
+    next_steps,
+    recommended_assets,
+    disclaimer: typeof plan.disclaimer === 'string'
+      ? plan.disclaimer
+      : typeof plan.footer === 'string'
+        ? plan.footer
+        : undefined,
+  };
+};
 const UserInvestmentAnalysis = ({
   onUpdateProfile
 }: UserInvestmentAnalysisProps) => {
@@ -129,6 +230,46 @@ const UserInvestmentAnalysis = ({
   const handleCreateNewProfile = () => {
     navigate('/portfolio-advisor');
   };
+  const aiStrategyData = activePortfolio?.asset_allocation?.ai_strategy;
+  const aiStrategyRaw = activePortfolio?.asset_allocation?.ai_strategy_raw;
+  const structuredPlan = activePortfolio?.asset_allocation?.structured_plan;
+  const conversationData = activePortfolio?.asset_allocation?.conversation_data || {};
+
+  const advisorPlan = useMemo(() => {
+    return parseAdvisorPlan(structuredPlan)
+      || parseAdvisorPlan(aiStrategyData)
+      || parseAdvisorPlan(aiStrategyRaw);
+  }, [aiStrategyData, aiStrategyRaw, structuredPlan]);
+
+  const aiStrategyText = useMemo(() => {
+    if (advisorPlan) {
+      return '';
+    }
+
+    const candidate = typeof aiStrategyData === 'string' && aiStrategyData.trim()
+      ? aiStrategyData
+      : typeof aiStrategyRaw === 'string'
+        ? aiStrategyRaw
+        : '';
+
+    const trimmed = candidate.trim();
+    if (!trimmed) return '';
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        JSON.parse(trimmed);
+        return '';
+      } catch (error) {
+        console.warn('Failed to parse AI strategy JSON:', error);
+      }
+    }
+
+    if (/https:\/\/deno\.land\//.test(trimmed)) {
+      return '';
+    }
+
+    return trimmed;
+  }, [advisorPlan, aiStrategyData, aiStrategyRaw]);
+
   if (riskLoading || portfolioLoading) {
     return <div className="space-y-8 animate-fade-in">
         <div className="flex items-center justify-center p-12">
@@ -218,8 +359,6 @@ const UserInvestmentAnalysis = ({
         return experience || 'Ej angiven';
     }
   };
-  const aiStrategy = activePortfolio?.asset_allocation?.ai_strategy || '';
-  const conversationData = activePortfolio?.asset_allocation?.conversation_data || {};
   return <div className="space-y-10 animate-fade-in">
       <ResetProfileConfirmDialog isOpen={showResetDialog} onClose={() => setShowResetDialog(false)} onConfirm={handleResetProfile} />
 
@@ -332,8 +471,103 @@ const UserInvestmentAnalysis = ({
         </CardContent>
       </Card>
 
-      {/* AI-Generated Strategy - Apple-inspired */}
-      {aiStrategy && <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-blue-50/30 dark:from-slate-900/90 dark:to-blue-900/10 backdrop-blur-sm border border-blue-200/30 dark:border-blue-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
+      {/* AI-Generated Strategy - Structured plan presentation */}
+      {advisorPlan && (
+        <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-blue-50/30 dark:from-slate-900/90 dark:to-blue-900/10 backdrop-blur-sm border border-blue-200/30 dark:border-blue-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
+          <CardHeader className="pb-8 pt-8">
+            <CardTitle className="flex items-center gap-4 text-2xl font-bold">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center shadow-inner border border-blue-200/30 dark:border-blue-700/30">
+                <Brain className="w-7 h-7 text-transparent bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text" />
+              </div>
+              <span className="text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text">
+                Din AI-plan för nästa steg
+              </span>
+              <Badge className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-transparent bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text border-blue-300/30 dark:border-blue-700/30 rounded-2xl font-semibold px-4 py-2 shadow-sm">
+                Personlig Analys
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-10">
+            <div className="space-y-8">
+              {(advisorPlan.action_summary || advisorPlan.risk_alignment) && (
+                <div className="p-8 rounded-3xl bg-gradient-to-br from-white/70 to-blue-100/20 dark:from-slate-800/70 dark:to-blue-900/20 border border-blue-200/30 dark:border-blue-800/40 shadow-inner backdrop-blur-sm">
+                  {advisorPlan.action_summary && (
+                    <p className="text-lg leading-relaxed text-slate-800 dark:text-slate-200 mb-4">
+                      {advisorPlan.action_summary}
+                    </p>
+                  )}
+                  {advisorPlan.risk_alignment && (
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      {advisorPlan.risk_alignment}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {advisorPlan.next_steps.length > 0 && (
+                <div className="p-8 rounded-3xl bg-gradient-to-br from-white/70 to-slate-100/20 dark:from-slate-800/70 dark:to-slate-900/20 border border-slate-200/30 dark:border-slate-700/40 shadow-inner backdrop-blur-sm">
+                  <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">Handlingsplan</h3>
+                  <ol className="list-decimal pl-6 space-y-3 text-base text-slate-700 dark:text-slate-300">
+                    {advisorPlan.next_steps.map((step, index) => (
+                      <li key={`${step}-${index}`} className="leading-relaxed">
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              {advisorPlan.recommended_assets.length > 0 && (
+                <div className="space-y-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Inköpslista &amp; allokering</h3>
+                    <span className="text-sm text-slate-500 dark:text-slate-400">Summera till 100%</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {advisorPlan.recommended_assets.map((asset, index) => (
+                      <div
+                        key={`${asset.name}-${asset.ticker || index}`}
+                        className="h-full p-6 rounded-3xl border border-blue-200/30 dark:border-blue-800/30 bg-gradient-to-br from-white/60 to-blue-50/10 dark:from-slate-800/60 dark:to-blue-900/10 shadow-sm backdrop-blur-sm hover:shadow-lg transition-all duration-300"
+                      >
+                        <div className="flex items-start justify-between gap-4 mb-4">
+                          <div>
+                            <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">{asset.name}</p>
+                            {asset.ticker && (
+                              <p className="text-sm uppercase tracking-wide text-blue-600 dark:text-blue-300 mt-1">{asset.ticker}</p>
+                            )}
+                          </div>
+                          <Badge className="rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1 text-sm font-semibold">
+                            {asset.allocation_percent}%
+                          </Badge>
+                        </div>
+                        {asset.rationale && (
+                          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+                            {asset.rationale}
+                          </p>
+                        )}
+                        {asset.risk_role && (
+                          <span className="inline-flex items-center text-xs font-medium uppercase tracking-wide text-blue-700 dark:text-blue-300 bg-blue-500/10 dark:bg-blue-500/20 px-3 py-1 rounded-full">
+                            {asset.risk_role}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {advisorPlan.disclaimer && (
+                <p className="text-xs text-muted-foreground text-center leading-relaxed">
+                  {advisorPlan.disclaimer}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!advisorPlan && aiStrategyText && (
+        <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-blue-50/30 dark:from-slate-900/90 dark:to-blue-900/10 backdrop-blur-sm border border-blue-200/30 dark:border-blue-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
           <CardHeader className="pb-8 pt-8">
             <CardTitle className="flex items-center gap-4 text-2xl font-bold">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center shadow-inner border border-blue-200/30 dark:border-blue-700/30">
@@ -350,11 +584,12 @@ const UserInvestmentAnalysis = ({
           <CardContent className="pb-8">
             <div className="prose prose-lg max-w-none text-foreground p-8 bg-gradient-to-br from-white/60 to-blue-50/20 dark:from-slate-800/60 dark:to-blue-900/10 rounded-3xl border border-blue-200/20 dark:border-blue-800/20 shadow-inner backdrop-blur-sm">
               <div className="text-base leading-relaxed text-slate-700 dark:text-slate-300">
-                {formatAIStrategy(aiStrategy)}
+                {formatAIStrategy(aiStrategyText)}
               </div>
             </div>
           </CardContent>
-        </Card>}
+        </Card>
+      )}
 
       {/* Conversation Context - Apple-inspired */}
       {conversationData && Object.keys(conversationData).length > 0 && <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-green-50/30 dark:from-slate-900/90 dark:to-green-900/10 backdrop-blur-sm border border-green-200/30 dark:border-green-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">

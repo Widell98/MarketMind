@@ -144,7 +144,7 @@ const Index = () => {
       icon: Building2,
       title: 'Stock Cases',
       description: 'Utforska företag visuellt',
-      to: '/stock-cases',
+      to: '/discover',
     },
     {
       icon: Settings,
@@ -331,7 +331,7 @@ const Index = () => {
                     </div>
                   </section>
 
-                  <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
+                  {/* <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <h2 className="text-base font-semibold text-foreground sm:text-lg">AI-insikter för dig</h2>
@@ -387,7 +387,7 @@ const Index = () => {
                         </div>
                       )}
                     </div>
-                  </section>
+                  </section> */}
 
                   <section className="rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm sm:p-6">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

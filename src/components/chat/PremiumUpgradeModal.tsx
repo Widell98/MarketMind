@@ -126,7 +126,7 @@ const PremiumUpgradeModal = ({ isOpen, onClose, currentUsage, dailyLimit }: Prem
                   </Badge>
                   <h4 className="font-bold text-lg text-foreground">Premium</h4>
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-2xl font-bold text-foreground">99</span>
+                    <span className="text-2xl font-bold text-foreground">69</span>
                     <span className="text-muted-foreground">SEK/mån</span>
                   </div>
                 </div>
@@ -164,7 +164,7 @@ const PremiumUpgradeModal = ({ isOpen, onClose, currentUsage, dailyLimit }: Prem
                 </div>
                 <div className="space-y-2">
                   {[
-                    "5 AI-meddelanden/dag",
+                    `${dailyLimit} AI-meddelanden/dag`,
                     "Grundläggande funktioner",
                     "Community support"
                   ].map((feature, i) => (
