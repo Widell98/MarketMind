@@ -11,6 +11,7 @@ export interface ConversationData {
   monthlyAmount?: string;
   monthlyAmountNumeric?: number;
   hasCurrentPortfolio?: boolean;
+  tradingFrequency?: string;
   currentHoldings?: Array<{
     id: string;
     name: string;
@@ -45,6 +46,7 @@ export interface ConversationData {
   volatilityComfort?: number;
   marketExperience?: string;
   investmentExperienceLevel?: 'beginner' | 'intermediate' | 'advanced';
+  preferredAssets?: string;
   currentAllocation?: string | Record<string, any>;
   currentPortfolioValue?: string;
   previousPerformance?: string;
@@ -249,6 +251,13 @@ export const useConversationalPortfolio = () => {
       income: 'Regelbunden inkomst',
       house: 'Bostadsköp',
       education: 'Utbildning/Barn',
+      long_term_savings: 'Bygga ett långsiktigt sparande',
+      learn_and_test: 'Lära mig mer och testa på',
+      specific_goal: 'Spara till något specifikt (t.ex. bostad, resa)',
+      quick_return: 'Snabb avkastning',
+      long_term_growth: 'Bygga långsiktigt sparande',
+      dividend_income: 'Extra inkomst via utdelningar',
+      other: 'Annat mål',
     }) ?? 'Ej angivet';
 
     const timeHorizonText = mapValue(conversationData.timeHorizon, {
@@ -256,6 +265,7 @@ export const useConversationalPortfolio = () => {
       medium: '3-7 år (medellång sikt)',
       long: '7-15 år (lång sikt)',
       very_long: '15+ år (mycket lång sikt)',
+      unknown: 'Vet inte än',
     }) ?? 'Ej angiven';
 
     const riskToleranceText = mapValue(conversationData.riskTolerance, {
@@ -279,6 +289,10 @@ export const useConversationalPortfolio = () => {
     }) ?? formatCurrency(conversationData.monthlyIncome);
 
     const availableCapitalText = mapValue(conversationData.availableCapital, {
+      under_1000: 'Mindre än 1 000 kr',
+      '1000_10000': '1 000 – 10 000 kr',
+      '10000_50000': '10 000 – 50 000 kr',
+      over_50000: 'Mer än 50 000 kr',
       '10000-50000': '10 000 - 50 000 kr',
       '50000-100000': '50 000 - 100 000 kr',
       '100000-250000': '100 000 - 250 000 kr',
@@ -308,7 +322,9 @@ export const useConversationalPortfolio = () => {
       sell_all: 'Sälja allt för att stoppa förlusterna',
       sell_some: 'Sälja en del av innehaven',
       hold: 'Behålla allt och vänta',
-      buy_more: 'Köpa mer medan det är billigt',
+      buy_more: 'Jag ser det som ett köptillfälle',
+      sell: 'Jag blir orolig och vill sälja',
+      wait: 'Jag försöker avvakta',
     });
 
     const portfolioHelpText = mapValue(conversationData.portfolioHelp, {
@@ -316,7 +332,39 @@ export const useConversationalPortfolio = () => {
       diverse_portfolio: 'Skapa diversifierad portfölj',
       growth_focused: 'Fokusera på tillväxt',
       dividend_income: 'Prioritera utdelning',
+      long_term_portfolio: 'Bygga en långsiktig portfölj',
+      analyze_holdings: 'Ge analyser på mina aktier',
+      find_new_investments: 'Hitta nya intressanta investeringar',
+      learn_more: 'Lära mig mer om investeringar',
+      step_by_step: 'Komma igång steg-för-steg',
+      learn_basics: 'Lära mig grunderna om aktier & fonder',
+      starter_portfolio: 'Få förslag på en enkel startportfölj',
+      investment_inspiration: 'Inspiration till olika investeringstyper',
     });
+
+    const portfolioSizeText = mapValue(conversationData.portfolioSize, {
+      under_10000: 'Under 10 000 kr',
+      '10000_50000': '10 000 – 50 000 kr',
+      '50000_200000': '50 000 – 200 000 kr',
+      over_200000: 'Mer än 200 000 kr',
+      small: 'Liten portfölj',
+      medium: 'Medelstor portfölj',
+      large: 'Stor portfölj',
+      very_large: 'Mycket stor portfölj',
+    }) ?? conversationData.portfolioSize;
+
+    const preferredAssetsText = mapValue(conversationData.preferredAssets, {
+      stocks: 'Aktier',
+      funds_etfs: 'Fonder/ETF:er',
+      crypto: 'Kryptovalutor',
+      commodities: 'Råvaror (t.ex. guld, olja)',
+    }) ?? conversationData.preferredAssets;
+
+    const tradingFrequencyText = mapValue(conversationData.tradingFrequency, {
+      rarely: 'Sällan (några gånger per år)',
+      monthly: 'Någon gång i månaden',
+      weekly: 'Varje vecka eller oftare',
+    }) ?? conversationData.tradingFrequency;
 
     const rebalancingText = mapValue(conversationData.rebalancingFrequency, {
       monthly: 'Månadsvis',
@@ -386,6 +434,11 @@ GRUNDLÄGGANDE PROFIL:
     if (availableCapitalText && availableCapitalText !== 'Ej angivet') {
       prompt += `
 - Tillgängligt kapital för investeringar: ${availableCapitalText}`;
+    }
+
+    if (preferredAssetsText) {
+      prompt += `
+- Mest intresserad av: ${preferredAssetsText}`;
     }
 
     if (liquidCapitalText && liquidCapitalText !== 'Ej angivet') {
@@ -547,9 +600,14 @@ ERFAREN INVESTERARE - AVANCERAD PROFIL:`;
 - Skatteoptimering: ${conversationData.taxConsideration}`;
       }
 
-      if (conversationData.portfolioSize) {
+      if (portfolioSizeText) {
         prompt += `
-- Portföljstorlek: ${conversationData.portfolioSize}`;
+- Portföljstorlek: ${portfolioSizeText}`;
+      }
+
+      if (tradingFrequencyText) {
+        prompt += `
+- Handelsfrekvens: ${tradingFrequencyText}`;
       }
 
       if (rebalancingText) {
@@ -1219,17 +1277,32 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
           ? resolvedMonthlyIncome * 12
           : null;
 
+      const estimatedPortfolioValue = (() => {
+        switch (mergedConversationData.portfolioSize) {
+          case 'under_10000':
+            return 5000;
+          case '10000_50000':
+            return 30000;
+          case '50000_200000':
+            return 125000;
+          case 'over_200000':
+            return 300000;
+          case 'small':
+            return 50000;
+          case 'medium':
+            return 300000;
+          case 'large':
+            return 750000;
+          case 'very_large':
+            return 1500000;
+          default:
+            return null;
+        }
+      })();
+
       const currentPortfolioValue = resolvedCurrentPortfolioValue !== null
         ? resolvedCurrentPortfolioValue
-        : mergedConversationData.portfolioSize === 'small'
-          ? 50000
-          : mergedConversationData.portfolioSize === 'medium'
-            ? 300000
-            : mergedConversationData.portfolioSize === 'large'
-              ? 750000
-              : mergedConversationData.portfolioSize === 'very_large'
-                ? 1500000
-                : null;
+        : estimatedPortfolioValue;
 
       const currentAllocationValue = typeof mergedConversationData.currentAllocation === 'string'
         ? { self_reported: mergedConversationData.currentAllocation }
