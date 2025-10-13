@@ -24,6 +24,7 @@ import { useEnhancedUserStats } from '@/hooks/useEnhancedUserStats';
 import { useSavedOpportunities } from '@/hooks/useSavedOpportunities';
 import { supabase } from '@/integrations/supabase/client';
 import UserInvestmentAnalysis from '@/components/UserInvestmentAnalysis';
+import { useUserRole } from '@/hooks/useUserRole';
 
 const Profile = () => {
   const { user, loading } = useAuth();
@@ -37,6 +38,7 @@ const Profile = () => {
   const [profileLoading, setProfileLoading] = useState(true);
   
   const { stats } = useEnhancedUserStats();
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const { savedItems, removeOpportunity } = useSavedOpportunities();
   const { stockCases, loading: stockCasesLoading, refetch } = useStockCases();
   const { deleteStockCase } = useStockCaseOperations();
@@ -68,7 +70,7 @@ const Profile = () => {
     fetchProfileData();
   }, [user]);
 
-  if (loading || profileLoading) {
+  if (loading || profileLoading || roleLoading) {
     return (
       <Layout>
         <div className="flex justify-center items-center h-[50vh]">
@@ -150,11 +152,17 @@ const Profile = () => {
 
         {/* Main Content */}
         <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6 lg:py-8">
-          <Tabs defaultValue="content" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-8 bg-muted/20 border border-border/30 rounded-xl p-1 md:p-2 shadow-sm backdrop-blur-sm">
-              <TabsTrigger value="content" className="rounded-lg font-medium">
-                Innehåll
-              </TabsTrigger>
+          <Tabs defaultValue={isAdmin ? "content" : "riskprofile"} className="w-full">
+            <TabsList
+              className={`grid w-full ${
+                isAdmin ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'
+              } gap-2 md:gap-3 mb-8 bg-muted/20 border border-border/30 rounded-xl p-1 md:p-2 shadow-sm backdrop-blur-sm`}
+            >
+              {isAdmin && (
+                <TabsTrigger value="content" className="rounded-lg font-medium">
+                  Innehåll
+                </TabsTrigger>
+              )}
               <TabsTrigger value="riskprofile" className="flex items-center gap-2 rounded-lg font-medium">
                 <Brain className="w-4 h-4" />
                 Riskprofil
@@ -169,80 +177,82 @@ const Profile = () => {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="content" className="space-y-8">
-              {/* Stock Cases */}
-              <Card className="border rounded-xl shadow-sm">
-                <CardHeader className="pb-6">
-                  <div className="flex items-center justify-between">
+            {isAdmin && (
+              <TabsContent value="content" className="space-y-8">
+                {/* Stock Cases */}
+                <Card className="border rounded-xl shadow-sm">
+                  <CardHeader className="pb-6">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-3 text-xl font-semibold">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <TrendingUp className="w-5 h-5 text-primary" />
+                        </div>
+                        Mina Inlägg
+                      </CardTitle>
+                      <Button
+                        onClick={() => setIsCreateCaseDialogOpen(true)}
+                        size="sm"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Nytt case
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {stockCasesLoading ? (
+                      <div className="text-center py-12">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                        <p className="text-sm text-muted-foreground">Laddar cases...</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+                        {stockCases.filter(c => c.user_id === user.id).map((stockCase) => (
+                          <EnhancedStockCaseCard
+                            key={stockCase.id}
+                            stockCase={stockCase}
+                            onViewDetails={() => navigate(`/stock-cases/${stockCase.id}`)}
+                            onDelete={() => setCaseToDelete(stockCase.id)}
+                            onEdit={handleEditCase}
+                          />
+                        ))}
+                        {stockCases.filter(c => c.user_id === user.id).length === 0 && (
+                          <div className="col-span-full text-center py-16">
+                            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                              <TrendingUp className="w-8 h-8 text-primary" />
+                            </div>
+                            <h3 className="text-xl font-semibold text-foreground mb-3">Inga cases än</h3>
+                            <p className="text-muted-foreground mb-6 max-w-md mx-auto">Skapa ditt första aktiecase och dela dina investeringsidéer med communityn.</p>
+                            <Button
+                              onClick={() => setIsCreateCaseDialogOpen(true)}
+                              className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium"
+                            >
+                              <Plus className="w-4 h-4 mr-2" />
+                              Skapa första case
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Analyses */}
+                <Card className="border rounded-xl shadow-sm">
+                  <CardHeader className="pb-6">
                     <CardTitle className="flex items-center gap-3 text-xl font-semibold">
                       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <TrendingUp className="w-5 h-5 text-primary" />
+                        <FileText className="w-5 h-5 text-primary" />
                       </div>
-                      Mina Inlägg
+                      Mina Analyser
                     </CardTitle>
-                    <Button
-                      onClick={() => setIsCreateCaseDialogOpen(true)}
-                      size="sm"
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Nytt case
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {stockCasesLoading ? (
-                    <div className="text-center py-12">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                      <p className="text-sm text-muted-foreground">Laddar cases...</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
-                      {stockCases.filter(c => c.user_id === user.id).map((stockCase) => (
-                        <EnhancedStockCaseCard
-                          key={stockCase.id}
-                          stockCase={stockCase}
-                          onViewDetails={() => navigate(`/stock-cases/${stockCase.id}`)}
-                          onDelete={() => setCaseToDelete(stockCase.id)}
-                          onEdit={handleEditCase}
-                        />
-                      ))}
-                      {stockCases.filter(c => c.user_id === user.id).length === 0 && (
-                        <div className="col-span-full text-center py-16">
-                          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
-                            <TrendingUp className="w-8 h-8 text-primary" />
-                          </div>
-                          <h3 className="text-xl font-semibold text-foreground mb-3">Inga cases än</h3>
-                          <p className="text-muted-foreground mb-6 max-w-md mx-auto">Skapa ditt första aktiecase och dela dina investeringsidéer med communityn.</p>
-                          <Button
-                            onClick={() => setIsCreateCaseDialogOpen(true)}
-                            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium"
-                          >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Skapa första case
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Analyses */}
-              <Card className="border rounded-xl shadow-sm">
-                <CardHeader className="pb-6">
-                  <CardTitle className="flex items-center gap-3 text-xl font-semibold">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <FileText className="w-5 h-5 text-primary" />
-                    </div>
-                    Mina Analyser
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <UserAnalysesSection compact={false} />
-                </CardContent>
-              </Card>
-            </TabsContent>
+                  </CardHeader>
+                  <CardContent>
+                    <UserAnalysesSection compact={false} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
 
             <TabsContent value="riskprofile" className="space-y-8">
               <UserInvestmentAnalysis />
@@ -271,48 +281,52 @@ const Profile = () => {
         onSaved={handleProfileSaved}
       />
 
-      <CreateStockCaseDialog 
-        isOpen={isCreateCaseDialogOpen}
-        onClose={() => setIsCreateCaseDialogOpen(false)}
-        onSuccess={() => {
-          setIsCreateCaseDialogOpen(false);
-          refetch();
-        }}
-      />
+      {isAdmin && (
+        <>
+          <CreateStockCaseDialog
+            isOpen={isCreateCaseDialogOpen}
+            onClose={() => setIsCreateCaseDialogOpen(false)}
+            onSuccess={() => {
+              setIsCreateCaseDialogOpen(false);
+              refetch();
+            }}
+          />
 
-      <EditStockCaseDialog 
-        isOpen={isEditCaseDialogOpen}
-        onClose={() => {
-          setIsEditCaseDialogOpen(false);
-          setCaseToEdit(null);
-        }}
-        onSuccess={() => {
-          setIsEditCaseDialogOpen(false);
-          setCaseToEdit(null);
-          refetch();
-        }}
-        stockCase={caseToEdit}
-      />
+          <EditStockCaseDialog
+            isOpen={isEditCaseDialogOpen}
+            onClose={() => {
+              setIsEditCaseDialogOpen(false);
+              setCaseToEdit(null);
+            }}
+            onSuccess={() => {
+              setIsEditCaseDialogOpen(false);
+              setCaseToEdit(null);
+              refetch();
+            }}
+            stockCase={caseToEdit}
+          />
 
-      <AlertDialog open={!!caseToDelete} onOpenChange={() => setCaseToDelete(null)}>
-        <AlertDialogContent className="rounded-xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-semibold">Ta bort aktiecase</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground">
-              Är du säker på att du vill ta bort detta aktiecase? Denna åtgärd kan inte ångras.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-lg">Avbryt</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => caseToDelete && handleDeleteCase(caseToDelete)}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-lg"
-            >
-              Ta bort
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          <AlertDialog open={!!caseToDelete} onOpenChange={() => setCaseToDelete(null)}>
+            <AlertDialogContent className="rounded-xl">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-xl font-semibold">Ta bort aktiecase</AlertDialogTitle>
+                <AlertDialogDescription className="text-muted-foreground">
+                  Är du säker på att du vill ta bort detta aktiecase? Denna åtgärd kan inte ångras.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="rounded-lg">Avbryt</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => caseToDelete && handleDeleteCase(caseToDelete)}
+                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-lg"
+                >
+                  Ta bort
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
     </Layout>
   );
 };
