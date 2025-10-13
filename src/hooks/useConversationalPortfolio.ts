@@ -1372,12 +1372,13 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         return null;
       }
 
-      // Generate AI response with enhanced risk profile using proper endpoint
+      // Generate AI response with enhanced risk profile using proper endpoint.
+      // The backend now owns the full system directive for OpenAI, so we only pass
+      // through structured conversation data here to avoid conflicting prompts.
       const { data: aiResponse, error: aiError } = await supabase.functions.invoke('generate-portfolio', {
         body: {
           riskProfileId: riskProfile.id,
           userId: user.id,
-          conversationPrompt: enhancedPrompt,
           conversationData: mergedConversationData
         }
       });
