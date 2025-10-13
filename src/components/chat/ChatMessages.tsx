@@ -1,6 +1,5 @@
 import React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
 import { PieChart, Activity, Zap, TrendingUp, Brain } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 import GuideBot from './GuideBot';
@@ -119,35 +118,35 @@ const ChatMessages = ({
         )}
 
         {messages.length === 0 && !isLoading && onExamplePrompt && !showGuideBot && (
-          <div className="space-y-6">
+          <div className="space-y-7">
             <div className="text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#144272]/20 to-[#205295]/24 text-primary shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:shadow-none">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#144272]/18 to-[#205295]/28 text-primary shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:shadow-none">
                 <Brain className="h-5 w-5" />
               </div>
               <h2 className="mt-3 text-lg font-semibold text-foreground">Redo när du är</h2>
               <p className="mt-2 text-sm text-ai-text-muted">
-                Välj ett av förslagen eller ställ din egen fråga för att starta konversationen.
+                Plocka ett spår eller skriv din egen fråga för att starta konversationen.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex flex-wrap justify-center gap-2.5 sm:gap-3">
               {examplePrompts.map((example, index) => (
-                <Button
+                <button
                   key={index}
-                  variant="ghost"
-                  className="h-auto justify-start rounded-[18px] border border-[#144272]/20 bg-white/90 px-4 py-4 text-left shadow-[0_18px_45px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:border-[#205295]/40 hover:bg-[#144272]/10 hover:shadow-[0_24px_55px_rgba(15,23,42,0.08)] dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none dark:hover:bg-ai-surface-muted/70"
+                  type="button"
                   onClick={() => onExamplePrompt(example.prompt)}
+                  className="group flex min-w-[220px] max-w-xs flex-1 cursor-pointer flex-col gap-2 rounded-[22px] border border-transparent bg-white/75 px-4 py-3 text-left shadow-[0_14px_35px_rgba(15,23,42,0.06)] ring-1 ring-[#144272]/10 transition-all hover:-translate-y-0.5 hover:border-[#205295]/30 hover:bg-white/90 hover:shadow-[0_22px_45px_rgba(15,23,42,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:bg-ai-surface/85 dark:text-foreground dark:hover:bg-ai-surface dark:ring-ai-border/60"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-[#144272]/12 text-primary shadow-sm transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#144272]/12 text-primary shadow-sm transition-colors group-hover:bg-[#144272]/16 dark:bg-ai-surface-muted/70 dark:text-ai-text-muted">
                       {example.icon}
-                    </div>
-                    <div className="min-w-0 space-y-1">
-                      <p className="text-sm font-medium text-foreground">{example.title}</p>
-                      <p className="text-xs text-ai-text-muted">{example.description}</p>
-                    </div>
+                    </span>
+                    <span className="text-sm font-medium text-foreground">{example.title}</span>
                   </div>
-                </Button>
+                  <span className="pl-1 text-xs text-ai-text-muted">
+                    {example.description}
+                  </span>
+                </button>
               ))}
             </div>
           </div>
