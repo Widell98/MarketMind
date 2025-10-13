@@ -52,14 +52,14 @@ const ChatInput = memo(({
 
   return (
     <>
-      <div className="flex-shrink-0 border-t border-[#144272]/20 bg-white/95 px-4 py-4 shadow-[0_-20px_60px_rgba(15,23,42,0.07)] backdrop-blur-sm transition-colors sm:px-6 sm:py-5 lg:px-10 lg:py-8 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))] dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-none">
+      <div className="flex-shrink-0 border-t border-transparent bg-transparent px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur-md transition-colors sm:px-6 sm:pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pt-6 lg:px-10 lg:pb-[calc(1.75rem+env(safe-area-inset-bottom))] lg:pt-8">
         {quotaExceeded && (
-          <div className="mb-3 sm:mb-4 rounded-[18px] border border-destructive/20 bg-destructive/10 p-3 shadow-[0_16px_40px_rgba(239,68,68,0.18)]">
-            <div className="flex items-center gap-2 font-medium mb-1 text-destructive text-sm">
-              <AlertCircle className="w-4 h-4" />
+          <div className="mx-auto mb-4 w-full max-w-4xl rounded-3xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive shadow-[0_16px_45px_rgba(239,68,68,0.18)] sm:px-5">
+            <div className="mb-1.5 flex items-center gap-2 font-medium">
+              <AlertCircle className="h-4 w-4" />
               API-kvot överskriden
             </div>
-            <p className="text-destructive/80 text-sm leading-relaxed">
+            <p className="text-destructive/80">
               Du har nått din dagliga gräns för AI-användning. Försök igen senare eller uppgradera ditt konto.
             </p>
           </div>
@@ -67,49 +67,54 @@ const ChatInput = memo(({
 
         <form
           onSubmit={handleSubmit}
-          className="mx-auto flex w-full max-w-4xl items-end gap-2 sm:gap-3 lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl"
+          className="mx-auto w-full max-w-4xl"
         >
-          <div className="flex-1 relative min-w-0">
-            <Textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit(e as unknown as React.FormEvent);
-                }
-              }}
-              placeholder={isAtLimit ? "Uppgradera till Premium för fler meddelanden" : "Skriv ditt meddelande här... (kostar 1 credit)"}
-              disabled={isLoading || quotaExceeded}
-              className="min-h-[48px] max-h-[160px] w-full resize-none rounded-[18px] border border-[#205295]/22 bg-white/90 px-4 pr-12 text-sm shadow-[0_16px_40px_rgba(15,23,42,0.06)] transition-all duration-200 focus:border-primary/60 focus:shadow-[0_20px_55px_rgba(15,23,42,0.08)] focus:ring-2 focus:ring-primary/20 sm:px-5 sm:text-base dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-sm dark:focus:border-ai-border/80 dark:focus:ring-0"
-              style={{ fontSize: '16px' }}
-              rows={1}
-            />
-            <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-primary/50 transition-colors dark:text-ai-text-muted">
-              <MessageSquare className="w-4 h-4" />
+          <div className="rounded-[28px] border border-[#144272]/15 bg-white/85 p-3 shadow-[0_24px_70px_rgba(15,23,42,0.12)] backdrop-blur-xl transition-colors sm:p-4 dark:border-ai-border/60 dark:bg-ai-surface/90 dark:shadow-none">
+            <div className="flex items-end gap-3 sm:gap-4">
+              <div className="relative flex-1">
+                <Textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmit(e as unknown as React.FormEvent);
+                    }
+                  }}
+                  placeholder={isAtLimit ? "Uppgradera till Premium för fler meddelanden" : "Skriv ditt meddelande här... (kostar 1 credit)"}
+                  disabled={isLoading || quotaExceeded}
+                  className="min-h-[54px] max-h-[160px] w-full resize-none rounded-[20px] border-none bg-transparent px-4 pr-12 text-sm text-foreground placeholder:text-ai-text-muted focus-visible:border-none focus-visible:outline-none focus-visible:ring-0 sm:text-base dark:text-foreground"
+                  style={{ fontSize: '16px' }}
+                  rows={1}
+                />
+                <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-primary/60 transition-colors dark:text-ai-text-muted">
+                  <MessageSquare className="h-4 w-4" />
+                </div>
+              </div>
+              <Button
+                type="submit"
+                disabled={!input.trim() || isLoading || quotaExceeded}
+                size="icon"
+                className="h-11 w-11 rounded-full bg-gradient-to-r from-[#2563eb] to-primary text-primary-foreground shadow-[0_18px_40px_rgba(37,99,235,0.35)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_55px_rgba(37,99,235,0.45)] disabled:translate-y-0 disabled:opacity-60 sm:h-12 sm:w-12 dark:from-primary dark:to-primary dark:hover:from-primary/90 dark:hover:to-primary/90 dark:shadow-none"
+                aria-label="Skicka meddelande"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
             </div>
           </div>
-          <Button
-            type="submit"
-            disabled={!input.trim() || isLoading || quotaExceeded}
-            size="default"
-            className="h-10 sm:h-11 lg:h-12 px-5 sm:px-6 bg-gradient-to-r from-blue-500 to-primary hover:from-blue-500/90 hover:to-primary/90 shadow-[0_24px_55px_rgba(15,23,42,0.18)] rounded-full text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_28px_70px_rgba(15,23,42,0.22)] text-primary-foreground flex-shrink-0 self-end dark:from-primary dark:to-primary dark:hover:from-primary/90 dark:hover:to-primary/90 dark:shadow-none"
-          >
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-          </Button>
         </form>
 
         {/* Premium Badge for Premium Users */}
         {isPremium && (
-          <div className="flex justify-center mt-3">
-            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs px-3 py-1">
-              <Crown className="w-3 h-3 mr-1" />
-              Premium - Obegränsade meddelanden
+          <div className="mx-auto mt-4 flex w-full max-w-4xl justify-center">
+            <Badge className="rounded-full border border-amber-500/30 bg-amber-400/15 px-4 py-1.5 text-[11px] font-medium uppercase tracking-[0.24em] text-amber-600 shadow-sm backdrop-blur-sm dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-300">
+              <Crown className="mr-2 h-3 w-3" />
+              Premium-användare
             </Badge>
           </div>
         )}

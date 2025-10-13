@@ -232,51 +232,56 @@ const AIChat = ({
             <ChatFolderSidebar {...sidebarProps} />
           )}
 
-          <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-ai-surface">
-            <header className="grid grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-ai-border/60 px-4 py-3 sm:px-6">
-              <div className="flex items-center gap-2">
-                {isMobile && (
-                  <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-                    <SheetTrigger asChild>
+          <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-transparent dark:bg-ai-surface">
+            <header className="sticky top-0 z-20 border-b border-transparent bg-white/85 px-4 py-3 backdrop-blur-lg transition-colors sm:px-6 dark:bg-ai-surface/90">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 rounded-full border border-[#144272]/15 bg-white/80 px-1.5 py-1 shadow-[0_8px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-colors dark:border-ai-border/60 dark:bg-ai-surface/70">
+                    {isMobile && (
+                      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                        <SheetTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-white/70 hover:text-foreground dark:hover:bg-ai-surface-muted/80"
+                          >
+                            <Menu className="h-4 w-4" />
+                          </Button>
+                        </SheetTrigger>
+                        <SheetContent side="left" className="w-full max-w-xs p-0 sm:max-w-sm">
+                          <ChatFolderSidebar {...sidebarProps} />
+                        </SheetContent>
+                      </Sheet>
+                    )}
+
+                    {!isMobile && (
                       <Button
+                        onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
                         variant="ghost"
                         size="icon"
-                        className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground"
+                        className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-white/70 hover:text-foreground dark:hover:bg-ai-surface-muted/80"
                       >
-                        <Menu className="h-4 w-4" />
+                        {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
                       </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="w-full max-w-xs p-0 sm:max-w-sm">
-                      <ChatFolderSidebar {...sidebarProps} />
-                    </SheetContent>
-                  </Sheet>
-                )}
+                    )}
+                  </div>
 
-                {!isMobile && (
-                  <Button
-                    onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 rounded-full text-ai-text-muted hover:bg-ai-surface-muted/70 hover:text-foreground"
-                  >
-                    {desktopSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-                  </Button>
-                )}
-              </div>
-
-              {/* <div className="flex items-center justify-center">
-                <div className="flex flex-col items-center gap-0.5">
-                  <span className="text-sm font-medium text-foreground sm:text-base">AI-assistent</span>
-                  <span className="hidden text-[12px] text-ai-text-muted sm:inline">Marknadsguiden i realtid</span>
+                  <div className="hidden sm:flex flex-col">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-ai-text-muted/60">
+                      MarketMind
+                    </span>
+                    <span className="text-sm font-medium text-foreground">AI-assistent</span>
+                  </div>
                 </div>
-              </div> */}
 
-              <div className="flex items-center justify-end gap-2">
-                {!isPremium && (
-                  <span className="hidden rounded-full border border-ai-border/70 bg-ai-surface-muted/60 px-3 py-1 text-xs font-medium text-ai-text-muted sm:inline-flex">
-                    {remainingCredits}/{totalCredits} krediter kvar
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {!isPremium && (
+                    <span className="inline-flex items-center gap-2 rounded-full border border-[#144272]/20 bg-white/70 px-3 py-1 text-xs font-medium text-ai-text-muted shadow-sm backdrop-blur-sm dark:border-ai-border/60 dark:bg-ai-surface/70">
+                      <span className="h-2 w-2 rounded-full bg-primary/70" aria-hidden />
+                      {remainingCredits}/{totalCredits} krediter kvar
+                    </span>
+                  )}
+                </div>
               </div>
             </header>
 
