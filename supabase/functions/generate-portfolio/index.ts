@@ -459,8 +459,27 @@ Skapa en personlig portfölj med ENDAST riktiga aktier och fonder tillgängliga 
     let { plan: structuredPlan, recommendedStocks } = extractStructuredPlan(aiRecommendationsRaw, riskProfile);
 
     if (!structuredPlan || recommendedStocks.length === 0) {
-      console.error('AI response was missing structured recommendations. Raw output:', aiRecommendationsRaw);
-      throw new Error('AI kunde inte generera några portföljförslag');
+      console.warn('Structured plan missing, attempting fallback parsing of AI response.');
+      const fallbackPlan = buildFallbackPlanFromText(aiRecommendationsRaw, riskProfile);
+      if (fallbackPlan) {
+        structuredPlan = fallbackPlan.plan;
+        recommendedStocks = fallbackPlan.recommendedStocks;
+      }
+    }
+
+    if (!structuredPlan || recommendedStocks.length === 0) {
+      console.error('AI response was missing structured recommendations even after fallback. Raw output:', aiRecommendationsRaw);
+      return jsonResponse({
+        success: true,
+        aiRecommendations: aiRecommendationsRaw,
+        aiResponse: aiRecommendationsRaw,
+        aiResponseRaw: aiRecommendationsRaw,
+        plan: null,
+        confidence: 0,
+        recommendedStocks: [],
+        portfolio: null,
+        warning: 'AI kunde inte struktureras till en portfölj. Råtext returneras utan att skapa portfölj.'
+      });
     }
 
     ensureSum100(recommendedStocks);
@@ -849,6 +868,128 @@ function extractStructuredPlan(rawText: string, riskProfile: any): { plan: any |
     console.warn('Failed to parse structured plan JSON:', error);
     return { plan: null, recommendedStocks: [] };
   }
+}
+
+function buildFallbackPlanFromText(rawText: string, riskProfile: any): { plan: any; recommendedStocks: Array<{ name: string; symbol?: string; allocation: number; sector?: string; reasoning?: string }> } | null {
+  const fallbackStocks = extractFallbackStocksFromText(rawText, riskProfile);
+  if (fallbackStocks.length === 0) {
+    return null;
+  }
+
+  ensureSum100(fallbackStocks);
+
+  const plan = {
+    action_summary: fallbackActionSummary(riskProfile),
+    risk_alignment: fallbackRiskAlignment(riskProfile),
+    next_steps: buildDefaultNextSteps(riskProfile),
+    recommended_assets: fallbackStocks.map(stock => ({
+      name: stock.name,
+      ticker: stock.symbol || '',
+      allocation_percent: stock.allocation,
+      rationale: stock.reasoning || buildSectorRationale(stock, riskProfile),
+      risk_role: determineRiskRole(stock, riskProfile)
+    })),
+    disclaimer: 'Råden är utbildningsmaterial och ersätter inte personlig rådgivning. Investeringar innebär risk och värdet kan både öka och minska.'
+  };
+
+  return { plan, recommendedStocks: fallbackStocks };
+}
+
+function extractFallbackStocksFromText(rawText: string, riskProfile: any): Array<{ name: string; symbol?: string; allocation: number; sector?: string; reasoning?: string }> {
+  if (!rawText || typeof rawText !== 'string') {
+    return [];
+  }
+
+  const stocks: Array<{ name: string; symbol?: string; allocation: number; sector?: string; reasoning?: string }> = [];
+  const seen = new Set<string>();
+
+  const allocationRegex = /(?:\d+\.\s*|[-*•]\s*)?([A-Za-zÅÄÖåäö0-9 .,&'’\/-]{3,}?)(?:\s*\(([^)]+)\))?(?:\s*[-–—:]\s*(?:Analys|Varför|Reasoning|Roll|Rekommendation)?\s*)?(?:Allokering|Allokation|Vikt|Allocation|Andel)?\s*:?\s*(\d{1,3})\s*%/gim;
+  let match: RegExpExecArray | null;
+
+  while ((match = allocationRegex.exec(rawText)) !== null) {
+    const name = match[1]?.trim();
+    if (!name) continue;
+
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+
+    const rawTicker = match[2]?.trim();
+    const ticker = rawTicker && rawTicker.length <= 10 ? rawTicker.replace(/[^A-Za-z0-9]/g, '').toUpperCase() : undefined;
+    const allocation = Math.max(0, Math.min(100, parseInt(match[3] || '0', 10)));
+    const sector = detectSector(name, ticker);
+
+    stocks.push({
+      name,
+      symbol: ticker,
+      allocation,
+      sector,
+      reasoning: buildSectorRationale({ name, sector }, riskProfile)
+    });
+    seen.add(key);
+  }
+
+  if (stocks.length === 0) {
+    const bulletRegex = /(?:\d+\.\s*|[-*•]\s*)([A-Za-zÅÄÖåäö0-9 .,&'’\/-]{3,}?)(?:\s*\(([^)]+)\))?(?:\s*[-–—:]\s*(.*))?/gim;
+    let bulletMatch: RegExpExecArray | null;
+
+    while ((bulletMatch = bulletRegex.exec(rawText)) !== null) {
+      const name = bulletMatch[1]?.trim();
+      if (!name) continue;
+
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
+
+      const rawTicker = bulletMatch[2]?.trim();
+      const ticker = rawTicker && rawTicker.length <= 10 ? rawTicker.replace(/[^A-Za-z0-9]/g, '').toUpperCase() : undefined;
+      const reasoningText = bulletMatch[3]?.trim();
+      const sector = detectSector(name, ticker);
+
+      stocks.push({
+        name,
+        symbol: ticker,
+        allocation: 0,
+        sector,
+        reasoning: reasoningText && reasoningText.length > 0 ? reasoningText : buildSectorRationale({ name, sector }, riskProfile)
+      });
+      seen.add(key);
+    }
+  }
+
+  if (stocks.length === 0) {
+    return [];
+  }
+
+  let total = stocks.reduce((sum, item) => sum + (Number.isFinite(item.allocation) ? item.allocation : 0), 0);
+  if (!Number.isFinite(total) || total === 0) {
+    const equalWeight = Math.floor(100 / stocks.length);
+    stocks.forEach(stock => {
+      stock.allocation = equalWeight;
+    });
+    let remainder = 100 - equalWeight * stocks.length;
+    let index = 0;
+    while (remainder > 0 && stocks.length > 0) {
+      stocks[index % stocks.length].allocation += 1;
+      remainder -= 1;
+      index += 1;
+    }
+  } else if (total !== 100) {
+    const scale = 100 / total;
+    stocks.forEach(stock => {
+      stock.allocation = Math.round(stock.allocation * scale);
+    });
+    ensureSum100(stocks);
+  }
+
+  stocks.forEach(stock => {
+    if (!stock.sector) {
+      stock.sector = detectSector(stock.name, stock.symbol);
+    }
+    if (!stock.reasoning) {
+      stock.reasoning = buildSectorRationale(stock, riskProfile);
+    }
+  });
+
+  return stocks;
 }
 
 function sanitizeJsonLikeString(rawText: string): string | null {
