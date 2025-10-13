@@ -106,6 +106,7 @@ const ConversationalRiskAssessment: React.FC<ConversationalRiskAssessmentProps> 
         timeHorizon: riskProfile.investment_horizon || undefined,
         riskTolerance: riskProfile.risk_tolerance || undefined,
         monthlyAmount: riskProfile.monthly_investment_amount?.toString(),
+        monthlyAmountNumeric: riskProfile.monthly_investment_amount ?? undefined,
         interests: [],
         companies: [],
         portfolioHelp: message,

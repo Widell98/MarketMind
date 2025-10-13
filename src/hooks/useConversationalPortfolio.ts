@@ -9,6 +9,7 @@ interface ConversationData {
   timeHorizon?: string;
   riskTolerance?: string;
   monthlyAmount?: string;
+  monthlyAmountNumeric?: number;
   hasCurrentPortfolio?: boolean;
   currentHoldings?: Array<{
     id: string;
@@ -203,12 +204,17 @@ export const useConversationalPortfolio = () => {
   };
 
   const buildEnhancedAIPrompt = (conversationData: ConversationData) => {
+    const monthlyAmountText = conversationData.monthlyAmount
+      || (typeof conversationData.monthlyAmountNumeric === 'number'
+        ? conversationData.monthlyAmountNumeric.toString()
+        : 'Ej angiven');
+
     let prompt = `Skapa en detaljerad och personlig portföljstrategi baserat på följande omfattande konsultation:
 
 GRUNDLÄGGANDE PROFIL:
 - Erfarenhetsnivå: ${conversationData.isBeginnerInvestor ? 'Nybörjare (första gången investera)' : 'Erfaren investerare (flera års erfarenhet)'}
 - Ålder: ${conversationData.age || 'Ej angiven'}
-- Månatligt investeringsbelopp: ${conversationData.monthlyAmount || 'Ej angiven'} SEK`;
+- Månatligt investeringsbelopp: ${monthlyAmountText} SEK`;
 
     if (conversationData.annualIncome) {
       prompt += `
@@ -686,6 +692,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       const monthlyInvestment = ensureNumber(profile.monthly_investment_amount);
       if (typeof monthlyInvestment === 'number') {
         normalized.monthlyAmount = monthlyInvestment.toString();
+        normalized.monthlyAmountNumeric = monthlyInvestment;
       }
 
       const annualIncome = ensureNumber(profile.annual_income);
@@ -947,8 +954,54 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         mergedConversationData.volatilityComfort = mergedConversationData.isBeginnerInvestor ? 3 : 5;
       }
 
-      const enhancedPrompt = buildEnhancedAIPrompt(mergedConversationData);
-      console.log('Generated enhanced AI prompt:', enhancedPrompt);
+      let resolvedMonthlyInvestment = extractNumericValue(mergedConversationData.monthlyAmount);
+      if (resolvedMonthlyInvestment !== null) {
+        mergedConversationData.monthlyAmount = resolvedMonthlyInvestment.toString();
+        mergedConversationData.monthlyAmountNumeric = resolvedMonthlyInvestment;
+      } else if (typeof mergedConversationData.monthlyAmountNumeric === 'number') {
+        resolvedMonthlyInvestment = mergedConversationData.monthlyAmountNumeric;
+        mergedConversationData.monthlyAmount = mergedConversationData.monthlyAmountNumeric.toString();
+      } else if (typeof latestRiskProfile?.monthly_investment_amount === 'number') {
+        resolvedMonthlyInvestment = latestRiskProfile.monthly_investment_amount;
+        mergedConversationData.monthlyAmount = resolvedMonthlyInvestment.toString();
+        mergedConversationData.monthlyAmountNumeric = resolvedMonthlyInvestment;
+      }
+
+      let resolvedMonthlyIncome = extractNumericValue(mergedConversationData.monthlyIncome);
+      if (resolvedMonthlyIncome !== null) {
+        mergedConversationData.monthlyIncome = resolvedMonthlyIncome.toString();
+      }
+
+      let resolvedAnnualIncome = extractNumericValue(mergedConversationData.annualIncome);
+      if (resolvedAnnualIncome !== null) {
+        mergedConversationData.annualIncome = resolvedAnnualIncome.toString();
+      } else if (resolvedMonthlyIncome !== null) {
+        resolvedAnnualIncome = resolvedMonthlyIncome * 12;
+        mergedConversationData.annualIncome = resolvedAnnualIncome.toString();
+      }
+
+      const resolvedLiquidCapital = extractNumericValue(mergedConversationData.liquidCapital || mergedConversationData.availableCapital);
+      if (resolvedLiquidCapital !== null) {
+        const liquidCapitalString = resolvedLiquidCapital.toString();
+        mergedConversationData.liquidCapital = liquidCapitalString;
+        if (!mergedConversationData.availableCapital) {
+          mergedConversationData.availableCapital = liquidCapitalString;
+        }
+      }
+
+      const resolvedTargetAmount = extractNumericValue(mergedConversationData.targetAmount || mergedConversationData.specificGoalAmount);
+      if (resolvedTargetAmount !== null) {
+        const targetString = resolvedTargetAmount.toString();
+        mergedConversationData.targetAmount = targetString;
+        if (!mergedConversationData.specificGoalAmount) {
+          mergedConversationData.specificGoalAmount = targetString;
+        }
+      }
+
+      const resolvedCurrentPortfolioValue = extractNumericValue(mergedConversationData.currentPortfolioValue);
+      if (resolvedCurrentPortfolioValue !== null) {
+        mergedConversationData.currentPortfolioValue = resolvedCurrentPortfolioValue.toString();
+      }
 
       // Create enhanced risk profile data with all new fields
       const combinedSectorInterests = Array.from(new Set([
@@ -960,13 +1013,6 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         mergedConversationData.geographicPreference ? `Geografisk inriktning: ${mergedConversationData.geographicPreference}` : null,
         mergedConversationData.dividendYieldRequirement ? `Utdelningskrav: ${mergedConversationData.dividendYieldRequirement}` : null,
       ].filter(Boolean)));
-
-      const resolvedMonthlyInvestment = extractNumericValue(mergedConversationData.monthlyAmount);
-      const resolvedLiquidCapital = extractNumericValue(mergedConversationData.liquidCapital || mergedConversationData.availableCapital);
-      const resolvedTargetAmount = extractNumericValue(mergedConversationData.targetAmount || mergedConversationData.specificGoalAmount);
-      const resolvedAnnualIncome = extractNumericValue(mergedConversationData.annualIncome);
-      const resolvedMonthlyIncome = extractNumericValue(mergedConversationData.monthlyIncome);
-      const resolvedCurrentPortfolioValue = extractNumericValue(mergedConversationData.currentPortfolioValue);
 
       const emergencyBufferMonths = typeof mergedConversationData.emergencyBufferMonths === 'number'
         ? mergedConversationData.emergencyBufferMonths
@@ -999,6 +1045,14 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       const riskComfortLevel = mergedConversationData.volatilityComfort || (mergedConversationData.isBeginnerInvestor ? 3 : 5);
 
       const investmentExperienceLevel = resolveInvestmentExperience(mergedConversationData);
+
+      if (!mergedConversationData.investmentExperienceLevel) {
+        mergedConversationData.investmentExperienceLevel = investmentExperienceLevel;
+      }
+
+      if (mergedConversationData.isBeginnerInvestor === undefined) {
+        mergedConversationData.isBeginnerInvestor = investmentExperienceLevel === 'beginner';
+      }
 
       const hasLoans = typeof mergedConversationData.hasLoans === 'boolean'
         ? mergedConversationData.hasLoans
@@ -1042,6 +1096,9 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       const monthlyInvestmentAmount = resolvedMonthlyInvestment !== null ? resolvedMonthlyInvestment : 5000;
       const liquidCapitalValue = resolvedLiquidCapital !== null ? resolvedLiquidCapital : null;
       const targetAmountValue = resolvedTargetAmount !== null ? resolvedTargetAmount : null;
+
+      const enhancedPrompt = buildEnhancedAIPrompt(mergedConversationData);
+      console.log('Generated enhanced AI prompt:', enhancedPrompt);
 
       const riskProfileData = {
         age: mergedConversationData.age ?? existingProfileData.age ?? 25,

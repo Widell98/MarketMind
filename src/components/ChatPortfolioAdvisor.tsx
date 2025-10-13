@@ -870,6 +870,28 @@ const ChatPortfolioAdvisor = () => {
       ...conversationData,
       [currentQuestion.key]: processedAnswer
     };
+
+    if (currentQuestion.key === 'monthlyAmount') {
+      let numericAnswer: number | null = null;
+
+      if (typeof processedAnswer === 'string') {
+        const cleaned = processedAnswer.replace(/[^0-9.,-]/g, '').replace(',', '.');
+        if (cleaned.length > 0) {
+          const parsed = Number(cleaned);
+          if (!Number.isNaN(parsed)) {
+            numericAnswer = parsed;
+          }
+        }
+      } else if (typeof processedAnswer === 'number' && Number.isFinite(processedAnswer)) {
+        numericAnswer = processedAnswer;
+      }
+
+      if (numericAnswer !== null) {
+        (updatedData as ConversationData).monthlyAmountNumeric = Math.round(numericAnswer);
+      } else {
+        delete (updatedData as ConversationData).monthlyAmountNumeric;
+      }
+    }
     setConversationData(updatedData);
 
     // Move to next question
