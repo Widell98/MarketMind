@@ -301,6 +301,7 @@ const AIChat = ({
                   <ProfileUpdateConfirmation
                     key={`${message.id}_confirmation`}
                     profileUpdates={profileUpdates}
+                    summary={typeof message.context?.detectedSummary === 'string' ? message.context?.detectedSummary : undefined}
                     onConfirm={() => updateUserProfile(profileUpdates, message.id)}
                     onReject={() => dismissProfileUpdatePrompt(message.id)}
                   />
