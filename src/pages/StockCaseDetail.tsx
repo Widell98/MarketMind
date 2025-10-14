@@ -100,12 +100,37 @@ const StockCaseDetail = () => {
   const isPositivePerformance = performance && performance >= 0;
   const isOwner = user && stockCase.user_id === user.id;
 
+  // Create timeline of all versions (original + updates)
+  const timeline = [
+    {
+      id: 'original',
+      title: stockCase?.title || '',
+      description: stockCase?.description || '',
+      image_url: stockCase?.image_url || '',
+      created_at: stockCase?.created_at || '',
+      user_id: stockCase?.user_id || '',
+      isOriginal: true
+    },
+    ...(updates || []).map(update => ({
+      ...update,
+      isOriginal: false
+    }))
+  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  // Get current version based on carousel index
+  const currentVersion = timeline[currentImageIndex];
+  const hasMultipleVersions = timeline.length > 1;
+
+  const displayTitle = currentVersion?.title?.trim() ? currentVersion.title : stockCase.title;
+
   const handleShare = async () => {
+    const shareTitle = displayTitle;
+
     if (navigator.share) {
       try {
         await navigator.share({
-          title: stockCase.title,
-          text: `Kolla in detta stock case: ${stockCase.title}`,
+          title: shareTitle,
+          text: `Kolla in detta stock case: ${shareTitle}`,
           url: window.location.href
         });
       } catch (error) {
@@ -162,27 +187,6 @@ const StockCaseDetail = () => {
       (window as any).refreshCommunityRecommendations();
     }
   };
-
-  // Create timeline of all versions (original + updates)
-  const timeline = [
-    {
-      id: 'original',
-      title: stockCase?.title || '',
-      description: stockCase?.description || '',
-      image_url: stockCase?.image_url || '',
-      created_at: stockCase?.created_at || '',
-      user_id: stockCase?.user_id || '',
-      isOriginal: true
-    },
-    ...(updates || []).map(update => ({
-      ...update,
-      isOriginal: false
-    }))
-  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-  // Get current version based on carousel index
-  const currentVersion = timeline[currentImageIndex];
-  const hasMultipleVersions = timeline.length > 1;
 
   // Format relative date
   const formatRelativeDate = (dateString: string) => {
@@ -301,7 +305,7 @@ const StockCaseDetail = () => {
           {/* Title and Metadata */}
           <div className="space-y-4">
             <div className="flex items-center justify-center gap-3">
-              <h1 className="text-5xl font-bold tracking-tight text-center">{stockCase.title}</h1>
+              <h1 className="text-5xl font-bold tracking-tight text-center">{displayTitle}</h1>
               {stockCase.ai_generated === true && (
                 <Badge variant="outline" className="bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
                   <Brain className="w-4 h-4 mr-1" />
@@ -350,10 +354,10 @@ const StockCaseDetail = () => {
                   <Heart className={`w-5 h-5 ${isLiked ? 'fill-current text-red-500' : ''}`} />
                   {likeCount} Gilla
                 </Button>
-                <SaveOpportunityButton 
-                  itemType="stock_case" 
-                  itemId={stockCase.id} 
-                  itemTitle={stockCase.title} 
+                <SaveOpportunityButton
+                  itemType="stock_case"
+                  itemId={stockCase.id}
+                  itemTitle={displayTitle}
                   onSaveSuccess={handleSaveSuccess} 
                   size="lg"
                   className="text-lg px-6 py-3"
@@ -432,9 +436,9 @@ const StockCaseDetail = () => {
               </div>
 
               <div className="relative group">
-                <img 
-                  src={currentVersion.image_url} 
-                  alt={stockCase.title}
+                <img
+                  src={currentVersion.image_url}
+                  alt={displayTitle}
                   className="w-full h-auto rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300"
                   onClick={() => {
                     window.open(currentVersion.image_url, '_blank');
