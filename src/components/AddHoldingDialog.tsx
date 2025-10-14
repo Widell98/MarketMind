@@ -603,7 +603,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="sheet_price">Aktuellt pris (Google Sheets)</Label>
+            <Label htmlFor="sheet_price">Aktuellt pris</Label>
             <Input
               id="sheet_price"
               value={sheetPriceDisplay}
