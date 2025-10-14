@@ -652,7 +652,7 @@ export const useAIChat = (portfolioId?: string) => {
     console.log('Clearing messages for new session');
     setMessages([]);
 
-    let messageDispatched = false;
+    let messageAttempted = false;
 
     try {
       const now = new Date();
@@ -694,8 +694,8 @@ export const useAIChat = (portfolioId?: string) => {
       console.log('Session state updated, now sending message...');
 
       // Now send the message to the newly created session
+      messageAttempted = true;
       await sendMessageToSession(messageContent, newSession.id);
-      messageDispatched = true;
 
     } catch (error) {
       console.error('Error creating new session:', error);
@@ -706,7 +706,7 @@ export const useAIChat = (portfolioId?: string) => {
       });
     } finally {
       setIsLoading(false);
-      if (!messageDispatched) {
+      if (!messageAttempted) {
         setPendingUsageCount(prev => Math.max(0, prev - 1));
       }
     }
