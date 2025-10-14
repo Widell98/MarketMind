@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChatSessions } from '@/contexts/ChatSessionsContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -335,6 +335,27 @@ export const useAIChat = (portfolioId?: string) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [quotaExceeded, setQuotaExceeded] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
+  const ephemeralMessagesRef = useRef<Message[]>([]);
+
+  const addOrReplaceEphemeralMessage = useCallback((message: Message) => {
+    ephemeralMessagesRef.current = [
+      ...ephemeralMessagesRef.current.filter(existing => existing.id !== message.id),
+      message,
+    ];
+  }, []);
+
+  const removeEphemeralMessage = useCallback((messageId: string) => {
+    ephemeralMessagesRef.current = ephemeralMessagesRef.current.filter(message => message.id !== messageId);
+  }, []);
+
+  const clearEphemeralMessages = useCallback(() => {
+    ephemeralMessagesRef.current = [];
+  }, []);
+
+  const getActiveEphemeralMessages = useCallback(
+    () => ephemeralMessagesRef.current.filter(message => message.context?.requiresConfirmation !== false),
+    []
+  );
 
   const loadMessages = useCallback(async (sessionId: string, skipClear = false) => {
     if (!user) return;
@@ -375,14 +396,33 @@ export const useAIChat = (portfolioId?: string) => {
       console.log('Formatted messages:', formattedMessages);
       console.log('Setting messages to state...');
 
+      const activeEphemeralMessages = getActiveEphemeralMessages();
+      const hasPersistedConfirmation = formattedMessages.some(message => message.context?.requiresConfirmation);
+      let mergedMessages = formattedMessages;
+
+      if (hasPersistedConfirmation) {
+        clearEphemeralMessages();
+      } else if (activeEphemeralMessages.length > 0) {
+        const persistedIds = new Set(formattedMessages.map(message => message.id));
+        const pendingEphemeralMessages = activeEphemeralMessages.filter(message => !persistedIds.has(message.id));
+
+        if (pendingEphemeralMessages.length > 0) {
+          mergedMessages = [...formattedMessages, ...pendingEphemeralMessages];
+        }
+
+        ephemeralMessagesRef.current = pendingEphemeralMessages;
+      } else {
+        clearEphemeralMessages();
+      }
+
       if (skipClear) {
-        setMessages(formattedMessages);
+        setMessages(mergedMessages);
       } else {
         // Clear messages first, then set new ones
         setMessages([]);
         setTimeout(() => {
-          setMessages(formattedMessages);
-          console.log('Messages set to state:', formattedMessages.length);
+          setMessages(mergedMessages);
+          console.log('Messages set to state:', mergedMessages.length);
         }, 50);
       }
 
@@ -398,7 +438,7 @@ export const useAIChat = (portfolioId?: string) => {
         setIsLoadingSession(false);
       }
     }
-  }, [user, toast]);
+  }, [user, toast, clearEphemeralMessages, getActiveEphemeralMessages]);
 
   const loadSessions = useCallback(async () => {
     if (!user) return;
@@ -428,11 +468,12 @@ export const useAIChat = (portfolioId?: string) => {
     console.log('=== MANUALLY LOADING SESSION ===');
     console.log('Loading chat session:', sessionId);
     console.log('Current session before change:', currentSessionId);
-    
+
     // Immediately clear messages and set new session
     setMessages([]);
+    clearEphemeralMessages();
     setCurrentSessionId(sessionId);
-    
+
     // Load messages for the selected session
     await loadMessages(sessionId);
     
@@ -441,7 +482,7 @@ export const useAIChat = (portfolioId?: string) => {
       title: "Chat laddad",
       description: "Din sparade chat har laddats.",
     });
-  }, [currentSessionId, loadMessages, toast]);
+  }, [currentSessionId, loadMessages, toast, clearEphemeralMessages]);
 
   const createNewSession = useCallback(async (customName?: string, shouldSendInitialMessage?: string) => {
     console.log('=== CREATE NEW SESSION ===');
@@ -456,10 +497,11 @@ export const useAIChat = (portfolioId?: string) => {
     }
     
     setIsLoading(true);
-    
+
     // Clear messages immediately for new session
     console.log('Clearing messages for new session');
     setMessages([]);
+    clearEphemeralMessages();
     
     try {
       const now = new Date();
@@ -522,7 +564,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, toast]);
+  }, [user, toast, clearEphemeralMessages]);
 
   const deleteSession = useCallback(async (sessionId: string) => {
     if (!user) {
@@ -785,10 +827,11 @@ export const useAIChat = (portfolioId?: string) => {
     }
     
     setIsLoading(true);
-    
+
     // Clear messages immediately when creating new session
     console.log('Clearing messages for new session');
     setMessages([]);
+    clearEphemeralMessages();
     
     try {
       const now = new Date();
@@ -842,7 +885,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, toast]);
+  }, [user, toast, clearEphemeralMessages]);
 
   const sendMessageToSession = useCallback(async (content: string, sessionId?: string) => {
     console.log('=== SEND MESSAGE TO SESSION ===');
@@ -884,6 +927,10 @@ export const useAIChat = (portfolioId?: string) => {
           }
         }
       : null;
+
+    if (detectionMessage) {
+      addOrReplaceEphemeralMessage(detectionMessage);
+    }
 
     setMessages(prev => detectionMessage ? [...prev, userMessage, detectionMessage] : [...prev, userMessage]);
     setIsLoading(true);
@@ -1052,7 +1099,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage, incrementUsage, loadMessages]);
+  }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage, incrementUsage, loadMessages, addOrReplaceEphemeralMessage]);
 
   const dismissProfileUpdatePrompt = useCallback(async (messageId: string) => {
     const targetMessage = messages.find(msg => msg.id === messageId);
@@ -1066,14 +1113,26 @@ export const useAIChat = (portfolioId?: string) => {
       requiresConfirmation: false,
     };
 
-    setMessages(prev => prev.map(msg =>
-      msg.id === messageId
-        ? {
-            ...msg,
-            context: updatedContext,
-          }
-        : msg
-    ));
+    let updatedMessage: Message | undefined;
+
+    setMessages(prev => prev.map(msg => {
+      if (msg.id === messageId) {
+        const nextMessage = {
+          ...msg,
+          context: updatedContext,
+        };
+        updatedMessage = nextMessage;
+        return nextMessage;
+      }
+
+      return msg;
+    }));
+
+    if (updatedMessage?.context?.requiresConfirmation !== false) {
+      addOrReplaceEphemeralMessage(updatedMessage);
+    } else {
+      removeEphemeralMessage(messageId);
+    }
 
     try {
       const { error } = await supabase
@@ -1087,7 +1146,7 @@ export const useAIChat = (portfolioId?: string) => {
     } catch (error) {
       console.error('Error dismissing profile update prompt:', error);
     }
-  }, [messages]);
+  }, [messages, addOrReplaceEphemeralMessage, removeEphemeralMessage]);
 
   // Function to update user profile based on AI-detected changes
   const updateUserProfile = useCallback(async (profileUpdates: ProfileUpdates, sourceMessageId?: string) => {
@@ -1308,7 +1367,8 @@ export const useAIChat = (portfolioId?: string) => {
 
   const clearMessages = useCallback(() => {
     setMessages([]);
-  }, []);
+    clearEphemeralMessages();
+  }, [clearEphemeralMessages]);
 
   useEffect(() => {
     if (!user || currentSessionId || sessions.length === 0) {
