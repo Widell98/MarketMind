@@ -36,9 +36,6 @@ interface AddHoldingFormState {
     holding_type: string;
     quantity: string;
     purchase_price: string;
-    purchase_date: string;
-    sector: string;
-    market: string;
     currency: string;
   };
   priceOverridden: boolean;
@@ -54,9 +51,6 @@ const createDefaultFormState = (): AddHoldingFormState => ({
     holding_type: 'stock',
     quantity: '',
     purchase_price: '',
-    purchase_date: '',
-    sector: '',
-    market: '',
     currency: 'SEK'
   },
   priceOverridden: false,
@@ -79,6 +73,8 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const { formData, priceOverridden, currencyOverridden, nameOverridden } = dialogState;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [symbolError, setSymbolError] = useState<string | null>(null);
+  const [showMobileTickerList, setShowMobileTickerList] = useState(false);
+  const [mobileListManuallyExpanded, setMobileListManuallyExpanded] = useState(false);
 
   const normalizedSymbol = useMemo(() => {
     const rawSymbol = formData.symbol?.trim();
@@ -127,9 +123,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
           holding_type: initialData.holding_type === 'recommendation' ? 'stock' : (initialData.holding_type || 'stock'),
           quantity: '',
           purchase_price: initialData.purchase_price?.toString() || '',
-          purchase_date: '',
-          sector: initialData.sector || '',
-          market: initialData.market || '',
           currency: initialData.currency || 'SEK'
         },
         priceOverridden: Boolean(initialData.purchase_price),
@@ -267,6 +260,19 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     );
   }), [deferredTickers, formatDisplayPrice]);
 
+  const mobileTickerSuggestions = useMemo(() => {
+    const searchTerm = formData.symbol.trim().toLowerCase();
+    const baseTickers = searchTerm
+      ? deferredTickers.filter((ticker) => {
+        const symbolMatch = ticker.symbol.toLowerCase().includes(searchTerm);
+        const nameMatch = ticker.name ? ticker.name.toLowerCase().includes(searchTerm) : false;
+        return symbolMatch || nameMatch;
+      })
+      : deferredTickers;
+
+    return baseTickers.slice(0, 25);
+  }, [deferredTickers, formData.symbol]);
+
   const resolvedSheetPrice = matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0
     ? matchedTicker.price
     : null;
@@ -278,8 +284,19 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     : '';
 
   const handleInputChange = (field: string, value: string) => {
-    if (field === 'symbol' && symbolError) {
-      setSymbolError(null);
+    const shouldCollapseManualList = field === 'symbol' && !value.trim();
+
+    if (field === 'symbol') {
+      const trimmedValue = value.trim();
+      if (trimmedValue.length > 0) {
+        setShowMobileTickerList(true);
+      } else if (!mobileListManuallyExpanded) {
+        setShowMobileTickerList(false);
+      }
+
+      if (symbolError) {
+        setSymbolError(null);
+      }
     }
 
     setDialogState(prev => {
@@ -333,6 +350,24 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         lastInitialDataSignature: lastSignature,
       };
     });
+
+    if (shouldCollapseManualList) {
+      setMobileListManuallyExpanded(false);
+    }
+  };
+
+  const handleMobileTickerSelect = (ticker: SheetTicker) => {
+    handleInputChange('symbol', ticker.symbol);
+    setShowMobileTickerList(false);
+    setMobileListManuallyExpanded(false);
+  };
+
+  const toggleMobileTickerList = () => {
+    setMobileListManuallyExpanded((prev) => {
+      const next = !prev;
+      setShowMobileTickerList(next);
+      return next;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -355,9 +390,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       holding_type: formData.holding_type as UserHolding['holding_type'],
       quantity,
       purchase_price: purchasePrice,
-      purchase_date: formData.purchase_date || undefined,
-      sector: formData.sector.trim() || undefined,
-      market: formData.market.trim() || undefined,
       currency: formData.currency || 'SEK'
     };
 
@@ -391,6 +423,8 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     if (!isSubmitting) {
       resetDialogState();
       setSymbolError(null);
+      setShowMobileTickerList(false);
+      setMobileListManuallyExpanded(false);
       onClose();
     }
   };
@@ -429,12 +463,28 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="symbol">Symbol</Label>
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="symbol">Symbol</Label>
+                <button
+                  type="button"
+                  onClick={toggleMobileTickerList}
+                  aria-expanded={showMobileTickerList}
+                  aria-controls="mobile-ticker-suggestions"
+                  className="sm:hidden rounded-md bg-muted px-3 py-1 text-xs font-medium text-primary transition hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  tickerlista
+                </button>
+              </div>
               <Input
                 id="symbol"
                 list="sheet-tickers"
                 value={formData.symbol}
                 onChange={(e) => handleInputChange('symbol', e.target.value)}
+                onFocus={() => {
+                  if (formData.symbol.trim() || mobileListManuallyExpanded) {
+                    setShowMobileTickerList(true);
+                  }
+                }}
                 placeholder={tickersLoading ? 'Hämtar tickers...' : 't.ex. VOLV-B'}
                 required
               />
@@ -449,6 +499,45 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
           <datalist id="sheet-tickers">
             {tickerOptions}
           </datalist>
+          <div className="sm:hidden space-y-2">
+            {showMobileTickerList && (
+              <div
+                id="mobile-ticker-suggestions"
+                className="max-h-56 overflow-y-auto rounded-2xl border border-border/60 bg-muted/50 p-1 shadow-sm"
+              >
+                {tickersLoading ? (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">Hämtar tickers...</p>
+                ) : mobileTickerSuggestions.length > 0 ? (
+                  mobileTickerSuggestions.map((ticker) => {
+                    const displayPrice = typeof ticker.price === 'number' && Number.isFinite(ticker.price) && ticker.price > 0
+                      ? `${formatDisplayPrice(ticker.price)}${ticker.currency ? ` ${ticker.currency}` : ''}`.trim()
+                      : null;
+
+                    return (
+                      <button
+                        key={`mobile-ticker-${ticker.symbol}`}
+                        type="button"
+                        onClick={() => handleMobileTickerSelect(ticker)}
+                        className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">{ticker.symbol}</div>
+                          {ticker.name && (
+                            <div className="text-xs text-muted-foreground">{ticker.name}</div>
+                          )}
+                        </div>
+                        {displayPrice && (
+                          <div className="text-xs font-medium text-muted-foreground">{displayPrice}</div>
+                        )}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">Inga tickers matchar din sökning ännu.</p>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -514,7 +603,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="sheet_price">Aktuellt pris (Google Sheets)</Label>
+            <Label htmlFor="sheet_price">Aktuellt pris</Label>
             <Input
               id="sheet_price"
               value={sheetPriceDisplay}
@@ -526,37 +615,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
                 ? 'Priset läggs in som förvalt köppris men kan justeras innan du sparar.'
                 : 'Priset hämtas automatiskt när du väljer en ticker från listan.'}
             </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="purchase_date">Köpdatum</Label>
-              <Input
-                id="purchase_date"
-                type="date"
-                value={formData.purchase_date}
-                onChange={(e) => handleInputChange('purchase_date', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sector">Sektor</Label>
-              <Input
-                id="sector"
-                value={formData.sector}
-                onChange={(e) => handleInputChange('sector', e.target.value)}
-                placeholder="t.ex. Bilar"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="market">Marknad</Label>
-            <Input
-              id="market"
-              value={formData.market}
-              onChange={(e) => handleInputChange('market', e.target.value)}
-              placeholder="t.ex. NASDAQ Stockholm"
-            />
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
