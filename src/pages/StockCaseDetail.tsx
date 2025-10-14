@@ -15,7 +15,6 @@ import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Calendar, Building,
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
-import StockCaseAIChat from '@/components/StockCaseAIChat';
 import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
 import { highlightNumbersSafely } from '@/utils/sanitizer';
@@ -342,53 +341,6 @@ const StockCaseDetail = () => {
               </p>
             </div>
 
-            {/* CTA Buttons directly under title */}
-            {user && (
-              <div className="flex items-center justify-center gap-4 py-4">
-                <Button 
-                  variant="outline" 
-                  onClick={handleLikeClick} 
-                  disabled={likesLoading} 
-                  className="flex items-center gap-2 text-lg px-6 py-3"
-                >
-                  <Heart className={`w-5 h-5 ${isLiked ? 'fill-current text-red-500' : ''}`} />
-                  {likeCount} Gilla
-                </Button>
-                <SaveOpportunityButton
-                  itemType="stock_case"
-                  itemId={stockCase.id}
-                  itemTitle={displayTitle}
-                  onSaveSuccess={handleSaveSuccess} 
-                  size="lg"
-                  className="text-lg px-6 py-3"
-                />
-                {user && user.id !== stockCase.user_id && stockCase.user_id && (
-                  <Button 
-                    variant="outline" 
-                    onClick={handleFollowClick}
-                    className="flex items-center gap-2 text-lg px-6 py-3"
-                  >
-                    <UserPlus className="w-5 h-5" />
-                    {isFollowing(stockCase.user_id) ? 'Sluta följ' : 'Följ författare'}
-                  </Button>
-                )}
-                <Button variant="outline" onClick={handleShare} className="flex items-center gap-2 text-lg px-6 py-3">
-                  <Share2 className="w-5 h-5" />
-                  Dela
-                </Button>
-                {isOwner && (
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setShowUpdateDialog(true)} 
-                    className="flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Lägg till uppdatering
-                  </Button>
-                )}
-              </div>
-            )}
-
             {/* Performance Badge */}
             {performance !== null && (
               <div className="flex justify-center">
@@ -541,6 +493,53 @@ const StockCaseDetail = () => {
             </div>
           )}
 
+          {/* CTA Buttons repositioned under the visual */}
+          <div className="flex flex-wrap items-center justify-center gap-4 py-4">
+            <Button variant="outline" onClick={handleShare} className="flex items-center gap-2 text-lg px-6 py-3">
+              <Share2 className="w-5 h-5" />
+              Dela
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleLikeClick}
+              disabled={likesLoading}
+              className="flex items-center gap-2 text-lg px-6 py-3"
+            >
+              <Heart className={`w-5 h-5 ${isLiked ? 'fill-current text-red-500' : ''}`} />
+              {likeCount} Gilla
+            </Button>
+            {user && (
+              <SaveOpportunityButton
+                itemType="stock_case"
+                itemId={stockCase.id}
+                itemTitle={displayTitle}
+                onSaveSuccess={handleSaveSuccess}
+                size="lg"
+                className="text-lg px-6 py-3"
+              />
+            )}
+            {user && user.id !== stockCase.user_id && stockCase.user_id && (
+              <Button
+                variant="outline"
+                onClick={handleFollowClick}
+                className="flex items-center gap-2 text-lg px-6 py-3"
+              >
+                <UserPlus className="w-5 h-5" />
+                {isFollowing(stockCase.user_id) ? 'Sluta följ' : 'Följ författare'}
+              </Button>
+            )}
+            {isOwner && (
+              <Button
+                variant="outline"
+                onClick={() => setShowUpdateDialog(true)}
+                className="flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Lägg till uppdatering
+              </Button>
+            )}
+          </div>
+
           {/* Login prompt for non-users */}
           {!user && (
             <div className="text-center p-4 bg-muted rounded-lg">
@@ -650,8 +649,8 @@ const StockCaseDetail = () => {
               </Card>
             )}
 
-            {/* AI Chat Integration - moved closer to case text */}
-            <StockCaseAIChat stockCase={stockCase} />
+            {/* AI Chat Integration - temporarily disabled per request */}
+            {/* <StockCaseAIChat stockCase={stockCase} /> */}
 
             {/* Comments Section with improved placeholder */}
             <div id="comments-section">
