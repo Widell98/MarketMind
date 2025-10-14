@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChatSessions } from '@/contexts/ChatSessionsContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,6 +8,295 @@ import { useSubscription } from '@/hooks/useSubscription';
 const DAILY_MESSAGE_CREDITS = 10;
 
 type ProfileUpdates = Record<string, unknown>;
+
+type DetectedProfileIntent = {
+  updates: ProfileUpdates;
+  summary: string;
+};
+
+const normalizeText = (value: string) =>
+  value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const getTextVariants = (value: string): string[] => {
+  const normalized = normalizeText(value);
+  const withDiacritics = value
+    .toLowerCase()
+    .normalize('NFC')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!normalized) {
+    return [];
+  }
+
+  if (!withDiacritics || normalized === withDiacritics) {
+    return [normalized];
+  }
+
+  return [normalized, withDiacritics];
+};
+
+const formatListWithAnd = (items: string[]) => {
+  if (items.length <= 1) {
+    return items[0] ?? '';
+  }
+
+  const lastItem = items[items.length - 1];
+  return `${items.slice(0, -1).join(', ')} och ${lastItem}`;
+};
+
+const toNumberFromCurrency = (value: string) => {
+  const cleaned = value.replace(/[^0-9,\.]/g, '').replace(/\.(?=\d{3}(?:\D|$))/g, '');
+  const normalized = cleaned.replace(/,/g, '.');
+  const parsed = Number(normalized);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const detectProfileUpdateIntent = (rawMessage: string): DetectedProfileIntent | null => {
+  const textVariants = getTextVariants(rawMessage);
+
+  if (textVariants.length === 0) {
+    return null;
+  }
+
+  const normalized = textVariants[0];
+  const matchesPattern = (pattern: RegExp) => textVariants.some(text => pattern.test(text));
+  const matchesAny = (patterns: RegExp[]) => patterns.some(matchesPattern);
+
+  const updates: ProfileUpdates = {};
+  const summaryParts: string[] = [];
+
+  const changeSignalPatterns: RegExp[] = [
+    /(ändra|andra|ändring|andring|justera|justering|uppdatera|uppdatering|byt|byta|byte|förändra|forandra|förändring|forandring|skifta|ställa om|stalla om|ställ om|stall om|ställ in|stall in|sätt|satt|sätta|satta|gör om|gor om|justera min risk|set.*risk)/,
+    /(vill|skulle vilja|önskar|onskar|behöver|behover|kan du|kan vi|hjälp mig|hjalp mig).*(ändra|andra|justera|höj|hoj|höja|hoja|sänk|sank|sänka|sanka|minska|minskar|öka|oka|förändra|forandra|byta).*(riskprofil|risktolerans|risknivå|riskniva|risken)/,
+    /(riskprofil|risktolerans|risknivå|riskniva).*(till|vara|bli)/,
+    /(ta.*mer risk|mer risktagande|ta.*mindre risk|mindre risktagande)/,
+    /((bli|vara).*(mer|mindre).*(aggressiv|konservativ|balanserad|försiktig|forsiktig|trygg))/,
+    /(gör|gor).*(riskprofil|risktolerans|risknivå|riskniva).*(mer|mindre|aggressiv|konservativ|balanserad|försiktig|forsiktig|trygg|högrisk|hogrisk|lågrisk|lagrisk)/,
+    /(höj|hoj|höja|hoja|höjer|hojer|höjas|hojas|höjs|hojs|ökad?|okad?|ökade|okade|öka|oka|ökar|okar|ökas|okas).*(risken|risknivå|riskniva|riskprofilen)/,
+    /(sänk|sank|sänka|sanka|sänker|sanker|sänks|sanks|sänkas|sankas|sänkta|sankta|minska|minskar|minskad|minskat|minskas|minskning|minskningar|dra ner|dra ned|gå ner|ga ner|gå ned|ga ned).*(risken|risknivå|riskniva|riskprofilen)/
+  ];
+
+  let hasChangeSignal = matchesAny(changeSignalPatterns);
+
+  const riskKeywordPatterns: RegExp[] = [
+    /(risktolerans|risktoleranser|risktålighet|risktalighet|riskaptit|riskvilja)/,
+    /(riskprofil(?:en)?)/,
+    /(risknivå|riskniva|risknivån|risknivan|risknivans)/,
+    /(risktagande|risk appetite|risk preference|risk level)/
+  ];
+
+  const hasRiskKeyword = matchesAny(riskKeywordPatterns);
+  const riskWordPresent = matchesPattern(/risk/);
+
+  let hasRiskContext = hasRiskKeyword || (riskWordPresent && hasChangeSignal);
+
+  if (!hasRiskContext) {
+    const qualitativeRiskWords: RegExp[] = [
+      /(aggressiv|aggressiva|aggressivare|högrisk|hogrisk|hög risk|hog risk|offensiv)/,
+      /(konservativ|konservativa|försiktig|forsiktig|trygg|lågrisk|lagrisk|låg risk|lag risk|säker|saker)/,
+      /(balanserad|balanserade|balanserat|måttlig|mattlig|lagom risk|medelrisk|mellanrisk|moderate|medium risk)/
+    ];
+
+    const investmentContextPatterns: RegExp[] = [
+      /(portfölj|portfolj)/,
+      /(investering|investera|investeringar)/,
+      /(strategi|strategier)/,
+      /(sparande|spara|sparar)/
+    ];
+
+    if (matchesAny(qualitativeRiskWords) && matchesAny(investmentContextPatterns)) {
+      hasRiskContext = true;
+    }
+  }
+
+  const riskToleranceLabels: Record<string, string> = {
+    conservative: 'ändra din risktolerans till Konservativ',
+    moderate: 'ändra din risktolerans till Måttlig',
+    aggressive: 'ändra din risktolerans till Aggressiv',
+  };
+
+  type RiskLevel = keyof typeof riskToleranceLabels;
+  type RiskLevelConfig = {
+    level: RiskLevel;
+    direct: RegExp[];
+    standalone: RegExp[];
+  };
+
+  const riskLevelConfigs: RiskLevelConfig[] = [
+    {
+      level: 'conservative',
+      direct: [
+        /(ändra|andra|justera|uppdatera|byt|byta|sätt|satt|ställa|stalla|ställ|stall).*(riskprofil|risktolerans|risknivå|riskniva).*(konservativ|försiktig|forsiktig|trygg)/,
+        /(konservativ|försiktig|forsiktig|trygg).*(riskprofil|risktolerans|risknivå|riskniva).*(till|vara|bli)/
+      ],
+      standalone: [
+        /\bkonservativ(a|t)?\b/,
+        /(försiktig|forsiktig)/,
+        /(trygg|tryggare|tryggt)/,
+        /(låg risk|lag risk|lågrisk|lagrisk)/,
+        /(defensiv|defensivt)/,
+        /(säker|saker|tryggare)/
+      ]
+    },
+    {
+      level: 'moderate',
+      direct: [
+        /(ändra|andra|justera|uppdatera|byt|byta|sätt|satt|ställa|stalla|ställ|stall).*(riskprofil|risktolerans|risknivå|riskniva).*(balanserad|måttlig|mattlig|medel|lagom)/,
+        /(balanserad|måttlig|mattlig|lagom).*(riskprofil|risktolerans|risknivå|riskniva).*(till|vara|bli)/
+      ],
+      standalone: [
+        /(balanserad|balanserat|balanserade)/,
+        /(måttlig|mattlig)/,
+        /(lagom risk|medelrisk|mellanrisk|medium risk|moderate)/
+      ]
+    },
+    {
+      level: 'aggressive',
+      direct: [
+        /(ändra|andra|justera|uppdatera|byt|byta|sätt|satt|ställa|stalla|ställ|stall).*(riskprofil|risktolerans|risknivå|riskniva).*(aggressiv|mer risk|högrisk|hogrisk|offensiv)/,
+        /(aggressiv|aggressiva|aggressivare|högrisk|hogrisk|offensiv).*(riskprofil|risktolerans|risknivå|riskniva).*(till|vara|bli)/
+      ],
+      standalone: [
+        /(aggressiv|aggressiva|aggressivare)/,
+        /(hög risk|hog risk|högrisk|hogrisk)/,
+        /(mer risk|större risk|stor risk|höj risken|hoj risken)/,
+        /(offensiv|offensivt)/
+      ]
+    }
+  ];
+
+  if (hasRiskContext) {
+    for (const config of riskLevelConfigs) {
+      if (matchesAny(config.direct)) {
+        hasChangeSignal = true;
+        updates.risk_tolerance = config.level;
+        summaryParts.push(riskToleranceLabels[config.level]);
+        break;
+      }
+
+      if (hasChangeSignal && matchesAny(config.standalone)) {
+        updates.risk_tolerance = config.level;
+        summaryParts.push(riskToleranceLabels[config.level]);
+        break;
+      }
+    }
+
+    if (!updates.risk_tolerance) {
+      const increasePatterns: RegExp[] = [
+        /(höj|hoj|höja|hoja|höjer|hojer|höjas|hojas|höjs|hojs|öka|oka|ökad|okad|ökade|okade|ökar|okar|ökas|okas).*(risken|risknivå|riskniva|riskprofilen)/,
+        /(vill|önskar|onskar|skulle vilja|kan du).*(ta|ha).*(mer risk)/,
+        /(gå upp i risk|ga upp i risk|höj nivån|hoj nivan|höj risknivån|hoj risknivan|höj riskprofilen|hoj riskprofilen)/,
+        /(bli mer aggressiv|mer aggressiv|aggressivare|mer offensiv)/,
+        /(higher risk|increase risk|take more risk)/
+      ];
+
+      const decreasePatterns: RegExp[] = [
+        /(sänk|sank|sänka|sanka|sänker|sanker|sänks|sanks|sänkas|sankas|sänkta|sankta|minska|minskar|minskad|minskat|minskas|minskning|minskningar|dra ner|dra ned).*(risken|risknivå|riskniva|riskprofilen)/,
+        /(vill|önskar|onskar|skulle vilja|kan du).*(ta|ha).*(mindre risk)/,
+        /(gå ner i risk|ga ner i risk|sänk nivån|sank nivan|sänk risknivån|sank risknivan|sänk riskprofilen|sank riskprofilen)/,
+        /(bli mer konservativ|mer konservativ|tryggare|defensivare)/,
+        /(lower risk|reduce risk|need less risk)/
+      ];
+
+      if (matchesAny(increasePatterns)) {
+        hasChangeSignal = true;
+        updates.risk_tolerance = 'aggressive';
+        summaryParts.push(riskToleranceLabels.aggressive);
+      } else if (matchesAny(decreasePatterns)) {
+        hasChangeSignal = true;
+        updates.risk_tolerance = 'conservative';
+        summaryParts.push(riskToleranceLabels.conservative);
+      }
+    }
+  }
+
+  const horizonPatterns: Record<'short' | 'medium' | 'long', RegExp[]> = {
+    short: [
+      /kort sikt/,
+      /1-3 ar/,
+      /inom (ett|1) ar/,
+      /snart behov/,
+      /short term/,
+    ],
+    medium: [
+      /medel sikt/,
+      /medellang/,
+      /3-7 ar/,
+      /5 ar/,
+      /inom nagra ar/,
+      /medium term/,
+    ],
+    long: [
+      /lang sikt/,
+      /langtid/,
+      /7 ar/,
+      /10 ar/,
+      /for (lang|langa) tiden/,
+      /long term/,
+    ],
+  };
+
+  for (const [horizon, patterns] of Object.entries(horizonPatterns) as [keyof typeof horizonPatterns, RegExp[]][]) {
+    if (patterns.some(pattern => pattern.test(normalized))) {
+      updates.investment_horizon = horizon;
+      const horizonLabels: Record<string, string> = {
+        short: 'justera din tidshorisont till Kort (1-3 år)',
+        medium: 'justera din tidshorisont till Medel (3-7 år)',
+        long: 'justera din tidshorisont till Lång (7+ år)',
+      };
+      summaryParts.push(horizonLabels[horizon]);
+      break;
+    }
+  }
+
+  const monthlyIndicatorPatterns: RegExp[] = [
+    /per manad/,
+    /per månad/,
+    /varje manad/,
+    /varje månad/,
+    /manadsspar/,
+    /månadsspar/,
+    /manadssparande/,
+    /månadssparande/,
+    /manadsvis/,
+    /månadsvis/,
+    /monthly/,
+    /per month/,
+    /each month/
+  ];
+
+  if (matchesAny(monthlyIndicatorPatterns)) {
+    const amountMatch = normalized.match(/(\d{1,3}(?:[ \u00A0\.]\d{3})*|\d+)(?:[\.,]\d+)?\s*(kr|sek|kronor)?/);
+
+    if (amountMatch) {
+      const numericValue = toNumberFromCurrency(amountMatch[0]);
+
+      if (numericValue !== null && Number.isFinite(numericValue)) {
+        const roundedValue = Math.round(numericValue);
+        updates.monthly_investment_amount = roundedValue;
+        summaryParts.push(`uppdatera ditt månadssparande till ${roundedValue.toLocaleString('sv-SE')} kr`);
+      }
+    }
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return null;
+  }
+
+  const formattedSummary = formatListWithAnd(summaryParts);
+  const summary = `Jag tolkar att du vill ${formattedSummary}. Vill du uppdatera din profil?`;
+
+  return {
+    updates,
+    summary,
+  };
+};
 
 type MessageContext = {
   analysisType?: string;
@@ -46,6 +335,27 @@ export const useAIChat = (portfolioId?: string) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [quotaExceeded, setQuotaExceeded] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
+  const ephemeralMessagesRef = useRef<Message[]>([]);
+
+  const addOrReplaceEphemeralMessage = useCallback((message: Message) => {
+    ephemeralMessagesRef.current = [
+      ...ephemeralMessagesRef.current.filter(existing => existing.id !== message.id),
+      message,
+    ];
+  }, []);
+
+  const removeEphemeralMessage = useCallback((messageId: string) => {
+    ephemeralMessagesRef.current = ephemeralMessagesRef.current.filter(message => message.id !== messageId);
+  }, []);
+
+  const clearEphemeralMessages = useCallback(() => {
+    ephemeralMessagesRef.current = [];
+  }, []);
+
+  const getActiveEphemeralMessages = useCallback(
+    () => ephemeralMessagesRef.current.filter(message => message.context?.requiresConfirmation !== false),
+    []
+  );
 
   const loadMessages = useCallback(async (sessionId: string, skipClear = false) => {
     if (!user) return;
@@ -86,14 +396,33 @@ export const useAIChat = (portfolioId?: string) => {
       console.log('Formatted messages:', formattedMessages);
       console.log('Setting messages to state...');
 
+      const activeEphemeralMessages = getActiveEphemeralMessages();
+      const hasPersistedConfirmation = formattedMessages.some(message => message.context?.requiresConfirmation);
+      let mergedMessages = formattedMessages;
+
+      if (hasPersistedConfirmation) {
+        clearEphemeralMessages();
+      } else if (activeEphemeralMessages.length > 0) {
+        const persistedIds = new Set(formattedMessages.map(message => message.id));
+        const pendingEphemeralMessages = activeEphemeralMessages.filter(message => !persistedIds.has(message.id));
+
+        if (pendingEphemeralMessages.length > 0) {
+          mergedMessages = [...formattedMessages, ...pendingEphemeralMessages];
+        }
+
+        ephemeralMessagesRef.current = pendingEphemeralMessages;
+      } else {
+        clearEphemeralMessages();
+      }
+
       if (skipClear) {
-        setMessages(formattedMessages);
+        setMessages(mergedMessages);
       } else {
         // Clear messages first, then set new ones
         setMessages([]);
         setTimeout(() => {
-          setMessages(formattedMessages);
-          console.log('Messages set to state:', formattedMessages.length);
+          setMessages(mergedMessages);
+          console.log('Messages set to state:', mergedMessages.length);
         }, 50);
       }
 
@@ -109,7 +438,7 @@ export const useAIChat = (portfolioId?: string) => {
         setIsLoadingSession(false);
       }
     }
-  }, [user, toast]);
+  }, [user, toast, clearEphemeralMessages, getActiveEphemeralMessages]);
 
   const loadSessions = useCallback(async () => {
     if (!user) return;
@@ -139,11 +468,12 @@ export const useAIChat = (portfolioId?: string) => {
     console.log('=== MANUALLY LOADING SESSION ===');
     console.log('Loading chat session:', sessionId);
     console.log('Current session before change:', currentSessionId);
-    
+
     // Immediately clear messages and set new session
     setMessages([]);
+    clearEphemeralMessages();
     setCurrentSessionId(sessionId);
-    
+
     // Load messages for the selected session
     await loadMessages(sessionId);
     
@@ -152,7 +482,7 @@ export const useAIChat = (portfolioId?: string) => {
       title: "Chat laddad",
       description: "Din sparade chat har laddats.",
     });
-  }, [currentSessionId, loadMessages, toast]);
+  }, [currentSessionId, loadMessages, toast, clearEphemeralMessages]);
 
   const createNewSession = useCallback(async (customName?: string, shouldSendInitialMessage?: string) => {
     console.log('=== CREATE NEW SESSION ===');
@@ -167,10 +497,11 @@ export const useAIChat = (portfolioId?: string) => {
     }
     
     setIsLoading(true);
-    
+
     // Clear messages immediately for new session
     console.log('Clearing messages for new session');
     setMessages([]);
+    clearEphemeralMessages();
     
     try {
       const now = new Date();
@@ -233,7 +564,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, toast]);
+  }, [user, toast, clearEphemeralMessages]);
 
   const deleteSession = useCallback(async (sessionId: string) => {
     if (!user) {
@@ -496,10 +827,11 @@ export const useAIChat = (portfolioId?: string) => {
     }
     
     setIsLoading(true);
-    
+
     // Clear messages immediately when creating new session
     console.log('Clearing messages for new session');
     setMessages([]);
+    clearEphemeralMessages();
     
     try {
       const now = new Date();
@@ -553,7 +885,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, toast]);
+  }, [user, toast, clearEphemeralMessages]);
 
   const sendMessageToSession = useCallback(async (content: string, sessionId?: string) => {
     console.log('=== SEND MESSAGE TO SESSION ===');
@@ -568,19 +900,43 @@ export const useAIChat = (portfolioId?: string) => {
       return;
     }
     
-    // Add user message to UI IMMEDIATELY for faster UX (before any async operations)
+    const trimmedContent = content.trim();
+    const userMessageId = Date.now().toString() + '_user_temp';
     const userMessage: Message = {
-      id: Date.now().toString() + '_user_temp',
+      id: userMessageId,
       role: 'user',
-      content: content.trim(),
+      content: trimmedContent,
       timestamp: new Date()
     };
-    
-    setMessages(prev => [...prev, userMessage]);
+
+    const hasPendingConfirmation = messages.some(msg => msg.context?.requiresConfirmation);
+    const detectedIntent = hasPendingConfirmation ? null : detectProfileUpdateIntent(trimmedContent);
+    const detectionTimestamp = Date.now();
+    const detectionMessage: Message | null = detectedIntent
+      ? {
+          id: `${detectionTimestamp}_profile_detected`,
+          role: 'assistant',
+          content: detectedIntent.summary,
+          timestamp: new Date(detectionTimestamp),
+          context: {
+            analysisType: 'profile_update_detection',
+            profileUpdates: detectedIntent.updates,
+            requiresConfirmation: true,
+            detectedSummary: detectedIntent.summary,
+            detectedBy: 'client'
+          }
+        }
+      : null;
+
+    if (detectionMessage) {
+      addOrReplaceEphemeralMessage(detectionMessage);
+    }
+
+    setMessages(prev => detectionMessage ? [...prev, userMessage, detectionMessage] : [...prev, userMessage]);
     setIsLoading(true);
-    
+
     try {
-      
+
       console.log('Calling Supabase function with chat history...');
       
       // Send chat history for context (last 10 messages excluding the temp message we just added)
@@ -600,12 +956,14 @@ export const useAIChat = (portfolioId?: string) => {
           'Authorization': `Bearer ${supabaseAnonKey}`,
         },
         body: JSON.stringify({
-          message: content.trim(),
+          message: trimmedContent,
           userId: user.id,
           portfolioId: portfolioId,
           sessionId: targetSessionId,
           chatHistory: chatHistoryForAPI,
-          analysisType: 'general'
+          analysisType: 'general',
+          detectedProfileUpdates: detectedIntent?.updates ?? undefined,
+          detectedProfileSummary: detectedIntent?.summary ?? undefined
         })
       });
 
@@ -741,7 +1099,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage, incrementUsage, loadMessages]);
+  }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage, incrementUsage, loadMessages, addOrReplaceEphemeralMessage]);
 
   const dismissProfileUpdatePrompt = useCallback(async (messageId: string) => {
     const targetMessage = messages.find(msg => msg.id === messageId);
@@ -755,14 +1113,26 @@ export const useAIChat = (portfolioId?: string) => {
       requiresConfirmation: false,
     };
 
-    setMessages(prev => prev.map(msg =>
-      msg.id === messageId
-        ? {
-            ...msg,
-            context: updatedContext,
-          }
-        : msg
-    ));
+    let updatedMessage: Message | undefined;
+
+    setMessages(prev => prev.map(msg => {
+      if (msg.id === messageId) {
+        const nextMessage = {
+          ...msg,
+          context: updatedContext,
+        };
+        updatedMessage = nextMessage;
+        return nextMessage;
+      }
+
+      return msg;
+    }));
+
+    if (updatedMessage?.context?.requiresConfirmation !== false) {
+      addOrReplaceEphemeralMessage(updatedMessage);
+    } else {
+      removeEphemeralMessage(messageId);
+    }
 
     try {
       const { error } = await supabase
@@ -776,7 +1146,7 @@ export const useAIChat = (portfolioId?: string) => {
     } catch (error) {
       console.error('Error dismissing profile update prompt:', error);
     }
-  }, [messages]);
+  }, [messages, addOrReplaceEphemeralMessage, removeEphemeralMessage]);
 
   // Function to update user profile based on AI-detected changes
   const updateUserProfile = useCallback(async (profileUpdates: ProfileUpdates, sourceMessageId?: string) => {
@@ -997,7 +1367,8 @@ export const useAIChat = (portfolioId?: string) => {
 
   const clearMessages = useCallback(() => {
     setMessages([]);
-  }, []);
+    clearEphemeralMessages();
+  }, [clearEphemeralMessages]);
 
   useEffect(() => {
     if (!user || currentSessionId || sessions.length === 0) {

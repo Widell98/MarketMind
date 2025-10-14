@@ -1,16 +1,18 @@
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, X, User } from 'lucide-react';
 
 interface ProfileUpdateConfirmationProps {
   profileUpdates: any;
+  summary?: string;
   onConfirm: () => void | Promise<void>;
   onReject: () => void | Promise<void>;
 }
 
 const ProfileUpdateConfirmation: React.FC<ProfileUpdateConfirmationProps> = ({
   profileUpdates,
+  summary,
   onConfirm,
   onReject
 }) => {
@@ -64,54 +66,54 @@ const ProfileUpdateConfirmation: React.FC<ProfileUpdateConfirmationProps> = ({
   };
 
   return (
-    <Card className="border-blue-200 bg-blue-50 my-2">
-      <CardContent className="p-4">
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-blue-100 rounded-full shrink-0">
-            <User className="w-4 h-4 text-blue-600" />
-          </div>
-          
-          <div className="flex-1 min-w-0">
-            <h4 className="font-semibold text-blue-900 mb-2">
-              Vill du uppdatera din profil?
-            </h4>
-            
-            <p className="text-sm text-blue-700 mb-3">
-              Jag upptäckte förändringar i dina preferenser baserat på vår konversation:
-            </p>
+    <Card className="relative my-2 overflow-hidden rounded-[22px] border border-[#205295]/18 bg-white/95 shadow-[0_22px_55px_rgba(15,23,42,0.08)] backdrop-blur-sm">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#144272]/12 via-white/60 to-[#205295]/10" />
+      <CardHeader className="relative flex flex-row items-start gap-3 pb-2">
+        <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#144272]/85 via-[#205295] to-[#2C74B3] text-white shadow-[0_16px_38px_rgba(20,66,114,0.22)]">
+          <User className="h-4 w-4" />
+        </div>
+        <div className="flex-1 space-y-1">
+          <CardTitle className="text-base font-semibold text-[#0F1C2E]">
+            Vill du uppdatera din profil?
+          </CardTitle>
+          <CardDescription className="text-sm text-[#1f3c5c]">
+            {summary ?? 'Jag upptäckte förändringar i dina preferenser baserat på vår konversation:'}
+          </CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className="relative pt-0">
+        <div className="space-y-2 rounded-[18px] border border-white/60 bg-white/80 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.05)] backdrop-blur-sm">
+          {Object.entries(profileUpdates).map(([key, value]) => (
+            <div key={key} className="flex items-start justify-between gap-3 text-sm text-[#0F1C2E]">
+              <span className="font-medium text-[#144272]">
+                {keyLabels[key] ?? key}
+              </span>
+              <span className="truncate text-right text-[#1f3c5c]">
+                {formatValue(key, value)}
+              </span>
+            </div>
+          ))}
+        </div>
 
-            <div className="space-y-1 mb-4">
-              {Object.entries(profileUpdates).map(([key, value]) => (
-                <div key={key} className="text-sm">
-                  <span className="font-medium text-blue-800">
-                    {keyLabels[key] ?? key}:
-                  </span>{' '}
-                  <span className="text-blue-700">{formatValue(key, value)}</span>
-                </div>
-              ))}
-            </div>
-            
-            <div className="flex gap-2">
-              <Button 
-                size="sm" 
-                onClick={onConfirm}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Uppdatera profil
-              </Button>
-              
-              <Button 
-                size="sm" 
-                variant="outline"
-                onClick={onReject}
-                className="border-blue-300 text-blue-700 hover:bg-blue-100"
-              >
-                <X className="w-4 h-4 mr-2" />
-                Behåll nuvarande
-              </Button>
-            </div>
-          </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            onClick={onConfirm}
+            className="h-9 rounded-full bg-gradient-to-r from-[#205295] via-[#2C74B3] to-[#144272] px-4 text-sm font-medium shadow-[0_12px_28px_rgba(20,66,114,0.25)] transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(20,66,114,0.28)]"
+          >
+            <CheckCircle className="mr-2 h-4 w-4" />
+            Uppdatera profil
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onReject}
+            className="h-9 rounded-full border-[#205295]/30 bg-white/80 px-4 text-sm font-medium text-[#205295] shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#144272]/40 hover:bg-white"
+          >
+            <X className="mr-2 h-4 w-4" />
+            Behåll nuvarande
+          </Button>
         </div>
       </CardContent>
     </Card>

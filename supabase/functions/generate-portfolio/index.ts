@@ -429,7 +429,7 @@ Rådgivningsregler:
 - Alla förslag ska vara tillgängliga via svenska handelsplattformar (Avanza, Nordnet) och lämpa sig för ISK/KF när det är relevant.
 
 Regler för preferenser:
-- Om användaren visar intresse för krypto, teknik eller tillväxt: inkludera kryptorelaterade och högbeta-tillgångar (t.ex. Ethereum-ETF, Coinbase, Tesla, ARK Innovation) i rimlig andel.
+- Om användaren visar intresse för krypto, teknik eller tillväxt: inkludera kryptorelaterade och högbeta-tillgångar i rimlig andel.
 - Om användaren har hållbarhetsfokus: inkludera ESG-fonder och gröna bolag (t.ex. Handelsbanken Hållbar Energi, iShares Clean Energy).
 - Om risktoleransen är konservativ: prioritera investmentbolag, defensiva aktier (Investor, Axfood) och breda indexfonder.
 - Om risktoleransen är balanserad: kombinera svenska fonder, investmentbolag och globala ETF:er.
@@ -441,7 +441,7 @@ Formatkrav:
 - Leverera svaret som giltig JSON utan extra text.
 - Använd exakt strukturen:
 {
-  "summary": "2–3 meningar om varför portföljen passar användaren",
+  "summary": "5-6 meningar om varför portföljen passar användaren",
   "risk_alignment": "Hur portföljen matchar risktolerans och mål",
   "next_steps": ["Konkreta råd för nästa steg"],
   "recommended_assets": [
@@ -534,7 +534,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
         model: 'gpt-4o',
         messages,
         temperature: 0.85,
-        max_tokens: 2000,
+        max_tokens: 2500,
       }),
     });
 

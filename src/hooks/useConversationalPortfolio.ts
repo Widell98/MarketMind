@@ -18,6 +18,7 @@ export interface ConversationData {
     quantity: number;
     purchasePrice: number;
     symbol?: string;
+    currency?: string;
   }>;
   age?: number;
   experience?: string;
@@ -538,7 +539,7 @@ NYBÖRJARE - UTFÖRLIG EKONOMISK PROFIL:`;
       if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
         prompt += `
 - Nuvarande innehav: ${conversationData.currentHoldings.map(h =>
-          `${h.name} (${h.quantity} st à ${h.purchasePrice} SEK)`
+          `${h.name} (${h.quantity} st à ${h.purchasePrice} ${h.currency?.trim()?.toUpperCase() || 'SEK'})`
         ).join(', ')}`;
       }
 
@@ -632,7 +633,7 @@ ERFAREN INVESTERARE - AVANCERAD PROFIL:`;
       if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
         prompt += `
 - Nuvarande innehav: ${conversationData.currentHoldings.map(h =>
-          `${h.name} (${h.quantity} st à ${h.purchasePrice} SEK)`
+          `${h.name} (${h.quantity} st à ${h.purchasePrice} ${h.currency?.trim()?.toUpperCase() || 'SEK'})`
         ).join(', ')}`;
       }
 
