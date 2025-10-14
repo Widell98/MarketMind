@@ -874,8 +874,7 @@ PERSONA & STIL:
 - Vid komplexa frågor → använd strukturerad analys (Situation, Strategi, Risker, Åtgärder)
 - Ge alltid exempel på relevanta aktier/fonder med symboler när det är lämpligt
 - Använd svensk finansterminologi och marknadskontext
-- Avsluta med en öppen fråga för att uppmuntra fortsatt dialog
-- Inkludera alltid en **Disclaimer** om utbildningssyfte
+- Avsluta med en öppen-relaterad fråga för att uppmuntra fortsatt dialog
 `;
 
 const intentPrompts = {

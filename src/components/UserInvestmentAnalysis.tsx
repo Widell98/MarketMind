@@ -592,7 +592,7 @@ const UserInvestmentAnalysis = ({
       )}
 
       {/* Conversation Context - Apple-inspired */}
-      {conversationData && Object.keys(conversationData).length > 0 && <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-green-50/30 dark:from-slate-900/90 dark:to-green-900/10 backdrop-blur-sm border border-green-200/30 dark:border-green-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
+      {/* {conversationData && Object.keys(conversationData).length > 0 && <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-green-50/30 dark:from-slate-900/90 dark:to-green-900/10 backdrop-blur-sm border border-green-200/30 dark:border-green-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
           <CardHeader className="pb-8 pt-8">
             <CardTitle className="flex items-center gap-4 text-2xl font-bold">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 flex items-center justify-center shadow-inner border border-green-200/30 dark:border-green-700/30">
@@ -654,7 +654,7 @@ const UserInvestmentAnalysis = ({
                 </div>}
             </div>
           </CardContent>
-        </Card>}
+        </Card>} */}
 
       {/* Risk Profile Summary - Apple-inspired */}
       {riskProfile.sector_interests && riskProfile.sector_interests.length > 0 && <Card className="border-0 rounded-3xl shadow-xl bg-gradient-to-br from-white/90 to-purple-50/30 dark:from-slate-900/90 dark:to-purple-900/10 backdrop-blur-sm border border-purple-200/30 dark:border-purple-800/30 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
