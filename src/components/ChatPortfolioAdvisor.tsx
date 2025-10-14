@@ -157,7 +157,7 @@ const ChatPortfolioAdvisor = () => {
   const { refetch: refetchHoldings } = useUserHoldings();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { tickers, isLoading: tickersLoading, error: tickersError } = useSheetTickers();
   const rawTickerListId = useId();
@@ -441,7 +441,13 @@ const ChatPortfolioAdvisor = () => {
   ];
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: 'smooth',
+    });
   };
 
   useEffect(() => {
@@ -1430,7 +1436,7 @@ const ChatPortfolioAdvisor = () => {
       </div>
 
       {/* Messages Container - matching AIChat style */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto">
         <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
           {messages.map((message) => (
             <div key={message.id} className="space-y-2">
@@ -1631,7 +1637,6 @@ const ChatPortfolioAdvisor = () => {
             </div>
           )}
 
-          <div ref={messagesEndRef} />
         </div>
       </div>
 
