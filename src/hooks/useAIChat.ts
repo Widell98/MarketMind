@@ -22,6 +22,25 @@ const normalizeText = (value: string) =>
     .replace(/\s+/g, ' ')
     .trim();
 
+const getTextVariants = (value: string): string[] => {
+  const normalized = normalizeText(value);
+  const withDiacritics = value
+    .toLowerCase()
+    .normalize('NFC')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!normalized) {
+    return [];
+  }
+
+  if (!withDiacritics || normalized === withDiacritics) {
+    return [normalized];
+  }
+
+  return [normalized, withDiacritics];
+};
+
 const formatListWithAnd = (items: string[]) => {
   if (items.length <= 1) {
     return items[0] ?? '';
@@ -39,20 +58,59 @@ const toNumberFromCurrency = (value: string) => {
 };
 
 const detectProfileUpdateIntent = (rawMessage: string): DetectedProfileIntent | null => {
-  const normalized = normalizeText(rawMessage);
+  const textVariants = getTextVariants(rawMessage);
 
-  if (!normalized) {
+  if (textVariants.length === 0) {
     return null;
   }
+
+  const normalized = textVariants[0];
+  const matchesPattern = (pattern: RegExp) => textVariants.some(text => pattern.test(text));
+  const matchesAny = (patterns: RegExp[]) => patterns.some(matchesPattern);
 
   const updates: ProfileUpdates = {};
   const summaryParts: string[] = [];
 
-  let hasRiskContext = /(risktolerans|riskprofil|riskniva|risk)/.test(normalized);
+  const changeSignalPatterns: RegExp[] = [
+    /(ändra|andra|ändring|andring|justera|justering|uppdatera|uppdatering|byt|byta|byte|förändra|forandra|förändring|forandring|skifta|ställa om|stalla om|ställ om|stall om|ställ in|stall in|sätt|satt|sätta|satta|gör om|gor om|justera min risk|set.*risk)/,
+    /(vill|skulle vilja|önskar|onskar|behöver|behover|kan du|kan vi|hjälp mig|hjalp mig).*(ändra|andra|justera|höj|hoj|höja|hoja|sänk|sank|sänka|sanka|minska|minskar|öka|oka|förändra|forandra|byta).*(riskprofil|risktolerans|risknivå|riskniva|risken)/,
+    /(riskprofil|risktolerans|risknivå|riskniva).*(till|vara|bli)/,
+    /(ta.*mer risk|mer risktagande|ta.*mindre risk|mindre risktagande)/,
+    /((bli|vara).*(mer|mindre).*(aggressiv|konservativ|balanserad|försiktig|forsiktig|trygg))/,
+    /(gör|gor).*(riskprofil|risktolerans|risknivå|riskniva).*(mer|mindre|aggressiv|konservativ|balanserad|försiktig|forsiktig|trygg|högrisk|hogrisk|lågrisk|lagrisk)/,
+    /(höj|hoj|höja|hoja|höjer|hojer|höjas|hojas|höjs|hojs|ökad?|okad?|ökade|okade|öka|oka|ökar|okar|ökas|okas).*(risken|risknivå|riskniva|riskprofilen)/,
+    /(sänk|sank|sänka|sanka|sänker|sanker|sänks|sanks|sänkas|sankas|sänkta|sankta|minska|minskar|minskad|minskat|minskas|minskning|minskningar|dra ner|dra ned|gå ner|ga ner|gå ned|ga ned).*(risken|risknivå|riskniva|riskprofilen)/
+  ];
+
+  let hasChangeSignal = matchesAny(changeSignalPatterns);
+
+  const riskKeywordPatterns: RegExp[] = [
+    /(risktolerans|risktoleranser|risktålighet|risktalighet|riskaptit|riskvilja)/,
+    /(riskprofil(?:en)?)/,
+    /(risknivå|riskniva|risknivån|risknivan|risknivans)/,
+    /(risktagande|risk appetite|risk preference|risk level)/
+  ];
+
+  const hasRiskKeyword = matchesAny(riskKeywordPatterns);
+  const riskWordPresent = matchesPattern(/risk/);
+
+  let hasRiskContext = hasRiskKeyword || (riskWordPresent && hasChangeSignal);
+
   if (!hasRiskContext) {
-    const qualitativeRiskWords = /(aggressiv|konservativ|moderate|balanserad|medelrisk|hog risk|lag risk|mer risk|mindre risk)/;
-    const investmentContext = /(portfolj|investering|strategi|sparande)/;
-    if (qualitativeRiskWords.test(normalized) && investmentContext.test(normalized)) {
+    const qualitativeRiskWords: RegExp[] = [
+      /(aggressiv|aggressiva|aggressivare|högrisk|hogrisk|hög risk|hog risk|offensiv)/,
+      /(konservativ|konservativa|försiktig|forsiktig|trygg|lågrisk|lagrisk|låg risk|lag risk|säker|saker)/,
+      /(balanserad|balanserade|balanserat|måttlig|mattlig|lagom risk|medelrisk|mellanrisk|moderate|medium risk)/
+    ];
+
+    const investmentContextPatterns: RegExp[] = [
+      /(portfölj|portfolj)/,
+      /(investering|investera|investeringar)/,
+      /(strategi|strategier)/,
+      /(sparande|spara|sparar)/
+    ];
+
+    if (matchesAny(qualitativeRiskWords) && matchesAny(investmentContextPatterns)) {
       hasRiskContext = true;
     }
   }
@@ -63,68 +121,95 @@ const detectProfileUpdateIntent = (rawMessage: string): DetectedProfileIntent | 
     aggressive: 'ändra din risktolerans till Aggressiv',
   };
 
-  const riskLevelPatterns: Record<'conservative' | 'moderate' | 'aggressive', RegExp[]> = {
-    conservative: [
-      /konservativ/,
-      /mer forsiktig/,
-      /lag risk/,
-      /saker(het)?/,
-      /conservative/,
-      /lower risk/,
-    ],
-    moderate: [
-      /moderate/,
-      /moderata/,
-      /balanserad/,
-      /medelrisk/,
-      /lagom risk/,
-      /medium risk/,
-    ],
-    aggressive: [
-      /aggressiv/,
-      /hog risk/,
-      /hogre risk/,
-      /more aggressive/,
-      /aggressive/,
-    ],
+  type RiskLevel = keyof typeof riskToleranceLabels;
+  type RiskLevelConfig = {
+    level: RiskLevel;
+    direct: RegExp[];
+    standalone: RegExp[];
   };
 
+  const riskLevelConfigs: RiskLevelConfig[] = [
+    {
+      level: 'conservative',
+      direct: [
+        /(ändra|andra|justera|uppdatera|byt|byta|sätt|satt|ställa|stalla|ställ|stall).*(riskprofil|risktolerans|risknivå|riskniva).*(konservativ|försiktig|forsiktig|trygg)/,
+        /(konservativ|försiktig|forsiktig|trygg).*(riskprofil|risktolerans|risknivå|riskniva).*(till|vara|bli)/
+      ],
+      standalone: [
+        /\bkonservativ(a|t)?\b/,
+        /(försiktig|forsiktig)/,
+        /(trygg|tryggare|tryggt)/,
+        /(låg risk|lag risk|lågrisk|lagrisk)/,
+        /(defensiv|defensivt)/,
+        /(säker|saker|tryggare)/
+      ]
+    },
+    {
+      level: 'moderate',
+      direct: [
+        /(ändra|andra|justera|uppdatera|byt|byta|sätt|satt|ställa|stalla|ställ|stall).*(riskprofil|risktolerans|risknivå|riskniva).*(balanserad|måttlig|mattlig|medel|lagom)/,
+        /(balanserad|måttlig|mattlig|lagom).*(riskprofil|risktolerans|risknivå|riskniva).*(till|vara|bli)/
+      ],
+      standalone: [
+        /(balanserad|balanserat|balanserade)/,
+        /(måttlig|mattlig)/,
+        /(lagom risk|medelrisk|mellanrisk|medium risk|moderate)/
+      ]
+    },
+    {
+      level: 'aggressive',
+      direct: [
+        /(ändra|andra|justera|uppdatera|byt|byta|sätt|satt|ställa|stalla|ställ|stall).*(riskprofil|risktolerans|risknivå|riskniva).*(aggressiv|mer risk|högrisk|hogrisk|offensiv)/,
+        /(aggressiv|aggressiva|aggressivare|högrisk|hogrisk|offensiv).*(riskprofil|risktolerans|risknivå|riskniva).*(till|vara|bli)/
+      ],
+      standalone: [
+        /(aggressiv|aggressiva|aggressivare)/,
+        /(hög risk|hog risk|högrisk|hogrisk)/,
+        /(mer risk|större risk|stor risk|höj risken|hoj risken)/,
+        /(offensiv|offensivt)/
+      ]
+    }
+  ];
+
   if (hasRiskContext) {
-    for (const [level, patterns] of Object.entries(riskLevelPatterns) as [keyof typeof riskLevelPatterns, RegExp[]][]) {
-      if (patterns.some(pattern => pattern.test(normalized))) {
-        updates.risk_tolerance = level;
-        summaryParts.push(riskToleranceLabels[level]);
+    for (const config of riskLevelConfigs) {
+      if (matchesAny(config.direct)) {
+        hasChangeSignal = true;
+        updates.risk_tolerance = config.level;
+        summaryParts.push(riskToleranceLabels[config.level]);
+        break;
+      }
+
+      if (hasChangeSignal && matchesAny(config.standalone)) {
+        updates.risk_tolerance = config.level;
+        summaryParts.push(riskToleranceLabels[config.level]);
         break;
       }
     }
 
     if (!updates.risk_tolerance) {
-      const increasePatterns = [
-        /oka min risk/,
-        /oka risk/,
-        /mer risk/,
-        /ta mer risk/,
-        /bli mer aggressiv/,
-        /mer aggressiv/,
-        /hogre risk/,
-        /increase risk/,
-        /take more risk/,
+      const increasePatterns: RegExp[] = [
+        /(höj|hoj|höja|hoja|höjer|hojer|höjas|hojas|höjs|hojs|öka|oka|ökad|okad|ökade|okade|ökar|okar|ökas|okas).*(risken|risknivå|riskniva|riskprofilen)/,
+        /(vill|önskar|onskar|skulle vilja|kan du).*(ta|ha).*(mer risk)/,
+        /(gå upp i risk|ga upp i risk|höj nivån|hoj nivan|höj risknivån|hoj risknivan|höj riskprofilen|hoj riskprofilen)/,
+        /(bli mer aggressiv|mer aggressiv|aggressivare|mer offensiv)/,
+        /(higher risk|increase risk|take more risk)/
       ];
 
-      const decreasePatterns = [
-        /mindre risk/,
-        /sank risk/,
-        /bli mer konservativ/,
-        /tryggare/,
-        /reduce risk/,
-        /lower risk/,
-        /need less risk/,
+      const decreasePatterns: RegExp[] = [
+        /(sänk|sank|sänka|sanka|sänker|sanker|sänks|sanks|sänkas|sankas|sänkta|sankta|minska|minskar|minskad|minskat|minskas|minskning|minskningar|dra ner|dra ned).*(risken|risknivå|riskniva|riskprofilen)/,
+        /(vill|önskar|onskar|skulle vilja|kan du).*(ta|ha).*(mindre risk)/,
+        /(gå ner i risk|ga ner i risk|sänk nivån|sank nivan|sänk risknivån|sank risknivan|sänk riskprofilen|sank riskprofilen)/,
+        /(bli mer konservativ|mer konservativ|tryggare|defensivare)/,
+        /(lower risk|reduce risk|need less risk)/
       ];
 
-      if (increasePatterns.some(pattern => pattern.test(normalized))) {
+      if (matchesAny(increasePatterns)) {
+        hasChangeSignal = true;
         updates.risk_tolerance = 'aggressive';
         summaryParts.push(riskToleranceLabels.aggressive);
-      } else if (decreasePatterns.some(pattern => pattern.test(normalized))) {
+      } else if (matchesAny(decreasePatterns)) {
+        hasChangeSignal = true;
         updates.risk_tolerance = 'conservative';
         summaryParts.push(riskToleranceLabels.conservative);
       }
@@ -170,8 +255,23 @@ const detectProfileUpdateIntent = (rawMessage: string): DetectedProfileIntent | 
     }
   }
 
-  const monthlyIndicators = /(per manad|varje manad|manadsspar|monthly|per month|each month)/;
-  if (monthlyIndicators.test(normalized)) {
+  const monthlyIndicatorPatterns: RegExp[] = [
+    /per manad/,
+    /per månad/,
+    /varje manad/,
+    /varje månad/,
+    /manadsspar/,
+    /månadsspar/,
+    /manadssparande/,
+    /månadssparande/,
+    /manadsvis/,
+    /månadsvis/,
+    /monthly/,
+    /per month/,
+    /each month/
+  ];
+
+  if (matchesAny(monthlyIndicatorPatterns)) {
     const amountMatch = normalized.match(/(\d{1,3}(?:[ \u00A0\.]\d{3})*|\d+)(?:[\.,]\d+)?\s*(kr|sek|kronor)?/);
 
     if (amountMatch) {
