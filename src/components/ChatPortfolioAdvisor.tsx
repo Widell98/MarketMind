@@ -40,6 +40,7 @@ interface Holding {
   purchasePrice: number;
   nameManuallyEdited: boolean;
   priceManuallyEdited: boolean;
+  currency: string;
 }
 
 
@@ -59,6 +60,8 @@ interface AdvisorPlan {
   disclaimer?: string;
   rawText?: string;
 }
+
+type ConversationHolding = NonNullable<ConversationData['currentHoldings']>[number];
 
 const normalizeAdvisorPlan = (plan: any, fallbackText?: string): AdvisorPlan | null => {
   if (!plan || typeof plan !== 'object') {
@@ -497,7 +500,8 @@ const ChatPortfolioAdvisor = () => {
       quantity: 0,
       purchasePrice: 0,
       nameManuallyEdited: false,
-      priceManuallyEdited: false
+      priceManuallyEdited: false,
+      currency: 'SEK'
     };
     setHoldings(prev => [...prev, newHolding]);
   };
@@ -526,10 +530,12 @@ const ChatPortfolioAdvisor = () => {
         }
 
         const ticker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) : undefined;
+        const resolvedTickerCurrency = ticker?.currency?.trim()?.toUpperCase();
 
         let updatedHolding: Holding = {
           ...holding,
-          symbol: normalizedSymbol
+          symbol: normalizedSymbol,
+          currency: resolvedTickerCurrency || (normalizedSymbol ? holding.currency : 'SEK')
         };
 
         if (ticker) {
@@ -557,6 +563,13 @@ const ChatPortfolioAdvisor = () => {
               };
             }
           }
+        }
+
+        if (!ticker && normalizedSymbol.length === 0 && holding.currency !== 'SEK') {
+          updatedHolding = {
+            ...updatedHolding,
+            currency: 'SEK'
+          };
         }
 
         return updatedHolding;
@@ -614,6 +627,7 @@ const ChatPortfolioAdvisor = () => {
 
         let nextHolding = holding;
         let modified = false;
+        const resolvedCurrency = ticker.currency?.trim()?.toUpperCase();
 
         if (!holding.nameManuallyEdited) {
           const resolvedName = ticker.name?.trim() || symbol;
@@ -621,6 +635,11 @@ const ChatPortfolioAdvisor = () => {
             nextHolding = { ...nextHolding, name: resolvedName };
             modified = true;
           }
+        }
+
+        if (resolvedCurrency && holding.currency !== resolvedCurrency) {
+          nextHolding = { ...nextHolding, currency: resolvedCurrency };
+          modified = true;
         }
 
         if (
@@ -652,16 +671,29 @@ const ChatPortfolioAdvisor = () => {
   };
 
   const submitHoldings = () => {
+    // Normalize holdings with ticker data so currency/exchange aligns with the Google Sheet reference
+    const normalizedHoldings = holdings.map(holding => {
+      const normalizedSymbol = holding.symbol?.trim().toUpperCase() || '';
+      const ticker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) : undefined;
+      const resolvedCurrency = ticker?.currency?.trim()?.toUpperCase() || holding.currency?.trim()?.toUpperCase() || 'SEK';
+
+      return {
+        ...holding,
+        symbol: normalizedSymbol,
+        currency: resolvedCurrency
+      };
+    });
+
     // More flexible validation - symbol is optional but encouraged
-    const validHoldings = holdings.filter(h => 
-      h.name && h.name.trim() !== '' && 
-      h.quantity > 0 && 
+    const validHoldings = normalizedHoldings.filter(h =>
+      h.name && h.name.trim() !== '' &&
+      h.quantity > 0 &&
       h.purchasePrice > 0
     );
-    
+
     console.log('Holdings before validation:', holdings);
     console.log('Valid holdings after filtering:', validHoldings);
-    
+
     if (validHoldings.length === 0) {
       toast({
         title: "Inga innehav angivna",
@@ -672,16 +704,29 @@ const ChatPortfolioAdvisor = () => {
     }
 
     // Show confirmation of what was added
-    const holdingsText = validHoldings.map(h => 
-      `${h.name}${h.symbol && h.symbol.trim() ? ` (${h.symbol})` : ''}: ${h.quantity} st à ${h.purchasePrice} SEK`
-    ).join(', ');
+    const conversationHoldings = validHoldings.map(h => ({
+      id: h.id,
+      name: h.name,
+      quantity: h.quantity,
+      purchasePrice: h.purchasePrice,
+      symbol: h.symbol?.trim() ? h.symbol : undefined,
+      currency: h.currency
+    }));
+
+    const holdingsText = conversationHoldings
+      .map(h => {
+        const currencyLabel = h.currency?.trim()?.toUpperCase() || 'SEK';
+        const symbolText = h.symbol ? ` (${h.symbol})` : '';
+        return `${h.name}${symbolText}: ${h.quantity} st à ${h.purchasePrice} ${currencyLabel}`;
+      })
+      .join(', ');
 
     addUserMessage(`Mina nuvarande innehav: ${holdingsText}`);
-    
+
     // Update conversation data
     const updatedData = {
       ...conversationData,
-      currentHoldings: validHoldings
+      currentHoldings: conversationHoldings
     };
     setConversationData(updatedData);
     
@@ -755,7 +800,8 @@ const ChatPortfolioAdvisor = () => {
             quantity: 0,
             purchasePrice: 0,
             nameManuallyEdited: false,
-            priceManuallyEdited: false
+            priceManuallyEdited: false,
+            currency: 'SEK'
           }
         ]);
       }, 1000);
@@ -847,7 +893,7 @@ const ChatPortfolioAdvisor = () => {
     }
   };
 
-  const saveUserHoldings = async (holdings: Holding[]) => {
+  const saveUserHoldings = async (holdings: ConversationHolding[]) => {
     if (!user || holdings.length === 0) return;
 
     try {
@@ -857,9 +903,8 @@ const ChatPortfolioAdvisor = () => {
 
       // Transform holdings to match the user_holdings table structure
       const holdingsToInsert = holdings.map(holding => {
-        const normalizedSymbol = holding.symbol?.trim().length
-          ? holding.symbol.trim().toUpperCase()
-          : null;
+        const trimmedSymbol = typeof holding.symbol === 'string' ? holding.symbol.trim() : '';
+        const normalizedSymbol = trimmedSymbol.length > 0 ? trimmedSymbol.toUpperCase() : null;
         const ticker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) : undefined;
 
         const sheetPrice = ticker && typeof ticker.price === 'number' && Number.isFinite(ticker.price) && ticker.price > 0
@@ -867,9 +912,8 @@ const ChatPortfolioAdvisor = () => {
           : null;
         const manualPrice = holding.purchasePrice > 0 ? roundToTwo(holding.purchasePrice) : null;
         const resolvedPrice = sheetPrice ?? manualPrice;
-        const priceCurrency = resolvedPrice !== null
-          ? (ticker?.currency?.trim()?.toUpperCase() || 'SEK')
-          : null;
+        const baseCurrency = ticker?.currency?.trim()?.toUpperCase() || holding.currency?.trim()?.toUpperCase() || 'SEK';
+        const priceCurrency = resolvedPrice !== null || manualPrice !== null ? baseCurrency : null;
         const quantity = Number.isFinite(holding.quantity) && holding.quantity > 0 ? holding.quantity : 0;
 
         const currentValue = quantity > 0 && resolvedPrice !== null
@@ -887,7 +931,7 @@ const ChatPortfolioAdvisor = () => {
           current_price_per_unit: resolvedPrice,
           price_currency: priceCurrency,
           current_value: currentValue,
-          currency: 'SEK',
+          currency: baseCurrency,
           holding_type: 'stock', // Default to stock
           purchase_date: new Date().toISOString(),
         };
@@ -1470,7 +1514,7 @@ const ChatPortfolioAdvisor = () => {
                                 />
                                 <Input
                                   type="number"
-                                  placeholder="Köppris (SEK) *"
+                                  placeholder={`Köppris (${holding.currency || 'SEK'}) *`}
                                   value={holding.purchasePrice || ''}
                                   onChange={(e) => handleHoldingPurchasePriceChange(holding.id, e.target.value)}
                                   className="text-xs sm:text-sm"
@@ -1503,7 +1547,7 @@ const ChatPortfolioAdvisor = () => {
                                   .map(h => (
                                     <div key={h.id} className="text-xs text-green-700 flex items-center gap-1">
                                       <Check className="w-3 h-3" />
-                                      {h.name}{h.symbol && h.symbol.trim() ? ` (${h.symbol})` : ''}: {h.quantity} st à {h.purchasePrice} SEK
+                                      {h.name}{h.symbol && h.symbol.trim() ? ` (${h.symbol})` : ''}: {h.quantity} st à {h.purchasePrice} {(h.currency || 'SEK')}
                                     </div>
                                   ))
                                 }
