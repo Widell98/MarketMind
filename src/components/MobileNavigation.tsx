@@ -107,7 +107,7 @@ const MobileNavigation = () => {
       </SheetTrigger>
       <SheetContent side="left" className="w-80 sm:w-80">
         <SheetHeader>
-          <SheetTitle className="text-left">{t('nav.navigation') ?? 'Navigering'}</SheetTitle>
+          <SheetTitle className="text-left">Market Mind</SheetTitle>
         </SheetHeader>
         <nav className="mt-6 space-y-6">
           <div>
