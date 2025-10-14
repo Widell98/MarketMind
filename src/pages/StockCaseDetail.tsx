@@ -15,7 +15,6 @@ import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Calendar, Building,
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
-import StockCaseAIChat from '@/components/StockCaseAIChat';
 import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
 import { highlightNumbersSafely } from '@/utils/sanitizer';
@@ -87,9 +86,9 @@ const StockCaseDetail = () => {
           <p className="text-gray-600 dark:text-gray-400 mb-6">
             Det stock case du letar efter finns inte eller har tagits bort.
           </p>
-          <Button onClick={() => navigate('/stock-cases')}>
+          <Button onClick={() => navigate('/discover')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Tillbaka till Stock Cases
+            Tillbaka till Discover
           </Button>
         </div>
       </Layout>
@@ -100,12 +99,37 @@ const StockCaseDetail = () => {
   const isPositivePerformance = performance && performance >= 0;
   const isOwner = user && stockCase.user_id === user.id;
 
+  // Create timeline of all versions (original + updates)
+  const timeline = [
+    {
+      id: 'original',
+      title: stockCase?.title || '',
+      description: stockCase?.description || '',
+      image_url: stockCase?.image_url || '',
+      created_at: stockCase?.created_at || '',
+      user_id: stockCase?.user_id || '',
+      isOriginal: true
+    },
+    ...(updates || []).map(update => ({
+      ...update,
+      isOriginal: false
+    }))
+  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  // Get current version based on carousel index
+  const currentVersion = timeline[currentImageIndex];
+  const hasMultipleVersions = timeline.length > 1;
+
+  const displayTitle = currentVersion?.title?.trim() ? currentVersion.title : stockCase.title;
+
   const handleShare = async () => {
+    const shareTitle = displayTitle;
+
     if (navigator.share) {
       try {
         await navigator.share({
-          title: stockCase.title,
-          text: `Kolla in detta stock case: ${stockCase.title}`,
+          title: shareTitle,
+          text: `Kolla in detta stock case: ${shareTitle}`,
           url: window.location.href
         });
       } catch (error) {
@@ -162,27 +186,6 @@ const StockCaseDetail = () => {
       (window as any).refreshCommunityRecommendations();
     }
   };
-
-  // Create timeline of all versions (original + updates)
-  const timeline = [
-    {
-      id: 'original',
-      title: stockCase?.title || '',
-      description: stockCase?.description || '',
-      image_url: stockCase?.image_url || '',
-      created_at: stockCase?.created_at || '',
-      user_id: stockCase?.user_id || '',
-      isOriginal: true
-    },
-    ...(updates || []).map(update => ({
-      ...update,
-      isOriginal: false
-    }))
-  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-  // Get current version based on carousel index
-  const currentVersion = timeline[currentImageIndex];
-  const hasMultipleVersions = timeline.length > 1;
 
   // Format relative date
   const formatRelativeDate = (dateString: string) => {
@@ -290,7 +293,7 @@ const StockCaseDetail = () => {
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header with Navigation */}
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => navigate('/stock-cases')}>
+          <Button variant="outline" onClick={() => navigate('/discover')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Tillbaka
           </Button>
@@ -301,7 +304,7 @@ const StockCaseDetail = () => {
           {/* Title and Metadata */}
           <div className="space-y-4">
             <div className="flex items-center justify-center gap-3">
-              <h1 className="text-5xl font-bold tracking-tight text-center">{stockCase.title}</h1>
+              <h1 className="text-5xl font-bold tracking-tight text-center">{displayTitle}</h1>
               {stockCase.ai_generated === true && (
                 <Badge variant="outline" className="bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
                   <Brain className="w-4 h-4 mr-1" />
@@ -337,53 +340,6 @@ const StockCaseDetail = () => {
                 )}
               </p>
             </div>
-
-            {/* CTA Buttons directly under title */}
-            {user && (
-              <div className="flex items-center justify-center gap-4 py-4">
-                <Button 
-                  variant="outline" 
-                  onClick={handleLikeClick} 
-                  disabled={likesLoading} 
-                  className="flex items-center gap-2 text-lg px-6 py-3"
-                >
-                  <Heart className={`w-5 h-5 ${isLiked ? 'fill-current text-red-500' : ''}`} />
-                  {likeCount} Gilla
-                </Button>
-                <SaveOpportunityButton 
-                  itemType="stock_case" 
-                  itemId={stockCase.id} 
-                  itemTitle={stockCase.title} 
-                  onSaveSuccess={handleSaveSuccess} 
-                  size="lg"
-                  className="text-lg px-6 py-3"
-                />
-                {user && user.id !== stockCase.user_id && stockCase.user_id && (
-                  <Button 
-                    variant="outline" 
-                    onClick={handleFollowClick}
-                    className="flex items-center gap-2 text-lg px-6 py-3"
-                  >
-                    <UserPlus className="w-5 h-5" />
-                    {isFollowing(stockCase.user_id) ? 'Sluta följ' : 'Följ författare'}
-                  </Button>
-                )}
-                <Button variant="outline" onClick={handleShare} className="flex items-center gap-2 text-lg px-6 py-3">
-                  <Share2 className="w-5 h-5" />
-                  Dela
-                </Button>
-                {isOwner && (
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setShowUpdateDialog(true)} 
-                    className="flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Lägg till uppdatering
-                  </Button>
-                )}
-              </div>
-            )}
 
             {/* Performance Badge */}
             {performance !== null && (
@@ -432,9 +388,9 @@ const StockCaseDetail = () => {
               </div>
 
               <div className="relative group">
-                <img 
-                  src={currentVersion.image_url} 
-                  alt={stockCase.title}
+                <img
+                  src={currentVersion.image_url}
+                  alt={displayTitle}
                   className="w-full h-auto rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300"
                   onClick={() => {
                     window.open(currentVersion.image_url, '_blank');
@@ -536,6 +492,53 @@ const StockCaseDetail = () => {
               </div>
             </div>
           )}
+
+          {/* CTA Buttons repositioned under the visual */}
+          <div className="flex flex-wrap items-center justify-center gap-4 py-4">
+            <Button variant="outline" onClick={handleShare} className="flex items-center gap-2 text-lg px-6 py-3">
+              <Share2 className="w-5 h-5" />
+              Dela
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleLikeClick}
+              disabled={likesLoading}
+              className="flex items-center gap-2 text-lg px-6 py-3"
+            >
+              <Heart className={`w-5 h-5 ${isLiked ? 'fill-current text-red-500' : ''}`} />
+              {likeCount} Gilla
+            </Button>
+            {user && (
+              <SaveOpportunityButton
+                itemType="stock_case"
+                itemId={stockCase.id}
+                itemTitle={displayTitle}
+                onSaveSuccess={handleSaveSuccess}
+                size="lg"
+                className="text-lg px-6 py-3"
+              />
+            )}
+            {user && user.id !== stockCase.user_id && stockCase.user_id && (
+              <Button
+                variant="outline"
+                onClick={handleFollowClick}
+                className="flex items-center gap-2 text-lg px-6 py-3"
+              >
+                <UserPlus className="w-5 h-5" />
+                {isFollowing(stockCase.user_id) ? 'Sluta följ' : 'Följ författare'}
+              </Button>
+            )}
+            {isOwner && (
+              <Button
+                variant="outline"
+                onClick={() => setShowUpdateDialog(true)}
+                className="flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Lägg till uppdatering
+              </Button>
+            )}
+          </div>
 
           {/* Login prompt for non-users */}
           {!user && (
@@ -646,8 +649,8 @@ const StockCaseDetail = () => {
               </Card>
             )}
 
-            {/* AI Chat Integration - moved closer to case text */}
-            <StockCaseAIChat stockCase={stockCase} />
+            {/* AI Chat Integration - temporarily disabled per request */}
+            {/* <StockCaseAIChat stockCase={stockCase} /> */}
 
             {/* Comments Section with improved placeholder */}
             <div id="comments-section">
