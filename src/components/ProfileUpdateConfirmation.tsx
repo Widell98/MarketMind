@@ -5,12 +5,14 @@ import { CheckCircle, X, User } from 'lucide-react';
 
 interface ProfileUpdateConfirmationProps {
   profileUpdates: any;
+  summary?: string;
   onConfirm: () => void | Promise<void>;
   onReject: () => void | Promise<void>;
 }
 
 const ProfileUpdateConfirmation: React.FC<ProfileUpdateConfirmationProps> = ({
   profileUpdates,
+  summary,
   onConfirm,
   onReject
 }) => {
@@ -77,7 +79,7 @@ const ProfileUpdateConfirmation: React.FC<ProfileUpdateConfirmationProps> = ({
             </h4>
             
             <p className="text-sm text-blue-700 mb-3">
-              Jag upptäckte förändringar i dina preferenser baserat på vår konversation:
+              {summary ?? 'Jag upptäckte förändringar i dina preferenser baserat på vår konversation:'}
             </p>
 
             <div className="space-y-1 mb-4">

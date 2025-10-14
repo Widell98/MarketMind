@@ -9,6 +9,195 @@ const DAILY_MESSAGE_CREDITS = 10;
 
 type ProfileUpdates = Record<string, unknown>;
 
+type DetectedProfileIntent = {
+  updates: ProfileUpdates;
+  summary: string;
+};
+
+const normalizeText = (value: string) =>
+  value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const formatListWithAnd = (items: string[]) => {
+  if (items.length <= 1) {
+    return items[0] ?? '';
+  }
+
+  const lastItem = items[items.length - 1];
+  return `${items.slice(0, -1).join(', ')} och ${lastItem}`;
+};
+
+const toNumberFromCurrency = (value: string) => {
+  const cleaned = value.replace(/[^0-9,\.]/g, '').replace(/\.(?=\d{3}(?:\D|$))/g, '');
+  const normalized = cleaned.replace(/,/g, '.');
+  const parsed = Number(normalized);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const detectProfileUpdateIntent = (rawMessage: string): DetectedProfileIntent | null => {
+  const normalized = normalizeText(rawMessage);
+
+  if (!normalized) {
+    return null;
+  }
+
+  const updates: ProfileUpdates = {};
+  const summaryParts: string[] = [];
+
+  let hasRiskContext = /(risktolerans|riskprofil|riskniva|risk)/.test(normalized);
+  if (!hasRiskContext) {
+    const qualitativeRiskWords = /(aggressiv|konservativ|moderate|balanserad|medelrisk|hog risk|lag risk|mer risk|mindre risk)/;
+    const investmentContext = /(portfolj|investering|strategi|sparande)/;
+    if (qualitativeRiskWords.test(normalized) && investmentContext.test(normalized)) {
+      hasRiskContext = true;
+    }
+  }
+
+  const riskToleranceLabels: Record<string, string> = {
+    conservative: 'ändra din risktolerans till Konservativ',
+    moderate: 'ändra din risktolerans till Måttlig',
+    aggressive: 'ändra din risktolerans till Aggressiv',
+  };
+
+  const riskLevelPatterns: Record<'conservative' | 'moderate' | 'aggressive', RegExp[]> = {
+    conservative: [
+      /konservativ/,
+      /mer forsiktig/,
+      /lag risk/,
+      /saker(het)?/,
+      /conservative/,
+      /lower risk/,
+    ],
+    moderate: [
+      /moderate/,
+      /moderata/,
+      /balanserad/,
+      /medelrisk/,
+      /lagom risk/,
+      /medium risk/,
+    ],
+    aggressive: [
+      /aggressiv/,
+      /hog risk/,
+      /hogre risk/,
+      /more aggressive/,
+      /aggressive/,
+    ],
+  };
+
+  if (hasRiskContext) {
+    for (const [level, patterns] of Object.entries(riskLevelPatterns) as [keyof typeof riskLevelPatterns, RegExp[]][]) {
+      if (patterns.some(pattern => pattern.test(normalized))) {
+        updates.risk_tolerance = level;
+        summaryParts.push(riskToleranceLabels[level]);
+        break;
+      }
+    }
+
+    if (!updates.risk_tolerance) {
+      const increasePatterns = [
+        /oka min risk/,
+        /oka risk/,
+        /mer risk/,
+        /ta mer risk/,
+        /bli mer aggressiv/,
+        /mer aggressiv/,
+        /hogre risk/,
+        /increase risk/,
+        /take more risk/,
+      ];
+
+      const decreasePatterns = [
+        /mindre risk/,
+        /sank risk/,
+        /bli mer konservativ/,
+        /tryggare/,
+        /reduce risk/,
+        /lower risk/,
+        /need less risk/,
+      ];
+
+      if (increasePatterns.some(pattern => pattern.test(normalized))) {
+        updates.risk_tolerance = 'aggressive';
+        summaryParts.push(riskToleranceLabels.aggressive);
+      } else if (decreasePatterns.some(pattern => pattern.test(normalized))) {
+        updates.risk_tolerance = 'conservative';
+        summaryParts.push(riskToleranceLabels.conservative);
+      }
+    }
+  }
+
+  const horizonPatterns: Record<'short' | 'medium' | 'long', RegExp[]> = {
+    short: [
+      /kort sikt/,
+      /1-3 ar/,
+      /inom (ett|1) ar/,
+      /snart behov/,
+      /short term/,
+    ],
+    medium: [
+      /medel sikt/,
+      /medellang/,
+      /3-7 ar/,
+      /5 ar/,
+      /inom nagra ar/,
+      /medium term/,
+    ],
+    long: [
+      /lang sikt/,
+      /langtid/,
+      /7 ar/,
+      /10 ar/,
+      /for (lang|langa) tiden/,
+      /long term/,
+    ],
+  };
+
+  for (const [horizon, patterns] of Object.entries(horizonPatterns) as [keyof typeof horizonPatterns, RegExp[]][]) {
+    if (patterns.some(pattern => pattern.test(normalized))) {
+      updates.investment_horizon = horizon;
+      const horizonLabels: Record<string, string> = {
+        short: 'justera din tidshorisont till Kort (1-3 år)',
+        medium: 'justera din tidshorisont till Medel (3-7 år)',
+        long: 'justera din tidshorisont till Lång (7+ år)',
+      };
+      summaryParts.push(horizonLabels[horizon]);
+      break;
+    }
+  }
+
+  const monthlyIndicators = /(per manad|varje manad|manadsspar|monthly|per month|each month)/;
+  if (monthlyIndicators.test(normalized)) {
+    const amountMatch = normalized.match(/(\d{1,3}(?:[ \u00A0\.]\d{3})*|\d+)(?:[\.,]\d+)?\s*(kr|sek|kronor)?/);
+
+    if (amountMatch) {
+      const numericValue = toNumberFromCurrency(amountMatch[0]);
+
+      if (numericValue !== null && Number.isFinite(numericValue)) {
+        const roundedValue = Math.round(numericValue);
+        updates.monthly_investment_amount = roundedValue;
+        summaryParts.push(`uppdatera ditt månadssparande till ${roundedValue.toLocaleString('sv-SE')} kr`);
+      }
+    }
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return null;
+  }
+
+  const formattedSummary = formatListWithAnd(summaryParts);
+  const summary = `Jag tolkar att du vill ${formattedSummary}. Vill du uppdatera din profil?`;
+
+  return {
+    updates,
+    summary,
+  };
+};
+
 type MessageContext = {
   analysisType?: string;
   confidence?: number;
@@ -568,19 +757,39 @@ export const useAIChat = (portfolioId?: string) => {
       return;
     }
     
-    // Add user message to UI IMMEDIATELY for faster UX (before any async operations)
+    const trimmedContent = content.trim();
+    const userMessageId = Date.now().toString() + '_user_temp';
     const userMessage: Message = {
-      id: Date.now().toString() + '_user_temp',
+      id: userMessageId,
       role: 'user',
-      content: content.trim(),
+      content: trimmedContent,
       timestamp: new Date()
     };
-    
-    setMessages(prev => [...prev, userMessage]);
+
+    const hasPendingConfirmation = messages.some(msg => msg.context?.requiresConfirmation);
+    const detectedIntent = hasPendingConfirmation ? null : detectProfileUpdateIntent(trimmedContent);
+    const detectionTimestamp = Date.now();
+    const detectionMessage: Message | null = detectedIntent
+      ? {
+          id: `${detectionTimestamp}_profile_detected`,
+          role: 'assistant',
+          content: detectedIntent.summary,
+          timestamp: new Date(detectionTimestamp),
+          context: {
+            analysisType: 'profile_update_detection',
+            profileUpdates: detectedIntent.updates,
+            requiresConfirmation: true,
+            detectedSummary: detectedIntent.summary,
+            detectedBy: 'client'
+          }
+        }
+      : null;
+
+    setMessages(prev => detectionMessage ? [...prev, userMessage, detectionMessage] : [...prev, userMessage]);
     setIsLoading(true);
-    
+
     try {
-      
+
       console.log('Calling Supabase function with chat history...');
       
       // Send chat history for context (last 10 messages excluding the temp message we just added)
@@ -600,12 +809,14 @@ export const useAIChat = (portfolioId?: string) => {
           'Authorization': `Bearer ${supabaseAnonKey}`,
         },
         body: JSON.stringify({
-          message: content.trim(),
+          message: trimmedContent,
           userId: user.id,
           portfolioId: portfolioId,
           sessionId: targetSessionId,
           chatHistory: chatHistoryForAPI,
-          analysisType: 'general'
+          analysisType: 'general',
+          detectedProfileUpdates: detectedIntent?.updates ?? undefined,
+          detectedProfileSummary: detectedIntent?.summary ?? undefined
         })
       });
 
