@@ -445,134 +445,12 @@ export const useAIChat = (portfolioId?: string) => {
     }
   }, [user, toast]);
 
-  const sendMessage = useCallback(async (content: string) => {
-    console.log('=== SENDING MESSAGE DEBUG ===');
-    console.log('Content:', content);
-    console.log('User:', user?.id);
-    console.log('Current session ID:', currentSessionId);
-    console.log('Portfolio ID:', portfolioId);
-    
-    if (!user || !content.trim()) {
-      console.log('Missing user or empty content');
-      return;
-    }
-
-    // Check usage limit with better error handling
-    const canSendMessage = checkUsageLimit('ai_message');
-    const isPremium = subscription?.subscribed;
-    const currentUsage = usage?.ai_messages_count || 0;
-    const dailyLimit = DAILY_MESSAGE_CREDITS;
-    const projectedUsage = currentUsage + pendingUsageCount;
-
-    if ((!canSendMessage || projectedUsage >= dailyLimit) && !isPremium) {
-      console.log('Usage limit reached:', { currentUsage, dailyLimit, isPremium });
-      toast({
-        title: "Daglig gräns nådd",
-        description: `Du har använt alla dina ${dailyLimit} gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.`,
-        variant: "destructive",
-      });
-      setQuotaExceeded(true);
-      return;
-    }
-
-    if (!isPremium) {
-      setPendingUsageCount(prev => prev + 1);
-    }
-
-    // If no session exists, create one and send message
-    if (!currentSessionId) {
-      console.log('No session exists, creating session and sending message...');
-      await createNewSessionAndSendMessage(content);
-      return;
-    }
-
-    console.log('Sending message to existing session');
-    await sendMessageToSession(content);
-  }, [user, currentSessionId, checkUsageLimit, subscription, usage, toast, portfolioId, pendingUsageCount]);
-
-  const createNewSessionAndSendMessage = useCallback(async (messageContent: string) => {
-    console.log('=== CREATE SESSION AND SEND MESSAGE ===');
-    console.log('User:', user?.id);
-    console.log('Portfolio ID:', portfolioId);
-    console.log('Message to send:', messageContent);
-
-    if (!user) {
-      console.log('Cannot create session: missing user');
-      return;
-    }
-    
-    setIsLoading(true);
-    
-    // Clear messages immediately when creating new session
-    console.log('Clearing messages for new session');
-    setMessages([]);
-    
-    let messageDispatched = false;
-
-    try {
-      const now = new Date();
-      const sessionName = `Chat ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
-      
-      console.log('Creating session with name:', sessionName);
-      
-      const { data, error } = await supabase
-        .from('ai_chat_sessions')
-        .insert([{ 
-          user_id: user.id, 
-          session_name: sessionName,
-          context_data: {
-            created_for: 'advisory',
-            market_context: 'normal',
-            portfolio_id: portfolioId
-          }
-        }])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating session:', error);
-        throw error;
-      }
-
-      console.log('New session created:', data);
-
-      const newSession = {
-        id: data.id,
-        session_name: data.session_name || sessionName,
-        created_at: data.created_at,
-        is_active: data.is_active || false,
-      };
-
-      setSessions(prev => [newSession, ...prev]);
-      setCurrentSessionId(newSession.id);
-      
-      console.log('Session state updated, now sending message...');
-      
-      // Now send the message to the newly created session
-      await sendMessageToSession(messageContent, newSession.id);
-      messageDispatched = true;
-
-    } catch (error) {
-      console.error('Error creating new session:', error);
-      toast({
-        title: "Fel",
-        description: "Kunde inte skapa ny session. Försök igen.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-      if (!messageDispatched) {
-        setPendingUsageCount(prev => Math.max(0, prev - 1));
-      }
-    }
-  }, [user, portfolioId, toast, sendMessageToSession]);
-
   const sendMessageToSession = useCallback(async (content: string, sessionId?: string) => {
     console.log('=== SEND MESSAGE TO SESSION ===');
     console.log('Content:', content);
     console.log('Session ID to use:', sessionId || currentSessionId);
     console.log('Portfolio ID:', portfolioId);
-    
+
     const targetSessionId = sessionId || currentSessionId;
     
     if (!user || !content.trim() || !targetSessionId) {
@@ -756,6 +634,128 @@ export const useAIChat = (portfolioId?: string) => {
       setPendingUsageCount(prev => Math.max(0, prev - 1));
     }
   }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage, incrementUsage, loadMessages]);
+
+  const createNewSessionAndSendMessage = useCallback(async (messageContent: string) => {
+    console.log('=== CREATE SESSION AND SEND MESSAGE ===');
+    console.log('User:', user?.id);
+    console.log('Portfolio ID:', portfolioId);
+    console.log('Message to send:', messageContent);
+
+    if (!user) {
+      console.log('Cannot create session: missing user');
+      return;
+    }
+
+    setIsLoading(true);
+
+    // Clear messages immediately when creating new session
+    console.log('Clearing messages for new session');
+    setMessages([]);
+
+    let messageDispatched = false;
+
+    try {
+      const now = new Date();
+      const sessionName = `Chat ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
+
+      console.log('Creating session with name:', sessionName);
+
+      const { data, error } = await supabase
+        .from('ai_chat_sessions')
+        .insert([{
+          user_id: user.id,
+          session_name: sessionName,
+          context_data: {
+            created_for: 'advisory',
+            market_context: 'normal',
+            portfolio_id: portfolioId
+          }
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating session:', error);
+        throw error;
+      }
+
+      console.log('New session created:', data);
+
+      const newSession = {
+        id: data.id,
+        session_name: data.session_name || sessionName,
+        created_at: data.created_at,
+        is_active: data.is_active || false,
+      };
+
+      setSessions(prev => [newSession, ...prev]);
+      setCurrentSessionId(newSession.id);
+
+      console.log('Session state updated, now sending message...');
+
+      // Now send the message to the newly created session
+      await sendMessageToSession(messageContent, newSession.id);
+      messageDispatched = true;
+
+    } catch (error) {
+      console.error('Error creating new session:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte skapa ny session. Försök igen.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+      if (!messageDispatched) {
+        setPendingUsageCount(prev => Math.max(0, prev - 1));
+      }
+    }
+  }, [user, portfolioId, toast, sendMessageToSession]);
+
+  const sendMessage = useCallback(async (content: string) => {
+    console.log('=== SENDING MESSAGE DEBUG ===');
+    console.log('Content:', content);
+    console.log('User:', user?.id);
+    console.log('Current session ID:', currentSessionId);
+    console.log('Portfolio ID:', portfolioId);
+
+    if (!user || !content.trim()) {
+      console.log('Missing user or empty content');
+      return;
+    }
+
+    // Check usage limit with better error handling
+    const canSendMessage = checkUsageLimit('ai_message');
+    const isPremium = subscription?.subscribed;
+    const currentUsage = usage?.ai_messages_count || 0;
+    const dailyLimit = DAILY_MESSAGE_CREDITS;
+    const projectedUsage = currentUsage + pendingUsageCount;
+
+    if ((!canSendMessage || projectedUsage >= dailyLimit) && !isPremium) {
+      console.log('Usage limit reached:', { currentUsage, dailyLimit, isPremium });
+      toast({
+        title: "Daglig gräns nådd",
+        description: `Du har använt alla dina ${dailyLimit} gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.`,
+        variant: "destructive",
+      });
+      setQuotaExceeded(true);
+      return;
+    }
+
+    if (!isPremium) {
+      setPendingUsageCount(prev => prev + 1);
+    }
+
+    // If no session exists, create one and send message
+    if (!currentSessionId) {
+      console.log('No session exists, creating session and sending message...');
+      await createNewSessionAndSendMessage(content);
+      return;
+    }
+
+    console.log('Sending message to existing session');
+    await sendMessageToSession(content);
+  }, [user, currentSessionId, checkUsageLimit, subscription, usage, toast, portfolioId, pendingUsageCount, createNewSessionAndSendMessage, sendMessageToSession]);
 
   const dismissProfileUpdatePrompt = useCallback(async (messageId: string) => {
     const targetMessage = messages.find(msg => msg.id === messageId);
