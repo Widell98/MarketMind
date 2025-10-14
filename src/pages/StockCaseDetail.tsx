@@ -86,9 +86,9 @@ const StockCaseDetail = () => {
           <p className="text-gray-600 dark:text-gray-400 mb-6">
             Det stock case du letar efter finns inte eller har tagits bort.
           </p>
-          <Button onClick={() => navigate('/stock-cases')}>
+          <Button onClick={() => navigate('/discover')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Tillbaka till Stock Cases
+            Tillbaka till Discover
           </Button>
         </div>
       </Layout>
@@ -293,7 +293,7 @@ const StockCaseDetail = () => {
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header with Navigation */}
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => navigate('/stock-cases')}>
+          <Button variant="outline" onClick={() => navigate('/discover')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Tillbaka
           </Button>
