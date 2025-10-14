@@ -36,10 +36,11 @@ export const useAIChat = (portfolioId?: string) => {
     loadSessions: loadChatSessions,
   } = useChatSessions();
   const totalCredits = DAILY_MESSAGE_CREDITS;
+  const [pendingUsageCount, setPendingUsageCount] = useState(0);
   const remainingCredits = useMemo(() => {
     const usedCredits = usage?.ai_messages_count ?? 0;
-    return Math.max(0, totalCredits - usedCredits);
-  }, [usage?.ai_messages_count]);
+    return Math.max(0, totalCredits - usedCredits - pendingUsageCount);
+  }, [usage?.ai_messages_count, totalCredits, pendingUsageCount]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -461,8 +462,9 @@ export const useAIChat = (portfolioId?: string) => {
     const isPremium = subscription?.subscribed;
     const currentUsage = usage?.ai_messages_count || 0;
     const dailyLimit = DAILY_MESSAGE_CREDITS;
+    const projectedUsage = currentUsage + pendingUsageCount;
 
-    if (!canSendMessage && !isPremium) {
+    if ((!canSendMessage || projectedUsage >= dailyLimit) && !isPremium) {
       console.log('Usage limit reached:', { currentUsage, dailyLimit, isPremium });
       toast({
         title: "Daglig gräns nådd",
@@ -471,6 +473,10 @@ export const useAIChat = (portfolioId?: string) => {
       });
       setQuotaExceeded(true);
       return;
+    }
+
+    if (!isPremium) {
+      setPendingUsageCount(prev => prev + 1);
     }
 
     // If no session exists, create one and send message
@@ -482,14 +488,14 @@ export const useAIChat = (portfolioId?: string) => {
 
     console.log('Sending message to existing session');
     await sendMessageToSession(content);
-  }, [user, currentSessionId, checkUsageLimit, subscription, usage, toast, portfolioId]);
+  }, [user, currentSessionId, checkUsageLimit, subscription, usage, toast, portfolioId, pendingUsageCount]);
 
   const createNewSessionAndSendMessage = useCallback(async (messageContent: string) => {
     console.log('=== CREATE SESSION AND SEND MESSAGE ===');
     console.log('User:', user?.id);
     console.log('Portfolio ID:', portfolioId);
     console.log('Message to send:', messageContent);
-    
+
     if (!user) {
       console.log('Cannot create session: missing user');
       return;
@@ -501,6 +507,8 @@ export const useAIChat = (portfolioId?: string) => {
     console.log('Clearing messages for new session');
     setMessages([]);
     
+    let messageDispatched = false;
+
     try {
       const now = new Date();
       const sessionName = `Chat ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
@@ -542,7 +550,8 @@ export const useAIChat = (portfolioId?: string) => {
       
       // Now send the message to the newly created session
       await sendMessageToSession(messageContent, newSession.id);
-      
+      messageDispatched = true;
+
     } catch (error) {
       console.error('Error creating new session:', error);
       toast({
@@ -552,8 +561,11 @@ export const useAIChat = (portfolioId?: string) => {
       });
     } finally {
       setIsLoading(false);
+      if (!messageDispatched) {
+        setPendingUsageCount(prev => Math.max(0, prev - 1));
+      }
     }
-  }, [user, toast]);
+  }, [user, portfolioId, toast, sendMessageToSession]);
 
   const sendMessageToSession = useCallback(async (content: string, sessionId?: string) => {
     console.log('=== SEND MESSAGE TO SESSION ===');
@@ -564,6 +576,7 @@ export const useAIChat = (portfolioId?: string) => {
     const targetSessionId = sessionId || currentSessionId;
     
     if (!user || !content.trim() || !targetSessionId) {
+      setPendingUsageCount(prev => Math.max(0, prev - 1));
       console.log('Missing required data for sending message');
       return;
     }
@@ -740,6 +753,7 @@ export const useAIChat = (portfolioId?: string) => {
       setMessages(prev => prev.filter(msg => !msg.id.includes('_temp')));
     } finally {
       setIsLoading(false);
+      setPendingUsageCount(prev => Math.max(0, prev - 1));
     }
   }, [user, currentSessionId, portfolioId, messages, toast, fetchUsage, incrementUsage, loadMessages]);
 
