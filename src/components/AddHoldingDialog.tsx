@@ -36,9 +36,6 @@ interface AddHoldingFormState {
     holding_type: string;
     quantity: string;
     purchase_price: string;
-    purchase_date: string;
-    sector: string;
-    market: string;
     currency: string;
   };
   priceOverridden: boolean;
@@ -54,9 +51,6 @@ const createDefaultFormState = (): AddHoldingFormState => ({
     holding_type: 'stock',
     quantity: '',
     purchase_price: '',
-    purchase_date: '',
-    sector: '',
-    market: '',
     currency: 'SEK'
   },
   priceOverridden: false,
@@ -129,9 +123,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
           holding_type: initialData.holding_type === 'recommendation' ? 'stock' : (initialData.holding_type || 'stock'),
           quantity: '',
           purchase_price: initialData.purchase_price?.toString() || '',
-          purchase_date: '',
-          sector: initialData.sector || '',
-          market: initialData.market || '',
           currency: initialData.currency || 'SEK'
         },
         priceOverridden: Boolean(initialData.purchase_price),
@@ -399,9 +390,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       holding_type: formData.holding_type as UserHolding['holding_type'],
       quantity,
       purchase_price: purchasePrice,
-      purchase_date: formData.purchase_date || undefined,
-      sector: formData.sector.trim() || undefined,
-      market: formData.market.trim() || undefined,
       currency: formData.currency || 'SEK'
     };
 
@@ -476,19 +464,31 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
             </div>
             <div className="space-y-2">
               <Label htmlFor="symbol">Symbol</Label>
-              <Input
-                id="symbol"
-                list="sheet-tickers"
-                value={formData.symbol}
-                onChange={(e) => handleInputChange('symbol', e.target.value)}
-                onFocus={() => {
-                  if (formData.symbol.trim() || mobileListManuallyExpanded) {
-                    setShowMobileTickerList(true);
-                  }
-                }}
-                placeholder={tickersLoading ? 'Hämtar tickers...' : 't.ex. VOLV-B'}
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="symbol"
+                  list="sheet-tickers"
+                  value={formData.symbol}
+                  onChange={(e) => handleInputChange('symbol', e.target.value)}
+                  onFocus={() => {
+                    if (formData.symbol.trim() || mobileListManuallyExpanded) {
+                      setShowMobileTickerList(true);
+                    }
+                  }}
+                  placeholder={tickersLoading ? 'Hämtar tickers...' : 't.ex. VOLV-B'}
+                  required
+                  className="pr-24 sm:pr-3"
+                />
+                <button
+                  type="button"
+                  onClick={toggleMobileTickerList}
+                  aria-expanded={showMobileTickerList}
+                  aria-controls="mobile-ticker-suggestions"
+                  className="absolute inset-y-[6px] right-2 rounded-md bg-muted px-3 text-xs font-medium text-primary transition hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:hidden"
+                >
+                  tickerlista
+                </button>
+              </div>
               {symbolError && (
                 <p className="text-sm text-destructive">{symbolError}</p>
               )}
@@ -501,15 +501,11 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
             {tickerOptions}
           </datalist>
           <div className="sm:hidden space-y-2">
-            <button
-              type="button"
-              onClick={toggleMobileTickerList}
-              className="text-xs font-medium text-primary underline-offset-4 hover:underline"
-            >
-              {mobileListManuallyExpanded ? 'Dölj tickerlista' : 'Visa tickerlista'}
-            </button>
             {showMobileTickerList && (
-              <div className="max-h-56 overflow-y-auto rounded-2xl border border-border/60 bg-muted/50 p-1 shadow-sm">
+              <div
+                id="mobile-ticker-suggestions"
+                className="max-h-56 overflow-y-auto rounded-2xl border border-border/60 bg-muted/50 p-1 shadow-sm"
+              >
                 {tickersLoading ? (
                   <p className="px-3 py-2 text-xs text-muted-foreground">Hämtar tickers...</p>
                 ) : mobileTickerSuggestions.length > 0 ? (
@@ -620,37 +616,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
                 ? 'Priset läggs in som förvalt köppris men kan justeras innan du sparar.'
                 : 'Priset hämtas automatiskt när du väljer en ticker från listan.'}
             </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="purchase_date">Köpdatum</Label>
-              <Input
-                id="purchase_date"
-                type="date"
-                value={formData.purchase_date}
-                onChange={(e) => handleInputChange('purchase_date', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sector">Sektor</Label>
-              <Input
-                id="sector"
-                value={formData.sector}
-                onChange={(e) => handleInputChange('sector', e.target.value)}
-                placeholder="t.ex. Bilar"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="market">Marknad</Label>
-            <Input
-              id="market"
-              value={formData.market}
-              onChange={(e) => handleInputChange('market', e.target.value)}
-              placeholder="t.ex. NASDAQ Stockholm"
-            />
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
