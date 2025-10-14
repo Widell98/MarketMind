@@ -79,6 +79,8 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const { formData, priceOverridden, currencyOverridden, nameOverridden } = dialogState;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [symbolError, setSymbolError] = useState<string | null>(null);
+  const [showMobileTickerList, setShowMobileTickerList] = useState(false);
+  const [mobileListManuallyExpanded, setMobileListManuallyExpanded] = useState(false);
 
   const normalizedSymbol = useMemo(() => {
     const rawSymbol = formData.symbol?.trim();
@@ -267,6 +269,19 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     );
   }), [deferredTickers, formatDisplayPrice]);
 
+  const mobileTickerSuggestions = useMemo(() => {
+    const searchTerm = formData.symbol.trim().toLowerCase();
+    const baseTickers = searchTerm
+      ? deferredTickers.filter((ticker) => {
+        const symbolMatch = ticker.symbol.toLowerCase().includes(searchTerm);
+        const nameMatch = ticker.name ? ticker.name.toLowerCase().includes(searchTerm) : false;
+        return symbolMatch || nameMatch;
+      })
+      : deferredTickers;
+
+    return baseTickers.slice(0, 25);
+  }, [deferredTickers, formData.symbol]);
+
   const resolvedSheetPrice = matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0
     ? matchedTicker.price
     : null;
@@ -278,8 +293,19 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     : '';
 
   const handleInputChange = (field: string, value: string) => {
-    if (field === 'symbol' && symbolError) {
-      setSymbolError(null);
+    const shouldCollapseManualList = field === 'symbol' && !value.trim();
+
+    if (field === 'symbol') {
+      const trimmedValue = value.trim();
+      if (trimmedValue.length > 0) {
+        setShowMobileTickerList(true);
+      } else if (!mobileListManuallyExpanded) {
+        setShowMobileTickerList(false);
+      }
+
+      if (symbolError) {
+        setSymbolError(null);
+      }
     }
 
     setDialogState(prev => {
@@ -332,6 +358,24 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         nameOverridden: nameOverride,
         lastInitialDataSignature: lastSignature,
       };
+    });
+
+    if (shouldCollapseManualList) {
+      setMobileListManuallyExpanded(false);
+    }
+  };
+
+  const handleMobileTickerSelect = (ticker: SheetTicker) => {
+    handleInputChange('symbol', ticker.symbol);
+    setShowMobileTickerList(false);
+    setMobileListManuallyExpanded(false);
+  };
+
+  const toggleMobileTickerList = () => {
+    setMobileListManuallyExpanded((prev) => {
+      const next = !prev;
+      setShowMobileTickerList(next);
+      return next;
     });
   };
 
@@ -391,6 +435,8 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     if (!isSubmitting) {
       resetDialogState();
       setSymbolError(null);
+      setShowMobileTickerList(false);
+      setMobileListManuallyExpanded(false);
       onClose();
     }
   };
@@ -435,6 +481,11 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
                 list="sheet-tickers"
                 value={formData.symbol}
                 onChange={(e) => handleInputChange('symbol', e.target.value)}
+                onFocus={() => {
+                  if (formData.symbol.trim() || mobileListManuallyExpanded) {
+                    setShowMobileTickerList(true);
+                  }
+                }}
                 placeholder={tickersLoading ? 'Hämtar tickers...' : 't.ex. VOLV-B'}
                 required
               />
@@ -449,6 +500,49 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
           <datalist id="sheet-tickers">
             {tickerOptions}
           </datalist>
+          <div className="sm:hidden space-y-2">
+            <button
+              type="button"
+              onClick={toggleMobileTickerList}
+              className="text-xs font-medium text-primary underline-offset-4 hover:underline"
+            >
+              {mobileListManuallyExpanded ? 'Dölj tickerlista' : 'Visa tickerlista'}
+            </button>
+            {showMobileTickerList && (
+              <div className="max-h-56 overflow-y-auto rounded-2xl border border-border/60 bg-muted/50 p-1 shadow-sm">
+                {tickersLoading ? (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">Hämtar tickers...</p>
+                ) : mobileTickerSuggestions.length > 0 ? (
+                  mobileTickerSuggestions.map((ticker) => {
+                    const displayPrice = typeof ticker.price === 'number' && Number.isFinite(ticker.price) && ticker.price > 0
+                      ? `${formatDisplayPrice(ticker.price)}${ticker.currency ? ` ${ticker.currency}` : ''}`.trim()
+                      : null;
+
+                    return (
+                      <button
+                        key={`mobile-ticker-${ticker.symbol}`}
+                        type="button"
+                        onClick={() => handleMobileTickerSelect(ticker)}
+                        className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">{ticker.symbol}</div>
+                          {ticker.name && (
+                            <div className="text-xs text-muted-foreground">{ticker.name}</div>
+                          )}
+                        </div>
+                        {displayPrice && (
+                          <div className="text-xs font-medium text-muted-foreground">{displayPrice}</div>
+                        )}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">Inga tickers matchar din sökning ännu.</p>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
