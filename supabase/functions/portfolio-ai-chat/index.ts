@@ -995,7 +995,17 @@ serve(async (req) => {
 
     // Fetch Tavily context when the user mentions stocks or requests real-time insights
     let tavilyContext: TavilyContextPayload = { formattedContext: '', sources: [] };
-    const shouldFetchTavily = isStockMentionRequest || requiresRealTimeSearch(message);
+
+    const isSimplePersonalAdviceRequest = (
+      isPersonalAdviceRequest || isPortfolioOptimizationRequest
+    ) &&
+      !isStockMentionRequest &&
+      !requiresRealTimeSearch(message) &&
+      detectedTickers.length === 0;
+
+    const shouldFetchTavily = !isSimplePersonalAdviceRequest && (
+      isStockMentionRequest || requiresRealTimeSearch(message)
+    );
     if (shouldFetchTavily) {
       const logMessage = isStockMentionRequest
         ? 'Aktieomnämnande upptäckt – anropar Tavily för relevanta nyheter.'
