@@ -199,6 +199,11 @@ type TavilySearchResponse = {
   results?: TavilySearchResult[];
 };
 
+type TavilyContextPayload = {
+  formattedContext: string;
+  sources: string[];
+};
+
 type TavilySearchDepth = 'basic' | 'advanced';
 
 type TavilySearchOptions = {
@@ -214,10 +219,13 @@ type StockDetectionPattern = {
   requiresContext?: boolean;
 };
 
-const formatTavilyResults = (data: TavilySearchResponse | null): string => {
-  if (!data) return '';
+const formatTavilyResults = (data: TavilySearchResponse | null): TavilyContextPayload => {
+  if (!data) {
+    return { formattedContext: '', sources: [] };
+  }
 
   const sections: string[] = [];
+  const sourceSet = new Set<string>();
 
   if (typeof data.answer === 'string' && data.answer.trim().length > 0) {
     sections.push(`Sammanfattning från realtidssökning: ${data.answer.trim()}`);
@@ -248,6 +256,7 @@ const formatTavilyResults = (data: TavilySearchResponse | null): string => {
           parts.push(`- ${safeSnippet}`);
         }
         if (url) {
+          sourceSet.add(url);
           parts.push(`Källa: ${url}`);
         }
         return parts.join(' ');
@@ -256,19 +265,24 @@ const formatTavilyResults = (data: TavilySearchResponse | null): string => {
     }
   }
 
-  return sections.length > 0
+  const formattedContext = sections.length > 0
     ? `\n\nExtern realtidskontext:\n${sections.join('\n\n')}`
     : '';
+
+  return {
+    formattedContext,
+    sources: Array.from(sourceSet),
+  };
 };
 
 const fetchTavilyContext = async (
   message: string,
   options: TavilySearchOptions = {},
-): Promise<string> => {
+): Promise<TavilyContextPayload> => {
   const tavilyApiKey = Deno.env.get('TAVILY_API_KEY');
   if (!tavilyApiKey) {
     console.warn('TAVILY_API_KEY saknas i miljövariablerna. Hoppar över realtidssökning.');
-    return '';
+    return { formattedContext: '', sources: [] };
   }
 
   try {
@@ -296,14 +310,14 @@ const fetchTavilyContext = async (
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Fel vid anrop till Tavily API:', errorText);
-      return '';
+      return { formattedContext: '', sources: [] };
     }
 
     const tavilyData = await response.json() as TavilySearchResponse;
     return formatTavilyResults(tavilyData);
   } catch (error) {
     console.error('Undantag vid anrop till Tavily API:', error);
-    return '';
+    return { formattedContext: '', sources: [] };
   }
 };
 
@@ -809,7 +823,7 @@ serve(async (req) => {
     const isPortfolioOptimizationRequest = /portfölj/i.test(message) && /optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma/i.test(message);
 
     // Fetch Tavily context when the user mentions stocks or requests real-time insights
-    let tavilyContext = '';
+    let tavilyContext: TavilyContextPayload = { formattedContext: '', sources: [] };
     const shouldFetchTavily = isStockMentionRequest || requiresRealTimeSearch(message);
     if (shouldFetchTavily) {
       const logMessage = isStockMentionRequest
@@ -825,7 +839,7 @@ serve(async (req) => {
           console.log(`Tavily StockAnalysis-förfrågan: ${candidateUrl}`);
           const stockSpecificQuery = buildStockAnalysisQuery(primaryDetectedTicker, candidateUrl);
 
-          tavilyContext = await fetchTavilyContext(message, {
+          const fetchedContext = await fetchTavilyContext(message, {
             query: stockSpecificQuery,
             includeDomains: ['stockanalysis.com'],
             searchDepth: 'advanced',
@@ -833,13 +847,14 @@ serve(async (req) => {
             includeRawContent: true,
           });
 
-          if (tavilyContext) {
+          if (fetchedContext.formattedContext) {
+            tavilyContext = fetchedContext;
             console.log('Lyckades hämta data från stockanalysis.com.');
             break;
           }
         }
 
-        if (!tavilyContext) {
+        if (!tavilyContext.formattedContext) {
           console.log('Inga resultat från stockanalysis.com, försöker med bredare Tavily-sökning.');
           tavilyContext = await fetchTavilyContext(message, { includeRawContent: true });
         }
@@ -847,7 +862,7 @@ serve(async (req) => {
         tavilyContext = await fetchTavilyContext(message, { includeRawContent: true });
       }
 
-      if (tavilyContext) {
+      if (tavilyContext.formattedContext) {
         console.log('Tavily-kontent hämtad och läggs till i kontexten.');
       }
     }
@@ -1288,9 +1303,18 @@ VIKTIGT:
       historyLength: chatHistory.length
     });
 
+    const hasMarketData = tavilyContext.formattedContext.length > 0;
+    let tavilySourceInstruction = '';
+    if (tavilyContext.sources.length > 0) {
+      const formattedSourcesList = tavilyContext.sources
+        .map((url, index) => `${index + 1}. ${url}`)
+        .join('\n');
+      tavilySourceInstruction = `\n\nKÄLLHÄNVISNINGAR FÖR AGENTEN:\n${formattedSourcesList}\n\nINSTRUKTION: Avsluta alltid ditt svar med en sektion "Källor:" som listar dessa länkar i samma ordning.`;
+    }
+
     // Build messages array with enhanced context
     const messages = [
-      { role: 'system', content: contextInfo + tavilyContext },
+      { role: 'system', content: contextInfo + tavilyContext.formattedContext + tavilySourceInstruction },
       ...chatHistory,
       { role: 'user', content: message }
     ];
@@ -1304,7 +1328,7 @@ VIKTIGT:
       messageType: isStockAnalysisRequest ? 'stock_analysis' : isPersonalAdviceRequest ? 'personal_advice' : 'general',
       model,
       timestamp: new Date().toISOString(),
-      hasMarketData: !!tavilyContext,
+      hasMarketData,
       isPremium
     };
 
@@ -1372,7 +1396,7 @@ VIKTIGT:
               analysisType,
               model,
               requestId,
-              hasMarketData: !!tavilyContext,
+              hasMarketData,
               profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
               requiresConfirmation: profileChangeDetection.requiresConfirmation,
               confidence: 0.8
@@ -1460,7 +1484,7 @@ VIKTIGT:
                           analysisType,
                           model,
                           requestId,
-                          hasMarketData: !!tavilyContext,
+                          hasMarketData,
                           profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
                           requiresConfirmation: profileChangeDetection.requiresConfirmation,
                           confidence: 0.8
