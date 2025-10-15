@@ -752,32 +752,38 @@ serve(async (req) => {
       /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity)/i.test(message);
 
     const extractTickerSymbols = (input: string): string[] => {
-      const uppercaseInput = input.toUpperCase();
-      const tickerMatches = Array.from(uppercaseInput.matchAll(/\b([A-Z]{1,6})\b/g));
+      const normalizedInput = removeDiacritics(input);
+      const tickerMatches = Array.from(normalizedInput.matchAll(/\b([A-Za-z0-9]{1,6})\b/g));
       if (tickerMatches.length === 0) return [];
 
-      const uniqueTickers = new Set<string>();
-      for (const match of tickerMatches) {
-        const symbol = match[1];
-        if (!symbol) continue;
+      const knownTickers = new Set<string>();
+      const uppercaseFallback = new Set<string>();
 
-        if (sheetTickerSymbolSet.size === 0 || sheetTickerSymbolSet.has(symbol)) {
-          uniqueTickers.add(symbol);
+      for (const match of tickerMatches) {
+        const rawToken = match[1];
+        if (!rawToken) continue;
+
+        const normalizedSymbol = rawToken.toUpperCase();
+        const isUppercaseInMessage = rawToken === rawToken.toUpperCase();
+
+        if (sheetTickerSymbolSet.size > 0) {
+          if (sheetTickerSymbolSet.has(normalizedSymbol)) {
+            knownTickers.add(normalizedSymbol);
+          }
+        } else if (isUppercaseInMessage) {
+          knownTickers.add(normalizedSymbol);
+        }
+
+        if (isUppercaseInMessage) {
+          uppercaseFallback.add(normalizedSymbol);
         }
       }
 
-      if (uniqueTickers.size > 0) {
-        return Array.from(uniqueTickers);
+      if (knownTickers.size > 0) {
+        return Array.from(knownTickers);
       }
 
-      // If no known tickers were found, fall back to any uppercase token of length 1-6
-      for (const match of tickerMatches) {
-        const symbol = match[1];
-        if (!symbol) continue;
-        uniqueTickers.add(symbol);
-      }
-
-      return Array.from(uniqueTickers);
+      return Array.from(uppercaseFallback);
     };
 
     const buildStockAnalysisUrlCandidates = (ticker: string): string[] => {
