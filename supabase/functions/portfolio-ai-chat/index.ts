@@ -198,49 +198,219 @@ type TavilySearchResponse = {
   results?: TavilySearchResult[];
 };
 
-type StockDetectionPattern = {
-  regex: RegExp;
-  requiresContext?: boolean;
+type TavilyCacheRow = {
+  query: string;
+  answer: string;
+  created_at: string;
 };
 
+const CACHE_WINDOW_MS = 12 * 60 * 60 * 1000; // 12 timmar
+const TAVILY_TIMEOUT_MS = 4_000; // 4 sekunder
+
+// Supabase-klient i modulgemensam scope för att återanvända anslutningen i cachen
+const supabaseCacheClient = (() => {
+  const url = Deno.env.get('SUPABASE_URL') ?? '';
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  if (!url || !key) {
+    console.warn('Supabase credentials missing – Tavily caching disabled.');
+    return null;
+  }
+  return createClient(url, key);
+})();
+
+const swedishIndicators = ['ä', 'å', 'ö', 'Ä', 'Å', 'Ö', 'rapport', 'resultat', 'kvartals', 'aktie', 'fond'];
+
+const stockNameToTickerMap: Record<string, string> = {
+  tesla: 'TSLA',
+  investor: 'INVE-B',
+  volvo: 'VOLV-B',
+};
+
+const cryptoIndicators = ['crypto', 'cryptocurrency', 'bitcoin', 'ethereum', 'btc', 'eth', 'solana', 'dogecoin'];
+const fundIndicators = ['fond', 'fonden', 'fund', 'etf', 'indexfond', 'mutual fund', 'investment fund'];
+const stockIndicators = ['aktie', 'stock', 'share', 'equity', 'earnings', 'rapport', 'resultat'];
+const advancedDepthIndicators = ['rapport', 'resultat', 'earnings', 'quarterly report'];
+
+// Försök identifiera en ticker i meddelandet för att kunna bygga riktad sökning och fallback.
+const detectTickerInMessage = (message: string): string | null => {
+  // Identifiera tickers genom att leta efter mönster som TSLA, AAPL, INVE-B etc.
+  const explicitTickerMatch = message.match(/\b([A-Z]{1,6})(?:-[A-Z])?\b/);
+  if (explicitTickerMatch) {
+    return explicitTickerMatch[1];
+  }
+
+  const normalizedMessage = message.toLowerCase();
+  for (const [name, ticker] of Object.entries(stockNameToTickerMap)) {
+    if (normalizedMessage.includes(name)) {
+      return ticker;
+    }
+  }
+
+  return null;
+};
+
+// Placeholder-funktion: här kan en riktig översättning implementeras senare.
+const translateToEnglishIfNeeded = async (message: string): Promise<string> => {
+  return message;
+};
+
+const isLikelySwedish = (message: string): boolean => {
+  const lower = message.toLowerCase();
+  return swedishIndicators.some(indicator => lower.includes(indicator));
+};
+
+// Bygger upp den dynamiska queryn mot Tavily baserat på upptäckta signaler.
+const buildTavilyQuery = async (message: string): Promise<{ query: string; ticker: string | null }> => {
+  const ticker = detectTickerInMessage(message);
+
+  const normalized = message.toLowerCase();
+  const hasCryptoIndicator = cryptoIndicators.some(indicator => normalized.includes(indicator));
+  const hasFundIndicator = fundIndicators.some(indicator => normalized.includes(indicator));
+  const hasStockIndicator = Boolean(ticker) || stockIndicators.some(indicator => normalized.includes(indicator));
+
+  if (hasCryptoIndicator) {
+    return {
+      query: `site:coindesk.com OR site:cointelegraph.com ${message}`,
+      ticker,
+    };
+  }
+
+  if (hasFundIndicator) {
+    return {
+      query: `site:morningstar.com OR site:seekingalpha.com ${message}`,
+      ticker,
+    };
+  }
+
+  if (hasStockIndicator) {
+    const tickerForQuery = ticker ?? message;
+    return {
+      query: `site:stockanalysis.com/quote/${tickerForQuery}/financials OR site:reuters.com OR site:bloomberg.com ${tickerForQuery} earnings OR quarterly report`,
+      ticker,
+    };
+  }
+
+  return {
+    query: `site:stockanalysis.com OR site:reuters.com OR site:bloomberg.com ${message}`,
+    ticker,
+  };
+};
+
+const getSearchDepth = (message: string): 'basic' | 'advanced' => {
+  const normalized = message.toLowerCase();
+  return advancedDepthIndicators.some(indicator => normalized.includes(indicator)) ? 'advanced' : 'basic';
+};
+
+// Hämtar ett svar från Supabase-cachen om det finns och är färskt.
+const fetchFromCache = async (query: string): Promise<string | null> => {
+  if (!supabaseCacheClient) return null;
+
+  try {
+    const { data, error } = await supabaseCacheClient
+      .from('tavily_cache')
+      .select('query, answer, created_at')
+      .eq('query', query)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle<TavilyCacheRow>();
+
+    if (error) {
+      console.error('Failed to fetch Tavily cache:', error);
+      return null;
+    }
+
+    if (!data) return null;
+
+    const createdAt = new Date(data.created_at).getTime();
+    if (Number.isNaN(createdAt)) return null;
+
+    const isFresh = Date.now() - createdAt <= CACHE_WINDOW_MS;
+    return isFresh ? data.answer : null;
+  } catch (error) {
+    console.error('Unexpected error when reading Tavily cache:', error);
+    return null;
+  }
+};
+
+const saveToCache = async (query: string, answer: string): Promise<void> => {
+  if (!supabaseCacheClient) return;
+
+  try {
+    const { error } = await supabaseCacheClient
+      .from('tavily_cache')
+      .insert({ query, answer });
+
+    if (error) {
+      console.error('Failed to save Tavily cache:', error);
+    }
+  } catch (error) {
+    console.error('Unexpected error when saving Tavily cache:', error);
+  }
+};
+
+const fetch_stockanalysis_financials = async (ticker: string): Promise<string> => {
+  console.warn(`Fallback fetch_stockanalysis_financials triggered for ticker ${ticker}. Not implemented.`);
+  return `Fallback financials for ${ticker}: Not implemented.`;
+};
+
+// Formaterar Tavily-svaret till ett GPT-vänligt textblock enligt önskad struktur.
 const formatTavilyResults = (data: TavilySearchResponse | null): string => {
   if (!data) return '';
 
   const sections: string[] = [];
 
   if (typeof data.answer === 'string' && data.answer.trim().length > 0) {
-    sections.push(`Sammanfattning från realtidssökning: ${data.answer.trim()}`);
+    sections.push(`Sammanfattning: ${data.answer.trim()}`);
   }
 
-  if (Array.isArray(data.results)) {
-    const topResults = data.results.slice(0, 3);
-    if (topResults.length > 0) {
-      const resultLines = topResults.map((result: TavilySearchResult, index: number) => {
-        const title = typeof result.title === 'string' ? result.title : `Resultat ${index + 1}`;
-        const snippet = typeof result.content === 'string' ? result.content : result.snippet;
-        const trimmedSnippet = typeof snippet === 'string' ? snippet.trim() : '';
-        const url = typeof result.url === 'string' ? result.url : '';
-        const publishedDate = typeof result.published_date === 'string' ? result.published_date : '';
+  if (Array.isArray(data.results) && data.results.length > 0) {
+    const now = Date.now();
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
 
-        const parts = [`• ${title}`];
-        if (publishedDate) {
-          parts.push(`(${publishedDate})`);
-        }
-        if (trimmedSnippet) {
-          parts.push(`- ${trimmedSnippet}`);
+    const filtered = data.results
+      .filter(result => {
+        if (!result?.published_date) return true;
+        const timestamp = new Date(result.published_date).getTime();
+        return !Number.isNaN(timestamp) && timestamp >= sevenDaysAgo;
+      })
+      .sort((a, b) => {
+        const dateA = a?.published_date ? new Date(a.published_date).getTime() : 0;
+        const dateB = b?.published_date ? new Date(b.published_date).getTime() : 0;
+        return dateB - dateA;
+      })
+      .slice(0, 3);
+
+    if (filtered.length > 0) {
+      const formattedResults = filtered.map((result, index) => {
+        const title = result?.title?.trim() ?? `Resultat ${index + 1}`;
+        const snippet = (result?.content ?? result?.snippet ?? '').trim();
+        const publishedDate = result?.published_date
+          ? new Date(result.published_date).toISOString().split('T')[0]
+          : 'Okänt datum';
+        const url = result?.url ?? '';
+
+        const lines: string[] = [`${index + 1}. ${title} (${publishedDate})`];
+        if (snippet) {
+          lines.push(`   ${snippet}`);
         }
         if (url) {
-          parts.push(`Källa: ${url}`);
+          lines.push(`   Källa: ${url}`);
         }
-        return parts.join(' ');
+        return lines.join('\n');
       });
-      sections.push('Detaljer från TAVILY-sökning:\n' + resultLines.join('\n'));
+
+      sections.push(formattedResults.join('\n'));
     }
   }
 
   return sections.length > 0
-    ? `\n\nExtern realtidskontext:\n${sections.join('\n\n')}`
+    ? `\n\n📰 Realtidskontext från Tavily\n${sections.join('\n\n')}`
     : '';
+};
+
+type StockDetectionPattern = {
+  regex: RegExp;
+  requiresContext?: boolean;
 };
 
 const fetchTavilyContext = async (message: string): Promise<string> => {
@@ -250,30 +420,113 @@ const fetchTavilyContext = async (message: string): Promise<string> => {
     return '';
   }
 
-  try {
-    const response = await fetch('https://api.tavily.com/search', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        api_key: tavilyApiKey,
-        query: message,
-        search_depth: 'basic',
-        include_answer: true,
-        include_raw_content: false,
-        max_results: 5,
-      }),
-    });
+  const shouldTranslate = isLikelySwedish(message);
+  const normalizedMessage = shouldTranslate
+    ? await translateToEnglishIfNeeded(message)
+    : message;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Fel vid anrop till Tavily API:', errorText);
-      return '';
+  // Dynamisk query + sökdjup för mer precisa Tavily-anrop.
+  const { query, ticker } = await buildTavilyQuery(normalizedMessage);
+  const searchDepth = getSearchDepth(normalizedMessage);
+
+  console.log(`Tavily query byggd (${searchDepth}):`, query);
+
+  // Återanvänd cache om samma fråga ställts senaste 12 timmarna.
+  const cachedAnswer = await fetchFromCache(query);
+  if (cachedAnswer) {
+    console.log('Tavily cacheträff – återanvänder tidigare svar.');
+    return cachedAnswer;
+  }
+
+  // Förbered payload för Tavily-anropet.
+  const payload = {
+    api_key: tavilyApiKey,
+    query,
+    search_depth: searchDepth,
+    include_answer: true,
+    include_raw_content: false,
+    max_results: 5,
+  };
+
+  let tavilyData: TavilySearchResponse | null = null;
+  const maxAttempts = 2;
+
+  try {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), TAVILY_TIMEOUT_MS);
+
+      console.log(`Tavily-anrop försök #${attempt}`);
+
+      try {
+        const response = await fetch('https://api.tavily.com/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeout);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Tavily svarade med fel (${response.status}):`, errorText);
+          if (response.status >= 500 && attempt < maxAttempts) {
+            const backoff = 1000 * Math.pow(2, attempt - 1);
+            console.log(`Väntar ${backoff} ms innan nästa försök...`);
+            await new Promise(resolve => setTimeout(resolve, backoff));
+            continue;
+          }
+          return '';
+        }
+
+        const data = await response.json() as TavilySearchResponse;
+        const hasContent = Boolean(data?.answer && data.answer.trim().length > 0) ||
+          (Array.isArray(data?.results) && data.results.length > 0);
+
+        if (!hasContent) {
+          console.warn('Tavily returnerade tomt svar.');
+          if (attempt < maxAttempts) {
+            const backoff = 1000 * Math.pow(2, attempt - 1);
+            console.log(`Väntar ${backoff} ms innan nästa försök...`);
+            await new Promise(resolve => setTimeout(resolve, backoff));
+            continue;
+          }
+        } else {
+          tavilyData = data;
+          break;
+        }
+      } catch (error) {
+        clearTimeout(timeout);
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          console.error('Tavily-anrop avbrutet efter timeout.');
+        } else {
+          console.error('Undantag vid anrop till Tavily API:', error);
+        }
+
+        if (attempt < maxAttempts) {
+          const backoff = 1000 * Math.pow(2, attempt - 1);
+          console.log(`Väntar ${backoff} ms innan nästa försök...`);
+          await new Promise(resolve => setTimeout(resolve, backoff));
+        }
+      }
     }
 
-    const tavilyData = await response.json() as TavilySearchResponse;
-    return formatTavilyResults(tavilyData);
+    const formatted = formatTavilyResults(tavilyData);
+
+    if (formatted.trim().length > 0) {
+      await saveToCache(query, formatted);
+      return formatted;
+    }
+
+    if (ticker) {
+      console.log('Tavily saknade relevant innehåll – använder fallback mot StockAnalysis.');
+      return await fetch_stockanalysis_financials(ticker);
+    }
+
+    return '';
   } catch (error) {
     console.error('Undantag vid anrop till Tavily API:', error);
     return '';
