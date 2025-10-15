@@ -321,6 +321,28 @@ const fetchTavilyContext = async (
   }
 };
 
+const FINANCIAL_DATA_KEYWORDS = [
+  'senaste rapport',
+  'rapporten',
+  'kvartalsrapport',
+  'årsrapport',
+  'financials',
+  'nyckeltal',
+  'siffror',
+  'resultat',
+  'omsättning',
+  'intäkter',
+  'vinster',
+  'vinst',
+  'eps',
+  'earnings',
+  'guidance',
+  'prognos',
+  'income statement',
+  'balance sheet',
+  'cash flow',
+];
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -783,8 +805,14 @@ serve(async (req) => {
 
       const uniqueUrls = new Set<string>();
       for (const candidate of normalizedCandidates) {
-        uniqueUrls.add(`https://stockanalysis.com/stocks/${candidate}`);
-        uniqueUrls.add(`https://stockanalysis.com/stocks/${candidate}/financials`);
+        const baseUrl = `https://stockanalysis.com/stocks/${candidate}`;
+        uniqueUrls.add(baseUrl);
+        uniqueUrls.add(`${baseUrl}/financials`);
+        uniqueUrls.add(`${baseUrl}/financials/quarterly`);
+        uniqueUrls.add(`${baseUrl}/financials/income-statement`);
+        uniqueUrls.add(`${baseUrl}/financials/balance-sheet`);
+        uniqueUrls.add(`${baseUrl}/financials/cash-flow`);
+        uniqueUrls.add(`${baseUrl}/earnings`);
       }
 
       return Array.from(uniqueUrls);
@@ -792,7 +820,7 @@ serve(async (req) => {
 
     const buildStockAnalysisQuery = (ticker: string, url: string): string => {
       const upperTicker = ticker.toUpperCase();
-      return `Financial data and key ratios for ${upperTicker} from ${url}`;
+      return `Extract the latest reported financial numbers (revenue, EPS, net income, guidance and other key metrics) for ${upperTicker} directly from ${url}`;
     };
 
     const detectedTickers = extractTickerSymbols(message);
@@ -816,7 +844,10 @@ serve(async (req) => {
       return regex.test(message);
     }) || hasTickerSymbolMention;
 
-    const isStockMentionRequest = stockMentionsInMessage || isStockAnalysisRequest;
+    const lowerCaseMessage = message.toLowerCase();
+    const isFinancialDataRequest = FINANCIAL_DATA_KEYWORDS.some(keyword => lowerCaseMessage.includes(keyword));
+
+    const isStockMentionRequest = stockMentionsInMessage || isStockAnalysisRequest || (isFinancialDataRequest && detectedTickers.length > 0);
      
     // Check if user wants personal investment advice/recommendations
     const isPersonalAdviceRequest = /(?:rekommendation|förslag|vad ska jag|bör jag|passar mig|min portfölj|mina intressen|för mig|personlig|skräddarsy|baserat på|investera|köpa|sälja|portföljanalys|investeringsstrategi)/i.test(message);
@@ -831,7 +862,9 @@ serve(async (req) => {
         : 'Fråga upptäckt som realtidsfråga – anropar Tavily.';
       console.log(logMessage);
 
-      if (isStockAnalysisRequest && primaryDetectedTicker) {
+      const shouldPrioritizeStockAnalysis = primaryDetectedTicker && (isStockAnalysisRequest || isFinancialDataRequest);
+
+      if (shouldPrioritizeStockAnalysis) {
         console.log(`Försöker hämta finansiell data för ${primaryDetectedTicker} från stockanalysis.com.`);
         const urlCandidates = buildStockAnalysisUrlCandidates(primaryDetectedTicker);
 
