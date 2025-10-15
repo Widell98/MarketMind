@@ -234,9 +234,16 @@ const advancedDepthIndicators = ['rapport', 'resultat', 'earnings', 'quarterly r
 // Försök identifiera en ticker i meddelandet för att kunna bygga riktad sökning och fallback.
 const detectTickerInMessage = (message: string): string | null => {
   // Identifiera tickers genom att leta efter mönster som TSLA, AAPL, INVE-B etc.
-  const explicitTickerMatch = message.match(/\b([A-Z]{1,6})(?:-[A-Z])?\b/);
-  if (explicitTickerMatch) {
-    return explicitTickerMatch[1];
+  const tickerRegex = /\b([A-Z]{1,5}[A-Z0-9](?:-[A-Z]{1,2})?)\b/g;
+  const explicitTickerMatches = message.match(tickerRegex);
+  if (explicitTickerMatches) {
+    for (const match of explicitTickerMatches) {
+      // Hoppa över enstaka bokstäver (t.ex. "I" i början av en mening) och returnera hela matchen.
+      if (match.length <= 1) continue;
+      if (/^[A-Z]{1,5}[A-Z0-9](?:-[A-Z]{1,2})?$/.test(match)) {
+        return match;
+      }
+    }
   }
 
   const normalizedMessage = message.toLowerCase();
