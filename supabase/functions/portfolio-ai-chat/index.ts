@@ -198,6 +198,15 @@ type TavilySearchResponse = {
   results?: TavilySearchResult[];
 };
 
+type TavilySearchDepth = 'basic' | 'advanced';
+
+type TavilySearchOptions = {
+  query?: string;
+  includeDomains?: string[];
+  searchDepth?: TavilySearchDepth;
+  maxResults?: number;
+};
+
 type StockDetectionPattern = {
   regex: RegExp;
   requiresContext?: boolean;
@@ -243,7 +252,10 @@ const formatTavilyResults = (data: TavilySearchResponse | null): string => {
     : '';
 };
 
-const fetchTavilyContext = async (message: string): Promise<string> => {
+const fetchTavilyContext = async (
+  message: string,
+  options: TavilySearchOptions = {},
+): Promise<string> => {
   const tavilyApiKey = Deno.env.get('TAVILY_API_KEY');
   if (!tavilyApiKey) {
     console.warn('TAVILY_API_KEY saknas i miljövariablerna. Hoppar över realtidssökning.');
@@ -251,19 +263,25 @@ const fetchTavilyContext = async (message: string): Promise<string> => {
   }
 
   try {
+    const payload: Record<string, unknown> = {
+      api_key: tavilyApiKey,
+      query: options.query ?? message,
+      search_depth: options.searchDepth ?? 'basic',
+      include_answer: true,
+      include_raw_content: false,
+      max_results: options.maxResults ?? 5,
+    };
+
+    if (Array.isArray(options.includeDomains) && options.includeDomains.length > 0) {
+      payload.include_domains = options.includeDomains;
+    }
+
     const response = await fetch('https://api.tavily.com/search', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        api_key: tavilyApiKey,
-        query: message,
-        search_depth: 'basic',
-        include_answer: true,
-        include_raw_content: false,
-        max_results: 5,
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
@@ -688,18 +706,43 @@ serve(async (req) => {
     const isStockAnalysisRequest = /(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) &&
       /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity)/i.test(message);
 
+    const extractTickerSymbols = (input: string): string[] => {
+      const uppercaseInput = input.toUpperCase();
+      const tickerMatches = Array.from(uppercaseInput.matchAll(/\b([A-Z]{1,6})\b/g));
+      if (tickerMatches.length === 0) return [];
+
+      const uniqueTickers = new Set<string>();
+      for (const match of tickerMatches) {
+        const symbol = match[1];
+        if (!symbol) continue;
+
+        if (sheetTickerSymbolSet.size === 0 || sheetTickerSymbolSet.has(symbol)) {
+          uniqueTickers.add(symbol);
+        }
+      }
+
+      if (uniqueTickers.size > 0) {
+        return Array.from(uniqueTickers);
+      }
+
+      // If no known tickers were found, fall back to any uppercase token of length 1-6
+      for (const match of tickerMatches) {
+        const symbol = match[1];
+        if (!symbol) continue;
+        uniqueTickers.add(symbol);
+      }
+
+      return Array.from(uniqueTickers);
+    };
+
+    const detectedTickers = extractTickerSymbols(message);
+    const primaryDetectedTicker = detectedTickers.length > 0 ? detectedTickers[0] : null;
+
     const hasTickerSymbolMention = (() => {
-      const tickerMatches = Array.from(message.matchAll(/\b([A-Z]{2,6})\b/g));
-      if (tickerMatches.length === 0) return false;
-
-      const matchedTickers = tickerMatches
-        .map(match => match[1]?.toUpperCase())
-        .filter((symbol): symbol is string => Boolean(symbol) && sheetTickerSymbolSet.has(symbol));
-
-      if (matchedTickers.length === 0) return false;
+      if (detectedTickers.length === 0) return false;
 
       const tokens = message.trim().split(/\s+/);
-      const allTokensAreTickers = tokens.length > 0 && tokens.every(token => sheetTickerSymbolSet.has(token.toUpperCase()));
+      const allTokensAreTickers = tokens.length > 0 && tokens.every(token => detectedTickers.includes(token.toUpperCase()));
 
       return hasStockContext || allTokensAreTickers;
     })();
@@ -728,7 +771,25 @@ serve(async (req) => {
         : 'Fråga upptäckt som realtidsfråga – anropar Tavily.';
       console.log(logMessage);
 
-      tavilyContext = await fetchTavilyContext(message);
+      if (isStockAnalysisRequest && primaryDetectedTicker) {
+        console.log(`Försöker hämta finansiell data för ${primaryDetectedTicker} från stockanalysis.com.`);
+        const stockSpecificQuery = `${primaryDetectedTicker} financial data stockanalysis.com/stocks/${primaryDetectedTicker.toLowerCase()}`;
+
+        tavilyContext = await fetchTavilyContext(message, {
+          query: stockSpecificQuery,
+          includeDomains: ['stockanalysis.com'],
+          searchDepth: 'advanced',
+          maxResults: 5,
+        });
+
+        if (!tavilyContext) {
+          console.log('Inga resultat från stockanalysis.com, försöker med bredare Tavily-sökning.');
+          tavilyContext = await fetchTavilyContext(message);
+        }
+      } else {
+        tavilyContext = await fetchTavilyContext(message);
+      }
+
       if (tavilyContext) {
         console.log('Tavily-kontent hämtad och läggs till i kontexten.');
       }
