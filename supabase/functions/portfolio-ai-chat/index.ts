@@ -191,6 +191,7 @@ type TavilySearchResult = {
   snippet?: string;
   url?: string;
   published_date?: string;
+  raw_content?: string;
 };
 
 type TavilySearchResponse = {
@@ -205,6 +206,7 @@ type TavilySearchOptions = {
   includeDomains?: string[];
   searchDepth?: TavilySearchDepth;
   maxResults?: number;
+  includeRawContent?: boolean;
 };
 
 type StockDetectionPattern = {
@@ -226,8 +228,15 @@ const formatTavilyResults = (data: TavilySearchResponse | null): string => {
     if (topResults.length > 0) {
       const resultLines = topResults.map((result: TavilySearchResult, index: number) => {
         const title = typeof result.title === 'string' ? result.title : `Resultat ${index + 1}`;
-        const snippet = typeof result.content === 'string' ? result.content : result.snippet;
-        const trimmedSnippet = typeof snippet === 'string' ? snippet.trim() : '';
+        const snippetSource = typeof result.raw_content === 'string' && result.raw_content.trim().length > 0
+          ? result.raw_content
+          : typeof result.content === 'string' && result.content.trim().length > 0
+            ? result.content
+            : result.snippet;
+        const trimmedSnippet = typeof snippetSource === 'string' ? snippetSource.trim() : '';
+        const safeSnippet = trimmedSnippet.length > 900
+          ? `${trimmedSnippet.slice(0, 900)}…`
+          : trimmedSnippet;
         const url = typeof result.url === 'string' ? result.url : '';
         const publishedDate = typeof result.published_date === 'string' ? result.published_date : '';
 
@@ -235,8 +244,8 @@ const formatTavilyResults = (data: TavilySearchResponse | null): string => {
         if (publishedDate) {
           parts.push(`(${publishedDate})`);
         }
-        if (trimmedSnippet) {
-          parts.push(`- ${trimmedSnippet}`);
+        if (safeSnippet) {
+          parts.push(`- ${safeSnippet}`);
         }
         if (url) {
           parts.push(`Källa: ${url}`);
@@ -268,7 +277,7 @@ const fetchTavilyContext = async (
       query: options.query ?? message,
       search_depth: options.searchDepth ?? 'basic',
       include_answer: true,
-      include_raw_content: false,
+      include_raw_content: options.includeRawContent ?? false,
       max_results: options.maxResults ?? 5,
     };
 
@@ -735,6 +744,43 @@ serve(async (req) => {
       return Array.from(uniqueTickers);
     };
 
+    const buildStockAnalysisUrlCandidates = (ticker: string): string[] => {
+      if (!ticker) return [];
+
+      const trimmed = ticker.trim();
+      if (!trimmed) return [];
+
+      const lowercaseTicker = trimmed.toLowerCase();
+      const withoutExchange = lowercaseTicker.includes(':')
+        ? lowercaseTicker.split(':').pop() ?? lowercaseTicker
+        : lowercaseTicker;
+
+      const baseCandidates = new Set<string>([
+        withoutExchange,
+        withoutExchange.replace(/[^a-z0-9.-]/g, '-'),
+        withoutExchange.replace(/[^a-z0-9]/g, ''),
+        withoutExchange.replace(/\./g, '-'),
+        withoutExchange.replace(/-/g, ''),
+      ]);
+
+      const normalizedCandidates = Array.from(baseCandidates)
+        .map(candidate => candidate.replace(/-+/g, '-').replace(/^-|-$/g, ''))
+        .filter(candidate => candidate.length > 0);
+
+      const uniqueUrls = new Set<string>();
+      for (const candidate of normalizedCandidates) {
+        uniqueUrls.add(`https://stockanalysis.com/stocks/${candidate}`);
+        uniqueUrls.add(`https://stockanalysis.com/stocks/${candidate}/financials`);
+      }
+
+      return Array.from(uniqueUrls);
+    };
+
+    const buildStockAnalysisQuery = (ticker: string, url: string): string => {
+      const upperTicker = ticker.toUpperCase();
+      return `Financial data and key ratios for ${upperTicker} from ${url}`;
+    };
+
     const detectedTickers = extractTickerSymbols(message);
     const primaryDetectedTicker = detectedTickers.length > 0 ? detectedTickers[0] : null;
 
@@ -773,21 +819,32 @@ serve(async (req) => {
 
       if (isStockAnalysisRequest && primaryDetectedTicker) {
         console.log(`Försöker hämta finansiell data för ${primaryDetectedTicker} från stockanalysis.com.`);
-        const stockSpecificQuery = `${primaryDetectedTicker} financial data stockanalysis.com/stocks/${primaryDetectedTicker.toLowerCase()}`;
+        const urlCandidates = buildStockAnalysisUrlCandidates(primaryDetectedTicker);
 
-        tavilyContext = await fetchTavilyContext(message, {
-          query: stockSpecificQuery,
-          includeDomains: ['stockanalysis.com'],
-          searchDepth: 'advanced',
-          maxResults: 5,
-        });
+        for (const candidateUrl of urlCandidates) {
+          console.log(`Tavily StockAnalysis-förfrågan: ${candidateUrl}`);
+          const stockSpecificQuery = buildStockAnalysisQuery(primaryDetectedTicker, candidateUrl);
+
+          tavilyContext = await fetchTavilyContext(message, {
+            query: stockSpecificQuery,
+            includeDomains: ['stockanalysis.com'],
+            searchDepth: 'advanced',
+            maxResults: 5,
+            includeRawContent: true,
+          });
+
+          if (tavilyContext) {
+            console.log('Lyckades hämta data från stockanalysis.com.');
+            break;
+          }
+        }
 
         if (!tavilyContext) {
           console.log('Inga resultat från stockanalysis.com, försöker med bredare Tavily-sökning.');
-          tavilyContext = await fetchTavilyContext(message);
+          tavilyContext = await fetchTavilyContext(message, { includeRawContent: true });
         }
       } else {
-        tavilyContext = await fetchTavilyContext(message);
+        tavilyContext = await fetchTavilyContext(message, { includeRawContent: true });
       }
 
       if (tavilyContext) {
