@@ -854,24 +854,89 @@ serve(async (req) => {
     };
 
     const buildStockAnalysisQuery = (ticker: string, urls: string[]): string => {
-      const upperTicker = ticker.toUpperCase();
-      const focusUrls = urls.slice(0, 6);
-      const focusLines = focusUrls
-        .map((candidateUrl, index) => `${index + 1}. ${candidateUrl}`)
-        .join('\n');
+      const trimmedTicker = ticker.trim();
+      const upperTicker = trimmedTicker.toUpperCase();
+      let slug = trimmedTicker.toLowerCase();
 
-      const instructions = [
-        `Extract the very latest reported financial numbers for ${upperTicker} (revenue, EPS, net income, cash flow, margins, debt ratios and guidance).`,
-        'Prioritize the dedicated StockAnalysis.com financials pages and pull the numbers directly from their tables or summaries.',
-      ];
+      const subPathSet = new Set<string>();
 
-      if (focusLines.length > 0) {
-        instructions.push('Focus on these URLs (follow redirects if needed):', focusLines);
+      for (const candidateUrl of urls) {
+        try {
+          const parsed = new URL(candidateUrl);
+          if (parsed.hostname.replace(/^www\./, '') !== 'stockanalysis.com') {
+            continue;
+          }
+
+          const segments = parsed.pathname.split('/').filter(Boolean);
+          const stocksIndex = segments.indexOf('stocks');
+          if (stocksIndex === -1 || stocksIndex + 1 >= segments.length) {
+            continue;
+          }
+
+          const slugCandidate = segments[stocksIndex + 1];
+          if (slugCandidate) {
+            slug = slugCandidate.toLowerCase();
+          }
+
+          const subSegments = segments.slice(stocksIndex + 2);
+          if (subSegments.length > 0) {
+            const subPath = subSegments.join('/').replace(/\/+$/g, '');
+            if (subPath) {
+              subPathSet.add(subPath);
+            }
+          }
+        } catch (_error) {
+          continue;
+        }
       }
 
-      instructions.push('Return the figures and brief Swedish notes so they can be relayed to the user.');
+      const defaultSubPaths = [
+        'financials',
+        'financials/metrics',
+        'financials/ratios',
+        'financials/cash-flow-statement',
+        'financials/balance-sheet',
+      ];
 
-      return instructions.join('\n');
+      const subPaths = subPathSet.size > 0
+        ? Array.from(subPathSet)
+        : defaultSubPaths;
+
+      const limitedSubPaths = subPaths
+        .map(path => path.replace(/^\/+/, '').trim())
+        .filter(Boolean)
+        .slice(0, 5);
+
+      const baseUrl = `https://stockanalysis.com/stocks/${slug}`;
+
+      const buildQueryFromPaths = (paths: string[]): string => {
+        const pathText = paths.length > 0
+          ? ` such as ${paths.join(', ')}`
+          : '';
+
+        return [
+          `Extract the latest reported financial figures for ${upperTicker} (revenue, EPS, net income, cash flow, margins, debt ratios, guidance).`,
+          `Use ${baseUrl} financial pages${pathText}.`,
+          'Return the numbers with brief Swedish notes.',
+        ].join(' ');
+      };
+
+      let query = buildQueryFromPaths(limitedSubPaths);
+
+      while (query.length > 400 && limitedSubPaths.length > 1) {
+        limitedSubPaths.pop();
+        query = buildQueryFromPaths(limitedSubPaths);
+      }
+
+      if (query.length > 400) {
+        query = buildQueryFromPaths([]);
+      }
+
+      if (query.length > 400) {
+        query = `${query.slice(0, 397)}...`;
+      }
+
+      return query;
     };
 
     const fetchStockAnalysisFinancialContext = async (
