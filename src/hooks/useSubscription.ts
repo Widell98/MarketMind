@@ -10,12 +10,21 @@ interface SubscriptionData {
   subscription_end?: string;
 }
 
+type UsageType = 'ai_message' | 'analysis' | 'insights' | 'predictive_analysis';
+
 interface UsageData {
   ai_messages_count: number;
   analysis_count: number;
   insights_count: number;
   predictive_analysis_count: number;
 }
+
+const usageFieldMap: Record<UsageType, keyof UsageData> = {
+  ai_message: 'ai_messages_count',
+  analysis: 'analysis_count',
+  insights: 'insights_count',
+  predictive_analysis: 'predictive_analysis_count',
+};
 
 export const useSubscription = () => {
   const { user } = useAuth();
@@ -152,25 +161,33 @@ export const useSubscription = () => {
     }
   };
 
-  const checkUsageLimit = (type: 'ai_message' | 'analysis' | 'insights' | 'predictive_analysis'): boolean => {
+  const checkUsageLimit = (type: UsageType): boolean => {
     if (!subscription || !usage) return false;
     if (subscription.subscribed) return true;
-    
+
     const limit = 10;
-    const currentUsage = usage[`${type}_count` as keyof UsageData] || 0;
+    const usageField = usageFieldMap[type];
+    const currentUsage = usage[usageField] || 0;
     return currentUsage < limit;
   };
 
-  const getRemainingUsage = (type: 'ai_message' | 'analysis' | 'insights' | 'predictive_analysis'): number => {
+  const getRemainingUsage = (type: UsageType): number => {
     if (!usage || subscription?.subscribed) return Infinity;
     const limit = 10;
-    const currentUsage = usage[`${type}_count` as keyof UsageData] || 0;
+    const usageField = usageFieldMap[type];
+    const currentUsage = usage[usageField] || 0;
     return Math.max(0, limit - currentUsage);
   };
 
-  const incrementUsage = (_type: string) => {
+  const incrementUsage = (type: UsageType) => {
+    const usageField = usageFieldMap[type];
     setUsage(prev =>
-      prev ? { ...prev, ai_messages_count: prev.ai_messages_count + 1 } : prev
+      prev
+        ? {
+            ...prev,
+            [usageField]: (prev[usageField] || 0) + 1,
+          }
+        : prev
     );
   };
 
