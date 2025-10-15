@@ -847,9 +847,49 @@ serve(async (req) => {
       return Array.from(uniqueUrls);
     };
 
-    const buildStockAnalysisQuery = (ticker: string, url: string): string => {
+    const buildStockAnalysisQuery = (ticker: string, urls: string[]): string => {
       const upperTicker = ticker.toUpperCase();
-      return `Extract the latest reported financial numbers (revenue, EPS, net income, guidance and other key metrics) for ${upperTicker} directly from ${url}, prioritizing data tables or summaries in the financials section.`;
+      const focusUrls = urls.slice(0, 6);
+      const focusLines = focusUrls
+        .map((candidateUrl, index) => `${index + 1}. ${candidateUrl}`)
+        .join('\n');
+
+      const instructions = [
+        `Extract the very latest reported financial numbers for ${upperTicker} (revenue, EPS, net income, cash flow, margins, debt ratios and guidance).`,
+        'Prioritize the dedicated StockAnalysis.com financials pages and pull the numbers directly from their tables or summaries.',
+      ];
+
+      if (focusLines.length > 0) {
+        instructions.push('Focus on these URLs (follow redirects if needed):', focusLines);
+      }
+
+      instructions.push('Return the figures and brief Swedish notes so they can be relayed to the user.');
+
+      return instructions.join('\n');
+    };
+
+    const fetchStockAnalysisFinancialContext = async (
+      ticker: string,
+      message: string,
+    ): Promise<TavilyContextPayload> => {
+      const urlCandidates = buildStockAnalysisUrlCandidates(ticker);
+      if (urlCandidates.length === 0) {
+        return { formattedContext: '', sources: [] };
+      }
+
+      console.log('Tavily StockAnalysis-förfrågan, prioriterade URL:er:', urlCandidates.slice(0, 6));
+
+      const targetedQuery = buildStockAnalysisQuery(ticker, urlCandidates);
+
+      const targetedContext = await fetchTavilyContext(message, {
+        query: targetedQuery,
+        includeDomains: ['stockanalysis.com'],
+        searchDepth: 'advanced',
+        maxResults: 5,
+        includeRawContent: true,
+      });
+
+      return targetedContext;
     };
 
     const detectedTickers = extractTickerSymbols(message);
@@ -895,28 +935,11 @@ serve(async (req) => {
 
       if (shouldPrioritizeStockAnalysis) {
         console.log(`Försöker hämta finansiell data för ${primaryDetectedTicker} från stockanalysis.com.`);
-        const urlCandidates = buildStockAnalysisUrlCandidates(primaryDetectedTicker);
+        tavilyContext = await fetchStockAnalysisFinancialContext(primaryDetectedTicker, message);
 
-        for (const candidateUrl of urlCandidates) {
-          console.log(`Tavily StockAnalysis-förfrågan: ${candidateUrl}`);
-          const stockSpecificQuery = buildStockAnalysisQuery(primaryDetectedTicker, candidateUrl);
-
-          const fetchedContext = await fetchTavilyContext(message, {
-            query: stockSpecificQuery,
-            includeDomains: ['stockanalysis.com'],
-            searchDepth: 'advanced',
-            maxResults: 5,
-            includeRawContent: true,
-          });
-
-          if (fetchedContext.formattedContext) {
-            tavilyContext = fetchedContext;
-            console.log('Lyckades hämta data från stockanalysis.com.');
-            break;
-          }
-        }
-
-        if (!tavilyContext.formattedContext) {
+        if (tavilyContext.formattedContext) {
+          console.log('Lyckades hämta data från stockanalysis.com.');
+        } else {
           console.log('Inga resultat från stockanalysis.com, försöker med bredare Tavily-sökning.');
           tavilyContext = await fetchTavilyContext(message, { includeRawContent: true });
         }
