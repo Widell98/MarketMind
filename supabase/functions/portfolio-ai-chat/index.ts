@@ -804,15 +804,24 @@ serve(async (req) => {
         .filter(candidate => candidate.length > 0);
 
       const uniqueUrls = new Set<string>();
+      const addUniqueUrl = (url: string) => {
+        if (!uniqueUrls.has(url)) {
+          uniqueUrls.add(url);
+        }
+      };
+
       for (const candidate of normalizedCandidates) {
         const baseUrl = `https://stockanalysis.com/stocks/${candidate}`;
-        uniqueUrls.add(baseUrl);
-        uniqueUrls.add(`${baseUrl}/financials`);
-        uniqueUrls.add(`${baseUrl}/financials/quarterly`);
-        uniqueUrls.add(`${baseUrl}/financials/income-statement`);
-        uniqueUrls.add(`${baseUrl}/financials/balance-sheet`);
-        uniqueUrls.add(`${baseUrl}/financials/cash-flow`);
-        uniqueUrls.add(`${baseUrl}/earnings`);
+        const financialsRoot = `${baseUrl}/financials`;
+
+        addUniqueUrl(`${financialsRoot}/`);
+        addUniqueUrl(financialsRoot);
+        addUniqueUrl(`${financialsRoot}/quarterly`);
+        addUniqueUrl(`${financialsRoot}/income-statement`);
+        addUniqueUrl(`${financialsRoot}/balance-sheet`);
+        addUniqueUrl(`${financialsRoot}/cash-flow`);
+        addUniqueUrl(baseUrl);
+        addUniqueUrl(`${baseUrl}/earnings`);
       }
 
       return Array.from(uniqueUrls);
@@ -820,7 +829,7 @@ serve(async (req) => {
 
     const buildStockAnalysisQuery = (ticker: string, url: string): string => {
       const upperTicker = ticker.toUpperCase();
-      return `Extract the latest reported financial numbers (revenue, EPS, net income, guidance and other key metrics) for ${upperTicker} directly from ${url}`;
+      return `Extract the latest reported financial numbers (revenue, EPS, net income, guidance and other key metrics) for ${upperTicker} directly from ${url}, prioritizing data tables or summaries in the financials section.`;
     };
 
     const detectedTickers = extractTickerSymbols(message);
