@@ -1244,6 +1244,7 @@ PERSONA & STIL:
 - Ge alltid exempel på relevanta aktier/fonder med symboler när det är lämpligt
 - Använd svensk finansterminologi och marknadskontext
 - Avsluta med en öppen-relaterad fråga för att uppmuntra fortsatt dialog
+- REALTIDSDATA: När blocket "Extern realtidskontext" finns längre ned i systemmeddelandet måste du destillera de viktigaste insikterna därifrån. Integrera dem i relevanta sektioner i svaret (t.ex. "Nyhetsläge" eller "Senaste händelser") och förankra påståenden genom att ange källa och tidsangivelse i löptexten.
 `;
 
 const intentPrompts = {
@@ -1253,6 +1254,7 @@ AKTIEANALYSUPPGIFT:
 - Om frågan är snäv (ex. "vilka triggers?" eller "vad är riskerna?") → ge bara det relevanta svaret i 2–5 meningar.
 - Om frågan är bred eller allmän (ex. "kan du analysera bolaget X?") → använd hela analysstrukturen nedan.
 - Var alltid tydlig och koncis i motiveringarna.
+- Om "Extern realtidskontext" finns: lägg till en sektion **Nyhetsläge** som sammanfattar de viktigaste punkterna med datum och källa, och koppla dem till din analys.
 
 **OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:**
 **Företagsnamn (TICKER)** - Kort motivering
@@ -1499,6 +1501,7 @@ SVARSSTRUKTUR (ANPASSNINGSBAR):
 - Vid enkla frågor: svara kort (2–4 meningar) och avsluta med en öppen motfråga
 - Vid generella marknadsfrågor: använd en nyhetsbrevsliknande ton med rubriker som "Dagens höjdpunkter" eller "Kvällens marknadsnyheter"
 - Vid djupgående analyser: använd en tydligare struktur med valda sektioner (se nedan), men ta bara med det som tillför värde
+- Om "Extern realtidskontext" finns: fläta in de viktigaste datapunkterna i analysen och markera dem tydligt med källa och tidsstämplar.
 
 EMOJI-ANVÄNDNING:
 - Använd relevanta emojis för att förstärka budskapet, men variera mellan svar (t.ex. 📈/🚀 för tillväxt, ⚠️/🛑 för risker, 🔍/📊 för analys)
@@ -1545,7 +1548,7 @@ VIKTIGT:
       const formattedSourcesList = tavilyContext.sources
         .map((url, index) => `${index + 1}. ${url}`)
         .join('\n');
-      tavilySourceInstruction = `\n\nKÄLLHÄNVISNINGAR FÖR AGENTEN:\n${formattedSourcesList}\n\nINSTRUKTION: Avsluta alltid ditt svar med en sektion "Källor:" som listar dessa länkar i samma ordning.`;
+      tavilySourceInstruction = `\n\nKÄLLHÄNVISNINGAR FÖR AGENTEN:\n${formattedSourcesList}\n\nINSTRUKTION: Referera till dessa källor i brödtexten när du sammanfattar realtidsinformationen (t.ex. "Enligt källa [1] (2024-05-03)..."). Avsluta alltid ditt svar med en sektion "Källor:" som listar dessa länkar i samma ordning.`;
     }
 
     // Build messages array with enhanced context
