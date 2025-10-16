@@ -1506,7 +1506,7 @@ VIKTIGT:
 
     const hasMarketData = tavilyContext.formattedContext.length > 0;
     let tavilySourceInstruction = '';
-    if (tavilyContext.sources.length > 0) {
+    if (requiresRealTimeLookup && tavilyContext.sources.length > 0) {
       const formattedSourcesList = tavilyContext.sources
         .map((url, index) => `${index + 1}. ${url}`)
         .join('\n');
