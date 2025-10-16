@@ -54,8 +54,13 @@ test('handles tickers with dots, dashes, and numbers and filters invalid ones', 
   );
 
   assert.deepEqual(
-    suggestions.map((s) => s.ticker).sort(),
+    suggestions.map((s) => s.symbol).sort(),
     ['A1', 'BRK.B', 'RDS-A'].sort()
+  );
+
+  assert.ok(
+    suggestions.every((suggestion) => suggestion.ticker === suggestion.symbol),
+    'ticker and symbol fields should match for compatibility',
   );
 });
 

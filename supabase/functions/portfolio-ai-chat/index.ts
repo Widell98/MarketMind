@@ -34,6 +34,31 @@ const REALTIME_KEYWORDS = [
   'price today'
 ];
 
+const REALTIME_RESEARCH_PATTERNS = [
+  /kolla upp/i,
+  /sök upp/i,
+  /ta reda på/i,
+  /leta upp/i,
+  /googla/i,
+  /hitta(?: mer)? information/i,
+  /hitta (?:en )?(?:hemsida|webbplats)/i,
+  /kolla (?:på|upp)? (?:en )?(?:hemsida|webbplats)/i,
+  /kolla (?:på )?deras (?:hemsida|webbplats)/i,
+  /kika (?:på )?(?:en )?(?:hemsida|webbplats)/i,
+  /deras hemsida/i,
+  /(?:vem|vilka) som står bakom/i,
+  /(?:vem|vilka) står bakom/i,
+  /vilka ligger bakom/i,
+  /vem grundade/i
+];
+
+const SOFT_REALTIME_KEYWORDS = [
+  'idag',
+  'just nu',
+  'today',
+  'current'
+];
+
 const EXCHANGE_RATES: Record<string, number> = {
   SEK: 1.0,
   USD: 10.5,
@@ -182,7 +207,11 @@ const formatAllocationLabel = (label: string): string => {
 
 const requiresRealTimeSearch = (message: string): boolean => {
   const normalized = message.toLowerCase();
-  return REALTIME_KEYWORDS.some(keyword => normalized.includes(keyword));
+  if (REALTIME_KEYWORDS.some(keyword => normalized.includes(keyword))) {
+    return true;
+  }
+
+  return REALTIME_RESEARCH_PATTERNS.some(pattern => pattern.test(message));
 };
 
 type TavilySearchResult = {
@@ -985,6 +1014,13 @@ serve(async (req) => {
     }) || hasTickerSymbolMention;
 
     const lowerCaseMessage = message.toLowerCase();
+    const matchedRealTimeKeywords = REALTIME_KEYWORDS.filter(keyword => lowerCaseMessage.includes(keyword));
+    const hasOnlySoftRealTimeKeywords = matchedRealTimeKeywords.length > 0 &&
+      matchedRealTimeKeywords.every(keyword =>
+        SOFT_REALTIME_KEYWORDS.some(softKeyword => keyword === softKeyword)
+      );
+    const rawRealTimeRequest = requiresRealTimeSearch(message);
+    const requiresRealTimeLookup = rawRealTimeRequest && !hasOnlySoftRealTimeKeywords;
     const isFinancialDataRequest = FINANCIAL_DATA_KEYWORDS.some(keyword => lowerCaseMessage.includes(keyword));
 
     const isStockMentionRequest = stockMentionsInMessage || isStockAnalysisRequest || (isFinancialDataRequest && detectedTickers.length > 0);
@@ -1000,11 +1036,11 @@ serve(async (req) => {
       isPersonalAdviceRequest || isPortfolioOptimizationRequest
     ) &&
       !isStockMentionRequest &&
-      !requiresRealTimeSearch(message) &&
+      !requiresRealTimeLookup &&
       detectedTickers.length === 0;
 
     const shouldFetchTavily = !isSimplePersonalAdviceRequest && (
-      isStockMentionRequest || requiresRealTimeSearch(message)
+      isStockMentionRequest || requiresRealTimeLookup
     );
     if (shouldFetchTavily) {
       const logMessage = isStockMentionRequest
@@ -1032,6 +1068,9 @@ serve(async (req) => {
         console.log('Tavily-kontent hämtad och läggs till i kontexten.');
       }
     }
+
+    const tavilySearchAttempted = shouldFetchTavily && requiresRealTimeLookup;
+    const tavilyReturnedResults = tavilyContext.formattedContext.trim().length > 0;
 
     // AI Memory update function
     const updateAIMemory = async (supabase: any, userId: string, userMessage: string, aiResponse: string, existingMemory: any) => {
@@ -1104,6 +1143,27 @@ serve(async (req) => {
     const detectIntent = (message: string) => {
       const msg = message.toLowerCase();
 
+      const buySellKeywords = [
+        'byt',
+        'ändra',
+        'ersätt',
+        'ta bort',
+        'sälja',
+        'sälj',
+        'köpa',
+        'köp',
+        'mer av',
+        'mindre av',
+        'position',
+        'positioner',
+        'handel',
+        'handla'
+      ];
+
+      const buySellDecisionRequest = buySellKeywords.some(keyword =>
+        new RegExp(`\\b${escapeRegExp(keyword)}\\b`, 'i').test(message)
+      );
+
       const newsUpdateKeywords = [
         'kväll',
         'ikväll',
@@ -1120,13 +1180,23 @@ serve(async (req) => {
         'sammanfattning'
       ];
       
+      // Buy/Sell Decisions Intent - prioritize when explicit trade action is requested
+      if (buySellDecisionRequest) {
+        return 'buy_sell_decisions';
+      }
+
+      // Portfolio Rebalancing/Optimization Intent - must outrank generic stock analysis even when tickers are present
+      if (/(?:portfölj|portfolio)/i.test(message) && /(?:optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma|rebalansera)/i.test(message)) {
+        return 'portfolio_optimization';
+      }
+
       // Stock/Company Analysis Intent - enhanced to catch more stock mentions
-      if (isStockMentionRequest || 
-          (/(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) && 
+      if (isStockMentionRequest ||
+          (/(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) &&
           /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5})/i.test(message))) {
         return 'stock_analysis';
       }
-      
+
       // Portfolio news update intent
       if (userHasPortfolio && newsUpdateKeywords.some(keyword => msg.includes(keyword))) {
         return 'news_update';
@@ -1137,16 +1207,6 @@ serve(async (req) => {
         return 'general_news';
       }
 
-      // Portfolio Rebalancing/Optimization Intent
-      if (/(?:portfölj|portfolio)/i.test(message) && /(?:optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma|rebalansera)/i.test(message)) {
-        return 'portfolio_optimization';
-      }
-      
-      // Buy/Sell Decisions Intent
-      if (/(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|position|handel)/i.test(message)) {
-        return 'buy_sell_decisions';
-      }
-       
       // Market Analysis Intent
       if (/(?:marknad|index|trend|prognos|ekonomi|räntor|inflation|börsen)/i.test(message)) {
         return 'market_analysis';
@@ -1158,8 +1218,28 @@ serve(async (req) => {
     const userIntent = detectIntent(message);
     console.log('Detected user intent:', userIntent);
 
+    const realTimeTransparencyInstruction = (() => {
+      if (!requiresRealTimeLookup) {
+        return '';
+      }
+
+      const policyLines = [
+        'REALTIDSPOLICY:',
+        '- Basera realtidsinsikter endast på Tavily-resultat eller annan uttryckligen given data.',
+        '- Om sökningen inte gav relevanta resultat ska du tydligt säga att den aktuella informationen saknas.',
+        '- Hitta aldrig på exempel, siffror eller scenarier när realtidsdata saknas.',
+        '- Säg aldrig att du inte kan surfa på internet – förklara istället att inga källor hittades eller att datan saknas.',
+      ];
+
+      if (tavilySearchAttempted && !tavilyReturnedResults) {
+        policyLines.push('- Tavily-sökningen gav inga användbara källor för frågan. Var extra tydlig med att färska data saknas och erbjud att återkomma när ny information finns.');
+      }
+
+      return `\n\n${policyLines.join('\n')}`;
+    })();
+
     // Build enhanced context with intent-specific prompts
-let contextInfo = `Du är en auktoriserad svensk investeringsrådgivare med diskretionär men icke-verkställande behörighet. Du agerar som en personlig finansiell rådgivare som ger professionella investeringsråd.
+    let contextInfo = `Du är en auktoriserad svensk investeringsrådgivare med diskretionär men icke-verkställande behörighet. Du agerar som en personlig finansiell rådgivare som ger professionella investeringsråd.
 
 ⚡ SPRÅKREGLER:
 - Om användarens fråga är på svenska → översätt den först till engelska internt innan du resonerar.
@@ -1174,9 +1254,9 @@ PERSONA & STIL:
 - Ge alltid exempel på relevanta aktier/fonder med symboler när det är lämpligt
 - Använd svensk finansterminologi och marknadskontext
 - Avsluta med en öppen-relaterad fråga för att uppmuntra fortsatt dialog
-`;
+${realTimeTransparencyInstruction}`;
 
-const intentPrompts = {
+    const intentPrompts = {
   stock_analysis: `
 AKTIEANALYSUPPGIFT:
 - Anpassa alltid svarslängd och struktur efter användarens fråga.
@@ -1471,7 +1551,7 @@ VIKTIGT:
 
     const hasMarketData = tavilyContext.formattedContext.length > 0;
     let tavilySourceInstruction = '';
-    if (tavilyContext.sources.length > 0) {
+    if (requiresRealTimeLookup && tavilyContext.sources.length > 0) {
       const formattedSourcesList = tavilyContext.sources
         .map((url, index) => `${index + 1}. ${url}`)
         .join('\n');

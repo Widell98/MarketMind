@@ -23,12 +23,39 @@ export const ensureStockSuggestions = async (supabase, userMessage, aiMessage) =
 
   const userTickers = extractTickers(userMessage);
   const suggestionsMatch = aiMessage.match(/Aktieförslag:\s*(\[[^\]]*\])/);
-  let suggestions = [];
+  const parseSuggestion = (raw) => {
+    if (!raw || typeof raw !== 'object') {
+      return null;
+    }
+
+    const symbolCandidate = typeof raw.ticker === 'string' && raw.ticker.trim().length > 0
+      ? raw.ticker
+      : typeof raw.symbol === 'string' && raw.symbol.trim().length > 0
+        ? raw.symbol
+        : null;
+
+    if (!symbolCandidate) {
+      return null;
+    }
+
+    const symbol = symbolCandidate.trim().toUpperCase();
+    const name = typeof raw.name === 'string' ? raw.name.trim() : '';
+    const reason = typeof raw.reason === 'string' ? raw.reason.trim() : '';
+
+    return { symbol, name, reason };
+  };
+
+  let parsedSuggestions = [];
   if (suggestionsMatch) {
     try {
-      suggestions = JSON.parse(suggestionsMatch[1]);
+      const parsed = JSON.parse(suggestionsMatch[1]);
+      if (Array.isArray(parsed)) {
+        parsedSuggestions = parsed
+          .map(parseSuggestion)
+          .filter((value) => value !== null);
+      }
     } catch {
-      suggestions = [];
+      parsedSuggestions = [];
     }
   }
 
@@ -37,13 +64,13 @@ export const ensureStockSuggestions = async (supabase, userMessage, aiMessage) =
     : aiMessage;
   const aiTickers = extractTickers(messageWithoutSuggestions);
 
-  suggestions = suggestions.filter(
-    (s) => aiTickers.has(s.ticker) || !userTickers.has(s.ticker)
+  const filteredSuggestions = parsedSuggestions.filter(
+    (suggestion) => aiTickers.has(suggestion.symbol) || !userTickers.has(suggestion.symbol)
   );
 
   const candidateTickers = new Set([
     ...aiTickers,
-    ...suggestions.map((s) => s.ticker),
+    ...filteredSuggestions.map((suggestion) => suggestion.symbol),
   ]);
 
   if (candidateTickers.size === 0) {
@@ -71,8 +98,6 @@ export const ensureStockSuggestions = async (supabase, userMessage, aiMessage) =
     }
   }
 
-  suggestions = suggestions.filter((s) => validTickers.has(s.ticker));
-
   if (validTickers.size === 0) {
     const line = 'Aktieförslag: []';
     return {
@@ -83,16 +108,41 @@ export const ensureStockSuggestions = async (supabase, userMessage, aiMessage) =
     };
   }
 
-  const finalSuggestions = Array.from(validTickers).map((t) => {
-    const existing = suggestions.find((s) => s.ticker === t);
-    return (
-      existing || {
-        name: nameMap.get(t) || t,
-        ticker: t,
-        reason: existing?.reason || '',
-      }
-    );
-  });
+  const suggestionsMap = new Map();
+
+  for (const suggestion of filteredSuggestions) {
+    if (!validTickers.has(suggestion.symbol)) continue;
+
+    const resolvedName = suggestion.name.length > 0
+      ? suggestion.name
+      : nameMap.get(suggestion.symbol) || suggestion.symbol;
+
+    const reason = suggestion.reason.length > 0 ? suggestion.reason : 'AI-rekommendation';
+
+    suggestionsMap.set(suggestion.symbol, {
+      name: resolvedName,
+      symbol: suggestion.symbol,
+      ticker: suggestion.symbol,
+      reason,
+    });
+  }
+
+  for (const ticker of validTickers) {
+    if (suggestionsMap.has(ticker)) continue;
+
+    const name = nameMap.get(ticker) || ticker;
+
+    suggestionsMap.set(ticker, {
+      name,
+      symbol: ticker,
+      ticker,
+      reason: 'AI-rekommendation',
+    });
+  }
+
+  const finalSuggestions = Array.from(suggestionsMap.values()).sort((a, b) =>
+    a.name.localeCompare(b.name, 'sv', { sensitivity: 'base' })
+  );
 
   const line = `Aktieförslag: ${JSON.stringify(finalSuggestions)}`;
   const newMessage = suggestionsMatch
