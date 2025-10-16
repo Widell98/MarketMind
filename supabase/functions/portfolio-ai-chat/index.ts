@@ -37,48 +37,6 @@ const REALTIME_KEYWORDS = [
   'kan du ta upp realtidsnyheter'
 ];
 
-const REALTIME_SUBJECT_KEYWORDS: Record<string, string> = {
-  bitcoin: 'Bitcoin (BTC)',
-  btc: 'Bitcoin (BTC)',
-  ethereum: 'Ethereum (ETH)',
-  etherum: 'Ethereum (ETH)',
-  eth: 'Ethereum (ETH)',
-  solana: 'Solana (SOL)',
-  sol: 'Solana (SOL)',
-  cardano: 'Cardano (ADA)',
-  ada: 'Cardano (ADA)',
-  polkadot: 'Polkadot (DOT)',
-  dot: 'Polkadot (DOT)',
-  xrp: 'Ripple (XRP)',
-  ripple: 'Ripple (XRP)',
-  litecoin: 'Litecoin (LTC)',
-  ltc: 'Litecoin (LTC)',
-  dogecoin: 'Dogecoin (DOGE)',
-  doge: 'Dogecoin (DOGE)',
-  chainlink: 'Chainlink (LINK)',
-  link: 'Chainlink (LINK)',
-  polygon: 'Polygon (MATIC)',
-  matic: 'Polygon (MATIC)',
-  avalanche: 'Avalanche (AVAX)',
-  avax: 'Avalanche (AVAX)',
-  bnb: 'Binance Coin (BNB)',
-  'binance coin': 'Binance Coin (BNB)',
-  tesla: 'Tesla',
-  nvidia: 'Nvidia',
-  apple: 'Apple',
-  microsoft: 'Microsoft',
-  google: 'Alphabet (Google)',
-  alphabet: 'Alphabet (Google)',
-  amazon: 'Amazon',
-  meta: 'Meta Platforms',
-  facebook: 'Meta Platforms',
-  netflix: 'Netflix',
-  saab: 'Saab',
-  volvo: 'Volvo',
-  "hennes & mauritz": 'Hennes & Mauritz',
-  "hennes och mauritz": 'Hennes & Mauritz',
-};
-
 const MAX_TAVILY_QUERY_LENGTH = 400;
 
 const EXCHANGE_RATES: Record<string, number> = {
@@ -542,6 +500,29 @@ serve(async (req) => {
         .maybeSingle()
     ]);
 
+    console.log('User profile and portfolio data fetched');
+
+    let recentSessionMessages: { message: string | null; message_type: string | null; context_data: Record<string, unknown> | null }[] = [];
+    if (sessionId) {
+      try {
+        const { data: historyData, error: historyError } = await supabase
+          .from('portfolio_chat_history')
+          .select('message, message_type, context_data')
+          .eq('user_id', userId)
+          .eq('chat_session_id', sessionId)
+          .order('created_at', { ascending: false })
+          .limit(25);
+
+        if (historyError) {
+          console.error('Kunde inte hämta sparad chathistorik:', historyError);
+        } else if (Array.isArray(historyData)) {
+          recentSessionMessages = historyData;
+        }
+      } catch (historyFetchError) {
+        console.error('Oväntat fel vid hämtning av chathistorik:', historyFetchError);
+      }
+    }
+
     let sheetTickerSymbols: string[] = [];
     let sheetTickerNames: string[] = [];
     const sheetTickerSymbolToName = new Map<string, string>();
@@ -933,27 +914,39 @@ serve(async (req) => {
         subjects.push(normalizedCandidate);
       };
 
+      const findNameWithTicker = (ticker: string): string | null => {
+        if (!ticker) return null;
+        const pattern = new RegExp(`([A-ZÅÄÖ][A-Za-zÅÄÖåäö0-9&.,'\-]{1,50})\s*\(\s*${escapeRegExp(ticker)}\s*\)`, 'i');
+        const match = trimmedInput.match(pattern);
+        if (match && match[0]) {
+          return match[0].replace(/\s+/g, ' ').trim();
+        }
+        return null;
+      };
+
       const tickerSymbols = extractTickerSymbols(trimmedInput);
       for (const tickerSymbol of tickerSymbols) {
         const displayName = sheetTickerSymbolToName.get(tickerSymbol);
-        addSubject(displayName ? `${displayName} (${tickerSymbol})` : tickerSymbol);
-      }
-
-      for (const [rawKeyword, displayName] of Object.entries(REALTIME_SUBJECT_KEYWORDS)) {
-        const keyword = rawKeyword.trim().toLowerCase();
-        if (!keyword) continue;
-
-        const patternSource = escapeRegExp(keyword).replace(/\s+/g, '\\s+');
-        const detectionPattern = new RegExp(`(?:^|[^a-z0-9åäö])${patternSource}(?=$|[^a-z0-9åäö])`, 'i');
-
-        if (detectionPattern.test(trimmedInput)) {
-          addSubject(displayName);
+        const subjectFromText = findNameWithTicker(tickerSymbol);
+        if (subjectFromText) {
+          addSubject(subjectFromText);
+        } else if (displayName) {
+          addSubject(`${displayName} (${tickerSymbol})`);
+        } else {
+          addSubject(tickerSymbol);
         }
       }
 
       for (const [detector, displayName] of sheetTickerNameDisplayLookup.entries()) {
         if (lowerInput.includes(detector)) {
           addSubject(displayName);
+        }
+      }
+
+      const explicitNameTickerMatches = trimmedInput.matchAll(/([A-ZÅÄÖ][A-Za-zÅÄÖåäö0-9&.,'\-]{1,50})\s*\(\s*([A-Z0-9]{1,6})\s*\)/g);
+      for (const match of explicitNameTickerMatches) {
+        if (match && match[1] && match[2]) {
+          addSubject(`${match[1].trim()} (${match[2].trim().toUpperCase()})`);
         }
       }
 
@@ -1163,6 +1156,59 @@ serve(async (req) => {
 
     const isStockMentionRequest = stockMentionsInMessage || isStockAnalysisRequest || (isFinancialDataRequest && detectedTickers.length > 0);
 
+    const extractSubjectsFromContextData = (rawContext: unknown): string[] => {
+      if (!rawContext) return [];
+
+      let parsedContext: Record<string, unknown> | null = null;
+
+      if (typeof rawContext === 'string') {
+        try {
+          const parsed = JSON.parse(rawContext);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            parsedContext = parsed as Record<string, unknown>;
+          }
+        } catch {
+          return [];
+        }
+      } else if (typeof rawContext === 'object' && !Array.isArray(rawContext)) {
+        parsedContext = rawContext as Record<string, unknown>;
+      }
+
+      if (!parsedContext) return [];
+
+      const subjects: string[] = [];
+      const addSubject = (value: unknown) => {
+        if (typeof value === 'string') {
+          const trimmed = value.trim();
+          if (trimmed.length > 0) {
+            subjects.push(trimmed);
+          }
+        }
+      };
+
+      const candidateKeys = [
+        'realTimeSubject',
+        'real_time_subject',
+        'resolvedRealTimeSubject',
+        'resolved_real_time_subject',
+        'subject',
+        'primarySubject'
+      ];
+
+      for (const key of candidateKeys) {
+        addSubject(parsedContext[key]);
+      }
+
+      const listCandidates = parsedContext['realTimeSubjects'] || parsedContext['subjects'];
+      if (Array.isArray(listCandidates)) {
+        for (const item of listCandidates) {
+          addSubject(item);
+        }
+      }
+
+      return subjects;
+    };
+
     const resolveRealTimeSearchSubject = (): string | null => {
       const currentSubjects = extractRealTimeSubjectsFromText(message);
       if (currentSubjects.length > 0) {
@@ -1190,6 +1236,23 @@ serve(async (req) => {
           const historySubjects = extractRealTimeSubjectsFromText(historyContent);
           if (historySubjects.length > 0) {
             return historySubjects[0];
+          }
+        }
+      }
+
+      if (recentSessionMessages.length > 0) {
+        for (const entry of recentSessionMessages) {
+          const contextSubjects = extractSubjectsFromContextData(entry?.context_data ?? null);
+          if (contextSubjects.length > 0) {
+            return contextSubjects[0];
+          }
+
+          const messageText = typeof entry?.message === 'string' ? entry.message : '';
+          if (!messageText) continue;
+
+          const subjectsFromMessage = extractRealTimeSubjectsFromText(messageText);
+          if (subjectsFromMessage.length > 0) {
+            return subjectsFromMessage[0];
           }
         }
       }
@@ -1760,6 +1823,24 @@ VIKTIGT:
     console.log('TELEMETRY START:', telemetryData);
 
     // Save user message to database first
+    const userMessageContextData: Record<string, unknown> = {
+      analysisType,
+      requestId,
+      timestamp: new Date().toISOString(),
+    };
+
+    if (realTimeSearchSubject) {
+      userMessageContextData.realTimeSubject = realTimeSearchSubject;
+    }
+
+    if (shouldFetchTavily) {
+      userMessageContextData.realTimeQuery = resolvedRealTimeQuery;
+      userMessageContextData.realTimeSearchRequested = true;
+      if (primaryDetectedTicker) {
+        userMessageContextData.detectedTicker = primaryDetectedTicker;
+      }
+    }
+
     if (sessionId) {
       try {
         await supabase
@@ -1769,11 +1850,7 @@ VIKTIGT:
             chat_session_id: sessionId,
             message: message,
             message_type: 'user',
-            context_data: {
-              analysisType,
-              requestId,
-              timestamp: new Date().toISOString()
-            }
+            context_data: userMessageContextData
           });
         console.log('User message saved to database');
       } catch (error) {
@@ -1810,6 +1887,31 @@ VIKTIGT:
       // Update AI memory and optionally save to chat history
       await updateAIMemory(supabase, userId, message, aiMessage, aiMemory);
       if (sessionId && aiMessage) {
+        const assistantContextData: Record<string, unknown> = {
+          analysisType,
+          model,
+          requestId,
+          hasMarketData,
+          profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+          requiresConfirmation: profileChangeDetection.requiresConfirmation,
+          confidence: 0.8,
+        };
+
+        if (realTimeSearchSubject) {
+          assistantContextData.realTimeSubject = realTimeSearchSubject;
+        }
+
+        if (shouldFetchTavily) {
+          assistantContextData.realTimeQuery = resolvedRealTimeQuery;
+          assistantContextData.realTimeSearchRequested = true;
+          if (tavilyContext.sources.length > 0) {
+            assistantContextData.realTimeSources = tavilyContext.sources;
+          }
+          if (primaryDetectedTicker) {
+            assistantContextData.detectedTicker = primaryDetectedTicker;
+          }
+        }
+
         await supabase
           .from('portfolio_chat_history')
           .insert({
@@ -1817,15 +1919,7 @@ VIKTIGT:
             chat_session_id: sessionId,
             message: aiMessage,
             message_type: 'assistant',
-            context_data: {
-              analysisType,
-              model,
-              requestId,
-              hasMarketData,
-              profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
-              requiresConfirmation: profileChangeDetection.requiresConfirmation,
-              confidence: 0.8
-            }
+            context_data: assistantContextData
           });
       }
 
@@ -1898,6 +1992,31 @@ VIKTIGT:
                   
                   // Save complete message to database
                   if (sessionId && aiMessage) {
+                    const assistantContextData: Record<string, unknown> = {
+                      analysisType,
+                      model,
+                      requestId,
+                      hasMarketData,
+                      profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+                      requiresConfirmation: profileChangeDetection.requiresConfirmation,
+                      confidence: 0.8,
+                    };
+
+                    if (realTimeSearchSubject) {
+                      assistantContextData.realTimeSubject = realTimeSearchSubject;
+                    }
+
+                    if (shouldFetchTavily) {
+                      assistantContextData.realTimeQuery = resolvedRealTimeQuery;
+                      assistantContextData.realTimeSearchRequested = true;
+                      if (tavilyContext.sources.length > 0) {
+                        assistantContextData.realTimeSources = tavilyContext.sources;
+                      }
+                      if (primaryDetectedTicker) {
+                        assistantContextData.detectedTicker = primaryDetectedTicker;
+                      }
+                    }
+
                     await supabase
                       .from('portfolio_chat_history')
                       .insert({
@@ -1905,15 +2024,7 @@ VIKTIGT:
                         chat_session_id: sessionId,
                         message: aiMessage,
                         message_type: 'assistant',
-                        context_data: {
-                          analysisType,
-                          model,
-                          requestId,
-                          hasMarketData,
-                          profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
-                          requiresConfirmation: profileChangeDetection.requiresConfirmation,
-                          confidence: 0.8
-                        }
+                        context_data: assistantContextData
                       });
                   }
                   
