@@ -31,7 +31,10 @@ const REALTIME_KEYWORDS = [
   'report',
   'pris nu',
   'price now',
-  'price today'
+  'price today',
+  'realtidsnyhet',
+  'realtidsnyheter',
+  'kan du ta upp realtidsnyheter'
 ];
 
 const EXCHANGE_RATES: Record<string, number> = {
