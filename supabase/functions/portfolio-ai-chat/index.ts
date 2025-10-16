@@ -31,8 +31,13 @@ const REALTIME_KEYWORDS = [
   'report',
   'pris nu',
   'price now',
-  'price today'
+  'price today',
+  'realtidsnyhet',
+  'realtidsnyheter',
+  'kan du ta upp realtidsnyheter'
 ];
+
+const MAX_TAVILY_QUERY_LENGTH = 400;
 
 const EXCHANGE_RATES: Record<string, number> = {
   SEK: 1.0,
@@ -285,40 +290,112 @@ const fetchTavilyContext = async (
     return { formattedContext: '', sources: [] };
   }
 
-  try {
+  const executeSearch = async (
+    searchOptions: TavilySearchOptions,
+    attempt = 0,
+  ): Promise<TavilyContextPayload> => {
     const payload: Record<string, unknown> = {
       api_key: tavilyApiKey,
-      query: options.query ?? message,
-      search_depth: options.searchDepth ?? 'basic',
+      query: searchOptions.query ?? message,
+      search_depth: searchOptions.searchDepth ?? 'basic',
       include_answer: true,
-      include_raw_content: options.includeRawContent ?? false,
-      max_results: options.maxResults ?? 5,
+      include_raw_content: searchOptions.includeRawContent ?? false,
+      max_results: searchOptions.maxResults ?? 5,
     };
 
-    if (Array.isArray(options.includeDomains) && options.includeDomains.length > 0) {
-      payload.include_domains = options.includeDomains;
+    if (Array.isArray(searchOptions.includeDomains) && searchOptions.includeDomains.length > 0) {
+      payload.include_domains = searchOptions.includeDomains;
     }
 
-    const response = await fetch('https://api.tavily.com/search', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+    const logContext = {
+      attempt,
+      query: payload.query,
+      searchDepth: payload.search_depth,
+      includeDomains: payload.include_domains,
+      includeRawContent: payload.include_raw_content,
+      maxResults: payload.max_results,
+    };
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Fel vid anrop till Tavily API:', errorText);
+    try {
+      console.log('Tavily-sökning initierad:', logContext);
+
+      const response = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Fel vid anrop till Tavily API:', errorText);
+
+        const canRetryAdvanced = (searchOptions.searchDepth ?? 'basic') !== 'advanced';
+        const canRetryWithoutDomains = Array.isArray(searchOptions.includeDomains) && searchOptions.includeDomains.length > 0;
+
+        if (attempt < 2 && (canRetryAdvanced || canRetryWithoutDomains)) {
+          const nextOptions: TavilySearchOptions = { ...searchOptions };
+
+          if (canRetryWithoutDomains) {
+            console.log('Försöker igen utan domänbegränsningar.');
+            delete nextOptions.includeDomains;
+          } else if (canRetryAdvanced) {
+            console.log('Ökar sökdjup till "advanced" och aktiverar råinnehåll.');
+            nextOptions.searchDepth = 'advanced';
+            nextOptions.includeRawContent = true;
+          }
+
+          return executeSearch(nextOptions, attempt + 1);
+        }
+
+        return { formattedContext: '', sources: [] };
+      }
+
+      const tavilyData = await response.json() as TavilySearchResponse;
+      console.log('Tavily raw response:', JSON.stringify(tavilyData, null, 2));
+      const formatted = formatTavilyResults(tavilyData);
+      console.log('Formatted Tavily context:', formatted.formattedContext);
+
+      const hasContext = formatted.formattedContext.trim().length > 0;
+      if (hasContext) {
+        return formatted;
+      }
+
+      const canRetryAdvanced = (searchOptions.searchDepth ?? 'basic') !== 'advanced';
+      const canRetryWithoutDomains = Array.isArray(searchOptions.includeDomains) && searchOptions.includeDomains.length > 0;
+
+      if (attempt < 2 && (canRetryAdvanced || canRetryWithoutDomains)) {
+        const nextOptions: TavilySearchOptions = { ...searchOptions };
+
+        if (canRetryWithoutDomains) {
+          console.log('Tavily gav tomt svar med domänfilter. Försöker utan filter.');
+          delete nextOptions.includeDomains;
+        } else if (canRetryAdvanced) {
+          console.log('Tavily gav tomt svar. Försöker igen med större sökdjup.');
+          nextOptions.searchDepth = 'advanced';
+          nextOptions.includeRawContent = true;
+        }
+
+        return executeSearch(nextOptions, attempt + 1);
+      }
+
+      console.log('Tavily-sökning gav inget innehåll efter försök:', logContext);
+      return formatted;
+    } catch (error) {
+      console.error('Undantag vid anrop till Tavily API:', error);
+
+      if (attempt < 2) {
+        const nextOptions: TavilySearchOptions = { ...searchOptions, searchDepth: 'advanced', includeRawContent: true };
+        console.log('Försöker Tavily-sökning igen efter undantag.');
+        return executeSearch(nextOptions, attempt + 1);
+      }
+
       return { formattedContext: '', sources: [] };
     }
+  };
 
-    const tavilyData = await response.json() as TavilySearchResponse;
-    return formatTavilyResults(tavilyData);
-  } catch (error) {
-    console.error('Undantag vid anrop till Tavily API:', error);
-    return { formattedContext: '', sources: [] };
-  }
+  return executeSearch(options, 0);
 };
 
 const FINANCIAL_DATA_KEYWORDS = [
@@ -425,8 +502,33 @@ serve(async (req) => {
         .maybeSingle()
     ]);
 
+    console.log('User profile and portfolio data fetched');
+
+    let recentSessionMessages: { message: string | null; message_type: string | null; context_data: Record<string, unknown> | null }[] = [];
+    if (sessionId) {
+      try {
+        const { data: historyData, error: historyError } = await supabase
+          .from('portfolio_chat_history')
+          .select('message, message_type, context_data')
+          .eq('user_id', userId)
+          .eq('chat_session_id', sessionId)
+          .order('created_at', { ascending: false })
+          .limit(25);
+
+        if (historyError) {
+          console.error('Kunde inte hämta sparad chathistorik:', historyError);
+        } else if (Array.isArray(historyData)) {
+          recentSessionMessages = historyData;
+        }
+      } catch (historyFetchError) {
+        console.error('Oväntat fel vid hämtning av chathistorik:', historyFetchError);
+      }
+    }
+
     let sheetTickerSymbols: string[] = [];
     let sheetTickerNames: string[] = [];
+    const sheetTickerSymbolToName = new Map<string, string>();
+    const sheetTickerNameDisplayLookup = new Map<string, string>();
 
     try {
       const { data: sheetTickerData, error: sheetTickerError } = await supabase.functions.invoke('list-sheet-tickers');
@@ -443,6 +545,7 @@ serve(async (req) => {
         const nameSet = new Set<string>();
 
         for (const item of rawTickers) {
+          let normalizedSymbolForName: string | null = null;
           if (!item || typeof item !== 'object') continue;
 
           const rawSymbol = typeof item.symbol === 'string' ? item.symbol : null;
@@ -454,6 +557,7 @@ serve(async (req) => {
             const cleanedSymbol = withoutPrefix.replace(/\s+/g, '').toUpperCase();
             if (cleanedSymbol.length > 0) {
               symbolSet.add(cleanedSymbol);
+              normalizedSymbolForName = cleanedSymbol;
             }
           }
 
@@ -462,10 +566,16 @@ serve(async (req) => {
             const normalizedWhitespaceName = rawName.replace(/\s+/g, ' ').trim();
             if (normalizedWhitespaceName.length > 0) {
               nameSet.add(normalizedWhitespaceName);
+              sheetTickerNameDisplayLookup.set(normalizedWhitespaceName.toLowerCase(), normalizedWhitespaceName);
 
               const diacriticsStripped = removeDiacritics(normalizedWhitespaceName).trim();
               if (diacriticsStripped.length > 0 && diacriticsStripped !== normalizedWhitespaceName) {
                 nameSet.add(diacriticsStripped);
+                sheetTickerNameDisplayLookup.set(diacriticsStripped.toLowerCase(), normalizedWhitespaceName);
+              }
+
+              if (normalizedSymbolForName) {
+                sheetTickerSymbolToName.set(normalizedSymbolForName, normalizedWhitespaceName);
               }
             }
           }
@@ -786,6 +896,65 @@ serve(async (req) => {
       return Array.from(uppercaseFallback);
     };
 
+    const extractRealTimeSubjectsFromText = (input: string): string[] => {
+      if (typeof input !== 'string') return [];
+
+      const trimmedInput = input.trim();
+      if (!trimmedInput) return [];
+
+      const lowerInput = trimmedInput.toLowerCase();
+      const subjects: string[] = [];
+      const seen = new Set<string>();
+
+      const addSubject = (candidate: string | null | undefined) => {
+        if (!candidate) return;
+        const normalizedCandidate = candidate.trim();
+        if (!normalizedCandidate) return;
+        const key = normalizedCandidate.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        subjects.push(normalizedCandidate);
+      };
+
+      const findNameWithTicker = (ticker: string): string | null => {
+        if (!ticker) return null;
+        const pattern = new RegExp(`([A-ZÅÄÖ][A-Za-zÅÄÖåäö0-9&.,'\-]{1,50})\s*\(\s*${escapeRegExp(ticker)}\s*\)`, 'i');
+        const match = trimmedInput.match(pattern);
+        if (match && match[0]) {
+          return match[0].replace(/\s+/g, ' ').trim();
+        }
+        return null;
+      };
+
+      const tickerSymbols = extractTickerSymbols(trimmedInput);
+      for (const tickerSymbol of tickerSymbols) {
+        const displayName = sheetTickerSymbolToName.get(tickerSymbol);
+        const subjectFromText = findNameWithTicker(tickerSymbol);
+        if (subjectFromText) {
+          addSubject(subjectFromText);
+        } else if (displayName) {
+          addSubject(`${displayName} (${tickerSymbol})`);
+        } else {
+          addSubject(tickerSymbol);
+        }
+      }
+
+      for (const [detector, displayName] of sheetTickerNameDisplayLookup.entries()) {
+        if (lowerInput.includes(detector)) {
+          addSubject(displayName);
+        }
+      }
+
+      const explicitNameTickerMatches = trimmedInput.matchAll(/([A-ZÅÄÖ][A-Za-zÅÄÖåäö0-9&.,'\-]{1,50})\s*\(\s*([A-Z0-9]{1,6})\s*\)/g);
+      for (const match of explicitNameTickerMatches) {
+        if (match && match[1] && match[2]) {
+          addSubject(`${match[1].trim()} (${match[2].trim().toUpperCase()})`);
+        }
+      }
+
+      return subjects;
+    };
+
     const buildStockAnalysisUrlCandidates = (ticker: string): string[] => {
       if (!ticker) return [];
 
@@ -988,6 +1157,145 @@ serve(async (req) => {
     const isFinancialDataRequest = FINANCIAL_DATA_KEYWORDS.some(keyword => lowerCaseMessage.includes(keyword));
 
     const isStockMentionRequest = stockMentionsInMessage || isStockAnalysisRequest || (isFinancialDataRequest && detectedTickers.length > 0);
+
+    const extractSubjectsFromContextData = (rawContext: unknown): string[] => {
+      if (!rawContext) return [];
+
+      let parsedContext: Record<string, unknown> | null = null;
+
+      if (typeof rawContext === 'string') {
+        try {
+          const parsed = JSON.parse(rawContext);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            parsedContext = parsed as Record<string, unknown>;
+          }
+        } catch {
+          return [];
+        }
+      } else if (typeof rawContext === 'object' && !Array.isArray(rawContext)) {
+        parsedContext = rawContext as Record<string, unknown>;
+      }
+
+      if (!parsedContext) return [];
+
+      const subjects: string[] = [];
+      const addSubject = (value: unknown) => {
+        if (typeof value === 'string') {
+          const trimmed = value.trim();
+          if (trimmed.length > 0) {
+            subjects.push(trimmed);
+          }
+        }
+      };
+
+      const candidateKeys = [
+        'realTimeSubject',
+        'real_time_subject',
+        'resolvedRealTimeSubject',
+        'resolved_real_time_subject',
+        'subject',
+        'primarySubject'
+      ];
+
+      for (const key of candidateKeys) {
+        addSubject(parsedContext[key]);
+      }
+
+      const listCandidates = parsedContext['realTimeSubjects'] || parsedContext['subjects'];
+      if (Array.isArray(listCandidates)) {
+        for (const item of listCandidates) {
+          addSubject(item);
+        }
+      }
+
+      return subjects;
+    };
+
+    const resolveRealTimeSearchSubject = (): string | null => {
+      const currentSubjects = extractRealTimeSubjectsFromText(message);
+      if (currentSubjects.length > 0) {
+        return currentSubjects[0];
+      }
+
+      if (Array.isArray(chatHistory) && chatHistory.length > 0) {
+        for (let index = chatHistory.length - 1; index >= 0; index--) {
+          const historyEntry = chatHistory[index];
+          if (!historyEntry || typeof historyEntry !== 'object') continue;
+
+          const historyContentRaw = (historyEntry as { content?: unknown }).content;
+          let historyContent = '';
+
+          if (typeof historyContentRaw === 'string') {
+            historyContent = historyContentRaw;
+          } else if (Array.isArray(historyContentRaw)) {
+            historyContent = historyContentRaw
+              .map(part => typeof part === 'string' ? part : '')
+              .join(' ');
+          }
+
+          if (!historyContent) continue;
+
+          const historySubjects = extractRealTimeSubjectsFromText(historyContent);
+          if (historySubjects.length > 0) {
+            return historySubjects[0];
+          }
+        }
+      }
+
+      if (recentSessionMessages.length > 0) {
+        for (const entry of recentSessionMessages) {
+          const contextSubjects = extractSubjectsFromContextData(entry?.context_data ?? null);
+          if (contextSubjects.length > 0) {
+            return contextSubjects[0];
+          }
+
+          const messageText = typeof entry?.message === 'string' ? entry.message : '';
+          if (!messageText) continue;
+
+          const subjectsFromMessage = extractRealTimeSubjectsFromText(messageText);
+          if (subjectsFromMessage.length > 0) {
+            return subjectsFromMessage[0];
+          }
+        }
+      }
+
+      if (primaryDetectedTicker) {
+        const displayName = sheetTickerSymbolToName.get(primaryDetectedTicker);
+        return displayName ? `${displayName} (${primaryDetectedTicker})` : primaryDetectedTicker;
+      }
+
+      return null;
+    };
+
+    const realTimeSearchSubject = resolveRealTimeSearchSubject();
+
+    const buildRealTimeQuery = (subject: string | null, userPrompt: string): string => {
+      const normalizedPrompt = typeof userPrompt === 'string'
+        ? userPrompt.replace(/\s+/g, ' ').trim()
+        : '';
+
+      let baseQuery: string;
+
+      if (subject) {
+        baseQuery = `Sammanställ senaste 48 timmarna realtidsnyheter, marknadston och viktiga datapunkter kring ${subject}. Prioritera kursdrivande händelser, regulatoriska besked och färska analytikerrapporter.`;
+      } else if (normalizedPrompt) {
+        baseQuery = `Sammanställ relevanta realtidsnyheter och marknadssignaler kopplat till följande fråga: ${normalizedPrompt}.`;
+      } else {
+        baseQuery = 'Sammanställ de viktigaste realtidsnyheterna och marknadssignalerna kopplat till användarens fråga.';
+      }
+
+      const fullQuery = normalizedPrompt && subject
+        ? `${baseQuery} Ursprunglig fråga: ${normalizedPrompt}.`
+        : baseQuery;
+
+      if (fullQuery.length > MAX_TAVILY_QUERY_LENGTH) {
+        return `${fullQuery.slice(0, MAX_TAVILY_QUERY_LENGTH - 3)}...`;
+      }
+
+      return fullQuery;
+    };
+
+    const resolvedRealTimeQuery = buildRealTimeQuery(realTimeSearchSubject, message);
      
     // Check if user wants personal investment advice/recommendations
     const isPersonalAdviceRequest = /(?:rekommendation|förslag|vad ska jag|bör jag|passar mig|min portfölj|mina intressen|för mig|personlig|skräddarsy|baserat på|investera|köpa|sälja|portföljanalys|investeringsstrategi)/i.test(message);
@@ -1012,6 +1320,19 @@ serve(async (req) => {
         : 'Fråga upptäckt som realtidsfråga – anropar Tavily.';
       console.log(logMessage);
 
+      if (realTimeSearchSubject) {
+        console.log('Identifierat realtidsämne för Tavily:', realTimeSearchSubject);
+      } else {
+        console.log('Inget tydligt realtidsämne hittades – använder användarens fråga som Tavily-sökfråga.');
+      }
+
+      console.log('Tavily-sökfråga som används:', resolvedRealTimeQuery);
+
+      const buildGeneralTavilyOptions = (): TavilySearchOptions => ({
+        includeRawContent: true,
+        query: resolvedRealTimeQuery,
+      });
+
       const shouldPrioritizeStockAnalysis = primaryDetectedTicker && (isStockAnalysisRequest || isFinancialDataRequest);
 
       if (shouldPrioritizeStockAnalysis) {
@@ -1022,14 +1343,15 @@ serve(async (req) => {
           console.log('Lyckades hämta data från stockanalysis.com.');
         } else {
           console.log('Inga resultat från stockanalysis.com, försöker med bredare Tavily-sökning.');
-          tavilyContext = await fetchTavilyContext(message, { includeRawContent: true });
+          tavilyContext = await fetchTavilyContext(message, buildGeneralTavilyOptions());
         }
       } else {
-        tavilyContext = await fetchTavilyContext(message, { includeRawContent: true });
+        tavilyContext = await fetchTavilyContext(message, buildGeneralTavilyOptions());
       }
 
       if (tavilyContext.formattedContext) {
-        console.log('Tavily-kontent hämtad och läggs till i kontexten.');
+        console.log('Tavily formatted context (added to prompt):', tavilyContext.formattedContext);
+        console.log('Tavily sources:', tavilyContext.sources);
       }
     }
 
@@ -1174,6 +1496,7 @@ PERSONA & STIL:
 - Ge alltid exempel på relevanta aktier/fonder med symboler när det är lämpligt
 - Använd svensk finansterminologi och marknadskontext
 - Avsluta med en öppen-relaterad fråga för att uppmuntra fortsatt dialog
+- REALTIDSDATA: När blocket "Extern realtidskontext" finns längre ned i systemmeddelandet måste du destillera de viktigaste insikterna därifrån. Integrera dem i relevanta sektioner i svaret (t.ex. "Nyhetsläge" eller "Senaste händelser") och förankra påståenden genom att ange källa och tidsangivelse i löptexten.
 `;
 
 const intentPrompts = {
@@ -1183,6 +1506,7 @@ AKTIEANALYSUPPGIFT:
 - Om frågan är snäv (ex. "vilka triggers?" eller "vad är riskerna?") → ge bara det relevanta svaret i 2–5 meningar.
 - Om frågan är bred eller allmän (ex. "kan du analysera bolaget X?") → använd hela analysstrukturen nedan.
 - Var alltid tydlig och koncis i motiveringarna.
+- Om "Extern realtidskontext" finns: lägg till en sektion **Nyhetsläge** som sammanfattar de viktigaste punkterna med datum och källa, och koppla dem till din analys.
 
 **OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:**
 **Företagsnamn (TICKER)** - Kort motivering
@@ -1429,6 +1753,7 @@ SVARSSTRUKTUR (ANPASSNINGSBAR):
 - Vid enkla frågor: svara kort (2–4 meningar) och avsluta med en öppen motfråga
 - Vid generella marknadsfrågor: använd en nyhetsbrevsliknande ton med rubriker som "Dagens höjdpunkter" eller "Kvällens marknadsnyheter"
 - Vid djupgående analyser: använd en tydligare struktur med valda sektioner (se nedan), men ta bara med det som tillför värde
+- Om "Extern realtidskontext" finns: fläta in de viktigaste datapunkterna i analysen och markera dem tydligt med källa och tidsstämplar.
 
 EMOJI-ANVÄNDNING:
 - Använd relevanta emojis för att förstärka budskapet, men variera mellan svar (t.ex. 📈/🚀 för tillväxt, ⚠️/🛑 för risker, 🔍/📊 för analys)
@@ -1475,7 +1800,7 @@ VIKTIGT:
       const formattedSourcesList = tavilyContext.sources
         .map((url, index) => `${index + 1}. ${url}`)
         .join('\n');
-      tavilySourceInstruction = `\n\nKÄLLHÄNVISNINGAR FÖR AGENTEN:\n${formattedSourcesList}\n\nINSTRUKTION: Avsluta alltid ditt svar med en sektion "Källor:" som listar dessa länkar i samma ordning.`;
+      tavilySourceInstruction = `\n\nKÄLLHÄNVISNINGAR FÖR AGENTEN:\n${formattedSourcesList}\n\nINSTRUKTION: Referera till dessa källor i brödtexten när du sammanfattar realtidsinformationen (t.ex. "Enligt källa [1] (2024-05-03)..."). Avsluta alltid ditt svar med en sektion "Källor:" som listar dessa länkar i samma ordning.`;
     }
 
     // Build messages array with enhanced context
@@ -1501,6 +1826,24 @@ VIKTIGT:
     console.log('TELEMETRY START:', telemetryData);
 
     // Save user message to database first
+    const userMessageContextData: Record<string, unknown> = {
+      analysisType,
+      requestId,
+      timestamp: new Date().toISOString(),
+    };
+
+    if (realTimeSearchSubject) {
+      userMessageContextData.realTimeSubject = realTimeSearchSubject;
+    }
+
+    if (shouldFetchTavily) {
+      userMessageContextData.realTimeQuery = resolvedRealTimeQuery;
+      userMessageContextData.realTimeSearchRequested = true;
+      if (primaryDetectedTicker) {
+        userMessageContextData.detectedTicker = primaryDetectedTicker;
+      }
+    }
+
     if (sessionId) {
       try {
         await supabase
@@ -1510,11 +1853,7 @@ VIKTIGT:
             chat_session_id: sessionId,
             message: message,
             message_type: 'user',
-            context_data: {
-              analysisType,
-              requestId,
-              timestamp: new Date().toISOString()
-            }
+            context_data: userMessageContextData
           });
         console.log('User message saved to database');
       } catch (error) {
@@ -1551,6 +1890,31 @@ VIKTIGT:
       // Update AI memory and optionally save to chat history
       await updateAIMemory(supabase, userId, message, aiMessage, aiMemory);
       if (sessionId && aiMessage) {
+        const assistantContextData: Record<string, unknown> = {
+          analysisType,
+          model,
+          requestId,
+          hasMarketData,
+          profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+          requiresConfirmation: profileChangeDetection.requiresConfirmation,
+          confidence: 0.8,
+        };
+
+        if (realTimeSearchSubject) {
+          assistantContextData.realTimeSubject = realTimeSearchSubject;
+        }
+
+        if (shouldFetchTavily) {
+          assistantContextData.realTimeQuery = resolvedRealTimeQuery;
+          assistantContextData.realTimeSearchRequested = true;
+          if (tavilyContext.sources.length > 0) {
+            assistantContextData.realTimeSources = tavilyContext.sources;
+          }
+          if (primaryDetectedTicker) {
+            assistantContextData.detectedTicker = primaryDetectedTicker;
+          }
+        }
+
         await supabase
           .from('portfolio_chat_history')
           .insert({
@@ -1558,15 +1922,7 @@ VIKTIGT:
             chat_session_id: sessionId,
             message: aiMessage,
             message_type: 'assistant',
-            context_data: {
-              analysisType,
-              model,
-              requestId,
-              hasMarketData,
-              profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
-              requiresConfirmation: profileChangeDetection.requiresConfirmation,
-              confidence: 0.8
-            }
+            context_data: assistantContextData
           });
       }
 
@@ -1639,6 +1995,31 @@ VIKTIGT:
                   
                   // Save complete message to database
                   if (sessionId && aiMessage) {
+                    const assistantContextData: Record<string, unknown> = {
+                      analysisType,
+                      model,
+                      requestId,
+                      hasMarketData,
+                      profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+                      requiresConfirmation: profileChangeDetection.requiresConfirmation,
+                      confidence: 0.8,
+                    };
+
+                    if (realTimeSearchSubject) {
+                      assistantContextData.realTimeSubject = realTimeSearchSubject;
+                    }
+
+                    if (shouldFetchTavily) {
+                      assistantContextData.realTimeQuery = resolvedRealTimeQuery;
+                      assistantContextData.realTimeSearchRequested = true;
+                      if (tavilyContext.sources.length > 0) {
+                        assistantContextData.realTimeSources = tavilyContext.sources;
+                      }
+                      if (primaryDetectedTicker) {
+                        assistantContextData.detectedTicker = primaryDetectedTicker;
+                      }
+                    }
+
                     await supabase
                       .from('portfolio_chat_history')
                       .insert({
@@ -1646,15 +2027,7 @@ VIKTIGT:
                         chat_session_id: sessionId,
                         message: aiMessage,
                         message_type: 'assistant',
-                        context_data: {
-                          analysisType,
-                          model,
-                          requestId,
-                          hasMarketData,
-                          profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
-                          requiresConfirmation: profileChangeDetection.requiresConfirmation,
-                          confidence: 0.8
-                        }
+                        context_data: assistantContextData
                       });
                   }
                   
