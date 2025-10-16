@@ -34,6 +34,13 @@ const REALTIME_KEYWORDS = [
   'price today'
 ];
 
+const SOFT_REALTIME_KEYWORDS = [
+  'idag',
+  'just nu',
+  'today',
+  'current'
+];
+
 const EXCHANGE_RATES: Record<string, number> = {
   SEK: 1.0,
   USD: 10.5,
@@ -985,6 +992,13 @@ serve(async (req) => {
     }) || hasTickerSymbolMention;
 
     const lowerCaseMessage = message.toLowerCase();
+    const matchedRealTimeKeywords = REALTIME_KEYWORDS.filter(keyword => lowerCaseMessage.includes(keyword));
+    const hasOnlySoftRealTimeKeywords = matchedRealTimeKeywords.length > 0 &&
+      matchedRealTimeKeywords.every(keyword =>
+        SOFT_REALTIME_KEYWORDS.some(softKeyword => keyword === softKeyword)
+      );
+    const rawRealTimeRequest = requiresRealTimeSearch(message);
+    const requiresRealTimeLookup = rawRealTimeRequest && !hasOnlySoftRealTimeKeywords;
     const isFinancialDataRequest = FINANCIAL_DATA_KEYWORDS.some(keyword => lowerCaseMessage.includes(keyword));
 
     const isStockMentionRequest = stockMentionsInMessage || isStockAnalysisRequest || (isFinancialDataRequest && detectedTickers.length > 0);
@@ -1000,11 +1014,11 @@ serve(async (req) => {
       isPersonalAdviceRequest || isPortfolioOptimizationRequest
     ) &&
       !isStockMentionRequest &&
-      !requiresRealTimeSearch(message) &&
+      !requiresRealTimeLookup &&
       detectedTickers.length === 0;
 
     const shouldFetchTavily = !isSimplePersonalAdviceRequest && (
-      isStockMentionRequest || requiresRealTimeSearch(message)
+      isStockMentionRequest || requiresRealTimeLookup
     );
     if (shouldFetchTavily) {
       const logMessage = isStockMentionRequest
@@ -1104,6 +1118,8 @@ serve(async (req) => {
     const detectIntent = (message: string) => {
       const msg = message.toLowerCase();
 
+      const buySellDecisionRequest = /(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|position|handel)/i.test(message);
+
       const newsUpdateKeywords = [
         'kväll',
         'ikväll',
@@ -1120,13 +1136,23 @@ serve(async (req) => {
         'sammanfattning'
       ];
       
+      // Buy/Sell Decisions Intent - prioritize when explicit trade action is requested
+      if (buySellDecisionRequest) {
+        return 'buy_sell_decisions';
+      }
+
+      // Portfolio Rebalancing/Optimization Intent - must outrank generic stock analysis even when tickers are present
+      if (/(?:portfölj|portfolio)/i.test(message) && /(?:optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma|rebalansera)/i.test(message)) {
+        return 'portfolio_optimization';
+      }
+
       // Stock/Company Analysis Intent - enhanced to catch more stock mentions
-      if (isStockMentionRequest || 
-          (/(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) && 
+      if (isStockMentionRequest ||
+          (/(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) &&
           /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5})/i.test(message))) {
         return 'stock_analysis';
       }
-      
+
       // Portfolio news update intent
       if (userHasPortfolio && newsUpdateKeywords.some(keyword => msg.includes(keyword))) {
         return 'news_update';
@@ -1137,16 +1163,6 @@ serve(async (req) => {
         return 'general_news';
       }
 
-      // Portfolio Rebalancing/Optimization Intent
-      if (/(?:portfölj|portfolio)/i.test(message) && /(?:optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma|rebalansera)/i.test(message)) {
-        return 'portfolio_optimization';
-      }
-      
-      // Buy/Sell Decisions Intent
-      if (/(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|position|handel)/i.test(message)) {
-        return 'buy_sell_decisions';
-      }
-       
       // Market Analysis Intent
       if (/(?:marknad|index|trend|prognos|ekonomi|räntor|inflation|börsen)/i.test(message)) {
         return 'market_analysis';
