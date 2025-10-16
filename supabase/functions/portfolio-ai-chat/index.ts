@@ -353,7 +353,9 @@ const fetchTavilyContext = async (
       }
 
       const tavilyData = await response.json() as TavilySearchResponse;
+      console.log('Tavily raw response:', JSON.stringify(tavilyData, null, 2));
       const formatted = formatTavilyResults(tavilyData);
+      console.log('Formatted Tavily context:', formatted.formattedContext);
 
       const hasContext = formatted.formattedContext.trim().length > 0;
       if (hasContext) {
@@ -1348,7 +1350,8 @@ serve(async (req) => {
       }
 
       if (tavilyContext.formattedContext) {
-        console.log('Tavily-kontent hämtad och läggs till i kontexten.');
+        console.log('Tavily formatted context (added to prompt):', tavilyContext.formattedContext);
+        console.log('Tavily sources:', tavilyContext.sources);
       }
     }
 
