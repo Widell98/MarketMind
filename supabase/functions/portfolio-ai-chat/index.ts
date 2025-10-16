@@ -1118,7 +1118,26 @@ serve(async (req) => {
     const detectIntent = (message: string) => {
       const msg = message.toLowerCase();
 
-      const buySellDecisionRequest = /(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|position|handel)/i.test(message);
+      const buySellKeywords = [
+        'byt',
+        'ändra',
+        'ersätt',
+        'ta bort',
+        'sälja',
+        'sälj',
+        'köpa',
+        'köp',
+        'mer av',
+        'mindre av',
+        'position',
+        'positioner',
+        'handel',
+        'handla'
+      ];
+
+      const buySellDecisionRequest = buySellKeywords.some(keyword =>
+        new RegExp(`\\b${escapeRegExp(keyword)}\\b`, 'i').test(message)
+      );
 
       const newsUpdateKeywords = [
         'kväll',
