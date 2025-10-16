@@ -285,40 +285,110 @@ const fetchTavilyContext = async (
     return { formattedContext: '', sources: [] };
   }
 
-  try {
+  const executeSearch = async (
+    searchOptions: TavilySearchOptions,
+    attempt = 0,
+  ): Promise<TavilyContextPayload> => {
     const payload: Record<string, unknown> = {
       api_key: tavilyApiKey,
-      query: options.query ?? message,
-      search_depth: options.searchDepth ?? 'basic',
+      query: searchOptions.query ?? message,
+      search_depth: searchOptions.searchDepth ?? 'basic',
       include_answer: true,
-      include_raw_content: options.includeRawContent ?? false,
-      max_results: options.maxResults ?? 5,
+      include_raw_content: searchOptions.includeRawContent ?? false,
+      max_results: searchOptions.maxResults ?? 5,
     };
 
-    if (Array.isArray(options.includeDomains) && options.includeDomains.length > 0) {
-      payload.include_domains = options.includeDomains;
+    if (Array.isArray(searchOptions.includeDomains) && searchOptions.includeDomains.length > 0) {
+      payload.include_domains = searchOptions.includeDomains;
     }
 
-    const response = await fetch('https://api.tavily.com/search', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+    const logContext = {
+      attempt,
+      query: payload.query,
+      searchDepth: payload.search_depth,
+      includeDomains: payload.include_domains,
+      includeRawContent: payload.include_raw_content,
+      maxResults: payload.max_results,
+    };
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Fel vid anrop till Tavily API:', errorText);
+    try {
+      console.log('Tavily-sökning initierad:', logContext);
+
+      const response = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Fel vid anrop till Tavily API:', errorText);
+
+        const canRetryAdvanced = (searchOptions.searchDepth ?? 'basic') !== 'advanced';
+        const canRetryWithoutDomains = Array.isArray(searchOptions.includeDomains) && searchOptions.includeDomains.length > 0;
+
+        if (attempt < 2 && (canRetryAdvanced || canRetryWithoutDomains)) {
+          const nextOptions: TavilySearchOptions = { ...searchOptions };
+
+          if (canRetryWithoutDomains) {
+            console.log('Försöker igen utan domänbegränsningar.');
+            delete nextOptions.includeDomains;
+          } else if (canRetryAdvanced) {
+            console.log('Ökar sökdjup till "advanced" och aktiverar råinnehåll.');
+            nextOptions.searchDepth = 'advanced';
+            nextOptions.includeRawContent = true;
+          }
+
+          return executeSearch(nextOptions, attempt + 1);
+        }
+
+        return { formattedContext: '', sources: [] };
+      }
+
+      const tavilyData = await response.json() as TavilySearchResponse;
+      const formatted = formatTavilyResults(tavilyData);
+
+      const hasContext = formatted.formattedContext.trim().length > 0;
+      if (hasContext) {
+        return formatted;
+      }
+
+      const canRetryAdvanced = (searchOptions.searchDepth ?? 'basic') !== 'advanced';
+      const canRetryWithoutDomains = Array.isArray(searchOptions.includeDomains) && searchOptions.includeDomains.length > 0;
+
+      if (attempt < 2 && (canRetryAdvanced || canRetryWithoutDomains)) {
+        const nextOptions: TavilySearchOptions = { ...searchOptions };
+
+        if (canRetryWithoutDomains) {
+          console.log('Tavily gav tomt svar med domänfilter. Försöker utan filter.');
+          delete nextOptions.includeDomains;
+        } else if (canRetryAdvanced) {
+          console.log('Tavily gav tomt svar. Försöker igen med större sökdjup.');
+          nextOptions.searchDepth = 'advanced';
+          nextOptions.includeRawContent = true;
+        }
+
+        return executeSearch(nextOptions, attempt + 1);
+      }
+
+      console.log('Tavily-sökning gav inget innehåll efter försök:', logContext);
+      return formatted;
+    } catch (error) {
+      console.error('Undantag vid anrop till Tavily API:', error);
+
+      if (attempt < 2) {
+        const nextOptions: TavilySearchOptions = { ...searchOptions, searchDepth: 'advanced', includeRawContent: true };
+        console.log('Försöker Tavily-sökning igen efter undantag.');
+        return executeSearch(nextOptions, attempt + 1);
+      }
+
       return { formattedContext: '', sources: [] };
     }
+  };
 
-    const tavilyData = await response.json() as TavilySearchResponse;
-    return formatTavilyResults(tavilyData);
-  } catch (error) {
-    console.error('Undantag vid anrop till Tavily API:', error);
-    return { formattedContext: '', sources: [] };
-  }
+  return executeSearch(options, 0);
 };
 
 const FINANCIAL_DATA_KEYWORDS = [
