@@ -110,6 +110,13 @@ type SheetTickerEdgeResponse = {
   tickers?: SheetTickerEdgeItem[];
 };
 
+type SheetTickerDetail = {
+  symbol: string;
+  name: string;
+  price: number | null;
+  currency: string | null;
+};
+
 type HoldingRecord = {
   symbol?: string | null;
   name?: string | null;
@@ -427,6 +434,9 @@ serve(async (req) => {
 
     let sheetTickerSymbols: string[] = [];
     let sheetTickerNames: string[] = [];
+    const sheetTickerLookup = new Map<string, SheetTickerDetail>();
+    const sheetTickerDetailMap = new Map<string, SheetTickerDetail>();
+    let sheetTickerDetailList: SheetTickerDetail[] = [];
 
     try {
       const { data: sheetTickerData, error: sheetTickerError } = await supabase.functions.invoke('list-sheet-tickers');
@@ -446,6 +456,12 @@ serve(async (req) => {
           if (!item || typeof item !== 'object') continue;
 
           const rawSymbol = typeof item.symbol === 'string' ? item.symbol : null;
+          const rawName = typeof item.name === 'string' ? item.name : null;
+          const rawCurrency = typeof item.currency === 'string' ? item.currency : null;
+          const parsedPrice = parseNumericValue(item.price);
+
+          let detail: SheetTickerDetail | null = null;
+
           if (rawSymbol) {
             const trimmedSymbol = rawSymbol.trim();
             const withoutPrefix = trimmedSymbol.includes(':')
@@ -454,10 +470,31 @@ serve(async (req) => {
             const cleanedSymbol = withoutPrefix.replace(/\s+/g, '').toUpperCase();
             if (cleanedSymbol.length > 0) {
               symbolSet.add(cleanedSymbol);
+
+              const resolvedName = rawName
+                ? rawName.replace(/\s+/g, ' ').trim() || cleanedSymbol
+                : cleanedSymbol;
+              const normalizedCurrency = rawCurrency ? rawCurrency.trim().toUpperCase() : null;
+
+              detail = {
+                symbol: cleanedSymbol,
+                name: resolvedName,
+                price: parsedPrice,
+                currency: normalizedCurrency,
+              };
+
+              const upperSymbol = cleanedSymbol.toUpperCase();
+              sheetTickerLookup.set(upperSymbol, detail);
+
+              const normalizedSymbolKey = upperSymbol.replace(/[^A-Z0-9]/g, '');
+              if (normalizedSymbolKey && normalizedSymbolKey !== upperSymbol) {
+                sheetTickerLookup.set(normalizedSymbolKey, detail);
+              }
+
+              sheetTickerDetailMap.set(upperSymbol, detail);
             }
           }
 
-          const rawName = typeof item.name === 'string' ? item.name : null;
           if (rawName) {
             const normalizedWhitespaceName = rawName.replace(/\s+/g, ' ').trim();
             if (normalizedWhitespaceName.length > 0) {
@@ -467,12 +504,28 @@ serve(async (req) => {
               if (diacriticsStripped.length > 0 && diacriticsStripped !== normalizedWhitespaceName) {
                 nameSet.add(diacriticsStripped);
               }
+
+              const normalizedNameKey = removeDiacritics(normalizedWhitespaceName)
+                .replace(/[^A-Z0-9]/g, '')
+                .toUpperCase();
+
+              if (normalizedNameKey) {
+                const detailForName = detail
+                  ?? (rawSymbol
+                    ? sheetTickerLookup.get(rawSymbol.trim().replace(/\s+/g, '').toUpperCase())
+                    : undefined);
+
+                if (detailForName) {
+                  sheetTickerLookup.set(normalizedNameKey, detailForName);
+                }
+              }
             }
           }
         }
 
         sheetTickerSymbols = Array.from(symbolSet);
         sheetTickerNames = Array.from(nameSet);
+        sheetTickerDetailList = Array.from(sheetTickerDetailMap.values());
 
         console.log('Loaded Google Sheets tickers:', {
           symbols: sheetTickerSymbols.length,
@@ -985,6 +1038,7 @@ serve(async (req) => {
     }) || hasTickerSymbolMention;
 
     const lowerCaseMessage = message.toLowerCase();
+    const normalizedMessageKey = removeDiacritics(message).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
     const isFinancialDataRequest = FINANCIAL_DATA_KEYWORDS.some(keyword => lowerCaseMessage.includes(keyword));
 
     const isStockMentionRequest = stockMentionsInMessage || isStockAnalysisRequest || (isFinancialDataRequest && detectedTickers.length > 0);
@@ -1096,6 +1150,78 @@ serve(async (req) => {
         console.error('Error in updateAIMemory:', error);
       }
     };
+
+    const getSheetTickerDetail = (identifier?: string | null): SheetTickerDetail | null => {
+      if (!identifier) return null;
+      const upperIdentifier = identifier.toUpperCase();
+      const direct = sheetTickerLookup.get(upperIdentifier);
+      if (direct) {
+        return direct;
+      }
+
+      const normalizedIdentifier = upperIdentifier.replace(/[^A-Z0-9]/g, '');
+      if (!normalizedIdentifier) {
+        return null;
+      }
+
+      return sheetTickerLookup.get(normalizedIdentifier) ?? null;
+    };
+
+    const priceKeywordPattern = /(pris|price|kurs)/i;
+    const isPriceRequest = priceKeywordPattern.test(message) && (stockMentionsInMessage || detectedTickers.length > 0);
+
+    let priceDataContext = '';
+
+    if (isPriceRequest && sheetTickerDetailList.length > 0) {
+      let matchedDetail = getSheetTickerDetail(primaryDetectedTicker);
+
+      if (!matchedDetail) {
+        for (const ticker of detectedTickers) {
+          matchedDetail = getSheetTickerDetail(ticker);
+          if (matchedDetail) break;
+        }
+      }
+
+      if (!matchedDetail && normalizedMessageKey) {
+        for (const detail of sheetTickerDetailList) {
+          const symbolKey = detail.symbol.replace(/[^A-Z0-9]/g, '').toUpperCase();
+          if (symbolKey && normalizedMessageKey.includes(symbolKey)) {
+            matchedDetail = detail;
+            break;
+          }
+
+          const nameKey = removeDiacritics(detail.name)
+            .replace(/[^A-Z0-9]/g, '')
+            .toUpperCase();
+
+          if (nameKey && normalizedMessageKey.includes(nameKey)) {
+            matchedDetail = detail;
+            break;
+          }
+        }
+      }
+
+      if (matchedDetail) {
+        if (typeof matchedDetail.price === 'number' && Number.isFinite(matchedDetail.price)) {
+          const originalCurrency = matchedDetail.currency ?? 'SEK';
+          const priceFormatter = new Intl.NumberFormat('sv-SE', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          });
+          const formattedOriginal = `${priceFormatter.format(matchedDetail.price)} ${originalCurrency}`;
+          let convertedText = '';
+
+          if (originalCurrency !== 'SEK') {
+            const priceInSEK = convertToSEK(matchedDetail.price, originalCurrency);
+            convertedText = ` (${priceFormatter.format(priceInSEK)} SEK)`;
+          }
+
+          priceDataContext = `\n\nGOOGLE SHEETS PRISDATA:\n- Senaste registrerade priset för ${matchedDetail.name} (${matchedDetail.symbol}) är ${formattedOriginal}${convertedText}.`;
+        } else {
+          priceDataContext = `\n\nGOOGLE SHEETS PRISDATA:\n- Google Sheets saknar giltig prisdata för ${matchedDetail.name} (${matchedDetail.symbol}).`;
+        }
+      }
+    }
 
     const userHasPortfolio = Array.isArray(holdings) &&
       holdings.some((holding: HoldingRecord) => holding?.holding_type !== 'recommendation');
@@ -1420,6 +1546,10 @@ contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
 - Förväntad årlig avkastning: ${portfolio.expected_return || 'Ej beräknad'}%`;
         }
       }
+    }
+
+    if (priceDataContext) {
+      contextInfo += priceDataContext;
     }
 
 // Add response structure requirements
