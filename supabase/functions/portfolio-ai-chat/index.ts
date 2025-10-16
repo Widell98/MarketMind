@@ -34,6 +34,21 @@ const REALTIME_KEYWORDS = [
   'price today'
 ];
 
+const REALTIME_RESEARCH_PATTERNS = [
+  /kolla upp/i,
+  /sök upp/i,
+  /ta reda på/i,
+  /leta upp/i,
+  /googla/i,
+  /hitta(?: mer)? information/i,
+  /hitta (?:en )?(?:hemsida|webbplats)/i,
+  /kolla (?:på|upp)? (?:en )?(?:hemsida|webbplats)/i,
+  /deras hemsida/i,
+  /(?:vem|vilka) som står bakom/i,
+  /(?:vem|vilka) står bakom/i,
+  /vem grundade/i
+];
+
 const SOFT_REALTIME_KEYWORDS = [
   'idag',
   'just nu',
@@ -189,7 +204,11 @@ const formatAllocationLabel = (label: string): string => {
 
 const requiresRealTimeSearch = (message: string): boolean => {
   const normalized = message.toLowerCase();
-  return REALTIME_KEYWORDS.some(keyword => normalized.includes(keyword));
+  if (REALTIME_KEYWORDS.some(keyword => normalized.includes(keyword))) {
+    return true;
+  }
+
+  return REALTIME_RESEARCH_PATTERNS.some(pattern => pattern.test(message));
 };
 
 type TavilySearchResult = {
