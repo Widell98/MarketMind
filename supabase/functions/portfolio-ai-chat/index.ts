@@ -43,9 +43,12 @@ const REALTIME_RESEARCH_PATTERNS = [
   /hitta(?: mer)? information/i,
   /hitta (?:en )?(?:hemsida|webbplats)/i,
   /kolla (?:på|upp)? (?:en )?(?:hemsida|webbplats)/i,
+  /kolla (?:på )?deras (?:hemsida|webbplats)/i,
+  /kika (?:på )?(?:en )?(?:hemsida|webbplats)/i,
   /deras hemsida/i,
   /(?:vem|vilka) som står bakom/i,
   /(?:vem|vilka) står bakom/i,
+  /vilka ligger bakom/i,
   /vem grundade/i
 ];
 
@@ -1066,6 +1069,9 @@ serve(async (req) => {
       }
     }
 
+    const tavilySearchAttempted = shouldFetchTavily && requiresRealTimeLookup;
+    const tavilyReturnedResults = tavilyContext.formattedContext.trim().length > 0;
+
     // AI Memory update function
     const updateAIMemory = async (supabase: any, userId: string, userMessage: string, aiResponse: string, existingMemory: any) => {
       try {
@@ -1212,8 +1218,28 @@ serve(async (req) => {
     const userIntent = detectIntent(message);
     console.log('Detected user intent:', userIntent);
 
+    const realTimeTransparencyInstruction = (() => {
+      if (!requiresRealTimeLookup) {
+        return '';
+      }
+
+      const policyLines = [
+        'REALTIDSPOLICY:',
+        '- Basera realtidsinsikter endast på Tavily-resultat eller annan uttryckligen given data.',
+        '- Om sökningen inte gav relevanta resultat ska du tydligt säga att den aktuella informationen saknas.',
+        '- Hitta aldrig på exempel, siffror eller scenarier när realtidsdata saknas.',
+        '- Säg aldrig att du inte kan surfa på internet – förklara istället att inga källor hittades eller att datan saknas.',
+      ];
+
+      if (tavilySearchAttempted && !tavilyReturnedResults) {
+        policyLines.push('- Tavily-sökningen gav inga användbara källor för frågan. Var extra tydlig med att färska data saknas och erbjud att återkomma när ny information finns.');
+      }
+
+      return `\n\n${policyLines.join('\n')}`;
+    })();
+
     // Build enhanced context with intent-specific prompts
-let contextInfo = `Du är en auktoriserad svensk investeringsrådgivare med diskretionär men icke-verkställande behörighet. Du agerar som en personlig finansiell rådgivare som ger professionella investeringsråd.
+    let contextInfo = `Du är en auktoriserad svensk investeringsrådgivare med diskretionär men icke-verkställande behörighet. Du agerar som en personlig finansiell rådgivare som ger professionella investeringsråd.
 
 ⚡ SPRÅKREGLER:
 - Om användarens fråga är på svenska → översätt den först till engelska internt innan du resonerar.
@@ -1228,9 +1254,9 @@ PERSONA & STIL:
 - Ge alltid exempel på relevanta aktier/fonder med symboler när det är lämpligt
 - Använd svensk finansterminologi och marknadskontext
 - Avsluta med en öppen-relaterad fråga för att uppmuntra fortsatt dialog
-`;
+${realTimeTransparencyInstruction}`;
 
-const intentPrompts = {
+    const intentPrompts = {
   stock_analysis: `
 AKTIEANALYSUPPGIFT:
 - Anpassa alltid svarslängd och struktur efter användarens fråga.
