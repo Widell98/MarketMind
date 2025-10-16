@@ -37,6 +37,50 @@ const REALTIME_KEYWORDS = [
   'kan du ta upp realtidsnyheter'
 ];
 
+const REALTIME_SUBJECT_KEYWORDS: Record<string, string> = {
+  bitcoin: 'Bitcoin (BTC)',
+  btc: 'Bitcoin (BTC)',
+  ethereum: 'Ethereum (ETH)',
+  etherum: 'Ethereum (ETH)',
+  eth: 'Ethereum (ETH)',
+  solana: 'Solana (SOL)',
+  sol: 'Solana (SOL)',
+  cardano: 'Cardano (ADA)',
+  ada: 'Cardano (ADA)',
+  polkadot: 'Polkadot (DOT)',
+  dot: 'Polkadot (DOT)',
+  xrp: 'Ripple (XRP)',
+  ripple: 'Ripple (XRP)',
+  litecoin: 'Litecoin (LTC)',
+  ltc: 'Litecoin (LTC)',
+  dogecoin: 'Dogecoin (DOGE)',
+  doge: 'Dogecoin (DOGE)',
+  chainlink: 'Chainlink (LINK)',
+  link: 'Chainlink (LINK)',
+  polygon: 'Polygon (MATIC)',
+  matic: 'Polygon (MATIC)',
+  avalanche: 'Avalanche (AVAX)',
+  avax: 'Avalanche (AVAX)',
+  bnb: 'Binance Coin (BNB)',
+  'binance coin': 'Binance Coin (BNB)',
+  tesla: 'Tesla',
+  nvidia: 'Nvidia',
+  apple: 'Apple',
+  microsoft: 'Microsoft',
+  google: 'Alphabet (Google)',
+  alphabet: 'Alphabet (Google)',
+  amazon: 'Amazon',
+  meta: 'Meta Platforms',
+  facebook: 'Meta Platforms',
+  netflix: 'Netflix',
+  saab: 'Saab',
+  volvo: 'Volvo',
+  "hennes & mauritz": 'Hennes & Mauritz',
+  "hennes och mauritz": 'Hennes & Mauritz',
+};
+
+const MAX_TAVILY_QUERY_LENGTH = 400;
+
 const EXCHANGE_RATES: Record<string, number> = {
   SEK: 1.0,
   USD: 10.5,
@@ -500,6 +544,8 @@ serve(async (req) => {
 
     let sheetTickerSymbols: string[] = [];
     let sheetTickerNames: string[] = [];
+    const sheetTickerSymbolToName = new Map<string, string>();
+    const sheetTickerNameDisplayLookup = new Map<string, string>();
 
     try {
       const { data: sheetTickerData, error: sheetTickerError } = await supabase.functions.invoke('list-sheet-tickers');
@@ -516,6 +562,7 @@ serve(async (req) => {
         const nameSet = new Set<string>();
 
         for (const item of rawTickers) {
+          let normalizedSymbolForName: string | null = null;
           if (!item || typeof item !== 'object') continue;
 
           const rawSymbol = typeof item.symbol === 'string' ? item.symbol : null;
@@ -527,6 +574,7 @@ serve(async (req) => {
             const cleanedSymbol = withoutPrefix.replace(/\s+/g, '').toUpperCase();
             if (cleanedSymbol.length > 0) {
               symbolSet.add(cleanedSymbol);
+              normalizedSymbolForName = cleanedSymbol;
             }
           }
 
@@ -535,10 +583,16 @@ serve(async (req) => {
             const normalizedWhitespaceName = rawName.replace(/\s+/g, ' ').trim();
             if (normalizedWhitespaceName.length > 0) {
               nameSet.add(normalizedWhitespaceName);
+              sheetTickerNameDisplayLookup.set(normalizedWhitespaceName.toLowerCase(), normalizedWhitespaceName);
 
               const diacriticsStripped = removeDiacritics(normalizedWhitespaceName).trim();
               if (diacriticsStripped.length > 0 && diacriticsStripped !== normalizedWhitespaceName) {
                 nameSet.add(diacriticsStripped);
+                sheetTickerNameDisplayLookup.set(diacriticsStripped.toLowerCase(), normalizedWhitespaceName);
+              }
+
+              if (normalizedSymbolForName) {
+                sheetTickerSymbolToName.set(normalizedSymbolForName, normalizedWhitespaceName);
               }
             }
           }
@@ -859,6 +913,53 @@ serve(async (req) => {
       return Array.from(uppercaseFallback);
     };
 
+    const extractRealTimeSubjectsFromText = (input: string): string[] => {
+      if (typeof input !== 'string') return [];
+
+      const trimmedInput = input.trim();
+      if (!trimmedInput) return [];
+
+      const lowerInput = trimmedInput.toLowerCase();
+      const subjects: string[] = [];
+      const seen = new Set<string>();
+
+      const addSubject = (candidate: string | null | undefined) => {
+        if (!candidate) return;
+        const normalizedCandidate = candidate.trim();
+        if (!normalizedCandidate) return;
+        const key = normalizedCandidate.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        subjects.push(normalizedCandidate);
+      };
+
+      const tickerSymbols = extractTickerSymbols(trimmedInput);
+      for (const tickerSymbol of tickerSymbols) {
+        const displayName = sheetTickerSymbolToName.get(tickerSymbol);
+        addSubject(displayName ? `${displayName} (${tickerSymbol})` : tickerSymbol);
+      }
+
+      for (const [rawKeyword, displayName] of Object.entries(REALTIME_SUBJECT_KEYWORDS)) {
+        const keyword = rawKeyword.trim().toLowerCase();
+        if (!keyword) continue;
+
+        const patternSource = escapeRegExp(keyword).replace(/\s+/g, '\\s+');
+        const detectionPattern = new RegExp(`(?:^|[^a-z0-9åäö])${patternSource}(?=$|[^a-z0-9åäö])`, 'i');
+
+        if (detectionPattern.test(trimmedInput)) {
+          addSubject(displayName);
+        }
+      }
+
+      for (const [detector, displayName] of sheetTickerNameDisplayLookup.entries()) {
+        if (lowerInput.includes(detector)) {
+          addSubject(displayName);
+        }
+      }
+
+      return subjects;
+    };
+
     const buildStockAnalysisUrlCandidates = (ticker: string): string[] => {
       if (!ticker) return [];
 
@@ -1061,6 +1162,75 @@ serve(async (req) => {
     const isFinancialDataRequest = FINANCIAL_DATA_KEYWORDS.some(keyword => lowerCaseMessage.includes(keyword));
 
     const isStockMentionRequest = stockMentionsInMessage || isStockAnalysisRequest || (isFinancialDataRequest && detectedTickers.length > 0);
+
+    const resolveRealTimeSearchSubject = (): string | null => {
+      const currentSubjects = extractRealTimeSubjectsFromText(message);
+      if (currentSubjects.length > 0) {
+        return currentSubjects[0];
+      }
+
+      if (Array.isArray(chatHistory) && chatHistory.length > 0) {
+        for (let index = chatHistory.length - 1; index >= 0; index--) {
+          const historyEntry = chatHistory[index];
+          if (!historyEntry || typeof historyEntry !== 'object') continue;
+
+          const historyContentRaw = (historyEntry as { content?: unknown }).content;
+          let historyContent = '';
+
+          if (typeof historyContentRaw === 'string') {
+            historyContent = historyContentRaw;
+          } else if (Array.isArray(historyContentRaw)) {
+            historyContent = historyContentRaw
+              .map(part => typeof part === 'string' ? part : '')
+              .join(' ');
+          }
+
+          if (!historyContent) continue;
+
+          const historySubjects = extractRealTimeSubjectsFromText(historyContent);
+          if (historySubjects.length > 0) {
+            return historySubjects[0];
+          }
+        }
+      }
+
+      if (primaryDetectedTicker) {
+        const displayName = sheetTickerSymbolToName.get(primaryDetectedTicker);
+        return displayName ? `${displayName} (${primaryDetectedTicker})` : primaryDetectedTicker;
+      }
+
+      return null;
+    };
+
+    const realTimeSearchSubject = resolveRealTimeSearchSubject();
+
+    const buildRealTimeQuery = (subject: string | null, userPrompt: string): string => {
+      const normalizedPrompt = typeof userPrompt === 'string'
+        ? userPrompt.replace(/\s+/g, ' ').trim()
+        : '';
+
+      let baseQuery: string;
+
+      if (subject) {
+        baseQuery = `Sammanställ senaste 48 timmarna realtidsnyheter, marknadston och viktiga datapunkter kring ${subject}. Prioritera kursdrivande händelser, regulatoriska besked och färska analytikerrapporter.`;
+      } else if (normalizedPrompt) {
+        baseQuery = `Sammanställ relevanta realtidsnyheter och marknadssignaler kopplat till följande fråga: ${normalizedPrompt}.`;
+      } else {
+        baseQuery = 'Sammanställ de viktigaste realtidsnyheterna och marknadssignalerna kopplat till användarens fråga.';
+      }
+
+      const fullQuery = normalizedPrompt && subject
+        ? `${baseQuery} Ursprunglig fråga: ${normalizedPrompt}.`
+        : baseQuery;
+
+      if (fullQuery.length > MAX_TAVILY_QUERY_LENGTH) {
+        return `${fullQuery.slice(0, MAX_TAVILY_QUERY_LENGTH - 3)}...`;
+      }
+
+      return fullQuery;
+    };
+
+    const resolvedRealTimeQuery = buildRealTimeQuery(realTimeSearchSubject, message);
      
     // Check if user wants personal investment advice/recommendations
     const isPersonalAdviceRequest = /(?:rekommendation|förslag|vad ska jag|bör jag|passar mig|min portfölj|mina intressen|för mig|personlig|skräddarsy|baserat på|investera|köpa|sälja|portföljanalys|investeringsstrategi)/i.test(message);
@@ -1085,6 +1255,19 @@ serve(async (req) => {
         : 'Fråga upptäckt som realtidsfråga – anropar Tavily.';
       console.log(logMessage);
 
+      if (realTimeSearchSubject) {
+        console.log('Identifierat realtidsämne för Tavily:', realTimeSearchSubject);
+      } else {
+        console.log('Inget tydligt realtidsämne hittades – använder användarens fråga som Tavily-sökfråga.');
+      }
+
+      console.log('Tavily-sökfråga som används:', resolvedRealTimeQuery);
+
+      const buildGeneralTavilyOptions = (): TavilySearchOptions => ({
+        includeRawContent: true,
+        query: resolvedRealTimeQuery,
+      });
+
       const shouldPrioritizeStockAnalysis = primaryDetectedTicker && (isStockAnalysisRequest || isFinancialDataRequest);
 
       if (shouldPrioritizeStockAnalysis) {
@@ -1095,10 +1278,10 @@ serve(async (req) => {
           console.log('Lyckades hämta data från stockanalysis.com.');
         } else {
           console.log('Inga resultat från stockanalysis.com, försöker med bredare Tavily-sökning.');
-          tavilyContext = await fetchTavilyContext(message, { includeRawContent: true });
+          tavilyContext = await fetchTavilyContext(message, buildGeneralTavilyOptions());
         }
       } else {
-        tavilyContext = await fetchTavilyContext(message, { includeRawContent: true });
+        tavilyContext = await fetchTavilyContext(message, buildGeneralTavilyOptions());
       }
 
       if (tavilyContext.formattedContext) {
