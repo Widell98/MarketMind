@@ -34,6 +34,91 @@ const REALTIME_KEYWORDS = [
   'price today'
 ];
 
+const TRUSTED_TAVILY_DOMAINS = [
+  'reuters.com',
+  'bloomberg.com',
+  'wsj.com',
+  'ft.com',
+  'cnbc.com',
+  'marketwatch.com',
+  'finance.yahoo.com',
+  'investing.com',
+  'morningstar.com',
+  'seekingalpha.com',
+  'di.se',
+  'affarsvarlden.se',
+  'placera.se',
+  'privataaffarer.se',
+  'svd.se',
+  'dn.se',
+];
+
+const DEFAULT_EXCLUDED_TAVILY_DOMAINS = [
+  'reddit.com',
+  'www.reddit.com',
+  'quora.com',
+  'twitter.com',
+  'x.com',
+  'facebook.com',
+  'instagram.com',
+  'tiktok.com',
+  'youtube.com',
+  'linkedin.com',
+  'medium.com',
+  'stocktwits.com',
+  'discord.com',
+  'pinterest.com',
+];
+
+const FINANCIAL_RELEVANCE_KEYWORDS = [
+  'aktie',
+  'aktien',
+  'aktier',
+  'börs',
+  'marknad',
+  'marknaden',
+  'stock',
+  'stocks',
+  'share',
+  'shares',
+  'equity',
+  'equities',
+  'revenue',
+  'omsättning',
+  'earnings',
+  'vinster',
+  'profit',
+  'net income',
+  'eps',
+  'utdelning',
+  'dividend',
+  'guidance',
+  'forecast',
+  'prognos',
+  'resultat',
+  'rapport',
+  'kvartal',
+  'quarter',
+  'valuation',
+  'värdering',
+  'cash flow',
+  'kassaflöde',
+  'yield',
+  'ränta',
+  'interest',
+  'inflation',
+  'ekonomi',
+  'economy',
+  'market',
+  'markets',
+  'investor',
+  'investment',
+  'analyst',
+  'nyckeltal',
+  'price',
+  'pris',
+];
+
 const EXCHANGE_RATES: Record<string, number> = {
   SEK: 1.0,
   USD: 10.5,
@@ -199,6 +284,8 @@ type TavilySearchResponse = {
   results?: TavilySearchResult[];
 };
 
+type TavilyTopic = 'general' | 'news' | 'finance';
+
 type TavilyContextPayload = {
   formattedContext: string;
   sources: string[];
@@ -209,6 +296,10 @@ type TavilySearchDepth = 'basic' | 'advanced';
 type TavilySearchOptions = {
   query?: string;
   includeDomains?: string[];
+  excludeDomains?: string[];
+  topic?: TavilyTopic;
+  timeRange?: string;
+  days?: number;
   searchDepth?: TavilySearchDepth;
   maxResults?: number;
   includeRawContent?: boolean;
@@ -219,7 +310,54 @@ type StockDetectionPattern = {
   requiresContext?: boolean;
 };
 
-const formatTavilyResults = (data: TavilySearchResponse | null): TavilyContextPayload => {
+const normalizeHostname = (url: string): string | null => {
+  try {
+    const { hostname } = new URL(url);
+    return hostname.replace(/^www\./, '').toLowerCase();
+  } catch (error) {
+    console.warn('Kunde inte tolka URL från Tavily-resultat:', url, error);
+    return null;
+  }
+};
+
+const isAllowedDomain = (url: string, allowedDomains: string[]): boolean => {
+  if (!url) return false;
+  if (!Array.isArray(allowedDomains) || allowedDomains.length === 0) {
+    return true;
+  }
+
+  const hostname = normalizeHostname(url);
+  if (!hostname) return false;
+
+  return allowedDomains.some((domain) => {
+    const normalizedDomain = domain.replace(/^www\./, '').toLowerCase();
+    return hostname === normalizedDomain || hostname.endsWith(`.${normalizedDomain}`);
+  });
+};
+
+const hasFinancialRelevance = (text: string): boolean => {
+  if (!text || text.trim().length === 0) {
+    return false;
+  }
+
+  const normalized = text.toLowerCase();
+  return FINANCIAL_RELEVANCE_KEYWORDS.some(keyword => normalized.includes(keyword));
+};
+
+const selectSnippetSource = (result: TavilySearchResult): string => {
+  const snippetSource = typeof result.raw_content === 'string' && result.raw_content.trim().length > 0
+    ? result.raw_content
+    : typeof result.content === 'string' && result.content.trim().length > 0
+      ? result.content
+      : result.snippet;
+
+  return typeof snippetSource === 'string' ? snippetSource.trim() : '';
+};
+
+const formatTavilyResults = (
+  data: TavilySearchResponse | null,
+  allowedDomains: string[],
+): TavilyContextPayload => {
   if (!data) {
     return { formattedContext: '', sources: [] };
   }
@@ -232,16 +370,37 @@ const formatTavilyResults = (data: TavilySearchResponse | null): TavilyContextPa
   }
 
   if (Array.isArray(data.results)) {
-    const topResults = data.results.slice(0, 3);
-    if (topResults.length > 0) {
-      const resultLines = topResults.map((result: TavilySearchResult, index: number) => {
+    const filteredResults = data.results
+      .filter((result: TavilySearchResult) => {
+        const url = typeof result.url === 'string' ? result.url : '';
+        if (!url || !isAllowedDomain(url, allowedDomains)) {
+          if (url) {
+            console.log('Filtrerar bort otillåten domän från Tavily-resultat:', url);
+          }
+          return false;
+        }
+
+        const snippetText = selectSnippetSource(result);
+        const combinedText = [result.title, snippetText].filter(Boolean).join(' ');
+        if (!combinedText) {
+          console.log('Filtrerar bort Tavily-resultat utan relevant innehåll:', url);
+          return false;
+        }
+
+        const hasRelevance = hasFinancialRelevance(combinedText);
+        if (!hasRelevance && combinedText.length < 60) {
+          console.log('Filtrerar bort Tavily-resultat med låg finansiell relevans:', url);
+          return false;
+        }
+
+        return true;
+      })
+      .slice(0, 3);
+
+    if (filteredResults.length > 0) {
+      const resultLines = filteredResults.map((result: TavilySearchResult, index: number) => {
         const title = typeof result.title === 'string' ? result.title : `Resultat ${index + 1}`;
-        const snippetSource = typeof result.raw_content === 'string' && result.raw_content.trim().length > 0
-          ? result.raw_content
-          : typeof result.content === 'string' && result.content.trim().length > 0
-            ? result.content
-            : result.snippet;
-        const trimmedSnippet = typeof snippetSource === 'string' ? snippetSource.trim() : '';
+        const trimmedSnippet = selectSnippetSource(result);
         const safeSnippet = trimmedSnippet.length > 900
           ? `${trimmedSnippet.slice(0, 900)}…`
           : trimmedSnippet;
@@ -286,6 +445,17 @@ const fetchTavilyContext = async (
   }
 
   try {
+    const effectiveIncludeDomains = Array.isArray(options.includeDomains) && options.includeDomains.length > 0
+      ? options.includeDomains
+      : TRUSTED_TAVILY_DOMAINS;
+
+    const effectiveExcludeDomains = Array.from(new Set([
+      ...DEFAULT_EXCLUDED_TAVILY_DOMAINS,
+      ...(Array.isArray(options.excludeDomains) ? options.excludeDomains : []),
+    ]));
+
+    const effectiveTopic: TavilyTopic = options.topic ?? 'finance';
+
     const payload: Record<string, unknown> = {
       api_key: tavilyApiKey,
       query: options.query ?? message,
@@ -295,8 +465,24 @@ const fetchTavilyContext = async (
       max_results: options.maxResults ?? 5,
     };
 
-    if (Array.isArray(options.includeDomains) && options.includeDomains.length > 0) {
-      payload.include_domains = options.includeDomains;
+    if (effectiveIncludeDomains.length > 0) {
+      payload.include_domains = effectiveIncludeDomains;
+    }
+
+    if (effectiveExcludeDomains.length > 0) {
+      payload.exclude_domains = effectiveExcludeDomains;
+    }
+
+    if (effectiveTopic) {
+      payload.topic = effectiveTopic;
+    }
+
+    if (typeof options.timeRange === 'string' && options.timeRange.trim().length > 0) {
+      payload.time_range = options.timeRange.trim();
+    }
+
+    if (typeof options.days === 'number' && Number.isFinite(options.days)) {
+      payload.days = options.days;
     }
 
     const response = await fetch('https://api.tavily.com/search', {
@@ -314,7 +500,7 @@ const fetchTavilyContext = async (
     }
 
     const tavilyData = await response.json() as TavilySearchResponse;
-    return formatTavilyResults(tavilyData);
+    return formatTavilyResults(tavilyData, effectiveIncludeDomains);
   } catch (error) {
     console.error('Undantag vid anrop till Tavily API:', error);
     return { formattedContext: '', sources: [] };
@@ -996,15 +1182,17 @@ serve(async (req) => {
     // Fetch Tavily context when the user mentions stocks or requests real-time insights
     let tavilyContext: TavilyContextPayload = { formattedContext: '', sources: [] };
 
+    const hasRealTimeTrigger = requiresRealTimeSearch(message);
+
     const isSimplePersonalAdviceRequest = (
       isPersonalAdviceRequest || isPortfolioOptimizationRequest
     ) &&
       !isStockMentionRequest &&
-      !requiresRealTimeSearch(message) &&
+      !hasRealTimeTrigger &&
       detectedTickers.length === 0;
 
     const shouldFetchTavily = !isSimplePersonalAdviceRequest && (
-      isStockMentionRequest || requiresRealTimeSearch(message)
+      isStockMentionRequest || hasRealTimeTrigger
     );
     if (shouldFetchTavily) {
       const logMessage = isStockMentionRequest
@@ -1014,6 +1202,40 @@ serve(async (req) => {
 
       const shouldPrioritizeStockAnalysis = primaryDetectedTicker && (isStockAnalysisRequest || isFinancialDataRequest);
 
+      const determineTavilyTopic = (): TavilyTopic => {
+        if (userIntent === 'general_news' || userIntent === 'news_update' || userIntent === 'market_analysis') {
+          return 'news';
+        }
+        if (isStockAnalysisRequest || isFinancialDataRequest) {
+          return 'finance';
+        }
+        return 'finance';
+      };
+
+      const shouldUseAdvancedDepth = shouldPrioritizeStockAnalysis
+        || isFinancialDataRequest
+        || userIntent === 'news_update'
+        || userIntent === 'market_analysis';
+
+      const buildDefaultTavilyOptions = (): TavilySearchOptions => {
+        const options: TavilySearchOptions = {
+          includeDomains: TRUSTED_TAVILY_DOMAINS,
+          excludeDomains: DEFAULT_EXCLUDED_TAVILY_DOMAINS,
+          includeRawContent: true,
+          topic: determineTavilyTopic(),
+          searchDepth: shouldUseAdvancedDepth ? 'advanced' : 'basic',
+          maxResults: 6,
+        };
+
+        if (hasRealTimeTrigger || userIntent === 'news_update') {
+          options.timeRange = 'day';
+        } else if (userIntent === 'general_news' || userIntent === 'market_analysis') {
+          options.timeRange = 'week';
+        }
+
+        return options;
+      };
+
       if (shouldPrioritizeStockAnalysis) {
         console.log(`Försöker hämta finansiell data för ${primaryDetectedTicker} från stockanalysis.com.`);
         tavilyContext = await fetchStockAnalysisFinancialContext(primaryDetectedTicker, message);
@@ -1022,10 +1244,10 @@ serve(async (req) => {
           console.log('Lyckades hämta data från stockanalysis.com.');
         } else {
           console.log('Inga resultat från stockanalysis.com, försöker med bredare Tavily-sökning.');
-          tavilyContext = await fetchTavilyContext(message, { includeRawContent: true });
+          tavilyContext = await fetchTavilyContext(message, buildDefaultTavilyOptions());
         }
       } else {
-        tavilyContext = await fetchTavilyContext(message, { includeRawContent: true });
+        tavilyContext = await fetchTavilyContext(message, buildDefaultTavilyOptions());
       }
 
       if (tavilyContext.formattedContext) {
@@ -1173,7 +1395,11 @@ PERSONA & STIL:
 - Vid komplexa frågor → använd strukturerad analys (Situation, Strategi, Risker, Åtgärder)
 - Ge alltid exempel på relevanta aktier/fonder med symboler när det är lämpligt
 - Använd svensk finansterminologi och marknadskontext
+- När du refererar till extern realtidskontext: väv in källan direkt i texten (t.ex. "Enligt Reuters...")
+- Knyt alltid resonemang till användarens riskprofil, horisont och mål så att råden känns personligt anpassade
+- Använd emojis sparsamt som rubrik- eller punktmarkörer (max en per sektion) för att behålla professionell ton
 - Avsluta med en öppen-relaterad fråga för att uppmuntra fortsatt dialog
+- Avsluta alltid med texten "Disclaimer: Detta är endast i utbildningssyfte. Konsultera alltid en licensierad rådgivare."
 `;
 
 const intentPrompts = {
@@ -1183,6 +1409,7 @@ AKTIEANALYSUPPGIFT:
 - Om frågan är snäv (ex. "vilka triggers?" eller "vad är riskerna?") → ge bara det relevanta svaret i 2–5 meningar.
 - Om frågan är bred eller allmän (ex. "kan du analysera bolaget X?") → använd hela analysstrukturen nedan.
 - Var alltid tydlig och koncis i motiveringarna.
+- Vid bredare analyser: använd rubrikerna **Analys 🔍**, **Rekommendation 🌟** och **Risker ⚠️** (lägg till fler sektioner vid behov).
 
 **OBLIGATORISKT FORMAT FÖR AKTIEFÖRSLAG:**
 **Företagsnamn (TICKER)** - Kort motivering
