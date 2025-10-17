@@ -1217,6 +1217,67 @@ serve(async (req) => {
       !hasRealTimeTrigger &&
       detectedTickers.length === 0;
 
+    const userHasPortfolio = Array.isArray(holdings) &&
+      holdings.some((holding: HoldingRecord) => holding?.holding_type !== 'recommendation');
+
+    // ENHANCED INTENT ROUTING SYSTEM
+    const detectIntent = (message: string) => {
+      const msg = message.toLowerCase();
+
+      const newsUpdateKeywords = [
+        'kväll',
+        'ikväll',
+        'senaste',
+        'påverka min portfölj',
+        'portföljen'
+      ];
+
+      const generalNewsKeywords = [
+        'nyheter',
+        'marknadsbrev',
+        'dagens händelser',
+        'veckobrev',
+        'sammanfattning'
+      ];
+
+      // Stock/Company Analysis Intent - enhanced to catch more stock mentions
+      if (isStockMentionRequest ||
+          (/(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) &&
+          /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5})/i.test(message))) {
+        return 'stock_analysis';
+      }
+
+      // Portfolio news update intent
+      if (userHasPortfolio && newsUpdateKeywords.some(keyword => msg.includes(keyword))) {
+        return 'news_update';
+      }
+
+      // General market news intent
+      if (generalNewsKeywords.some(keyword => msg.includes(keyword))) {
+        return 'general_news';
+      }
+
+      // Portfolio Rebalancing/Optimization Intent
+      if (/(?:portfölj|portfolio)/i.test(message) && /(?:optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma|rebalansera)/i.test(message)) {
+        return 'portfolio_optimization';
+      }
+
+      // Buy/Sell Decisions Intent
+      if (/(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|position|handel)/i.test(message)) {
+        return 'buy_sell_decisions';
+      }
+
+      // Market Analysis Intent
+      if (/(?:marknad|index|trend|prognos|ekonomi|räntor|inflation|börsen)/i.test(message)) {
+        return 'market_analysis';
+      }
+
+      return 'general_advice';
+    };
+
+    const userIntent = detectIntent(message);
+    console.log('Detected user intent:', userIntent);
+
     const shouldFetchTavily = !isSimplePersonalAdviceRequest && (
       isStockMentionRequest || hasRealTimeTrigger
     );
@@ -1346,68 +1407,7 @@ serve(async (req) => {
       }
     };
 
-    const userHasPortfolio = Array.isArray(holdings) &&
-      holdings.some((holding: HoldingRecord) => holding?.holding_type !== 'recommendation');
-
-    // ENHANCED INTENT ROUTING SYSTEM
-    const detectIntent = (message: string) => {
-      const msg = message.toLowerCase();
-
-      const newsUpdateKeywords = [
-        'kväll',
-        'ikväll',
-        'senaste',
-        'påverka min portfölj',
-        'portföljen'
-      ];
-
-      const generalNewsKeywords = [
-        'nyheter',
-        'marknadsbrev',
-        'dagens händelser',
-        'veckobrev',
-        'sammanfattning'
-      ];
-      
-      // Stock/Company Analysis Intent - enhanced to catch more stock mentions
-      if (isStockMentionRequest || 
-          (/(?:analysera|analys av|vad tycker du om|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|vad har.*för|information om|företagsinfo)/i.test(message) && 
-          /(?:aktie|aktien|bolaget|företaget|aktier|stock|share|equity|[A-Z]{3,5})/i.test(message))) {
-        return 'stock_analysis';
-      }
-      
-      // Portfolio news update intent
-      if (userHasPortfolio && newsUpdateKeywords.some(keyword => msg.includes(keyword))) {
-        return 'news_update';
-      }
-
-      // General market news intent
-      if (generalNewsKeywords.some(keyword => msg.includes(keyword))) {
-        return 'general_news';
-      }
-
-      // Portfolio Rebalancing/Optimization Intent
-      if (/(?:portfölj|portfolio)/i.test(message) && /(?:optimera|optimering|förbättra|effektivisera|balansera|omviktning|trimma|rebalansera)/i.test(message)) {
-        return 'portfolio_optimization';
-      }
-      
-      // Buy/Sell Decisions Intent
-      if (/(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av|position|handel)/i.test(message)) {
-        return 'buy_sell_decisions';
-      }
-       
-      // Market Analysis Intent
-      if (/(?:marknad|index|trend|prognos|ekonomi|räntor|inflation|börsen)/i.test(message)) {
-        return 'market_analysis';
-      }
-      
-      return 'general_advice';
-    };
-
-    const userIntent = detectIntent(message);
-    console.log('Detected user intent:', userIntent);
-
-    // Build enhanced context with intent-specific prompts
+      // Build enhanced context with intent-specific prompts
 let contextInfo = `Du är en auktoriserad svensk investeringsrådgivare med diskretionär men icke-verkställande behörighet. Du agerar som en personlig finansiell rådgivare som ger professionella investeringsråd.
 
 ⚡ SPRÅKREGLER:
