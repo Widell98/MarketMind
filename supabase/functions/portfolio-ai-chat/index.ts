@@ -303,6 +303,7 @@ type TavilySearchOptions = {
   searchDepth?: TavilySearchDepth;
   maxResults?: number;
   includeRawContent?: boolean;
+  timeoutMs?: number;
 };
 
 type StockDetectionPattern = {
@@ -461,9 +462,15 @@ const fetchTavilyContext = async (
       query: options.query ?? message,
       search_depth: options.searchDepth ?? 'basic',
       include_answer: true,
-      include_raw_content: options.includeRawContent ?? false,
       max_results: options.maxResults ?? 5,
     };
+
+    const shouldRequestRawContent = (options.includeRawContent ?? false)
+      && (options.searchDepth ?? 'basic') === 'advanced';
+
+    if (shouldRequestRawContent) {
+      payload.include_raw_content = true;
+    }
 
     if (effectiveIncludeDomains.length > 0) {
       payload.include_domains = effectiveIncludeDomains;
@@ -485,13 +492,27 @@ const fetchTavilyContext = async (
       payload.days = options.days;
     }
 
-    const response = await fetch('https://api.tavily.com/search', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+    const timeout = typeof options.timeoutMs === 'number' && options.timeoutMs > 0
+      ? options.timeoutMs
+      : 6000;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    let response: Response;
+
+    try {
+      response = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -502,7 +523,11 @@ const fetchTavilyContext = async (
     const tavilyData = await response.json() as TavilySearchResponse;
     return formatTavilyResults(tavilyData, effectiveIncludeDomains);
   } catch (error) {
-    console.error('Undantag vid anrop till Tavily API:', error);
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      console.warn('Tavily-förfrågan avbröts på grund av timeout.');
+    } else {
+      console.error('Undantag vid anrop till Tavily API:', error);
+    }
     return { formattedContext: '', sources: [] };
   }
 };
@@ -1144,6 +1169,7 @@ serve(async (req) => {
         searchDepth: 'advanced',
         maxResults: 5,
         includeRawContent: true,
+        timeoutMs: 7000,
       });
 
       return targetedContext;
@@ -1221,10 +1247,11 @@ serve(async (req) => {
         const options: TavilySearchOptions = {
           includeDomains: TRUSTED_TAVILY_DOMAINS,
           excludeDomains: DEFAULT_EXCLUDED_TAVILY_DOMAINS,
-          includeRawContent: true,
+          includeRawContent: shouldUseAdvancedDepth,
           topic: determineTavilyTopic(),
           searchDepth: shouldUseAdvancedDepth ? 'advanced' : 'basic',
           maxResults: 6,
+          timeoutMs: hasRealTimeTrigger ? 5000 : 6500,
         };
 
         if (hasRealTimeTrigger || userIntent === 'news_update') {
