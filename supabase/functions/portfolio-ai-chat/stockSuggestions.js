@@ -29,6 +29,7 @@ const sanitizeName = (name) => {
 };
 
 const extractTickers = (text) => {
+  TICKER_REGEX.lastIndex = 0;
   const tickers = new Set();
   let match;
   while ((match = TICKER_REGEX.exec(text)) !== null) {
