@@ -35,19 +35,26 @@ const REALTIME_KEYWORDS = [
 ];
 
 const TRUSTED_TAVILY_DOMAINS = [
-  'reuters.com',
-  'bloomberg.com',
-  'wsj.com',
-  'ft.com',
-  'cnbc.com',
-  'marketwatch.com',
-  'finance.yahoo.com',
-  'investing.com',
-  'morningstar.com',
-  'seekingalpha.com',
   'di.se',
   'affarsvarlden.se',
   'placera.se',
+  'reuters.com',
+  'bloomberg.com',
+  'ft.com',
+  'cnbc.com',
+  'wsj.com',
+  'marketwatch.com',
+];
+
+const EXTENDED_TAVILY_DOMAINS = [
+  ...TRUSTED_TAVILY_DOMAINS,
+  'seekingalpha.com',
+  'finance.yahoo.com',
+  'morningstar.com',
+  'investing.com',
+  'barrons.com',
+  'forbes.com',
+  'economist.com',
   'privataaffarer.se',
   'svd.se',
   'dn.se',
@@ -450,78 +457,125 @@ const fetchTavilyContext = async (
       ? options.includeDomains
       : TRUSTED_TAVILY_DOMAINS;
 
+    const allowDomainFallback = (!Array.isArray(options.includeDomains) || options.includeDomains.length === 0)
+      && EXTENDED_TAVILY_DOMAINS.length > 0;
+
     const effectiveExcludeDomains = Array.from(new Set([
       ...DEFAULT_EXCLUDED_TAVILY_DOMAINS,
       ...(Array.isArray(options.excludeDomains) ? options.excludeDomains : []),
     ]));
 
     const effectiveTopic: TavilyTopic = options.topic ?? 'finance';
-
-    const payload: Record<string, unknown> = {
-      api_key: tavilyApiKey,
-      query: options.query ?? message,
-      search_depth: options.searchDepth ?? 'basic',
-      include_answer: true,
-      max_results: options.maxResults ?? 5,
-    };
-
     const shouldRequestRawContent = (options.includeRawContent ?? false)
       && (options.searchDepth ?? 'basic') === 'advanced';
-
-    if (shouldRequestRawContent) {
-      payload.include_raw_content = true;
-    }
-
-    if (effectiveIncludeDomains.length > 0) {
-      payload.include_domains = effectiveIncludeDomains;
-    }
-
-    if (effectiveExcludeDomains.length > 0) {
-      payload.exclude_domains = effectiveExcludeDomains;
-    }
-
-    if (effectiveTopic) {
-      payload.topic = effectiveTopic;
-    }
-
-    if (typeof options.timeRange === 'string' && options.timeRange.trim().length > 0) {
-      payload.time_range = options.timeRange.trim();
-    }
-
-    if (typeof options.days === 'number' && Number.isFinite(options.days)) {
-      payload.days = options.days;
-    }
 
     const timeout = typeof options.timeoutMs === 'number' && options.timeoutMs > 0
       ? options.timeoutMs
       : 6000;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-    let response: Response;
-
-    try {
-      response = await fetch('https://api.tavily.com/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeoutId);
+    const domainAttempts: string[][] = [];
+    if (effectiveIncludeDomains.length > 0) {
+      domainAttempts.push(effectiveIncludeDomains);
+    } else {
+      domainAttempts.push([]);
     }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Fel vid anrop till Tavily API:', errorText);
-      return { formattedContext: '', sources: [] };
+    if (allowDomainFallback) {
+      const fallbackDomains = Array.from(new Set(EXTENDED_TAVILY_DOMAINS));
+      const isDifferentList = fallbackDomains.length !== effectiveIncludeDomains.length
+        || fallbackDomains.some((domain, index) => domain !== effectiveIncludeDomains[index]);
+      if (isDifferentList) {
+        domainAttempts.push(fallbackDomains);
+      }
     }
 
-    const tavilyData = await response.json() as TavilySearchResponse;
-    return formatTavilyResults(tavilyData, effectiveIncludeDomains);
+    const performSearch = async (includeDomains: string[]): Promise<{
+      context: TavilyContextPayload;
+      rawResultCount: number;
+    }> => {
+      const payload: Record<string, unknown> = {
+        api_key: tavilyApiKey,
+        query: options.query ?? message,
+        search_depth: options.searchDepth ?? 'basic',
+        include_answer: true,
+        max_results: options.maxResults ?? 5,
+      };
+
+      if (shouldRequestRawContent) {
+        payload.include_raw_content = true;
+      }
+
+      if (includeDomains.length > 0) {
+        payload.include_domains = includeDomains;
+      }
+
+      if (effectiveExcludeDomains.length > 0) {
+        payload.exclude_domains = effectiveExcludeDomains;
+      }
+
+      if (effectiveTopic) {
+        payload.topic = effectiveTopic;
+      }
+
+      if (typeof options.timeRange === 'string' && options.timeRange.trim().length > 0) {
+        payload.time_range = options.timeRange.trim();
+      }
+
+      if (typeof options.days === 'number' && Number.isFinite(options.days)) {
+        payload.days = options.days;
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+      try {
+        const response = await fetch('https://api.tavily.com/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Fel vid anrop till Tavily API:', errorText);
+          return { context: { formattedContext: '', sources: [] }, rawResultCount: 0 };
+        }
+
+        const tavilyData = await response.json() as TavilySearchResponse;
+        const context = formatTavilyResults(tavilyData, includeDomains);
+        const rawResultCount = Array.isArray(tavilyData.results) ? tavilyData.results.length : 0;
+
+        return { context, rawResultCount };
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
+
+    let lastContext: TavilyContextPayload = { formattedContext: '', sources: [] };
+
+    for (let attemptIndex = 0; attemptIndex < domainAttempts.length; attemptIndex++) {
+      const domainSet = domainAttempts[attemptIndex];
+      const { context, rawResultCount } = await performSearch(domainSet);
+
+      if (context.formattedContext || context.sources.length > 0) {
+        return context;
+      }
+
+      lastContext = context;
+
+      const hasMoreAttempts = attemptIndex < domainAttempts.length - 1;
+      if (hasMoreAttempts) {
+        const logMessage = rawResultCount === 0
+          ? 'Tavily-sökning gav inga resultat för prioriterade finansdomäner, testar med utökad lista.'
+          : 'Tavily-sökning gav inga relevanta resultat inom prioriterade finansdomäner, försöker med utökad lista.';
+        console.log(logMessage);
+      }
+    }
+
+    return lastContext;
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       console.warn('Tavily-förfrågan avbröts på grund av timeout.');
@@ -1290,7 +1344,7 @@ serve(async (req) => {
       const shouldPrioritizeStockAnalysis = primaryDetectedTicker && (isStockAnalysisRequest || isFinancialDataRequest);
 
       const determineTavilyTopic = (): TavilyTopic => {
-        if (userIntent === 'general_news' || userIntent === 'news_update' || userIntent === 'market_analysis') {
+        if (hasRealTimeTrigger || userIntent === 'general_news' || userIntent === 'news_update' || userIntent === 'market_analysis') {
           return 'news';
         }
         if (isStockAnalysisRequest || isFinancialDataRequest) {
@@ -1302,7 +1356,8 @@ serve(async (req) => {
       const shouldUseAdvancedDepth = shouldPrioritizeStockAnalysis
         || isFinancialDataRequest
         || userIntent === 'news_update'
-        || userIntent === 'market_analysis';
+        || userIntent === 'market_analysis'
+        || hasRealTimeTrigger;
 
       const buildDefaultTavilyOptions = (): TavilySearchOptions => {
         const options: TavilySearchOptions = {
@@ -1317,8 +1372,14 @@ serve(async (req) => {
 
         if (hasRealTimeTrigger || userIntent === 'news_update') {
           options.timeRange = 'day';
+          if (options.topic === 'news' && options.days === undefined) {
+            options.days = 3;
+          }
         } else if (userIntent === 'general_news' || userIntent === 'market_analysis') {
           options.timeRange = 'week';
+          if (options.topic === 'news' && options.days === undefined) {
+            options.days = 7;
+          }
         }
 
         return options;
@@ -1408,7 +1469,7 @@ serve(async (req) => {
     };
 
       // Build enhanced context with intent-specific prompts
-let contextInfo = `Du är en auktoriserad svensk investeringsrådgivare med diskretionär men icke-verkställande behörighet. Du agerar som en personlig finansiell rådgivare som ger professionella investeringsråd.
+let contextInfo = `Du är en licensierad svensk finansiell rådgivare med många års erfarenhet av kapitalförvaltning. Du agerar som en personlig rådgivare som ger professionella investeringsråd utan att genomföra affärer åt kunden.
 
 ⚡ SPRÅKREGLER:
 - Om användarens fråga är på svenska → översätt den först till engelska internt innan du resonerar.
@@ -1417,16 +1478,17 @@ let contextInfo = `Du är en auktoriserad svensk investeringsrådgivare med disk
 - Systeminstruktioner och stilregler (nedan) ska alltid följas på svenska.
 
 PERSONA & STIL:
-- Professionell men konverserande ton, som en erfaren rådgivare som bjuder in till dialog
-- Anpassa svarens längd: korta svar (2–5 meningar) för enkla frågor
-- Vid komplexa frågor → använd strukturerad analys (Situation, Strategi, Risker, Åtgärder)
-- Ge alltid exempel på relevanta aktier/fonder med symboler när det är lämpligt
-- Använd svensk finansterminologi och marknadskontext
-- När du refererar till extern realtidskontext: väv in källan direkt i texten (t.ex. "Enligt Reuters...")
-- Knyt alltid resonemang till användarens riskprofil, horisont och mål så att råden känns personligt anpassade
-- Använd emojis sparsamt som rubrik- eller punktmarkörer (max en per sektion) för att behålla professionell ton
-- Avsluta med en öppen-relaterad fråga för att uppmuntra fortsatt dialog
-- Avsluta alltid med texten "Disclaimer: Detta är endast i utbildningssyfte. Konsultera alltid en licensierad rådgivare."
+- Professionell men konverserande ton, som en erfaren rådgivare som bjuder in till dialog.
+- Bekräfta kort eventuella profiluppdateringar som användaren delar (t.ex. sparande, risknivå, mål) innan du fortsätter med rådgivningen.
+- Anpassa råden efter användarens profil och portfölj ovan – referera till risknivå, tidshorisont och större innehav när det är relevant.
+- Anpassa svarens längd: korta svar (2–5 meningar) för enkla frågor.
+- Vid komplexa frågor → använd strukturerad analys (Situation, Strategi, Risker, Åtgärder) när det tillför värde.
+- Ge alltid exempel på relevanta aktier/fonder med symboler när det är lämpligt.
+- Använd svensk finansterminologi och marknadskontext.
+- När du refererar till extern realtidskontext: väv in källan direkt i texten (t.ex. "Enligt Reuters...").
+- Använd emojis sparsamt som rubrik- eller punktmarkörer (max en per sektion och undvik emojis när du beskriver allvarliga risker eller förluster).
+- Avsluta normalt med en relevant öppen följdfråga när det känns naturligt; hoppa över frågan om det skulle upplevas onaturligt.
+- Låt disclaimern hanteras av gränssnittet – inkludera ingen egen ansvarsfriskrivning i svaret.
 `;
 
 const intentPrompts = {
@@ -1456,7 +1518,7 @@ Exempel:
 💡 Relaterade förslag – Endast om användaren vill ha alternativ/komplement  
 
 Avsluta med en öppen fråga **endast när det är relevant** för att driva vidare dialog.  
-Avsluta alltid med en **Disclaimer** om att råden är i utbildningssyfte.`,
+Avsluta aldrig med en separat disclaimer – den visas i gränssnittet.`,
 
 
   portfolio_optimization: `
@@ -1680,12 +1742,12 @@ contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
 contextInfo += `
 SVARSSTRUKTUR (ANPASSNINGSBAR):
 - Anpassa alltid svarens format efter frågans karaktär
-- Vid enkla frågor: svara kort (2–4 meningar) och avsluta med en öppen motfråga
+- Vid enkla frågor: svara kort (2–4 meningar) och avsluta gärna med en öppen motfråga om det känns naturligt
 - Vid generella marknadsfrågor: använd en nyhetsbrevsliknande ton med rubriker som "Dagens höjdpunkter" eller "Kvällens marknadsnyheter"
 - Vid djupgående analyser: använd en tydligare struktur med valda sektioner (se nedan), men ta bara med det som tillför värde
 
 EMOJI-ANVÄNDNING:
-- Använd relevanta emojis för att förstärka budskapet, men variera mellan svar (t.ex. 📈/🚀 för tillväxt, ⚠️/🛑 för risker, 🔍/📊 för analys)
+- Använd relevanta emojis för att förstärka budskapet, men max en per sektion och undvik emojis i avsnitt som beskriver allvarliga risker eller förluster
 - Byt ut emojis och rubriker för att undvika monotona svar
 
 MÖJLIGA SEKTIONER (välj flexibelt utifrån behov):
@@ -1704,12 +1766,11 @@ MÖJLIGA SEKTIONER (välj flexibelt utifrån behov):
 **Nyhetsuppdatering** 📰
 [Vid frågor om senaste händelser – strukturera som ett kort nyhetsbrev]
 
-**Disclaimer:** Detta är endast i utbildningssyfte. Konsultera alltid en licensierad rådgivare.
-
 VIKTIGT:
 - Använd ALDRIG hela strukturen slentrianmässigt – välj endast sektioner som ger värde
 - Variera rubriker och emojis för att undvika repetitiva svar
-- Avsluta alltid med en öppen fråga för att bjuda in till vidare dialog
+- Avsluta normalt med en relevant öppen fråga när det känns naturligt; hoppa över den om svaret redan är komplett
+- Avsluta svaret med en sektion "Källor:" där varje länk står på en egen rad (om källor finns)
 `;
 
 
@@ -1729,7 +1790,7 @@ VIKTIGT:
       const formattedSourcesList = tavilyContext.sources
         .map((url, index) => `${index + 1}. ${url}`)
         .join('\n');
-      tavilySourceInstruction = `\n\nKÄLLHÄNVISNINGAR FÖR AGENTEN:\n${formattedSourcesList}\n\nINSTRUKTION: Avsluta alltid ditt svar med en sektion "Källor:" som listar dessa länkar i samma ordning.`;
+      tavilySourceInstruction = `\n\nKÄLLHÄNVISNINGAR FÖR AGENTEN:\n${formattedSourcesList}\n\nINSTRUKTION: Avsluta alltid ditt svar med en sektion "Källor:" som listar dessa länkar i samma ordning och med en länk per rad.`;
     }
 
     // Build messages array with enhanced context
