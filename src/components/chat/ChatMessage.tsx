@@ -159,7 +159,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     const lines = content.split('\n');
     const elements: React.ReactNode[] = [];
     let keyCounter = 0;
-    let currentList: { type: 'ol' | 'ul'; items: string[] } | null = null;
+    let currentList: { type: 'ol' | 'ul'; marker?: 'disc' | 'dash'; items: string[] } | null = null;
 
     const getKey = () => `message-fragment-${keyCounter++}`;
 
@@ -168,18 +168,30 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
 
       const listKey = getKey();
       const ListTag = currentList.type === 'ol' ? 'ol' : 'ul';
+      const isDashList = currentList.type === 'ul' && currentList.marker === 'dash';
       const listClassName = `ml-4 ${
-        currentList.type === 'ol' ? 'list-decimal' : 'list-disc'
+        currentList.type === 'ol'
+          ? 'list-decimal'
+          : isDashList
+            ? 'list-none'
+            : 'list-disc'
       } space-y-2 text-sm leading-relaxed text-foreground`;
 
       elements.push(
         <ListTag key={listKey} className={listClassName}>
-          {currentList.items.map((item, index) => (
-            <li
-              key={`${listKey}-item-${index}`}
-              dangerouslySetInnerHTML={{ __html: parseMarkdownSafely(item) }}
-            />
-          ))}
+          {currentList.items.map((item, index) => {
+            const sanitizedContent = parseMarkdownSafely(item);
+
+            return (
+              <li key={`${listKey}-item-${index}`} className={isDashList ? 'flex items-start gap-2' : undefined}>
+                {isDashList && <span className="select-none text-sm text-foreground">-</span>}
+                <span
+                  className={isDashList ? 'flex-1 text-sm leading-relaxed text-foreground' : undefined}
+                  dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+                />
+              </li>
+            );
+          })}
         </ListTag>,
       );
 
@@ -226,9 +238,9 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       if (trimmedLine.startsWith('-') || trimmedLine.startsWith('•')) {
         const contentWithoutMarker = trimmedLine.replace(/^[-•]\s*/, '').trim();
 
-        if (!currentList || currentList.type !== 'ul') {
+        if (!currentList || currentList.type !== 'ul' || currentList.marker !== 'disc') {
           flushList();
-          currentList = { type: 'ul', items: [] };
+          currentList = { type: 'ul', marker: 'disc', items: [] };
         }
 
         currentList.items.push(contentWithoutMarker);
@@ -238,9 +250,9 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       if (/^\d+\./.test(trimmedLine)) {
         const contentWithoutNumber = trimmedLine.replace(/^\d+\.\s*/, '').trim();
 
-        if (!currentList || currentList.type !== 'ol') {
+        if (!currentList || currentList.type !== 'ul' || currentList.marker !== 'dash') {
           flushList();
-          currentList = { type: 'ol', items: [] };
+          currentList = { type: 'ul', marker: 'dash', items: [] };
         }
 
         currentList.items.push(contentWithoutNumber);
