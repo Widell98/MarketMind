@@ -105,3 +105,15 @@ Questions that require färska nyheter eller rapporter triggar nu en sökning vi
 - `TAVILY_API_KEY` – hittas i Tavily-konsolen och används för realtidssökningen.
 
 När nyckeln finns tillgänglig kommer funktionen automatiskt att hämta sökresultat och skicka med dem till språkmodellen när användaren ställer frågor som t.ex. "Hur såg Teslas senaste rapport ut?".
+
+## Applying Supabase migrations
+
+Vissa funktioner (t.ex. AI Veckans Val) kräver de senaste databasmigreringarna för att fungera korrekt. Om du ser fel som `404 Not Found` eller loggar som nämner att tabellen `ai_generation_runs` saknas behöver du synka ditt Supabase-projekt med repositoryt.
+
+1. Installera [Supabase CLI](https://supabase.com/docs/guides/cli) om du inte redan gjort det och länka den lokala katalogen till ditt projekt (`supabase link --project-ref <project-ref>`).
+2. Kör sedan:
+   ```bash
+   supabase db push
+   ```
+   Kommandot applicerar alla migreringar som ligger under `supabase/migrations` (inklusive tabellen `ai_generation_runs` och nya kolumner på `stock_cases`).
+3. Verifiera i Supabase-dashbordet att tabellen och kolumnerna skapats. Därefter kan Edge-funktionen `generate-weekly-cases` köras utan att returnera 404-fel.

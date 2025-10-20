@@ -17,13 +17,27 @@ export const useLatestAIGenerationRun = () => {
   const query = useQuery({
     queryKey: ['ai-generation-runs', 'latest'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error, status } = await supabase
         .from('ai_generation_runs')
         .select('*')
         .order('started_at', { ascending: false })
         .limit(1);
 
       if (error) {
+        const missingTableCodes = ['42P01', 'PGRST116'];
+        const message = (error.message || '').toLowerCase();
+        const isMissingTable =
+          missingTableCodes.includes(error.code ?? '') ||
+          status === 404 ||
+          message.includes('ai_generation_runs');
+
+        if (isMissingTable) {
+          console.warn(
+            'ai_generation_runs table is missing. Have the latest Supabase migrations been applied? Returning null run state.'
+          );
+          return null;
+        }
+
         throw error;
       }
 
