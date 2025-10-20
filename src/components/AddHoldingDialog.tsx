@@ -18,9 +18,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { UserHolding } from '@/hooks/useUserHoldings';
-import useSheetTickers, { SheetTicker } from '@/hooks/useSheetTickers';
+import useSheetTickers, { SheetTicker, RawSheetTicker, sanitizeSheetTickerList } from '@/hooks/useSheetTickers';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { ADD_HOLDING_FORM_STORAGE_KEY } from '@/constants/storageKeys';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AddHoldingDialogProps {
   isOpen: boolean;
@@ -65,7 +66,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   onAdd,
   initialData
 }) => {
-  const { tickers, isLoading: tickersLoading, error: tickersError } = useSheetTickers();
+  const { tickers: sheetTickers, isLoading: tickersLoading, error: tickersError } = useSheetTickers();
   const [dialogState, setDialogState, resetDialogState] = useLocalStorage<AddHoldingFormState>(
     ADD_HOLDING_FORM_STORAGE_KEY,
     createDefaultFormState
@@ -75,21 +76,96 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const [symbolError, setSymbolError] = useState<string | null>(null);
   const [showMobileTickerList, setShowMobileTickerList] = useState(false);
   const [mobileListManuallyExpanded, setMobileListManuallyExpanded] = useState(false);
+  const [yahooTickers, setYahooTickers] = useState<SheetTicker[]>([]);
+  const [yahooLoading, setYahooLoading] = useState(false);
+  const [yahooError, setYahooError] = useState<string | null>(null);
 
   const normalizedSymbol = useMemo(() => {
     const rawSymbol = formData.symbol?.trim();
     return rawSymbol ? rawSymbol.toUpperCase() : '';
   }, [formData.symbol]);
 
+  const combinedTickers = useMemo(() => {
+    const map = new Map<string, SheetTicker>();
+
+    sheetTickers.forEach((ticker) => {
+      map.set(ticker.symbol.toUpperCase(), ticker);
+    });
+
+    yahooTickers.forEach((ticker) => {
+      map.set(ticker.symbol.toUpperCase(), ticker);
+    });
+
+    return Array.from(map.values());
+  }, [sheetTickers, yahooTickers]);
+
   const tickerLookup = useMemo(() => {
     const map = new Map<string, SheetTicker>();
-    tickers.forEach((ticker) => {
+    combinedTickers.forEach((ticker) => {
       map.set(ticker.symbol.toUpperCase(), ticker);
     });
     return map;
-  }, [tickers]);
+  }, [combinedTickers]);
 
   const matchedTicker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) ?? null : null;
+
+  useEffect(() => {
+    const trimmedSymbol = formData.symbol.trim();
+
+    if (trimmedSymbol.length < 2) {
+      setYahooTickers([]);
+      setYahooError(null);
+      setYahooLoading(false);
+      return;
+    }
+
+    let isActive = true;
+    setYahooLoading(true);
+    setYahooError(null);
+
+    const handler = setTimeout(() => {
+      (async () => {
+        try {
+          const { data, error } = await supabase.functions.invoke('list-sheet-tickers', {
+            body: { query: trimmedSymbol },
+          });
+
+          if (!isActive) {
+            return;
+          }
+
+          if (error) {
+            throw new Error(error.message ?? 'Kunde inte hämta tickers från Yahoo Finance.');
+          }
+
+          const list = Array.isArray(data?.tickers)
+            ? (data.tickers as RawSheetTicker[])
+            : [];
+
+          setYahooTickers(sanitizeSheetTickerList(list));
+          setYahooError(null);
+        } catch (err) {
+          if (!isActive) {
+            return;
+          }
+
+          console.error('Failed to fetch Yahoo Finance tickers:', err);
+          const message = err instanceof Error ? err.message : 'Kunde inte hämta tickers från Yahoo Finance.';
+          setYahooError(message);
+          setYahooTickers([]);
+        } finally {
+          if (isActive) {
+            setYahooLoading(false);
+          }
+        }
+      })();
+    }, 350);
+
+    return () => {
+      isActive = false;
+      clearTimeout(handler);
+    };
+  }, [formData.symbol]);
 
   // Update form data when initialData changes
   useEffect(() => {
@@ -241,7 +317,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     [priceFormatter]
   );
 
-  const deferredTickers = useDeferredValue(tickers);
+  const deferredTickers = useDeferredValue(combinedTickers);
 
   const tickerOptions = useMemo(() => deferredTickers.map((ticker) => {
     const label = ticker.name && ticker.name !== ticker.symbol
@@ -485,7 +561,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
                     setShowMobileTickerList(true);
                   }
                 }}
-                placeholder={tickersLoading ? 'Hämtar tickers...' : 't.ex. VOLV-B'}
+                placeholder={(tickersLoading || yahooLoading) ? 'Hämtar tickers...' : 't.ex. VOLV-B'}
                 required
               />
               {symbolError && (
@@ -493,6 +569,9 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
               )}
               {tickersError && (
                 <p className="text-sm text-muted-foreground">{tickersError}</p>
+              )}
+              {yahooError && (
+                <p className="text-sm text-muted-foreground">{yahooError}</p>
               )}
             </div>
           </div>
@@ -505,7 +584,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
                 id="mobile-ticker-suggestions"
                 className="max-h-56 overflow-y-auto rounded-2xl border border-border/60 bg-muted/50 p-1 shadow-sm"
               >
-                {tickersLoading ? (
+                {(tickersLoading || yahooLoading) ? (
                   <p className="px-3 py-2 text-xs text-muted-foreground">Hämtar tickers...</p>
                 ) : mobileTickerSuggestions.length > 0 ? (
                   mobileTickerSuggestions.map((ticker) => {
@@ -608,7 +687,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
               id="sheet_price"
               value={sheetPriceDisplay}
               readOnly
-              placeholder={tickersLoading ? 'Hämtar pris...' : 'Välj en ticker för att hämta priset'}
+              placeholder={(tickersLoading || yahooLoading) ? 'Hämtar pris...' : 'Välj en ticker för att hämta priset'}
             />
             <p className="text-xs text-muted-foreground">
               {sheetPriceDisplay
