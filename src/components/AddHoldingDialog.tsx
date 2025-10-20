@@ -375,7 +375,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     if (!formData.name.trim()) return;
 
     if (!normalizedSymbol || !tickerLookup.has(normalizedSymbol)) {
-      setSymbolError('Tickern finns inte i Google Sheets. Välj en ticker från listan.');
+      setSymbolError('Tickern finns inte i listan Välj en ticker från listan eller lägg in manuellt.');
       return;
     }
 

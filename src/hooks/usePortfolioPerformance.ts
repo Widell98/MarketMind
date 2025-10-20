@@ -589,7 +589,7 @@ export const usePortfolioPerformance = () => {
       if (!matchedTicker) {
         toast({
           title: 'Tickern hittades inte',
-          description: 'Tickern finns inte i Google Sheets-listan. Kontrollera stavningen eller välj en annan ticker.',
+          description: 'Tickern finns inte i listan Kontrollera stavningen eller välj en annan ticker.',
           variant: 'destructive',
         });
         return {

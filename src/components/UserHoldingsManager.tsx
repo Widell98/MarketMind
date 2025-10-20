@@ -461,7 +461,6 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
 
               {allHoldings.length > 0 && (
                 <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
-                  Priserna hämtas från Google Sheets-integrationen och uppdateras där.
                 </div>
               )}
             </div>

@@ -24,7 +24,7 @@ const CurrentHoldingsPrices: React.FC = () => {
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Activity className="w-5 h-5 text-green-600" /> Aktuella priser
           </CardTitle>
-          <CardDescription>Logga in för att se dina innehavs senaste pris från Google Sheets</CardDescription>
+          <CardDescription>Logga in för att se dina innehavs senaste priser</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
@@ -77,7 +77,6 @@ const CurrentHoldingsPrices: React.FC = () => {
           <Activity className="w-5 h-5 text-green-600" /> Aktuella priser
         </CardTitle>
         <CardDescription className="text-xs sm:text-sm">
-          Priserna hämtas direkt från Google Sheets och uppdateras när arket ändras.
         </CardDescription>
       </CardHeader>
       <CardContent>
