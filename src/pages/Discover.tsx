@@ -6,6 +6,7 @@ import Layout from '@/components/Layout';
 
 import StockCaseCard from '@/components/StockCaseCard';
 import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
+import AIWeeklyPicks from '@/components/AIWeeklyPicks';
 
 import { useStockCases } from '@/hooks/useStockCases';
 
@@ -129,6 +130,8 @@ const Discover = () => {
           </section>
 
           <div className="w-full space-y-6 sm:space-y-8">
+            <AIWeeklyPicks />
+
             <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">
               <EnhancedStockCasesSearch
                 searchTerm={caseSearchTerm}

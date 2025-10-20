@@ -24,6 +24,8 @@ export interface StockCase {
   category_id?: string;
   admin_comment?: string;
   ai_generated?: boolean;
+  ai_batch_id?: string;
+  generated_at?: string;
   currency?: string;
   timeframe?: string;
   target_reached?: boolean;
