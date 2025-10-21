@@ -294,7 +294,7 @@ const isValidYahooQuoteType = (quoteType?: string | null): boolean => {
   return ['EQUITY', 'ETF', 'MUTUALFUND', 'INDEX', 'CURRENCY', 'CRYPTOCURRENCY'].includes(normalized);
 };
 
-const selectBestYahooSearchQuote = (quotes: YahooSearchQuote[] = []): YahooSearchQuote | null => {
+const selectBestYahooSearchQuote = (quotes: YahooSearchQuote[] = [], query?: string): YahooSearchQuote | null => {
   const filtered = quotes.filter(quote =>
     typeof quote.symbol === 'string' && quote.symbol.trim().length > 0 &&
     (quote.isYahooFinance === true || isValidYahooQuoteType(quote.quoteType))
@@ -304,12 +304,64 @@ const selectBestYahooSearchQuote = (quotes: YahooSearchQuote[] = []): YahooSearc
     return null;
   }
 
-  return filtered.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0];
+  const normalizedQuery = normalizeIdentifier(query) ?? null;
+  const preferredSuffixes = ['.ST', '.STO'];
+  const penalizedSuffixes = ['.F', '.DE'];
+
+  const scored = filtered.map((quote, index) => {
+    const symbol = typeof quote.symbol === 'string' ? quote.symbol.trim().toUpperCase() : '';
+    const normalizedSymbol = normalizeIdentifier(symbol);
+
+    let score = typeof quote.score === 'number' ? quote.score : 0;
+
+    if (normalizedQuery && normalizedSymbol === normalizedQuery) {
+      score += 120;
+    } else if (normalizedQuery && normalizedSymbol?.startsWith(normalizedQuery)) {
+      score += 60;
+    }
+
+    if (symbol) {
+      if (preferredSuffixes.some(suffix => symbol.endsWith(suffix))) {
+        score += 40;
+      }
+
+      if (/-[ABCD]\.[A-Z]+$/.test(symbol)) {
+        score += 10;
+      }
+
+      if (penalizedSuffixes.some(suffix => symbol.endsWith(suffix))) {
+        score -= 25;
+      }
+    }
+
+    const shortnameMatch = typeof quote.shortname === 'string' ? normalizeIdentifier(quote.shortname) : null;
+    const longnameMatch = typeof quote.longname === 'string' ? normalizeIdentifier(quote.longname) : null;
+
+    if (normalizedQuery && (shortnameMatch?.includes(normalizedQuery) || longnameMatch?.includes(normalizedQuery))) {
+      score += 20;
+    }
+
+    return { quote, score, index };
+  });
+
+  return scored
+    .sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+
+      return a.index - b.index;
+    })[0]?.quote ?? null;
 };
 
 const YAHOO_REQUEST_HEADERS = {
-  'Accept': 'application/json',
+  'Accept': 'application/json, text/plain, */*',
+  'Accept-Language': 'en-US,en;q=0.9,sv;q=0.8',
+  'Cache-Control': 'no-cache',
+  'Pragma': 'no-cache',
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Origin': 'https://finance.yahoo.com',
+  'Referer': 'https://finance.yahoo.com/',
 };
 
 const fetchYahooSearchQuote = async (query: string): Promise<YahooSearchQuote | null> => {
@@ -339,7 +391,7 @@ const fetchYahooSearchQuote = async (query: string): Promise<YahooSearchQuote | 
       return null;
     }
 
-    return selectBestYahooSearchQuote(Array.isArray(data.quotes) ? data.quotes : []);
+    return selectBestYahooSearchQuote(Array.isArray(data.quotes) ? data.quotes : [], query);
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       console.warn('Yahoo Finance search request timed out', { query: trimmed });
@@ -362,7 +414,7 @@ const fetchYahooQuote = async (symbol: string): Promise<YahooQuoteResult | null>
 
   try {
     const response = await fetch(
-      `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(trimmed)}`,
+      `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(trimmed)}`,
       {
         method: 'GET',
         headers: YAHOO_REQUEST_HEADERS,
