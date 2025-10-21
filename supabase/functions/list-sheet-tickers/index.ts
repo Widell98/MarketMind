@@ -116,6 +116,118 @@ const resolveYahooPrice = (...values: Array<unknown>): number | null => {
   return null;
 };
 
+const chunkArray = <T>(items: T[], size: number): T[][] => {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+};
+
+const fetchYahooQuoteBatch = async (symbols: string[]) => {
+  const uniqueSymbols = Array.from(
+    new Set(
+      symbols
+        .map((symbol) => symbol.trim().toUpperCase())
+        .filter((symbol) => symbol.length > 0),
+    ),
+  );
+
+  if (uniqueSymbols.length === 0) {
+    return new Map<
+      string,
+      {
+        name: string;
+        symbol: string;
+        currency: string | null;
+        price: number | null;
+      }
+    >();
+  }
+
+  const headers = {
+    "User-Agent": "MarketMindTickerSearch/1.0",
+    Accept: "application/json",
+  };
+
+  const results = new Map<
+    string,
+    {
+      name: string;
+      symbol: string;
+      currency: string | null;
+      price: number | null;
+    }
+  >();
+
+  const symbolChunks = chunkArray(uniqueSymbols, 20);
+
+  for (const chunk of symbolChunks) {
+    const params = new URLSearchParams({
+      symbols: chunk.join(","),
+      lang: "en-US",
+      region: "US",
+    });
+
+    try {
+      const res = await fetch(
+        `https://query2.finance.yahoo.com/v7/finance/quote?${params.toString()}`,
+        { headers },
+      );
+
+      if (!res.ok) {
+        console.warn(
+          `Yahoo Finance batch quote request failed: ${res.status} ${res.statusText}`,
+        );
+        continue;
+      }
+
+      const json = await res.json();
+      const quoteResults = Array.isArray(json?.quoteResponse?.result)
+        ? json.quoteResponse.result
+        : [];
+
+      for (const quote of quoteResults) {
+        if (!quote || typeof quote.symbol !== "string") {
+          continue;
+        }
+
+        const resolvedSymbol = quote.symbol.trim().toUpperCase();
+        if (!resolvedSymbol) {
+          continue;
+        }
+
+        const price = resolveYahooPrice(
+          quote.regularMarketPrice,
+          quote.regularMarketPreviousClose,
+          quote.postMarketPrice,
+        );
+
+        const currency = resolveYahooCurrency(
+          quote.currency ?? quote.financialCurrency ?? null,
+        );
+
+        const name = resolveYahooName(
+          quote.shortName,
+          quote.longName,
+          resolvedSymbol,
+        );
+
+        results.set(resolvedSymbol, {
+          symbol: resolvedSymbol,
+          name,
+          currency,
+          price,
+        });
+      }
+    } catch (error) {
+      console.warn("Yahoo Finance batch quote request error:", error);
+    }
+  }
+
+  return results;
+};
+
 const fetchYahooTickers = async (query: string) => {
   const trimmedQuery = query.trim();
   if (!trimmedQuery) {
@@ -194,7 +306,52 @@ const fetchYahooTickers = async (query: string) => {
     deduped.set(ticker.symbol, ticker);
   }
 
-  return Array.from(deduped.values());
+  const dedupedTickers = Array.from(deduped.values());
+
+  const symbolsNeedingQuote = dedupedTickers
+    .filter((ticker) =>
+      !(
+        typeof ticker.price === "number" &&
+        Number.isFinite(ticker.price) &&
+        ticker.price > 0 &&
+        typeof ticker.currency === "string" &&
+        ticker.currency.trim().length > 0
+      )
+    )
+    .map((ticker) => ticker.symbol);
+
+  if (symbolsNeedingQuote.length === 0) {
+    return dedupedTickers;
+  }
+
+  const quoteMap = await fetchYahooQuoteBatch(symbolsNeedingQuote);
+
+  return dedupedTickers.map((ticker) => {
+    const quote = quoteMap.get(ticker.symbol);
+    if (!quote) {
+      return ticker;
+    }
+
+    const hasTickerPrice =
+      typeof ticker.price === "number" &&
+      Number.isFinite(ticker.price) &&
+      ticker.price > 0;
+
+    const hasTickerCurrency =
+      typeof ticker.currency === "string" &&
+      ticker.currency.trim().length > 0;
+
+    const hasTickerName =
+      typeof ticker.name === "string" &&
+      ticker.name.trim().length > 0;
+
+    return {
+      symbol: ticker.symbol,
+      name: hasTickerName ? ticker.name : quote.name,
+      currency: hasTickerCurrency ? ticker.currency : quote.currency,
+      price: hasTickerPrice ? ticker.price : quote.price,
+    };
+  });
 };
 
 const fetchYahooQuote = async (symbol: string) => {
