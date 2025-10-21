@@ -20,7 +20,7 @@ import {
 import { UserHolding } from '@/hooks/useUserHoldings';
 import useSheetTickers, { SheetTicker, RawSheetTicker, sanitizeSheetTickerList } from '@/hooks/useSheetTickers';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { ADD_HOLDING_FORM_STORAGE_KEY } from '@/constants/storageKeys';
+import { ADD_HOLDING_FORM_STORAGE_KEY, ADD_HOLDING_MANUAL_TICKERS_STORAGE_KEY } from '@/constants/storageKeys';
 import { supabase } from '@/integrations/supabase/client';
 
 async function fetchYahooQuote(symbol: string) {
@@ -100,6 +100,10 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     ADD_HOLDING_FORM_STORAGE_KEY,
     createDefaultFormState
   );
+  const [manualTickers, setManualTickers] = useLocalStorage<SheetTicker[]>(
+    ADD_HOLDING_MANUAL_TICKERS_STORAGE_KEY,
+    []
+  );
   const { formData, priceOverridden, currencyOverridden, nameOverridden } = dialogState;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [symbolError, setSymbolError] = useState<string | null>(null);
@@ -109,6 +113,76 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const [yahooLoading, setYahooLoading] = useState(false);
   const [yahooError, setYahooError] = useState<string | null>(null);
 
+  const upsertManualTicker = useCallback(
+    (incoming: { symbol: string; name?: string | null; price?: number | null | undefined; currency?: string | null | undefined }) => {
+      const normalizedSymbol = typeof incoming.symbol === 'string' ? incoming.symbol.trim().toUpperCase() : '';
+      if (!normalizedSymbol) {
+        return;
+      }
+
+      const normalizedName =
+        typeof incoming.name === 'string' && incoming.name.trim().length > 0
+          ? incoming.name.trim()
+          : normalizedSymbol;
+
+      const normalizedCurrency =
+        typeof incoming.currency === 'string' && incoming.currency.trim().length > 0
+          ? incoming.currency.trim().toUpperCase()
+          : null;
+
+      const normalizedPrice =
+        typeof incoming.price === 'number' && Number.isFinite(incoming.price) && incoming.price > 0
+          ? incoming.price
+          : null;
+
+      setManualTickers((prevTickers) => {
+        const previous = Array.isArray(prevTickers) ? prevTickers : [];
+        const existingIndex = previous.findIndex(
+          (ticker) => ticker.symbol.toUpperCase() === normalizedSymbol
+        );
+
+        if (existingIndex === -1) {
+          const nextList = [
+            ...previous,
+            {
+              symbol: normalizedSymbol,
+              name: normalizedName,
+              price: normalizedPrice,
+              currency: normalizedCurrency,
+            },
+          ];
+
+          if (nextList.length > 50) {
+            return nextList.slice(nextList.length - 50);
+          }
+
+          return nextList;
+        }
+
+        const existing = previous[existingIndex];
+        const merged: SheetTicker = {
+          symbol: normalizedSymbol,
+          name: normalizedName || existing.name || normalizedSymbol,
+          price: normalizedPrice ?? existing.price ?? null,
+          currency: normalizedCurrency ?? existing.currency ?? null,
+        };
+
+        if (
+          existing.name === merged.name &&
+          existing.price === merged.price &&
+          existing.currency === merged.currency
+        ) {
+          return prevTickers;
+        }
+
+        const nextList = [...previous];
+        nextList[existingIndex] = merged;
+        return nextList;
+      });
+    },
+    [setManualTickers]
+  );
+
   const normalizedSymbol = useMemo(() => {
     const rawSymbol = formData.symbol?.trim();
     return rawSymbol ? rawSymbol.toUpperCase() : '';
@@ -116,6 +190,10 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
   const combinedTickers = useMemo(() => {
     const map = new Map<string, SheetTicker>();
+
+    manualTickers.forEach((ticker) => {
+      map.set(ticker.symbol.toUpperCase(), ticker);
+    });
 
     sheetTickers.forEach((ticker) => {
       map.set(ticker.symbol.toUpperCase(), ticker);
@@ -126,7 +204,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     });
 
     return Array.from(map.values());
-  }, [sheetTickers, yahooTickers]);
+  }, [manualTickers, sheetTickers, yahooTickers]);
 
   const tickerLookup = useMemo(() => {
     const map = new Map<string, SheetTicker>();
@@ -150,6 +228,15 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       const quote = await fetchYahooQuote(symbol);
       if (!quote || !isActive) {
         return;
+      }
+
+      if (quote.symbol || symbol) {
+        upsertManualTicker({
+          symbol: quote.symbol ?? symbol,
+          name: quote.name ?? quote.symbol ?? symbol,
+          price: quote.price ?? null,
+          currency: quote.currency ?? null,
+        });
       }
 
       setDialogState((prev) => {
@@ -184,7 +271,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     return () => {
       isActive = false;
     };
-  }, [formData.symbol, setDialogState]);
+  }, [formData.symbol, setDialogState, upsertManualTicker]);
 
   useEffect(() => {
     const trimmedSymbol = formData.symbol.trim();
@@ -527,15 +614,26 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     e.preventDefault();
     if (!formData.name.trim()) return;
 
-    if (!normalizedSymbol || !tickerLookup.has(normalizedSymbol)) {
-      setSymbolError('Tickern finns inte i listan Välj en ticker från listan eller lägg in manuellt.');
+    if (!normalizedSymbol) {
+      setSymbolError('Ange en ticker.');
       return;
     }
 
-    setIsSubmitting(true);
+    setSymbolError(null);
 
     const quantity = formData.quantity ? parseFloat(formData.quantity) : undefined;
     const purchasePrice = formData.purchase_price ? parseFloat(formData.purchase_price) : undefined;
+
+    if (!tickerLookup.has(normalizedSymbol)) {
+      upsertManualTicker({
+        symbol: normalizedSymbol,
+        name: formData.name,
+        price: purchasePrice,
+        currency: formData.currency,
+      });
+    }
+
+    setIsSubmitting(true);
 
     const holdingData: Omit<UserHolding, 'id' | 'user_id' | 'created_at' | 'updated_at'> = {
       name: formData.name.trim(),
@@ -649,6 +747,11 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
               )}
               {yahooError && (
                 <p className="text-sm text-muted-foreground">{yahooError}</p>
+              )}
+              {!symbolError && !yahooError && (
+                <p className="text-xs text-muted-foreground">
+                  Du kan också skriva in en ticker manuellt om den inte finns i listan.
+                </p>
               )}
             </div>
           </div>
