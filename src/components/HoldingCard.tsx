@@ -121,7 +121,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                           badgeVariants({ variant: 'outline' }),
                           'text-xs font-mono inline-flex items-center gap-1 px-2 py-0.5 cursor-pointer transition-colors group hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed'
                         )}
-                        title="Uppdatera pris från Google Sheets"
+                        title="Uppdatera pris från Yahoo Finance"
                       >
                         {normalizedSymbol}
                         <RefreshCw
@@ -250,7 +250,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
                 </div>
                 {!effectivePrice && (
                   <div className="text-xs text-muted-foreground mt-1">
-                    Pris saknas – uppdateras via Google Sheets.
+                    Pris saknas – uppdateras via Yahoo Finance.
                   </div>
                 )}
               </div>

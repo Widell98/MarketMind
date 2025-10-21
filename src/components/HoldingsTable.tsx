@@ -104,7 +104,7 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
                       badgeVariants({ variant: 'outline' }),
                       'text-xs font-mono inline-flex items-center gap-1 px-2 py-0.5 cursor-pointer transition-colors group hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed'
                     )}
-                    title="Uppdatera pris från Google Sheets"
+                    title="Uppdatera pris från Yahoo Finance"
                   >
                     {normalizedSymbol}
                     <RefreshCw

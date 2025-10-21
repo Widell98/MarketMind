@@ -1477,7 +1477,7 @@ const ChatPortfolioAdvisor = () => {
                               Fyll i dina innehav nedan. Symbol/ticker är valfritt men rekommenderat för bättre analys.
                             </p>
                             {tickersLoading && (
-                              <p className="text-xs text-muted-foreground">Hämtar tickerlista från Google Sheets...</p>
+                              <p className="text-xs text-muted-foreground">Hämtar tickerlista från Yahoo Finance...</p>
                             )}
                             {tickersError && (
                               <p className="text-xs text-muted-foreground">{tickersError}</p>

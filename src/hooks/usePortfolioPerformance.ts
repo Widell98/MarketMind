@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { resolveHoldingValue, convertToSEK } from '@/utils/currencyUtils';
-import type { SheetTicker } from '@/hooks/useSheetTickers';
+import { sanitizeSheetTickerList, type RawSheetTicker, type SheetTicker } from '@/hooks/useSheetTickers';
 
 const parseNumeric = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -377,20 +377,6 @@ export const usePortfolioPerformance = () => {
     try {
       setUpdating(true);
 
-      const { data: tickerResponse, error: tickerError } = await supabase.functions.invoke('list-sheet-tickers');
-
-      if (tickerError) {
-        throw new Error(tickerError.message || 'Kunde inte hämta tickers från Google Sheets.');
-      }
-
-      const tickerList = Array.isArray(tickerResponse?.tickers)
-        ? (tickerResponse.tickers as SheetTicker[])
-        : [];
-
-      if (tickerList.length === 0) {
-        throw new Error('Kunde inte hämta tickers från Google Sheets.');
-      }
-
       const { data: holdings, error: holdingsError } = await supabase
         .from('user_holdings')
         .select('id, quantity, symbol, name, holding_type')
@@ -408,6 +394,41 @@ export const usePortfolioPerformance = () => {
           errors: 0,
           unmatched: [],
         };
+      }
+
+      const holdingSymbols = Array.from(
+        new Set(
+          (holdings ?? [])
+            .map((holding) => (typeof holding.symbol === 'string' ? holding.symbol.trim() : ''))
+            .filter((symbol) => symbol.length > 0)
+            .map((symbol) => symbol.toUpperCase())
+        )
+      );
+
+      if (holdingSymbols.length === 0) {
+        return {
+          updated: 0,
+          errors: 0,
+          unmatched: [],
+        };
+      }
+
+      const { data: tickerResponse, error: tickerError } = await supabase.functions.invoke('list-sheet-tickers', {
+        body: { symbols: holdingSymbols },
+      });
+
+      if (tickerError) {
+        throw new Error(tickerError.message || 'Kunde inte hämta tickers från Yahoo Finance.');
+      }
+
+      const rawTickerList = Array.isArray(tickerResponse?.tickers)
+        ? (tickerResponse.tickers as RawSheetTicker[])
+        : [];
+
+      const tickerList = sanitizeSheetTickerList(rawTickerList);
+
+      if (tickerList.length === 0) {
+        throw new Error('Kunde inte hämta tickers från Yahoo Finance.');
       }
 
       const typedHoldings = holdings as HoldingRow[];
@@ -570,18 +591,24 @@ export const usePortfolioPerformance = () => {
     try {
       setUpdating(true);
 
-      const { data: tickerResponse, error: tickerError } = await supabase.functions.invoke('list-sheet-tickers');
+      const quoteSymbols = Array.from(new Set(getSymbolVariants(normalizedTicker)));
+
+      const { data: tickerResponse, error: tickerError } = await supabase.functions.invoke('list-sheet-tickers', {
+        body: { symbols: quoteSymbols },
+      });
 
       if (tickerError) {
-        throw new Error(tickerError.message || 'Kunde inte hämta tickers från Google Sheets.');
+        throw new Error(tickerError.message || 'Kunde inte hämta tickers från Yahoo Finance.');
       }
 
-      const tickerList = Array.isArray(tickerResponse?.tickers)
-        ? (tickerResponse.tickers as SheetTicker[])
+      const rawTickerList = Array.isArray(tickerResponse?.tickers)
+        ? (tickerResponse.tickers as RawSheetTicker[])
         : [];
 
+      const tickerList = sanitizeSheetTickerList(rawTickerList);
+
       if (tickerList.length === 0) {
-        throw new Error('Kunde inte hämta tickers från Google Sheets.');
+        throw new Error('Kunde inte hämta tickers från Yahoo Finance.');
       }
 
       const matchedTicker = findTickerMatch(tickerList, normalizedTicker);
@@ -602,7 +629,7 @@ export const usePortfolioPerformance = () => {
       }
 
       if (typeof matchedTicker.price !== 'number' || !Number.isFinite(matchedTicker.price) || matchedTicker.price <= 0) {
-        throw new Error(`Tickern ${matchedTicker.symbol} saknar ett giltigt pris i Google Sheets.`);
+        throw new Error(`Tickern ${matchedTicker.symbol} saknar ett giltigt pris från Yahoo Finance.`);
       }
 
       const canonicalSymbol = stripSymbolPrefix(matchedTicker.symbol) ?? matchedTicker.symbol.toUpperCase();
