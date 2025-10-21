@@ -601,12 +601,56 @@ export const usePortfolioPerformance = () => {
         };
       }
 
-      if (typeof matchedTicker.price !== 'number' || !Number.isFinite(matchedTicker.price) || matchedTicker.price <= 0) {
-        throw new Error(`Tickern ${matchedTicker.symbol} saknar ett giltigt pris i Google Sheets.`);
-      }
-
       const canonicalSymbol = stripSymbolPrefix(matchedTicker.symbol) ?? matchedTicker.symbol.toUpperCase();
       const symbolVariants = getSymbolVariants(matchedTicker.symbol);
+
+      const normalizedFinnhubSymbol = normalizedTicker || canonicalSymbol;
+
+      type FinnhubPriceResponse = {
+        symbol: string;
+        price: number;
+        currency: string | null;
+      };
+
+      let resolvedPrice: number | null = null;
+      let resolvedCurrency = matchedTicker.currency ? matchedTicker.currency.toUpperCase() : null;
+      let priceSource: 'finnhub' | 'sheet' | null = null;
+      let livePriceError: string | null = null;
+
+      try {
+        const { data: liveData, error: liveError } = await supabase.functions.invoke<FinnhubPriceResponse>('get-ticker-price', {
+          body: { symbol: normalizedFinnhubSymbol },
+        });
+
+        if (liveError) {
+          livePriceError = liveError.message ?? 'Kunde inte hämta live-pris från Finnhub.';
+          console.warn('Finnhub live price request failed:', liveError);
+        } else if (liveData && typeof liveData.price === 'number' && Number.isFinite(liveData.price) && liveData.price > 0) {
+          resolvedPrice = liveData.price;
+          if (typeof liveData.currency === 'string' && liveData.currency.trim().length > 0) {
+            resolvedCurrency = liveData.currency.trim().toUpperCase();
+          }
+          priceSource = 'finnhub';
+        }
+      } catch (error) {
+        livePriceError = error instanceof Error ? error.message : 'Okänt fel vid hämtning av live-pris.';
+        console.error('Unexpected error invoking get-ticker-price:', error);
+      }
+
+      if (resolvedPrice === null) {
+        if (typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0) {
+          resolvedPrice = matchedTicker.price;
+          priceSource = 'sheet';
+        }
+      }
+
+      if (resolvedPrice === null) {
+        throw new Error(`Tickern ${matchedTicker.symbol} saknar ett giltigt pris just nu.`);
+      }
+
+      const priceCurrency = resolvedCurrency ? resolvedCurrency : 'SEK';
+      const pricePerUnit = resolvedPrice;
+      const pricePerUnitInSEK = convertToSEK(pricePerUnit, priceCurrency);
 
       let holdingsQuery = supabase
         .from('user_holdings')
@@ -640,10 +684,6 @@ export const usePortfolioPerformance = () => {
           requestedTicker: canonicalSymbol,
         };
       }
-
-      const priceCurrency = matchedTicker.currency ? matchedTicker.currency.toUpperCase() : 'SEK';
-      const pricePerUnit = matchedTicker.price;
-      const pricePerUnitInSEK = convertToSEK(pricePerUnit, priceCurrency);
 
       const timestamp = new Date().toISOString();
       let updatedCount = 0;
@@ -694,6 +734,15 @@ export const usePortfolioPerformance = () => {
 
       if (updatedCount === 0 && errorCount === 0) {
         descriptionParts.push('Tickern matchade inga innehav att uppdatera.');
+      }
+
+      if (priceSource === 'finnhub') {
+        descriptionParts.push('Pris hämtat via Finnhub');
+      } else if (priceSource === 'sheet') {
+        descriptionParts.push('Pris från Google Sheets användes');
+        if (livePriceError) {
+          descriptionParts.push('Live-priset kunde inte hämtas just nu');
+        }
       }
 
       const toastTitle = updatedCount > 0
