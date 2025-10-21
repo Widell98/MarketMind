@@ -161,6 +161,8 @@ interface HoldingRow {
   quantity: number | string | null;
   symbol?: string | null;
   name?: string | null;
+  price_currency?: string | null;
+  currency?: string | null;
 }
 
 export const usePortfolioPerformance = () => {
@@ -570,39 +572,31 @@ export const usePortfolioPerformance = () => {
     try {
       setUpdating(true);
 
-      const { data: tickerResponse, error: tickerError } = await supabase.functions.invoke('list-sheet-tickers');
+      let tickerList: SheetTicker[] = [];
+      try {
+        const { data: tickerResponse, error: tickerError } = await supabase.functions.invoke('list-sheet-tickers');
 
-      if (tickerError) {
-        throw new Error(tickerError.message || 'Kunde inte hämta tickers från Google Sheets.');
+        if (tickerError) {
+          throw new Error(tickerError.message || 'Kunde inte hämta tickers från Google Sheets.');
+        }
+
+        tickerList = Array.isArray(tickerResponse?.tickers)
+          ? (tickerResponse.tickers as SheetTicker[])
+          : [];
+      } catch (tickerFetchError) {
+        console.warn('Kunde inte hämta tickers från Google Sheets, fortsätter med Finnhub-symbolen:', tickerFetchError);
       }
 
-      const tickerList = Array.isArray(tickerResponse?.tickers)
-        ? (tickerResponse.tickers as SheetTicker[])
-        : [];
+      const matchedTicker = tickerList.length > 0
+        ? findTickerMatch(tickerList, normalizedTicker)
+        : null;
 
-      if (tickerList.length === 0) {
-        throw new Error('Kunde inte hämta tickers från Google Sheets.');
-      }
-
-      const matchedTicker = findTickerMatch(tickerList, normalizedTicker);
-
-      if (!matchedTicker) {
-        toast({
-          title: 'Tickern hittades inte',
-          description: 'Tickern finns inte i listan Kontrollera stavningen eller välj en annan ticker.',
-          variant: 'destructive',
-        });
-        return {
-          updated: 0,
-          errors: 0,
-          unmatched: [],
-          tickerFound: false,
-          requestedTicker: normalizedTicker,
-        };
-      }
-
-      const canonicalSymbol = stripSymbolPrefix(matchedTicker.symbol) ?? matchedTicker.symbol.toUpperCase();
-      const symbolVariants = getSymbolVariants(matchedTicker.symbol);
+      const fallbackSymbol = stripSymbolPrefix(normalizedTicker) ?? normalizedTicker;
+      const canonicalSymbol = matchedTicker
+        ? stripSymbolPrefix(matchedTicker.symbol) ?? matchedTicker.symbol.toUpperCase()
+        : fallbackSymbol;
+      const symbolVariantsSource = matchedTicker ? matchedTicker.symbol : normalizedTicker;
+      const symbolVariants = getSymbolVariants(symbolVariantsSource);
 
       const normalizedFinnhubSymbol = normalizedTicker || canonicalSymbol;
 
@@ -613,7 +607,7 @@ export const usePortfolioPerformance = () => {
       };
 
       let resolvedPrice: number | null = null;
-      let resolvedCurrency = matchedTicker.currency ? matchedTicker.currency.toUpperCase() : null;
+      let resolvedCurrency = matchedTicker?.currency ? matchedTicker.currency.toUpperCase() : null;
       let priceSource: 'finnhub' | 'sheet' | null = null;
       let livePriceError: string | null = null;
 
@@ -637,7 +631,7 @@ export const usePortfolioPerformance = () => {
         console.error('Unexpected error invoking get-ticker-price:', error);
       }
 
-      if (resolvedPrice === null) {
+      if (resolvedPrice === null && matchedTicker) {
         if (typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0) {
           resolvedPrice = matchedTicker.price;
           priceSource = 'sheet';
@@ -645,23 +639,35 @@ export const usePortfolioPerformance = () => {
       }
 
       if (resolvedPrice === null) {
-        throw new Error(`Tickern ${matchedTicker.symbol} saknar ett giltigt pris just nu.`);
+        throw new Error(`Tickern ${canonicalSymbol} saknar ett giltigt pris just nu.`);
       }
 
-      const priceCurrency = resolvedCurrency ? resolvedCurrency : 'SEK';
       const pricePerUnit = resolvedPrice;
-      const pricePerUnitInSEK = convertToSEK(pricePerUnit, priceCurrency);
 
       let holdingsQuery = supabase
         .from('user_holdings')
-        .select('id, quantity, symbol, name, holding_type')
+        .select('id, quantity, symbol, name, holding_type, price_currency, currency')
         .eq('user_id', user.id)
         .neq('holding_type', 'cash');
 
-      if (symbolVariants.length > 1) {
-        holdingsQuery = holdingsQuery.or(symbolVariants.map((variant) => `symbol.ilike.${variant}`).join(','));
-      } else if (symbolVariants.length === 1) {
-        holdingsQuery = holdingsQuery.ilike('symbol', symbolVariants[0]);
+      const variantSet = new Set<string>();
+      symbolVariants.forEach((variant) => {
+        const trimmed = variant.trim();
+        if (trimmed.length > 0) {
+          variantSet.add(trimmed.toUpperCase());
+        }
+      });
+
+      [canonicalSymbol, normalizedTicker, fallbackSymbol]
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+        .forEach((value) => variantSet.add(value.toUpperCase()));
+
+      const variantFilters = Array.from(variantSet);
+
+      if (variantFilters.length > 1) {
+        holdingsQuery = holdingsQuery.or(variantFilters.map((variant) => `symbol.ilike.${variant}`).join(','));
+      } else if (variantFilters.length === 1) {
+        holdingsQuery = holdingsQuery.ilike('symbol', variantFilters[0]);
       }
 
       const { data: holdings, error: holdingsError } = await holdingsQuery;
@@ -680,7 +686,7 @@ export const usePortfolioPerformance = () => {
           updated: 0,
           errors: 0,
           unmatched: [],
-          tickerFound: true,
+          tickerFound: Boolean(matchedTicker),
           requestedTicker: canonicalSymbol,
         };
       }
@@ -691,6 +697,29 @@ export const usePortfolioPerformance = () => {
       const failedHoldings: Array<{ symbol?: string; name?: string }> = [];
 
       const typedHoldings = holdings as HoldingRow[];
+      const fallbackHoldingCurrency = typedHoldings.find((holding) => {
+        const potentialCurrency = typeof holding.price_currency === 'string'
+          ? holding.price_currency
+          : typeof holding.currency === 'string'
+            ? holding.currency
+            : null;
+        return potentialCurrency && potentialCurrency.trim().length > 0;
+      });
+
+      if (!resolvedCurrency && fallbackHoldingCurrency) {
+        const currency = typeof fallbackHoldingCurrency.price_currency === 'string' && fallbackHoldingCurrency.price_currency.trim().length > 0
+          ? fallbackHoldingCurrency.price_currency
+          : typeof fallbackHoldingCurrency.currency === 'string' && fallbackHoldingCurrency.currency.trim().length > 0
+            ? fallbackHoldingCurrency.currency
+            : null;
+
+        if (currency) {
+          resolvedCurrency = currency.trim().toUpperCase();
+        }
+      }
+
+      const effectivePriceCurrency = resolvedCurrency ? resolvedCurrency : 'SEK';
+      const pricePerUnitInSEK = convertToSEK(pricePerUnit, effectivePriceCurrency);
 
       for (const holding of typedHoldings) {
         const quantity = parseNumeric(holding.quantity) ?? 0;
@@ -704,7 +733,7 @@ export const usePortfolioPerformance = () => {
           .from('user_holdings')
           .update({
             current_price_per_unit: pricePerUnit,
-            price_currency: priceCurrency,
+            price_currency: effectivePriceCurrency,
             ...(computedValue !== null ? { current_value: computedValue } : {}),
             updated_at: timestamp,
           })
@@ -738,6 +767,9 @@ export const usePortfolioPerformance = () => {
 
       if (priceSource === 'finnhub') {
         descriptionParts.push('Pris hämtat via Finnhub');
+        if (!matchedTicker) {
+          descriptionParts.push('Google Sheets-listan saknade match – använde Finnhub-symbolen');
+        }
       } else if (priceSource === 'sheet') {
         descriptionParts.push('Pris från Google Sheets användes');
         if (livePriceError) {
@@ -761,7 +793,7 @@ export const usePortfolioPerformance = () => {
         updated: updatedCount,
         errors: errorCount,
         unmatched: failedHoldings,
-        tickerFound: true,
+        tickerFound: Boolean(matchedTicker),
         requestedTicker: canonicalSymbol,
       };
 
