@@ -4,11 +4,32 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { StockCase } from '@/types/stockCase';
 
-export const useStockCases = (followedOnly: boolean = false) => {
+type RawStockCase = Partial<StockCase> & { id: string };
+
+type ProfileRecord = {
+  id: string;
+  username: string;
+  display_name: string | null;
+};
+
+type CategoryRecord = {
+  id: string;
+  name: string;
+  color: string | null;
+};
+
+export interface StockCaseQueryOptions {
+  aiGeneratedOnly?: boolean;
+  limit?: number;
+  batchId?: string;
+  waitForBatchId?: boolean;
+}
+
+export const useStockCases = (followedOnly: boolean = false, options?: StockCaseQueryOptions) => {
   const { user } = useAuth();
 
   const query = useQuery({
-    queryKey: ['stock-cases', followedOnly, user?.id],
+    queryKey: ['stock-cases', followedOnly, user?.id, options],
     queryFn: async () => {
       console.log('useStockCases: Fetching stock cases, followedOnly:', followedOnly);
 
@@ -46,15 +67,30 @@ export const useStockCases = (followedOnly: boolean = false) => {
         console.log('Followed stock cases fetched:', stockCases?.length || 0);
 
         // Manually fetch profiles and categories
-        return await enrichStockCases(stockCases || []);
+        const rawStockCases = (stockCases ?? []) as RawStockCase[];
+        return await enrichStockCases(rawStockCases);
       }
 
       // Get all public cases
-      const { data, error } = await supabase
+      let queryBuilder = supabase
         .from('stock_cases')
         .select('*')
         .eq('is_public', true)
         .order('created_at', { ascending: false });
+
+      if (options?.aiGeneratedOnly) {
+        queryBuilder = queryBuilder.eq('ai_generated', true);
+      }
+
+      if (options?.batchId) {
+        queryBuilder = queryBuilder.eq('ai_batch_id', options.batchId);
+      }
+
+      if (options?.limit) {
+        queryBuilder = queryBuilder.limit(options.limit);
+      }
+
+      const { data, error } = await queryBuilder;
       
       if (error) {
         console.error('Error fetching stock cases:', error);
@@ -64,9 +100,10 @@ export const useStockCases = (followedOnly: boolean = false) => {
       console.log('All stock cases fetched:', data?.length || 0);
       
       // Manually fetch profiles and categories
-      return await enrichStockCases(data || []);
+      const rawStockCases = (data ?? []) as RawStockCase[];
+      return await enrichStockCases(rawStockCases);
     },
-    enabled: !followedOnly || !!user,
+    enabled: (!followedOnly || !!user) && (!options?.waitForBatchId || !!options?.batchId),
   });
 
   return {
@@ -78,7 +115,7 @@ export const useStockCases = (followedOnly: boolean = false) => {
 };
 
 // Helper function to enrich stock cases with profiles and categories
-const enrichStockCases = async (stockCases: any[]): Promise<StockCase[]> => {
+const enrichStockCases = async (stockCases: RawStockCase[]): Promise<StockCase[]> => {
   if (!stockCases || stockCases.length === 0) return [];
 
   // Get unique user IDs and category IDs
@@ -86,7 +123,7 @@ const enrichStockCases = async (stockCases: any[]): Promise<StockCase[]> => {
   const categoryIds = [...new Set(stockCases.map(c => c.category_id).filter(Boolean))];
 
   // Fetch profiles
-  let profilesData = [];
+  let profilesData: ProfileRecord[] = [];
   if (userIds.length > 0) {
     const { data, error } = await supabase
       .from('profiles')
@@ -96,12 +133,12 @@ const enrichStockCases = async (stockCases: any[]): Promise<StockCase[]> => {
     if (error) {
       console.error('Error fetching profiles:', error);
     } else {
-      profilesData = data || [];
+      profilesData = (data ?? []) as ProfileRecord[];
     }
   }
 
   // Fetch categories
-  let categoriesData = [];
+  let categoriesData: CategoryRecord[] = [];
   if (categoryIds.length > 0) {
     const { data, error } = await supabase
       .from('case_categories')
@@ -111,7 +148,7 @@ const enrichStockCases = async (stockCases: any[]): Promise<StockCase[]> => {
     if (error) {
       console.error('Error fetching categories:', error);
     } else {
-      categoriesData = data || [];
+      categoriesData = (data ?? []) as CategoryRecord[];
     }
   }
 
@@ -146,7 +183,7 @@ const enrichStockCases = async (stockCases: any[]): Promise<StockCase[]> => {
     const category = categoriesData.find(c => c.id === stockCase.category_id);
 
     return {
-      ...stockCase,
+      ...(stockCase as StockCase),
       status: (stockCase.status || 'active') as 'active' | 'winner' | 'loser',
       is_public: stockCase.is_public ?? true,
       likes_count: likesMap.get(stockCase.id) || 0,
@@ -169,6 +206,8 @@ export const useStockCasesList = (filters?: {
   category?: string;
   status?: string;
   search?: string;
+  aiGeneratedOnly?: boolean;
+  batchId?: string;
 }) => {
   const query = useQuery({
     queryKey: ['stock-cases', filters],
@@ -189,6 +228,14 @@ export const useStockCasesList = (filters?: {
 
       if (filters?.search) {
         query = query.or(`title.ilike.%${filters.search}%,company_name.ilike.%${filters.search}%`);
+      }
+
+      if (filters?.aiGeneratedOnly) {
+        query = query.eq('ai_generated', true);
+      }
+
+      if (filters?.batchId) {
+        query = query.eq('ai_batch_id', filters.batchId);
       }
 
       if (filters?.limit) {
