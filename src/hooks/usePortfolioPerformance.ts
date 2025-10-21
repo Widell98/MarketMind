@@ -623,14 +623,6 @@ export const usePortfolioPerformance = () => {
         descriptionParts.push(`${unmatchedHoldings.length} innehav saknade prisdata`);
       }
 
-      if (finnhubUpdateCount > 0) {
-        descriptionParts.push(`Finnhub live-pris användes för ${finnhubUpdateCount} innehav`);
-      }
-
-      if (sheetUpdateCount > 0) {
-        descriptionParts.push(`Google Sheets-pris användes för ${sheetUpdateCount} innehav`);
-      }
-
       const toastTitle = updatedCount > 0
         ? 'Portföljpriser uppdaterade'
         : 'Inga portföljpriser uppdaterades';
