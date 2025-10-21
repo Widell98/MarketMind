@@ -33,13 +33,6 @@ export const getTodayQuestions = (difficulty: string, allQuestions: any[], compl
     questionsCopy.splice(randomIndex, 1);
   }
   
-  console.log('Daily questions selected:', {
-    difficulty,
-    totalAvailable: availableQuestions.length,
-    selected: selectedQuestions.length,
-    seed,
-    dateString
-  });
   
   return selectedQuestions;
 };

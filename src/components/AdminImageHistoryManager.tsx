@@ -46,7 +46,6 @@ const AdminImageHistoryManager: React.FC<AdminImageHistoryManagerProps> = ({
 
     try {
       setDeletingImageId(imageId);
-      console.log('Starting delete process for image:', imageId);
       
       await deleteImage(imageId);
       

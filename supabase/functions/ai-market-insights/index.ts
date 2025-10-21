@@ -30,20 +30,17 @@ serve(async (req) => {
     }
 
     const { type = 'market_sentiment', personalized = false, forceRefresh = false } = await req.json();
-    console.log(`Getting AI insights for user ${user.id}, type: ${type}, personalized: ${personalized}`);
 
     // Check for cached insights first (unless forced refresh)
     if (!forceRefresh) {
       const cachedInsights = await getCachedInsights(user.id, type, personalized);
       if (cachedInsights) {
-        console.log('Returning cached insights');
         return new Response(JSON.stringify(cachedInsights), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
     }
 
-    console.log('Generating new insights');
     let insights;
     if (personalized) {
       insights = await generatePersonalizedInsights(user.id, type);
@@ -78,7 +75,6 @@ async function getCachedInsights(userId: string, type: string, isPersonalized: b
       .single();
 
     if (error || !data) {
-      console.log('No valid cached insights found:', error?.message);
       return null;
     }
 
@@ -109,8 +105,6 @@ async function cacheInsights(userId: string, type: string, isPersonalized: boole
 
     if (error) {
       console.error('Error caching insights:', error);
-    } else {
-      console.log('Successfully cached insights');
     }
   } catch (error) {
     console.error('Error caching insights:', error);

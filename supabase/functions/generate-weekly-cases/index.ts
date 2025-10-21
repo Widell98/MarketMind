@@ -19,7 +19,6 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting AI weekly cases generation...');
     
     if (!openAIApiKey || !supabaseUrl || !supabaseKey) {
       throw new Error('Missing required environment variables');
@@ -70,7 +69,6 @@ Svara endast med giltigt JSON i följande format:
   "stop_loss": number
 }`;
 
-      console.log(`Generating case ${i + 1} for ${sector} - ${style}...`);
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -109,7 +107,6 @@ Svara endast med giltigt JSON i följande format:
         caseData.status = 'active';
         
         generatedCases.push(caseData);
-        console.log(`Successfully generated case: ${caseData.title}`);
         
       } catch (parseError) {
         console.error('Error parsing generated case:', parseError);
@@ -132,7 +129,6 @@ Svara endast med giltigt JSON i följande format:
       throw insertError;
     }
 
-    console.log(`Successfully inserted ${insertedCases.length} AI-generated cases`);
 
     return new Response(JSON.stringify({ 
       success: true, 

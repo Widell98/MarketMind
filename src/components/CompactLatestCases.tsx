@@ -81,7 +81,6 @@ const CompactLatestCases = () => {
 
   const handleDelete = async (id: string) => {
     // For read-only display on homepage, we don't need delete functionality
-    console.log('Delete not available on homepage');
   };
 
   if (loading) {

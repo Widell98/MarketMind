@@ -93,7 +93,6 @@ Användarens riskprofil: ${riskProfile ? `${riskProfile.risk_tolerance} risk` : 
 
 Ge ett kortfattat, snabbt svar på investeringsfrågan.`;
 
-      console.log('Calling quick-ai-assistant function...');
 
       const { data, error } = await supabase.functions.invoke('quick-ai-assistant', {
         body: {
@@ -111,7 +110,6 @@ Ge ett kortfattat, snabbt svar på investeringsfrågan.`;
         throw new Error(error.message || 'Fel vid AI-anrop');
       }
 
-      console.log('Quick AI Assistant response:', data);
 
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),

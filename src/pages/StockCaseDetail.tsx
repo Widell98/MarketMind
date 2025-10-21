@@ -133,7 +133,6 @@ const StockCaseDetail = () => {
           url: window.location.href
         });
       } catch (error) {
-        console.log('Sharing failed:', error);
       }
     } else {
       navigator.clipboard.writeText(window.location.href);

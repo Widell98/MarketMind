@@ -87,7 +87,6 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   );
 
   const handleSuggestionAction = (suggestionId: string, action: string) => {
-    console.log(`Suggestion ${suggestionId} ${action}`);
     // Handle suggestion actions here
     if (action === 'accept') {
       // Navigate to relevant action (buy more, sell, etc.)

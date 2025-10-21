@@ -10,7 +10,6 @@ export const useAnalysisDetail = (id: string) => {
   return useQuery({
     queryKey: ['analysis', id, user?.id],
     queryFn: async () => {
-      console.log('Fetching analysis detail for ID:', id, 'User:', user?.id);
       
       const { data: analysisData, error: analysisError } = await supabase
         .from('analyses')
@@ -31,7 +30,6 @@ export const useAnalysisDetail = (id: string) => {
         throw analysisError;
       }
 
-      console.log('Analysis fetched:', analysisData);
 
       // Get like count and user's like status
       const [likeCountResult, userLikeResult, commentCountResult] = await Promise.all([
@@ -45,9 +43,6 @@ export const useAnalysisDetail = (id: string) => {
         supabase.rpc('get_analysis_comment_count', { analysis_id: id })
       ]);
 
-      console.log('Like count result:', likeCountResult);
-      console.log('User like result:', userLikeResult);
-      console.log('Comment count result:', commentCountResult);
 
       // Safely handle related_holdings
       let relatedHoldings: any[] = [];
@@ -69,7 +64,6 @@ export const useAnalysisDetail = (id: string) => {
         profiles: Array.isArray(analysisData.profiles) ? analysisData.profiles[0] || null : analysisData.profiles
       };
 
-      console.log('Transformed analysis:', transformedAnalysis);
       return transformedAnalysis;
     },
   });

@@ -19,12 +19,10 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
   const [persistedStockCases, setPersistedStockCases] = useState<any[]>([]);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
 
-  console.log('RelatedStockCasesFromAnalysis: analysisId =', analysisId, 'companyName =', companyName);
 
   const { data: stockCases, isLoading, error } = useQuery({
     queryKey: ['related-stock-cases-from-analysis', analysisId, companyName],
     queryFn: async () => {
-      console.log('Fetching related stock cases for analysis:', analysisId);
       
       // First, get the analysis to extract related information
       const { data: analysisData, error: analysisError } = await supabase
@@ -44,13 +42,11 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
         throw analysisError;
       }
 
-      console.log('Analysis data:', analysisData);
 
       let allRelatedCases = [];
 
       // First, get the directly linked stock case if it exists
       if (analysisData.stock_case_id) {
-        console.log('Found directly linked stock case ID:', analysisData.stock_case_id);
         
         const { data: linkedCase, error: linkedCaseError } = await supabase
           .from('stock_cases')
@@ -70,7 +66,6 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
           .single();
 
         if (!linkedCaseError && linkedCase) {
-          console.log('Found directly linked case:', linkedCase);
           allRelatedCases.push(linkedCase);
         }
       }
@@ -94,7 +89,6 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
         }
       }
 
-      console.log('Search company name:', searchCompanyName);
 
       // Search for additional related cases if we have a company name to search for
       if (searchCompanyName) {
@@ -116,7 +110,6 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
           .order('created_at', { ascending: false })
           .limit(5);
 
-        console.log('Additional cases query result:', { additionalCases, casesError });
 
         if (!casesError && additionalCases) {
           // Filter out the directly linked case to avoid duplicates
@@ -132,10 +125,8 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
         index === self.findIndex(c => c.id === case_.id)
       );
 
-      console.log('All unique related cases:', uniqueCases);
 
       if (uniqueCases.length === 0) {
-        console.log('No related stock cases found');
         return [];
       }
 
@@ -169,7 +160,6 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
         })
       );
 
-      console.log('Cases with stats:', casesWithStats);
       return casesWithStats;
     },
     enabled: !!analysisId,
@@ -186,7 +176,6 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
   // Persist the data once it's successfully loaded
   useEffect(() => {
     if (stockCases && stockCases.length > 0 && !hasInitiallyLoaded) {
-      console.log('Persisting stock cases data:', stockCases);
       setPersistedStockCases(stockCases);
       setHasInitiallyLoaded(true);
     }
@@ -211,13 +200,6 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
     }
   };
 
-  console.log('Component render state:', { 
-    isLoading, 
-    error, 
-    stockCasesCount: stockCases?.length,
-    persistedCasesCount: persistedStockCases.length,
-    hasInitiallyLoaded 
-  });
 
   // Show loading only if we haven't loaded any data yet
   if (isLoading && !hasInitiallyLoaded) {
@@ -261,7 +243,6 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
 
   // Don't render if no stock cases found AND we haven't persisted any data
   if ((!displayCases || displayCases.length === 0) && !hasInitiallyLoaded) {
-    console.log('Not rendering RelatedStockCasesFromAnalysis: no stock cases found');
     return null;
   }
 

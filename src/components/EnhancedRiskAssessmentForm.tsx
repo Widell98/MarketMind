@@ -72,7 +72,6 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
       if (savedData) {
         const parsedData = JSON.parse(savedData);
         setFormData(parsedData);
-        console.log('Loaded saved form data from localStorage');
         
         toast({
           title: "Formulärdata återställt",
@@ -82,7 +81,6 @@ const EnhancedRiskAssessmentForm: React.FC<EnhancedRiskAssessmentFormProps> = ({
       
       if (savedStep) {
         setCurrentStep(parseInt(savedStep));
-        console.log('Loaded saved step from localStorage:', savedStep);
       }
     } catch (error) {
       console.error('Error loading saved form data:', error);

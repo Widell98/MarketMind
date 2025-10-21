@@ -17,12 +17,10 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  console.log('RelatedStockCase: Fetching stock case with ID:', stockCaseId);
 
   const { data: stockCase, isLoading, error } = useQuery({
     queryKey: ['stock-case', stockCaseId],
     queryFn: async () => {
-      console.log('Fetching stock case from database...');
       
       // First, get the stock case data
       const { data: caseData, error: fetchError } = await supabase
@@ -37,7 +35,6 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
         .eq('id', stockCaseId)
         .single();
 
-      console.log('Stock case fetch result:', { caseData, fetchError });
 
       if (fetchError) {
         console.error('Error fetching stock case:', fetchError);
@@ -82,7 +79,6 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
         ]);
       }
 
-      console.log('Stats results:', { likeCountResult, followCountResult, userLikeResult, userFollowResult });
 
       return {
         ...caseData,
@@ -97,7 +93,6 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
     retryDelay: 1000,
   });
 
-  console.log('RelatedStockCase render state:', { stockCase, isLoading, error });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -117,11 +112,9 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
 
   // Don't render anything if loading, error, or no stock case
   if (isLoading || error || !stockCase) {
-    console.log('RelatedStockCase: Not rendering due to:', { isLoading, error, stockCase });
     return null;
   }
 
-  console.log('RelatedStockCase: Rendering with data:', stockCase);
 
   return (
     <Card>

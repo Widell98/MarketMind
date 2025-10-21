@@ -10,7 +10,6 @@ export const useAnalysesList = (limit = 10) => {
   return useQuery({
     queryKey: ['analyses', limit, user?.id],
     queryFn: async () => {
-      console.log('Fetching analyses...', { user: user?.id, limit });
       
       const { data: analysesData, error: analysesError } = await supabase
         .from('analyses')
@@ -32,10 +31,8 @@ export const useAnalysesList = (limit = 10) => {
         throw analysesError;
       }
 
-      console.log('Fetched analyses data:', analysesData);
 
       if (!analysesData || analysesData.length === 0) {
-        console.log('No analyses found, returning empty array');
         return [];
       }
 
@@ -48,7 +45,6 @@ export const useAnalysesList = (limit = 10) => {
               user ? supabase.rpc('user_has_liked_analysis', { analysis_id: analysis.id, user_id: user.id }) : Promise.resolve({ data: false })
             ]);
 
-            console.log(`Analysis ${analysis.id} - likes: ${likeCountResult.data}, user liked: ${userLikeResult?.data}`);
 
             // Safely handle related_holdings
             let relatedHoldings: any[] = [];
@@ -85,7 +81,6 @@ export const useAnalysesList = (limit = 10) => {
         })
       );
 
-      console.log('Processed analyses with stats:', analysesWithStats);
       return analysesWithStats;
     },
     retry: 1,
