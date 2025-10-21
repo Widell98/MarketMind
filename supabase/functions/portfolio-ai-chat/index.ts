@@ -126,6 +126,21 @@ const FINANCIAL_RELEVANCE_KEYWORDS = [
   'pris',
 ];
 
+const PRICE_REQUEST_KEYWORDS = [
+  'price',
+  'share price',
+  'stock price',
+  'pris',
+  'pris på',
+  'kurs',
+  'aktiekurs',
+  'quote',
+  'vad står',
+  'handlas',
+  'kostar',
+  'trading at',
+];
+
 const EXCHANGE_RATES: Record<string, number> = {
   SEK: 1.0,
   USD: 10.5,
@@ -200,6 +215,156 @@ type SheetTickerEdgeItem = {
 
 type SheetTickerEdgeResponse = {
   tickers?: SheetTickerEdgeItem[];
+};
+
+type YahooSearchQuote = {
+  symbol?: string;
+  shortname?: string;
+  longname?: string;
+  regularMarketPrice?: number;
+  regularMarketTime?: number;
+  currency?: string;
+};
+
+type YahooSearchResponse = {
+  quotes?: YahooSearchQuote[];
+};
+
+type YahooPriceResult = {
+  symbol: string;
+  name: string;
+  price: number;
+  currency: string;
+  marketTime: number | null;
+};
+
+const formatPriceWithCurrency = (price: number, currency: string): string => {
+  try {
+    return new Intl.NumberFormat('sv-SE', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 2,
+    }).format(price);
+  } catch (_error) {
+    return `${price.toFixed(2)} ${currency}`;
+  }
+};
+
+const formatMarketTimestamp = (timestamp: number | null): string => {
+  if (!timestamp) {
+    return 'tid okänd';
+  }
+
+  const date = new Date(timestamp * 1000);
+  try {
+    return new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Europe/Stockholm',
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date);
+  } catch (_error) {
+    return date.toISOString();
+  }
+};
+
+const fetchYahooPriceForTicker = async (ticker: string): Promise<YahooPriceResult | null> => {
+  const trimmedTicker = ticker.trim();
+  if (!trimmedTicker) {
+    return null;
+  }
+
+  const params = new URLSearchParams({
+    q: trimmedTicker,
+    lang: 'en-US',
+    region: 'US',
+    quotesCount: '1',
+    newsCount: '0',
+  });
+
+  try {
+    const response = await fetch(`https://query2.finance.yahoo.com/v1/finance/search?${params.toString()}`, {
+      headers: {
+        'User-Agent': 'MarketMindPriceLookup/1.0',
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error('Yahoo Finance price lookup failed:', trimmedTicker, response.status, response.statusText);
+      return null;
+    }
+
+    const data = await response.json() as YahooSearchResponse;
+    const quotes = Array.isArray(data?.quotes) ? data.quotes : [];
+    if (quotes.length === 0) {
+      console.warn('Yahoo Finance returned no quotes for ticker:', trimmedTicker);
+      return null;
+    }
+
+    const normalizedTicker = trimmedTicker.toUpperCase();
+
+    const selectQuote = (): YahooSearchQuote | undefined => {
+      const exactMatch = quotes.find((quote) => {
+        const symbol = typeof quote?.symbol === 'string' ? quote.symbol.trim().toUpperCase() : '';
+        return symbol === normalizedTicker;
+      });
+      if (exactMatch) return exactMatch;
+
+      return quotes.find((quote) => {
+        const symbol = typeof quote?.symbol === 'string' ? quote.symbol.trim().toUpperCase() : '';
+        return symbol.includes(normalizedTicker);
+      });
+    };
+
+    const matchedQuote = selectQuote();
+    if (!matchedQuote) {
+      console.warn('Yahoo Finance could not match ticker to quote:', trimmedTicker);
+      return null;
+    }
+
+    const marketPrice = typeof matchedQuote.regularMarketPrice === 'number'
+      && Number.isFinite(matchedQuote.regularMarketPrice)
+      ? matchedQuote.regularMarketPrice
+      : null;
+
+    if (marketPrice === null) {
+      console.warn('Yahoo Finance quote missing price for ticker:', trimmedTicker);
+      return null;
+    }
+
+    const marketTime = typeof matchedQuote.regularMarketTime === 'number'
+      && Number.isFinite(matchedQuote.regularMarketTime)
+      ? matchedQuote.regularMarketTime
+      : null;
+
+    const resolvedSymbol = typeof matchedQuote.symbol === 'string' && matchedQuote.symbol.trim().length > 0
+      ? matchedQuote.symbol.trim().toUpperCase()
+      : normalizedTicker;
+
+    const resolvedCurrency = typeof matchedQuote.currency === 'string' && matchedQuote.currency.trim().length > 0
+      ? matchedQuote.currency.trim().toUpperCase()
+      : 'USD';
+
+    const resolvedName = typeof matchedQuote.shortname === 'string' && matchedQuote.shortname.trim().length > 0
+      ? matchedQuote.shortname.trim()
+      : typeof matchedQuote.longname === 'string' && matchedQuote.longname.trim().length > 0
+        ? matchedQuote.longname.trim()
+        : resolvedSymbol;
+
+    return {
+      symbol: resolvedSymbol,
+      name: resolvedName,
+      price: marketPrice,
+      currency: resolvedCurrency,
+      marketTime,
+    };
+  } catch (error) {
+    console.error('Unexpected error when calling Yahoo Finance search API for ticker:', ticker, error);
+    return null;
+  }
 };
 
 type HoldingRecord = {
@@ -1404,6 +1569,64 @@ serve(async (req) => {
       }
     }
 
+    let yahooPriceContext = '';
+    let yahooPriceSources: string[] = [];
+
+    const shouldFetchYahooPrices = (() => {
+      if (detectedTickers.length === 0) {
+        return false;
+      }
+
+      const normalizedMessage = message.toLowerCase();
+      const hasPriceKeyword = PRICE_REQUEST_KEYWORDS.some(keyword => normalizedMessage.includes(keyword));
+
+      if (hasPriceKeyword) {
+        return true;
+      }
+
+      if (detectedTickers.length === 1) {
+        const strippedMessage = message.replace(/[?!.,]/g, '').trim();
+        const tickerPattern = new RegExp(`^${escapeRegExp(detectedTickers[0])}$`, 'i');
+        if (tickerPattern.test(strippedMessage)) {
+          return true;
+        }
+      }
+
+      return false;
+    })();
+
+    if (shouldFetchYahooPrices) {
+      const uniqueTickers = Array.from(new Set(detectedTickers));
+      const tickersForLookup = uniqueTickers.slice(0, 3);
+
+      console.log('Price request detected – fetching Yahoo Finance quotes for:', tickersForLookup);
+
+      const yahooResults = await Promise.all(tickersForLookup.map(fetchYahooPriceForTicker));
+      const validResults = yahooResults.filter((result): result is YahooPriceResult => result !== null);
+
+      if (validResults.length > 0) {
+        const contextLines = validResults.map((result) => {
+          const priceText = formatPriceWithCurrency(result.price, result.currency);
+          const timeText = formatMarketTimestamp(result.marketTime);
+          return `- ${result.symbol} (${result.name}): ${priceText} (senast uppdaterad ${timeText}).`;
+        });
+
+        yahooPriceContext = [
+          '\n\nAKTUELLA KURSER (hämtade via Yahoo Finance sök-API – behandla dem som cirkapriser och ange alltid källan i svaret):',
+          ...contextLines,
+          '- Var tydlig med att priser kan vara fördröjda jämfört med marknaden i realtid.',
+        ].join('\n');
+
+        yahooPriceSources = Array.from(new Set(validResults.map((result) =>
+          `https://finance.yahoo.com/quote/${encodeURIComponent(result.symbol)}`
+        )));
+
+        console.log('Yahoo Finance prices fetched successfully for:', validResults.map(result => result.symbol));
+      } else {
+        console.warn('Yahoo Finance price lookup returned no usable results.');
+      }
+    }
+
     // AI Memory update function
     const updateAIMemory = async (supabase: any, userId: string, userMessage: string, aiResponse: string, existingMemory: any) => {
       try {
@@ -1738,6 +1961,10 @@ contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
       }
     }
 
+    if (yahooPriceContext) {
+      contextInfo += yahooPriceContext;
+    }
+
 // Add response structure requirements
 contextInfo += `
 SVARSSTRUKTUR (ANPASSNINGSBAR):
@@ -1784,18 +2011,23 @@ VIKTIGT:
       historyLength: chatHistory.length
     });
 
-    const hasMarketData = tavilyContext.formattedContext.length > 0;
-    let tavilySourceInstruction = '';
-    if (tavilyContext.sources.length > 0) {
-      const formattedSourcesList = tavilyContext.sources
+    const hasMarketData = tavilyContext.formattedContext.length > 0 || yahooPriceContext.length > 0;
+    const combinedSources = Array.from(new Set([
+      ...yahooPriceSources,
+      ...tavilyContext.sources,
+    ]));
+
+    let sourceInstruction = '';
+    if (combinedSources.length > 0) {
+      const formattedSourcesList = combinedSources
         .map((url, index) => `${index + 1}. ${url}`)
         .join('\n');
-      tavilySourceInstruction = `\n\nKÄLLHÄNVISNINGAR FÖR AGENTEN:\n${formattedSourcesList}\n\nINSTRUKTION: Avsluta alltid ditt svar med en sektion "Källor:" som listar dessa länkar i samma ordning och med en länk per rad.`;
+      sourceInstruction = `\n\nKÄLLHÄNVISNINGAR FÖR AGENTEN:\n${formattedSourcesList}\n\nINSTRUKTION: Avsluta alltid ditt svar med en sektion "Källor:" som listar dessa länkar i samma ordning och med en länk per rad.`;
     }
 
     // Build messages array with enhanced context
     const messages = [
-      { role: 'system', content: contextInfo + tavilyContext.formattedContext + tavilySourceInstruction },
+      { role: 'system', content: contextInfo + tavilyContext.formattedContext + sourceInstruction },
       ...chatHistory,
       { role: 'user', content: message }
     ];
