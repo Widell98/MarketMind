@@ -83,6 +83,39 @@ const fetchSheetTickers = async () => {
   return Array.from(tickerMap.values());
 };
 
+const resolveYahooCurrency = (value: unknown): string | null => {
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value.trim().toUpperCase();
+  }
+  return null;
+};
+
+const resolveYahooName = (
+  shortName: unknown,
+  longName: unknown,
+  fallbackSymbol: string,
+) => {
+  if (typeof shortName === "string" && shortName.trim().length > 0) {
+    return shortName.trim();
+  }
+
+  if (typeof longName === "string" && longName.trim().length > 0) {
+    return longName.trim();
+  }
+
+  return fallbackSymbol;
+};
+
+const resolveYahooPrice = (...values: Array<unknown>): number | null => {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+      return value;
+    }
+  }
+
+  return null;
+};
+
 const fetchYahooTickers = async (query: string) => {
   const trimmedQuery = query.trim();
   if (!trimmedQuery) {
@@ -133,20 +166,14 @@ const fetchYahooTickers = async (query: string) => {
     }
     seen.add(symbol);
 
-    const price = typeof quote.regularMarketPrice === "number"
-      && Number.isFinite(quote.regularMarketPrice)
-      ? quote.regularMarketPrice
-      : null;
+    const price = resolveYahooPrice(
+      quote.regularMarketPrice,
+      quote.regularMarketPreviousClose,
+    );
 
-    const currency = typeof quote.currency === "string" && quote.currency.trim().length > 0
-      ? quote.currency.trim().toUpperCase()
-      : null;
+    const currency = resolveYahooCurrency(quote.currency ?? quote.financialCurrency);
 
-    const name = typeof quote.shortname === "string" && quote.shortname.trim().length > 0
-      ? quote.shortname.trim()
-      : typeof quote.longname === "string" && quote.longname.trim().length > 0
-        ? quote.longname.trim()
-        : symbol;
+    const name = resolveYahooName(quote.shortname, quote.longname, symbol);
 
     tickers.push({
       symbol,
@@ -156,7 +183,18 @@ const fetchYahooTickers = async (query: string) => {
     });
   }
 
-  return tickers;
+  const deduped = new Map<string, {
+    name: string;
+    symbol: string;
+    currency: string | null;
+    price: number | null;
+  }>();
+
+  for (const ticker of tickers) {
+    deduped.set(ticker.symbol, ticker);
+  }
+
+  return Array.from(deduped.values());
 };
 
 const fetchYahooQuote = async (symbol: string) => {
@@ -165,20 +203,99 @@ const fetchYahooQuote = async (symbol: string) => {
     return [];
   }
 
+  const normalizedSymbol = trimmedSymbol.toUpperCase();
+  const headers = {
+    "User-Agent": "MarketMindTickerSearch/1.0",
+    "Accept": "application/json",
+  };
+
+  const tickers: Array<{
+    name: string;
+    symbol: string;
+    currency: string | null;
+    price: number | null;
+  }> = [];
+
+  const pushTicker = ({
+    symbol: incomingSymbol,
+    shortName,
+    longName,
+    currency,
+    price,
+  }: {
+    symbol: string;
+    shortName?: unknown;
+    longName?: unknown;
+    currency: string | null;
+    price: number | null;
+  }) => {
+    const resolvedSymbol = incomingSymbol.trim().toUpperCase();
+    if (!resolvedSymbol) {
+      return;
+    }
+
+    const resolvedPrice = resolveYahooPrice(price);
+    const resolvedCurrency = resolveYahooCurrency(currency);
+    const resolvedName = resolveYahooName(shortName, longName, resolvedSymbol);
+
+    tickers.push({
+      symbol: resolvedSymbol,
+      name: resolvedName,
+      currency: resolvedCurrency,
+      price: resolvedPrice,
+    });
+  };
+
+  try {
+    const summaryRes = await fetch(
+      `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(normalizedSymbol)}?modules=price`,
+      { headers },
+    );
+
+    if (summaryRes.ok) {
+      const summaryJson = await summaryRes.json();
+      const summaryResults = Array.isArray(summaryJson?.quoteSummary?.result)
+        ? summaryJson.quoteSummary.result
+        : [];
+
+      for (const result of summaryResults) {
+        const priceModule = result?.price ?? {};
+        const rawPrice = resolveYahooPrice(
+          priceModule?.regularMarketPrice?.raw,
+          priceModule?.regularMarketPreviousClose?.raw,
+          priceModule?.postMarketPrice?.raw,
+        );
+
+        pushTicker({
+          symbol: priceModule?.symbol ?? normalizedSymbol,
+          shortName: priceModule?.shortName,
+          longName: priceModule?.longName,
+          currency: priceModule?.currency ?? priceModule?.financialCurrency ?? null,
+          price: rawPrice,
+        });
+      }
+
+      if (tickers.length > 0) {
+        return tickers;
+      }
+    } else {
+      console.warn(
+        `Yahoo Finance quoteSummary request failed: ${summaryRes.status} ${summaryRes.statusText}`,
+      );
+    }
+  } catch (error) {
+    console.warn("Yahoo Finance quoteSummary request error:", error);
+  }
+
   const params = new URLSearchParams({
-    symbols: trimmedSymbol.toUpperCase(),
+    symbols: normalizedSymbol,
     lang: "en-US",
     region: "US",
   });
 
   const res = await fetch(
-    `https://query1.finance.yahoo.com/v7/finance/quote?${params.toString()}`,
-    {
-      headers: {
-        "User-Agent": "MarketMindTickerSearch/1.0",
-        "Accept": "application/json",
-      },
-    },
+    `https://query2.finance.yahoo.com/v7/finance/quote?${params.toString()}`,
+    { headers },
   );
 
   if (!res.ok) {
@@ -190,47 +307,38 @@ const fetchYahooQuote = async (symbol: string) => {
     ? json.quoteResponse.result
     : [];
 
-  const tickers: {
-    name: string;
-    symbol: string;
-    currency: string | null;
-    price: number | null;
-  }[] = [];
-
   for (const quote of results) {
     if (!quote || typeof quote.symbol !== "string") {
       continue;
     }
 
-    const resolvedSymbol = quote.symbol.trim().toUpperCase();
-    if (!resolvedSymbol) {
-      continue;
-    }
+    const price = resolveYahooPrice(
+      quote.regularMarketPrice,
+      quote.regularMarketPreviousClose,
+      quote.postMarketPrice,
+    );
 
-    const price = typeof quote.regularMarketPrice === "number"
-      && Number.isFinite(quote.regularMarketPrice)
-      ? quote.regularMarketPrice
-      : null;
-
-    const currency = typeof quote.currency === "string" && quote.currency.trim().length > 0
-      ? quote.currency.trim().toUpperCase()
-      : null;
-
-    const name = typeof quote.shortName === "string" && quote.shortName.trim().length > 0
-      ? quote.shortName.trim()
-      : typeof quote.longName === "string" && quote.longName.trim().length > 0
-        ? quote.longName.trim()
-        : resolvedSymbol;
-
-    tickers.push({
-      symbol: resolvedSymbol,
-      name,
-      currency,
+    pushTicker({
+      symbol: quote.symbol,
+      shortName: quote.shortName,
+      longName: quote.longName,
+      currency: quote.currency ?? quote.financialCurrency ?? null,
       price,
     });
   }
 
-  return tickers;
+  const deduped = new Map<string, {
+    name: string;
+    symbol: string;
+    currency: string | null;
+    price: number | null;
+  }>();
+
+  for (const ticker of tickers) {
+    deduped.set(ticker.symbol, ticker);
+  }
+
+  return Array.from(deduped.values());
 };
 
 serve(async (req) => {
