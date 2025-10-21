@@ -36,7 +36,6 @@ const fetchSheetTickers = async () => {
   );
   const dataRows = rawRows.slice(1);
 
-  console.log("Headers:", headers);
 
   const companyIdx = headers.findIndex((h) => /company/i.test(h));
   const simpleTickerIdx = headers.findIndex((h) => /simple\s*ticker/i.test(h));

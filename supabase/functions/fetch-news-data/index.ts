@@ -21,7 +21,6 @@ serve(async (req) => {
 
   try {
     const { type = 'news' } = await req.json();
-    console.log(`Fetching ${type} data with smart caching...`);
     
     let data;
     if (type === 'calendar') {
@@ -55,7 +54,6 @@ async function fetchFinancialCalendarWithCache() {
     .single();
 
   if (cachedData && new Date(cachedData.expires_at) > new Date()) {
-    console.log('Returning cached calendar data');
     return cachedData.data;
   }
 
@@ -89,7 +87,6 @@ async function fetchMarketMomentumWithCache() {
     .single();
 
   if (cachedData && new Date(cachedData.expires_at) > new Date()) {
-    console.log('Returning cached momentum data');
     return cachedData.data;
   }
 
@@ -111,7 +108,6 @@ async function fetchMarketMomentumWithCache() {
 
 async function fetchFinancialCalendarData() {
   if (!openAIApiKey) {
-    console.log('No OpenAI key, using mock calendar data');
     return getMockCalendarData();
   }
 
@@ -178,7 +174,6 @@ async function fetchFinancialCalendarData() {
 
 async function fetchMarketMomentumData() {
   if (!openAIApiKey) {
-    console.log('No OpenAI key, using mock momentum data');
     return getMockMomentumData();
   }
 
@@ -238,7 +233,6 @@ async function fetchMarketMomentumData() {
 
 async function fetchLiveNewsData() {
   if (!openAIApiKey) {
-    console.log('No OpenAI key, using mock news');
     return getMockNewsData();
   }
 

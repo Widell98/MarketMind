@@ -34,7 +34,6 @@ const SubscriptionCard: React.FC = () => {
 
   const handleOpenPortal = async () => {
     try {
-      console.log('Attempting to open customer portal...');
       await openCustomerPortal();
     } catch (error) {
       console.error('Portal error:', error);

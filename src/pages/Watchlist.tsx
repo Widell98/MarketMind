@@ -56,7 +56,6 @@ const Watchlist = () => {
   ];
 
   const handleRemoveOpportunity = (id: string) => {
-    console.log('Removing opportunity:', id);
   };
 
   const handleViewOpportunity = (opportunity: any) => {

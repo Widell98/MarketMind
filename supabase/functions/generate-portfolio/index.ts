@@ -40,12 +40,6 @@ serve(async (req) => {
   try {
     const { riskProfileId, userId, conversationPrompt, conversationData } = await req.json();
 
-    console.log('Generate portfolio request:', {
-      riskProfileId,
-      userId,
-      hasConversationPrompt: Boolean(conversationPrompt),
-      hasConversationData: conversationData && typeof conversationData === 'object'
-    });
 
     if (!riskProfileId || !userId) {
       throw new Error('Missing required parameters: riskProfileId and userId');
@@ -68,7 +62,6 @@ serve(async (req) => {
       throw new Error('Risk profile not found');
     }
 
-    console.log('Risk profile found:', riskProfile);
 
     // Get existing holdings to avoid duplicates
     const { data: holdings } = await supabase
@@ -522,7 +515,6 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och s√§kerst√
       }
     }
 
-    console.log('Calling OpenAI API with gpt-4o...');
 
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -553,8 +545,6 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och s√§kerst√
     const openAIData = await openAIResponse.json();
     const aiRecommendationsRaw = openAIData.choices?.[0]?.message?.content?.trim() || '';
 
-    console.log('OpenAI full response:', JSON.stringify(openAIData, null, 2));
-    console.log('AI recommendations received:', aiRecommendationsRaw);
 
     if (!aiRecommendationsRaw) {
       console.error('No AI recommendations received from OpenAI');
@@ -606,7 +596,6 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och s√§kerst√
       is_active: true
     };
 
-    console.log('Creating portfolio with data:', portfolioData);
 
     // Insert portfolio
     const { data: portfolio, error: portfolioError } = await supabase
@@ -620,7 +609,6 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och s√§kerst√
       throw new Error('Failed to create portfolio');
     }
 
-    console.log('Portfolio created successfully:', portfolio.id);
 
     // Add recommended stocks to user_holdings as recommendations
     if (recommendedStocks.length > 0) {
@@ -639,7 +627,6 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och s√§kerst√
         purchase_date: new Date().toISOString().split('T')[0]
       }));
 
-      console.log('Inserting holdings data:', holdingsData);
 
       const { error: holdingsError } = await supabase
         .from('user_holdings')
@@ -648,12 +635,9 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och s√§kerst√
       if (holdingsError) {
         console.error('Error inserting holdings:', holdingsError);
         // Don't throw error here as portfolio is already created
-      } else {
-        console.log('Holdings inserted successfully');
       }
     }
 
-    console.log('Returning response with normalized plan:', normalizedResponse.substring(0, 200));
 
     return jsonResponse({
       success: true,

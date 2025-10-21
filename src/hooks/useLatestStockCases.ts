@@ -73,7 +73,6 @@ export const useLatestStockCases = (limit: number = 6) => {
       try {
         setLoading(true);
         
-        console.log('useLatestStockCases: Fetching latest cases with limit:', limit);
         
         // Get the latest stock cases
         const { data, error } = await supabase
@@ -88,12 +87,10 @@ export const useLatestStockCases = (limit: number = 6) => {
           throw error;
         }
 
-        console.log('useLatestStockCases: Raw data from database:', data?.length || 0, 'cases');
 
         // Enrich the data with profiles and categories
         const enrichedData = await enrichStockCases(data || []);
 
-        console.log('useLatestStockCases: Enriched data:', enrichedData.length, 'cases');
         setLatestCases(enrichedData);
       } catch (error: any) {
         console.error('Error fetching latest cases:', error);

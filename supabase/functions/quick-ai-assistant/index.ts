@@ -14,21 +14,12 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  console.log('=== QUICK AI ASSISTANT FUNCTION STARTED ===');
 
   try {
     const requestBody = await req.json();
-    console.log('Request body received:', JSON.stringify(requestBody, null, 2));
     
     const { message, userId, systemPrompt, model = 'gpt-4o-mini', maxTokens = 50, temperature = 0.3 } = requestBody;
 
-    console.log('Quick AI Assistant called with:', { 
-      message: message?.substring(0, 50) + '...', 
-      userId,
-      model,
-      maxTokens,
-      temperature
-    });
 
     if (!message || !userId) {
       console.error('Missing required fields:', { message: !!message, userId: !!userId });
@@ -41,7 +32,6 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured');
     }
 
-    console.log('OpenAI API key found, calling API...');
 
     // Enhance system prompt with micro-template structure
     const enhancedSystemPrompt = `${systemPrompt}
@@ -71,11 +61,6 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
       }
     ];
 
-    console.log('=== CALLING OPENAI API ===');
-    console.log('Model:', model);
-    console.log('Max tokens:', maxTokens);
-    console.log('Temperature:', temperature);
-    console.log('System prompt length:', systemPrompt?.length);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -91,7 +76,6 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
       }),
     });
 
-    console.log('OpenAI response status:', response.status);
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -119,11 +103,8 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
     }
 
     const data = await response.json();
-    console.log('OpenAI response received, choices:', data.choices?.length);
     
     const aiResponse = data.choices[0].message.content;
-    console.log('AI response length:', aiResponse?.length);
-    console.log('AI response:', aiResponse);
 
     // Initialize Supabase client for usage tracking
     const supabase = createClient(
@@ -141,7 +122,6 @@ Håll totalt under 70 ord. Ge alltid konkret investingssyn.`;
       console.error('Error tracking usage:', usageError);
     }
 
-    console.log('=== FUNCTION COMPLETED SUCCESSFULLY ===');
 
     return new Response(
       JSON.stringify({ 

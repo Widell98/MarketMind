@@ -107,11 +107,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
   }, [holdingsPerformance]);
   
   const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
-    console.log(`Deleting holding: ${holdingName} (${holdingId})`);
     const success = await deleteHolding(holdingId);
-    if (success) {
-      console.log('Holding deleted successfully');
-    }
   };
 
   const handleDiscussHolding = (holdingName: string, symbol?: string) => {

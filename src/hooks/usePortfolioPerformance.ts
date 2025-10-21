@@ -206,7 +206,6 @@ export const usePortfolioPerformance = () => {
             filter: `user_id=eq.${user.id}`
           },
           () => {
-            console.log('Holdings updated, recalculating performance...');
             calculatePerformance();
           }
         )
@@ -219,7 +218,6 @@ export const usePortfolioPerformance = () => {
             filter: `user_id=eq.${user.id}`
           },
           () => {
-            console.log('Performance history updated, recalculating performance...');
             calculatePerformance();
           }
         )

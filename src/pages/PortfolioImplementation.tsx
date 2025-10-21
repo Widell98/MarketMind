@@ -111,7 +111,6 @@ const PortfolioImplementation = () => {
     }
   };
   const handleActionClick = (action: string) => {
-    console.log('Action clicked:', action);
   };
   const handleUpdateProfile = () => {
     setShowOnboarding(true);

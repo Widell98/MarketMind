@@ -111,7 +111,6 @@ const Discover = () => {
   }, [allStockCases]);
 
   const handleViewStockCaseDetails = (id: string) => navigate(`/stock-cases/${id}`);
-  const handleDeleteStockCase = (id: string) => console.log('Delete stock case:', id);
   return (
     <Layout>
       <div className="w-full pb-12">

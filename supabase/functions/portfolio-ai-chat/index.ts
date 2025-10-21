@@ -382,22 +382,17 @@ const formatTavilyResults = (
       .filter((result: TavilySearchResult) => {
         const url = typeof result.url === 'string' ? result.url : '';
         if (!url || !isAllowedDomain(url, allowedDomains)) {
-          if (url) {
-            console.log('Filtrerar bort otillåten domän från Tavily-resultat:', url);
-          }
           return false;
         }
 
         const snippetText = selectSnippetSource(result);
         const combinedText = [result.title, snippetText].filter(Boolean).join(' ');
         if (!combinedText) {
-          console.log('Filtrerar bort Tavily-resultat utan relevant innehåll:', url);
           return false;
         }
 
         const hasRelevance = hasFinancialRelevance(combinedText);
         if (!hasRelevance && combinedText.length < 60) {
-          console.log('Filtrerar bort Tavily-resultat med låg finansiell relevans:', url);
           return false;
         }
 
@@ -571,7 +566,6 @@ const fetchTavilyContext = async (
         const logMessage = rawResultCount === 0
           ? 'Tavily-sökning gav inga resultat för prioriterade finansdomäner, testar med utökad lista.'
           : 'Tavily-sökning gav inga relevanta resultat inom prioriterade finansdomäner, försöker med utökad lista.';
-        console.log(logMessage);
       }
     }
 
@@ -614,23 +608,12 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  console.log('=== PORTFOLIO AI CHAT FUNCTION STARTED ===');
-  console.log('Request method:', req.method);
-  console.log('Request URL:', req.url);
 
   try {
     const requestBody = await req.json();
-    console.log('Request body received:', JSON.stringify(requestBody, null, 2));
     
     const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData, stream } = requestBody;
 
-    console.log('Portfolio AI Chat function called with:', { 
-      message: message?.substring(0, 50) + '...', 
-      userId, 
-      portfolioId, 
-      sessionId,
-      analysisType 
-    });
 
     if (!message || !userId) {
       console.error('Missing required fields:', { message: !!message, userId: !!userId });
@@ -643,7 +626,6 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured');
     }
 
-    console.log('OpenAI API key found, length:', openAIApiKey.length);
 
     // Initialize Supabase client
     const supabase = createClient(
@@ -651,7 +633,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    console.log('Supabase client initialized');
 
     // Fetch all user data in parallel for better performance
     const [
@@ -739,10 +720,6 @@ serve(async (req) => {
         sheetTickerSymbols = Array.from(symbolSet);
         sheetTickerNames = Array.from(nameSet);
 
-        console.log('Loaded Google Sheets tickers:', {
-          symbols: sheetTickerSymbols.length,
-          names: sheetTickerNames.length,
-        });
       }
     } catch (error) {
       console.error('Unexpected error when loading Google Sheets tickers:', error);
@@ -952,7 +929,6 @@ serve(async (req) => {
     const profileChangeDetection = detectProfileUpdates(message);
 
     const isPremium = subscriber?.subscribed || false;
-    console.log('User premium status:', isPremium);
 
     const investmentContextPattern = /(aktie|aktier|börs|portfölj|fond|investera|bolag|innehav|kurs|marknad|stock|share|equity)/i;
     const hasInvestmentContext = investmentContextPattern.test(message);
@@ -1213,7 +1189,6 @@ serve(async (req) => {
         return { formattedContext: '', sources: [] };
       }
 
-      console.log('Tavily StockAnalysis-förfrågan, prioriterade URL:er:', urlCandidates.slice(0, 6));
 
       const targetedQuery = buildStockAnalysisQuery(ticker, urlCandidates);
 
@@ -1330,7 +1305,6 @@ serve(async (req) => {
     };
 
     const userIntent = detectIntent(message);
-    console.log('Detected user intent:', userIntent);
 
     const shouldFetchTavily = !isSimplePersonalAdviceRequest && (
       isStockMentionRequest || hasRealTimeTrigger
@@ -1339,7 +1313,6 @@ serve(async (req) => {
       const logMessage = isStockMentionRequest
         ? 'Aktieomnämnande upptäckt – anropar Tavily för relevanta nyheter.'
         : 'Fråga upptäckt som realtidsfråga – anropar Tavily.';
-      console.log(logMessage);
 
       const shouldPrioritizeStockAnalysis = primaryDetectedTicker && (isStockAnalysisRequest || isFinancialDataRequest);
 
@@ -1386,22 +1359,15 @@ serve(async (req) => {
       };
 
       if (shouldPrioritizeStockAnalysis) {
-        console.log(`Försöker hämta finansiell data för ${primaryDetectedTicker} från stockanalysis.com.`);
         tavilyContext = await fetchStockAnalysisFinancialContext(primaryDetectedTicker, message);
 
-        if (tavilyContext.formattedContext) {
-          console.log('Lyckades hämta data från stockanalysis.com.');
-        } else {
-          console.log('Inga resultat från stockanalysis.com, försöker med bredare Tavily-sökning.');
+        if (!tavilyContext.formattedContext) {
           tavilyContext = await fetchTavilyContext(message, buildDefaultTavilyOptions());
         }
       } else {
         tavilyContext = await fetchTavilyContext(message, buildDefaultTavilyOptions());
       }
 
-      if (tavilyContext.formattedContext) {
-        console.log('Tavily-kontent hämtad och läggs till i kontexten.');
-      }
     }
 
     // AI Memory update function
@@ -1460,8 +1426,6 @@ serve(async (req) => {
 
         if (error) {
           console.error('Error updating AI memory:', error);
-        } else {
-          console.log('AI memory updated successfully');
         }
       } catch (error) {
         console.error('Error in updateAIMemory:', error);
@@ -1777,12 +1741,6 @@ VIKTIGT:
     // Force using gpt-4o to avoid streaming restrictions and reduce cost
     const model = 'gpt-4o';
 
-    console.log('Selected model:', model, 'for request type:', {
-      isStockAnalysis: isStockAnalysisRequest,
-      isPortfolioOptimization: isPortfolioOptimizationRequest,
-      messageLength: message.length,
-      historyLength: chatHistory.length
-    });
 
     const hasMarketData = tavilyContext.formattedContext.length > 0;
     let tavilySourceInstruction = '';
@@ -1813,7 +1771,6 @@ VIKTIGT:
       isPremium
     };
 
-    console.log('TELEMETRY START:', telemetryData);
 
     // Save user message to database first
     if (sessionId) {
@@ -1831,7 +1788,6 @@ VIKTIGT:
               timestamp: new Date().toISOString()
             }
           });
-        console.log('User message saved to database');
       } catch (error) {
         console.error('Error saving user message:', error);
       }
@@ -1885,7 +1841,6 @@ VIKTIGT:
           });
       }
 
-      console.log('TELEMETRY COMPLETE:', { ...telemetryData, responseLength: aiMessage.length, completed: true });
 
       return new Response(
         JSON.stringify({
@@ -1946,11 +1901,6 @@ VIKTIGT:
                   await updateAIMemory(supabase, userId, message, aiMessage, aiMemory);
                   
                   // Send final telemetry
-                  console.log('TELEMETRY COMPLETE:', { 
-                    ...telemetryData, 
-                    responseLength: aiMessage.length,
-                    completed: true 
-                  });
                   
                   // Save complete message to database
                   if (sessionId && aiMessage) {

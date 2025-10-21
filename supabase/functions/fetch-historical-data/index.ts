@@ -21,7 +21,6 @@ serve(async (req) => {
       throw new Error('Symbol is required');
     }
 
-    console.log(`Fetching historical data for symbol: ${symbol}, period: ${period}`);
     
     const historicalData = await fetchHistoricalData(symbol, period);
     
@@ -39,7 +38,6 @@ serve(async (req) => {
 
 async function fetchHistoricalData(symbol: string, period: string) {
   if (!alphaVantageKey) {
-    console.log('No Alpha Vantage key, using mock data');
     return generateMockHistoricalData();
   }
 
@@ -51,7 +49,6 @@ async function fetchHistoricalData(symbol: string, period: string) {
     const data = await response.json();
     
     if (!data['Time Series (Daily)']) {
-      console.log(`No historical data for ${symbol}, using mock data`);
       return generateMockHistoricalData();
     }
     

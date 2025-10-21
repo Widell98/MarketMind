@@ -39,7 +39,6 @@ const MarketAnalyses = () => {
 
   const handleEdit = (analysis: any) => {
     // För framtida implementation - navigera till edit-sida eller öppna edit-dialog
-    console.log('Edit analysis:', analysis);
   };
 
   const handleViewDetails = (id: string) => {
@@ -49,7 +48,6 @@ const MarketAnalyses = () => {
   const handleDelete = async (id: string) => {
     try {
       // Implementation for delete - to be implemented when needed
-      console.log('Delete analysis:', id);
     } catch (error) {
       console.error('Error deleting analysis:', error);
     }

@@ -19,7 +19,6 @@ serve(async (req) => {
   try {
     const { userLevel, userProgress, requestedCategory } = await req.json();
     
-    console.log('Generating questions for user level:', userLevel);
     
     // Fetch current market data from Alpha Vantage
     const marketData = await fetchMarketData();
@@ -41,7 +40,6 @@ serve(async (req) => {
 
 async function fetchMarketData() {
   if (!alphaVantageKey) {
-    console.log('No Alpha Vantage key, using mock data');
     return getMockMarketData();
   }
 
@@ -95,7 +93,6 @@ function getMockMarketData() {
 
 async function generateQuestionsWithAI(userLevel: string, userProgress: any, marketData: any, requestedCategory?: string) {
   if (!openAIApiKey) {
-    console.log('No OpenAI key, using fallback questions');
     return getFallbackQuestions(userLevel, requestedCategory);
   }
 

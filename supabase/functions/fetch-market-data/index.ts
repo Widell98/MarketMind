@@ -15,7 +15,6 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Fetching live market data...');
     
     const marketData = await fetchLiveMarketData();
     
@@ -33,7 +32,6 @@ serve(async (req) => {
 
 async function fetchLiveMarketData() {
   if (!alphaVantageKey) {
-    console.log('No Alpha Vantage key, using mock data');
     return getMockMarketData();
   }
 
@@ -58,7 +56,6 @@ async function fetchLiveMarketData() {
 
     responses.forEach(({ symbol, data }) => {
       if (!data || !data['Global Quote'] || !data['Global Quote']['05. price']) {
-        console.log(`Invalid data for ${symbol}, skipping`);
         return;
       }
       
@@ -69,7 +66,6 @@ async function fetchLiveMarketData() {
       
       // Skip if we don't have valid price data
       if (price === 0) {
-        console.log(`No valid price for ${symbol}, skipping`);
         return;
       }
       
@@ -104,11 +100,6 @@ async function fetchLiveMarketData() {
       lastUpdated: new Date().toISOString()
     };
 
-    console.log('Market data fetched successfully:', {
-      marketIndices: result.marketIndices.length,
-      topStocks: result.topStocks.length,
-      bottomStocks: result.bottomStocks.length
-    });
 
     return result;
   } catch (error) {
