@@ -23,6 +23,35 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { ADD_HOLDING_FORM_STORAGE_KEY } from '@/constants/storageKeys';
 import { supabase } from '@/integrations/supabase/client';
 
+async function fetchYahooQuote(symbol: string) {
+  const res = await fetch(
+    `https://query2.finance.yahoo.com/v6/finance/quote?symbols=${encodeURIComponent(symbol)}`,
+    {
+      headers: {
+        'User-Agent': navigator.userAgent,
+        Accept: 'application/json',
+        Referer: 'https://finance.yahoo.com/',
+      },
+    }
+  );
+
+  if (!res.ok) {
+    console.warn('Yahoo quote fetch failed:', res.status, res.statusText);
+    return null;
+  }
+
+  const json = await res.json();
+  const quote = json?.quoteResponse?.result?.[0];
+  if (!quote) return null;
+
+  return {
+    symbol: quote.symbol as string | undefined,
+    price: (quote.regularMarketPrice ?? null) as number | null,
+    currency: (quote.currency ?? null) as string | null,
+    name: (quote.shortName ?? quote.longName ?? quote.symbol) as string | undefined,
+  };
+}
+
 interface AddHoldingDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -108,6 +137,54 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   }, [combinedTickers]);
 
   const matchedTicker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) ?? null : null;
+
+  useEffect(() => {
+    const symbol = formData.symbol?.trim();
+    if (!symbol) {
+      return;
+    }
+
+    let isActive = true;
+
+    (async () => {
+      const quote = await fetchYahooQuote(symbol);
+      if (!quote || !isActive) {
+        return;
+      }
+
+      setDialogState((prev) => {
+        const prevSymbol = prev.formData.symbol?.trim().toUpperCase();
+        if (prevSymbol !== symbol.toUpperCase()) {
+          return prev;
+        }
+
+        let updated = false;
+        const nextFormData = { ...prev.formData };
+
+        if (!prev.priceOverridden && typeof quote.price === 'number' && Number.isFinite(quote.price) && quote.price > 0) {
+          const priceString = quote.price.toString();
+          if (nextFormData.purchase_price !== priceString) {
+            nextFormData.purchase_price = priceString;
+            updated = true;
+          }
+        }
+
+        if (quote.currency && !prev.currencyOverridden) {
+          const currency = quote.currency.toUpperCase();
+          if (nextFormData.currency !== currency) {
+            nextFormData.currency = currency;
+            updated = true;
+          }
+        }
+
+        return updated ? { ...prev, formData: nextFormData } : prev;
+      });
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, [formData.symbol, setDialogState]);
 
   useEffect(() => {
     const trimmedSymbol = formData.symbol.trim();
