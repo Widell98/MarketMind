@@ -642,31 +642,32 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
               />
             </div>
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor="symbol">Symbol</Label>
+              <Label htmlFor="symbol">Symbol</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="symbol"
+                  list="sheet-tickers"
+                  value={formData.symbol}
+                  onChange={(e) => handleInputChange('symbol', e.target.value)}
+                  onFocus={() => {
+                    if (formData.symbol.trim() || mobileListManuallyExpanded) {
+                      setShowMobileTickerList(true);
+                    }
+                  }}
+                  placeholder={(tickersLoading || yahooLoading) ? 'Hämtar tickers...' : 't.ex. VOLV-B'}
+                  required
+                  className="flex-1"
+                />
                 <button
                   type="button"
                   onClick={toggleMobileTickerList}
                   aria-expanded={showMobileTickerList}
                   aria-controls="mobile-ticker-suggestions"
-                  className="sm:hidden rounded-md bg-muted px-3 py-1 text-xs font-medium text-primary transition hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="sm:hidden rounded-md bg-muted px-3 py-2 text-xs font-medium text-primary transition hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   tickerlista
                 </button>
               </div>
-              <Input
-                id="symbol"
-                list="sheet-tickers"
-                value={formData.symbol}
-                onChange={(e) => handleInputChange('symbol', e.target.value)}
-                onFocus={() => {
-                  if (formData.symbol.trim() || mobileListManuallyExpanded) {
-                    setShowMobileTickerList(true);
-                  }
-                }}
-                placeholder={(tickersLoading || yahooLoading) ? 'Hämtar tickers...' : 't.ex. VOLV-B'}
-                required
-              />
               {symbolError && (
                 <p className="text-sm text-destructive">{symbolError}</p>
               )}
