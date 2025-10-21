@@ -307,6 +307,11 @@ const selectBestYahooSearchQuote = (quotes: YahooSearchQuote[] = []): YahooSearc
   return filtered.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0];
 };
 
+const YAHOO_REQUEST_HEADERS = {
+  'Accept': 'application/json',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+};
+
 const fetchYahooSearchQuote = async (query: string): Promise<YahooSearchQuote | null> => {
   const trimmed = query.trim();
   if (!trimmed) return null;
@@ -319,9 +324,7 @@ const fetchYahooSearchQuote = async (query: string): Promise<YahooSearchQuote | 
       `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(trimmed)}&quotesCount=6`,
       {
         method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
+        headers: YAHOO_REQUEST_HEADERS,
         signal: controller.signal,
       },
     );
@@ -362,9 +365,7 @@ const fetchYahooQuote = async (symbol: string): Promise<YahooQuoteResult | null>
       `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(trimmed)}`,
       {
         method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
+        headers: YAHOO_REQUEST_HEADERS,
         signal: controller.signal,
       },
     );
