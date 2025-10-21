@@ -211,6 +211,40 @@ type SanitizedSheetTicker = {
   priceInSEK: number | null;
 };
 
+type DirectPriceSource = 'google_sheets' | 'yahoo_finance';
+
+type DirectPriceInfo = {
+  normalizedSymbol: string;
+  originalSymbol: string;
+  displayName: string | null;
+  price: number | null;
+  currency: string | null;
+  priceInSEK: number | null;
+  source: DirectPriceSource;
+};
+
+type YahooSearchQuote = {
+  symbol?: string;
+  shortname?: string;
+  longname?: string;
+  quoteType?: string;
+  isYahooFinance?: boolean;
+  score?: number;
+  currency?: string;
+};
+
+type YahooSearchResponse = {
+  quotes?: YahooSearchQuote[];
+};
+
+type YahooQuoteResult = {
+  symbol: string;
+  longName: string | null;
+  shortName: string | null;
+  regularMarketPrice: number | null;
+  currency: string | null;
+};
+
 const sanitizeSheetTicker = (item: SheetTickerEdgeItem | null | undefined): SanitizedSheetTicker | null => {
   if (!item || typeof item !== 'object') {
     return null;
@@ -252,6 +286,219 @@ const sanitizeSheetTicker = (item: SheetTickerEdgeItem | null | undefined): Sani
     currency,
     priceInSEK,
   };
+};
+
+const isValidYahooQuoteType = (quoteType?: string | null): boolean => {
+  if (!quoteType) return false;
+  const normalized = quoteType.toUpperCase();
+  return ['EQUITY', 'ETF', 'MUTUALFUND', 'INDEX', 'CURRENCY', 'CRYPTOCURRENCY'].includes(normalized);
+};
+
+const selectBestYahooSearchQuote = (quotes: YahooSearchQuote[] = []): YahooSearchQuote | null => {
+  const filtered = quotes.filter(quote =>
+    typeof quote.symbol === 'string' && quote.symbol.trim().length > 0 &&
+    (quote.isYahooFinance === true || isValidYahooQuoteType(quote.quoteType))
+  );
+
+  if (filtered.length === 0) {
+    return null;
+  }
+
+  return filtered.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0];
+};
+
+const fetchYahooSearchQuote = async (query: string): Promise<YahooSearchQuote | null> => {
+  const trimmed = query.trim();
+  if (!trimmed) return null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 4000);
+
+  try {
+    const response = await fetch(
+      `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(trimmed)}&quotesCount=6`,
+      {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        signal: controller.signal,
+      },
+    );
+
+    if (!response.ok) {
+      console.warn('Yahoo Finance search request failed', { query: trimmed, status: response.status });
+      return null;
+    }
+
+    const data = await response.json() as YahooSearchResponse;
+    if (!data || typeof data !== 'object') {
+      return null;
+    }
+
+    return selectBestYahooSearchQuote(Array.isArray(data.quotes) ? data.quotes : []);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      console.warn('Yahoo Finance search request timed out', { query: trimmed });
+      return null;
+    }
+
+    console.error('Yahoo Finance search request threw', { query: trimmed, error });
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+const fetchYahooQuote = async (symbol: string): Promise<YahooQuoteResult | null> => {
+  const trimmed = symbol.trim();
+  if (!trimmed) return null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 4000);
+
+  try {
+    const response = await fetch(
+      `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(trimmed)}`,
+      {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        signal: controller.signal,
+      },
+    );
+
+    if (!response.ok) {
+      console.warn('Yahoo Finance quote request failed', { symbol: trimmed, status: response.status });
+      return null;
+    }
+
+    const data = await response.json() as {
+      quoteResponse?: {
+        result?: Array<{
+          symbol?: string;
+          longName?: string;
+          shortName?: string;
+          regularMarketPrice?: number;
+          currency?: string;
+        }>;
+      };
+    };
+
+    const result = Array.isArray(data?.quoteResponse?.result) && data.quoteResponse?.result?.length
+      ? data.quoteResponse.result[0]
+      : null;
+
+    if (!result || typeof result.symbol !== 'string') {
+      return null;
+    }
+
+    const price = typeof result.regularMarketPrice === 'number' && Number.isFinite(result.regularMarketPrice)
+      ? result.regularMarketPrice
+      : null;
+
+    const currency = typeof result.currency === 'string' && result.currency.trim().length > 0
+      ? result.currency.trim().toUpperCase()
+      : null;
+
+    const longName = typeof result.longName === 'string' && result.longName.trim().length > 0
+      ? result.longName.trim()
+      : null;
+
+    const shortName = typeof result.shortName === 'string' && result.shortName.trim().length > 0
+      ? result.shortName.trim()
+      : null;
+
+    return {
+      symbol: result.symbol,
+      longName,
+      shortName,
+      regularMarketPrice: price,
+      currency,
+    };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      console.warn('Yahoo Finance quote request timed out', { symbol: trimmed });
+      return null;
+    }
+
+    console.error('Yahoo Finance quote request threw', { symbol: trimmed, error });
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+const fetchYahooDirectPrices = async (queries: string[]): Promise<DirectPriceInfo[]> => {
+  const results: DirectPriceInfo[] = [];
+  const seenSymbols = new Set<string>();
+
+  for (const query of queries) {
+    const trimmed = typeof query === 'string' ? query.trim() : '';
+    if (!trimmed) continue;
+
+    const attemptAddResult = (quote: YahooQuoteResult | null, fallbackSymbol: string) => {
+      if (!quote) return;
+
+      const normalizedSymbol = normalizeIdentifier(quote.symbol) ?? normalizeIdentifier(fallbackSymbol);
+      if (!normalizedSymbol) {
+        return;
+      }
+
+      if (seenSymbols.has(normalizedSymbol)) {
+        return;
+      }
+
+      const price = quote.regularMarketPrice;
+      if (price === null) {
+        return;
+      }
+
+      const currency = quote.currency ?? null;
+      const priceInSEK = convertToSEK(price, currency);
+
+      const displayName = quote.longName ?? quote.shortName ?? fallbackSymbol;
+
+      results.push({
+        normalizedSymbol,
+        originalSymbol: quote.symbol,
+        displayName,
+        price,
+        currency,
+        priceInSEK,
+        source: 'yahoo_finance',
+      });
+
+      seenSymbols.add(normalizedSymbol);
+    };
+
+    const directQuote = await fetchYahooQuote(trimmed);
+    if (directQuote) {
+      attemptAddResult(directQuote, trimmed);
+      continue;
+    }
+
+    const searchMatch = await fetchYahooSearchQuote(trimmed);
+    if (!searchMatch || typeof searchMatch.symbol !== 'string') {
+      continue;
+    }
+
+    const resolvedQuote = await fetchYahooQuote(searchMatch.symbol);
+    if (!resolvedQuote) {
+      continue;
+    }
+
+    attemptAddResult({
+      symbol: resolvedQuote.symbol,
+      longName: resolvedQuote.longName ?? (typeof searchMatch.longname === 'string' ? searchMatch.longname : null),
+      shortName: resolvedQuote.shortName ?? (typeof searchMatch.shortname === 'string' ? searchMatch.shortname : null),
+      regularMarketPrice: resolvedQuote.regularMarketPrice,
+      currency: resolvedQuote.currency ?? (typeof searchMatch.currency === 'string' ? searchMatch.currency : null),
+    }, trimmed);
+  }
+
+  return results;
 };
 
 type HoldingRecord = {
@@ -1431,9 +1678,60 @@ serve(async (req) => {
 
       const matchedInfos = Array.from(matchedInfosMap.values());
 
-      const availablePrices = matchedInfos.filter(info => info.price !== null);
+      const directPriceInfos: DirectPriceInfo[] = [];
+      const seenSymbols = new Set<string>();
+      const yahooQueries = new Set<string>();
 
-      if (availablePrices.length > 0) {
+      const tryAddDirectPriceInfo = (info: DirectPriceInfo) => {
+        const normalizedSymbol = info.normalizedSymbol || normalizeIdentifier(info.originalSymbol);
+        if (!normalizedSymbol) return;
+        if (seenSymbols.has(normalizedSymbol)) return;
+        if (info.price === null) return;
+
+        const normalizedInfo: DirectPriceInfo = {
+          ...info,
+          normalizedSymbol,
+          priceInSEK: typeof info.priceInSEK === 'number' && Number.isFinite(info.priceInSEK)
+            ? info.priceInSEK
+            : convertToSEK(info.price, info.currency),
+        };
+
+        directPriceInfos.push(normalizedInfo);
+        seenSymbols.add(normalizedSymbol);
+      };
+
+      matchedInfos.forEach(info => {
+        if (!info) return;
+        if (info.price !== null) {
+          tryAddDirectPriceInfo({
+            normalizedSymbol: info.normalizedSymbol,
+            originalSymbol: info.originalSymbol,
+            displayName: info.name ?? info.originalSymbol,
+            price: info.price,
+            currency: info.currency,
+            priceInSEK: info.priceInSEK,
+            source: 'google_sheets',
+          });
+        } else if (info.originalSymbol) {
+          yahooQueries.add(info.originalSymbol);
+        }
+      });
+
+      for (const ticker of detectedTickers) {
+        const normalizedTicker = normalizeIdentifier(ticker) ?? ticker.toUpperCase();
+        if (!seenSymbols.has(normalizedTicker)) {
+          yahooQueries.add(ticker);
+        }
+      }
+
+      if (yahooQueries.size > 0) {
+        const yahooResults = await fetchYahooDirectPrices(Array.from(yahooQueries));
+        yahooResults.forEach(result => {
+          tryAddDirectPriceInfo(result);
+        });
+      }
+
+      if (directPriceInfos.length > 0) {
         const encoder = new TextEncoder();
 
         const formatNumber = (value: number | null, currency: string | null) => {
@@ -1450,19 +1748,21 @@ serve(async (req) => {
           }
         };
 
-        const responseLines = availablePrices.map(info => {
-          const displayName = info.name ?? info.originalSymbol;
+        const responseLines = directPriceInfos.map(info => {
+          const displayName = info.displayName ?? info.originalSymbol ?? info.normalizedSymbol;
+          const symbolForDisplay = info.originalSymbol ?? info.normalizedSymbol;
           const priceText = formatNumber(info.price, info.currency);
-          const priceInSEKText = info.currency && info.currency !== 'SEK'
+          const shouldShowSekConversion = info.currency && info.currency !== 'SEK';
+          const priceInSEKText = shouldShowSekConversion
             ? formatNumber(info.priceInSEK, 'SEK')
             : null;
 
           if (!priceText) {
-            return `${displayName} (${info.normalizedSymbol}) har inget giltigt pris registrerat i Google Sheet.`;
+            return `${displayName} (${symbolForDisplay}) har inget giltigt pris.`;
           }
 
           const lines: string[] = [
-            `${displayName} (${info.normalizedSymbol}) står i ${priceText} enligt Google Sheets.`,
+            `${displayName} (${symbolForDisplay}) står i ${priceText}.`,
           ];
 
           if (priceInSEKText && priceInSEKText !== priceText) {
@@ -1472,7 +1772,20 @@ serve(async (req) => {
           return lines.join(' ');
         });
 
-        const directPriceMessage = `${responseLines.join('\n')}\n\nKälla: Google Sheets (list-sheet-tickers).`;
+        const sourceLabels: Record<DirectPriceSource, string> = {
+          google_sheets: 'Google Sheets (list-sheet-tickers)',
+          yahoo_finance: 'Yahoo Finance',
+        };
+
+        const uniqueSources = Array.from(new Set(directPriceInfos.map(info => info.source)))
+          .map(source => sourceLabels[source])
+          .filter(Boolean);
+
+        const sourceText = uniqueSources.length > 0
+          ? uniqueSources.join(' och ')
+          : 'Okänd källa';
+
+        const directPriceMessage = `${responseLines.join('\n')}\n\nKälla: ${sourceText}.`;
 
         const stream = new ReadableStream({
           start(controller) {
@@ -1482,7 +1795,7 @@ serve(async (req) => {
           },
         });
 
-        console.log('Returning direct price response from sheet tickers.');
+        console.log('Returning direct price response from sources:', Array.from(new Set(directPriceInfos.map(info => info.source))));
 
         return new Response(stream, {
           headers: {
