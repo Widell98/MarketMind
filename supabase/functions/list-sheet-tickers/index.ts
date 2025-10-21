@@ -195,8 +195,10 @@ const fetchYahooQuoteForSymbol = async (
     { headers },
   );
 
-  if (res.status === 404) {
-    console.warn(`Yahoo Finance returned 404 for symbol ${symbol}. Skipping.`);
+  if (res.status === 404 || res.status === 400) {
+    console.warn(
+      `Yahoo Finance returned ${res.status} for symbol ${symbol}. Skipping.`,
+    );
     return [];
   }
 
@@ -217,6 +219,37 @@ const fetchYahooQuoteForSymbol = async (
   return quoteResults
     .map((quote) => mapYahooQuote(quote))
     .filter((quote): quote is YahooQuoteResult => Boolean(quote));
+};
+
+const fetchYahooQuoteForSymbolVariants = async (
+  symbol: string,
+  headers: Record<string, string>,
+): Promise<YahooQuoteResult[]> => {
+  const variants = getSymbolVariants(symbol);
+  const attempted = new Set<string>();
+
+  for (const variant of variants) {
+    const normalized = variant.trim().toUpperCase();
+    if (!normalized || attempted.has(normalized)) {
+      continue;
+    }
+
+    attempted.add(normalized);
+
+    try {
+      const quotes = await fetchYahooQuoteForSymbol(normalized, headers);
+      if (quotes.length > 0) {
+        return quotes;
+      }
+    } catch (error) {
+      console.warn(
+        `Failed to fetch Yahoo Finance quote for variant ${normalized}:`,
+        error,
+      );
+    }
+  }
+
+  return [];
 };
 
 const fetchYahooQuotes = async (symbols: string[]) => {
@@ -265,21 +298,25 @@ const fetchYahooQuotes = async (symbols: string[]) => {
       { headers },
     );
 
-    if (res.status === 404) {
-      console.warn(
-        `Yahoo Finance returned 404 for symbols [${chunk.join(", ")}]. Falling back to per-symbol requests.`,
-      );
-
-      for (const symbol of chunk) {
-        const fallbackQuotes = await fetchYahooQuoteForSymbol(symbol, headers);
-        fallbackQuotes.forEach((quote) => results.push(quote));
-      }
-
-      continue;
-    }
-
     if (!res.ok) {
       const errorText = await res.text();
+
+      if (res.status === 404 || res.status === 400) {
+        console.warn(
+          `Yahoo Finance returned ${res.status} for symbols [${chunk.join(", ")}]. Falling back to per-symbol requests.`,
+        );
+
+        for (const symbol of chunk) {
+          const fallbackQuotes = await fetchYahooQuoteForSymbolVariants(
+            symbol,
+            headers,
+          );
+          fallbackQuotes.forEach((quote) => results.push(quote));
+        }
+
+        continue;
+      }
+
       throw new Error(
         `Yahoo Finance quote request failed for symbols [${chunk.join(", ")}]: ${res.status} ${res.statusText}${
           errorText ? ` - ${errorText}` : ""
@@ -292,10 +329,34 @@ const fetchYahooQuotes = async (symbols: string[]) => {
       ? json.quoteResponse.result
       : [];
 
+    const chunkMapped: YahooQuoteResult[] = [];
+
     for (const quote of quoteResults) {
       const mapped = mapYahooQuote(quote);
       if (mapped) {
         results.push(mapped);
+        chunkMapped.push(mapped);
+      }
+    }
+
+    if (chunkMapped.length < chunk.length) {
+      const resolvedSymbols = new Set(
+        chunkMapped.map((item) => item.symbol.toUpperCase()),
+      );
+
+      for (const symbol of chunk) {
+        const variants = getSymbolVariants(symbol);
+        const isResolved = variants.some((variant) =>
+          resolvedSymbols.has(variant.toUpperCase())
+        );
+
+        if (!isResolved) {
+          const fallbackQuotes = await fetchYahooQuoteForSymbolVariants(
+            symbol,
+            headers,
+          );
+          fallbackQuotes.forEach((quote) => results.push(quote));
+        }
       }
     }
   }
