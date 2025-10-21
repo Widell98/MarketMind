@@ -79,6 +79,11 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const [yahooTickers, setYahooTickers] = useState<SheetTicker[]>([]);
   const [yahooLoading, setYahooLoading] = useState(false);
   const [yahooError, setYahooError] = useState<string | null>(null);
+  const [fetchedPrices, setFetchedPrices] = useState<Record<string, { price: number; currency: string | null }>>({});
+  const [priceFetchState, setPriceFetchState] = useState<{ loading: boolean; error: string | null }>({
+    loading: false,
+    error: null,
+  });
 
   const normalizedSymbol = useMemo(() => {
     const rawSymbol = formData.symbol?.trim();
@@ -96,8 +101,31 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       map.set(ticker.symbol.toUpperCase(), ticker);
     });
 
-    return Array.from(map.values());
-  }, [sheetTickers, yahooTickers]);
+    return Array.from(map.values()).map((ticker) => {
+      const fetched = fetchedPrices[ticker.symbol.toUpperCase()];
+
+      if (!fetched) {
+        return ticker;
+      }
+
+      const resolvedPrice = typeof fetched.price === 'number' && Number.isFinite(fetched.price) && fetched.price > 0
+        ? fetched.price
+        : ticker.price;
+      const resolvedCurrency = typeof fetched.currency === 'string' && fetched.currency.trim().length > 0
+        ? fetched.currency.trim().toUpperCase()
+        : ticker.currency;
+
+      if (resolvedPrice === ticker.price && resolvedCurrency === ticker.currency) {
+        return ticker;
+      }
+
+      return {
+        ...ticker,
+        price: resolvedPrice,
+        currency: resolvedCurrency ?? null,
+      };
+    });
+  }, [sheetTickers, yahooTickers, fetchedPrices]);
 
   const tickerLookup = useMemo(() => {
     const map = new Map<string, SheetTicker>();
@@ -166,6 +194,78 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       clearTimeout(handler);
     };
   }, [formData.symbol]);
+
+  useEffect(() => {
+    if (!normalizedSymbol || !matchedTicker) {
+      setPriceFetchState((prev) => (prev.loading || prev.error ? { loading: false, error: null } : prev));
+      return;
+    }
+
+    const hasExistingPrice = typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0;
+    const existingFetchedPrice = fetchedPrices[normalizedSymbol];
+
+    if (hasExistingPrice || existingFetchedPrice) {
+      setPriceFetchState((prev) => (prev.loading || prev.error ? { loading: false, error: null } : prev));
+      return;
+    }
+
+    let isActive = true;
+    setPriceFetchState({ loading: true, error: null });
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-ticker-price', {
+          body: { symbol: normalizedSymbol },
+        });
+
+        if (!isActive) {
+          return;
+        }
+
+        if (error) {
+          throw new Error(error.message ?? 'Kunde inte hämta live-priset.');
+        }
+
+        const rawPrice = data?.price;
+        const rawCurrency = typeof data?.currency === 'string' ? data.currency : null;
+
+        if (typeof rawPrice !== 'number' || !Number.isFinite(rawPrice) || rawPrice <= 0) {
+          throw new Error('Inget pris kunde hämtas för den valda tickern.');
+        }
+
+        setFetchedPrices((prev) => {
+          const normalizedCurrency = rawCurrency ? rawCurrency.trim().toUpperCase() : null;
+          const existing = prev[normalizedSymbol];
+
+          if (existing && existing.price === rawPrice && existing.currency === normalizedCurrency) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+            [normalizedSymbol]: {
+              price: rawPrice,
+              currency: normalizedCurrency,
+            },
+          };
+        });
+
+        setPriceFetchState({ loading: false, error: null });
+      } catch (err) {
+        console.error('Failed to fetch Finnhub price:', err);
+        if (!isActive) {
+          return;
+        }
+
+        const message = err instanceof Error ? err.message : 'Kunde inte hämta live-priset.';
+        setPriceFetchState({ loading: false, error: message });
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, [normalizedSymbol, matchedTicker, fetchedPrices]);
 
   // Update form data when initialData changes
   useEffect(() => {
@@ -358,6 +458,9 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const sheetPriceDisplay = resolvedSheetPrice !== null
     ? `${formatDisplayPrice(resolvedSheetPrice)}${sheetPriceCurrency ? ` ${sheetPriceCurrency}` : ''}`.trim()
     : '';
+
+  const isLivePriceLoading = priceFetchState.loading;
+  const livePriceError = priceFetchState.error;
 
   const handleInputChange = (field: string, value: string) => {
     const shouldCollapseManualList = field === 'symbol' && !value.trim();
@@ -687,13 +790,19 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
               id="sheet_price"
               value={sheetPriceDisplay}
               readOnly
-              placeholder={(tickersLoading || yahooLoading) ? 'Hämtar pris...' : 'Välj en ticker för att hämta priset'}
+              placeholder={(tickersLoading || yahooLoading || isLivePriceLoading) ? 'Hämtar pris...' : 'Välj en ticker för att hämta priset'}
             />
             <p className="text-xs text-muted-foreground">
               {sheetPriceDisplay
                 ? 'Priset läggs in som förvalt köppris men kan justeras innan du sparar.'
                 : 'Priset hämtas automatiskt när du väljer en ticker från listan.'}
             </p>
+            {isLivePriceLoading && (
+              <p className="text-xs text-muted-foreground">Hämtar live-pris från Finnhub...</p>
+            )}
+            {livePriceError && (
+              <p className="text-xs text-destructive">{livePriceError}</p>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
