@@ -8,10 +8,12 @@ import StockCaseCard from '@/components/StockCaseCard';
 import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
 
 import { useStockCases } from '@/hooks/useStockCases';
+import { useToast } from '@/hooks/use-toast';
 
 const Discover = () => {
   const navigate = useNavigate();
   const { stockCases: allStockCases, loading: stockCasesLoading } = useStockCases(false);
+  const { toast } = useToast();
 
   const [caseSearchTerm, setCaseSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('');
@@ -111,7 +113,12 @@ const Discover = () => {
   }, [allStockCases]);
 
   const handleViewStockCaseDetails = (id: string) => navigate(`/stock-cases/${id}`);
-  const handleDeleteStockCase = (id: string) => console.log('Delete stock case:', id);
+  const handleDeleteStockCase = (id: string) => {
+    toast({
+      title: 'Funktion kommer snart',
+      description: 'Det går ännu inte att ta bort aktiecase från denna vy.',
+    });
+  };
   return (
     <Layout>
       <div className="w-full pb-12">

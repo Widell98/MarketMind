@@ -15,8 +15,6 @@ export const useStockCaseOperations = () => {
       throw new Error('Du måste vara inloggad för att skapa aktiecases');
     }
 
-    console.log('Creating stock case with data:', stockCaseData);
-
     const { data, error } = await supabase
       .from('stock_cases')
       .insert([{
@@ -30,8 +28,6 @@ export const useStockCaseOperations = () => {
       console.error('Error creating stock case:', error);
       throw error;
     }
-
-    console.log('Stock case created successfully:', data);
 
     // Invalidate relevant queries
     queryClient.invalidateQueries({ queryKey: ['stock-cases'] });
@@ -47,8 +43,6 @@ export const useStockCaseOperations = () => {
 
   const uploadImage = async (file: File): Promise<string> => {
     try {
-      console.log('Starting image upload for file:', file.name, 'Size:', file.size);
-      
       // Validate file type
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
@@ -64,8 +58,6 @@ export const useStockCaseOperations = () => {
       const fileName = `${user?.id}-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = fileName;
       
-      console.log('Uploading to path:', filePath);
-
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('stock-case-images')
         .upload(filePath, file, {
@@ -78,13 +70,9 @@ export const useStockCaseOperations = () => {
         throw new Error(`Uppladdningsfel: ${uploadError.message}`);
       }
 
-      console.log('Upload successful:', uploadData);
-
       const { data: { publicUrl } } = supabase.storage
         .from('stock-case-images')
         .getPublicUrl(filePath);
-
-      console.log('Public URL generated:', publicUrl);
       return publicUrl;
     } catch (error) {
       console.error('Image upload failed:', error);
@@ -145,8 +133,6 @@ export const useStockCaseOperations = () => {
       throw new Error('Du måste vara inloggad för att uppdatera aktiecases');
     }
 
-    console.log('Updating stock case:', caseId, 'with data:', caseData);
-
     const { data, error } = await supabase
       .from('stock_cases')
       .update(caseData)
@@ -159,8 +145,6 @@ export const useStockCaseOperations = () => {
       console.error('Error updating stock case:', error);
       throw error;
     }
-
-    console.log('Stock case updated successfully:', data);
 
     // Invalidate relevant queries
     queryClient.invalidateQueries({ queryKey: ['stock-cases'] });

@@ -54,7 +54,6 @@ export const usePortfolio = () => {
     if (!user) return;
 
     try {
-      console.log('Fetching active portfolio for user:', user.id);
       const { data, error } = await supabase
         .from('user_portfolios')
         .select('*')
@@ -70,7 +69,6 @@ export const usePortfolio = () => {
       }
 
       if (data) {
-        console.log('Found active portfolio:', data.id);
         // Convert the data to match our Portfolio interface
         const portfolio: Portfolio = {
           ...data,
@@ -78,7 +76,6 @@ export const usePortfolio = () => {
         };
         setActivePortfolio(portfolio);
       } else {
-        console.log('No active portfolio found');
         setActivePortfolio(null);
       }
     } catch (error) {
@@ -122,17 +119,13 @@ export const usePortfolio = () => {
     setLoading(true);
     
     try {
-      console.log('Starting portfolio generation for user:', user.id, 'risk profile:', riskProfileId);
-
       // Call the edge function without authentication headers since it's now public
       const { data, error } = await supabase.functions.invoke('generate-portfolio', {
-        body: { 
+        body: {
           riskProfileId,
           userId: user.id
         }
       });
-
-      console.log('Generate portfolio response:', { data, error });
 
       if (error) {
         console.error('Edge function error:', error);
@@ -144,8 +137,6 @@ export const usePortfolio = () => {
         throw new Error(data?.error || 'Failed to generate portfolio - unknown error');
       }
 
-      console.log('Portfolio generated successfully:', data.portfolio);
-      
       // Convert the response data to match our Portfolio interface
       const portfolio: Portfolio = {
         ...data.portfolio,

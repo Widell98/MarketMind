@@ -102,7 +102,6 @@ export const useRiskProfile = () => {
     }
 
     try {
-      console.log('Fetching risk profile for user:', user?.id);
       setLoading(true);
       
       const { data, error } = await supabase
@@ -123,7 +122,6 @@ export const useRiskProfile = () => {
         setRiskProfile(null);
         return null;
       } else if (data) {
-        console.log('Fetched risk profile:', data);
         const typedData: RiskProfile = {
           ...data,
           sector_interests: jsonToStringArray(data.sector_interests),
@@ -137,7 +135,6 @@ export const useRiskProfile = () => {
         setRiskProfile(typedData);
         return typedData;
       } else {
-        console.log('No risk profile found');
         setRiskProfile(null);
         return null;
       }
@@ -154,7 +151,6 @@ export const useRiskProfile = () => {
     if (!user) return false;
 
     try {
-      console.log('Saving risk profile:', profileData);
       setLoading(true);
       const { data, error } = await supabase
         .from('user_risk_profiles')
@@ -177,7 +173,6 @@ export const useRiskProfile = () => {
       }
 
       if (data) {
-        console.log('Risk profile saved successfully:', data);
         const typedData: RiskProfile = {
           ...data,
           sector_interests: jsonToStringArray(data.sector_interests),
@@ -215,7 +210,6 @@ export const useRiskProfile = () => {
     if (!user) return false;
 
     try {
-      console.log('Clearing risk profile for user:', user.id);
       setLoading(true);
 
       const { error } = await supabase
@@ -233,7 +227,6 @@ export const useRiskProfile = () => {
         return false;
       }
 
-      console.log('Risk profile cleared successfully');
       setRiskProfile(null);
       
       toast({

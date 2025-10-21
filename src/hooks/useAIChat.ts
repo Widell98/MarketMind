@@ -360,9 +360,6 @@ export const useAIChat = (portfolioId?: string) => {
   const loadMessages = useCallback(async (sessionId: string, skipClear = false) => {
     if (!user) return;
 
-    console.log('=== LOADING MESSAGES ===');
-    console.log('Session ID:', sessionId);
-    console.log('User ID:', user.id);
 
     if (!skipClear) {
       setIsLoadingSession(true);
@@ -381,7 +378,6 @@ export const useAIChat = (portfolioId?: string) => {
         throw error;
       }
 
-      console.log('Raw messages from database:', data);
 
       const formattedMessages: Message[] = data.map(message => ({
         id: message.id,
@@ -393,8 +389,6 @@ export const useAIChat = (portfolioId?: string) => {
           : undefined,
       }));
 
-      console.log('Formatted messages:', formattedMessages);
-      console.log('Setting messages to state...');
 
       const activeEphemeralMessages = getActiveEphemeralMessages();
       const hasPersistedConfirmation = formattedMessages.some(message => message.context?.requiresConfirmation);
@@ -422,7 +416,6 @@ export const useAIChat = (portfolioId?: string) => {
         setMessages([]);
         setTimeout(() => {
           setMessages(mergedMessages);
-          console.log('Messages set to state:', mergedMessages.length);
         }, 50);
       }
 
@@ -443,13 +436,10 @@ export const useAIChat = (portfolioId?: string) => {
   const loadSessions = useCallback(async () => {
     if (!user) return;
 
-    console.log('=== LOADING SESSIONS ===');
-    console.log('User ID:', user.id);
 
     try {
       const formattedSessions = await loadChatSessions();
 
-      console.log('Formatted sessions:', formattedSessions);
 
       if (!formattedSessions || formattedSessions.length === 0) {
         return;
@@ -465,9 +455,6 @@ export const useAIChat = (portfolioId?: string) => {
   }, [user, toast, loadChatSessions]);
 
   const loadSession = useCallback(async (sessionId: string) => {
-    console.log('=== MANUALLY LOADING SESSION ===');
-    console.log('Loading chat session:', sessionId);
-    console.log('Current session before change:', currentSessionId);
 
     // Immediately clear messages and set new session
     setMessages([]);
@@ -477,7 +464,6 @@ export const useAIChat = (portfolioId?: string) => {
     // Load messages for the selected session
     await loadMessages(sessionId);
     
-    console.log('Session loaded successfully');
     toast({
       title: "Chat laddad",
       description: "Din sparade chat har laddats.",
@@ -485,21 +471,14 @@ export const useAIChat = (portfolioId?: string) => {
   }, [currentSessionId, loadMessages, toast, clearEphemeralMessages]);
 
   const createNewSession = useCallback(async (customName?: string, shouldSendInitialMessage?: string) => {
-    console.log('=== CREATE NEW SESSION ===');
-    console.log('User:', user?.id);
-    console.log('Portfolio ID:', portfolioId);
-    console.log('Custom name:', customName);
-    console.log('Should send initial message:', shouldSendInitialMessage);
     
     if (!user) {
-      console.log('Cannot create session: missing user');
       return;
     }
     
     setIsLoading(true);
 
     // Clear messages immediately for new session
-    console.log('Clearing messages for new session');
     setMessages([]);
     clearEphemeralMessages();
     
@@ -507,7 +486,6 @@ export const useAIChat = (portfolioId?: string) => {
       const now = new Date();
       const sessionName = customName || `Chat ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
       
-      console.log('Session name:', sessionName);
       
       const { data, error } = await supabase
         .from('ai_chat_sessions')
@@ -528,7 +506,6 @@ export const useAIChat = (portfolioId?: string) => {
         throw error;
       }
 
-      console.log('New session created:', data);
 
       const newSession = {
         id: data.id,
@@ -542,7 +519,6 @@ export const useAIChat = (portfolioId?: string) => {
       
       // Only send initial message if explicitly requested and provided
       if (shouldSendInitialMessage) {
-        console.log('Sending initial message:', shouldSendInitialMessage);
         // Small delay to ensure session is properly set
         setTimeout(() => {
           sendMessageToSession(shouldSendInitialMessage, newSession.id);
@@ -572,14 +548,9 @@ export const useAIChat = (portfolioId?: string) => {
       return;
     }
     
-    console.log('=== DELETING SESSION ===');
-    console.log('Session to delete:', sessionId);
-    console.log('Current user ID:', user.id);
-    console.log('Current session ID:', currentSessionId);
     
     try {
       // First, let's check if the session exists and belongs to the user
-      console.log('Checking if session exists and belongs to user...');
       const { data: sessionCheck, error: sessionCheckError } = await supabase
         .from('ai_chat_sessions')
         .select('id, user_id, session_name')
@@ -602,10 +573,8 @@ export const useAIChat = (portfolioId?: string) => {
         return;
       }
 
-      console.log('Session found and belongs to user:', sessionCheck);
 
       // Delete all messages in the session first
-      console.log('Deleting messages...');
       const { error: messagesError } = await supabase
         .from('portfolio_chat_history')
         .delete()
@@ -618,7 +587,6 @@ export const useAIChat = (portfolioId?: string) => {
       }
 
       // Now delete the session itself
-      console.log('Deleting session...');
       const { error: sessionError } = await supabase
         .from('ai_chat_sessions')
         .delete()
@@ -630,18 +598,15 @@ export const useAIChat = (portfolioId?: string) => {
         throw new Error(`Kunde inte radera session: ${sessionError.message}`);
       }
 
-      console.log('Session deletion completed successfully');
 
       // Update local state immediately
       setSessions(prev => {
         const updated = prev.filter(session => session.id !== sessionId);
-        console.log('Updated sessions after deletion:', updated.map(s => ({ id: s.id, name: s.session_name })));
         return updated;
       });
       
       // If we deleted the current session, clear it and load the most recent one
       if (currentSessionId === sessionId) {
-        console.log('Deleted session was the current session, clearing and loading next...');
         setCurrentSessionId(null);
         setMessages([]);
         
@@ -649,10 +614,8 @@ export const useAIChat = (portfolioId?: string) => {
         const remainingSessions = sessions.filter(s => s.id !== sessionId);
         if (remainingSessions.length > 0) {
           const mostRecent = remainingSessions[0];
-          console.log('Loading most recent remaining session:', mostRecent.id);
           await loadSession(mostRecent.id);
         } else {
-          console.log('No remaining sessions to load');
         }
       }
 
@@ -734,10 +697,6 @@ export const useAIChat = (portfolioId?: string) => {
       return;
     }
     
-    console.log('=== EDITING SESSION NAME ===');
-    console.log('Session ID:', sessionId);
-    console.log('New name:', newName);
-    console.log('User ID:', user.id);
     
     try {
       const { error } = await supabase
@@ -751,7 +710,6 @@ export const useAIChat = (portfolioId?: string) => {
         throw error;
       }
 
-      console.log('Session name updated successfully');
 
       // Update local state
       setSessions(prev => prev.map(session => 
@@ -776,14 +734,8 @@ export const useAIChat = (portfolioId?: string) => {
   }, [user, toast]);
 
   const sendMessage = useCallback(async (content: string) => {
-    console.log('=== SENDING MESSAGE DEBUG ===');
-    console.log('Content:', content);
-    console.log('User:', user?.id);
-    console.log('Current session ID:', currentSessionId);
-    console.log('Portfolio ID:', portfolioId);
     
     if (!user || !content.trim()) {
-      console.log('Missing user or empty content');
       return;
     }
 
@@ -794,7 +746,6 @@ export const useAIChat = (portfolioId?: string) => {
     const dailyLimit = DAILY_MESSAGE_CREDITS;
 
     if (!canSendMessage && !isPremium) {
-      console.log('Usage limit reached:', { currentUsage, dailyLimit, isPremium });
       toast({
         title: "Daglig gräns nådd",
         description: `Du har använt alla dina ${dailyLimit} gratis AI-meddelanden för idag. Uppgradera för obegränsad användning.`,
@@ -806,30 +757,22 @@ export const useAIChat = (portfolioId?: string) => {
 
     // If no session exists, create one and send message
     if (!currentSessionId) {
-      console.log('No session exists, creating session and sending message...');
       await createNewSessionAndSendMessage(content);
       return;
     }
 
-    console.log('Sending message to existing session');
     await sendMessageToSession(content);
   }, [user, currentSessionId, checkUsageLimit, subscription, usage, toast, portfolioId]);
 
   const createNewSessionAndSendMessage = useCallback(async (messageContent: string) => {
-    console.log('=== CREATE SESSION AND SEND MESSAGE ===');
-    console.log('User:', user?.id);
-    console.log('Portfolio ID:', portfolioId);
-    console.log('Message to send:', messageContent);
     
     if (!user) {
-      console.log('Cannot create session: missing user');
       return;
     }
     
     setIsLoading(true);
 
     // Clear messages immediately when creating new session
-    console.log('Clearing messages for new session');
     setMessages([]);
     clearEphemeralMessages();
     
@@ -837,7 +780,6 @@ export const useAIChat = (portfolioId?: string) => {
       const now = new Date();
       const sessionName = `Chat ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
       
-      console.log('Creating session with name:', sessionName);
       
       const { data, error } = await supabase
         .from('ai_chat_sessions')
@@ -858,7 +800,6 @@ export const useAIChat = (portfolioId?: string) => {
         throw error;
       }
 
-      console.log('New session created:', data);
 
       const newSession = {
         id: data.id,
@@ -870,7 +811,6 @@ export const useAIChat = (portfolioId?: string) => {
       setSessions(prev => [newSession, ...prev]);
       setCurrentSessionId(newSession.id);
       
-      console.log('Session state updated, now sending message...');
       
       // Now send the message to the newly created session
       await sendMessageToSession(messageContent, newSession.id);
@@ -888,15 +828,10 @@ export const useAIChat = (portfolioId?: string) => {
   }, [user, toast, clearEphemeralMessages]);
 
   const sendMessageToSession = useCallback(async (content: string, sessionId?: string) => {
-    console.log('=== SEND MESSAGE TO SESSION ===');
-    console.log('Content:', content);
-    console.log('Session ID to use:', sessionId || currentSessionId);
-    console.log('Portfolio ID:', portfolioId);
     
     const targetSessionId = sessionId || currentSessionId;
     
     if (!user || !content.trim() || !targetSessionId) {
-      console.log('Missing required data for sending message');
       return;
     }
     
@@ -937,7 +872,6 @@ export const useAIChat = (portfolioId?: string) => {
 
     try {
 
-      console.log('Calling Supabase function with chat history...');
       
       // Send chat history for context (last 10 messages excluding the temp message we just added)
       const chatHistoryForAPI = messages.slice(-10).map(msg => ({
@@ -983,7 +917,6 @@ export const useAIChat = (portfolioId?: string) => {
         throw new Error(`HTTP error! status: ${streamResponse.status}`);
       }
 
-      console.log('Starting streaming response...');
       
       // Create placeholder AI message for streaming
       const aiMessageId = Date.now().toString() + '_ai_temp';
@@ -1070,7 +1003,6 @@ export const useAIChat = (portfolioId?: string) => {
       }
       
       // After streaming is complete, reload messages from database to get the complete conversation with correct IDs
-      console.log('Streaming complete, reloading messages from database...');
       setTimeout(() => {
         loadMessages(targetSessionId, true);
       }, 1000);
@@ -1330,7 +1262,6 @@ export const useAIChat = (portfolioId?: string) => {
 
       await sendMessage(analysisPrompts[analysisType]);
 
-      console.log('Incrementing analysis usage...');
       const { error: usageError } = await supabase.rpc('increment_ai_usage', {
         _user_id: user.id,
         _usage_type: 'analysis'
@@ -1339,7 +1270,6 @@ export const useAIChat = (portfolioId?: string) => {
       if (usageError) {
         console.error('Error incrementing analysis usage:', usageError);
       } else {
-        console.log('Analysis usage incremented successfully');
       }
 
     } catch (error) {
@@ -1376,7 +1306,6 @@ export const useAIChat = (portfolioId?: string) => {
     }
 
     const mostRecentSession = sessions[0];
-    console.log('Auto-loading most recent session from context:', mostRecentSession.id);
     setCurrentSessionId(mostRecentSession.id);
     loadMessages(mostRecentSession.id);
   }, [user, sessions, currentSessionId, loadMessages]);

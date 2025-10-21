@@ -23,12 +23,6 @@ const LatestCases = () => {
   const { trendingCases, loading: trendingLoading } = useTrendingStockCases(6);
   const { latestCases: latestStockCases, loading: latestLoading } = useLatestStockCases(6);
 
-  console.log('LatestCases - View mode:', viewMode);
-  console.log('LatestCases - All stock cases:', allStockCases.length);
-  console.log('LatestCases - Latest cases:', latestStockCases.length);
-  console.log('LatestCases - Trending cases:', trendingCases.length);
-  console.log('LatestCases - Followed cases:', followedStockCases.length);
-
   const getDisplayData = () => {
     switch (viewMode) {
       case 'all':
@@ -44,9 +38,6 @@ const LatestCases = () => {
   };
 
   const { cases: displayCases, loading } = getDisplayData();
-
-  console.log('LatestCases - Display cases:', displayCases.length);
-  console.log('LatestCases - Loading:', loading);
 
   if (loading) {
     return (
@@ -213,7 +204,6 @@ const StockCaseCard = ({ stockCase }: { stockCase: any }) => {
   const navigate = useNavigate();
 
   const handleCardClick = () => {
-    console.log('StockCaseCard: Navigating to stock case', stockCase.id);
     navigate(`/stock-cases/${stockCase.id}`);
   };
 

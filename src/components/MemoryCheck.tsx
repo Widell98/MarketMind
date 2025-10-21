@@ -83,15 +83,6 @@ const MemoryCheck: React.FC<MemoryCheckProps> = ({
   const questions = getTodayQuestions(difficulty, quizQuestions, []);
   const currentQuestion = questions[currentQuestionIndex];
   
-  console.log('Quiz State Debug:', {
-    currentQuestionIndex,
-    totalQuestions: questions.length,
-    correctAnswers,
-    isCompleted,
-    dailyQuizCompleted,
-    todayCompletedCount
-  });
-
   // Show completion card if quiz is completed or daily quiz is already done
   if (isCompleted || dailyQuizCompleted) {
     return (

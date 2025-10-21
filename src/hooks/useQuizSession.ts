@@ -219,14 +219,6 @@ export const useQuizSession = () => {
     const newCompletedCount = todayCompletedCount + 1;
     const isLastQuestion = currentQuestionIndex >= questions.length - 1 || newCompletedCount >= DAILY_QUIZ_QUESTIONS;
     
-    console.log('Quiz progression debug:', {
-      currentQuestionIndex,
-      questionsLength: questions.length,
-      newCompletedCount,
-      DAILY_QUIZ_QUESTIONS,
-      isLastQuestion
-    });
-    
     if (isLastQuestion) {
       if (user) {
         setDailyQuizCompleted(true);
