@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useDeferredValue, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { UserHolding } from '@/hooks/useUserHoldings';
 import useSheetTickers, { SheetTicker, RawSheetTicker, sanitizeSheetTickerList } from '@/hooks/useSheetTickers';
+import { fetchYahooQuote } from '@/hooks/useYahooQuote';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { ADD_HOLDING_FORM_STORAGE_KEY } from '@/constants/storageKeys';
 import { supabase } from '@/integrations/supabase/client';
@@ -77,8 +78,10 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const [showMobileTickerList, setShowMobileTickerList] = useState(false);
   const [mobileListManuallyExpanded, setMobileListManuallyExpanded] = useState(false);
   const [yahooTickers, setYahooTickers] = useState<SheetTicker[]>([]);
+  const [quoteTickers, setQuoteTickers] = useState<SheetTicker[]>([]);
   const [yahooLoading, setYahooLoading] = useState(false);
   const [yahooError, setYahooError] = useState<string | null>(null);
+  const fetchedQuoteSymbolsRef = useRef(new Set<string>());
 
   const normalizedSymbol = useMemo(() => {
     const rawSymbol = formData.symbol?.trim();
@@ -88,16 +91,16 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const combinedTickers = useMemo(() => {
     const map = new Map<string, SheetTicker>();
 
-    sheetTickers.forEach((ticker) => {
+    const mergeTicker = (ticker: SheetTicker) => {
       map.set(ticker.symbol.toUpperCase(), ticker);
-    });
+    };
 
-    yahooTickers.forEach((ticker) => {
-      map.set(ticker.symbol.toUpperCase(), ticker);
-    });
+    sheetTickers.forEach(mergeTicker);
+    yahooTickers.forEach(mergeTicker);
+    quoteTickers.forEach(mergeTicker);
 
     return Array.from(map.values());
-  }, [sheetTickers, yahooTickers]);
+  }, [sheetTickers, yahooTickers, quoteTickers]);
 
   const tickerLookup = useMemo(() => {
     const map = new Map<string, SheetTicker>();
@@ -108,6 +111,63 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   }, [combinedTickers]);
 
   const matchedTicker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) ?? null : null;
+
+  useEffect(() => {
+    if (!matchedTicker?.symbol) {
+      return;
+    }
+
+    let isActive = true;
+
+    (async () => {
+      try {
+        const quote = await fetchYahooQuote(matchedTicker.symbol);
+
+        if (!isActive || !quote || typeof quote.price !== 'number' || !Number.isFinite(quote.price)) {
+          return;
+        }
+
+        setDialogState(prev => {
+          if (!isActive) {
+            return prev;
+          }
+
+          const nextState = { ...prev };
+          let hasChanges = false;
+
+          if (!prev.priceOverridden) {
+            const priceString = quote.price.toString();
+            if (prev.formData.purchase_price !== priceString) {
+              nextState.formData = {
+                ...nextState.formData,
+                purchase_price: priceString,
+              };
+              hasChanges = true;
+            }
+          }
+
+          if (!prev.currencyOverridden && quote.currency) {
+            const normalizedCurrency = quote.currency.toUpperCase();
+            if (prev.formData.currency !== normalizedCurrency) {
+              nextState.formData = {
+                ...nextState.formData,
+                currency: normalizedCurrency,
+              };
+              hasChanges = true;
+            }
+          }
+
+          return hasChanges ? nextState : prev;
+        });
+      } catch (error) {
+        console.warn('Failed to fetch Yahoo Finance quote in dialog:', error);
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, [matchedTicker?.symbol, setDialogState]);
 
   useEffect(() => {
     const trimmedSymbol = formData.symbol.trim();
@@ -166,6 +226,81 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       clearTimeout(handler);
     };
   }, [formData.symbol]);
+
+  useEffect(() => {
+    if (!matchedTicker || priceOverridden) {
+      return;
+    }
+
+    const symbol = matchedTicker.symbol?.trim().toUpperCase();
+    if (!symbol) {
+      return;
+    }
+
+    const hasPrice = typeof matchedTicker.price === 'number'
+      && Number.isFinite(matchedTicker.price)
+      && matchedTicker.price > 0;
+
+    if (hasPrice) {
+      return;
+    }
+
+    if (fetchedQuoteSymbolsRef.current.has(symbol)) {
+      return;
+    }
+
+    fetchedQuoteSymbolsRef.current.add(symbol);
+
+    let isActive = true;
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('list-sheet-tickers', {
+          body: { symbol },
+        });
+
+        if (!isActive) {
+          return;
+        }
+
+        if (error) {
+          throw new Error(error.message ?? 'Kunde inte hämta pris från Yahoo Finance.');
+        }
+
+        const list = Array.isArray(data?.tickers)
+          ? sanitizeSheetTickerList(data.tickers as RawSheetTicker[])
+          : [];
+
+        if (list.length > 0) {
+          setYahooError((prev) => (prev && prev.includes('Yahoo Finance') ? null : prev));
+          setQuoteTickers((prev) => {
+            const map = new Map<string, SheetTicker>();
+            prev.forEach((ticker) => {
+              map.set(ticker.symbol.toUpperCase(), ticker);
+            });
+            list.forEach((ticker) => {
+              map.set(ticker.symbol.toUpperCase(), ticker);
+            });
+            return Array.from(map.values());
+          });
+        }
+      } catch (err) {
+        if (!isActive) {
+          return;
+        }
+
+        fetchedQuoteSymbolsRef.current.delete(symbol);
+
+        console.error('Failed to fetch Yahoo Finance quote:', err);
+        const message = err instanceof Error ? err.message : 'Kunde inte hämta pris från Yahoo Finance.';
+        setYahooError((prev) => prev ?? message);
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, [matchedTicker, priceOverridden]);
 
   // Update form data when initialData changes
   useEffect(() => {
