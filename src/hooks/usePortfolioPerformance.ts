@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { resolveHoldingValue, convertToSEK } from '@/utils/currencyUtils';
 import type { SheetTicker } from '@/hooks/useSheetTickers';
+import { fetchYahooQuote } from '@/utils/yahooFinance';
 
 const parseNumeric = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -567,46 +568,85 @@ export const usePortfolioPerformance = () => {
       return null;
     }
 
+    setUpdating(true);
+
     try {
-      setUpdating(true);
+      let tickerList: SheetTicker[] = [];
+      let tickerFetchError: string | null = null;
 
-      const { data: tickerResponse, error: tickerError } = await supabase.functions.invoke('list-sheet-tickers');
+      try {
+        const { data: tickerResponse, error: tickerError } = await supabase.functions.invoke('list-sheet-tickers');
 
-      if (tickerError) {
-        throw new Error(tickerError.message || 'Kunde inte hämta tickers från Google Sheets.');
+        if (tickerError) {
+          tickerFetchError = tickerError.message || 'Kunde inte hämta tickers från Google Sheets.';
+        } else {
+          tickerList = Array.isArray(tickerResponse?.tickers)
+            ? (tickerResponse.tickers as SheetTicker[])
+            : [];
+
+          if (tickerList.length === 0) {
+            tickerFetchError = 'Kunde inte hämta tickers från Google Sheets.';
+          }
+        }
+      } catch (error) {
+        tickerFetchError = error instanceof Error ? error.message : 'Kunde inte hämta tickers från Google Sheets.';
       }
 
-      const tickerList = Array.isArray(tickerResponse?.tickers)
-        ? (tickerResponse.tickers as SheetTicker[])
-        : [];
+      const matchedTicker = tickerList.length > 0
+        ? findTickerMatch(tickerList, normalizedTicker)
+        : null;
 
-      if (tickerList.length === 0) {
-        throw new Error('Kunde inte hämta tickers från Google Sheets.');
+      let pricePerUnit: number | null = null;
+      let priceCurrency: string | null = null;
+      let canonicalSymbol = normalizedTicker;
+      let symbolForVariants = normalizedTicker;
+      let priceSource: 'sheet' | 'yahoo' | null = null;
+
+      if (matchedTicker) {
+        if (typeof matchedTicker.price !== 'number' || !Number.isFinite(matchedTicker.price) || matchedTicker.price <= 0) {
+          throw new Error(`Tickern ${matchedTicker.symbol} saknar ett giltigt pris i Google Sheets.`);
+        }
+
+        pricePerUnit = matchedTicker.price;
+        priceCurrency = matchedTicker.currency ? matchedTicker.currency.toUpperCase() : 'SEK';
+        canonicalSymbol = stripSymbolPrefix(matchedTicker.symbol) ?? matchedTicker.symbol.toUpperCase();
+        symbolForVariants = matchedTicker.symbol;
+        priceSource = 'sheet';
+      } else {
+        const symbolVariantsToTry = getSymbolVariants(normalizedTicker);
+
+        for (const variant of symbolVariantsToTry) {
+          const yahooQuote = await fetchYahooQuote(variant);
+          if (yahooQuote?.price && Number.isFinite(yahooQuote.price) && yahooQuote.price > 0) {
+            pricePerUnit = yahooQuote.price;
+            priceCurrency = yahooQuote.currency ? yahooQuote.currency.toUpperCase() : null;
+            symbolForVariants = yahooQuote.symbol ?? variant;
+            canonicalSymbol = stripSymbolPrefix(symbolForVariants) ?? symbolForVariants.toUpperCase();
+            priceSource = 'yahoo';
+            break;
+          }
+        }
+
+        if (!priceSource) {
+          const description = tickerFetchError
+            ? `${tickerFetchError} Yahoo Finance saknar prisdata för ${normalizedTicker}.`
+            : 'Tickern finns inte i listan. Kontrollera stavningen eller välj en annan ticker.';
+          toast({
+            title: 'Tickern hittades inte',
+            description,
+            variant: 'destructive',
+          });
+          return {
+            updated: 0,
+            errors: 0,
+            unmatched: [],
+            tickerFound: false,
+            requestedTicker: normalizedTicker,
+          };
+        }
       }
 
-      const matchedTicker = findTickerMatch(tickerList, normalizedTicker);
-
-      if (!matchedTicker) {
-        toast({
-          title: 'Tickern hittades inte',
-          description: 'Tickern finns inte i listan Kontrollera stavningen eller välj en annan ticker.',
-          variant: 'destructive',
-        });
-        return {
-          updated: 0,
-          errors: 0,
-          unmatched: [],
-          tickerFound: false,
-          requestedTicker: normalizedTicker,
-        };
-      }
-
-      if (typeof matchedTicker.price !== 'number' || !Number.isFinite(matchedTicker.price) || matchedTicker.price <= 0) {
-        throw new Error(`Tickern ${matchedTicker.symbol} saknar ett giltigt pris i Google Sheets.`);
-      }
-
-      const canonicalSymbol = stripSymbolPrefix(matchedTicker.symbol) ?? matchedTicker.symbol.toUpperCase();
-      const symbolVariants = getSymbolVariants(matchedTicker.symbol);
+      const symbolVariants = getSymbolVariants(symbolForVariants);
 
       let holdingsQuery = supabase
         .from('user_holdings')
@@ -636,14 +676,17 @@ export const usePortfolioPerformance = () => {
           updated: 0,
           errors: 0,
           unmatched: [],
-          tickerFound: true,
+          tickerFound: priceSource !== null,
           requestedTicker: canonicalSymbol,
         };
       }
 
-      const priceCurrency = matchedTicker.currency ? matchedTicker.currency.toUpperCase() : 'SEK';
-      const pricePerUnit = matchedTicker.price;
-      const pricePerUnitInSEK = convertToSEK(pricePerUnit, priceCurrency);
+      if (pricePerUnit === null || !Number.isFinite(pricePerUnit) || pricePerUnit <= 0) {
+        throw new Error(`Tickern ${canonicalSymbol} saknar ett giltigt pris.`);
+      }
+
+      const resolvedPriceCurrency = priceCurrency ?? 'SEK';
+      const pricePerUnitInSEK = convertToSEK(pricePerUnit, resolvedPriceCurrency);
 
       const timestamp = new Date().toISOString();
       let updatedCount = 0;
@@ -664,7 +707,7 @@ export const usePortfolioPerformance = () => {
           .from('user_holdings')
           .update({
             current_price_per_unit: pricePerUnit,
-            price_currency: priceCurrency,
+            price_currency: resolvedPriceCurrency,
             ...(computedValue !== null ? { current_value: computedValue } : {}),
             updated_at: timestamp,
           })
@@ -696,6 +739,10 @@ export const usePortfolioPerformance = () => {
         descriptionParts.push('Tickern matchade inga innehav att uppdatera.');
       }
 
+      if (priceSource === 'yahoo') {
+        descriptionParts.push('Pris hämtat från Yahoo Finance.');
+      }
+
       const toastTitle = updatedCount > 0
         ? `Pris uppdaterat för ${canonicalSymbol}`
         : `Inget pris uppdaterades för ${canonicalSymbol}`;
@@ -715,7 +762,6 @@ export const usePortfolioPerformance = () => {
         tickerFound: true,
         requestedTicker: canonicalSymbol,
       };
-
     } catch (error) {
       console.error('Error updating prices:', error);
       toast({

@@ -22,35 +22,7 @@ import useSheetTickers, { SheetTicker, RawSheetTicker, sanitizeSheetTickerList }
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { ADD_HOLDING_FORM_STORAGE_KEY, ADD_HOLDING_MANUAL_TICKERS_STORAGE_KEY } from '@/constants/storageKeys';
 import { supabase } from '@/integrations/supabase/client';
-
-async function fetchYahooQuote(symbol: string) {
-  const res = await fetch(
-    `https://query2.finance.yahoo.com/v6/finance/quote?symbols=${encodeURIComponent(symbol)}`,
-    {
-      headers: {
-        'User-Agent': navigator.userAgent,
-        Accept: 'application/json',
-        Referer: 'https://finance.yahoo.com/',
-      },
-    }
-  );
-
-  if (!res.ok) {
-    console.warn('Yahoo quote fetch failed:', res.status, res.statusText);
-    return null;
-  }
-
-  const json = await res.json();
-  const quote = json?.quoteResponse?.result?.[0];
-  if (!quote) return null;
-
-  return {
-    symbol: quote.symbol as string | undefined,
-    price: (quote.regularMarketPrice ?? null) as number | null,
-    currency: (quote.currency ?? null) as string | null,
-    name: (quote.shortName ?? quote.longName ?? quote.symbol) as string | undefined,
-  };
-}
+import { fetchYahooQuote } from '@/utils/yahooFinance';
 
 interface AddHoldingDialogProps {
   isOpen: boolean;
