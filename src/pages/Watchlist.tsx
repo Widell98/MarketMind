@@ -1,38 +1,19 @@
 
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Bookmark, AlertCircle, Plus } from 'lucide-react';
+import { Bookmark, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import SavedOpportunitiesSection from '@/components/SavedOpportunitiesSection';
+import { useToast } from '@/hooks/use-toast';
 
 const Watchlist = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  if (!user) {
-    return (
-      <Layout>
-        <div className="text-center py-12">
-          <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            Inloggning krävs
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Du måste vara inloggad för att se dina sparade möjligheter.
-          </p>
-          <Button onClick={() => navigate('/auth')}>
-            Logga in
-          </Button>
-        </div>
-      </Layout>
-    );
-  }
-
-  // Mock data for saved opportunities
-  const mockSavedOpportunities = [
+  const [savedOpportunities, setSavedOpportunities] = useState(() => [
     {
       id: '1',
       type: 'stock_case' as const,
@@ -53,10 +34,33 @@ const Watchlist = () => {
       created_at: '2024-01-10T14:30:00Z',
       ai_generated: true,
     },
-  ];
+  ]);
+
+  if (!user) {
+    return (
+      <Layout>
+        <div className="text-center py-12">
+          <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+            Inloggning krävs
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            Du måste vara inloggad för att se dina sparade möjligheter.
+          </p>
+          <Button onClick={() => navigate('/auth')}>
+            Logga in
+          </Button>
+        </div>
+      </Layout>
+    );
+  }
 
   const handleRemoveOpportunity = (id: string) => {
-    console.log('Removing opportunity:', id);
+    setSavedOpportunities(prev => prev.filter(opportunity => opportunity.id !== id));
+    toast({
+      title: 'Möjlighet borttagen',
+      description: 'Den sparade möjligheten har tagits bort från din lista.',
+    });
   };
 
   const handleViewOpportunity = (opportunity: any) => {
@@ -84,8 +88,8 @@ const Watchlist = () => {
         </div>
 
         {/* Saved Opportunities Section */}
-        <SavedOpportunitiesSection 
-          opportunities={mockSavedOpportunities}
+        <SavedOpportunitiesSection
+          opportunities={savedOpportunities}
           onRemove={handleRemoveOpportunity}
           onView={handleViewOpportunity}
           loading={false}

@@ -27,8 +27,6 @@ export const useCreateAnalysis = () => {
         throw new Error('Du måste vara inloggad för att skapa en analys');
       }
 
-      console.log('Creating analysis with data:', analysisData);
-
       const { data, error } = await supabase
         .from('analyses')
         .insert({
@@ -47,7 +45,6 @@ export const useCreateAnalysis = () => {
         throw error;
       }
 
-      console.log('Analysis created successfully:', data);
       return data;
     },
     onSuccess: (data) => {
@@ -123,25 +120,20 @@ export const useToggleAnalysisLike = () => {
         throw new Error('Du måste vara inloggad för att gilla analyser');
       }
 
-      console.log('Toggling like for analysis:', analysisId, 'Currently liked:', isLiked, 'User:', user.id);
-
       if (isLiked) {
         // Remove like
-        console.log('Removing like...');
         const { error } = await supabase
           .from('analysis_likes')
           .delete()
           .eq('analysis_id', analysisId)
           .eq('user_id', user.id);
-        
+
         if (error) {
           console.error('Error removing like:', error);
           throw error;
         }
-        console.log('Like removed successfully');
       } else {
         // Add like - first check if it already exists to prevent duplicate key error
-        console.log('Checking for existing like...');
         const { data: existingLike, error: checkError } = await supabase
           .from('analysis_likes')
           .select('id')
@@ -155,32 +147,27 @@ export const useToggleAnalysisLike = () => {
         }
 
         if (existingLike) {
-          console.log('Like already exists, no action needed');
           return;
         }
 
-        console.log('Adding new like...');
         const { error } = await supabase
           .from('analysis_likes')
           .insert({
             analysis_id: analysisId,
             user_id: user.id,
           });
-        
+
         if (error) {
           console.error('Error adding like:', error);
           // If it's a duplicate key error, just ignore it
           if (error.code === '23505') {
-            console.log('Duplicate like detected, ignoring error');
             return;
           }
           throw error;
         }
-        console.log('Like added successfully');
       }
     },
     onSuccess: (_, variables) => {
-      console.log('Like toggle successful, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['analyses'] });
       queryClient.invalidateQueries({ queryKey: ['stock-case-analyses'] });
       queryClient.invalidateQueries({ queryKey: ['analysis', variables.analysisId] });

@@ -10,8 +10,6 @@ export const useStockCases = (followedOnly: boolean = false) => {
   const query = useQuery({
     queryKey: ['stock-cases', followedOnly, user?.id],
     queryFn: async () => {
-      console.log('useStockCases: Fetching stock cases, followedOnly:', followedOnly);
-
       if (followedOnly && user) {
         // Get followed cases
         const { data: follows, error: followsError } = await supabase
@@ -25,7 +23,6 @@ export const useStockCases = (followedOnly: boolean = false) => {
         }
         
         if (!follows || follows.length === 0) {
-          console.log('No followed cases found');
           return [];
         }
 
@@ -43,8 +40,6 @@ export const useStockCases = (followedOnly: boolean = false) => {
           throw casesError;
         }
 
-        console.log('Followed stock cases fetched:', stockCases?.length || 0);
-
         // Manually fetch profiles and categories
         return await enrichStockCases(stockCases || []);
       }
@@ -60,8 +55,6 @@ export const useStockCases = (followedOnly: boolean = false) => {
         console.error('Error fetching stock cases:', error);
         throw error;
       }
-      
-      console.log('All stock cases fetched:', data?.length || 0);
       
       // Manually fetch profiles and categories
       return await enrichStockCases(data || []);

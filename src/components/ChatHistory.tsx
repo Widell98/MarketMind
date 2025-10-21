@@ -56,7 +56,6 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
   };
 
   const handleLoadSession = (sessionId: string) => {
-    console.log('ChatHistory: Loading session', sessionId);
     onLoadSession(sessionId);
     setIsOpen(false);
   };

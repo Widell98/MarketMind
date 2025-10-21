@@ -149,7 +149,6 @@ const AdminStockCases = () => {
   // Add redirect effect for non-admin users
   useEffect(() => {
     if (!roleLoading && user && !isAdmin) {
-      console.log('Non-admin user trying to access admin page, redirecting...');
       toast({
         title: "Åtkomst nekad",
         description: "Du har inte behörighet att komma åt den här sidan",

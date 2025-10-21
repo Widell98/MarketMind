@@ -26,8 +26,6 @@ export const useQuizAPI = (): UseQuizAPIReturn => {
     setError(null);
 
     try {
-      console.log('Calling generate-quiz-questions function...');
-      
       const { data, error: functionError } = await supabase.functions.invoke('generate-quiz-questions', {
         body: {
           userLevel,
@@ -44,7 +42,6 @@ export const useQuizAPI = (): UseQuizAPIReturn => {
         throw new Error('No questions received from API');
       }
 
-      console.log('Generated questions:', data.questions);
       return data.questions;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate questions';

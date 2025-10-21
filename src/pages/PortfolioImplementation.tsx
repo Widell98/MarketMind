@@ -111,7 +111,7 @@ const PortfolioImplementation = () => {
     }
   };
   const handleActionClick = (action: string) => {
-    console.log('Action clicked:', action);
+    // Future enhancement: trigger contextual workflows based on action
   };
   const handleUpdateProfile = () => {
     setShowOnboarding(true);

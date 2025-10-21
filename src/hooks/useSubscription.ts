@@ -137,7 +137,6 @@ export const useSubscription = () => {
     }
 
     try {
-      console.log('Opening customer portal for user:', user.email);
       const { data, error } = await supabase.functions.invoke('customer-portal');
       
       if (error) {
@@ -146,7 +145,6 @@ export const useSubscription = () => {
       }
       
       if (data?.url) {
-        console.log('Redirecting to customer portal:', data.url);
         window.location.href = data.url;
       } else {
         throw new Error('Ingen portal-URL mottagen');

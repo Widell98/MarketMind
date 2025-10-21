@@ -455,14 +455,8 @@ const ChatPortfolioAdvisor = () => {
   }, [messages]);
 
   useEffect(() => {
-    console.log('ChatPortfolioAdvisor useEffect triggered', {
-      isInitialized: isInitialized.current,
-      messagesLength: messages.length
-    });
-
     // Start conversation only once
     if (!isInitialized.current) {
-      console.log('Starting conversation - adding first question');
       isInitialized.current = true;
       const firstQuestion = questions[0];
       addBotMessage(firstQuestion.question, firstQuestion.hasOptions, firstQuestion.options);
@@ -471,8 +465,6 @@ const ChatPortfolioAdvisor = () => {
   }, []); // Empty dependency array
 
   const addBotMessage = (content: string, hasOptions: boolean = false, options?: Array<{ value: string; label: string }>, hasHoldingsInput: boolean = false) => {
-    console.log('addBotMessage called with content:', content.substring(0, 50) + '...');
-    
     const message: Message = {
       id: `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Unique ID
       type: 'bot',
@@ -482,10 +474,7 @@ const ChatPortfolioAdvisor = () => {
       options,
       hasHoldingsInput
     };
-    setMessages(prev => {
-      console.log('Adding bot message, current messages length:', prev.length);
-      return [...prev, message];
-    });
+    setMessages(prev => [...prev, message]);
   };
 
   const addUserMessage = (content: string) => {
@@ -697,9 +686,6 @@ const ChatPortfolioAdvisor = () => {
       h.purchasePrice > 0
     );
 
-    console.log('Holdings before validation:', holdings);
-    console.log('Valid holdings after filtering:', validHoldings);
-
     if (validHoldings.length === 0) {
       toast({
         title: "Inga innehav angivna",
@@ -903,8 +889,6 @@ const ChatPortfolioAdvisor = () => {
     if (!user || holdings.length === 0) return;
 
     try {
-      console.log('Saving user holdings to database:', holdings);
-
       const roundToTwo = (value: number) => Math.round(value * 100) / 100;
 
       // Transform holdings to match the user_holdings table structure
@@ -952,8 +936,6 @@ const ChatPortfolioAdvisor = () => {
         throw error;
       }
 
-      console.log('Successfully saved user holdings');
-
       await refetchHoldings({ silent: true });
     } catch (error) {
       console.error('Failed to save user holdings:', error);
@@ -969,8 +951,6 @@ const ChatPortfolioAdvisor = () => {
     if (!user || !recommendedStocks || recommendedStocks.length === 0) return;
 
     try {
-      console.log('Saving AI-recommended stocks as holdings:', recommendedStocks);
-      
       // Transform recommended stocks to holdings format
       const holdingsToInsert = recommendedStocks.map(stock => ({
         user_id: user.id,
@@ -994,8 +974,6 @@ const ChatPortfolioAdvisor = () => {
         console.error('Error saving recommended stocks:', error);
         throw error;
       }
-
-      console.log('Successfully saved recommended stocks as holdings');
       
       toast({
         title: "Rekommendationer sparade",
@@ -1015,16 +993,11 @@ const ChatPortfolioAdvisor = () => {
     if (!user) return;
 
     try {
-      console.log('Saving AI recommendations from response...');
-      
       const recommendations = extractStockRecommendationsFromAI(aiResponse);
-      
+
       if (recommendations.length === 0) {
-        console.log('No recommendations found to save');
         return;
       }
-
-      console.log('Found recommendations to save:', recommendations);
 
       // Transform recommendations to holdings format
       const holdingsToInsert = recommendations.map(rec => ({
@@ -1049,8 +1022,6 @@ const ChatPortfolioAdvisor = () => {
         console.error('Error saving AI recommendations as holdings:', error);
         throw error;
       }
-
-      console.log('Successfully saved AI recommendations as holdings:', holdingsToInsert.length);
       
       toast({
         title: "AI-rekommendationer sparade",
@@ -1071,8 +1042,6 @@ const ChatPortfolioAdvisor = () => {
   };
 
   const extractStockRecommendationsFromAI = (aiResponse: string) => {
-    console.log('Extracting stock recommendations from AI response:', aiResponse);
-
     try {
       const parsed = JSON.parse(aiResponse);
 
@@ -1193,7 +1162,6 @@ const ChatPortfolioAdvisor = () => {
       }
     });
 
-    console.log('Extracted recommendations:', recommendations);
     return recommendations.slice(0, 8); // Limit to 8 recommendations
   };
 
