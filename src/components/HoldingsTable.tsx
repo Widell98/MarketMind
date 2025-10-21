@@ -104,7 +104,7 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
                       badgeVariants({ variant: 'outline' }),
                       'text-xs font-mono inline-flex items-center gap-1 px-2 py-0.5 cursor-pointer transition-colors group hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed'
                     )}
-                    title="Uppdatera pris från Google Sheets"
+                    title="Uppdatera livepris"
                   >
                     {normalizedSymbol}
                     <RefreshCw
@@ -116,6 +116,9 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({
                   </button>
                 ) : (
                   holding.symbol || '-'
+                )}
+                {isRefreshing && (
+                  <span className="sr-only">Hämtar live-pris...</span>
                 )}
               </TableCell>
               <TableCell className="capitalize">{holding.holding_type}</TableCell>
