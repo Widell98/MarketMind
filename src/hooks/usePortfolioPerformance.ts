@@ -602,32 +602,37 @@ export const usePortfolioPerformance = () => {
       let symbolForVariants = normalizedTicker;
       let priceSource: 'sheet' | 'yahoo' | null = null;
 
+      const yahooVariantCandidates = new Set<string>(getSymbolVariants(normalizedTicker));
+
       if (matchedTicker) {
-        if (typeof matchedTicker.price !== 'number' || !Number.isFinite(matchedTicker.price) || matchedTicker.price <= 0) {
-          throw new Error(`Tickern ${matchedTicker.symbol} saknar ett giltigt pris i Google Sheets.`);
+        const matchedVariants = getSymbolVariants(matchedTicker.symbol);
+        matchedVariants.forEach((variant) => yahooVariantCandidates.add(variant));
+      }
+
+      for (const variant of yahooVariantCandidates) {
+        const yahooQuote = await fetchYahooQuote(variant);
+        if (yahooQuote?.price && Number.isFinite(yahooQuote.price) && yahooQuote.price > 0) {
+          pricePerUnit = yahooQuote.price;
+          priceCurrency = yahooQuote.currency ? yahooQuote.currency.toUpperCase() : null;
+          symbolForVariants = yahooQuote.symbol ?? variant;
+          canonicalSymbol = stripSymbolPrefix(symbolForVariants) ?? symbolForVariants.toUpperCase();
+          priceSource = 'yahoo';
+          break;
         }
+      }
 
-        pricePerUnit = matchedTicker.price;
-        priceCurrency = matchedTicker.currency ? matchedTicker.currency.toUpperCase() : 'SEK';
-        canonicalSymbol = stripSymbolPrefix(matchedTicker.symbol) ?? matchedTicker.symbol.toUpperCase();
-        symbolForVariants = matchedTicker.symbol;
-        priceSource = 'sheet';
-      } else {
-        const symbolVariantsToTry = getSymbolVariants(normalizedTicker);
-
-        for (const variant of symbolVariantsToTry) {
-          const yahooQuote = await fetchYahooQuote(variant);
-          if (yahooQuote?.price && Number.isFinite(yahooQuote.price) && yahooQuote.price > 0) {
-            pricePerUnit = yahooQuote.price;
-            priceCurrency = yahooQuote.currency ? yahooQuote.currency.toUpperCase() : null;
-            symbolForVariants = yahooQuote.symbol ?? variant;
-            canonicalSymbol = stripSymbolPrefix(symbolForVariants) ?? symbolForVariants.toUpperCase();
-            priceSource = 'yahoo';
-            break;
+      if (!priceSource) {
+        if (matchedTicker) {
+          if (typeof matchedTicker.price !== 'number' || !Number.isFinite(matchedTicker.price) || matchedTicker.price <= 0) {
+            throw new Error(`Tickern ${matchedTicker.symbol} saknar ett giltigt pris i Google Sheets.`);
           }
-        }
 
-        if (!priceSource) {
+          pricePerUnit = matchedTicker.price;
+          priceCurrency = matchedTicker.currency ? matchedTicker.currency.toUpperCase() : 'SEK';
+          canonicalSymbol = stripSymbolPrefix(matchedTicker.symbol) ?? matchedTicker.symbol.toUpperCase();
+          symbolForVariants = matchedTicker.symbol;
+          priceSource = 'sheet';
+        } else {
           const description = tickerFetchError
             ? `${tickerFetchError} Yahoo Finance saknar prisdata för ${normalizedTicker}.`
             : 'Tickern finns inte i listan. Kontrollera stavningen eller välj en annan ticker.';
