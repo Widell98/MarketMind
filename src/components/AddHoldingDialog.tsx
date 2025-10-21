@@ -663,7 +663,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
                   onClick={toggleMobileTickerList}
                   aria-expanded={showMobileTickerList}
                   aria-controls="mobile-ticker-suggestions"
-                  className="sm:hidden rounded-md bg-muted px-3 py-2 text-xs font-medium text-primary transition hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="sm:hidden inline-flex items-center justify-center gap-1 rounded-full border border-white/40 bg-white/80 px-4 py-2 text-xs font-semibold text-foreground shadow-[0_1px_0_rgba(255,255,255,0.6)] backdrop-blur transition hover:bg-white hover:shadow-[0_10px_24px_rgba(15,23,42,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 dark:border-white/10 dark:bg-slate-900/70 dark:text-white dark:shadow-[0_1px_0_rgba(255,255,255,0.08)] dark:hover:bg-slate-900"
                 >
                   tickerlista
                 </button>
@@ -686,10 +686,10 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
             {showMobileTickerList && (
               <div
                 id="mobile-ticker-suggestions"
-                className="max-h-56 overflow-y-auto rounded-2xl border border-border/60 bg-muted/50 p-1 shadow-sm"
+                className="max-h-60 overflow-y-auto rounded-[28px] border border-white/40 bg-white/80 p-2 shadow-[0_18px_45px_rgba(15,23,42,0.18)] backdrop-blur-xl transition-all dark:border-white/10 dark:bg-slate-900/80 dark:shadow-[0_18px_45px_rgba(15,23,42,0.45)]"
               >
                 {(tickersLoading || yahooLoading) ? (
-                  <p className="px-3 py-2 text-xs text-muted-foreground">Hämtar tickers...</p>
+                  <p className="px-3 py-2 text-xs font-medium text-muted-foreground">Hämtar tickers...</p>
                 ) : mobileTickerSuggestions.length > 0 ? (
                   mobileTickerSuggestions.map((ticker) => {
                     const displayPrice = typeof ticker.price === 'number' && Number.isFinite(ticker.price) && ticker.price > 0
@@ -701,22 +701,22 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
                         key={`mobile-ticker-${ticker.symbol}`}
                         type="button"
                         onClick={() => handleMobileTickerSelect(ticker)}
-                        className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        className="flex w-full items-center justify-between gap-3 rounded-2xl bg-white/60 px-4 py-3 text-left text-foreground shadow-[0_1px_0_rgba(255,255,255,0.6)] transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_12px_26px_rgba(15,23,42,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 dark:bg-slate-900/60 dark:text-white dark:shadow-[0_1px_0_rgba(255,255,255,0.05)] dark:hover:bg-slate-900"
                       >
                         <div>
-                          <div className="text-sm font-semibold text-foreground">{ticker.symbol}</div>
+                          <div className="text-sm font-semibold tracking-wide text-foreground dark:text-white">{ticker.symbol}</div>
                           {ticker.name && (
                             <div className="text-xs text-muted-foreground">{ticker.name}</div>
                           )}
                         </div>
                         {displayPrice && (
-                          <div className="text-xs font-medium text-muted-foreground">{displayPrice}</div>
+                          <div className="text-xs font-semibold text-muted-foreground">{displayPrice}</div>
                         )}
                       </button>
                     );
                   })
                 ) : (
-                  <p className="px-3 py-2 text-xs text-muted-foreground">Inga tickers matchar din sökning ännu.</p>
+                  <p className="px-3 py-2 text-xs font-medium text-muted-foreground">Inga tickers matchar din sökning ännu.</p>
                 )}
               </div>
             )}
