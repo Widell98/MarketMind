@@ -5,6 +5,12 @@ import { useToast } from '@/hooks/use-toast';
 import { resolveHoldingValue, convertToSEK } from '@/utils/currencyUtils';
 import type { SheetTicker } from '@/hooks/useSheetTickers';
 
+type FinnhubPriceResponse = {
+  symbol: string;
+  price: number;
+  currency: string | null;
+};
+
 const parseNumeric = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value;
@@ -395,7 +401,7 @@ export const usePortfolioPerformance = () => {
 
       const { data: holdings, error: holdingsError } = await supabase
         .from('user_holdings')
-        .select('id, quantity, symbol, name, holding_type')
+        .select('id, quantity, symbol, name, holding_type, price_currency, currency')
         .eq('user_id', user.id)
         .neq('holding_type', 'cash')
         .neq('holding_type', 'recommendation');
@@ -428,6 +434,55 @@ export const usePortfolioPerformance = () => {
       let errorCount = 0;
       const failedHoldings: Array<{ symbol?: string; name?: string }> = [];
       const unmatchedHoldings: Array<{ symbol?: string; name?: string }> = [];
+      let finnhubUpdateCount = 0;
+      let sheetUpdateCount = 0;
+
+      const finnhubPriceCache = new Map<string, FinnhubPriceResponse | null>();
+
+      const fetchFinnhubPrice = async (symbol: string): Promise<FinnhubPriceResponse | null> => {
+        const normalizedSymbol = symbol.trim().toUpperCase();
+        if (normalizedSymbol.length === 0) {
+          return null;
+        }
+
+        if (finnhubPriceCache.has(normalizedSymbol)) {
+          return finnhubPriceCache.get(normalizedSymbol) ?? null;
+        }
+
+        try {
+          const { data: liveData, error: liveError } = await supabase.functions.invoke<FinnhubPriceResponse>('get-ticker-price', {
+            body: { symbol: normalizedSymbol },
+          });
+
+          if (liveError) {
+            console.warn('Finnhub live price request failed for', normalizedSymbol, liveError);
+            finnhubPriceCache.set(normalizedSymbol, null);
+            return null;
+          }
+
+          if (liveData && typeof liveData.price === 'number' && Number.isFinite(liveData.price) && liveData.price > 0) {
+            const currency = typeof liveData.currency === 'string' && liveData.currency.trim().length > 0
+              ? liveData.currency.trim().toUpperCase()
+              : null;
+
+            const result: FinnhubPriceResponse = {
+              symbol: normalizedSymbol,
+              price: liveData.price,
+              currency,
+            };
+
+            finnhubPriceCache.set(normalizedSymbol, result);
+            return result;
+          }
+
+          finnhubPriceCache.set(normalizedSymbol, null);
+          return null;
+        } catch (error) {
+          console.error('Unexpected error invoking get-ticker-price for', normalizedSymbol, error);
+          finnhubPriceCache.set(normalizedSymbol, null);
+          return null;
+        }
+      };
 
       for (const holding of typedHoldings) {
         const symbolVariants = getSymbolVariants(holding.symbol);
@@ -458,7 +513,46 @@ export const usePortfolioPerformance = () => {
           }
         }
 
-        if (!matchedTicker) {
+        const candidateSymbols: string[] = [];
+        const addCandidate = (value?: string | null) => {
+          const normalized = normalizeValue(value);
+          if (!normalized) {
+            return;
+          }
+          const upper = normalized.toUpperCase();
+          if (!candidateSymbols.includes(upper)) {
+            candidateSymbols.push(upper);
+          }
+        };
+
+        addCandidate(matchedTicker?.symbol);
+        addCandidate(holding.symbol);
+        addCandidate(stripSymbolPrefix(matchedTicker?.symbol));
+        addCandidate(stripSymbolPrefix(holding.symbol));
+        getSymbolVariants(matchedTicker?.symbol ?? holding.symbol).forEach(addCandidate);
+
+        let resolvedPrice: number | null = null;
+        let resolvedCurrency: string | null = matchedTicker?.currency ? matchedTicker.currency.toUpperCase() : null;
+        let priceSource: 'finnhub' | 'sheet' | null = null;
+
+        for (const candidate of candidateSymbols) {
+          const livePrice = await fetchFinnhubPrice(candidate);
+          if (livePrice) {
+            resolvedPrice = livePrice.price;
+            if (livePrice.currency) {
+              resolvedCurrency = livePrice.currency;
+            }
+            priceSource = 'finnhub';
+            break;
+          }
+        }
+
+        if (resolvedPrice === null && matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0) {
+          resolvedPrice = matchedTicker.price;
+          priceSource = 'sheet';
+        }
+
+        if (resolvedPrice === null) {
           unmatchedHoldings.push({
             symbol: holding.symbol ?? undefined,
             name: holding.name ?? undefined,
@@ -466,17 +560,21 @@ export const usePortfolioPerformance = () => {
           continue;
         }
 
-        if (typeof matchedTicker.price !== 'number' || !Number.isFinite(matchedTicker.price) || matchedTicker.price <= 0) {
-          unmatchedHoldings.push({
-            symbol: holding.symbol ?? undefined,
-            name: holding.name ?? undefined,
-          });
-          continue;
+        if (!resolvedCurrency) {
+          const holdingCurrency = typeof holding.price_currency === 'string' && holding.price_currency.trim().length > 0
+            ? holding.price_currency
+            : typeof holding.currency === 'string' && holding.currency.trim().length > 0
+              ? holding.currency
+              : null;
+
+          if (holdingCurrency) {
+            resolvedCurrency = holdingCurrency.trim().toUpperCase();
+          }
         }
 
-        const priceCurrency = matchedTicker.currency ? matchedTicker.currency.toUpperCase() : 'SEK';
-        const pricePerUnit = matchedTicker.price;
-        const pricePerUnitInSEK = convertToSEK(pricePerUnit, priceCurrency);
+        const effectiveCurrency = resolvedCurrency ? resolvedCurrency.toUpperCase() : 'SEK';
+        const pricePerUnit = resolvedPrice;
+        const pricePerUnitInSEK = convertToSEK(pricePerUnit, effectiveCurrency);
         const quantity = parseNumeric(holding.quantity) ?? 0;
         const computedValue = Number.isFinite(pricePerUnitInSEK)
           ? quantity > 0
@@ -488,7 +586,7 @@ export const usePortfolioPerformance = () => {
           .from('user_holdings')
           .update({
             current_price_per_unit: pricePerUnit,
-            price_currency: priceCurrency,
+            price_currency: effectiveCurrency,
             ...(computedValue !== null ? { current_value: computedValue } : {}),
             updated_at: timestamp,
           })
@@ -503,6 +601,11 @@ export const usePortfolioPerformance = () => {
           console.error(`Error updating holding ${holding.id}:`, updateError);
         } else {
           updatedCount++;
+          if (priceSource === 'finnhub') {
+            finnhubUpdateCount++;
+          } else if (priceSource === 'sheet') {
+            sheetUpdateCount++;
+          }
         }
       }
 
@@ -518,6 +621,14 @@ export const usePortfolioPerformance = () => {
 
       if (unmatchedHoldings.length > 0) {
         descriptionParts.push(`${unmatchedHoldings.length} innehav saknade prisdata`);
+      }
+
+      if (finnhubUpdateCount > 0) {
+        descriptionParts.push(`Finnhub live-pris användes för ${finnhubUpdateCount} innehav`);
+      }
+
+      if (sheetUpdateCount > 0) {
+        descriptionParts.push(`Google Sheets-pris användes för ${sheetUpdateCount} innehav`);
       }
 
       const toastTitle = updatedCount > 0
@@ -599,12 +710,6 @@ export const usePortfolioPerformance = () => {
       const symbolVariants = getSymbolVariants(symbolVariantsSource);
 
       const normalizedFinnhubSymbol = normalizedTicker || canonicalSymbol;
-
-      type FinnhubPriceResponse = {
-        symbol: string;
-        price: number;
-        currency: string | null;
-      };
 
       let resolvedPrice: number | null = null;
       let resolvedCurrency = matchedTicker?.currency ? matchedTicker.currency.toUpperCase() : null;
