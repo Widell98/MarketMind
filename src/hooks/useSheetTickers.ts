@@ -8,12 +8,44 @@ export type SheetTicker = {
   currency: string | null;
 };
 
-type RawSheetTicker = {
+export type RawSheetTicker = {
   symbol?: string | null;
   name?: string | null;
   price?: number | null;
   currency?: string | null;
 };
+
+export const sanitizeSheetTickerList = (list: RawSheetTicker[]): SheetTicker[] =>
+  list
+    .map((item): SheetTicker | null => {
+      if (!item || typeof item.symbol !== 'string') {
+        return null;
+      }
+
+      const trimmedSymbol = item.symbol.trim();
+      if (!trimmedSymbol) {
+        return null;
+      }
+
+      const normalizedSymbol = trimmedSymbol.toUpperCase();
+      const resolvedName = typeof item.name === 'string' && item.name.trim().length > 0
+        ? item.name.trim()
+        : normalizedSymbol;
+      const resolvedPrice = typeof item.price === 'number' && Number.isFinite(item.price) && item.price > 0
+        ? item.price
+        : null;
+      const resolvedCurrency = typeof item.currency === 'string' && item.currency.trim().length > 0
+        ? item.currency.trim().toUpperCase()
+        : null;
+
+      return {
+        symbol: normalizedSymbol,
+        name: resolvedName,
+        price: resolvedPrice,
+        currency: resolvedCurrency,
+      };
+    })
+    .filter((item): item is SheetTicker => item !== null);
 
 const useSheetTickers = () => {
   const [tickers, setTickers] = useState<SheetTicker[]>([]);
@@ -59,38 +91,7 @@ const useSheetTickers = () => {
           console.warn('list-sheet-tickers edge function returned an empty list.');
         }
 
-        const sanitizedTickers: SheetTicker[] = list
-          .map((item): SheetTicker | null => {
-            if (!item || typeof item.symbol !== 'string') {
-              return null;
-            }
-
-            const trimmedSymbol = item.symbol.trim();
-            if (!trimmedSymbol) {
-              return null;
-            }
-
-            const normalizedSymbol = trimmedSymbol.toUpperCase();
-            const resolvedName = typeof item.name === 'string' && item.name.trim().length > 0
-              ? item.name.trim()
-              : normalizedSymbol;
-            const resolvedPrice = typeof item.price === 'number' && Number.isFinite(item.price) && item.price > 0
-              ? item.price
-              : null;
-            const resolvedCurrency = typeof item.currency === 'string' && item.currency.trim().length > 0
-              ? item.currency.trim().toUpperCase()
-              : null;
-
-            return {
-              symbol: normalizedSymbol,
-              name: resolvedName,
-              price: resolvedPrice,
-              currency: resolvedCurrency,
-            };
-          })
-          .filter((item): item is SheetTicker => item !== null);
-
-        setTickers(sanitizedTickers);
+        setTickers(sanitizeSheetTickerList(list));
       } catch (err) {
         if (!isMounted) {
           return;

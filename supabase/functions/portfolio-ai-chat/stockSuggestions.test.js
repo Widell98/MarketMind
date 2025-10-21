@@ -21,7 +21,7 @@ test('excludes user-mentioned tickers not repeated by AI', async () => {
   );
 
   assert.equal(suggestions.length, 0);
-  assert.ok(message.trim().endsWith('Aktieförslag: []'));
+  assert.ok(!/Aktieförslag/i.test(message));
 });
 
 test('handles tickers with dots, dashes, and numbers and filters invalid ones', async () => {
@@ -41,13 +41,16 @@ test('handles tickers with dots, dashes, and numbers and filters invalid ones', 
   };
 
   const userMessage = '';
-  const aiMessage =
-    'BRK.B och RDS-A kan slå A1. Aktieförslag: ' +
-    '[{"name":"Berkshire","ticker":"BRK.B"},' +
-    '{"name":"Shell","ticker":"RDS-A"},' +
-    '{"name":"Fake","ticker":"FAKE1"}]';
+  const aiMessage = [
+    'BRK.B och RDS-A kan slå A1.',
+    '',
+    '**Aktieförslag:**',
+    '- **Berkshire Hathaway (BRK.B)** - Stark balansräkning',
+    '- **Shell (RDS-A)** - Stabil utdelare',
+    '- **Fake Corp (FAKE1)** - Ogiltig'
+  ].join('\n');
 
-  const { suggestions } = await ensureStockSuggestions(
+  const { suggestions, message } = await ensureStockSuggestions(
     mockSupabase,
     userMessage,
     aiMessage
@@ -57,5 +60,8 @@ test('handles tickers with dots, dashes, and numbers and filters invalid ones', 
     suggestions.map((s) => s.ticker).sort(),
     ['A1', 'BRK.B', 'RDS-A'].sort()
   );
+
+  assert.match(message, /\*\*Aktieförslag:\*\*/);
+  assert.match(message, /\*\*Berkshire Hathaway \(BRK\.B\)\*\*/);
 });
 

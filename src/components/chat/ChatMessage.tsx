@@ -156,58 +156,122 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
   };
 
   const formatMessageContent = (content: string) => {
-    return content.split('\n').map((line, index) => {
-      if (line.trim() === '') return <br key={index} />;
+    const lines = content.split('\n');
+    const elements: React.ReactNode[] = [];
+    let keyCounter = 0;
+    let currentList: { type: 'ol' | 'ul'; marker?: 'disc' | 'dash'; items: string[] } | null = null;
 
-      if (line.startsWith('###')) {
-        return (
+    const getKey = () => `message-fragment-${keyCounter++}`;
+
+    const flushList = () => {
+      if (!currentList) return;
+
+      const listKey = getKey();
+      const ListTag = currentList.type === 'ol' ? 'ol' : 'ul';
+      const isDashList = currentList.type === 'ul' && currentList.marker === 'dash';
+      const listClassName = `ml-4 ${
+        currentList.type === 'ol'
+          ? 'list-decimal'
+          : isDashList
+            ? 'list-none'
+            : 'list-disc'
+      } space-y-2 text-sm leading-relaxed text-foreground`;
+
+      elements.push(
+        <ListTag key={listKey} className={listClassName}>
+          {currentList.items.map((item, index) => {
+            const sanitizedContent = parseMarkdownSafely(item);
+
+            return (
+              <li key={`${listKey}-item-${index}`} className={isDashList ? 'flex items-start gap-2' : undefined}>
+                {isDashList && <span className="select-none text-sm text-foreground">-</span>}
+                <span
+                  className={isDashList ? 'flex-1 text-sm leading-relaxed text-foreground' : undefined}
+                  dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+                />
+              </li>
+            );
+          })}
+        </ListTag>,
+      );
+
+      currentList = null;
+    };
+
+    lines.forEach((line) => {
+      const trimmedLine = line.trim();
+
+      if (trimmedLine === '') {
+        flushList();
+        elements.push(<br key={getKey()} />);
+        return;
+      }
+
+      if (trimmedLine.startsWith('###')) {
+        flushList();
+        elements.push(
           <h3
-            key={index}
+            key={getKey()}
             className="mt-3 mb-2 text-sm font-semibold text-foreground"
-            dangerouslySetInnerHTML={{ __html: parseMarkdownSafely(line.replace('###', '').trim()) }}
-          />
+            dangerouslySetInnerHTML={{
+              __html: parseMarkdownSafely(trimmedLine.replace('###', '').trim()),
+            }}
+          />,
         );
+        return;
       }
 
-      if (line.startsWith('##')) {
-        return (
+      if (trimmedLine.startsWith('##')) {
+        flushList();
+        elements.push(
           <h2
-            key={index}
+            key={getKey()}
             className="mt-4 mb-2 text-base font-semibold text-foreground"
-            dangerouslySetInnerHTML={{ __html: parseMarkdownSafely(line.replace('##', '').trim()) }}
-          />
+            dangerouslySetInnerHTML={{
+              __html: parseMarkdownSafely(trimmedLine.replace('##', '').trim()),
+            }}
+          />,
         );
+        return;
       }
 
-      if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
-        return (
-          <li
-            key={index}
-            className="ml-4 text-sm leading-relaxed text-foreground"
-            dangerouslySetInnerHTML={{ __html: parseMarkdownSafely(line.trim().substring(1).trim()) }}
-          />
-        );
+      if (trimmedLine.startsWith('-') || trimmedLine.startsWith('•')) {
+        const contentWithoutMarker = trimmedLine.replace(/^[-•]\s*/, '').trim();
+
+        if (!currentList || currentList.type !== 'ul' || currentList.marker !== 'disc') {
+          flushList();
+          currentList = { type: 'ul', marker: 'disc', items: [] };
+        }
+
+        currentList.items.push(contentWithoutMarker);
+        return;
       }
 
-      if (/^\d+\./.test(line.trim())) {
-        return (
-          <li
-            key={index}
-            className="ml-4 list-decimal text-sm leading-relaxed text-foreground"
-            dangerouslySetInnerHTML={{ __html: parseMarkdownSafely(line.trim().replace(/^\d+\.\s*/, '')) }}
-          />
-        );
+      if (/^\d+\./.test(trimmedLine)) {
+        const contentWithoutNumber = trimmedLine.replace(/^\d+\.\s*/, '').trim();
+
+        if (!currentList || currentList.type !== 'ul' || currentList.marker !== 'dash') {
+          flushList();
+          currentList = { type: 'ul', marker: 'dash', items: [] };
+        }
+
+        currentList.items.push(contentWithoutNumber);
+        return;
       }
 
-      const parsedContent = parseMarkdownSafely(line);
-      return (
+      flushList();
+      elements.push(
         <p
-          key={index}
+          key={getKey()}
           className="mb-2 text-sm leading-relaxed text-foreground"
-          dangerouslySetInnerHTML={{ __html: parsedContent }}
-        />
+          dangerouslySetInnerHTML={{ __html: parseMarkdownSafely(line) }}
+        />,
       );
     });
+
+    flushList();
+
+    return elements;
   };
 
   return (
