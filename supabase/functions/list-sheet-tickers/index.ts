@@ -83,6 +83,294 @@ const fetchSheetTickers = async () => {
   return Array.from(tickerMap.values());
 };
 
+const stripSymbolPrefix = (symbol?: string | null) => {
+  if (!symbol) return null;
+  const trimmed = symbol.trim();
+  if (!trimmed) return null;
+
+  const upper = trimmed.toUpperCase();
+  const parts = upper.split(":");
+  const candidate = parts[parts.length - 1]?.trim();
+  return candidate && candidate.length > 0 ? candidate : upper;
+};
+
+const getSymbolVariants = (symbol?: string | null) => {
+  const variants = new Set<string>();
+
+  const addVariant = (value?: string | null) => {
+    if (!value || typeof value !== "string") return;
+    const trimmed = value.trim();
+    if (!trimmed) return;
+
+    const upper = trimmed.toUpperCase();
+    variants.add(upper);
+
+    const stripped = stripSymbolPrefix(upper);
+    if (stripped && stripped !== upper) {
+      variants.add(stripped);
+    }
+  };
+
+  addVariant(symbol);
+
+  for (const current of [...variants]) {
+    if (current.endsWith(".ST")) {
+      const base = current.replace(/\.ST$/, "");
+      if (base) variants.add(base);
+    } else {
+      variants.add(`${current}.ST`);
+    }
+  }
+
+  return [...variants];
+};
+
+const chunkArray = <T>(items: T[], chunkSize: number) => {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += chunkSize) {
+    chunks.push(items.slice(i, i + chunkSize));
+  }
+  return chunks;
+};
+
+type YahooQuoteResult = {
+  name: string;
+  symbol: string;
+  currency: string | null;
+  price: number | null;
+};
+
+const mapYahooQuote = (quote: unknown): YahooQuoteResult | null => {
+  if (!quote || typeof quote !== "object" || quote === null) {
+    return null;
+  }
+
+  const symbol = typeof (quote as { symbol?: unknown }).symbol === "string"
+    ? (quote as { symbol: string }).symbol.trim().toUpperCase()
+    : "";
+
+  if (!symbol) {
+    return null;
+  }
+
+  const rawPrice = (quote as { regularMarketPrice?: unknown }).regularMarketPrice;
+  const price = typeof rawPrice === "number" && Number.isFinite(rawPrice)
+    ? rawPrice
+    : null;
+
+  const rawCurrency = (quote as { currency?: unknown }).currency;
+  const currency = typeof rawCurrency === "string" && rawCurrency.trim().length > 0
+    ? rawCurrency.trim().toUpperCase()
+    : null;
+
+  const shortName = (quote as { shortName?: unknown }).shortName;
+  const longName = (quote as { longName?: unknown }).longName;
+  const name = typeof shortName === "string" && shortName.trim().length > 0
+    ? shortName.trim()
+    : typeof longName === "string" && longName.trim().length > 0
+      ? longName.trim()
+      : symbol;
+
+  return {
+    symbol,
+    name,
+    currency,
+    price,
+  };
+};
+
+const fetchYahooQuoteForSymbol = async (
+  symbol: string,
+  headers: Record<string, string>,
+): Promise<YahooQuoteResult[]> => {
+  const params = new URLSearchParams({
+    symbols: symbol,
+    lang: "en-US",
+    region: "US",
+    corsDomain: "finance.yahoo.com",
+  });
+
+  const res = await fetch(
+    `https://query2.finance.yahoo.com/v6/finance/quote?${params.toString()}`,
+    { headers },
+  );
+
+  if (res.status === 404 || res.status === 400) {
+    console.warn(
+      `Yahoo Finance returned ${res.status} for symbol ${symbol}. Skipping.`,
+    );
+    return [];
+  }
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(
+      `Yahoo Finance quote request failed for symbol ${symbol}: ${res.status} ${res.statusText}${
+        errorText ? ` - ${errorText}` : ""
+      }`,
+    );
+  }
+
+  const json = await res.json();
+  const quoteResults = Array.isArray(json?.quoteResponse?.result)
+    ? json.quoteResponse.result
+    : [];
+
+  return quoteResults
+    .map((quote) => mapYahooQuote(quote))
+    .filter((quote): quote is YahooQuoteResult => Boolean(quote));
+};
+
+const fetchYahooQuoteForSymbolVariants = async (
+  symbol: string,
+  headers: Record<string, string>,
+): Promise<YahooQuoteResult[]> => {
+  const variants = getSymbolVariants(symbol);
+  const attempted = new Set<string>();
+
+  for (const variant of variants) {
+    const normalized = variant.trim().toUpperCase();
+    if (!normalized || attempted.has(normalized)) {
+      continue;
+    }
+
+    attempted.add(normalized);
+
+    try {
+      const quotes = await fetchYahooQuoteForSymbol(normalized, headers);
+      if (quotes.length > 0) {
+        return quotes;
+      }
+    } catch (error) {
+      console.warn(
+        `Failed to fetch Yahoo Finance quote for variant ${normalized}:`,
+        error,
+      );
+    }
+  }
+
+  return [];
+};
+
+const fetchYahooQuotes = async (symbols: string[]) => {
+  const normalized = symbols
+    .filter((symbol): symbol is string => typeof symbol === "string")
+    .map((symbol) => {
+      const trimmed = symbol.trim();
+      if (!trimmed) {
+        return null;
+      }
+
+      const stripped = stripSymbolPrefix(trimmed);
+      return stripped ?? trimmed.toUpperCase();
+    })
+    .filter((symbol): symbol is string => Boolean(symbol && symbol.length > 0));
+
+  const uniqueSymbols = Array.from(new Set(normalized));
+
+  if (uniqueSymbols.length === 0) {
+    return [];
+  }
+
+  const headers = {
+    "User-Agent":
+      "Mozilla/5.0 (compatible; MarketMindTickerSearch/1.0; +https://marketmind.se)",
+    Accept: "application/json",
+    "Accept-Language": "en-US,en;q=0.9",
+    Referer: "https://finance.yahoo.com/",
+    Origin: "https://finance.yahoo.com",
+    "Cache-Control": "no-cache",
+    Pragma: "no-cache",
+  };
+
+  const results: YahooQuoteResult[] = [];
+
+  for (const chunk of chunkArray(uniqueSymbols, 10)) {
+    const params = new URLSearchParams({
+      symbols: chunk.join(","),
+      lang: "en-US",
+      region: "US",
+      corsDomain: "finance.yahoo.com",
+    });
+
+    const res = await fetch(
+      `https://query2.finance.yahoo.com/v6/finance/quote?${params.toString()}`,
+      { headers },
+    );
+
+    if (!res.ok) {
+      const errorText = await res.text();
+
+      if (res.status === 404 || res.status === 400) {
+        console.warn(
+          `Yahoo Finance returned ${res.status} for symbols [${chunk.join(", ")}]. Falling back to per-symbol requests.`,
+        );
+
+        for (const symbol of chunk) {
+          const fallbackQuotes = await fetchYahooQuoteForSymbolVariants(
+            symbol,
+            headers,
+          );
+          fallbackQuotes.forEach((quote) => results.push(quote));
+        }
+
+        continue;
+      }
+
+      throw new Error(
+        `Yahoo Finance quote request failed for symbols [${chunk.join(", ")}]: ${res.status} ${res.statusText}${
+          errorText ? ` - ${errorText}` : ""
+        }`,
+      );
+    }
+
+    const json = await res.json();
+    const quoteResults = Array.isArray(json?.quoteResponse?.result)
+      ? json.quoteResponse.result
+      : [];
+
+    const chunkMapped: YahooQuoteResult[] = [];
+
+    for (const quote of quoteResults) {
+      const mapped = mapYahooQuote(quote);
+      if (mapped) {
+        results.push(mapped);
+        chunkMapped.push(mapped);
+      }
+    }
+
+    if (chunkMapped.length < chunk.length) {
+      const resolvedSymbols = new Set(
+        chunkMapped.map((item) => item.symbol.toUpperCase()),
+      );
+
+      for (const symbol of chunk) {
+        const variants = getSymbolVariants(symbol);
+        const isResolved = variants.some((variant) =>
+          resolvedSymbols.has(variant.toUpperCase())
+        );
+
+        if (!isResolved) {
+          const fallbackQuotes = await fetchYahooQuoteForSymbolVariants(
+            symbol,
+            headers,
+          );
+          fallbackQuotes.forEach((quote) => results.push(quote));
+        }
+      }
+    }
+  }
+
+  const deduped = new Map<string, typeof results[number]>();
+  results.forEach((item) => {
+    if (!deduped.has(item.symbol)) {
+      deduped.set(item.symbol, item);
+    }
+  });
+
+  return Array.from(deduped.values());
+};
+
 const fetchYahooTickers = async (query: string) => {
   const trimmedQuery = query.trim();
   if (!trimmedQuery) {
@@ -165,12 +453,16 @@ serve(async (req) => {
   }
 
   let query: string | null = null;
+  let yahooSymbols: string[] = [];
 
   if (req.method === "POST") {
     try {
       const body = await req.json();
       if (body && typeof body.query === "string" && body.query.trim().length > 0) {
         query = body.query.trim();
+      }
+      if (body && Array.isArray(body.symbols)) {
+        yahooSymbols = body.symbols.filter((value: unknown): value is string => typeof value === "string");
       }
     } catch (_error) {
       // Ignorera JSON-parsningsfel och fall tillbaka till att läsa arket
@@ -187,8 +479,22 @@ serve(async (req) => {
     }
 
     const sheetTickers = await fetchSheetTickers();
+    const combinedTickers = [...sheetTickers];
+    const existingSymbols = new Set(
+      sheetTickers.map((ticker) => ticker.symbol.trim().toUpperCase()),
+    );
 
-    return new Response(JSON.stringify({ success: true, source: "sheet", tickers: sheetTickers }), {
+    if (yahooSymbols.length > 0) {
+      const yahooTickers = await fetchYahooQuotes(yahooSymbols);
+      yahooTickers.forEach((ticker) => {
+        if (!existingSymbols.has(ticker.symbol.toUpperCase())) {
+          combinedTickers.push(ticker);
+          existingSymbols.add(ticker.symbol.toUpperCase());
+        }
+      });
+    }
+
+    return new Response(JSON.stringify({ success: true, source: "sheet", tickers: combinedTickers }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
