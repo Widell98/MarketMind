@@ -136,9 +136,16 @@ const chunkArray = <T>(items: T[], chunkSize: number) => {
 const fetchYahooQuotes = async (symbols: string[]) => {
   const normalized = symbols
     .filter((symbol): symbol is string => typeof symbol === "string")
-    .flatMap((symbol) => getSymbolVariants(symbol))
-    .map((symbol) => symbol.trim().toUpperCase())
-    .filter((symbol) => symbol.length > 0);
+    .map((symbol) => {
+      const trimmed = symbol.trim();
+      if (!trimmed) {
+        return null;
+      }
+
+      const stripped = stripSymbolPrefix(trimmed);
+      return stripped ?? trimmed.toUpperCase();
+    })
+    .filter((symbol): symbol is string => Boolean(symbol && symbol.length > 0));
 
   const uniqueSymbols = Array.from(new Set(normalized));
 

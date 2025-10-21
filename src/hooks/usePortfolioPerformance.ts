@@ -400,19 +400,9 @@ export const usePortfolioPerformance = () => {
       const yahooSymbolSet = new Set<string>();
 
       typedHoldings.forEach((holding) => {
-        getSymbolVariants(holding.symbol).forEach((variant) => {
-          if (variant.trim().length > 0) {
-            yahooSymbolSet.add(variant.trim());
-          }
-        });
-
         const canonical = stripSymbolPrefix(holding.symbol);
-        if (canonical && canonical.trim().length > 0) {
-          yahooSymbolSet.add(canonical.trim());
-        }
-
-        if (typeof holding.symbol === 'string' && holding.symbol.trim().length > 0) {
-          yahooSymbolSet.add(holding.symbol.trim());
+        if (canonical && canonical.length > 0) {
+          yahooSymbolSet.add(canonical);
         }
       });
 
@@ -594,7 +584,8 @@ export const usePortfolioPerformance = () => {
     try {
       setUpdating(true);
 
-      const yahooSymbols = Array.from(new Set(getSymbolVariants(normalizedTicker)));
+      const canonicalYahooSymbol = stripSymbolPrefix(normalizedTicker);
+      const yahooSymbols = canonicalYahooSymbol ? [canonicalYahooSymbol] : [];
       const invokeOptions = yahooSymbols.length > 0
         ? { body: { symbols: yahooSymbols } }
         : undefined;
