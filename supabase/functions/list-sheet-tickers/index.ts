@@ -147,8 +147,14 @@ const fetchYahooQuotes = async (symbols: string[]) => {
   }
 
   const headers = {
-    "User-Agent": "MarketMindTickerSearch/1.0",
+    "User-Agent":
+      "Mozilla/5.0 (compatible; MarketMindTickerSearch/1.0; +https://marketmind.se)",
     Accept: "application/json",
+    "Accept-Language": "en-US,en;q=0.9",
+    Referer: "https://finance.yahoo.com/",
+    Origin: "https://finance.yahoo.com",
+    "Cache-Control": "no-cache",
+    Pragma: "no-cache",
   };
 
   const results: {
@@ -161,18 +167,23 @@ const fetchYahooQuotes = async (symbols: string[]) => {
   for (const chunk of chunkArray(uniqueSymbols, 10)) {
     const params = new URLSearchParams({
       symbols: chunk.join(","),
+      lang: "en-US",
+      region: "US",
+      corsDomain: "finance.yahoo.com",
     });
 
     const res = await fetch(
-      `https://query1.finance.yahoo.com/v7/finance/quote?${params.toString()}`,
+      `https://query2.finance.yahoo.com/v6/finance/quote?${params.toString()}`,
       { headers },
     );
 
     if (!res.ok) {
-      console.warn(
-        `Yahoo Finance quote request failed for symbols [${chunk.join(", ")}]: ${res.status} ${res.statusText}`,
+      const errorText = await res.text();
+      throw new Error(
+        `Yahoo Finance quote request failed for symbols [${chunk.join(", ")}]: ${res.status} ${res.statusText}${
+          errorText ? ` - ${errorText}` : ""
+        }`,
       );
-      continue;
     }
 
     const json = await res.json();
