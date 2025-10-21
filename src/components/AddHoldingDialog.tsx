@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useDeferredValue, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -18,10 +18,58 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { UserHolding } from '@/hooks/useUserHoldings';
-import useSheetTickers, { SheetTicker, RawSheetTicker, sanitizeSheetTickerList } from '@/hooks/useSheetTickers';
+import { SheetTicker, RawSheetTicker, sanitizeSheetTickerList } from '@/hooks/useSheetTickers';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { ADD_HOLDING_FORM_STORAGE_KEY } from '@/constants/storageKeys';
 import { supabase } from '@/integrations/supabase/client';
+
+interface YahooQuote {
+  symbol: string;
+  name: string | null;
+  price: number | null;
+  currency: string | null;
+}
+
+const fetchYahooQuote = async (symbol: string): Promise<YahooQuote> => {
+  const response = await fetch(
+    `https://query2.finance.yahoo.com/v6/finance/quote?symbols=${encodeURIComponent(symbol)}`,
+    {
+      headers: {
+        'User-Agent': typeof navigator !== 'undefined' ? navigator.userAgent : 'MarketMindClient/1.0',
+        Accept: 'application/json',
+        Referer: 'https://finance.yahoo.com/',
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch quote (${response.status})`);
+  }
+
+  const json = await response.json();
+  const result = json?.quoteResponse?.result?.[0];
+
+  const price = typeof result?.regularMarketPrice === 'number' && Number.isFinite(result.regularMarketPrice)
+    ? result.regularMarketPrice
+    : null;
+
+  const currency = typeof result?.currency === 'string' && result.currency.trim().length > 0
+    ? result.currency.trim().toUpperCase()
+    : null;
+
+  const name = typeof result?.shortName === 'string' && result.shortName.trim().length > 0
+    ? result.shortName.trim()
+    : typeof result?.longName === 'string' && result.longName.trim().length > 0
+      ? result.longName.trim()
+      : null;
+
+  return {
+    symbol: symbol.trim().toUpperCase(),
+    name,
+    price,
+    currency,
+  };
+};
 
 interface AddHoldingDialogProps {
   isOpen: boolean;
@@ -66,7 +114,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   onAdd,
   initialData
 }) => {
-  const { tickers: sheetTickers, isLoading: tickersLoading, error: tickersError } = useSheetTickers();
   const [dialogState, setDialogState, resetDialogState] = useLocalStorage<AddHoldingFormState>(
     ADD_HOLDING_FORM_STORAGE_KEY,
     createDefaultFormState
@@ -76,36 +123,25 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const [symbolError, setSymbolError] = useState<string | null>(null);
   const [showMobileTickerList, setShowMobileTickerList] = useState(false);
   const [mobileListManuallyExpanded, setMobileListManuallyExpanded] = useState(false);
-  const [yahooTickers, setYahooTickers] = useState<SheetTicker[]>([]);
-  const [yahooLoading, setYahooLoading] = useState(false);
-  const [yahooError, setYahooError] = useState<string | null>(null);
+  const [searchTickers, setSearchTickers] = useState<SheetTicker[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const fetchedQuotesRef = useRef<Set<string>>(new Set());
 
   const normalizedSymbol = useMemo(() => {
     const rawSymbol = formData.symbol?.trim();
     return rawSymbol ? rawSymbol.toUpperCase() : '';
   }, [formData.symbol]);
 
-  const combinedTickers = useMemo(() => {
-    const map = new Map<string, SheetTicker>();
-
-    sheetTickers.forEach((ticker) => {
-      map.set(ticker.symbol.toUpperCase(), ticker);
-    });
-
-    yahooTickers.forEach((ticker) => {
-      map.set(ticker.symbol.toUpperCase(), ticker);
-    });
-
-    return Array.from(map.values());
-  }, [sheetTickers, yahooTickers]);
-
   const tickerLookup = useMemo(() => {
     const map = new Map<string, SheetTicker>();
-    combinedTickers.forEach((ticker) => {
+    searchTickers.forEach((ticker) => {
       map.set(ticker.symbol.toUpperCase(), ticker);
     });
     return map;
-  }, [combinedTickers]);
+  }, [searchTickers]);
 
   const matchedTicker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) ?? null : null;
 
@@ -113,15 +149,15 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     const trimmedSymbol = formData.symbol.trim();
 
     if (trimmedSymbol.length < 2) {
-      setYahooTickers([]);
-      setYahooError(null);
-      setYahooLoading(false);
+      setSearchTickers([]);
+      setSearchError(null);
+      setSearchLoading(false);
       return;
     }
 
     let isActive = true;
-    setYahooLoading(true);
-    setYahooError(null);
+    setSearchLoading(true);
+    setSearchError(null);
 
     const handler = setTimeout(() => {
       (async () => {
@@ -142,8 +178,8 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
             ? (data.tickers as RawSheetTicker[])
             : [];
 
-          setYahooTickers(sanitizeSheetTickerList(list));
-          setYahooError(null);
+          setSearchTickers(sanitizeSheetTickerList(list));
+          setSearchError(null);
         } catch (err) {
           if (!isActive) {
             return;
@@ -151,11 +187,11 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
           console.error('Failed to fetch Yahoo Finance tickers:', err);
           const message = err instanceof Error ? err.message : 'Kunde inte hämta tickers från Yahoo Finance.';
-          setYahooError(message);
-          setYahooTickers([]);
+          setSearchError(message);
+          setSearchTickers([]);
         } finally {
           if (isActive) {
-            setYahooLoading(false);
+            setSearchLoading(false);
           }
         }
       })();
@@ -166,6 +202,85 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       clearTimeout(handler);
     };
   }, [formData.symbol]);
+
+  useEffect(() => {
+    const symbol = matchedTicker?.symbol;
+
+    if (!symbol) {
+      setQuoteLoading(false);
+      setQuoteError(null);
+      return;
+    }
+
+    if (fetchedQuotesRef.current.has(symbol)) {
+      return;
+    }
+
+    let isActive = true;
+    fetchedQuotesRef.current.add(symbol);
+    setQuoteLoading(true);
+    setQuoteError(null);
+
+    (async () => {
+      try {
+        const quote = await fetchYahooQuote(symbol);
+
+        if (!isActive) {
+          return;
+        }
+
+        const normalizedSymbol = quote.symbol;
+        const normalizedName = quote.name && quote.name.trim().length > 0
+          ? quote.name.trim()
+          : matchedTicker?.name ?? normalizedSymbol;
+        const normalizedCurrency = quote.currency && quote.currency.trim().length > 0
+          ? quote.currency.trim().toUpperCase()
+          : matchedTicker?.currency ?? null;
+        const normalizedPrice = typeof quote.price === 'number' && Number.isFinite(quote.price) && quote.price > 0
+          ? quote.price
+          : null;
+
+        setSearchTickers((prev) => {
+          const existingIndex = prev.findIndex((ticker) => ticker.symbol === normalizedSymbol);
+          const updatedTicker: SheetTicker = {
+            symbol: normalizedSymbol,
+            name: normalizedName,
+            price: normalizedPrice,
+            currency: normalizedCurrency,
+          };
+
+          if (existingIndex === -1) {
+            return [...prev, updatedTicker];
+          }
+
+          const next = [...prev];
+          next[existingIndex] = {
+            ...next[existingIndex],
+            ...updatedTicker,
+          };
+          return next;
+        });
+
+        setQuoteError(null);
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        console.error('Failed to fetch Yahoo Finance quote:', error);
+        setQuoteError(error instanceof Error ? error.message : 'Kunde inte hämta pris från Yahoo Finance.');
+        fetchedQuotesRef.current.delete(symbol);
+      } finally {
+        if (isActive) {
+          setQuoteLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, [matchedTicker?.symbol]);
 
   // Update form data when initialData changes
   useEffect(() => {
@@ -317,7 +432,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     [priceFormatter]
   );
 
-  const deferredTickers = useDeferredValue(combinedTickers);
+  const deferredTickers = useDeferredValue(searchTickers);
 
   const tickerOptions = useMemo(() => deferredTickers.map((ticker) => {
     const label = ticker.name && ticker.name !== ticker.symbol
@@ -349,14 +464,14 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     return baseTickers.slice(0, 25);
   }, [deferredTickers, formData.symbol]);
 
-  const resolvedSheetPrice = matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0
+  const resolvedQuotePrice = matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0
     ? matchedTicker.price
     : null;
 
-  const sheetPriceCurrency = matchedTicker?.currency ?? (formData.currency || undefined);
+  const quotePriceCurrency = matchedTicker?.currency ?? (formData.currency || undefined);
 
-  const sheetPriceDisplay = resolvedSheetPrice !== null
-    ? `${formatDisplayPrice(resolvedSheetPrice)}${sheetPriceCurrency ? ` ${sheetPriceCurrency}` : ''}`.trim()
+  const currentPriceDisplay = resolvedQuotePrice !== null
+    ? `${formatDisplayPrice(resolvedQuotePrice)}${quotePriceCurrency ? ` ${quotePriceCurrency}` : ''}`.trim()
     : '';
 
   const handleInputChange = (field: string, value: string) => {
@@ -372,6 +487,10 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
       if (symbolError) {
         setSymbolError(null);
+      }
+
+      if (quoteError) {
+        setQuoteError(null);
       }
     }
 
@@ -433,6 +552,8 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   };
 
   const handleMobileTickerSelect = (ticker: SheetTicker) => {
+    fetchedQuotesRef.current.delete(ticker.symbol.toUpperCase());
+    setQuoteError(null);
     handleInputChange('symbol', ticker.symbol);
     setShowMobileTickerList(false);
     setMobileListManuallyExpanded(false);
@@ -561,17 +682,14 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
                     setShowMobileTickerList(true);
                   }
                 }}
-                placeholder={(tickersLoading || yahooLoading) ? 'Hämtar tickers...' : 't.ex. VOLV-B'}
+                placeholder={searchLoading ? 'Hämtar tickers...' : 't.ex. VOLV-B'}
                 required
               />
               {symbolError && (
                 <p className="text-sm text-destructive">{symbolError}</p>
               )}
-              {tickersError && (
-                <p className="text-sm text-muted-foreground">{tickersError}</p>
-              )}
-              {yahooError && (
-                <p className="text-sm text-muted-foreground">{yahooError}</p>
+              {searchError && (
+                <p className="text-sm text-muted-foreground">{searchError}</p>
               )}
             </div>
           </div>
@@ -584,7 +702,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
                 id="mobile-ticker-suggestions"
                 className="max-h-56 overflow-y-auto rounded-2xl border border-border/60 bg-muted/50 p-1 shadow-sm"
               >
-                {(tickersLoading || yahooLoading) ? (
+                {searchLoading ? (
                   <p className="px-3 py-2 text-xs text-muted-foreground">Hämtar tickers...</p>
                 ) : mobileTickerSuggestions.length > 0 ? (
                   mobileTickerSuggestions.map((ticker) => {
@@ -685,12 +803,15 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
             <Label htmlFor="sheet_price">Aktuellt pris</Label>
             <Input
               id="sheet_price"
-              value={sheetPriceDisplay}
+              value={currentPriceDisplay}
               readOnly
-              placeholder={(tickersLoading || yahooLoading) ? 'Hämtar pris...' : 'Välj en ticker för att hämta priset'}
+              placeholder={quoteLoading ? 'Hämtar pris...' : 'Välj en ticker för att hämta priset'}
             />
+            {quoteError && (
+              <p className="text-xs text-destructive">{quoteError}</p>
+            )}
             <p className="text-xs text-muted-foreground">
-              {sheetPriceDisplay
+              {currentPriceDisplay
                 ? 'Priset läggs in som förvalt köppris men kan justeras innan du sparar.'
                 : 'Priset hämtas automatiskt när du väljer en ticker från listan.'}
             </p>
