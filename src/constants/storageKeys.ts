@@ -1,5 +1,6 @@
 export const ADD_HOLDING_FORM_STORAGE_KEY = 'marketmind.addHolding.formState';
 export const ADD_HOLDING_DIALOG_STORAGE_KEY = 'marketmind.addHolding.activeDialog';
+export const ADD_HOLDING_MANUAL_TICKERS_STORAGE_KEY = 'marketmind.addHolding.manualTickers';
 
 export const STOCK_CASE_FORM_STORAGE_KEY = 'marketmind.stockCases.formData';
 export const STOCK_CASE_CREATE_VISIBLE_KEY = 'marketmind.stockCases.showCreateForm';
