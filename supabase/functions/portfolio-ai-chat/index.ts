@@ -697,7 +697,7 @@ serve(async (req) => {
       const { data: sheetTickerData, error: sheetTickerError } = await supabase.functions.invoke('list-sheet-tickers');
 
       if (sheetTickerError) {
-        console.error('Failed to fetch Google Sheets tickers:', sheetTickerError);
+        console.error('Failed to fetch Yahoo Finance tickers:', sheetTickerError);
       } else {
         const typedData = sheetTickerData as SheetTickerEdgeResponse | null;
         const rawTickers = Array.isArray(typedData?.tickers)
@@ -739,13 +739,13 @@ serve(async (req) => {
         sheetTickerSymbols = Array.from(symbolSet);
         sheetTickerNames = Array.from(nameSet);
 
-        console.log('Loaded Google Sheets tickers:', {
+        console.log('Loaded Yahoo Finance tickers:', {
           symbols: sheetTickerSymbols.length,
           names: sheetTickerNames.length,
         });
       }
     } catch (error) {
-      console.error('Unexpected error when loading Google Sheets tickers:', error);
+      console.error('Unexpected error when loading Yahoo Finance tickers:', error);
     }
 
     // ENHANCED INTENT DETECTION FOR PROFILE UPDATES

@@ -58,8 +58,8 @@ const useSheetTickers = () => {
     const setDiagnosticsError = (baseMessage: string) => {
       const guidance = [
         'Kontrollera att edge-funktionen "list-sheet-tickers" körs lokalt via `supabase functions serve list-sheet-tickers` eller är deployad.',
-        'Verifiera att miljövariablerna GOOGLE_SERVICE_ACCOUNT och GOOGLE_SHEET_ID är satta i Supabase-projektet.',
         'Bekräfta att Supabase-klienten använder rätt projekt-URL och anon key.',
+        'Verifiera att applikationen har nätverksåtkomst till Yahoo Finance API.',
       ].join(' ');
 
       setError(`${baseMessage} ${guidance}`);
@@ -96,7 +96,7 @@ const useSheetTickers = () => {
         if (!isMounted) {
           return;
         }
-        console.error('Unexpected error when fetching Google Sheets tickers:', err);
+        console.error('Unexpected error when fetching Yahoo Finance tickers:', err);
         const baseMessage = err instanceof Error ? err.message : 'Kunde inte hämta tickers.';
         setDiagnosticsError(baseMessage);
         setTickers([]);
