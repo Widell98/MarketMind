@@ -202,6 +202,58 @@ type SheetTickerEdgeResponse = {
   tickers?: SheetTickerEdgeItem[];
 };
 
+type SanitizedSheetTicker = {
+  normalizedSymbol: string;
+  originalSymbol: string;
+  name: string | null;
+  price: number | null;
+  currency: string | null;
+  priceInSEK: number | null;
+};
+
+const sanitizeSheetTicker = (item: SheetTickerEdgeItem | null | undefined): SanitizedSheetTicker | null => {
+  if (!item || typeof item !== 'object') {
+    return null;
+  }
+
+  const rawSymbol = typeof item.symbol === 'string' ? item.symbol.trim() : '';
+  if (!rawSymbol) {
+    return null;
+  }
+
+  const withoutPrefix = rawSymbol.includes(':')
+    ? rawSymbol.split(':').pop() ?? rawSymbol
+    : rawSymbol;
+
+  const normalizedSymbol = withoutPrefix.replace(/\s+/g, '').toUpperCase();
+  if (!normalizedSymbol) {
+    return null;
+  }
+
+  const name = typeof item.name === 'string' && item.name.trim().length > 0
+    ? item.name.trim()
+    : null;
+
+  const price = typeof item.price === 'number' && Number.isFinite(item.price) && item.price > 0
+    ? item.price
+    : null;
+
+  const currency = typeof item.currency === 'string' && item.currency.trim().length > 0
+    ? item.currency.trim().toUpperCase()
+    : null;
+
+  const priceInSEK = price !== null ? convertToSEK(price, currency) : null;
+
+  return {
+    normalizedSymbol,
+    originalSymbol: rawSymbol,
+    name,
+    price,
+    currency,
+    priceInSEK,
+  };
+};
+
 type HoldingRecord = {
   symbol?: string | null;
   name?: string | null;
@@ -692,6 +744,8 @@ serve(async (req) => {
 
     let sheetTickerSymbols: string[] = [];
     let sheetTickerNames: string[] = [];
+    let sheetTickerInfos: SanitizedSheetTicker[] = [];
+    const sheetTickerPriceMap = new Map<string, SanitizedSheetTicker>();
 
     try {
       const { data: sheetTickerData, error: sheetTickerError } = await supabase.functions.invoke('list-sheet-tickers');
@@ -706,25 +760,18 @@ serve(async (req) => {
 
         const symbolSet = new Set<string>();
         const nameSet = new Set<string>();
+        const sanitizedTickers: SanitizedSheetTicker[] = [];
 
         for (const item of rawTickers) {
-          if (!item || typeof item !== 'object') continue;
+          const sanitized = sanitizeSheetTicker(item);
+          if (!sanitized) continue;
 
-          const rawSymbol = typeof item.symbol === 'string' ? item.symbol : null;
-          if (rawSymbol) {
-            const trimmedSymbol = rawSymbol.trim();
-            const withoutPrefix = trimmedSymbol.includes(':')
-              ? trimmedSymbol.split(':').pop() ?? trimmedSymbol
-              : trimmedSymbol;
-            const cleanedSymbol = withoutPrefix.replace(/\s+/g, '').toUpperCase();
-            if (cleanedSymbol.length > 0) {
-              symbolSet.add(cleanedSymbol);
-            }
-          }
+          sanitizedTickers.push(sanitized);
+          symbolSet.add(sanitized.normalizedSymbol);
+          sheetTickerPriceMap.set(sanitized.normalizedSymbol, sanitized);
 
-          const rawName = typeof item.name === 'string' ? item.name : null;
-          if (rawName) {
-            const normalizedWhitespaceName = rawName.replace(/\s+/g, ' ').trim();
+          if (sanitized.name) {
+            const normalizedWhitespaceName = sanitized.name.replace(/\s+/g, ' ').trim();
             if (normalizedWhitespaceName.length > 0) {
               nameSet.add(normalizedWhitespaceName);
 
@@ -736,6 +783,7 @@ serve(async (req) => {
           }
         }
 
+        sheetTickerInfos = sanitizedTickers;
         sheetTickerSymbols = Array.from(symbolSet);
         sheetTickerNames = Array.from(nameSet);
 
@@ -1331,6 +1379,119 @@ serve(async (req) => {
 
     const userIntent = detectIntent(message);
     console.log('Detected user intent:', userIntent);
+
+    const PRICE_QUERY_KEYWORDS = [
+      'price',
+      'pris',
+      'kurs',
+      'står',
+      'står i',
+      'stå i',
+      'kostar',
+      'värde',
+    ];
+
+    const isDirectPriceRequest = (() => {
+      const normalized = message.toLowerCase();
+      const hasPriceKeyword = PRICE_QUERY_KEYWORDS.some(keyword => normalized.includes(keyword));
+      if (!hasPriceKeyword) {
+        return false;
+      }
+
+      // Avoid routing broader analysis questions through the direct price handler
+      if (normalized.includes('analys') || normalized.includes('analysera')) {
+        return false;
+      }
+
+      return detectedTickers.length > 0 || sheetTickerInfos.some(info => {
+        if (!info.name) return false;
+        const normalizedName = removeDiacritics(info.name).toLowerCase();
+        return normalized.includes(normalizedName);
+      });
+    })();
+
+    if (isDirectPriceRequest) {
+      const normalizedMessage = removeDiacritics(message).toLowerCase();
+      const matchedInfosMap = new Map<string, SanitizedSheetTicker>();
+
+      for (const ticker of detectedTickers) {
+        const info = sheetTickerPriceMap.get(ticker.toUpperCase());
+        if (info) {
+          matchedInfosMap.set(info.normalizedSymbol, info);
+        }
+      }
+
+      sheetTickerInfos.forEach(info => {
+        if (!info.name) return;
+        const normalizedName = removeDiacritics(info.name).toLowerCase();
+        if (normalizedName && normalizedMessage.includes(normalizedName)) {
+          matchedInfosMap.set(info.normalizedSymbol, info);
+        }
+      });
+
+      const matchedInfos = Array.from(matchedInfosMap.values());
+
+      const availablePrices = matchedInfos.filter(info => info.price !== null);
+
+      if (availablePrices.length > 0) {
+        const encoder = new TextEncoder();
+
+        const formatNumber = (value: number | null, currency: string | null) => {
+          if (value === null) return null;
+          try {
+            const formatted = value.toLocaleString('sv-SE', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            });
+            return `${formatted} ${currency ?? 'SEK'}`;
+          } catch (error) {
+            console.warn('Failed to format number, using fallback string.', error);
+            return `${value.toFixed(2)} ${currency ?? 'SEK'}`;
+          }
+        };
+
+        const responseLines = availablePrices.map(info => {
+          const displayName = info.name ?? info.originalSymbol;
+          const priceText = formatNumber(info.price, info.currency);
+          const priceInSEKText = info.currency && info.currency !== 'SEK'
+            ? formatNumber(info.priceInSEK, 'SEK')
+            : null;
+
+          if (!priceText) {
+            return `${displayName} (${info.normalizedSymbol}) har inget giltigt pris registrerat i Google Sheet.`;
+          }
+
+          const lines: string[] = [
+            `${displayName} (${info.normalizedSymbol}) står i ${priceText} enligt Google Sheets.`,
+          ];
+
+          if (priceInSEKText && priceInSEKText !== priceText) {
+            lines.push(`≈ ${priceInSEKText} efter valutakonvertering.`);
+          }
+
+          return lines.join(' ');
+        });
+
+        const directPriceMessage = `${responseLines.join('\n')}\n\nKälla: Google Sheets (list-sheet-tickers).`;
+
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: directPriceMessage })}\n\n`));
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            controller.close();
+          },
+        });
+
+        console.log('Returning direct price response from sheet tickers.');
+
+        return new Response(stream, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            ...corsHeaders,
+          },
+        });
+      }
+    }
 
     const shouldFetchTavily = !isSimplePersonalAdviceRequest && (
       isStockMentionRequest || hasRealTimeTrigger
