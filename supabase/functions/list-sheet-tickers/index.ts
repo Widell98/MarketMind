@@ -159,12 +159,87 @@ const fetchYahooTickers = async (query: string) => {
   return tickers;
 };
 
+const fetchYahooQuote = async (symbol: string) => {
+  const trimmedSymbol = symbol.trim();
+  if (!trimmedSymbol) {
+    return [];
+  }
+
+  const params = new URLSearchParams({
+    symbols: trimmedSymbol.toUpperCase(),
+    lang: "en-US",
+    region: "US",
+  });
+
+  const res = await fetch(
+    `https://query1.finance.yahoo.com/v7/finance/quote?${params.toString()}`,
+    {
+      headers: {
+        "User-Agent": "MarketMindTickerSearch/1.0",
+        "Accept": "application/json",
+      },
+    },
+  );
+
+  if (!res.ok) {
+    throw new Error(`Yahoo Finance quote request failed: ${res.status} ${res.statusText}`);
+  }
+
+  const json = await res.json();
+  const results = Array.isArray(json?.quoteResponse?.result)
+    ? json.quoteResponse.result
+    : [];
+
+  const tickers: {
+    name: string;
+    symbol: string;
+    currency: string | null;
+    price: number | null;
+  }[] = [];
+
+  for (const quote of results) {
+    if (!quote || typeof quote.symbol !== "string") {
+      continue;
+    }
+
+    const resolvedSymbol = quote.symbol.trim().toUpperCase();
+    if (!resolvedSymbol) {
+      continue;
+    }
+
+    const price = typeof quote.regularMarketPrice === "number"
+      && Number.isFinite(quote.regularMarketPrice)
+      ? quote.regularMarketPrice
+      : null;
+
+    const currency = typeof quote.currency === "string" && quote.currency.trim().length > 0
+      ? quote.currency.trim().toUpperCase()
+      : null;
+
+    const name = typeof quote.shortName === "string" && quote.shortName.trim().length > 0
+      ? quote.shortName.trim()
+      : typeof quote.longName === "string" && quote.longName.trim().length > 0
+        ? quote.longName.trim()
+        : resolvedSymbol;
+
+    tickers.push({
+      symbol: resolvedSymbol,
+      name,
+      currency,
+      price,
+    });
+  }
+
+  return tickers;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   let query: string | null = null;
+  let symbol: string | null = null;
 
   if (req.method === "POST") {
     try {
@@ -172,12 +247,23 @@ serve(async (req) => {
       if (body && typeof body.query === "string" && body.query.trim().length > 0) {
         query = body.query.trim();
       }
+      if (body && typeof body.symbol === "string" && body.symbol.trim().length > 0) {
+        symbol = body.symbol.trim();
+      }
     } catch (_error) {
       // Ignorera JSON-parsningsfel och fall tillbaka till att läsa arket
     }
   }
 
   try {
+    if (symbol) {
+      const yahooQuote = await fetchYahooQuote(symbol);
+      return new Response(
+        JSON.stringify({ success: true, source: "yahoo-quote", tickers: yahooQuote }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     if (query) {
       const yahooTickers = await fetchYahooTickers(query);
       return new Response(
