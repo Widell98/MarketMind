@@ -83,6 +83,147 @@ const fetchSheetTickers = async () => {
   return Array.from(tickerMap.values());
 };
 
+const stripSymbolPrefix = (symbol?: string | null) => {
+  if (!symbol) return null;
+  const trimmed = symbol.trim();
+  if (!trimmed) return null;
+
+  const upper = trimmed.toUpperCase();
+  const parts = upper.split(":");
+  const candidate = parts[parts.length - 1]?.trim();
+  return candidate && candidate.length > 0 ? candidate : upper;
+};
+
+const getSymbolVariants = (symbol?: string | null) => {
+  const variants = new Set<string>();
+
+  const addVariant = (value?: string | null) => {
+    if (!value || typeof value !== "string") return;
+    const trimmed = value.trim();
+    if (!trimmed) return;
+
+    const upper = trimmed.toUpperCase();
+    variants.add(upper);
+
+    const stripped = stripSymbolPrefix(upper);
+    if (stripped && stripped !== upper) {
+      variants.add(stripped);
+    }
+  };
+
+  addVariant(symbol);
+
+  for (const current of [...variants]) {
+    if (current.endsWith(".ST")) {
+      const base = current.replace(/\.ST$/, "");
+      if (base) variants.add(base);
+    } else {
+      variants.add(`${current}.ST`);
+    }
+  }
+
+  return [...variants];
+};
+
+const chunkArray = <T>(items: T[], chunkSize: number) => {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += chunkSize) {
+    chunks.push(items.slice(i, i + chunkSize));
+  }
+  return chunks;
+};
+
+const fetchYahooQuotes = async (symbols: string[]) => {
+  const normalized = symbols
+    .filter((symbol): symbol is string => typeof symbol === "string")
+    .flatMap((symbol) => getSymbolVariants(symbol))
+    .map((symbol) => symbol.trim().toUpperCase())
+    .filter((symbol) => symbol.length > 0);
+
+  const uniqueSymbols = Array.from(new Set(normalized));
+
+  if (uniqueSymbols.length === 0) {
+    return [];
+  }
+
+  const headers = {
+    "User-Agent": "MarketMindTickerSearch/1.0",
+    Accept: "application/json",
+  };
+
+  const results: {
+    name: string;
+    symbol: string;
+    currency: string | null;
+    price: number | null;
+  }[] = [];
+
+  for (const chunk of chunkArray(uniqueSymbols, 10)) {
+    const params = new URLSearchParams({
+      symbols: chunk.join(","),
+    });
+
+    const res = await fetch(
+      `https://query1.finance.yahoo.com/v7/finance/quote?${params.toString()}`,
+      { headers },
+    );
+
+    if (!res.ok) {
+      console.warn(
+        `Yahoo Finance quote request failed for symbols [${chunk.join(", ")}]: ${res.status} ${res.statusText}`,
+      );
+      continue;
+    }
+
+    const json = await res.json();
+    const quoteResults = Array.isArray(json?.quoteResponse?.result)
+      ? json.quoteResponse.result
+      : [];
+
+    for (const quote of quoteResults) {
+      if (!quote || typeof quote.symbol !== "string") {
+        continue;
+      }
+
+      const symbol = quote.symbol.trim().toUpperCase();
+      if (!symbol) {
+        continue;
+      }
+
+      const price = typeof quote.regularMarketPrice === "number"
+        && Number.isFinite(quote.regularMarketPrice)
+        ? quote.regularMarketPrice
+        : null;
+
+      const currency = typeof quote.currency === "string" && quote.currency.trim().length > 0
+        ? quote.currency.trim().toUpperCase()
+        : null;
+
+      const name = typeof quote.shortName === "string" && quote.shortName.trim().length > 0
+        ? quote.shortName.trim()
+        : typeof quote.longName === "string" && quote.longName.trim().length > 0
+          ? quote.longName.trim()
+          : symbol;
+
+      results.push({
+        symbol,
+        name,
+        currency,
+        price,
+      });
+    }
+  }
+
+  const deduped = new Map<string, typeof results[number]>();
+  results.forEach((item) => {
+    if (!deduped.has(item.symbol)) {
+      deduped.set(item.symbol, item);
+    }
+  });
+
+  return Array.from(deduped.values());
+};
+
 const fetchYahooTickers = async (query: string) => {
   const trimmedQuery = query.trim();
   if (!trimmedQuery) {
@@ -165,12 +306,16 @@ serve(async (req) => {
   }
 
   let query: string | null = null;
+  let yahooSymbols: string[] = [];
 
   if (req.method === "POST") {
     try {
       const body = await req.json();
       if (body && typeof body.query === "string" && body.query.trim().length > 0) {
         query = body.query.trim();
+      }
+      if (body && Array.isArray(body.symbols)) {
+        yahooSymbols = body.symbols.filter((value: unknown): value is string => typeof value === "string");
       }
     } catch (_error) {
       // Ignorera JSON-parsningsfel och fall tillbaka till att läsa arket
@@ -187,8 +332,22 @@ serve(async (req) => {
     }
 
     const sheetTickers = await fetchSheetTickers();
+    const combinedTickers = [...sheetTickers];
+    const existingSymbols = new Set(
+      sheetTickers.map((ticker) => ticker.symbol.trim().toUpperCase()),
+    );
 
-    return new Response(JSON.stringify({ success: true, source: "sheet", tickers: sheetTickers }), {
+    if (yahooSymbols.length > 0) {
+      const yahooTickers = await fetchYahooQuotes(yahooSymbols);
+      yahooTickers.forEach((ticker) => {
+        if (!existingSymbols.has(ticker.symbol.toUpperCase())) {
+          combinedTickers.push(ticker);
+          existingSymbols.add(ticker.symbol.toUpperCase());
+        }
+      });
+    }
+
+    return new Response(JSON.stringify({ success: true, source: "sheet", tickers: combinedTickers }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

@@ -377,20 +377,6 @@ export const usePortfolioPerformance = () => {
     try {
       setUpdating(true);
 
-      const { data: tickerResponse, error: tickerError } = await supabase.functions.invoke('list-sheet-tickers');
-
-      if (tickerError) {
-        throw new Error(tickerError.message || 'Kunde inte hämta tickers från Google Sheets.');
-      }
-
-      const tickerList = Array.isArray(tickerResponse?.tickers)
-        ? (tickerResponse.tickers as SheetTicker[])
-        : [];
-
-      if (tickerList.length === 0) {
-        throw new Error('Kunde inte hämta tickers från Google Sheets.');
-      }
-
       const { data: holdings, error: holdingsError } = await supabase
         .from('user_holdings')
         .select('id, quantity, symbol, name, holding_type')
@@ -411,6 +397,44 @@ export const usePortfolioPerformance = () => {
       }
 
       const typedHoldings = holdings as HoldingRow[];
+      const yahooSymbolSet = new Set<string>();
+
+      typedHoldings.forEach((holding) => {
+        getSymbolVariants(holding.symbol).forEach((variant) => {
+          if (variant.trim().length > 0) {
+            yahooSymbolSet.add(variant.trim());
+          }
+        });
+
+        const canonical = stripSymbolPrefix(holding.symbol);
+        if (canonical && canonical.trim().length > 0) {
+          yahooSymbolSet.add(canonical.trim());
+        }
+
+        if (typeof holding.symbol === 'string' && holding.symbol.trim().length > 0) {
+          yahooSymbolSet.add(holding.symbol.trim());
+        }
+      });
+
+      const yahooSymbols = Array.from(yahooSymbolSet);
+      const invokeOptions = yahooSymbols.length > 0
+        ? { body: { symbols: yahooSymbols } }
+        : undefined;
+
+      const { data: tickerResponse, error: tickerError } = await supabase.functions.invoke('list-sheet-tickers', invokeOptions);
+
+      if (tickerError) {
+        throw new Error(tickerError.message || 'Kunde inte hämta tickers från Google Sheets.');
+      }
+
+      const tickerList = Array.isArray(tickerResponse?.tickers)
+        ? (tickerResponse.tickers as SheetTicker[])
+        : [];
+
+      if (tickerList.length === 0) {
+        throw new Error('Kunde inte hämta tickers från Google Sheets.');
+      }
+
       const tickerLookup = buildTickerVariantLookup(tickerList);
       const nameLookup = new Map<string, SheetTicker>();
 
@@ -570,7 +594,12 @@ export const usePortfolioPerformance = () => {
     try {
       setUpdating(true);
 
-      const { data: tickerResponse, error: tickerError } = await supabase.functions.invoke('list-sheet-tickers');
+      const yahooSymbols = Array.from(new Set(getSymbolVariants(normalizedTicker)));
+      const invokeOptions = yahooSymbols.length > 0
+        ? { body: { symbols: yahooSymbols } }
+        : undefined;
+
+      const { data: tickerResponse, error: tickerError } = await supabase.functions.invoke('list-sheet-tickers', invokeOptions);
 
       if (tickerError) {
         throw new Error(tickerError.message || 'Kunde inte hämta tickers från Google Sheets.');
