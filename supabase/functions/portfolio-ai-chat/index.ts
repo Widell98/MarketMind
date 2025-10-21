@@ -206,17 +206,6 @@ const removeDiacritics = (value: string): string =>
 const escapeRegExp = (value: string): string =>
   value.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&');
 
-type SheetTickerEdgeItem = {
-  symbol?: string | null;
-  name?: string | null;
-  price?: number | null;
-  currency?: string | null;
-};
-
-type SheetTickerEdgeResponse = {
-  tickers?: SheetTickerEdgeItem[];
-};
-
 type YahooSearchQuote = {
   symbol?: string;
   shortname?: string;
@@ -228,6 +217,11 @@ type YahooSearchQuote = {
 
 type YahooSearchResponse = {
   quotes?: YahooSearchQuote[];
+};
+
+type YahooSearchVariant = {
+  lang: string;
+  region: string;
 };
 
 type YahooPriceResult = {
@@ -276,95 +270,200 @@ const fetchYahooPriceForTicker = async (ticker: string): Promise<YahooPriceResul
     return null;
   }
 
-  const params = new URLSearchParams({
-    q: trimmedTicker,
-    lang: 'en-US',
-    region: 'US',
-    quotesCount: '1',
-    newsCount: '0',
-  });
+  const normalizedTicker = normalizeIdentifier(trimmedTicker);
+  const lowerTicker = trimmedTicker.toLowerCase();
 
-  try {
-    const response = await fetch(`https://query2.finance.yahoo.com/v1/finance/search?${params.toString()}`, {
-      headers: {
-        'User-Agent': 'MarketMindPriceLookup/1.0',
-        'Accept': 'application/json',
-      },
+  const searchVariants: YahooSearchVariant[] = [
+    { lang: 'en-US', region: 'US' },
+    { lang: 'sv-SE', region: 'SE' },
+    { lang: 'en-GB', region: 'GB' },
+  ];
+
+  const computeQuoteScore = (quote: YahooSearchQuote): number => {
+    let score = 0;
+
+    const rawSymbol = typeof quote.symbol === 'string' ? quote.symbol.trim() : '';
+    const upperSymbol = rawSymbol.toUpperCase();
+    const lowerSymbol = rawSymbol.toLowerCase();
+    const normalizedSymbol = normalizeIdentifier(rawSymbol);
+
+    if (upperSymbol === trimmedTicker.toUpperCase()) {
+      score += 120;
+    }
+
+    if (normalizedTicker && normalizedSymbol) {
+      if (normalizedSymbol === normalizedTicker) {
+        score += 100;
+      } else if (normalizedSymbol.startsWith(normalizedTicker)) {
+        score += 70;
+      } else if (normalizedSymbol.includes(normalizedTicker)) {
+        score += 45;
+      }
+    }
+
+    if (lowerSymbol === lowerTicker) {
+      score += 35;
+    } else if (lowerSymbol.startsWith(lowerTicker)) {
+      score += 25;
+    } else if (lowerSymbol.includes(lowerTicker)) {
+      score += 15;
+    }
+
+    if (rawSymbol.length > 0) {
+      const lengthDifference = Math.abs(rawSymbol.length - trimmedTicker.length);
+      score += Math.max(0, 12 - lengthDifference * 3);
+    }
+
+    const shortname = typeof quote.shortname === 'string' ? quote.shortname.trim() : '';
+    const longname = typeof quote.longname === 'string' ? quote.longname.trim() : '';
+
+    const normalizedShort = shortname ? normalizeIdentifier(shortname) : null;
+    const normalizedLong = longname ? normalizeIdentifier(longname) : null;
+
+    if (shortname) {
+      const lowerShort = shortname.toLowerCase();
+      if (lowerShort === lowerTicker) {
+        score += 30;
+      } else if (lowerShort.includes(lowerTicker)) {
+        score += 20;
+      }
+
+      if (normalizedTicker && normalizedShort) {
+        if (normalizedShort === normalizedTicker) {
+          score += 25;
+        } else if (normalizedShort.includes(normalizedTicker)) {
+          score += 15;
+        }
+      }
+    }
+
+    if (longname) {
+      const lowerLong = longname.toLowerCase();
+      if (lowerLong === lowerTicker) {
+        score += 20;
+      } else if (lowerLong.includes(lowerTicker)) {
+        score += 12;
+      }
+
+      if (normalizedTicker && normalizedLong) {
+        if (normalizedLong === normalizedTicker) {
+          score += 18;
+        } else if (normalizedLong.includes(normalizedTicker)) {
+          score += 10;
+        }
+      }
+    }
+
+    if (typeof quote.regularMarketPrice === 'number' && Number.isFinite(quote.regularMarketPrice)) {
+      score += 5;
+    }
+
+    if (typeof quote.regularMarketTime === 'number' && Number.isFinite(quote.regularMarketTime)) {
+      score += 2;
+    }
+
+    return score;
+  };
+
+  const attemptLookup = async (variant: YahooSearchVariant): Promise<YahooPriceResult | null> => {
+    const params = new URLSearchParams({
+      q: trimmedTicker,
+      lang: variant.lang,
+      region: variant.region,
+      quotesCount: '6',
+      newsCount: '0',
     });
 
-    if (!response.ok) {
-      console.error('Yahoo Finance price lookup failed:', trimmedTicker, response.status, response.statusText);
-      return null;
-    }
-
-    const data = await response.json() as YahooSearchResponse;
-    const quotes = Array.isArray(data?.quotes) ? data.quotes : [];
-    if (quotes.length === 0) {
-      console.warn('Yahoo Finance returned no quotes for ticker:', trimmedTicker);
-      return null;
-    }
-
-    const normalizedTicker = trimmedTicker.toUpperCase();
-
-    const selectQuote = (): YahooSearchQuote | undefined => {
-      const exactMatch = quotes.find((quote) => {
-        const symbol = typeof quote?.symbol === 'string' ? quote.symbol.trim().toUpperCase() : '';
-        return symbol === normalizedTicker;
+    try {
+      const response = await fetch(`https://query2.finance.yahoo.com/v1/finance/search?${params.toString()}`, {
+        headers: {
+          'User-Agent': 'MarketMindPriceLookup/1.0',
+          'Accept': 'application/json',
+        },
       });
-      if (exactMatch) return exactMatch;
 
-      return quotes.find((quote) => {
-        const symbol = typeof quote?.symbol === 'string' ? quote.symbol.trim().toUpperCase() : '';
-        return symbol.includes(normalizedTicker);
-      });
-    };
+      if (!response.ok) {
+        console.error('Yahoo Finance price lookup failed:', trimmedTicker, variant, response.status, response.statusText);
+        return null;
+      }
 
-    const matchedQuote = selectQuote();
-    if (!matchedQuote) {
-      console.warn('Yahoo Finance could not match ticker to quote:', trimmedTicker);
+      const data = await response.json() as YahooSearchResponse;
+      const quotes = Array.isArray(data?.quotes) ? data.quotes : [];
+      if (quotes.length === 0) {
+        console.warn('Yahoo Finance returned no quotes for ticker:', trimmedTicker, variant);
+        return null;
+      }
+
+      const quotesWithPrice = quotes.filter((quote) =>
+        typeof quote?.regularMarketPrice === 'number' && Number.isFinite(quote.regularMarketPrice)
+      );
+
+      if (quotesWithPrice.length === 0) {
+        console.warn('Yahoo Finance quotes missing prices for ticker:', trimmedTicker, variant);
+        return null;
+      }
+
+      const [bestMatch] = quotesWithPrice
+        .map((quote) => ({ quote, score: computeQuoteScore(quote) }))
+        .sort((a, b) => b.score - a.score);
+
+      if (!bestMatch || bestMatch.score < 20) {
+        console.warn('Yahoo Finance could not confidently match ticker to quote:', trimmedTicker, variant);
+        return null;
+      }
+
+      const matchedQuote = bestMatch.quote;
+
+      const marketPrice = typeof matchedQuote.regularMarketPrice === 'number'
+        && Number.isFinite(matchedQuote.regularMarketPrice)
+        ? matchedQuote.regularMarketPrice
+        : null;
+
+      if (marketPrice === null) {
+        return null;
+      }
+
+      const marketTime = typeof matchedQuote.regularMarketTime === 'number'
+        && Number.isFinite(matchedQuote.regularMarketTime)
+        ? matchedQuote.regularMarketTime
+        : null;
+
+      const resolvedSymbol = typeof matchedQuote.symbol === 'string' && matchedQuote.symbol.trim().length > 0
+        ? matchedQuote.symbol.trim().toUpperCase()
+        : (normalizedTicker ?? trimmedTicker.toUpperCase());
+
+      const resolvedCurrency = typeof matchedQuote.currency === 'string' && matchedQuote.currency.trim().length > 0
+        ? matchedQuote.currency.trim().toUpperCase()
+        : 'USD';
+
+      const resolvedName = typeof matchedQuote.shortname === 'string' && matchedQuote.shortname.trim().length > 0
+        ? matchedQuote.shortname.trim()
+        : typeof matchedQuote.longname === 'string' && matchedQuote.longname.trim().length > 0
+          ? matchedQuote.longname.trim()
+          : resolvedSymbol;
+
+      return {
+        symbol: resolvedSymbol,
+        name: resolvedName,
+        price: marketPrice,
+        currency: resolvedCurrency,
+        marketTime,
+      };
+    } catch (error) {
+      console.error('Unexpected error when calling Yahoo Finance search API for ticker:', trimmedTicker, variant, error);
       return null;
     }
+  };
 
-    const marketPrice = typeof matchedQuote.regularMarketPrice === 'number'
-      && Number.isFinite(matchedQuote.regularMarketPrice)
-      ? matchedQuote.regularMarketPrice
-      : null;
-
-    if (marketPrice === null) {
-      console.warn('Yahoo Finance quote missing price for ticker:', trimmedTicker);
-      return null;
+  for (const variant of searchVariants) {
+    const result = await attemptLookup(variant);
+    if (result) {
+      return result;
     }
-
-    const marketTime = typeof matchedQuote.regularMarketTime === 'number'
-      && Number.isFinite(matchedQuote.regularMarketTime)
-      ? matchedQuote.regularMarketTime
-      : null;
-
-    const resolvedSymbol = typeof matchedQuote.symbol === 'string' && matchedQuote.symbol.trim().length > 0
-      ? matchedQuote.symbol.trim().toUpperCase()
-      : normalizedTicker;
-
-    const resolvedCurrency = typeof matchedQuote.currency === 'string' && matchedQuote.currency.trim().length > 0
-      ? matchedQuote.currency.trim().toUpperCase()
-      : 'USD';
-
-    const resolvedName = typeof matchedQuote.shortname === 'string' && matchedQuote.shortname.trim().length > 0
-      ? matchedQuote.shortname.trim()
-      : typeof matchedQuote.longname === 'string' && matchedQuote.longname.trim().length > 0
-        ? matchedQuote.longname.trim()
-        : resolvedSymbol;
-
-    return {
-      symbol: resolvedSymbol,
-      name: resolvedName,
-      price: marketPrice,
-      currency: resolvedCurrency,
-      marketTime,
-    };
-  } catch (error) {
-    console.error('Unexpected error when calling Yahoo Finance search API for ticker:', ticker, error);
-    return null;
   }
+
+  console.warn('Yahoo Finance lookup exhausted all locale variants for ticker:', trimmedTicker);
+  return null;
 };
 
 type HoldingRecord = {
@@ -855,63 +954,8 @@ serve(async (req) => {
         .maybeSingle()
     ]);
 
-    let sheetTickerSymbols: string[] = [];
-    let sheetTickerNames: string[] = [];
-
-    try {
-      const { data: sheetTickerData, error: sheetTickerError } = await supabase.functions.invoke('list-sheet-tickers');
-
-      if (sheetTickerError) {
-        console.error('Failed to fetch Google Sheets tickers:', sheetTickerError);
-      } else {
-        const typedData = sheetTickerData as SheetTickerEdgeResponse | null;
-        const rawTickers = Array.isArray(typedData?.tickers)
-          ? (typedData?.tickers as SheetTickerEdgeItem[])
-          : [];
-
-        const symbolSet = new Set<string>();
-        const nameSet = new Set<string>();
-
-        for (const item of rawTickers) {
-          if (!item || typeof item !== 'object') continue;
-
-          const rawSymbol = typeof item.symbol === 'string' ? item.symbol : null;
-          if (rawSymbol) {
-            const trimmedSymbol = rawSymbol.trim();
-            const withoutPrefix = trimmedSymbol.includes(':')
-              ? trimmedSymbol.split(':').pop() ?? trimmedSymbol
-              : trimmedSymbol;
-            const cleanedSymbol = withoutPrefix.replace(/\s+/g, '').toUpperCase();
-            if (cleanedSymbol.length > 0) {
-              symbolSet.add(cleanedSymbol);
-            }
-          }
-
-          const rawName = typeof item.name === 'string' ? item.name : null;
-          if (rawName) {
-            const normalizedWhitespaceName = rawName.replace(/\s+/g, ' ').trim();
-            if (normalizedWhitespaceName.length > 0) {
-              nameSet.add(normalizedWhitespaceName);
-
-              const diacriticsStripped = removeDiacritics(normalizedWhitespaceName).trim();
-              if (diacriticsStripped.length > 0 && diacriticsStripped !== normalizedWhitespaceName) {
-                nameSet.add(diacriticsStripped);
-              }
-            }
-          }
-        }
-
-        sheetTickerSymbols = Array.from(symbolSet);
-        sheetTickerNames = Array.from(nameSet);
-
-        console.log('Loaded Google Sheets tickers:', {
-          symbols: sheetTickerSymbols.length,
-          names: sheetTickerNames.length,
-        });
-      }
-    } catch (error) {
-      console.error('Unexpected error when loading Google Sheets tickers:', error);
-    }
+    const sheetTickerSymbols: string[] = [];
+    const sheetTickerNames: string[] = [];
 
     // ENHANCED INTENT DETECTION FOR PROFILE UPDATES
     const detectProfileUpdates = (message: string) => {
