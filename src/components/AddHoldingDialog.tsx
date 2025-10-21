@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { UserHolding } from '@/hooks/useUserHoldings';
 import useSheetTickers, { SheetTicker, RawSheetTicker, sanitizeSheetTickerList } from '@/hooks/useSheetTickers';
+import { fetchYahooQuote } from '@/hooks/useYahooQuote';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { ADD_HOLDING_FORM_STORAGE_KEY } from '@/constants/storageKeys';
 import { supabase } from '@/integrations/supabase/client';
@@ -110,6 +111,63 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   }, [combinedTickers]);
 
   const matchedTicker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) ?? null : null;
+
+  useEffect(() => {
+    if (!matchedTicker?.symbol) {
+      return;
+    }
+
+    let isActive = true;
+
+    (async () => {
+      try {
+        const quote = await fetchYahooQuote(matchedTicker.symbol);
+
+        if (!isActive || !quote || typeof quote.price !== 'number' || !Number.isFinite(quote.price)) {
+          return;
+        }
+
+        setDialogState(prev => {
+          if (!isActive) {
+            return prev;
+          }
+
+          const nextState = { ...prev };
+          let hasChanges = false;
+
+          if (!prev.priceOverridden) {
+            const priceString = quote.price.toString();
+            if (prev.formData.purchase_price !== priceString) {
+              nextState.formData = {
+                ...nextState.formData,
+                purchase_price: priceString,
+              };
+              hasChanges = true;
+            }
+          }
+
+          if (!prev.currencyOverridden && quote.currency) {
+            const normalizedCurrency = quote.currency.toUpperCase();
+            if (prev.formData.currency !== normalizedCurrency) {
+              nextState.formData = {
+                ...nextState.formData,
+                currency: normalizedCurrency,
+              };
+              hasChanges = true;
+            }
+          }
+
+          return hasChanges ? nextState : prev;
+        });
+      } catch (error) {
+        console.warn('Failed to fetch Yahoo Finance quote in dialog:', error);
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, [matchedTicker?.symbol, setDialogState]);
 
   useEffect(() => {
     const trimmedSymbol = formData.symbol.trim();
