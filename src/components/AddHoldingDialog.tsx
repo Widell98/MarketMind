@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 import {
   Select,
   SelectContent,
@@ -74,8 +75,8 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const { formData, priceOverridden, currencyOverridden, nameOverridden } = dialogState;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [symbolError, setSymbolError] = useState<string | null>(null);
-  const [showMobileTickerList, setShowMobileTickerList] = useState(false);
-  const [mobileListManuallyExpanded, setMobileListManuallyExpanded] = useState(false);
+  const [showTickerList, setShowTickerList] = useState(false);
+  const [tickerListManuallyExpanded, setTickerListManuallyExpanded] = useState(false);
   const [yahooTickers, setYahooTickers] = useState<SheetTicker[]>([]);
   const [yahooLoading, setYahooLoading] = useState(false);
   const [yahooError, setYahooError] = useState<string | null>(null);
@@ -436,7 +437,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     );
   }), [deferredTickers, formatDisplayPrice]);
 
-  const mobileTickerSuggestions = useMemo(() => {
+  const tickerListSuggestions = useMemo(() => {
     const searchTerm = formData.symbol.trim().toLowerCase();
     const baseTickers = searchTerm
       ? deferredTickers.filter((ticker) => {
@@ -468,9 +469,9 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     if (field === 'symbol') {
       const trimmedValue = value.trim();
       if (trimmedValue.length > 0) {
-        setShowMobileTickerList(true);
-      } else if (!mobileListManuallyExpanded) {
-        setShowMobileTickerList(false);
+        setShowTickerList(true);
+      } else if (!tickerListManuallyExpanded) {
+        setShowTickerList(false);
       }
 
       if (symbolError) {
@@ -531,20 +532,20 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     });
 
     if (shouldCollapseManualList) {
-      setMobileListManuallyExpanded(false);
+      setTickerListManuallyExpanded(false);
     }
   };
 
-  const handleMobileTickerSelect = (ticker: SheetTicker) => {
+  const handleTickerListSelect = (ticker: SheetTicker) => {
     handleInputChange('symbol', ticker.symbol);
-    setShowMobileTickerList(false);
-    setMobileListManuallyExpanded(false);
+    setShowTickerList(false);
+    setTickerListManuallyExpanded(false);
   };
 
-  const toggleMobileTickerList = () => {
-    setMobileListManuallyExpanded((prev) => {
+  const toggleTickerList = () => {
+    setTickerListManuallyExpanded((prev) => {
       const next = !prev;
-      setShowMobileTickerList(next);
+      setShowTickerList(next);
       return next;
     });
   };
@@ -643,30 +644,73 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
             </div>
             <div className="space-y-2">
               <Label htmlFor="symbol">Symbol</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="symbol"
-                  list="sheet-tickers"
-                  value={formData.symbol}
-                  onChange={(e) => handleInputChange('symbol', e.target.value)}
-                  onFocus={() => {
-                    if (formData.symbol.trim() || mobileListManuallyExpanded) {
-                      setShowMobileTickerList(true);
-                    }
-                  }}
-                  placeholder={(tickersLoading || yahooLoading) ? 'Hämtar tickers...' : 't.ex. VOLV-B'}
-                  required
-                  className="flex-1"
-                />
-                <button
-                  type="button"
-                  onClick={toggleMobileTickerList}
-                  aria-expanded={showMobileTickerList}
-                  aria-controls="mobile-ticker-suggestions"
-                  className="sm:hidden inline-flex items-center justify-center gap-1 rounded-full border border-white/40 bg-white/80 px-4 py-2 text-xs font-semibold text-foreground shadow-[0_1px_0_rgba(255,255,255,0.6)] backdrop-blur transition hover:bg-white hover:shadow-[0_10px_24px_rgba(15,23,42,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 dark:border-white/10 dark:bg-slate-900/70 dark:text-white dark:shadow-[0_1px_0_rgba(255,255,255,0.08)] dark:hover:bg-slate-900"
-                >
-                  tickerlista
-                </button>
+              <div className="relative">
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="symbol"
+                    list="sheet-tickers"
+                    value={formData.symbol}
+                    onChange={(e) => handleInputChange('symbol', e.target.value)}
+                    onFocus={() => {
+                      if (formData.symbol.trim() || tickerListManuallyExpanded) {
+                        setShowTickerList(true);
+                      }
+                    }}
+                    placeholder={(tickersLoading || yahooLoading) ? 'Hämtar tickers...' : 't.ex. VOLV-B'}
+                    required
+                    className="flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={toggleTickerList}
+                    aria-expanded={showTickerList}
+                    aria-controls="ticker-suggestions"
+                    className={cn(
+                    'inline-flex items-center justify-center gap-1 rounded-full border border-white/40 bg-white/80 px-4 py-2 text-xs font-semibold text-foreground shadow-[0_1px_0_rgba(255,255,255,0.6)] backdrop-blur transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 dark:border-white/10 dark:bg-slate-900/70 dark:text-white dark:shadow-[0_1px_0_rgba(255,255,255,0.08)]',
+                    'hover:bg-white hover:shadow-[0_10px_24px_rgba(15,23,42,0.18)] dark:hover:bg-slate-900',
+                    'sm:px-5 sm:py-2.5 sm:text-sm sm:font-medium sm:border-border/60 sm:bg-background/90 sm:text-foreground sm:shadow-[0_12px_30px_rgba(15,23,42,0.12)] sm:hover:shadow-[0_22px_48px_rgba(15,23,42,0.2)] sm:dark:border-slate-800 sm:dark:bg-slate-900/80 sm:dark:text-slate-100 sm:dark:shadow-[0_12px_30px_rgba(15,23,42,0.32)] sm:dark:hover:bg-slate-900'
+                    )}
+                  >
+                    tickerlista
+                  </button>
+                </div>
+                {showTickerList && (
+                  <div
+                    id="ticker-suggestions"
+                    className="mt-3 max-h-60 overflow-y-auto rounded-[28px] border border-white/40 bg-white/80 p-2 shadow-[0_18px_45px_rgba(15,23,42,0.18)] backdrop-blur-xl transition-all dark:border-white/10 dark:bg-slate-900/80 dark:shadow-[0_18px_45px_rgba(15,23,42,0.45)] sm:absolute sm:top-[calc(100%+0.75rem)] sm:left-0 sm:right-auto sm:z-30 sm:w-full sm:min-w-[320px] sm:max-w-[480px] sm:rounded-[32px] sm:border-border/60 sm:bg-background/95 sm:p-3 sm:shadow-[0_24px_60px_rgba(15,23,42,0.2)] sm:backdrop-blur-2xl sm:dark:border-slate-800 sm:dark:bg-slate-950/90"
+                  >
+                    {(tickersLoading || yahooLoading) ? (
+                      <p className="px-3 py-2 text-xs font-medium text-muted-foreground sm:text-sm">Hämtar tickers...</p>
+                    ) : tickerListSuggestions.length > 0 ? (
+                      tickerListSuggestions.map((ticker) => {
+                        const displayPrice = typeof ticker.price === 'number' && Number.isFinite(ticker.price) && ticker.price > 0
+                          ? `${formatDisplayPrice(ticker.price)}${ticker.currency ? ` ${ticker.currency}` : ''}`.trim()
+                          : null;
+
+                        return (
+                          <button
+                            key={`ticker-list-${ticker.symbol}`}
+                            type="button"
+                            onClick={() => handleTickerListSelect(ticker)}
+                            className="flex w-full items-center justify-between gap-3 rounded-2xl bg-white/60 px-4 py-3 text-left text-foreground shadow-[0_1px_0_rgba(255,255,255,0.6)] transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_12px_26px_rgba(15,23,42,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 dark:bg-slate-900/60 dark:text-white dark:shadow-[0_1px_0_rgba(255,255,255,0.05)] dark:hover:bg-slate-900 sm:rounded-3xl sm:px-5 sm:py-3.5 sm:text-sm sm:hover:-translate-y-1 sm:hover:shadow-[0_24px_40px_rgba(15,23,42,0.2)]"
+                          >
+                            <div>
+                              <div className="text-sm font-semibold tracking-wide text-foreground dark:text-white sm:text-base">{ticker.symbol}</div>
+                              {ticker.name && (
+                                <div className="text-xs text-muted-foreground sm:text-sm">{ticker.name}</div>
+                              )}
+                            </div>
+                            {displayPrice && (
+                              <div className="text-xs font-semibold text-muted-foreground sm:text-sm">{displayPrice}</div>
+                            )}
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <p className="px-3 py-2 text-xs font-medium text-muted-foreground sm:text-sm">Inga tickers matchar din sökning ännu.</p>
+                    )}
+                  </div>
+                )}
               </div>
               {symbolError && (
                 <p className="text-sm text-destructive">{symbolError}</p>
@@ -682,45 +726,6 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
           <datalist id="sheet-tickers">
             {tickerOptions}
           </datalist>
-          <div className="sm:hidden space-y-2">
-            {showMobileTickerList && (
-              <div
-                id="mobile-ticker-suggestions"
-                className="max-h-60 overflow-y-auto rounded-[28px] border border-white/40 bg-white/80 p-2 shadow-[0_18px_45px_rgba(15,23,42,0.18)] backdrop-blur-xl transition-all dark:border-white/10 dark:bg-slate-900/80 dark:shadow-[0_18px_45px_rgba(15,23,42,0.45)]"
-              >
-                {(tickersLoading || yahooLoading) ? (
-                  <p className="px-3 py-2 text-xs font-medium text-muted-foreground">Hämtar tickers...</p>
-                ) : mobileTickerSuggestions.length > 0 ? (
-                  mobileTickerSuggestions.map((ticker) => {
-                    const displayPrice = typeof ticker.price === 'number' && Number.isFinite(ticker.price) && ticker.price > 0
-                      ? `${formatDisplayPrice(ticker.price)}${ticker.currency ? ` ${ticker.currency}` : ''}`.trim()
-                      : null;
-
-                    return (
-                      <button
-                        key={`mobile-ticker-${ticker.symbol}`}
-                        type="button"
-                        onClick={() => handleMobileTickerSelect(ticker)}
-                        className="flex w-full items-center justify-between gap-3 rounded-2xl bg-white/60 px-4 py-3 text-left text-foreground shadow-[0_1px_0_rgba(255,255,255,0.6)] transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_12px_26px_rgba(15,23,42,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 dark:bg-slate-900/60 dark:text-white dark:shadow-[0_1px_0_rgba(255,255,255,0.05)] dark:hover:bg-slate-900"
-                      >
-                        <div>
-                          <div className="text-sm font-semibold tracking-wide text-foreground dark:text-white">{ticker.symbol}</div>
-                          {ticker.name && (
-                            <div className="text-xs text-muted-foreground">{ticker.name}</div>
-                          )}
-                        </div>
-                        {displayPrice && (
-                          <div className="text-xs font-semibold text-muted-foreground">{displayPrice}</div>
-                        )}
-                      </button>
-                    );
-                  })
-                ) : (
-                  <p className="px-3 py-2 text-xs font-medium text-muted-foreground">Inga tickers matchar din sökning ännu.</p>
-                )}
-              </div>
-            )}
-          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
