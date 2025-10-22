@@ -642,14 +642,14 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
               />
             </div>
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
                 <Label htmlFor="symbol">Symbol</Label>
                 <button
                   type="button"
                   onClick={toggleMobileTickerList}
                   aria-expanded={showMobileTickerList}
                   aria-controls="mobile-ticker-suggestions"
-                  className="sm:hidden rounded-md bg-muted px-3 py-1 text-xs font-medium text-primary transition hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="ml-auto sm:hidden rounded-md bg-muted px-3 py-1 text-xs font-medium text-primary transition hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   tickerlista
                 </button>
