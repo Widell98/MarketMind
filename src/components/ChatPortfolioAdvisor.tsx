@@ -22,14 +22,32 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import useSheetTickers, { RawSheetTicker, SheetTicker, sanitizeSheetTickerList } from '@/hooks/useSheetTickers';
 
+interface QuestionOption {
+  value: string;
+  label: string;
+}
+
+interface Question {
+  id: string;
+  question: string;
+  key: string;
+  hasOptions: boolean;
+  options?: QuestionOption[];
+  showIf?: () => boolean;
+  processAnswer?: (answer: string | string[]) => any;
+  multiSelect?: boolean;
+}
+
 interface Message {
   id: string;
   type: 'bot' | 'user';
   content: string;
   timestamp: Date;
   hasOptions?: boolean;
-  options?: Array<{ value: string; label: string }>;
+  options?: QuestionOption[];
   hasHoldingsInput?: boolean;
+  questionId?: string;
+  multiSelect?: boolean;
 }
 
 interface Holding {
@@ -150,6 +168,9 @@ const ChatPortfolioAdvisor = () => {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [showHoldingsInput, setShowHoldingsInput] = useState(false);
   const [localLoading, setLoading] = useState(false);
+  const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
+  const [pendingMultiSelect, setPendingMultiSelect] = useState<string[]>([]);
+  const [pendingQuestionId, setPendingQuestionId] = useState<string | null>(null);
   const isInitialized = useRef(false);
 
   const { generatePortfolioFromConversation, loading } = useConversationalPortfolio();
@@ -342,7 +363,7 @@ const ChatPortfolioAdvisor = () => {
     }
   }, [portfolioResult?.plan, portfolioResult?.aiResponse]);
 
-  const questions = [
+  const questions: Question[] = [
     {
       id: 'experienceLevel',
       question: 'Hur länge har du investerat på börsen?',
@@ -359,8 +380,9 @@ const ChatPortfolioAdvisor = () => {
       question: 'Hur gammal är du?',
       key: 'age',
       hasOptions: false,
-      processAnswer: (answer: string) => {
-        const digitsOnly = answer.replace(/[^0-9]/g, '');
+      processAnswer: (answer: string | string[]) => {
+        const value = Array.isArray(answer) ? answer[0] ?? '' : answer;
+        const digitsOnly = value.replace(/[^0-9]/g, '');
         if (digitsOnly.length === 0) {
           return conversationData.age;
         }
@@ -382,7 +404,10 @@ const ChatPortfolioAdvisor = () => {
         { value: 'yes', label: 'Ja, jag har befintliga investeringar' },
         { value: 'no', label: 'Nej, jag börjar från början' }
       ],
-      processAnswer: (answer: string) => answer === 'yes'
+      processAnswer: (answer: string | string[]) => {
+        const value = Array.isArray(answer) ? answer[0] ?? '' : answer;
+        return value === 'yes';
+      }
     },
     {
       id: 'tradingFrequency',
@@ -514,7 +539,10 @@ const ChatPortfolioAdvisor = () => {
       question: 'Hur mycket planerar du att investera varje månad?',
       key: 'monthlyAmount',
       hasOptions: false,
-      processAnswer: (answer: string) => answer.trim()
+      processAnswer: (answer: string | string[]) => {
+        const value = Array.isArray(answer) ? answer.join(', ') : answer;
+        return value.trim();
+      }
     },
     {
       id: 'marketReaction',
@@ -556,12 +584,72 @@ const ChatPortfolioAdvisor = () => {
     },
     {
       id: 'sectorInterests',
-      question: 'Vilka branscher intresserar dig mest? Lista gärna flera separerade med kommatecken. Exempel: Tech & IT, Hälsa & Life Science, Energi, Konsument & Handel, Fordon & Transport',
+      question: 'Vilka branscher intresserar dig mest? Du kan klicka på alternativen nedan eller ange egna.',
       key: 'sectors',
-      hasOptions: false,
-      processAnswer: (answer: string) => answer.split(',').map(item => item.trim()).filter(item => item.length > 0)
+      hasOptions: true,
+      multiSelect: true,
+      options: [
+        { value: 'Tech & IT', label: 'Tech & IT' },
+        { value: 'Hälsa & Life Science', label: 'Hälsa & Life Science' },
+        { value: 'Energi', label: 'Energi' },
+        { value: 'Konsument & Handel', label: 'Konsument & Handel' },
+        { value: 'Fordon & Transport', label: 'Fordon & Transport' },
+        { value: 'Finans', label: 'Finans' },
+        { value: 'Industri', label: 'Industri' },
+        { value: 'Fastigheter', label: 'Fastigheter' },
+        { value: 'Grön Energi & Hållbarhet', label: 'Grön Energi & Hållbarhet' },
+        { value: 'Spel & Underhållning', label: 'Spel & Underhållning' },
+        { value: 'Annat', label: 'Annat' }
+      ],
+      processAnswer: (answer: string | string[]) => {
+        const values = Array.isArray(answer)
+          ? answer
+          : answer
+              .split(',')
+              .map(item => item.trim())
+              .filter(item => item.length > 0);
+        return values.filter((item, index) => values.indexOf(item) === index);
+      }
     }
   ];
+
+  const resetMultiSelectState = useCallback(() => {
+    setPendingMultiSelect([]);
+    setPendingQuestionId(null);
+  }, []);
+
+  const prepareQuestionForAnswer = useCallback(
+    (question: Question | null) => {
+      setActiveQuestion(question);
+      if (question?.multiSelect) {
+        setPendingQuestionId(question.id);
+        setPendingMultiSelect([]);
+      } else {
+        resetMultiSelectState();
+      }
+    },
+    [resetMultiSelectState]
+  );
+
+  const toggleMultiSelectOption = useCallback(
+    (questionId: string, value: string) => {
+      setPendingQuestionId(prevId => {
+        if (prevId !== questionId) {
+          setPendingMultiSelect([value]);
+          return questionId;
+        }
+
+        setPendingMultiSelect(prev => {
+          if (prev.includes(value)) {
+            return prev.filter(item => item !== value);
+          }
+          return [...prev, value];
+        });
+        return prevId;
+      });
+    },
+    []
+  );
 
   const scrollToBottom = () => {
     const container = messagesContainerRef.current;
@@ -582,12 +670,27 @@ const ChatPortfolioAdvisor = () => {
     if (!isInitialized.current) {
       isInitialized.current = true;
       const firstQuestion = questions[0];
-      addBotMessage(firstQuestion.question, firstQuestion.hasOptions, firstQuestion.options);
+      prepareQuestionForAnswer(firstQuestion);
+      addBotMessage(
+        firstQuestion.question,
+        firstQuestion.hasOptions,
+        firstQuestion.options,
+        false,
+        firstQuestion.id,
+        firstQuestion.multiSelect
+      );
       setWaitingForAnswer(true);
     }
-  }, []); // Empty dependency array
+  }, [prepareQuestionForAnswer, questions]);
 
-  const addBotMessage = (content: string, hasOptions: boolean = false, options?: Array<{ value: string; label: string }>, hasHoldingsInput: boolean = false) => {
+  const addBotMessage = (
+    content: string,
+    hasOptions: boolean = false,
+    options?: QuestionOption[],
+    hasHoldingsInput: boolean = false,
+    questionId?: string,
+    multiSelect?: boolean
+  ) => {
     const message: Message = {
       id: `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Unique ID
       type: 'bot',
@@ -595,7 +698,9 @@ const ChatPortfolioAdvisor = () => {
       timestamp: new Date(),
       hasOptions,
       options,
-      hasHoldingsInput
+      hasHoldingsInput,
+      questionId,
+      multiSelect
     };
     setMessages(prev => [...prev, message]);
   };
@@ -872,32 +977,25 @@ const ChatPortfolioAdvisor = () => {
   };
 
   const getCurrentQuestion = () => {
-    let questionIndex = currentStep;
-    while (questionIndex < questions.length) {
-      const question = questions[questionIndex];
-      if (!question.showIf || question.showIf()) {
-        return question;
-      }
-      questionIndex++;
-    }
-    return null;
+    return activeQuestion;
   };
 
-  const handleAnswer = (answer: string) => {
+  const handleAnswer = (answer: string | string[]) => {
     if (!waitingForAnswer || isComplete) return;
 
     const currentQuestion = getCurrentQuestion();
     if (!currentQuestion) return;
 
     // Special handling for portfolio holdings
-    if (currentQuestion.id === 'hasPortfolio' && answer === 'yes') {
+    if (currentQuestion.id === 'hasPortfolio' && !Array.isArray(answer) && answer === 'yes') {
       // Find the label for the answer
       const option = currentQuestion.options?.find(opt => opt.value === answer);
       const displayAnswer = option ? option.label : answer;
       
       addUserMessage(displayAnswer);
       setWaitingForAnswer(false);
-      
+      resetMultiSelectState();
+
       // Process the answer
       let processedAnswer: any = answer;
       if (currentQuestion.processAnswer) {
@@ -933,23 +1031,36 @@ const ChatPortfolioAdvisor = () => {
           }
         ]);
       }, 1000);
-      
+
+      prepareQuestionForAnswer(null);
+
       return;
     }
 
     // Normal question handling
     // Find the label for the answer if it has options
-    let displayAnswer = answer;
-    if (currentQuestion.hasOptions && currentQuestion.options) {
-      const option = currentQuestion.options.find(opt => opt.value === answer);
-      if (option) {
-        displayAnswer = option.label;
+    let displayAnswer: string;
+    if (Array.isArray(answer)) {
+      if (currentQuestion.hasOptions && currentQuestion.options) {
+        const labelMap = new Map(currentQuestion.options.map(opt => [opt.value, opt.label]));
+        displayAnswer = answer.map(value => labelMap.get(value) ?? value).join(', ');
+      } else {
+        displayAnswer = answer.join(', ');
+      }
+    } else {
+      displayAnswer = answer;
+      if (currentQuestion.hasOptions && currentQuestion.options) {
+        const option = currentQuestion.options.find(opt => opt.value === answer);
+        if (option) {
+          displayAnswer = option.label;
+        }
       }
     }
 
     addUserMessage(displayAnswer);
     setWaitingForAnswer(false);
-    
+    resetMultiSelectState();
+
     // Process the answer
     let processedAnswer: any = answer;
     if (currentQuestion.processAnswer) {
@@ -1009,16 +1120,37 @@ const ChatPortfolioAdvisor = () => {
 
     if (nextStep >= questions.length) {
       // Conversation complete
+      prepareQuestionForAnswer(null);
       completeConversation();
     } else {
       setCurrentStep(nextStep);
       const nextQuestion = questions[nextStep];
-      
+
+      prepareQuestionForAnswer(nextQuestion);
       setTimeout(() => {
-        addBotMessage(nextQuestion.question, nextQuestion.hasOptions, nextQuestion.options);
+        addBotMessage(
+          nextQuestion.question,
+          nextQuestion.hasOptions,
+          nextQuestion.options,
+          false,
+          nextQuestion.id,
+          nextQuestion.multiSelect
+        );
         setWaitingForAnswer(true);
       }, 500);
     }
+  };
+
+  const confirmMultiSelectSelection = () => {
+    if (!activeQuestion || !activeQuestion.multiSelect) {
+      return;
+    }
+
+    if (pendingMultiSelect.length === 0) {
+      return;
+    }
+
+    handleAnswer(pendingMultiSelect);
   };
 
   const saveUserHoldings = async (holdings: ConversationHolding[]) => {
@@ -1556,19 +1688,63 @@ const ChatPortfolioAdvisor = () => {
                       </div>
                       
                       {/* Show predefined options if available */}
-                      {message.hasOptions && message.options && waitingForAnswer && !showHoldingsInput && (
-                        <div className="mt-3 sm:mt-4 flex flex-wrap gap-1.5 sm:gap-2">
-                          {message.options.map((option) => (
-                            <Button
-                              key={option.value}
-                              variant="outline"
-                              size="sm"
-                              className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3 bg-background/80 hover:bg-background border-border/50 hover:border-border transition-all duration-200"
-                              onClick={() => handleAnswer(option.value)}
-                            >
-                              {option.label}
-                            </Button>
-                          ))}
+                      {message.hasOptions && message.options && waitingForAnswer && !showHoldingsInput && message.questionId === activeQuestion?.id && (
+                        <div className="mt-3 sm:mt-4 space-y-3">
+                          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                            {message.options.map((option) => {
+                              const isSelected =
+                                message.multiSelect &&
+                                pendingQuestionId === message.questionId &&
+                                pendingMultiSelect.includes(option.value);
+
+                              return (
+                                <Button
+                                  key={option.value}
+                                  variant={isSelected ? 'default' : 'outline'}
+                                  size="sm"
+                                  className={`text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3 transition-all duration-200 ${
+                                    isSelected
+                                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                      : 'bg-background/80 hover:bg-background border-border/50 hover:border-border'
+                                  }`}
+                                  onClick={() =>
+                                    message.multiSelect && message.questionId
+                                      ? toggleMultiSelectOption(message.questionId, option.value)
+                                      : handleAnswer(option.value)
+                                  }
+                                >
+                                  {option.label}
+                                </Button>
+                              );
+                            })}
+                          </div>
+
+                          {message.multiSelect && (
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={confirmMultiSelectSelection}
+                                disabled={pendingMultiSelect.length === 0}
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                              >
+                                Bekräfta val
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setPendingMultiSelect([]);
+                                  setPendingQuestionId(message.questionId ?? null);
+                                }}
+                                disabled={pendingMultiSelect.length === 0}
+                                className="text-xs sm:text-sm"
+                              >
+                                Rensa val
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -1752,13 +1928,13 @@ const ChatPortfolioAdvisor = () => {
               <Input
                 value={currentInput}
                 onChange={(e) => setCurrentInput(e.target.value)}
-                placeholder="Skriv ditt svar här..."
+                placeholder={activeQuestion?.multiSelect ? 'Skriv ett eget svar här...' : 'Skriv ditt svar här...'}
                 className="pr-12 bg-background/80 backdrop-blur-sm border-border/50 focus:border-primary/50 transition-colors text-sm sm:text-base h-9 sm:h-10"
                 disabled={isComplete}
               />
             </div>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               size="sm"
               disabled={!currentInput.trim() || isComplete}
               className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm hover:shadow-md transition-all duration-200 h-9 sm:h-10 px-3 sm:px-4"
