@@ -27,6 +27,20 @@ const safeNumber = (value: unknown): number | null => {
   return null;
 };
 
+const isMissingRunsTableError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const code = (error as { code?: string }).code;
+  if (code === '42P01') {
+    return true;
+  }
+
+  const message = (error as { message?: string }).message?.toLowerCase() ?? '';
+  return message.includes('ai_generation_runs');
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -49,6 +63,7 @@ serve(async (req) => {
   let generatedCount = 0;
   const batchId = crypto.randomUUID();
   let triggeredBy = 'scheduled';
+  let runLoggingAvailable = true;
 
   try {
     console.log('Starting AI weekly cases generation...');
@@ -80,11 +95,20 @@ serve(async (req) => {
       .single();
 
     if (runInsertError) {
-      console.error('Failed to record AI generation run', runInsertError);
-      throw runInsertError;
+      if (isMissingRunsTableError(runInsertError)) {
+        runLoggingAvailable = false;
+        console.warn(
+          'ai_generation_runs table is missing. Proceeding without run logging.'
+        );
+      } else {
+        console.error('Failed to record AI generation run', runInsertError);
+        throw runInsertError;
+      }
     }
 
-    runId = runRecord?.id ?? null;
+    if (runLoggingAvailable) {
+      runId = runRecord?.id ?? null;
+    }
 
     // Fetch recent AI-generated cases to avoid duplicates
     const { data: recentCases } = await supabase
@@ -232,7 +256,7 @@ Svara endast med giltigt JSON i följande format:
     generatedCount = insertedCases?.length ?? 0;
     console.log(`Successfully inserted ${generatedCount} AI-generated cases`);
 
-    if (runId) {
+    if (runLoggingAvailable && runId) {
       await supabase
         .from('ai_generation_runs')
         .update({
@@ -257,7 +281,7 @@ Svara endast med giltigt JSON i följande format:
   } catch (error) {
     console.error('Error in generate-weekly-cases function:', error);
 
-    if (runId) {
+    if (runLoggingAvailable && runId) {
       await supabase
         .from('ai_generation_runs')
         .update({
