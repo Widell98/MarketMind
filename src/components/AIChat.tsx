@@ -406,6 +406,10 @@ const AIChat = ({
                   Logga in
                 </Button>
                 <p className="mt-3 text-xs text-ai-text-muted">Det är kostnadsfritt att komma igång</p>
+                <p className="mt-2 text-[11px] leading-relaxed text-ai-text-muted">
+                  AI-assistentens svar är endast generell marknadsinformation och ska inte ses som personlig finansiell
+                  rådgivning.
+                </p>
               </div>
             </div>
           </div>

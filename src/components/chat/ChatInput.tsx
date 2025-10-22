@@ -113,6 +113,11 @@ const ChatInput = memo(({
             </Badge>
           </div>
         )}
+
+        <p className="mt-4 text-center text-[11px] leading-relaxed text-ai-text-muted sm:text-xs">
+          Observera att AI-assistentens svar endast ger generell marknadsinformation och inte utgör personlig finansiell
+          rådgivning.
+        </p>
       </div>
 
       <PremiumUpgradeModal
