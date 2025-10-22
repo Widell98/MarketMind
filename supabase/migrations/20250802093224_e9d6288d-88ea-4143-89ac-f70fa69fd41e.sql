@@ -1,5 +1,4 @@
--- Create stock_case_comments table
-CREATE TABLE public.stock_case_comments (
+CREATE TABLE IF NOT EXISTS public.stock_case_comments (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   stock_case_id UUID NOT NULL,
   user_id UUID NOT NULL,
@@ -12,24 +11,28 @@ CREATE TABLE public.stock_case_comments (
 ALTER TABLE public.stock_case_comments ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for stock case comments
-CREATE POLICY "Anyone can view stock case comments" 
-ON public.stock_case_comments 
-FOR SELECT 
+DROP POLICY IF EXISTS "Anyone can view stock case comments" ON public.stock_case_comments;
+CREATE POLICY "Anyone can view stock case comments"
+ON public.stock_case_comments
+FOR SELECT
 USING (true);
 
-CREATE POLICY "Authenticated users can create stock case comments" 
-ON public.stock_case_comments 
-FOR INSERT 
+DROP POLICY IF EXISTS "Authenticated users can create stock case comments" ON public.stock_case_comments;
+CREATE POLICY "Authenticated users can create stock case comments"
+ON public.stock_case_comments
+FOR INSERT
 WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can update their own stock case comments" 
-ON public.stock_case_comments 
-FOR UPDATE 
+DROP POLICY IF EXISTS "Users can update their own stock case comments" ON public.stock_case_comments;
+CREATE POLICY "Users can update their own stock case comments"
+ON public.stock_case_comments
+FOR UPDATE
 USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can delete their own stock case comments" 
-ON public.stock_case_comments 
-FOR DELETE 
+DROP POLICY IF EXISTS "Users can delete their own stock case comments" ON public.stock_case_comments;
+CREATE POLICY "Users can delete their own stock case comments"
+ON public.stock_case_comments
+FOR DELETE
 USING (auth.uid() = user_id);
 
 -- Create function to get stock case comment count
