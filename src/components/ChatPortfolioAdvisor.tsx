@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo, useId } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useId, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
-import useSheetTickers, { SheetTicker } from '@/hooks/useSheetTickers';
+import useSheetTickers, { RawSheetTicker, SheetTicker, sanitizeSheetTickerList } from '@/hooks/useSheetTickers';
 
 interface Message {
   id: string;
@@ -162,23 +162,45 @@ const ChatPortfolioAdvisor = () => {
   const { tickers, isLoading: tickersLoading, error: tickersError } = useSheetTickers();
   const rawTickerListId = useId();
   const tickerDatalistId = `advisor-sheet-tickers-${rawTickerListId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const [dynamicTickers, setDynamicTickers] = useState<SheetTicker[]>([]);
+  const [finnhubPriceCache, setFinnhubPriceCache] = useState<Record<string, { price: number; currency: string | null }>>({});
+  const symbolLookupTimeouts = useRef<Map<string, number>>(new Map());
 
   const priceFormatter = useMemo(
     () => new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     []
   );
 
+  const combinedTickers = useMemo(() => {
+    const map = new Map<string, SheetTicker>();
+    const mergeTicker = (ticker: SheetTicker) => {
+      const symbol = ticker.symbol.toUpperCase();
+      const cached = finnhubPriceCache[symbol];
+      map.set(symbol, {
+        ...ticker,
+        symbol,
+        price: cached?.price ?? ticker.price ?? null,
+        currency: cached?.currency ?? ticker.currency ?? null
+      });
+    };
+
+    tickers.forEach(mergeTicker);
+    dynamicTickers.forEach(mergeTicker);
+
+    return Array.from(map.values());
+  }, [tickers, dynamicTickers, finnhubPriceCache]);
+
   const tickerLookup = useMemo(() => {
     const map = new Map<string, SheetTicker>();
-    tickers.forEach(ticker => {
+    combinedTickers.forEach(ticker => {
       map.set(ticker.symbol.toUpperCase(), ticker);
     });
     return map;
-  }, [tickers]);
+  }, [combinedTickers]);
 
   const tickerOptions = useMemo(
     () =>
-      tickers.map(ticker => {
+      combinedTickers.map(ticker => {
         const label =
           ticker.name && ticker.name !== ticker.symbol
             ? `${ticker.name} (${ticker.symbol})`
@@ -198,7 +220,108 @@ const ChatPortfolioAdvisor = () => {
           />
         );
       }),
-    [tickers, priceFormatter]
+    [combinedTickers, priceFormatter]
+  );
+
+  const lookupTickerData = useCallback(
+    async (symbol: string) => {
+      const normalizedSymbol = symbol.trim().toUpperCase();
+
+      if (!normalizedSymbol) {
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase.functions.invoke<{ tickers?: RawSheetTicker[] }>('list-sheet-tickers', {
+          body: { query: normalizedSymbol }
+        });
+
+        if (error) {
+          throw new Error(error.message ?? 'Kunde inte hämta tickers.');
+        }
+
+        const list = Array.isArray(data?.tickers) ? sanitizeSheetTickerList(data?.tickers) : [];
+
+        if (list.length > 0) {
+          setDynamicTickers(prev => {
+            const map = new Map<string, SheetTicker>();
+            prev.forEach(item => map.set(item.symbol.toUpperCase(), item));
+            list.forEach(item => map.set(item.symbol.toUpperCase(), item));
+            return Array.from(map.values());
+          });
+        }
+      } catch (error) {
+        console.warn('Failed to fetch ticker suggestions:', error);
+      }
+
+      if (!finnhubPriceCache[normalizedSymbol]) {
+        try {
+          const { data: priceData, error: priceError } = await supabase.functions.invoke<{ price?: number; currency?: string | null }>(
+            'get-ticker-price',
+            {
+              body: { symbol: normalizedSymbol }
+            }
+          );
+
+          if (priceError) {
+            throw new Error(priceError.message ?? 'Kunde inte hämta live-pris.');
+          }
+
+          const resolvedPrice =
+            typeof priceData?.price === 'number' && Number.isFinite(priceData.price) && priceData.price > 0
+              ? priceData.price
+              : null;
+          const resolvedCurrency =
+            typeof priceData?.currency === 'string' && priceData.currency.trim().length > 0
+              ? priceData.currency.trim().toUpperCase()
+              : null;
+
+          if (resolvedPrice !== null) {
+            setFinnhubPriceCache(prev => {
+              const existing = prev[normalizedSymbol];
+              if (existing && existing.price === resolvedPrice && existing.currency === resolvedCurrency) {
+                return prev;
+              }
+
+              return {
+                ...prev,
+                [normalizedSymbol]: {
+                  price: resolvedPrice,
+                  currency: resolvedCurrency ?? null
+                }
+              };
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to fetch Finnhub price:', error);
+        }
+      }
+    },
+    [finnhubPriceCache]
+  );
+
+  const scheduleTickerLookup = useCallback(
+    (holdingId: string, symbol: string) => {
+      const trimmed = symbol.trim();
+      const timeouts = symbolLookupTimeouts.current;
+      const existingTimeout = timeouts.get(holdingId);
+
+      if (existingTimeout) {
+        clearTimeout(existingTimeout);
+        timeouts.delete(holdingId);
+      }
+
+      if (typeof window === 'undefined' || trimmed.length < 2) {
+        return;
+      }
+
+      const timeoutId = window.setTimeout(() => {
+        void lookupTickerData(trimmed.toUpperCase());
+      }, 350);
+
+      timeouts.set(holdingId, timeoutId);
+    },
+    [lookupTickerData]
   );
 
   const structuredResponse = useMemo(() => {
@@ -526,11 +649,13 @@ const ChatPortfolioAdvisor = () => {
 
         const ticker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) : undefined;
         const resolvedTickerCurrency = ticker?.currency?.trim()?.toUpperCase();
+        const symbolChanged = normalizedSymbol !== (holding.symbol?.trim().toUpperCase() || '');
 
         let updatedHolding: Holding = {
           ...holding,
           symbol: normalizedSymbol,
-          currency: resolvedTickerCurrency || (normalizedSymbol ? holding.currency : 'SEK')
+          currency: resolvedTickerCurrency || (normalizedSymbol ? holding.currency : 'SEK'),
+          priceManuallyEdited: symbolChanged ? false : holding.priceManuallyEdited
         };
 
         if (ticker) {
@@ -570,6 +695,8 @@ const ChatPortfolioAdvisor = () => {
         return updatedHolding;
       })
     );
+
+    scheduleTickerLookup(id, normalizedSymbol);
   };
 
   const handleHoldingQuantityChange = (id: string, rawValue: string) => {
@@ -602,7 +729,7 @@ const ChatPortfolioAdvisor = () => {
   };
 
   useEffect(() => {
-    if (tickers.length === 0) {
+    if (tickerLookup.size === 0) {
       return;
     }
 
@@ -659,7 +786,16 @@ const ChatPortfolioAdvisor = () => {
 
       return hasChanges ? updatedHoldings : prev;
     });
-  }, [tickerLookup, tickers.length]);
+  }, [tickerLookup]);
+
+  useEffect(() => {
+    return () => {
+      symbolLookupTimeouts.current.forEach(timeoutId => {
+        clearTimeout(timeoutId);
+      });
+      symbolLookupTimeouts.current.clear();
+    };
+  }, []);
 
   const removeHolding = (id: string) => {
     setHoldings(prev => prev.filter(holding => holding.id !== id));
