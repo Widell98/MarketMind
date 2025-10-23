@@ -1,6 +1,7 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { parse } from "https://deno.land/std@0.168.0/encoding/csv.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -13,6 +14,14 @@ const corsHeaders = {
 };
 
 const CASE_COUNT = 3;
+const SHEET_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRJZtyoepzQZSQw-LXTp0vmnpPVMqluTiPZJkPp61g5KsfEp08CA6LZ7CNoTfIgYe-E7lvCZ_ToMuF4/pub?gid=2130484499&single=true&output=csv";
+
+const normalizeSheetValue = (value?: string | null) => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
 
 const extractJsonPayload = (content: string): string => {
   const trimmed = content.trim();
@@ -83,6 +92,67 @@ type SanitizedWebsite = {
   hostname: string;
   url: string;
   logoUrl: string;
+};
+
+const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
+  const response = await fetch(SHEET_CSV_URL);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch sheet CSV: ${response.status}`);
+  }
+
+  const csvText = await response.text();
+  const rows = parse(csvText, { skipFirstRow: false, columns: false }) as string[][];
+
+  if (!rows.length) {
+    return [];
+  }
+
+  const headers = rows[0].map((header) =>
+    typeof header === 'string' ? header.trim() : ''
+  );
+  const dataRows = rows.slice(1);
+
+  const companyIdx = headers.findIndex((header) => /company/i.test(header));
+  const simpleTickerIdx = headers.findIndex((header) => /simple\s*ticker/i.test(header));
+  const tickerIdx = headers.findIndex((header) => /ticker/i.test(header) && !/simple/i.test(header));
+  const currencyIdx = headers.findIndex((header) => /(currency|valuta)/i.test(header));
+  const priceIdx = headers.findIndex((header) => /(price|senast|last)/i.test(header));
+
+  if (tickerIdx === -1 && simpleTickerIdx === -1) {
+    throw new Error('CSV saknar nödvändiga kolumner (Ticker eller Simple Ticker).');
+  }
+
+  const tickerMap = new Map<string, SheetTickerInfo>();
+
+  for (const columns of dataRows) {
+    const rawName = normalizeSheetValue(companyIdx !== -1 ? columns[companyIdx] : null);
+    const rawSimpleSymbol = simpleTickerIdx !== -1 ? normalizeSheetValue(columns[simpleTickerIdx]) : null;
+    const rawSymbol = tickerIdx !== -1 ? normalizeSheetValue(columns[tickerIdx]) : null;
+    const rawCurrency = currencyIdx !== -1 ? normalizeSheetValue(columns[currencyIdx]) : null;
+    const rawPrice = priceIdx !== -1 ? normalizeSheetValue(columns[priceIdx]) : null;
+
+    const selectedSymbol = rawSimpleSymbol ?? rawSymbol;
+    if (!selectedSymbol) continue;
+
+    const cleanedSymbol = selectedSymbol.includes(':')
+      ? selectedSymbol.split(':').pop()!.toUpperCase()
+      : selectedSymbol.toUpperCase();
+
+    const parsedPrice = rawPrice
+      ? Number(rawPrice.replace(/\s/g, '').replace(',', '.'))
+      : null;
+
+    const price = Number.isFinite(parsedPrice) ? Number(parsedPrice) : null;
+
+    tickerMap.set(cleanedSymbol, {
+      symbol: cleanedSymbol,
+      name: rawName ?? cleanedSymbol,
+      currency: rawCurrency ?? null,
+      price,
+    });
+  }
+
+  return Array.from(tickerMap.values());
 };
 
 const sanitizeWebsite = (value: unknown): SanitizedWebsite | null => {
@@ -327,22 +397,14 @@ serve(async (req) => {
     let sheetTickerIndex = new Map<string, SheetTickerInfo>();
     let sheetTickerList: SheetTickerInfo[] = [];
     try {
-      const { data: tickerResponse, error: tickerError } = await supabaseClient
-        .functions
-        .invoke<{ tickers?: SheetTickerInfo[] }>('list-sheet-tickers');
+      sheetTickerList = await fetchSheetTickers();
+      sheetTickerIndex = buildSheetTickerIndex(sheetTickerList);
 
-      if (tickerError) {
-        console.error('Failed to fetch sheet tickers:', tickerError);
-        warnings.push('Kunde inte hämta prisdata från list-sheet-tickers');
-      } else {
-        sheetTickerList = Array.isArray(tickerResponse?.tickers) ? tickerResponse.tickers : [];
-        sheetTickerIndex = buildSheetTickerIndex(sheetTickerList);
-        if (sheetTickerIndex.size === 0) {
-          warnings.push('list-sheet-tickers returnerade inga tickers');
-        }
+      if (sheetTickerIndex.size === 0) {
+        warnings.push('Google Sheet returnerade inga tickers');
       }
     } catch (tickerFetchError) {
-      console.error('Error invoking list-sheet-tickers:', tickerFetchError);
+      console.error('Error fetching sheet tickers directly:', tickerFetchError);
       warnings.push('Fel vid hämtning av prisdata för aktier');
     }
 
