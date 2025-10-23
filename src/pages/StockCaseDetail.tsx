@@ -29,7 +29,6 @@ const StockCaseDetail = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const [showFullDescription, setShowFullDescription] = useState(false);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [updateToDelete, setUpdateToDelete] = useState<string | null>(null);
@@ -302,15 +301,13 @@ const StockCaseDetail = () => {
     });
   };
 
-  const normalizedLongDescription = stockCase.long_description
-    ? stockCase.long_description.replace(/\s+/g, ' ').trim()
+  const analysisDescription = stockCase.long_description
+    ?? currentVersion?.description
+    ?? stockCase.description
+    ?? null;
+  const displayedAnalysisDescription = typeof analysisDescription === 'string' && analysisDescription.trim().length > 0
+    ? analysisDescription
     : null;
-  const normalizedCurrentDescription = currentVersion?.description
-    ? currentVersion.description.replace(/\s+/g, ' ').trim()
-    : null;
-  const showLongDescriptionCard = Boolean(
-    normalizedLongDescription && normalizedLongDescription !== normalizedCurrentDescription,
-  );
 
   return (
     <Layout>
@@ -582,24 +579,13 @@ const StockCaseDetail = () => {
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-6">
             {/* Case Description with Structured Sections */}
-            {showLongDescriptionCard && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Investeringscase</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {formatCaseDescription(stockCase.long_description ?? null)}
-                </CardContent>
-              </Card>
-            )}
-
-            {currentVersion?.description && (
+            {displayedAnalysisDescription && (
               <Card>
                 <CardHeader>
                   <CardTitle>Analys</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {formatCaseDescription(currentVersion.description)}
+                  {formatCaseDescription(displayedAnalysisDescription)}
                 </CardContent>
               </Card>
             )}

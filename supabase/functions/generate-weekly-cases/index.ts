@@ -195,7 +195,7 @@ const sanitizeCaseData = (rawCase: any) => {
   const companyName = typeof rawCase.company_name === 'string' ? rawCase.company_name.trim() : '';
   const descriptionRaw = typeof rawCase.description === 'string' ? rawCase.description.trim() : '';
   const longDescription = sanitizeLongDescription(
-    rawCase.long_description ?? rawCase.investment_thesis ?? rawCase.analysis,
+    rawCase.analysis ?? rawCase.long_description ?? rawCase.investment_thesis,
   );
   const ticker = typeof rawCase.ticker === 'string' ? rawCase.ticker.trim().toUpperCase() : '';
   const websiteInfo = sanitizeWebsite(
@@ -233,6 +233,12 @@ const sanitizeCaseData = (rawCase: any) => {
   const marketCap = rawCase.market_cap ? String(rawCase.market_cap).trim() : null;
   const peRatio = rawCase.pe_ratio ? String(rawCase.pe_ratio).trim() : null;
   const dividendYield = rawCase.dividend_yield ? String(rawCase.dividend_yield).trim() : null;
+  const fiftyTwoWeekHigh = sanitizeNumber(
+    rawCase.fifty_two_week_high ?? rawCase.week_52_high ?? rawCase['52_week_high'],
+  );
+  const fiftyTwoWeekLow = sanitizeNumber(
+    rawCase.fifty_two_week_low ?? rawCase.week_52_low ?? rawCase['52_week_low'],
+  );
 
   return {
     title,
@@ -243,6 +249,8 @@ const sanitizeCaseData = (rawCase: any) => {
     market_cap: marketCap,
     pe_ratio: peRatio,
     dividend_yield: dividendYield,
+    fifty_two_week_high: fiftyTwoWeekHigh,
+    fifty_two_week_low: fiftyTwoWeekLow,
     entry_price: sanitizeNumber(rawCase.entry_price),
     target_price: sanitizeNumber(rawCase.target_price),
     stop_loss: sanitizeNumber(rawCase.stop_loss),
@@ -477,8 +485,8 @@ Krav:
 - Använd exakt ticker "${selectedTicker}" i fältet "ticker".
 - Bekräfta att bolaget är verkligt och börsnoterat.
 - Ange bolagets officiella webbplatsdomän (utan extra text).
-- Skriv en kort sammanfattning (max 200 tecken) och en längre investeringsanalys med minst tre meningar om varför bolaget är intressant.
-- Inkludera rimliga nyckeltal (t.ex. sektortillhörighet, P/E-tal, utdelning).
+- Skriv en kort sammanfattning (max 200 tecken) och en längre analys med minst tre meningar om varför bolaget är intressant (ingen rubrik, håll texten som en sammanhängande "Analys").
+- Inkludera rimliga nyckeltal (t.ex. sektortillhörighet, P/E-tal, utdelning) samt 52-veckors högsta och lägsta kurs som numeriska värden.
 - Skriv på svenska.
 
 Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown):
@@ -491,6 +499,8 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
   "market_cap": "string",
   "pe_ratio": "string",
   "dividend_yield": "string",
+  "fifty_two_week_high": number,
+  "fifty_two_week_low": number,
   "ticker": "string",
   "official_website": "string",
   "target_price": number,
