@@ -325,6 +325,7 @@ serve(async (req) => {
     const warnings: string[] = [];
 
     let sheetTickerIndex = new Map<string, SheetTickerInfo>();
+    let sheetTickerList: SheetTickerInfo[] = [];
     try {
       const { data: tickerResponse, error: tickerError } = await supabaseClient
         .functions
@@ -334,7 +335,8 @@ serve(async (req) => {
         console.error('Failed to fetch sheet tickers:', tickerError);
         warnings.push('Kunde inte hämta prisdata från list-sheet-tickers');
       } else {
-        sheetTickerIndex = buildSheetTickerIndex(tickerResponse?.tickers ?? []);
+        sheetTickerList = Array.isArray(tickerResponse?.tickers) ? tickerResponse.tickers : [];
+        sheetTickerIndex = buildSheetTickerIndex(sheetTickerList);
         if (sheetTickerIndex.size === 0) {
           warnings.push('list-sheet-tickers returnerade inga tickers');
         }
@@ -344,24 +346,77 @@ serve(async (req) => {
       warnings.push('Fel vid hämtning av prisdata för aktier');
     }
 
+    if (sheetTickerIndex.size === 0 || sheetTickerList.length === 0) {
+      throw new Error('Inga tickers kunde hämtas från Google Sheet');
+    }
+
+    const eligibleTickers = sheetTickerList.filter((ticker) => {
+      if (!ticker || typeof ticker.symbol !== 'string') {
+        return false;
+      }
+
+      const normalizedSymbol = normalizeTickerKey(ticker.symbol);
+      if (!normalizedSymbol) {
+        return false;
+      }
+
+      const priceIsValid = typeof ticker.price === 'number' && Number.isFinite(ticker.price);
+
+      return priceIsValid;
+    });
+
+    if (eligibleTickers.length === 0) {
+      throw new Error('Google Sheet saknar prisdata för alla tickers');
+    }
+
     const generatedCases: any[] = [];
     const generatedTickers: { title: string; ticker: string }[] = [];
+    const usedTickerSymbols = new Set<string>();
 
     for (let i = 0; i < CASE_COUNT; i++) {
+      const availableTickers = eligibleTickers.filter((ticker) => {
+        const normalizedSymbol = normalizeTickerKey(ticker.symbol);
+
+        if (usedTickerSymbols.has(normalizedSymbol)) {
+          return false;
+        }
+
+        return true;
+      });
+
+      if (availableTickers.length === 0) {
+        warnings.push('Inga fler unika tickers tillgängliga från sheetet');
+        break;
+      }
+
       const sector = sectors[Math.floor(Math.random() * sectors.length)];
       const style = investmentStyles[Math.floor(Math.random() * investmentStyles.length)];
+
+      const selectedTickerInfo = availableTickers[Math.floor(Math.random() * availableTickers.length)];
+      const selectedTicker = normalizeTickerKey(selectedTickerInfo.symbol);
+      const selectedName = selectedTickerInfo.name?.trim() || selectedTicker;
+      const sheetPrice = typeof selectedTickerInfo.price === 'number' && Number.isFinite(selectedTickerInfo.price)
+        ? Number(selectedTickerInfo.price.toFixed(2))
+        : null;
+      const sheetCurrency = typeof selectedTickerInfo.currency === 'string' && selectedTickerInfo.currency.trim().length > 0
+        ? selectedTickerInfo.currency.trim().toUpperCase()
+        : null;
+
+      usedTickerSymbols.add(selectedTicker);
 
       const prompt = `Som en professionell finansanalytiker, skapa ett realistiskt aktiefall för svenska investerare.
 
 Fokus: ${style}-investering inom ${sector}-sektorn
+Bolag: ${selectedName} (${selectedTicker})
+Nuvarande pris från Google Sheet: ${sheetPrice !== null ? `${sheetPrice} ${sheetCurrency ?? 'SEK'}` : 'Okänt, använd rimligt värde'}
 Stil: Professionell men tillgänglig
 
 Krav:
-- Välj ett verkligt börsnoterat bolag (ingen fiktion) som handlas på en etablerad börs.
-- Inkludera bolagets officiella börsticker (t.ex. "AAPL" eller "HM-B.ST").
+- Använd exakt ticker "${selectedTicker}" i fältet "ticker".
+- Bekräfta att bolaget är verkligt och börsnoterat.
 - Ange bolagets officiella webbplatsdomän (utan extra text).
 - Skriv en kort sammanfattning (max 200 tecken) och en längre investeringsanalys med minst tre meningar om varför bolaget är intressant.
-- Använd aktuella och plausibla siffror för nyckeltal.
+- Inkludera rimliga nyckeltal (t.ex. sektortillhörighet, P/E-tal, utdelning).
 - Skriv på svenska.
 
 Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown):
@@ -444,7 +499,13 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
 
         const { ticker, ...caseWithoutTicker } = sanitized;
 
-        const sheetInfo = findSheetTickerInfo(ticker, sheetTickerIndex);
+        const expectedTicker = normalizeTickerKey(selectedTicker);
+        const sanitizedTicker = normalizeTickerKey(ticker);
+        if (sanitizedTicker !== expectedTicker) {
+          warnings.push(`AI svarade med ticker ${sanitizedTicker || 'okänd'} istället för ${expectedTicker}. Sheet-ticker används.`);
+        }
+
+        const sheetInfo = findSheetTickerInfo(expectedTicker, sheetTickerIndex);
         let entryPrice = sanitized.entry_price;
         let targetPrice = sanitized.target_price;
         let stopLoss = sanitized.stop_loss;
@@ -486,7 +547,7 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
 
         generatedCases.push({
           ...caseWithoutTicker,
-          ticker,
+          ticker: expectedTicker,
           ai_generated: true,
           is_public: true,
           status: 'active',
@@ -499,8 +560,8 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
           stop_loss: stopLoss,
         });
 
-        console.log(`Successfully generated case: ${sanitized.title} (${ticker})`);
-        generatedTickers.push({ title: sanitized.title, ticker });
+        console.log(`Successfully generated case: ${sanitized.title} (${expectedTicker})`);
+        generatedTickers.push({ title: sanitized.title, ticker: expectedTicker });
 
       } catch (parseError) {
         const message = 'Error parsing generated case JSON';
