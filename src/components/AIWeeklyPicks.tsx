@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,8 +10,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
-import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useUserRole } from '@/hooks/useUserRole';
 
 type AIGenerationRun = Database['public']['Tables']['ai_generation_runs']['Row'];
 
@@ -25,15 +25,9 @@ type GenerateWeeklyCasesResponse = {
 
 const AIWeeklyPicks = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
-
-  const isAdmin = useMemo(() => {
-    if (!user) return false;
-    const metadata = user.app_metadata || {};
-    return metadata.is_admin === true || metadata.role === 'admin';
-  }, [user]);
+  const { isAdmin, loading: roleLoading } = useUserRole();
 
   const latestBatchQuery = useQuery<AIGenerationRun | null>({
     queryKey: ['ai-generation-runs', 'latest'],
@@ -165,7 +159,7 @@ const AIWeeklyPicks = () => {
           )}
         </div>
         {isAdmin && (
-          <Button onClick={handleRegenerate} size="sm" disabled={isGenerating}>
+          <Button onClick={handleRegenerate} size="sm" disabled={isGenerating || roleLoading}>
             {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Regenerera batch
           </Button>
