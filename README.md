@@ -110,10 +110,21 @@ När nyckeln finns tillgänglig kommer funktionen automatiskt att hämta sökres
 
 Vissa funktioner (t.ex. AI Veckans Val) kräver de senaste databasmigreringarna för att fungera korrekt. Om du ser fel som `404 Not Found` eller loggar som nämner att tabellen `ai_generation_runs` saknas behöver du synka ditt Supabase-projekt med repositoryt.
 
+### Lokala migreringar
+
 1. Installera [Supabase CLI](https://supabase.com/docs/guides/cli) om du inte redan gjort det och länka den lokala katalogen till ditt projekt (`supabase link --project-ref <project-ref>`).
 2. Kör sedan:
    ```bash
    supabase db push
    ```
-   Kommandot applicerar alla migreringar som ligger under `supabase/migrations` (inklusive tabellen `ai_generation_runs` och nya kolumner på `stock_cases`).
-3. Verifiera i Supabase-dashbordet att tabellen och kolumnerna skapats. Därefter kan Edge-funktionen `generate-weekly-cases` köras utan att returnera 404-fel.
+   Kommandot applicerar alla migreringar som ligger under `supabase/migrations`.
+
+### Remote-migreringar
+
+För att kunna testa schemat direkt mot det länkade Supabase-projektet finns motsvarande filer under `supabase/migrations/remote`. När katalogen är uppdaterad kan du köra:
+
+```bash
+supabase db push --remote
+```
+
+Kommandot kör samma migreringar mot den kopplade databasen så att tabellen `ai_generation_runs`, index och extra kolumner skapas remote. Verifiera därefter i Supabase-dashbordet att strukturen finns på plats – Edge-funktionen `generate-weekly-cases` kan då köras utan 404-fel.
