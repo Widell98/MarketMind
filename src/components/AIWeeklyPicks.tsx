@@ -21,6 +21,7 @@ type GenerateWeeklyCasesResponse = {
   generated_cases?: number;
   warnings?: string[];
   error?: string;
+  tickers?: { title: string; ticker: string }[];
 };
 
 const AIWeeklyPicks = () => {
@@ -101,6 +102,17 @@ const AIWeeklyPicks = () => {
           ? `Genererade ${data.generated_cases} nya AI-case.`
           : 'AI-generationen slutfördes utan rapporterad mängd.',
       });
+
+      if (data.tickers && data.tickers.length > 0) {
+        const formattedTickers = data.tickers
+          .map((item) => `${item.ticker} (${item.title})`)
+          .join(', ');
+
+        toast({
+          title: 'Verifierade bolag',
+          description: formattedTickers,
+        });
+      }
 
       if (data.warnings && data.warnings.length > 0) {
         toast({
@@ -203,7 +215,10 @@ const AIWeeklyPicks = () => {
                         )}
                       </div>
                       <h3 className="mb-1 line-clamp-2 text-sm font-semibold">{stockCase.title}</h3>
-                      <p className="mb-2 text-sm text-muted-foreground">{stockCase.company_name}</p>
+                      <p className="mb-2 text-sm text-muted-foreground">
+                        {stockCase.company_name}
+                        {stockCase.ticker ? ` (${stockCase.ticker})` : ''}
+                      </p>
                       {stockCase.sector && (
                         <Badge variant="outline" className="mb-2 text-xs">
                           {stockCase.sector}

@@ -53,8 +53,21 @@ const sanitizeCaseData = (rawCase: any) => {
   const title = typeof rawCase.title === 'string' ? rawCase.title.trim() : '';
   const companyName = typeof rawCase.company_name === 'string' ? rawCase.company_name.trim() : '';
   const description = typeof rawCase.description === 'string' ? rawCase.description.trim() : '';
+  const ticker = typeof rawCase.ticker === 'string' ? rawCase.ticker.trim().toUpperCase() : '';
+
+  const lowerCompany = companyName.toLowerCase();
+  const lowerDescription = description.toLowerCase();
+  const forbiddenTerms = ['fiktiv', 'fiktivt', 'påhitt', 'låtsas', 'fictional'];
 
   if (!title || !companyName || !description) {
+    return null;
+  }
+
+  if (forbiddenTerms.some((term) => lowerCompany.includes(term) || lowerDescription.includes(term))) {
+    return null;
+  }
+
+  if (!ticker || !/^[A-Z0-9.-]{1,10}$/.test(ticker)) {
     return null;
   }
 
@@ -74,6 +87,7 @@ const sanitizeCaseData = (rawCase: any) => {
     entry_price: sanitizeNumber(rawCase.entry_price),
     target_price: sanitizeNumber(rawCase.target_price),
     stop_loss: sanitizeNumber(rawCase.stop_loss),
+    ticker,
   };
 };
 
@@ -142,6 +156,7 @@ serve(async (req) => {
 
     const generatedCases: any[] = [];
     const warnings: string[] = [];
+    const generatedTickers: { title: string; ticker: string }[] = [];
 
     for (let i = 0; i < CASE_COUNT; i++) {
       const sector = sectors[Math.floor(Math.random() * sectors.length)];
@@ -153,8 +168,14 @@ Fokus: ${style}-investering inom ${sector}-sektorn
 Stil: Professionell men tillgänglig
 Längd: Kortfattat men informativt
 
+Krav:
+- Välj ett verkligt börsnoterat bolag (ingen fiktion) som handlas på en etablerad börs.
+- Inkludera bolagets officiella börsticker (t.ex. "AAPL" eller "HM-B.ST").
+- Använd aktuella och plausibla siffror för nyckeltal.
+- Skriv på svenska.
+
 Skapa:
-1. Företagsnamn (kan vara fiktivt men realistiskt)
+1. Företagsnamn (endast verkligt bolag)
 2. Investeringstitel (max 60 tecken)
 3. Kort beskrivning (max 200 tecken)
 4. Sektor
@@ -174,6 +195,7 @@ Svara endast med giltigt JSON i följande format:
   "market_cap": "string",
   "pe_ratio": "string",
   "dividend_yield": "string",
+  "ticker": "string",
   "target_price": number,
   "entry_price": number,
   "stop_loss": number
@@ -240,8 +262,11 @@ Svara endast med giltigt JSON i följande format:
 
         existingCases.add(caseKey);
 
+        const { ticker, ...caseWithoutTicker } = sanitized;
+
         generatedCases.push({
-          ...sanitized,
+          ...caseWithoutTicker,
+          ticker,
           ai_generated: true,
           is_public: true,
           status: 'active',
@@ -249,7 +274,8 @@ Svara endast med giltigt JSON i följande format:
           generated_at: new Date().toISOString(),
         });
 
-        console.log(`Successfully generated case: ${sanitized.title}`);
+        console.log(`Successfully generated case: ${sanitized.title} (${ticker})`);
+        generatedTickers.push({ title: sanitized.title, ticker });
 
       } catch (parseError) {
         const message = 'Error parsing generated case JSON';
@@ -303,7 +329,8 @@ Svara endast med giltigt JSON i följande format:
       run_id: runId,
       generated_cases: insertedCases.length,
       warnings,
-      cases: insertedCases
+      cases: insertedCases,
+      tickers: generatedTickers,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

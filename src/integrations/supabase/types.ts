@@ -1052,6 +1052,7 @@ export type Database = {
           status: string | null
           stop_loss: number | null
           stop_loss_hit: boolean
+          ticker: string | null
           target_price: number | null
           target_reached: boolean
           timeframe: string | null
@@ -1083,6 +1084,7 @@ export type Database = {
           status?: string | null
           stop_loss?: number | null
           stop_loss_hit?: boolean
+          ticker?: string | null
           target_price?: number | null
           target_reached?: boolean
           timeframe?: string | null
@@ -1114,6 +1116,7 @@ export type Database = {
           status?: string | null
           stop_loss?: number | null
           stop_loss_hit?: boolean
+          ticker?: string | null
           target_price?: number | null
           target_reached?: boolean
           timeframe?: string | null
