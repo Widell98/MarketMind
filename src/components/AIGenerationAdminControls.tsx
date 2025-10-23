@@ -47,6 +47,7 @@ const AIGenerationAdminControls = () => {
 
       return data?.[0] ?? null;
     },
+    enabled: isAdmin,
   });
 
   const latestRun = latestRunQuery.data;
@@ -104,6 +105,10 @@ const AIGenerationAdminControls = () => {
 
   const showAdminActions = isAdmin && !roleLoading;
   const isLoading = latestRunQuery.isLoading || roleLoading;
+
+  if (!isAdmin && !roleLoading) {
+    return null;
+  }
 
   return (
     <section className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm supports-[backdrop-filter]:backdrop-blur-sm sm:p-6">
