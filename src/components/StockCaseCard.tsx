@@ -133,12 +133,25 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
   const formattedPerformance = Number.isFinite(performance)
     ? `${performance > 0 ? '+' : ''}${performance.toFixed(1).replace('.', ',')}%`
     : '—';
+  const stripFiftyTwoWeekSummary = (value?: string | null): string => {
+    if (typeof value !== 'string') {
+      return '';
+    }
+
+    const match = value.match(/52-veckors\s+högsta:\s*[0-9.,-]+\s*\|\s*52-veckors\s+lägsta:\s*[0-9.,-]+/i);
+    if (!match) {
+      return value;
+    }
+
+    return value.replace(match[0], '').replace(/\s{3,}/g, ' ').trim();
+  };
   const shortDescription = stockCase.description?.trim();
+  const cleanedLongDescription = stripFiftyTwoWeekSummary(stockCase.long_description);
   const previewText = shortDescription && shortDescription.length > 0
     ? shortDescription
-    : stockCase.long_description
+    : cleanedLongDescription
       ? (() => {
-          const normalized = stockCase.long_description.replace(/\s+/g, ' ').trim();
+          const normalized = cleanedLongDescription.replace(/\s+/g, ' ').trim();
           if (normalized.length <= 260) {
             return normalized;
           }

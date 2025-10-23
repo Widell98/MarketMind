@@ -301,12 +301,36 @@ const StockCaseDetail = () => {
     });
   };
 
-  const analysisDescription = stockCase.long_description
+  const rawAnalysisDescription = stockCase.long_description
     ?? currentVersion?.description
     ?? stockCase.description
     ?? null;
-  const displayedAnalysisDescription = typeof analysisDescription === 'string' && analysisDescription.trim().length > 0
-    ? analysisDescription
+
+  let fiftyTwoWeekSummary: string | null = null;
+  let cleanedAnalysisDescription: string | null = rawAnalysisDescription;
+
+  if (typeof rawAnalysisDescription === 'string') {
+    const summaryMatch = rawAnalysisDescription.match(/52-veckors\s+högsta:\s*[0-9.,-]+\s*\|\s*52-veckors\s+lägsta:\s*[0-9.,-]+/i);
+
+    if (summaryMatch) {
+      const normalizedSummary = summaryMatch[0]
+        .replace(/\s*\|\s*/g, ' | ')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+
+      fiftyTwoWeekSummary = normalizedSummary;
+
+      const withoutSummary = rawAnalysisDescription
+        .replace(summaryMatch[0], '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
+      cleanedAnalysisDescription = withoutSummary.length > 0 ? withoutSummary : null;
+    }
+  }
+
+  const displayedAnalysisDescription = typeof cleanedAnalysisDescription === 'string'
+    ? (cleanedAnalysisDescription.trim().length > 0 ? cleanedAnalysisDescription.trim() : null)
     : null;
 
   return (
@@ -591,7 +615,7 @@ const StockCaseDetail = () => {
             )}
 
             {/* Combined Overview Card - only show if there are financial metrics */}
-            {(stockCase.entry_price || stockCase.current_price || stockCase.target_price || stockCase.stop_loss || stockCase.sector || stockCase.market_cap || stockCase.pe_ratio || stockCase.dividend_yield) && (
+            {(stockCase.entry_price || stockCase.current_price || stockCase.target_price || stockCase.stop_loss || stockCase.sector || stockCase.market_cap || stockCase.pe_ratio || stockCase.dividend_yield || fiftyTwoWeekSummary) && (
               <Card>
                 <CardHeader>
                   <CardTitle>Finansiell Översikt</CardTitle>
@@ -647,6 +671,15 @@ const StockCaseDetail = () => {
                       <div>
                         <p className="text-sm text-muted-foreground">Utdelning</p>
                         <p className="font-semibold">{stockCase.dividend_yield}</p>
+                      </div>
+                    )}
+                    {fiftyTwoWeekSummary && (
+                      <div className="col-span-2 md:col-span-4">
+                        <p className="text-sm text-muted-foreground">52-veckors spann</p>
+                        <p
+                          className="font-semibold"
+                          dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(fiftyTwoWeekSummary) }}
+                        />
                       </div>
                     )}
                   </div>
