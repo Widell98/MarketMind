@@ -191,7 +191,7 @@ const sanitizeCaseData = (rawCase: any) => {
     return null;
   }
 
-  const title = typeof rawCase.title === 'string' ? rawCase.title.trim() : '';
+  const rawTitle = typeof rawCase.title === 'string' ? rawCase.title.trim() : '';
   const companyName = typeof rawCase.company_name === 'string' ? rawCase.company_name.trim() : '';
   const descriptionRaw = typeof rawCase.description === 'string' ? rawCase.description.trim() : '';
   let longDescription = sanitizeLongDescription(
@@ -226,6 +226,26 @@ const sanitizeCaseData = (rawCase: any) => {
     return null;
   }
 
+  const stripInvestmentAnalysisPrefix = (value: string): string => {
+    let result = value.trim();
+
+    const patterns = [
+      /^investeringsanalys\s+för\s+/i,
+      /^investeringsanalys\s*:\s*/i,
+    ];
+
+    for (const pattern of patterns) {
+      if (pattern.test(result)) {
+        result = result.replace(pattern, '').trim();
+      }
+    }
+
+    return result;
+  };
+
+  const cleanedTitle = rawTitle ? stripInvestmentAnalysisPrefix(rawTitle) : '';
+  const resolvedTitle = cleanedTitle || rawTitle || companyName;
+
   const description = descriptionRaw.replace(/\s+/g, ' ');
   const shortDescription = description.length > 280 ? `${description.slice(0, 277).trimEnd()}...` : description;
 
@@ -253,7 +273,7 @@ const sanitizeCaseData = (rawCase: any) => {
   }
 
   return {
-    title,
+    title: resolvedTitle,
     company_name: companyName,
     description: shortDescription,
     long_description: longDescription,

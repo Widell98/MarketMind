@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { StockCase } from '@/types/stockCase';
+import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 
 type UseStockCasesOptions = {
   followedOnly?: boolean;
@@ -188,8 +189,11 @@ const enrichStockCases = async (stockCases: any[]): Promise<StockCase[]> => {
     const profile = profilesData.find(p => p.id === stockCase.user_id);
     const category = categoriesData.find(c => c.id === stockCase.category_id);
 
+    const resolvedTitle = normalizeStockCaseTitle(stockCase.title, stockCase.company_name);
+
     return {
       ...stockCase,
+      title: resolvedTitle,
       status: (stockCase.status || 'active') as 'active' | 'winner' | 'loser',
       is_public: stockCase.is_public ?? true,
       likes_count: likesMap.get(stockCase.id) || 0,

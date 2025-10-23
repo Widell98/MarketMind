@@ -18,6 +18,7 @@ import { toast } from '@/hooks/use-toast';
 import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
 import { highlightNumbersSafely } from '@/utils/sanitizer';
+import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 import AddStockCaseUpdateDialog from '@/components/AddStockCaseUpdateDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { formatCurrency } from '@/utils/currencyUtils';
@@ -113,7 +114,8 @@ const StockCaseDetail = () => {
   const currentVersion = timeline[currentImageIndex];
   const hasMultipleVersions = timeline.length > 1;
 
-  const displayTitle = currentVersion?.title?.trim() ? currentVersion.title : stockCase.title;
+  const normalizedCaseTitle = normalizeStockCaseTitle(stockCase.title, stockCase.company_name);
+  const displayTitle = normalizeStockCaseTitle(currentVersion?.title, normalizedCaseTitle) || normalizedCaseTitle;
 
   const handleShare = async () => {
     const shareTitle = displayTitle;

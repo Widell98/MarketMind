@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 
 type StockCaseWithActions = {
   id: string;
@@ -141,9 +142,10 @@ const UserStockCasesSection = ({ compact = false }: UserStockCasesSectionProps) 
       // Transform the data
       const transformedData: StockCaseWithActions[] = (casesData || []).map(stockCase => {
         const category = categoriesData.find(c => c.id === stockCase.category_id);
-        
+
         return {
           ...stockCase,
+          title: normalizeStockCaseTitle(stockCase.title, stockCase.company_name),
           status: (stockCase.status || 'active') as 'active' | 'winner' | 'loser',
           case_categories: category ? { 
             name: category.name, 

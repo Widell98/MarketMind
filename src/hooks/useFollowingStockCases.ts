@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 
 export const useFollowingStockCases = () => {
   const [followingStockCases, setFollowingStockCases] = useState<any[]>([]);
@@ -57,6 +58,7 @@ export const useFollowingStockCases = () => {
       // Merge stock cases with profile information
       const stockCasesWithProfiles = (stockCases || []).map(stockCase => ({
         ...stockCase,
+        title: normalizeStockCaseTitle(stockCase.title, stockCase.company_name),
         profiles: profiles?.find(profile => profile.id === stockCase.user_id) || null
       }));
 
