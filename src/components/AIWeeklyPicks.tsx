@@ -140,10 +140,6 @@ const AIWeeklyPicks = () => {
 
   const showSkeleton = latestBatchQuery.isLoading || (latestRun?.status === 'completed' && casesLoading);
 
-  if (!latestRun && !latestBatchQuery.isLoading && !isAdmin) {
-    return null;
-  }
-
   return (
     <section className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -280,10 +276,14 @@ const AIWeeklyPicks = () => {
         </div>
       )}
 
-      {!showSkeleton && !latestRun && isAdmin && (
-        <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border/60 bg-background/80 p-4 text-sm text-muted-foreground">
-          <AlertCircle className="h-4 w-4" />
-          Inga AI-generationer har körts ännu. Klicka på "Regenerera batch" för att skapa den första.
+      {!showSkeleton && !latestRun && (
+        <div className="flex items-start gap-3 rounded-2xl border border-dashed border-border/60 bg-background/80 p-4 text-sm text-muted-foreground">
+          <AlertCircle className="mt-0.5 h-4 w-4" />
+          <span>
+            {isAdmin
+              ? 'Inga AI-generationer har körts ännu. Klicka på "Regenerera batch" för att skapa den första.'
+              : 'AI-genererade idéer dyker upp här så snart nästa körning är klar. Titta gärna tillbaka snart!'}
+          </span>
         </div>
       )}
 
