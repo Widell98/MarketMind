@@ -45,6 +45,64 @@ const sanitizeNumber = (value: unknown): number | null => {
   return null;
 };
 
+const normalizeParagraphs = (value: string): string =>
+  value
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .join('\n\n');
+
+const sanitizeLongDescription = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = normalizeParagraphs(value);
+  if (normalized.length < 180) {
+    return null;
+  }
+
+  return normalized;
+};
+
+type SanitizedWebsite = {
+  hostname: string;
+  url: string;
+  logoUrl: string;
+};
+
+const sanitizeWebsite = (value: unknown): SanitizedWebsite | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  let trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (!/^https?:\/\//i.test(trimmed)) {
+    trimmed = `https://${trimmed}`;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    const hostname = parsed.hostname.replace(/^www\./i, '').toLowerCase();
+    if (!hostname || hostname.split('.').length < 2) {
+      return null;
+    }
+
+    return {
+      hostname,
+      url: `https://${hostname}`,
+      logoUrl: `https://logo.clearbit.com/${hostname}?size=400`,
+    };
+  } catch (_error) {
+    return null;
+  }
+};
+
 const sanitizeCaseData = (rawCase: any) => {
   if (!rawCase || typeof rawCase !== 'object') {
     return null;
@@ -52,14 +110,20 @@ const sanitizeCaseData = (rawCase: any) => {
 
   const title = typeof rawCase.title === 'string' ? rawCase.title.trim() : '';
   const companyName = typeof rawCase.company_name === 'string' ? rawCase.company_name.trim() : '';
-  const description = typeof rawCase.description === 'string' ? rawCase.description.trim() : '';
+  const descriptionRaw = typeof rawCase.description === 'string' ? rawCase.description.trim() : '';
+  const longDescription = sanitizeLongDescription(
+    rawCase.long_description ?? rawCase.investment_thesis ?? rawCase.analysis,
+  );
   const ticker = typeof rawCase.ticker === 'string' ? rawCase.ticker.trim().toUpperCase() : '';
+  const websiteInfo = sanitizeWebsite(
+    rawCase.official_website ?? rawCase.company_website ?? rawCase.website ?? rawCase.source_url ?? rawCase.source,
+  );
 
   const lowerCompany = companyName.toLowerCase();
-  const lowerDescription = description.toLowerCase();
+  const lowerDescription = descriptionRaw.toLowerCase();
   const forbiddenTerms = ['fiktiv', 'fiktivt', 'påhitt', 'låtsas', 'fictional'];
 
-  if (!title || !companyName || !description) {
+  if (!title || !companyName || !descriptionRaw) {
     return null;
   }
 
@@ -71,6 +135,17 @@ const sanitizeCaseData = (rawCase: any) => {
     return null;
   }
 
+  if (!longDescription) {
+    return null;
+  }
+
+  if (!websiteInfo) {
+    return null;
+  }
+
+  const description = descriptionRaw.replace(/\s+/g, ' ');
+  const shortDescription = description.length > 280 ? `${description.slice(0, 277).trimEnd()}...` : description;
+
   const sector = typeof rawCase.sector === 'string' ? rawCase.sector.trim() : null;
   const marketCap = rawCase.market_cap ? String(rawCase.market_cap).trim() : null;
   const peRatio = rawCase.pe_ratio ? String(rawCase.pe_ratio).trim() : null;
@@ -79,7 +154,8 @@ const sanitizeCaseData = (rawCase: any) => {
   return {
     title,
     company_name: companyName,
-    description,
+    description: shortDescription,
+    long_description: longDescription,
     sector,
     market_cap: marketCap,
     pe_ratio: peRatio,
@@ -88,6 +164,7 @@ const sanitizeCaseData = (rawCase: any) => {
     target_price: sanitizeNumber(rawCase.target_price),
     stop_loss: sanitizeNumber(rawCase.stop_loss),
     ticker,
+    image_url: websiteInfo.logoUrl,
   };
 };
 
@@ -166,36 +243,27 @@ serve(async (req) => {
 
 Fokus: ${style}-investering inom ${sector}-sektorn
 Stil: Professionell men tillgänglig
-Längd: Kortfattat men informativt
 
 Krav:
 - Välj ett verkligt börsnoterat bolag (ingen fiktion) som handlas på en etablerad börs.
 - Inkludera bolagets officiella börsticker (t.ex. "AAPL" eller "HM-B.ST").
+- Ange bolagets officiella webbplatsdomän (utan extra text).
+- Skriv en kort sammanfattning (max 200 tecken) och en längre investeringsanalys med minst tre meningar om varför bolaget är intressant.
 - Använd aktuella och plausibla siffror för nyckeltal.
 - Skriv på svenska.
 
-Skapa:
-1. Företagsnamn (endast verkligt bolag)
-2. Investeringstitel (max 60 tecken)
-3. Kort beskrivning (max 200 tecken)
-4. Sektor
-5. Estimerad marknadsvärdering
-6. P/E-tal (realistiskt för sektorn)
-7. Utdelningsavkastning (om relevant)
-8. Målkurs
-9. Stopploss-nivå
-10. Kort investeringsargument
-
-Svara endast med giltigt JSON i följande format:
+Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown):
 {
   "title": "string",
   "company_name": "string",
   "description": "string",
+  "long_description": "string",
   "sector": "string",
   "market_cap": "string",
   "pe_ratio": "string",
   "dividend_yield": "string",
   "ticker": "string",
+  "official_website": "string",
   "target_price": number,
   "entry_price": number,
   "stop_loss": number

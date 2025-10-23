@@ -1040,6 +1040,7 @@ export type Database = {
           currency: string | null
           current_price: number | null
           description: string | null
+          long_description: string | null
           dividend_yield: string | null
           entry_price: number | null
           id: string
@@ -1072,6 +1073,7 @@ export type Database = {
           currency?: string | null
           current_price?: number | null
           description?: string | null
+          long_description?: string | null
           dividend_yield?: string | null
           entry_price?: number | null
           id?: string
@@ -1104,6 +1106,7 @@ export type Database = {
           currency?: string | null
           current_price?: number | null
           description?: string | null
+          long_description?: string | null
           dividend_yield?: string | null
           entry_price?: number | null
           id?: string

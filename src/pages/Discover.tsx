@@ -6,7 +6,7 @@ import Layout from '@/components/Layout';
 
 import StockCaseCard from '@/components/StockCaseCard';
 import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
-import AIWeeklyPicks from '@/components/AIWeeklyPicks';
+import AIGenerationAdminControls from '@/components/AIGenerationAdminControls';
 
 import { useStockCases } from '@/hooks/useStockCases';
 import { useToast } from '@/hooks/use-toast';
@@ -33,6 +33,7 @@ const Discover = () => {
         const title = sc.title.toLowerCase();
         const company = sc.company_name?.toLowerCase();
         const description = sc.description?.toLowerCase();
+        const longDescription = sc.long_description?.toLowerCase();
         const displayName = sc.profiles?.display_name?.toLowerCase();
         const username = sc.profiles?.username?.toLowerCase();
 
@@ -40,6 +41,7 @@ const Discover = () => {
           title.includes(normalizedSearchTerm) ||
           company?.includes(normalizedSearchTerm) ||
           description?.includes(normalizedSearchTerm) ||
+          longDescription?.includes(normalizedSearchTerm) ||
           sector?.includes(normalizedSearchTerm) ||
           displayName?.includes(normalizedSearchTerm) ||
           username?.includes(normalizedSearchTerm)
@@ -136,7 +138,7 @@ const Discover = () => {
             </p>
           </section>
 
-          <AIWeeklyPicks />
+          <AIGenerationAdminControls />
 
           <div className="w-full space-y-6 sm:space-y-8">
             <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">

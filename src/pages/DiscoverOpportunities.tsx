@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import PersonalizedRecommendations from '@/components/PersonalizedRecommendations';
 import AIRecommendations from '@/components/AIRecommendations';
-import AIWeeklyPicks from '@/components/AIWeeklyPicks';
+import AIGenerationAdminControls from '@/components/AIGenerationAdminControls';
 import SavedOpportunitiesSection from '@/components/SavedOpportunitiesSection';
 import StockCaseCard from '@/components/StockCaseCard';
 import AnalysisSection from '@/components/AnalysisSection';
@@ -157,8 +157,8 @@ const DiscoverOpportunities = () => {
           <TabsContent value="discover" className="space-y-8">
             {user ? (
               <>
-                {/* AI Weekly Picks - New Section */}
-                <AIWeeklyPicks />
+                {/* AI generation status & controls */}
+                <AIGenerationAdminControls />
 
                 {/* Personalized AI Recommendations */}
                 <AIRecommendations />

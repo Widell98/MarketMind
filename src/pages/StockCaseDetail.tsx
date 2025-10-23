@@ -293,6 +293,16 @@ const StockCaseDetail = () => {
     });
   };
 
+  const normalizedLongDescription = stockCase.long_description
+    ? stockCase.long_description.replace(/\s+/g, ' ').trim()
+    : null;
+  const normalizedCurrentDescription = currentVersion?.description
+    ? currentVersion.description.replace(/\s+/g, ' ').trim()
+    : null;
+  const showLongDescriptionCard = Boolean(
+    normalizedLongDescription && normalizedLongDescription !== normalizedCurrentDescription,
+  );
+
   return (
     <Layout>
       <div className="max-w-6xl mx-auto space-y-8">
@@ -563,6 +573,17 @@ const StockCaseDetail = () => {
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-6">
             {/* Case Description with Structured Sections */}
+            {showLongDescriptionCard && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Investeringscase</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {formatCaseDescription(stockCase.long_description ?? null)}
+                </CardContent>
+              </Card>
+            )}
+
             {currentVersion?.description && (
               <Card>
                 <CardHeader>
