@@ -66,6 +66,19 @@ const sanitizeLongDescription = (value: unknown): string | null => {
   return normalized;
 };
 
+const sanitizeCurrency = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim().toUpperCase();
+  if (trimmed.length < 3 || trimmed.length > 5) {
+    return null;
+  }
+
+  return trimmed;
+};
+
 type SanitizedWebsite = {
   hostname: string;
   url: string;
@@ -165,7 +178,85 @@ const sanitizeCaseData = (rawCase: any) => {
     stop_loss: sanitizeNumber(rawCase.stop_loss),
     ticker,
     image_url: websiteInfo.logoUrl,
+    currency: sanitizeCurrency(rawCase.currency),
   };
+};
+
+type SheetTickerInfo = {
+  symbol: string;
+  price: number | null;
+  currency: string | null;
+  name?: string | null;
+};
+
+const normalizeTickerKey = (value: string): string => {
+  const trimmed = value.trim().toUpperCase();
+  const withoutPrefix = trimmed.includes(':') ? trimmed.split(':').pop() ?? trimmed : trimmed;
+  return withoutPrefix;
+};
+
+const buildSheetTickerIndex = (tickers: SheetTickerInfo[] = []): Map<string, SheetTickerInfo> => {
+  const index = new Map<string, SheetTickerInfo>();
+
+  tickers.forEach((ticker) => {
+    if (!ticker || typeof ticker.symbol !== 'string') {
+      return;
+    }
+
+    const baseSymbol = normalizeTickerKey(ticker.symbol);
+    const variants = new Set<string>();
+    variants.add(baseSymbol);
+    variants.add(baseSymbol.replace('-', ''));
+
+    if (baseSymbol.includes('.')) {
+      const [root] = baseSymbol.split('.');
+      if (root) {
+        variants.add(root);
+        variants.add(root.replace('-', ''));
+      }
+    }
+
+    variants.forEach((variant) => {
+      if (variant) {
+        index.set(variant, ticker);
+      }
+    });
+  });
+
+  return index;
+};
+
+const findSheetTickerInfo = (
+  ticker: string,
+  index: Map<string, SheetTickerInfo>,
+): SheetTickerInfo | null => {
+  if (!ticker) {
+    return null;
+  }
+
+  const candidates = new Set<string>();
+  const normalized = normalizeTickerKey(ticker);
+  candidates.add(normalized);
+  candidates.add(normalized.replace('-', ''));
+
+  if (normalized.includes('.')) {
+    const [root, suffix] = normalized.split('.');
+    if (root) {
+      candidates.add(root);
+      candidates.add(root.replace('-', ''));
+      if (suffix) {
+        candidates.add(`${root}-${suffix}`);
+      }
+    }
+  }
+
+  for (const candidate of candidates) {
+    if (candidate && index.has(candidate)) {
+      return index.get(candidate) ?? null;
+    }
+  }
+
+  return null;
 };
 
 serve(async (req) => {
@@ -231,8 +322,29 @@ serve(async (req) => {
       }
     });
 
-    const generatedCases: any[] = [];
     const warnings: string[] = [];
+
+    let sheetTickerIndex = new Map<string, SheetTickerInfo>();
+    try {
+      const { data: tickerResponse, error: tickerError } = await supabaseClient
+        .functions
+        .invoke<{ tickers?: SheetTickerInfo[] }>('list-sheet-tickers');
+
+      if (tickerError) {
+        console.error('Failed to fetch sheet tickers:', tickerError);
+        warnings.push('Kunde inte hämta prisdata från list-sheet-tickers');
+      } else {
+        sheetTickerIndex = buildSheetTickerIndex(tickerResponse?.tickers ?? []);
+        if (sheetTickerIndex.size === 0) {
+          warnings.push('list-sheet-tickers returnerade inga tickers');
+        }
+      }
+    } catch (tickerFetchError) {
+      console.error('Error invoking list-sheet-tickers:', tickerFetchError);
+      warnings.push('Fel vid hämtning av prisdata för aktier');
+    }
+
+    const generatedCases: any[] = [];
     const generatedTickers: { title: string; ticker: string }[] = [];
 
     for (let i = 0; i < CASE_COUNT; i++) {
@@ -332,6 +444,46 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
 
         const { ticker, ...caseWithoutTicker } = sanitized;
 
+        const sheetInfo = findSheetTickerInfo(ticker, sheetTickerIndex);
+        let entryPrice = sanitized.entry_price;
+        let targetPrice = sanitized.target_price;
+        let stopLoss = sanitized.stop_loss;
+        let currency = sanitized.currency;
+
+        if (sheetInfo) {
+          const price = typeof sheetInfo.price === 'number' && Number.isFinite(sheetInfo.price)
+            ? Number(sheetInfo.price)
+            : null;
+          if (price !== null) {
+            entryPrice = Number(price.toFixed(2));
+            if (!targetPrice || !Number.isFinite(targetPrice) || targetPrice <= 0) {
+              targetPrice = Number((price * 1.08).toFixed(2));
+            }
+            if (!stopLoss || !Number.isFinite(stopLoss) || stopLoss <= 0 || stopLoss >= entryPrice) {
+              stopLoss = Number((price * 0.92).toFixed(2));
+            }
+          }
+
+          if (sheetInfo.currency && typeof sheetInfo.currency === 'string') {
+            const resolvedCurrency = sheetInfo.currency.trim().toUpperCase();
+            if (resolvedCurrency.length >= 3 && resolvedCurrency.length <= 5) {
+              currency = resolvedCurrency;
+            }
+          }
+        } else {
+          warnings.push(`Prisdata saknas för ${ticker}`);
+        }
+
+        const resolvedCurrency = currency ?? 'SEK';
+
+        if (entryPrice !== null && targetPrice !== null && targetPrice <= entryPrice) {
+          targetPrice = Number((entryPrice * 1.08).toFixed(2));
+        }
+
+        if (entryPrice !== null && stopLoss !== null && stopLoss >= entryPrice) {
+          stopLoss = Number((entryPrice * 0.92).toFixed(2));
+        }
+
         generatedCases.push({
           ...caseWithoutTicker,
           ticker,
@@ -340,6 +492,11 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
           status: 'active',
           ai_batch_id: runId,
           generated_at: new Date().toISOString(),
+          currency: resolvedCurrency,
+          entry_price: entryPrice,
+          current_price: entryPrice,
+          target_price: targetPrice,
+          stop_loss: stopLoss,
         });
 
         console.log(`Successfully generated case: ${sanitized.title} (${ticker})`);
