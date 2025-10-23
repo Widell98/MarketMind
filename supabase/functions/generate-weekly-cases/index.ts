@@ -230,7 +230,7 @@ const sanitizeCaseData = (rawCase: any) => {
     let result = value.trim();
 
     const patterns = [
-      /^investeringsanalys\s+för\s+/i,
+      /^investeringsanalys\s+(?:för|av)\s+/i,
       /^investeringsanalys\s*:\s*/i,
     ];
 
