@@ -12,33 +12,131 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const CASE_COUNT = 3;
+
+const sanitizeNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/[^0-9.,-]/g, '').replace(',', '.');
+    const parsed = Number(cleaned);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+};
+
+const sanitizeCaseData = (rawCase: any) => {
+  if (!rawCase || typeof rawCase !== 'object') {
+    return null;
+  }
+
+  const title = typeof rawCase.title === 'string' ? rawCase.title.trim() : '';
+  const companyName = typeof rawCase.company_name === 'string' ? rawCase.company_name.trim() : '';
+  const description = typeof rawCase.description === 'string' ? rawCase.description.trim() : '';
+
+  if (!title || !companyName || !description) {
+    return null;
+  }
+
+  const sector = typeof rawCase.sector === 'string' ? rawCase.sector.trim() : null;
+  const marketCap = rawCase.market_cap ? String(rawCase.market_cap).trim() : null;
+  const peRatio = rawCase.pe_ratio ? String(rawCase.pe_ratio).trim() : null;
+  const dividendYield = rawCase.dividend_yield ? String(rawCase.dividend_yield).trim() : null;
+
+  return {
+    title,
+    company_name: companyName,
+    description,
+    sector,
+    market_cap: marketCap,
+    pe_ratio: peRatio,
+    dividend_yield: dividendYield,
+    entry_price: sanitizeNumber(rawCase.entry_price),
+    target_price: sanitizeNumber(rawCase.target_price),
+    stop_loss: sanitizeNumber(rawCase.stop_loss),
+  };
+};
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let runId: string | null = null;
+  let supabaseClient: ReturnType<typeof createClient> | null = null;
+
   try {
     console.log('Starting AI weekly cases generation...');
-    
+
     if (!openAIApiKey || !supabaseUrl || !supabaseKey) {
       throw new Error('Missing required environment variables');
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    supabaseClient = createClient(supabaseUrl, supabaseKey);
 
-    // Get market sectors and current trends for context
+    let requestBody: Record<string, unknown> = {};
+    try {
+      requestBody = await req.json();
+    } catch (_error) {
+      requestBody = {};
+    }
+
+    const triggeredBy = typeof requestBody.triggered_by === 'string'
+      ? requestBody.triggered_by
+      : requestBody.scheduled === true
+        ? 'scheduled'
+        : 'manual';
+
+    runId = crypto.randomUUID();
+
+    const { error: runInsertError } = await supabaseClient
+      .from('ai_generation_runs')
+      .insert({
+        id: runId,
+        status: 'running',
+        expected_count: CASE_COUNT,
+        triggered_by: triggeredBy,
+      });
+
+    if (runInsertError) {
+      console.error('Failed to create AI generation run record:', runInsertError);
+      throw new Error('Failed to create AI generation run record');
+    }
+
     const sectors = ['Technology', 'Healthcare', 'Finance', 'Energy', 'Consumer Goods', 'Real Estate'];
     const investmentStyles = ['Growth', 'Value', 'Dividend', 'ESG'];
-    
-    const generatedCases = [];
 
-    // Generate 3 AI cases with different focus areas
-    for (let i = 0; i < 3; i++) {
+    const { data: recentCases } = await supabaseClient
+      .from('stock_cases')
+      .select('title, company_name')
+      .eq('ai_generated', true)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    const existingCases = new Set<string>();
+    (recentCases || []).forEach((caseItem) => {
+      if (caseItem.title && caseItem.company_name) {
+        existingCases.add(`${caseItem.title.toLowerCase()}|${caseItem.company_name.toLowerCase()}`);
+      }
+    });
+
+    const generatedCases: any[] = [];
+    const warnings: string[] = [];
+
+    for (let i = 0; i < CASE_COUNT; i++) {
       const sector = sectors[Math.floor(Math.random() * sectors.length)];
       const style = investmentStyles[Math.floor(Math.random() * investmentStyles.length)];
-      
-      const prompt = `Som en professionell finansanalytiker, skapa ett realistiskt aktiefall för svenska investerare. 
+
+      const prompt = `Som en professionell finansanalytiker, skapa ett realistiskt aktiefall för svenska investerare.
 
 Fokus: ${style}-investering inom ${sector}-sektorn
 Stil: Professionell men tillgänglig
@@ -59,7 +157,7 @@ Skapa:
 Svara endast med giltigt JSON i följande format:
 {
   "title": "string",
-  "company_name": "string", 
+  "company_name": "string",
   "description": "string",
   "sector": "string",
   "market_cap": "string",
@@ -81,9 +179,9 @@ Svara endast med giltigt JSON i följande format:
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: [
-            { 
-              role: 'system', 
-              content: 'Du är en erfaren finansanalytiker som skapar investeringsanalyser för svenska investerare. Svara alltid med giltigt JSON.' 
+            {
+              role: 'system',
+              content: 'Du är en erfaren finansanalytiker som skapar investeringsanalyser för svenska investerare. Svara alltid med giltigt JSON.'
             },
             { role: 'user', content: prompt }
           ],
@@ -93,36 +191,78 @@ Svara endast med giltigt JSON i följande format:
       });
 
       if (!response.ok) {
-        console.error(`OpenAI API error: ${response.status}`);
+        const message = `OpenAI API error: ${response.status}`;
+        console.error(message);
+        warnings.push(message);
         continue;
       }
 
       const data = await response.json();
-      const generatedContent = data.choices[0].message.content;
+      const generatedContent = data?.choices?.[0]?.message?.content;
+
+      if (!generatedContent) {
+        const message = 'OpenAI response did not contain content';
+        console.error(message, data);
+        warnings.push(message);
+        continue;
+      }
 
       try {
         const caseData = JSON.parse(generatedContent);
-        
-        // Add AI-specific fields
-        caseData.ai_generated = true;
-        caseData.is_public = true;
-        caseData.status = 'active';
-        
-        generatedCases.push(caseData);
-        console.log(`Successfully generated case: ${caseData.title}`);
-        
+        const sanitized = sanitizeCaseData(caseData);
+
+        if (!sanitized) {
+          const message = 'Generated case missing required fields';
+          console.error(message, caseData);
+          warnings.push(message);
+          continue;
+        }
+
+        const caseKey = `${sanitized.title.toLowerCase()}|${sanitized.company_name.toLowerCase()}`;
+        if (existingCases.has(caseKey)) {
+          const message = `Duplicate case skipped for ${sanitized.title}`;
+          console.warn(message);
+          warnings.push(message);
+          continue;
+        }
+
+        existingCases.add(caseKey);
+
+        generatedCases.push({
+          ...sanitized,
+          ai_generated: true,
+          is_public: true,
+          status: 'active',
+          ai_batch_id: runId,
+          generated_at: new Date().toISOString(),
+        });
+
+        console.log(`Successfully generated case: ${sanitized.title}`);
+
       } catch (parseError) {
-        console.error('Error parsing generated case:', parseError);
+        const message = 'Error parsing generated case JSON';
+        console.error(message, parseError);
         console.error('Generated content:', generatedContent);
+        warnings.push(message);
       }
     }
 
     if (generatedCases.length === 0) {
+      const warningMessage = warnings.length > 0 ? warnings.join(' | ') : 'No cases were successfully generated';
+      await supabaseClient
+        .from('ai_generation_runs')
+        .update({
+          status: 'failed',
+          generated_count: 0,
+          error_message: warningMessage,
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', runId);
+
       throw new Error('No cases were successfully generated');
     }
 
-    // Insert generated cases into database
-    const { data: insertedCases, error: insertError } = await supabase
+    const { data: insertedCases, error: insertError } = await supabaseClient
       .from('stock_cases')
       .insert(generatedCases)
       .select();
@@ -132,21 +272,47 @@ Svara endast med giltigt JSON i följande format:
       throw insertError;
     }
 
+    const completionPayload = {
+      status: 'completed',
+      generated_count: insertedCases?.length ?? 0,
+      error_message: warnings.length > 0 ? warnings.join(' | ') : null,
+      completed_at: new Date().toISOString(),
+    };
+
+    await supabaseClient
+      .from('ai_generation_runs')
+      .update(completionPayload)
+      .eq('id', runId);
+
     console.log(`Successfully inserted ${insertedCases.length} AI-generated cases`);
 
-    return new Response(JSON.stringify({ 
-      success: true, 
+    return new Response(JSON.stringify({
+      success: true,
+      run_id: runId,
       generated_cases: insertedCases.length,
-      cases: insertedCases 
+      warnings,
+      cases: insertedCases
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
     console.error('Error in generate-weekly-cases function:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message,
-      success: false 
+
+    if (runId && supabaseClient) {
+      await supabaseClient
+        .from('ai_generation_runs')
+        .update({
+          status: 'failed',
+          error_message: error instanceof Error ? error.message : 'Unknown error',
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', runId);
+    }
+
+    return new Response(JSON.stringify({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      success: false
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

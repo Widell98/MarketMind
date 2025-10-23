@@ -6,6 +6,7 @@ import Layout from '@/components/Layout';
 
 import StockCaseCard from '@/components/StockCaseCard';
 import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
+import AIWeeklyPicks from '@/components/AIWeeklyPicks';
 
 import { useStockCases } from '@/hooks/useStockCases';
 import { useToast } from '@/hooks/use-toast';
@@ -134,6 +135,8 @@ const Discover = () => {
               Hitta inspiration genom visuella aktiecase och AI-drivna idéer.
             </p>
           </section>
+
+          <AIWeeklyPicks />
 
           <div className="w-full space-y-6 sm:space-y-8">
             <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">
