@@ -194,7 +194,7 @@ const sanitizeCaseData = (rawCase: any) => {
   const title = typeof rawCase.title === 'string' ? rawCase.title.trim() : '';
   const companyName = typeof rawCase.company_name === 'string' ? rawCase.company_name.trim() : '';
   const descriptionRaw = typeof rawCase.description === 'string' ? rawCase.description.trim() : '';
-  const longDescription = sanitizeLongDescription(
+  let longDescription = sanitizeLongDescription(
     rawCase.analysis ?? rawCase.long_description ?? rawCase.investment_thesis,
   );
   const ticker = typeof rawCase.ticker === 'string' ? rawCase.ticker.trim().toUpperCase() : '';
@@ -240,6 +240,18 @@ const sanitizeCaseData = (rawCase: any) => {
     rawCase.fifty_two_week_low ?? rawCase.week_52_low ?? rawCase['52_week_low'],
   );
 
+  const metricsSummary: string[] = [];
+  if (fiftyTwoWeekHigh !== null) {
+    metricsSummary.push(`52-veckors högsta: ${fiftyTwoWeekHigh}`);
+  }
+  if (fiftyTwoWeekLow !== null) {
+    metricsSummary.push(`52-veckors lägsta: ${fiftyTwoWeekLow}`);
+  }
+
+  if (metricsSummary.length > 0) {
+    longDescription = `${longDescription}\n\n${metricsSummary.join(' | ')}`;
+  }
+
   return {
     title,
     company_name: companyName,
@@ -249,8 +261,6 @@ const sanitizeCaseData = (rawCase: any) => {
     market_cap: marketCap,
     pe_ratio: peRatio,
     dividend_yield: dividendYield,
-    fifty_two_week_high: fiftyTwoWeekHigh,
-    fifty_two_week_low: fiftyTwoWeekLow,
     entry_price: sanitizeNumber(rawCase.entry_price),
     target_price: sanitizeNumber(rawCase.target_price),
     stop_loss: sanitizeNumber(rawCase.stop_loss),
