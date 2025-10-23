@@ -185,14 +185,6 @@ const StockCaseDetail = () => {
     }
   };
 
-  // Format relative date
-  const formatRelativeDate = (dateString: string) => {
-    return formatDistanceToNow(new Date(dateString), {
-      addSuffix: true,
-      locale: sv
-    });
-  };
-
   // Carousel navigation
   const goToPrevious = () => {
     setCurrentImageIndex(prev => (prev > 0 ? prev - 1 : timeline.length - 1));
@@ -391,12 +383,6 @@ const StockCaseDetail = () => {
               {/* Version info and controls */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Badge variant={currentImageIndex === 0 ? "default" : "secondary"}>
-                    {currentVersion?.isOriginal ? 'Original' : currentImageIndex === 0 ? 'Senaste version' : 'Historisk version'}
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {formatRelativeDate(currentVersion.created_at)}
-                  </span>
                   {hasMultipleVersions && (
                     <Badge variant="outline" className="text-xs">
                       {currentImageIndex + 1} av {timeline.length}
@@ -504,10 +490,7 @@ const StockCaseDetail = () => {
                           : 'bg-muted hover:bg-muted/80'
                       }`}
                     >
-                      {version.isOriginal ? 'Original' : `V${timeline.length - index}`}
-                      <span className="block text-[10px] opacity-70 mt-0.5">
-                        {formatRelativeDate(version.created_at)}
-                      </span>
+                      {index === 0 ? 'Nuvarande' : `Historik ${index}`}
                     </button>
                   ))}
                 </div>
@@ -587,18 +570,6 @@ const StockCaseDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-6">
-            {/* Case Description with Structured Sections */}
-            {displayedAnalysisDescription && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Analys</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {formatCaseDescription(displayedAnalysisDescription)}
-                </CardContent>
-              </Card>
-            )}
-
             {/* Combined Overview Card - only show if there are financial metrics */}
             {(stockCase.entry_price || stockCase.current_price || stockCase.target_price || stockCase.stop_loss || stockCase.sector || stockCase.market_cap || stockCase.pe_ratio || stockCase.dividend_yield || fiftyTwoWeekSummary) && (
               <Card>
@@ -668,6 +639,18 @@ const StockCaseDetail = () => {
                       </div>
                     )}
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Case Description with Structured Sections */}
+            {displayedAnalysisDescription && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Analys</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {formatCaseDescription(displayedAnalysisDescription)}
                 </CardContent>
               </Card>
             )}
