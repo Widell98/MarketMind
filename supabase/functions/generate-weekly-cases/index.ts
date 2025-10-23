@@ -14,6 +14,17 @@ const corsHeaders = {
 
 const CASE_COUNT = 3;
 
+const extractJsonPayload = (content: string): string => {
+  const trimmed = content.trim();
+
+  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fencedMatch && fencedMatch[1]) {
+    return fencedMatch[1].trim();
+  }
+
+  return trimmed;
+};
+
 const sanitizeNumber = (value: unknown): number | null => {
   if (value === null || value === undefined) {
     return null;
@@ -208,7 +219,8 @@ Svara endast med giltigt JSON i följande format:
       }
 
       try {
-        const caseData = JSON.parse(generatedContent);
+        const normalizedContent = extractJsonPayload(generatedContent);
+        const caseData = JSON.parse(normalizedContent);
         const sanitized = sanitizeCaseData(caseData);
 
         if (!sanitized) {
