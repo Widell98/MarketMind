@@ -133,6 +133,18 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
   const formattedPerformance = Number.isFinite(performance)
     ? `${performance > 0 ? '+' : ''}${performance.toFixed(1).replace('.', ',')}%`
     : '—';
+  const shortDescription = stockCase.description?.trim();
+  const previewText = shortDescription && shortDescription.length > 0
+    ? shortDescription
+    : stockCase.long_description
+      ? (() => {
+          const normalized = stockCase.long_description.replace(/\s+/g, ' ').trim();
+          if (normalized.length <= 260) {
+            return normalized;
+          }
+          return `${normalized.slice(0, 257).trimEnd()}...`;
+        })()
+      : '';
 
   return <Card className={getCardClassNames()} onClick={() => onViewDetails(stockCase.id)}>
       <CardHeader className="px-4 pb-3 sm:px-6 sm:pb-4">
@@ -213,8 +225,8 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
             <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/10 transition-all duration-300" />
           </div>}
 
-        {stockCase.description && <p className="flex-1 text-sm text-muted-foreground line-clamp-3 sm:line-clamp-4">
-            {stockCase.description}
+        {previewText && <p className="flex-1 text-sm text-muted-foreground line-clamp-3 sm:line-clamp-4">
+            {previewText}
           </p>}
 
         <div className="mt-auto space-y-4">

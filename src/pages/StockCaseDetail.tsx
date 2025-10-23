@@ -21,6 +21,7 @@ import { highlightNumbersSafely } from '@/utils/sanitizer';
 import StockCaseComments from '@/components/StockCaseComments';
 import AddStockCaseUpdateDialog from '@/components/AddStockCaseUpdateDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { formatCurrency } from '@/utils/currencyUtils';
 import type { StockCase } from '@/types/stockCase';
 
 const StockCaseDetail = () => {
@@ -98,6 +99,14 @@ const StockCaseDetail = () => {
   const performance = stockCase.performance_percentage;
   const isPositivePerformance = performance && performance >= 0;
   const isOwner = user && stockCase.user_id === user.id;
+  const caseCurrency = stockCase.currency?.toUpperCase() || 'SEK';
+  const formatCasePrice = (value?: number | null) => {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      return null;
+    }
+
+    return formatCurrency(value, caseCurrency);
+  };
 
   // Create timeline of all versions (original + updates)
   const timeline = [
@@ -292,6 +301,16 @@ const StockCaseDetail = () => {
       );
     });
   };
+
+  const normalizedLongDescription = stockCase.long_description
+    ? stockCase.long_description.replace(/\s+/g, ' ').trim()
+    : null;
+  const normalizedCurrentDescription = currentVersion?.description
+    ? currentVersion.description.replace(/\s+/g, ' ').trim()
+    : null;
+  const showLongDescriptionCard = Boolean(
+    normalizedLongDescription && normalizedLongDescription !== normalizedCurrentDescription,
+  );
 
   return (
     <Layout>
@@ -563,6 +582,17 @@ const StockCaseDetail = () => {
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-6">
             {/* Case Description with Structured Sections */}
+            {showLongDescriptionCard && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Investeringscase</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {formatCaseDescription(stockCase.long_description ?? null)}
+                </CardContent>
+              </Card>
+            )}
+
             {currentVersion?.description && (
               <Card>
                 <CardHeader>
@@ -583,28 +613,28 @@ const StockCaseDetail = () => {
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                     {/* Price Information */}
-                    {stockCase.entry_price && (
+                    {formatCasePrice(stockCase.entry_price) && (
                       <div>
                         <p className="text-sm text-muted-foreground">Inköpspris</p>
-                        <p className="font-bold text-lg text-primary">{stockCase.entry_price} SEK</p>
+                        <p className="font-bold text-lg text-primary">{formatCasePrice(stockCase.entry_price)}</p>
                       </div>
                     )}
-                    {stockCase.current_price && (
+                    {formatCasePrice(stockCase.current_price) && (
                       <div>
                         <p className="text-sm text-muted-foreground">Nuvarande pris</p>
-                        <p className="font-bold text-lg text-primary">{stockCase.current_price} SEK</p>
+                        <p className="font-bold text-lg text-primary">{formatCasePrice(stockCase.current_price)}</p>
                       </div>
                     )}
-                    {stockCase.target_price && (
+                    {formatCasePrice(stockCase.target_price) && (
                       <div>
                         <p className="text-sm text-muted-foreground">Målpris</p>
-                        <p className="font-bold text-lg text-green-600">{stockCase.target_price} SEK</p>
+                        <p className="font-bold text-lg text-green-600">{formatCasePrice(stockCase.target_price)}</p>
                       </div>
                     )}
-                    {stockCase.stop_loss && (
+                    {formatCasePrice(stockCase.stop_loss) && (
                       <div>
                         <p className="text-sm text-muted-foreground">Stop Loss</p>
-                        <p className="font-bold text-lg text-red-600">{stockCase.stop_loss} SEK</p>
+                        <p className="font-bold text-lg text-red-600">{formatCasePrice(stockCase.stop_loss)}</p>
                       </div>
                     )}
                     
