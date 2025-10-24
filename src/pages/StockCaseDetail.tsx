@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ToastAction } from '@/components/ui/toast';
-import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Calendar, Building, BarChart3, Eye, Users, AlertTriangle, Target, StopCircle, Brain, ShoppingCart, Plus, UserPlus, PlusCircle, History, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Calendar, Building, BarChart3, Eye, Users, AlertTriangle, Target, StopCircle, Brain, ShoppingCart, Plus, UserPlus, PlusCircle, History, ChevronLeft, ChevronRight, Trash2, MessageSquare } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
@@ -171,6 +171,18 @@ const StockCaseDetail = () => {
     } else {
       followUser(stockCase.user_id);
     }
+  };
+
+  const handleDiscussWithAI = () => {
+    const companyName = stockCase.company_name || displayTitle || 'Aktiecase';
+    const ticker = stockCase.ticker ? ` (${stockCase.ticker})` : '';
+    navigate('/ai-chatt', {
+      state: {
+        createNewSession: true,
+        sessionName: `${companyName}${ticker}`,
+        initialMessage: `Kan vi diskutera ${companyName}${ticker} vidare? Jag vill få fler investeringsinsikter om aktien.`
+      }
+    });
   };
 
   const handleSaveSuccess = () => {
@@ -513,6 +525,14 @@ const StockCaseDetail = () => {
             <Button variant="outline" onClick={handleShare} className="flex items-center gap-2 text-lg px-6 py-3">
               <Share2 className="w-5 h-5" />
               Dela
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleDiscussWithAI}
+              className="flex items-center gap-2 text-lg px-6 py-3"
+            >
+              <MessageSquare className="w-5 h-5" />
+              Diskutera i AI-chatten
             </Button>
             <Button
               variant="outline"
