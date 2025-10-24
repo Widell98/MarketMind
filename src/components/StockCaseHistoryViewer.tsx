@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { History, Clock, Image as ImageIcon, Trash2, FolderOpen, FileText } from 'lucide-react';
 import { useStockCaseUpdates, StockCaseUpdate } from '@/hooks/useStockCaseUpdates';
+import { getOptimizedCaseImage } from '@/utils/imageUtils';
 import { useAuth } from '@/contexts/AuthContext';
 interface StockCaseHistoryViewerProps {
   stockCaseId: string;
@@ -51,6 +52,7 @@ const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
     isOriginal: false
   }))].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   const currentItem = timeline[currentIndex];
+  const optimizedImageSources = getOptimizedCaseImage(currentItem?.image_url);
   const canDelete = user && currentItem && !currentItem.isOriginal && currentItem.user_id === user.id;
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('sv-SE', {
@@ -237,7 +239,14 @@ const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
 
             {/* Image */}
             {currentItem.image_url && <div className="relative">
-                <img src={currentItem.image_url} alt={`${currentItem.title} - ${formatDate(currentItem.created_at)}`} className="w-full max-h-96 object-cover rounded-lg border" />
+                <img
+                  src={optimizedImageSources?.src ?? currentItem.image_url}
+                  srcSet={optimizedImageSources?.srcSet}
+                  alt={`${currentItem.title} - ${formatDate(currentItem.created_at)}`}
+                  className="w-full max-h-96 object-cover rounded-lg border"
+                  loading="lazy"
+                  decoding="async"
+                />
                 <div className="absolute top-2 right-2">
                   <Badge variant="secondary" className="bg-black/50 text-white">
                     <ImageIcon className="w-3 h-3 mr-1" />

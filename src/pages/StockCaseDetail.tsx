@@ -19,9 +19,11 @@ import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
 import { highlightNumbersSafely } from '@/utils/sanitizer';
 import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
+import { getOptimizedCaseImage } from '@/utils/imageUtils';
 import AddStockCaseUpdateDialog from '@/components/AddStockCaseUpdateDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { formatCurrency } from '@/utils/currencyUtils';
+import { cn } from '@/lib/utils';
 import type { StockCase } from '@/types/stockCase';
 
 const StockCaseDetail = () => {
@@ -102,7 +104,8 @@ const StockCaseDetail = () => {
       image_url: stockCase?.image_url || '',
       created_at: stockCase?.created_at || '',
       user_id: stockCase?.user_id || '',
-      isOriginal: true
+      isOriginal: true,
+      update_type: 'original' as const,
     },
     ...(updates || []).map(update => ({
       ...update,
@@ -113,6 +116,30 @@ const StockCaseDetail = () => {
   // Get current version based on carousel index
   const currentVersion = timeline[currentImageIndex];
   const hasMultipleVersions = timeline.length > 1;
+
+  const isAiGeneratedCase = Boolean(stockCase.ai_generated);
+  const isAiGeneratedImage = currentVersion?.isOriginal
+    ? isAiGeneratedCase
+    : currentVersion?.update_type === 'ai_generated_update';
+
+  const optimizedImageSources = getOptimizedCaseImage(currentVersion?.image_url);
+
+  const imageWrapperClasses = cn(
+    'relative group mx-auto w-full rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300',
+    isAiGeneratedImage ? 'max-w-xl' : 'max-w-4xl'
+  );
+
+  const imageDisplayWrapperClasses = cn(
+    'overflow-hidden rounded-lg transition-all duration-300',
+    isAiGeneratedImage ? 'bg-muted/70 p-4' : ''
+  );
+
+  const imageElementClasses = cn(
+    'w-full h-auto transition-all duration-300 cursor-pointer',
+    isAiGeneratedImage
+      ? 'max-h-[280px] object-contain'
+      : 'max-h-[560px] object-cover'
+  );
 
   const normalizedCaseTitle = normalizeStockCaseTitle(stockCase.title, stockCase.company_name);
   const displayTitle = normalizeStockCaseTitle(currentVersion?.title, normalizedCaseTitle) || normalizedCaseTitle;
@@ -395,14 +422,8 @@ const StockCaseDetail = () => {
           {currentVersion?.image_url && (
             <div className="space-y-4">
               {/* Version info and controls */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {hasMultipleVersions && (
-                    <Badge variant="outline" className="text-xs">
-                      {currentImageIndex + 1} av {timeline.length}
-                    </Badge>
-                  )}
-                </div>
+              <div className="flex items-center justify-between min-h-[1.5rem]">
+                <div className="flex items-center gap-2 flex-1" aria-hidden="true" />
                 
                 {canDeleteCurrent && (
                   <Button 
@@ -417,16 +438,21 @@ const StockCaseDetail = () => {
                 )}
               </div>
 
-              <div className="relative group mx-auto w-full max-w-2xl">
-                <img
-                  src={currentVersion.image_url}
-                  alt={displayTitle}
-                  className="w-full h-auto max-h-[360px] rounded-lg shadow-lg object-cover cursor-pointer hover:shadow-xl transition-all duration-300"
-                  onClick={() => {
-                    window.open(currentVersion.image_url, '_blank');
-                  }}
-                />
-                
+              <div className={imageWrapperClasses}>
+                <div className={imageDisplayWrapperClasses}>
+                  <img
+                    src={optimizedImageSources?.src ?? currentVersion.image_url}
+                    srcSet={optimizedImageSources?.srcSet}
+                    alt={displayTitle}
+                    loading="lazy"
+                    decoding="async"
+                    className={imageElementClasses}
+                    onClick={() => {
+                      window.open(currentVersion.image_url, '_blank');
+                    }}
+                  />
+                </div>
+
                 {/* Navigation arrows */}
                 {hasMultipleVersions && (
                   <>
@@ -452,8 +478,8 @@ const StockCaseDetail = () => {
 
                 {/* Expand button */}
                 <div className="absolute top-4 right-4">
-                  <Button 
-                    variant="secondary" 
+                  <Button
+                    variant="secondary"
                     size="sm"
                     onClick={() => window.open(currentVersion.image_url, '_blank')}
                     className="bg-black/70 hover:bg-black/80 text-white border-0"
@@ -472,7 +498,24 @@ const StockCaseDetail = () => {
                     </Badge>
                   </div>
                 )}
+
+                {isAiGeneratedImage && (
+                  <div className="absolute bottom-4 left-4">
+                    <Badge variant="secondary" className="bg-black/70 text-white">
+                      <Brain className="w-3 h-3 mr-1" />
+                      AI-genererad bild
+                    </Badge>
+                  </div>
+                )}
               </div>
+
+              {hasMultipleVersions && (
+                <div className="flex justify-center mt-2">
+                  <Badge variant="outline" className="text-xs">
+                    {currentImageIndex + 1} av {timeline.length}
+                  </Badge>
+                </div>
+              )}
 
               {/* Dots indicator */}
               {hasMultipleVersions && (
@@ -645,19 +688,23 @@ const StockCaseDetail = () => {
                         <p className="font-semibold">{stockCase.pe_ratio}</p>
                       </div>
                     )}
-                    {stockCase.dividend_yield && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Utdelning</p>
-                        <p className="font-semibold">{stockCase.dividend_yield}</p>
-                      </div>
-                    )}
-                    {fiftyTwoWeekSummary && (
-                      <div className="col-span-2 md:col-span-4">
-                        <p className="text-sm text-muted-foreground">52-veckors spann</p>
-                        <p
-                          className="font-semibold"
-                          dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(fiftyTwoWeekSummary) }}
-                        />
+                    {(stockCase.dividend_yield || fiftyTwoWeekSummary) && (
+                      <div className="col-span-2 flex flex-col gap-6 md:flex-row md:items-start">
+                        {stockCase.dividend_yield && (
+                          <div className="flex-1">
+                            <p className="text-sm text-muted-foreground">Utdelning</p>
+                            <p className="font-semibold">{stockCase.dividend_yield}</p>
+                          </div>
+                        )}
+                        {fiftyTwoWeekSummary && (
+                          <div className="flex-1">
+                            <p className="text-sm text-muted-foreground">52-veckors spann</p>
+                            <div
+                              className="font-semibold"
+                              dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(fiftyTwoWeekSummary) }}
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

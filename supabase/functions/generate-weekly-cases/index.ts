@@ -2,6 +2,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { parse } from "https://deno.land/std@0.168.0/encoding/csv.ts";
+import { jsonrepair } from 'https://esm.sh/jsonrepair@3.6.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -54,13 +55,70 @@ const sanitizeNumber = (value: unknown): number | null => {
   return null;
 };
 
-const normalizeParagraphs = (value: string): string =>
-  value
-    .replace(/\r\n/g, '\n')
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .join('\n\n');
+const normalizeParagraphs = (value: string): string => {
+  const normalized = value.replace(/\r\n/g, '\n').trim();
+
+  if (!normalized) {
+    return '';
+  }
+
+  const initialParagraphs = normalized
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter((paragraph) => paragraph.length > 0);
+
+  let paragraphs: string[] = [];
+
+  if (initialParagraphs.length > 1) {
+    paragraphs = initialParagraphs.map((paragraph) => paragraph.replace(/\s+/g, ' '));
+  } else {
+    const [singleBlock = normalized] = initialParagraphs.length === 1 ? initialParagraphs : [normalized];
+    const lineSeparated = singleBlock
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    if (lineSeparated.length > 1) {
+      paragraphs = lineSeparated.map((line) => line.replace(/\s+/g, ' '));
+    } else {
+      const sentences = singleBlock
+        .replace(/\s+/g, ' ')
+        .split(/(?<=[.!?])\s+(?=[A-ZÅÄÖ0-9])/u)
+        .map((sentence) => sentence.trim())
+        .filter((sentence) => sentence.length > 0);
+
+      if (sentences.length <= 1) {
+        paragraphs = [singleBlock.replace(/\s+/g, ' ')];
+      } else {
+        const assembled: string[] = [];
+        let current = '';
+
+        for (const sentence of sentences) {
+          if (!current) {
+            current = sentence;
+            continue;
+          }
+
+          const candidate = `${current} ${sentence}`;
+          if (candidate.length <= 400) {
+            current = candidate;
+          } else {
+            assembled.push(current);
+            current = sentence;
+          }
+        }
+
+        if (current) {
+          assembled.push(current);
+        }
+
+        paragraphs = assembled;
+      }
+    }
+  }
+
+  return paragraphs.join('\n\n');
+};
 
 const sanitizeLongDescription = (value: unknown): string | null => {
   if (typeof value !== 'string') {
@@ -179,7 +237,7 @@ const sanitizeWebsite = (value: unknown): SanitizedWebsite | null => {
     return {
       hostname,
       url: `https://${hostname}`,
-      logoUrl: `https://logo.clearbit.com/${hostname}?size=400`,
+      logoUrl: `https://logo.clearbit.com/${hostname}?size=1200&format=png`,
     };
   } catch (_error) {
     return null;
@@ -285,9 +343,6 @@ const sanitizeCaseData = (rawCase: any) => {
     market_cap: marketCap,
     pe_ratio: peRatio,
     dividend_yield: dividendYield,
-    entry_price: sanitizeNumber(rawCase.entry_price),
-    target_price: sanitizeNumber(rawCase.target_price),
-    stop_loss: sanitizeNumber(rawCase.stop_loss),
     ticker,
     image_url: websiteInfo.logoUrl,
     currency: sanitizeCurrency(rawCase.currency),
@@ -420,17 +475,28 @@ serve(async (req) => {
     const sectors = ['Technology', 'Healthcare', 'Finance', 'Energy', 'Consumer Goods', 'Real Estate'];
     const investmentStyles = ['Growth', 'Value', 'Dividend', 'ESG'];
 
-    const { data: recentCases } = await supabaseClient
+    const { data: existingCaseRows, error: existingCasesError } = await supabaseClient
       .from('stock_cases')
-      .select('title, company_name')
-      .eq('ai_generated', true)
-      .order('created_at', { ascending: false })
-      .limit(50);
+      .select('title, company_name, ticker')
+      .eq('ai_generated', true);
+
+    if (existingCasesError) {
+      console.error('Failed to fetch existing AI generated cases:', existingCasesError);
+      throw new Error('Kunde inte läsa befintliga AI-case');
+    }
 
     const existingCases = new Set<string>();
-    (recentCases || []).forEach((caseItem) => {
+    const existingTickers = new Set<string>();
+    (existingCaseRows || []).forEach((caseItem) => {
       if (caseItem.title && caseItem.company_name) {
         existingCases.add(`${caseItem.title.toLowerCase()}|${caseItem.company_name.toLowerCase()}`);
+      }
+
+      if (caseItem.ticker) {
+        const normalizedTicker = normalizeTickerKey(caseItem.ticker);
+        if (normalizedTicker) {
+          existingTickers.add(normalizedTicker);
+        }
       }
     });
 
@@ -509,10 +575,10 @@ serve(async (req) => {
       usedTickerSymbols.add(selectedTicker);
 
       const prompt = `
-Du är en professionell finansanalytiker som skriver realistiska aktiecase för svenska investerare.
+Du är en professionell finansanalytiker som skriver inspirerande aktiepitchar för svenska investerare.
 
 🎯 Uppdrag:
-Skapa ett detaljerat investeringscase för ett bolag inom sektorn "${sector}" med inriktning på "${style}"-investeringar.
+Skapa ett engagerande investeringscase för ett bolag inom sektorn "${sector}" med inriktning på "${style}"-strategier.
 
 📊 Fakta att utgå från:
 - Bolag: ${selectedName} (${selectedTicker})
@@ -522,13 +588,13 @@ Skapa ett detaljerat investeringscase för ett bolag inom sektorn "${sector}" me
 🧠 Stil och ton:
 - Professionell, trovärdig och pedagogisk ton.
 - Skriv på svenska.
-- Undvik överdrifter, använd faktabaserad argumentation.
+- Fokusera på att inspirera läsaren och lyfta investeringsargument snarare än exakta handelsnivåer.
 
 📈 Innehållskrav:
 1. Förklara varför bolaget är intressant för investerare inom "${style}"-strategin.
 2. Inkludera relevanta finansiella nyckeltal (P/E-tal, direktavkastning, marknadsvärde).
 3. Ange numeriska värden för 52-veckors högsta och lägsta kurs.
-4. Ange rimliga målpriser (target_price), köp-nivåer (entry_price) och stop-loss baserat på kursnivåer.
+4. Lyft fram 2–3 centrala katalysatorer eller händelser som kan driva aktien framåt.
 5. Lägg till bolagets officiella webbplats (endast domän, t.ex. "volvocars.com").
 
 📊 Analysdel – krav på innehåll och ton:
@@ -538,6 +604,7 @@ Analysen ska:
 - Inledas med en kort men slagkraftig sammanfattning av bolagets kärnverksamhet och varför det är intressant just nu.
 - Beskriva bolagets styrkor (t.ex. marknadsposition, innovation, tillväxtpotential eller stabilitet).
 - Nämna minst ett aktuellt tema eller trend i branschen som påverkar bolaget (t.ex. elektrifiering, digitalisering, geopolitik, ESG).
+- Bestå av minst tre stycken separerade av tomma rader så att analysen blir lättläst.
 - Inkludera en balanserad syn på risker eller utmaningar, men håll fokus på möjligheterna.
 - Avsluta med ett resonemang om varför aktien kan vara attraktiv för investerare med ${style}-inriktning.
 
@@ -557,10 +624,7 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
   "fifty_two_week_high": number,
   "fifty_two_week_low": number,
   "ticker": "string",
-  "official_website": "string",
-  "target_price": number,
-  "entry_price": number,
-  "stop_loss": number
+  "official_website": "string"
 }`;
 
       console.log(`Generating case ${i + 1} for ${sector} - ${style}...`);
@@ -604,7 +668,18 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
 
       try {
         const normalizedContent = extractJsonPayload(generatedContent);
-        const caseData = JSON.parse(normalizedContent);
+        let caseData: unknown;
+
+        try {
+          caseData = JSON.parse(normalizedContent);
+        } catch (initialParseError) {
+          try {
+            const repairedContent = jsonrepair(normalizedContent);
+            caseData = JSON.parse(repairedContent);
+          } catch (_) {
+            throw initialParseError;
+          }
+        }
         const sanitized = sanitizeCaseData(caseData);
 
         if (!sanitized) {
@@ -615,41 +690,35 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
         }
 
         const caseKey = `${sanitized.title.toLowerCase()}|${sanitized.company_name.toLowerCase()}`;
-        if (existingCases.has(caseKey)) {
+        const sanitizedTickerKey = normalizeTickerKey(sanitized.ticker);
+        const expectedTicker = normalizeTickerKey(selectedTicker);
+        if (
+          existingCases.has(caseKey)
+          || (sanitizedTickerKey && existingTickers.has(sanitizedTickerKey))
+          || (expectedTicker && existingTickers.has(expectedTicker))
+        ) {
           const message = `Duplicate case skipped for ${sanitized.title}`;
           console.warn(message);
           warnings.push(message);
           continue;
         }
 
-        existingCases.add(caseKey);
-
-        const { ticker, ...caseWithoutTicker } = sanitized;
-
-        const expectedTicker = normalizeTickerKey(selectedTicker);
+        const { ticker, currency: sanitizedCurrency, ...caseWithoutTicker } = sanitized;
         const sanitizedTicker = normalizeTickerKey(ticker);
         if (sanitizedTicker !== expectedTicker) {
           warnings.push(`AI svarade med ticker ${sanitizedTicker || 'okänd'} istället för ${expectedTicker}. Sheet-ticker används.`);
         }
 
         const sheetInfo = findSheetTickerInfo(expectedTicker, sheetTickerIndex);
-        let entryPrice = sanitized.entry_price;
-        let targetPrice = sanitized.target_price;
-        let stopLoss = sanitized.stop_loss;
-        let currency = sanitized.currency;
+        let currency = sanitizedCurrency;
+        let currentPrice: number | null = null;
 
         if (sheetInfo) {
           const price = typeof sheetInfo.price === 'number' && Number.isFinite(sheetInfo.price)
             ? Number(sheetInfo.price)
             : null;
           if (price !== null) {
-            entryPrice = Number(price.toFixed(2));
-            if (!targetPrice || !Number.isFinite(targetPrice) || targetPrice <= 0) {
-              targetPrice = Number((price * 1.08).toFixed(2));
-            }
-            if (!stopLoss || !Number.isFinite(stopLoss) || stopLoss <= 0 || stopLoss >= entryPrice) {
-              stopLoss = Number((price * 0.92).toFixed(2));
-            }
+            currentPrice = Number(price.toFixed(2));
           }
 
           if (sheetInfo.currency && typeof sheetInfo.currency === 'string') {
@@ -664,14 +733,6 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
 
         const resolvedCurrency = currency ?? 'SEK';
 
-        if (entryPrice !== null && targetPrice !== null && targetPrice <= entryPrice) {
-          targetPrice = Number((entryPrice * 1.08).toFixed(2));
-        }
-
-        if (entryPrice !== null && stopLoss !== null && stopLoss >= entryPrice) {
-          stopLoss = Number((entryPrice * 0.92).toFixed(2));
-        }
-
         generatedCases.push({
           ...caseWithoutTicker,
           ticker: expectedTicker,
@@ -681,13 +742,15 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
           ai_batch_id: runId,
           generated_at: new Date().toISOString(),
           currency: resolvedCurrency,
-          entry_price: entryPrice,
-          current_price: entryPrice,
-          target_price: targetPrice,
-          stop_loss: stopLoss,
+          entry_price: null,
+          current_price: currentPrice,
+          target_price: null,
+          stop_loss: null,
         });
 
         console.log(`Successfully generated case: ${sanitized.title} (${expectedTicker})`);
+        existingCases.add(caseKey);
+        existingTickers.add(expectedTicker);
         generatedTickers.push({ title: sanitized.title, ticker: expectedTicker });
 
       } catch (parseError) {
