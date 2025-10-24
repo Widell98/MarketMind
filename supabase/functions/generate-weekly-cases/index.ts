@@ -255,7 +255,7 @@ const sanitizeCaseData = (rawCase: any) => {
   let longDescription = sanitizeLongDescription(
     rawCase.analysis ?? rawCase.long_description ?? rawCase.investment_thesis,
   );
-  const ticker = typeof rawCase.ticker === 'string' ? rawCase.ticker.trim().toUpperCase() : '';
+  const rawTicker = typeof rawCase.ticker === 'string' ? rawCase.ticker.trim().toUpperCase() : '';
   const websiteInfo = sanitizeWebsite(
     rawCase.official_website ?? rawCase.company_website ?? rawCase.website ?? rawCase.source_url ?? rawCase.source,
   );
@@ -273,10 +273,6 @@ const sanitizeCaseData = (rawCase: any) => {
   }
 
   if (forbiddenTerms.some((term) => lowerCompany.includes(term) || lowerDescription.includes(term))) {
-    return null;
-  }
-
-  if (!ticker || !/^[A-Z0-9.-]{1,10}$/.test(ticker)) {
     return null;
   }
 
@@ -339,7 +335,7 @@ const sanitizeCaseData = (rawCase: any) => {
     market_cap: marketCap,
     pe_ratio: peRatio,
     dividend_yield: dividendYield,
-    ticker,
+    ticker: /^[A-Z0-9.-]{1,10}$/.test(rawTicker) ? rawTicker : null,
     image_url: websiteInfo?.logoUrl ?? null,
     currency: sanitizeCurrency(rawCase.currency),
   };
@@ -686,7 +682,7 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
         }
 
         const caseKey = `${sanitized.title.toLowerCase()}|${sanitized.company_name.toLowerCase()}`;
-        const sanitizedTickerKey = normalizeTickerKey(sanitized.ticker);
+        const sanitizedTickerKey = sanitized.ticker ? normalizeTickerKey(sanitized.ticker) : null;
         const expectedTicker = normalizeTickerKey(selectedTicker);
         if (
           existingCases.has(caseKey)
@@ -700,10 +696,13 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
         }
 
         const { ticker, currency: sanitizedCurrency, ...caseWithoutTicker } = sanitized;
+        if (!ticker) {
+          warnings.push(`AI svarade utan ticker för ${sanitized.company_name}. Sheet-ticker används.`);
+        }
         if (!caseWithoutTicker.image_url) {
           warnings.push(`Ingen giltig webbplats angavs för ${sanitized.company_name}. Standardbild används.`);
         }
-        const sanitizedTicker = normalizeTickerKey(ticker);
+        const sanitizedTicker = ticker ? normalizeTickerKey(ticker) : null;
         if (sanitizedTicker !== expectedTicker) {
           warnings.push(`AI svarade med ticker ${sanitizedTicker || 'okänd'} istället för ${expectedTicker}. Sheet-ticker används.`);
         }
