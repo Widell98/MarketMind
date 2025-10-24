@@ -146,12 +146,6 @@ const sanitizeCurrency = (value: unknown): string | null => {
   return trimmed;
 };
 
-type SanitizedWebsite = {
-  hostname: string;
-  url: string;
-  logoUrl: string;
-};
-
 const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
   const response = await fetch(SHEET_CSV_URL);
   if (!response.ok) {
@@ -213,37 +207,6 @@ const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
   return Array.from(tickerMap.values());
 };
 
-const sanitizeWebsite = (value: unknown): SanitizedWebsite | null => {
-  if (typeof value !== 'string') {
-    return null;
-  }
-
-  let trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  if (!/^https?:\/\//i.test(trimmed)) {
-    trimmed = `https://${trimmed}`;
-  }
-
-  try {
-    const parsed = new URL(trimmed);
-    const hostname = parsed.hostname.replace(/^www\./i, '').toLowerCase();
-    if (!hostname || hostname.split('.').length < 2) {
-      return null;
-    }
-
-    return {
-      hostname,
-      url: `https://${hostname}`,
-      logoUrl: `https://logo.clearbit.com/${hostname}?size=1200&format=png`,
-    };
-  } catch (_error) {
-    return null;
-  }
-};
-
 const sanitizeCaseData = (rawCase: any) => {
   if (!rawCase || typeof rawCase !== 'object') {
     return null;
@@ -254,10 +217,6 @@ const sanitizeCaseData = (rawCase: any) => {
   const descriptionRaw = typeof rawCase.description === 'string' ? rawCase.description.trim() : '';
   let longDescription = sanitizeLongDescription(
     rawCase.analysis ?? rawCase.long_description ?? rawCase.investment_thesis,
-  );
-  const rawTicker = typeof rawCase.ticker === 'string' ? rawCase.ticker.trim().toUpperCase() : '';
-  const websiteInfo = sanitizeWebsite(
-    rawCase.official_website ?? rawCase.company_website ?? rawCase.website ?? rawCase.source_url ?? rawCase.source,
   );
 
   const lowerCompany = companyName.toLowerCase();
@@ -335,8 +294,8 @@ const sanitizeCaseData = (rawCase: any) => {
     market_cap: marketCap,
     pe_ratio: peRatio,
     dividend_yield: dividendYield,
-    ticker: /^[A-Z0-9.-]{1,10}$/.test(rawTicker) ? rawTicker : null,
-    image_url: websiteInfo?.logoUrl ?? null,
+    ticker: null,
+    image_url: null,
     currency: sanitizeCurrency(rawCase.currency),
   };
 };
@@ -587,7 +546,6 @@ Skapa ett engagerande investeringscase för ett bolag inom sektorn "${sector}" m
 2. Inkludera relevanta finansiella nyckeltal (P/E-tal, direktavkastning, marknadsvärde).
 3. Ange numeriska värden för 52-veckors högsta och lägsta kurs.
 4. Lyft fram 2–3 centrala katalysatorer eller händelser som kan driva aktien framåt.
-5. Lägg till bolagets officiella webbplats (endast domän, t.ex. "volvocars.com").
 
 📊 Analysdel – krav på innehåll och ton:
 Skriv en engagerande men faktabaserad analys som skapar intresse för bolaget redan i de första meningarna.
@@ -614,9 +572,7 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
   "pe_ratio": "string",
   "dividend_yield": "string",
   "fifty_two_week_high": number,
-  "fifty_two_week_low": number,
-  "ticker": "string",
-  "official_website": "string"
+  "fifty_two_week_low": number
 }`;
 
       console.log(`Generating case ${i + 1} for ${sector} - ${style}...`);
@@ -682,11 +638,9 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
         }
 
         const caseKey = `${sanitized.title.toLowerCase()}|${sanitized.company_name.toLowerCase()}`;
-        const sanitizedTickerKey = sanitized.ticker ? normalizeTickerKey(sanitized.ticker) : null;
         const expectedTicker = normalizeTickerKey(selectedTicker);
         if (
           existingCases.has(caseKey)
-          || (sanitizedTickerKey && existingTickers.has(sanitizedTickerKey))
           || (expectedTicker && existingTickers.has(expectedTicker))
         ) {
           const message = `Duplicate case skipped for ${sanitized.title}`;
@@ -695,17 +649,7 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
           continue;
         }
 
-        const { ticker, currency: sanitizedCurrency, ...caseWithoutTicker } = sanitized;
-        if (!ticker) {
-          warnings.push(`AI svarade utan ticker för ${sanitized.company_name}. Sheet-ticker används.`);
-        }
-        if (!caseWithoutTicker.image_url) {
-          warnings.push(`Ingen giltig webbplats angavs för ${sanitized.company_name}. Standardbild används.`);
-        }
-        const sanitizedTicker = ticker ? normalizeTickerKey(ticker) : null;
-        if (sanitizedTicker !== expectedTicker) {
-          warnings.push(`AI svarade med ticker ${sanitizedTicker || 'okänd'} istället för ${expectedTicker}. Sheet-ticker används.`);
-        }
+        const { ticker: _ignoredTicker, currency: sanitizedCurrency, ...caseWithoutTicker } = sanitized;
 
         const sheetInfo = findSheetTickerInfo(expectedTicker, sheetTickerIndex);
         let currency = sanitizedCurrency;
@@ -733,7 +677,7 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
             }
           }
         } else {
-          warnings.push(`Prisdata saknas för ${ticker}`);
+          warnings.push(`Prisdata saknas för ${expectedTicker}`);
         }
 
         const resolvedCurrency = currency ?? 'SEK';
