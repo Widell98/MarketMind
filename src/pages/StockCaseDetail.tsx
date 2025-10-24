@@ -19,7 +19,7 @@ import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
 import { highlightNumbersSafely } from '@/utils/sanitizer';
 import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
-import { getOptimizedCaseImage } from '@/utils/imageUtils';
+import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage } from '@/utils/imageUtils';
 import AddStockCaseUpdateDialog from '@/components/AddStockCaseUpdateDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { formatCurrency } from '@/utils/currencyUtils';
@@ -122,7 +122,10 @@ const StockCaseDetail = () => {
     ? isAiGeneratedCase
     : currentVersion?.update_type === 'ai_generated_update';
 
+  const hasRealImage = Boolean(currentVersion?.image_url);
   const optimizedImageSources = getOptimizedCaseImage(currentVersion?.image_url);
+  const displayImageSrc = optimizedImageSources?.src ?? currentVersion?.image_url ?? CASE_IMAGE_PLACEHOLDER;
+  const displayImageSrcSet = optimizedImageSources?.srcSet;
 
   const imageWrapperClasses = cn(
     'relative group mx-auto w-full rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300',
@@ -135,7 +138,8 @@ const StockCaseDetail = () => {
   );
 
   const imageElementClasses = cn(
-    'w-full h-auto transition-all duration-300 cursor-pointer',
+    'w-full h-auto transition-all duration-300',
+    hasRealImage ? 'cursor-pointer' : 'cursor-default',
     isAiGeneratedImage
       ? 'max-h-[280px] object-contain'
       : 'max-h-[560px] object-cover'
@@ -419,7 +423,7 @@ const StockCaseDetail = () => {
           </div>
 
           {/* Graph Section with Carousel */}
-          {currentVersion?.image_url && (
+          {displayImageSrc && (
             <div className="space-y-4">
               {/* Version info and controls */}
               <div className="flex items-center justify-between min-h-[1.5rem]">
@@ -441,14 +445,16 @@ const StockCaseDetail = () => {
               <div className={imageWrapperClasses}>
                 <div className={imageDisplayWrapperClasses}>
                   <img
-                    src={optimizedImageSources?.src ?? currentVersion.image_url}
-                    srcSet={optimizedImageSources?.srcSet}
+                    src={displayImageSrc}
+                    srcSet={displayImageSrcSet}
                     alt={displayTitle}
                     loading="lazy"
                     decoding="async"
                     className={imageElementClasses}
                     onClick={() => {
-                      window.open(currentVersion.image_url, '_blank');
+                      if (currentVersion.image_url) {
+                        window.open(currentVersion.image_url, '_blank');
+                      }
                     }}
                   />
                 </div>

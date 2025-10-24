@@ -12,7 +12,7 @@ import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useUserFollows } from '@/hooks/useUserFollows';
 import { useNavigate } from 'react-router-dom';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { getOptimizedCaseImage } from '@/utils/imageUtils';
+import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage } from '@/utils/imageUtils';
 
 interface EnhancedStockCaseCardProps {
   stockCase: StockCase;
@@ -38,6 +38,8 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
   const isOwner = user && stockCase.user_id === user.id;
   const isUserCase = !stockCase.ai_generated && stockCase.user_id;
   const optimizedImageSources = getOptimizedCaseImage(stockCase.image_url);
+  const displayImageSrc = optimizedImageSources?.src ?? stockCase.image_url ?? CASE_IMAGE_PLACEHOLDER;
+  const displayImageSrcSet = optimizedImageSources?.srcSet;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -280,12 +282,12 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
       
       <CardContent className="flex-1 flex flex-col space-y-4">
         {/* Stock Image */}
-        {stockCase.image_url && (
+        {displayImageSrc && (
           <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-muted">
             <img
-              src={optimizedImageSources?.src ?? stockCase.image_url}
-              srcSet={optimizedImageSources?.srcSet}
-              alt={`${stockCase.company_name} stock chart`}
+              src={displayImageSrc}
+              srcSet={displayImageSrcSet}
+              alt={stockCase.company_name ? `${stockCase.company_name} illustration` : 'Investeringscase'}
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
               loading="lazy"
               decoding="async"

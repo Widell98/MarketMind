@@ -6,7 +6,7 @@ import { TrendingUp, ArrowRight, Heart } from 'lucide-react';
 import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
-import { getOptimizedCaseImage } from '@/utils/imageUtils';
+import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage } from '@/utils/imageUtils';
 
 const TrendingCases = () => {
   const { trendingCases, loading } = useTrendingStockCases(6);
@@ -76,6 +76,8 @@ const TrendingCases = () => {
         <div className="space-y-4">
           {trendingCases.map((stockCase, index) => {
             const optimizedSources = getOptimizedCaseImage(stockCase.image_url);
+            const displayImageSrc = optimizedSources?.src ?? stockCase.image_url ?? CASE_IMAGE_PLACEHOLDER;
+            const displayImageSrcSet = optimizedSources?.srcSet;
 
             return (
               <div
@@ -92,20 +94,14 @@ const TrendingCases = () => {
 
               {/* Company Image - Enhanced */}
               <div className="flex-shrink-0">
-                {stockCase.image_url ? (
-                  <img
-                    src={optimizedSources?.src ?? stockCase.image_url}
-                    srcSet={optimizedSources?.srcSet}
-                    alt={stockCase.company_name}
-                    className="w-20 h-20 rounded-xl object-cover shadow-md border border-gray-200 dark:border-gray-700 group-hover:shadow-lg transition-shadow"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                ) : (
-                  <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center border border-gray-200 dark:border-gray-700 shadow-md group-hover:shadow-lg transition-shadow">
-                    <TrendingUp className="w-8 h-8 text-gray-400" />
-                  </div>
-                )}
+                <img
+                  src={displayImageSrc}
+                  srcSet={displayImageSrcSet}
+                  alt={stockCase.company_name}
+                  className="w-20 h-20 rounded-xl object-cover shadow-md border border-gray-200 dark:border-gray-700 group-hover:shadow-lg transition-shadow"
+                  loading="lazy"
+                  decoding="async"
+                />
               </div>
               
               {/* Content - Enhanced */}

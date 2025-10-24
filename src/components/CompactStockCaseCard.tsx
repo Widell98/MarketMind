@@ -10,7 +10,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import LoginPromptModal from '@/components/LoginPromptModal';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
-import { getOptimizedCaseImage } from '@/utils/imageUtils';
+import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage } from '@/utils/imageUtils';
 
 interface CompactStockCaseCardProps {
   stockCase: any;
@@ -24,6 +24,8 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
 
   const isOwner = user && stockCase.user_id === user.id;
   const optimizedImageSources = getOptimizedCaseImage(stockCase.image_url);
+  const displayImageSrc = optimizedImageSources?.src ?? stockCase.image_url ?? CASE_IMAGE_PLACEHOLDER;
+  const displayImageSrcSet = optimizedImageSources?.srcSet;
 
   const handleClick = () => {
     if (!user) {
@@ -61,17 +63,6 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
   const handleEditCase = (e: React.MouseEvent) => {
     e.stopPropagation();
     navigate('/profile');
-  };
-
-  const getCategoryColor = (category: string) => {
-    const colors = {
-      'Tech': 'bg-purple-500',
-      'Biotech': 'bg-green-500',
-      'Theme': 'bg-orange-500',
-      'Gaming': 'bg-red-500',
-      'Industrial': 'bg-blue-500'
-    };
-    return colors[category as keyof typeof colors] || 'bg-gray-500';
   };
 
   const getStatusBadge = (status: string, performance: number | null) => {
@@ -133,20 +124,14 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
       >
         {/* Image/Visual */}
         <div className="relative aspect-[4/3] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden mb-3">
-          {stockCase.image_url ? (
-            <img
-              src={optimizedImageSources?.src ?? stockCase.image_url}
-              srcSet={optimizedImageSources?.srcSet}
-              alt={stockCase.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-              loading="lazy"
-              decoding="async"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <div className={`w-8 h-8 rounded-full ${getCategoryColor(stockCase.case_categories?.name || 'Tech')}`}></div>
-            </div>
-          )}
+          <img
+            src={displayImageSrc}
+            srcSet={displayImageSrcSet}
+            alt={stockCase.title || 'Investeringscase'}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+            loading="lazy"
+            decoding="async"
+          />
           
           {/* Status badge overlay */}
           <div className="absolute top-2 right-2">

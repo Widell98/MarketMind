@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Heart, MessageCircle, Eye, Calendar, TrendingUp, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getOptimizedCaseImage } from '@/utils/imageUtils';
+import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage } from '@/utils/imageUtils';
 
 interface ContentItem {
   id: string;
@@ -139,6 +139,8 @@ const ProfileContentGrid: React.FC<ProfileContentGridProps> = ({
             // Render stock cases as visual cards (Instagram-style)
             if (item.type === 'stock_case') {
               const optimizedSources = getOptimizedCaseImage(item.image_url);
+              const displayImageSrc = optimizedSources?.src ?? item.image_url ?? CASE_IMAGE_PLACEHOLDER;
+              const displayImageSrcSet = optimizedSources?.srcSet;
 
               return (
                 <Card
@@ -149,8 +151,8 @@ const ProfileContentGrid: React.FC<ProfileContentGridProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="relative aspect-square md:aspect-auto">
                       <img
-                        src={optimizedSources?.src ?? item.image_url ?? getDefaultImage(item)}
-                        srcSet={optimizedSources?.srcSet}
+                        src={displayImageSrc}
+                        srcSet={displayImageSrcSet}
                         alt={item.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         loading="lazy"

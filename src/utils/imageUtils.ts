@@ -3,6 +3,8 @@ export type OptimizedImageSource = {
   srcSet?: string;
 };
 
+export const CASE_IMAGE_PLACEHOLDER = '/case-image-placeholder.svg';
+
 const CLEARBIT_HOST = 'logo.clearbit.com';
 const DEFAULT_CLEARBIT_SIZE = 1200;
 const RETINA_CLEARBIT_SIZE = 2400;

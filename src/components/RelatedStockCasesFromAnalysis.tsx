@@ -8,7 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
-import { getOptimizedCaseImage } from '@/utils/imageUtils';
+import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage } from '@/utils/imageUtils';
 
 interface RelatedStockCasesFromAnalysisProps {
   analysisId: string;
@@ -259,6 +259,8 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
       <CardContent className="space-y-4">
         {displayCases.map((stockCase) => {
           const optimizedSources = getOptimizedCaseImage(stockCase.image_url);
+          const displayImageSrc = optimizedSources?.src ?? stockCase.image_url ?? CASE_IMAGE_PLACEHOLDER;
+          const displayImageSrcSet = optimizedSources?.srcSet;
 
           return (
             <div key={stockCase.id} className="border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
@@ -299,10 +301,10 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
                   </span>
                 </div>
               </div>
-              {stockCase.image_url && (
+              {displayImageSrc && (
                 <img
-                  src={optimizedSources?.src ?? stockCase.image_url}
-                  srcSet={optimizedSources?.srcSet}
+                  src={displayImageSrc}
+                  srcSet={displayImageSrcSet}
                   alt={stockCase.company_name}
                   className="w-12 h-12 rounded-lg object-cover ml-3"
                   loading="lazy"

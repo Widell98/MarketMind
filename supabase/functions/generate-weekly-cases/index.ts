@@ -284,10 +284,6 @@ const sanitizeCaseData = (rawCase: any) => {
     return null;
   }
 
-  if (!websiteInfo) {
-    return null;
-  }
-
   const stripInvestmentAnalysisPrefix = (value: string): string => {
     let result = value.trim();
 
@@ -344,7 +340,7 @@ const sanitizeCaseData = (rawCase: any) => {
     pe_ratio: peRatio,
     dividend_yield: dividendYield,
     ticker,
-    image_url: websiteInfo.logoUrl,
+    image_url: websiteInfo?.logoUrl ?? null,
     currency: sanitizeCurrency(rawCase.currency),
   };
 };
@@ -704,6 +700,9 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
         }
 
         const { ticker, currency: sanitizedCurrency, ...caseWithoutTicker } = sanitized;
+        if (!caseWithoutTicker.image_url) {
+          warnings.push(`Ingen giltig webbplats angavs för ${sanitized.company_name}. Standardbild används.`);
+        }
         const sanitizedTicker = normalizeTickerKey(ticker);
         if (sanitizedTicker !== expectedTicker) {
           warnings.push(`AI svarade med ticker ${sanitizedTicker || 'okänd'} istället för ${expectedTicker}. Sheet-ticker används.`);

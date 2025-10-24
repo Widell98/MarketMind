@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trash2, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 import { StockCaseImageHistory, useStockCaseImageHistory } from '@/hooks/useStockCaseImageHistory';
-import { getOptimizedCaseImage } from '@/utils/imageUtils';
+import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage } from '@/utils/imageUtils';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -85,12 +85,14 @@ const AdminImageHistoryManager: React.FC<AdminImageHistoryManagerProps> = ({
         <div className="space-y-4">
           {images.map((image) => {
             const optimizedSources = getOptimizedCaseImage(image.image_url);
+            const displayImageSrc = optimizedSources?.src ?? image.image_url ?? CASE_IMAGE_PLACEHOLDER;
+            const displayImageSrcSet = optimizedSources?.srcSet;
 
             return (
               <div key={image.id} className="flex items-center gap-4 p-4 border rounded-lg">
                 <img
-                  src={optimizedSources?.src ?? image.image_url}
-                  srcSet={optimizedSources?.srcSet}
+                  src={displayImageSrc}
+                  srcSet={displayImageSrcSet}
                   alt={image.description || 'Stock case image'}
                   className="w-20 h-20 object-cover rounded-md"
                   loading="lazy"

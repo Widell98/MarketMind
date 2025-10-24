@@ -10,7 +10,7 @@ import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useNavigate } from 'react-router-dom';
 import ShareStockCase from './ShareStockCase';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { getOptimizedCaseImage } from '@/utils/imageUtils';
+import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage } from '@/utils/imageUtils';
 interface StockCaseCardProps {
   stockCase: StockCase;
   onViewDetails: (id: string) => void;
@@ -149,6 +149,8 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
   const shortDescription = stockCase.description?.trim();
   const cleanedLongDescription = stripFiftyTwoWeekSummary(stockCase.long_description);
   const optimizedImageSources = getOptimizedCaseImage(stockCase.image_url);
+  const displayImageSrc = optimizedImageSources?.src ?? stockCase.image_url ?? CASE_IMAGE_PLACEHOLDER;
+  const displayImageSrcSet = optimizedImageSources?.srcSet;
   const previewText = shortDescription && shortDescription.length > 0
     ? shortDescription
     : cleanedLongDescription
@@ -235,11 +237,11 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
 
       <CardContent className="flex flex-1 flex-col gap-4 px-4 pb-4 pt-0 sm:px-6 sm:pb-6">
         {/* Stock Image - Responsive */}
-        {stockCase.image_url && <div className="relative w-full h-40 sm:h-48 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group/image">
+        {displayImageSrc && <div className="relative w-full h-40 sm:h-48 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group/image">
             <img
-              src={optimizedImageSources?.src ?? stockCase.image_url}
-              srcSet={optimizedImageSources?.srcSet}
-              alt={`${stockCase.company_name} stock chart`}
+              src={displayImageSrc}
+              srcSet={displayImageSrcSet}
+              alt={stockCase.company_name ? `${stockCase.company_name} illustration` : 'Investeringscase'}
               className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105"
               loading="lazy"
               decoding="async"
