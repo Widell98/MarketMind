@@ -395,14 +395,8 @@ const StockCaseDetail = () => {
           {currentVersion?.image_url && (
             <div className="space-y-4">
               {/* Version info and controls */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {hasMultipleVersions && (
-                    <Badge variant="outline" className="text-xs">
-                      {currentImageIndex + 1} av {timeline.length}
-                    </Badge>
-                  )}
-                </div>
+              <div className="flex items-center justify-between min-h-[1.5rem]">
+                <div className="flex items-center gap-2 flex-1" aria-hidden="true" />
                 
                 {canDeleteCurrent && (
                   <Button 
@@ -473,6 +467,14 @@ const StockCaseDetail = () => {
                   </div>
                 )}
               </div>
+
+              {hasMultipleVersions && (
+                <div className="flex justify-center mt-2">
+                  <Badge variant="outline" className="text-xs">
+                    {currentImageIndex + 1} av {timeline.length}
+                  </Badge>
+                </div>
+              )}
 
               {/* Dots indicator */}
               {hasMultipleVersions && (
