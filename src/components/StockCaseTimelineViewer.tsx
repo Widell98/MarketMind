@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { History, Clock, Image as ImageIcon, Trash2, FileText, ChevronLeft, ChevronRight, Edit3, ArrowLeft } from 'lucide-react';
 import { useStockCaseUpdates, StockCaseUpdate } from '@/hooks/useStockCaseUpdates';
+import { getOptimizedCaseImage } from '@/utils/imageUtils';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -53,6 +54,7 @@ const StockCaseTimelineViewer: React.FC<StockCaseTimelineViewerProps> = ({
 
   // Current version based on carousel index
   const currentVersion = timeline[currentIndex];
+  const optimizedImageSources = getOptimizedCaseImage(currentVersion?.image_url);
   const hasMultipleVersions = timeline.length > 1;
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('sv-SE', {
@@ -152,10 +154,13 @@ const StockCaseTimelineViewer: React.FC<StockCaseTimelineViewerProps> = ({
         <div className="space-y-3">
           <div className="relative group">
             <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
-              <img 
-                src={currentVersion.image_url} 
-                alt={currentVersion.title || ''} 
-                className="w-full h-full object-cover transition-all duration-300" 
+              <img
+                src={optimizedImageSources?.src ?? currentVersion.image_url}
+                srcSet={optimizedImageSources?.srcSet}
+                alt={currentVersion.title || ''}
+                className="w-full h-full object-cover transition-all duration-300"
+                loading="lazy"
+                decoding="async"
               />
               
               {/* Navigation arrows - always visible if multiple versions */}

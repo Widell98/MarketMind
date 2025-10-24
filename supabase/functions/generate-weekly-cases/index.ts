@@ -236,7 +236,7 @@ const sanitizeWebsite = (value: unknown): SanitizedWebsite | null => {
     return {
       hostname,
       url: `https://${hostname}`,
-      logoUrl: `https://logo.clearbit.com/${hostname}?size=400`,
+      logoUrl: `https://logo.clearbit.com/${hostname}?size=800&format=png`,
     };
   } catch (_error) {
     return null;

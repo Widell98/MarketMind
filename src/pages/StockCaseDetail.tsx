@@ -19,6 +19,7 @@ import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
 import { highlightNumbersSafely } from '@/utils/sanitizer';
 import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
+import { getOptimizedCaseImage } from '@/utils/imageUtils';
 import AddStockCaseUpdateDialog from '@/components/AddStockCaseUpdateDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { formatCurrency } from '@/utils/currencyUtils';
@@ -120,6 +121,8 @@ const StockCaseDetail = () => {
   const isAiGeneratedImage = currentVersion?.isOriginal
     ? isAiGeneratedCase
     : currentVersion?.update_type === 'ai_generated_update';
+
+  const optimizedImageSources = getOptimizedCaseImage(currentVersion?.image_url);
 
   const imageWrapperClasses = cn(
     'relative group mx-auto w-full rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300',
@@ -438,7 +441,8 @@ const StockCaseDetail = () => {
               <div className={imageWrapperClasses}>
                 <div className={imageDisplayWrapperClasses}>
                   <img
-                    src={currentVersion.image_url}
+                    src={optimizedImageSources?.src ?? currentVersion.image_url}
+                    srcSet={optimizedImageSources?.srcSet}
                     alt={displayTitle}
                     loading="lazy"
                     decoding="async"
