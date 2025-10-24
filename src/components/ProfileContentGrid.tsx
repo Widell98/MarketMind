@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Heart, MessageCircle, Eye, Calendar, TrendingUp, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getOptimizedCaseImage } from '@/utils/imageUtils';
 
 interface ContentItem {
   id: string;
@@ -137,8 +138,10 @@ const ProfileContentGrid: React.FC<ProfileContentGridProps> = ({
           {filteredContent.map((item) => {
             // Render stock cases as visual cards (Instagram-style)
             if (item.type === 'stock_case') {
+              const optimizedSources = getOptimizedCaseImage(item.image_url);
+
               return (
-                <Card 
+                <Card
                   key={`${item.type}-${item.id}`}
                   className="group cursor-pointer overflow-hidden hover:shadow-lg transition-all duration-300 border-0 shadow-md"
                   onClick={() => handleContentClick(item)}
@@ -146,9 +149,12 @@ const ProfileContentGrid: React.FC<ProfileContentGridProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="relative aspect-square md:aspect-auto">
                       <img
-                        src={item.image_url || getDefaultImage(item)}
+                        src={optimizedSources?.src ?? item.image_url ?? getDefaultImage(item)}
+                        srcSet={optimizedSources?.srcSet}
                         alt={item.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                        decoding="async"
                       />
                       
                       {/* Status indicator */}

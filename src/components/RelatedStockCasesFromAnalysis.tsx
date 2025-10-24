@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
+import { getOptimizedCaseImage } from '@/utils/imageUtils';
 
 interface RelatedStockCasesFromAnalysisProps {
   analysisId: string;
@@ -256,8 +257,11 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {displayCases.map((stockCase) => (
-          <div key={stockCase.id} className="border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+        {displayCases.map((stockCase) => {
+          const optimizedSources = getOptimizedCaseImage(stockCase.image_url);
+
+          return (
+            <div key={stockCase.id} className="border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
@@ -296,10 +300,13 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
                 </div>
               </div>
               {stockCase.image_url && (
-                <img 
-                  src={stockCase.image_url} 
+                <img
+                  src={optimizedSources?.src ?? stockCase.image_url}
+                  srcSet={optimizedSources?.srcSet}
                   alt={stockCase.company_name}
                   className="w-12 h-12 rounded-lg object-cover ml-3"
+                  loading="lazy"
+                  decoding="async"
                 />
               )}
             </div>
@@ -347,8 +354,9 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
                 Visa case
               </Button>
             </div>
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </CardContent>
     </Card>
   );

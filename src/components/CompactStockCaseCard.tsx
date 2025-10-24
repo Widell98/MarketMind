@@ -10,6 +10,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import LoginPromptModal from '@/components/LoginPromptModal';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
+import { getOptimizedCaseImage } from '@/utils/imageUtils';
 
 interface CompactStockCaseCardProps {
   stockCase: any;
@@ -22,6 +23,7 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   const isOwner = user && stockCase.user_id === user.id;
+  const optimizedImageSources = getOptimizedCaseImage(stockCase.image_url);
 
   const handleClick = () => {
     if (!user) {
@@ -132,10 +134,13 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
         {/* Image/Visual */}
         <div className="relative aspect-[4/3] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden mb-3">
           {stockCase.image_url ? (
-            <img 
-              src={stockCase.image_url} 
+            <img
+              src={optimizedImageSources?.src ?? stockCase.image_url}
+              srcSet={optimizedImageSources?.srcSet}
               alt={stockCase.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+              loading="lazy"
+              decoding="async"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
