@@ -2,11 +2,15 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { StockCase } from '@/types/stockCase';
+import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 
 // Helper function to ensure proper typing from database
 const transformStockCase = (rawCase: any): StockCase => {
+  const normalizedTitle = normalizeStockCaseTitle(rawCase.title, rawCase.company_name);
+
   return {
     ...rawCase,
+    title: normalizedTitle,
     status: (rawCase.status || 'active') as 'active' | 'winner' | 'loser',
     is_public: rawCase.is_public ?? true,
   };

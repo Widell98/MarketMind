@@ -14,6 +14,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
 import ProfileContentGrid from '@/components/ProfileContentGrid';
+import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 
 const UserProfile = () => {
   const { userId } = useParams<{ userId: string }>();
@@ -83,7 +84,12 @@ const UserProfile = () => {
           .eq('is_public', true)
           .order('created_at', { ascending: false });
 
-        setStockCases(stockCasesData || []);
+        const sanitizedStockCases = (stockCasesData || []).map((stockCase) => ({
+          ...stockCase,
+          title: normalizeStockCaseTitle(stockCase.title, stockCase.company_name),
+        }));
+
+        setStockCases(sanitizedStockCases);
         setAnalyses(analysesData || []);
 
       } catch (error) {

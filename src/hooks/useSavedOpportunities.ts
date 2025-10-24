@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 
 export type SavedOpportunity = {
   id: string;
@@ -48,7 +49,14 @@ export const useSavedOpportunities = () => {
               .select('*')
               .eq('id', item.item_id)
               .single();
-            relatedData = { stock_cases: data };
+            relatedData = {
+              stock_cases: data
+                ? {
+                    ...data,
+                    title: normalizeStockCaseTitle(data.title, data.company_name),
+                  }
+                : null,
+            };
           } else if (item.item_type === 'analysis') {
             const { data } = await supabase
               .from('analyses')

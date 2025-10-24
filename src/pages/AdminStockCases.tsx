@@ -39,6 +39,7 @@ import {
   STOCK_CASE_EDITING_ID_KEY,
   STOCK_CASE_IS_INDEX_KEY,
 } from '@/constants/storageKeys';
+import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 
 type StockCaseWithActions = {
   id: string;
@@ -235,9 +236,10 @@ const AdminStockCases = () => {
       const transformedData: StockCaseWithActions[] = (casesData || []).map(stockCase => {
         const profile = profilesData.find(p => p.id === stockCase.user_id);
         const category = categoriesData.find(c => c.id === stockCase.category_id);
-        
+
         return {
           ...stockCase,
+          title: normalizeStockCaseTitle(stockCase.title, stockCase.company_name),
           status: (stockCase.status || 'active') as 'active' | 'winner' | 'loser',
           profiles: profile ? { 
             username: profile.username, 

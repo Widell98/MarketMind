@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 
 interface RelatedStockCaseProps {
   stockCaseId: string;
@@ -76,8 +77,11 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
         ]);
       }
 
+      const normalizedTitle = normalizeStockCaseTitle(caseData.title, caseData.company_name);
+
       return {
         ...caseData,
+        title: normalizedTitle,
         likes_count: likeCountResult?.data || 0,
         follows_count: followCountResult?.data || 0,
         isLiked: userLikeResult?.data || false,

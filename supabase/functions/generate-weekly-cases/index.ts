@@ -191,11 +191,11 @@ const sanitizeCaseData = (rawCase: any) => {
     return null;
   }
 
-  const title = typeof rawCase.title === 'string' ? rawCase.title.trim() : '';
+  const rawTitle = typeof rawCase.title === 'string' ? rawCase.title.trim() : '';
   const companyName = typeof rawCase.company_name === 'string' ? rawCase.company_name.trim() : '';
   const descriptionRaw = typeof rawCase.description === 'string' ? rawCase.description.trim() : '';
-  const longDescription = sanitizeLongDescription(
-    rawCase.long_description ?? rawCase.investment_thesis ?? rawCase.analysis,
+  let longDescription = sanitizeLongDescription(
+    rawCase.analysis ?? rawCase.long_description ?? rawCase.investment_thesis,
   );
   const ticker = typeof rawCase.ticker === 'string' ? rawCase.ticker.trim().toUpperCase() : '';
   const websiteInfo = sanitizeWebsite(
@@ -206,7 +206,11 @@ const sanitizeCaseData = (rawCase: any) => {
   const lowerDescription = descriptionRaw.toLowerCase();
   const forbiddenTerms = ['fiktiv', 'fiktivt', 'påhitt', 'låtsas', 'fictional'];
 
-  if (!title || !companyName || !descriptionRaw) {
+  if ((!rawTitle || rawTitle.length === 0) && (!companyName || companyName.length === 0)) {
+    return null;
+  }
+
+  if (!descriptionRaw) {
     return null;
   }
 
@@ -226,6 +230,26 @@ const sanitizeCaseData = (rawCase: any) => {
     return null;
   }
 
+  const stripInvestmentAnalysisPrefix = (value: string): string => {
+    let result = value.trim();
+
+    const patterns = [
+      /^investeringsanalys\s+(?:för|av)\s+/i,
+      /^investeringsanalys\s*:\s*/i,
+    ];
+
+    for (const pattern of patterns) {
+      if (pattern.test(result)) {
+        result = result.replace(pattern, '').trim();
+      }
+    }
+
+    return result;
+  };
+
+  const cleanedTitle = rawTitle ? stripInvestmentAnalysisPrefix(rawTitle) : '';
+  const resolvedTitle = cleanedTitle || rawTitle || companyName;
+
   const description = descriptionRaw.replace(/\s+/g, ' ');
   const shortDescription = description.length > 280 ? `${description.slice(0, 277).trimEnd()}...` : description;
 
@@ -233,9 +257,27 @@ const sanitizeCaseData = (rawCase: any) => {
   const marketCap = rawCase.market_cap ? String(rawCase.market_cap).trim() : null;
   const peRatio = rawCase.pe_ratio ? String(rawCase.pe_ratio).trim() : null;
   const dividendYield = rawCase.dividend_yield ? String(rawCase.dividend_yield).trim() : null;
+  const fiftyTwoWeekHigh = sanitizeNumber(
+    rawCase.fifty_two_week_high ?? rawCase.week_52_high ?? rawCase['52_week_high'],
+  );
+  const fiftyTwoWeekLow = sanitizeNumber(
+    rawCase.fifty_two_week_low ?? rawCase.week_52_low ?? rawCase['52_week_low'],
+  );
+
+  const metricsSummary: string[] = [];
+  if (fiftyTwoWeekHigh !== null) {
+    metricsSummary.push(`52-veckors högsta: ${fiftyTwoWeekHigh}`);
+  }
+  if (fiftyTwoWeekLow !== null) {
+    metricsSummary.push(`52-veckors lägsta: ${fiftyTwoWeekLow}`);
+  }
+
+  if (metricsSummary.length > 0) {
+    longDescription = `${longDescription}\n\n${metricsSummary.join(' | ')}`;
+  }
 
   return {
-    title,
+    title: resolvedTitle,
     company_name: companyName,
     description: shortDescription,
     long_description: longDescription,
@@ -466,20 +508,41 @@ serve(async (req) => {
 
       usedTickerSymbols.add(selectedTicker);
 
-      const prompt = `Som en professionell finansanalytiker, skapa ett realistiskt aktiefall för svenska investerare.
+      const prompt = `
+Du är en professionell finansanalytiker som skriver realistiska aktiecase för svenska investerare.
 
-Fokus: ${style}-investering inom ${sector}-sektorn
-Bolag: ${selectedName} (${selectedTicker})
-Nuvarande pris från Google Sheet: ${sheetPrice !== null ? `${sheetPrice} ${sheetCurrency ?? 'SEK'}` : 'Okänt, använd rimligt värde'}
-Stil: Professionell men tillgänglig
+🎯 Uppdrag:
+Skapa ett detaljerat investeringscase för ett bolag inom sektorn "${sector}" med inriktning på "${style}"-investeringar.
 
-Krav:
-- Använd exakt ticker "${selectedTicker}" i fältet "ticker".
-- Bekräfta att bolaget är verkligt och börsnoterat.
-- Ange bolagets officiella webbplatsdomän (utan extra text).
-- Skriv en kort sammanfattning (max 200 tecken) och en längre investeringsanalys med minst tre meningar om varför bolaget är intressant.
-- Inkludera rimliga nyckeltal (t.ex. sektortillhörighet, P/E-tal, utdelning).
+📊 Fakta att utgå från:
+- Bolag: ${selectedName} (${selectedTicker})
+- Nuvarande pris (från Google Sheet): ${sheetPrice !== null ? `${sheetPrice} ${sheetCurrency ?? 'SEK'}` : 'okänt, använd ett rimligt värde baserat på börsdata'}
+- Analysen ska gälla verkliga, börsnoterade bolag. Kontrollera att bolaget existerar och är listat på en erkänd börs.
+
+🧠 Stil och ton:
+- Professionell, trovärdig och pedagogisk ton.
 - Skriv på svenska.
+- Undvik överdrifter, använd faktabaserad argumentation.
+
+📈 Innehållskrav:
+1. Förklara varför bolaget är intressant för investerare inom "${style}"-strategin.
+2. Inkludera relevanta finansiella nyckeltal (P/E-tal, direktavkastning, marknadsvärde).
+3. Ange numeriska värden för 52-veckors högsta och lägsta kurs.
+4. Ange rimliga målpriser (target_price), köp-nivåer (entry_price) och stop-loss baserat på kursnivåer.
+5. Lägg till bolagets officiella webbplats (endast domän, t.ex. "volvocars.com").
+
+📊 Analysdel – krav på innehåll och ton:
+Skriv en engagerande men faktabaserad analys som skapar intresse för bolaget redan i de första meningarna.
+
+Analysen ska:
+- Inledas med en kort men slagkraftig sammanfattning av bolagets kärnverksamhet och varför det är intressant just nu.
+- Beskriva bolagets styrkor (t.ex. marknadsposition, innovation, tillväxtpotential eller stabilitet).
+- Nämna minst ett aktuellt tema eller trend i branschen som påverkar bolaget (t.ex. elektrifiering, digitalisering, geopolitik, ESG).
+- Inkludera en balanserad syn på risker eller utmaningar, men håll fokus på möjligheterna.
+- Avsluta med ett resonemang om varför aktien kan vara attraktiv för investerare med ${style}-inriktning.
+
+Exempel på önskad ton:
+"Med sin starka nisch inom järnvägsunderhåll och ökande efterfrågan på klimatsmarta transporter står Railcare väl positionerat för framtida tillväxt. Samtidigt ger bolagets stabila kontraktsbas och pålitliga kassaflöden en attraktiv risk/reward-profil för investerare som söker utdelning och defensiv exponering mot infrastruktursektorn."
 
 Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown):
 {
@@ -491,6 +554,8 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
   "market_cap": "string",
   "pe_ratio": "string",
   "dividend_yield": "string",
+  "fifty_two_week_high": number,
+  "fifty_two_week_low": number,
   "ticker": "string",
   "official_website": "string",
   "target_price": number,

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useUserFollows } from '@/hooks/useUserFollows';
@@ -11,14 +11,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ToastAction } from '@/components/ui/toast';
-import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Calendar, Building, BarChart3, Eye, Users, AlertTriangle, Target, StopCircle, Brain, ShoppingCart, Plus, UserPlus, PlusCircle, History, MessageCircle, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Calendar, Building, BarChart3, Eye, Users, AlertTriangle, Target, StopCircle, Brain, ShoppingCart, Plus, UserPlus, PlusCircle, History, ChevronLeft, ChevronRight, Trash2, MessageSquare } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
 import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
 import { highlightNumbersSafely } from '@/utils/sanitizer';
-import StockCaseComments from '@/components/StockCaseComments';
+import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 import AddStockCaseUpdateDialog from '@/components/AddStockCaseUpdateDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { formatCurrency } from '@/utils/currencyUtils';
@@ -27,9 +27,7 @@ import type { StockCase } from '@/types/stockCase';
 const StockCaseDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuth();
-  const [showFullDescription, setShowFullDescription] = useState(false);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [updateToDelete, setUpdateToDelete] = useState<string | null>(null);
@@ -39,19 +37,6 @@ const StockCaseDetail = () => {
   const { likeCount, isLiked, toggleLike, loading: likesLoading } = useStockCaseLikes(id || '');
   const { followUser, unfollowUser, isFollowing } = useUserFollows();
   const { updates, isLoading: updatesLoading, deleteUpdate } = useStockCaseUpdates(id || '');
-
-  // Effect to scroll to comments when navigated from "Diskutera" button
-  useEffect(() => {
-    if (location.state?.scrollToComments) {
-      setTimeout(() => {
-        const commentsSection = document.getElementById('comments-section');
-        if (commentsSection) {
-          commentsSection.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 500);
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state]);
 
   // NOW we can have conditional logic and early returns
   if (loading) {
@@ -129,7 +114,8 @@ const StockCaseDetail = () => {
   const currentVersion = timeline[currentImageIndex];
   const hasMultipleVersions = timeline.length > 1;
 
-  const displayTitle = currentVersion?.title?.trim() ? currentVersion.title : stockCase.title;
+  const normalizedCaseTitle = normalizeStockCaseTitle(stockCase.title, stockCase.company_name);
+  const displayTitle = normalizeStockCaseTitle(currentVersion?.title, normalizedCaseTitle) || normalizedCaseTitle;
 
   const handleShare = async () => {
     const shareTitle = displayTitle;
@@ -187,6 +173,18 @@ const StockCaseDetail = () => {
     }
   };
 
+  const handleDiscussWithAI = () => {
+    const companyName = stockCase.company_name || displayTitle || 'Aktiecase';
+    const ticker = stockCase.ticker ? ` (${stockCase.ticker})` : '';
+    navigate('/ai-chatt', {
+      state: {
+        createNewSession: true,
+        sessionName: `${companyName}${ticker}`,
+        initialMessage: `Kan vi diskutera ${companyName}${ticker} vidare? Jag vill få fler investeringsinsikter om aktien.`
+      }
+    });
+  };
+
   const handleSaveSuccess = () => {
     toast({
       title: "Sparad till portfölj!",
@@ -199,14 +197,6 @@ const StockCaseDetail = () => {
     if (typeof (window as any).refreshCommunityRecommendations === 'function') {
       (window as any).refreshCommunityRecommendations();
     }
-  };
-
-  // Format relative date
-  const formatRelativeDate = (dateString: string) => {
-    return formatDistanceToNow(new Date(dateString), {
-      addSuffix: true,
-      locale: sv
-    });
   };
 
   // Carousel navigation
@@ -302,15 +292,37 @@ const StockCaseDetail = () => {
     });
   };
 
-  const normalizedLongDescription = stockCase.long_description
-    ? stockCase.long_description.replace(/\s+/g, ' ').trim()
+  const rawAnalysisDescription = stockCase.long_description
+    ?? currentVersion?.description
+    ?? stockCase.description
+    ?? null;
+
+  let fiftyTwoWeekSummary: string | null = null;
+  let cleanedAnalysisDescription: string | null = rawAnalysisDescription;
+
+  if (typeof rawAnalysisDescription === 'string') {
+    const summaryMatch = rawAnalysisDescription.match(/52-veckors\s+högsta:\s*[0-9.,-]+\s*\|\s*52-veckors\s+lägsta:\s*[0-9.,-]+/i);
+
+    if (summaryMatch) {
+      const normalizedSummary = summaryMatch[0]
+        .replace(/\s*\|\s*/g, ' | ')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+
+      fiftyTwoWeekSummary = normalizedSummary;
+
+      const withoutSummary = rawAnalysisDescription
+        .replace(summaryMatch[0], '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
+      cleanedAnalysisDescription = withoutSummary.length > 0 ? withoutSummary : null;
+    }
+  }
+
+  const displayedAnalysisDescription = typeof cleanedAnalysisDescription === 'string'
+    ? (cleanedAnalysisDescription.trim().length > 0 ? cleanedAnalysisDescription.trim() : null)
     : null;
-  const normalizedCurrentDescription = currentVersion?.description
-    ? currentVersion.description.replace(/\s+/g, ' ').trim()
-    : null;
-  const showLongDescriptionCard = Boolean(
-    normalizedLongDescription && normalizedLongDescription !== normalizedCurrentDescription,
-  );
 
   return (
     <Layout>
@@ -385,12 +397,6 @@ const StockCaseDetail = () => {
               {/* Version info and controls */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Badge variant={currentImageIndex === 0 ? "default" : "secondary"}>
-                    {currentVersion?.isOriginal ? 'Original' : currentImageIndex === 0 ? 'Senaste version' : 'Historisk version'}
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {formatRelativeDate(currentVersion.created_at)}
-                  </span>
                   {hasMultipleVersions && (
                     <Badge variant="outline" className="text-xs">
                       {currentImageIndex + 1} av {timeline.length}
@@ -411,11 +417,11 @@ const StockCaseDetail = () => {
                 )}
               </div>
 
-              <div className="relative group">
+              <div className="relative group mx-auto w-full max-w-2xl">
                 <img
                   src={currentVersion.image_url}
                   alt={displayTitle}
-                  className="w-full h-auto rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300"
+                  className="w-full h-auto max-h-[360px] rounded-lg shadow-lg object-cover cursor-pointer hover:shadow-xl transition-all duration-300"
                   onClick={() => {
                     window.open(currentVersion.image_url, '_blank');
                   }}
@@ -498,10 +504,7 @@ const StockCaseDetail = () => {
                           : 'bg-muted hover:bg-muted/80'
                       }`}
                     >
-                      {version.isOriginal ? 'Original' : `V${timeline.length - index}`}
-                      <span className="block text-[10px] opacity-70 mt-0.5">
-                        {formatRelativeDate(version.created_at)}
-                      </span>
+                      {index === 0 ? 'Nuvarande' : `Historik ${index}`}
                     </button>
                   ))}
                 </div>
@@ -522,6 +525,14 @@ const StockCaseDetail = () => {
             <Button variant="outline" onClick={handleShare} className="flex items-center gap-2 text-lg px-6 py-3">
               <Share2 className="w-5 h-5" />
               Dela
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleDiscussWithAI}
+              className="flex items-center gap-2 text-lg px-6 py-3"
+            >
+              <MessageSquare className="w-5 h-5" />
+              Diskutera i AI-chatten
             </Button>
             <Button
               variant="outline"
@@ -581,31 +592,8 @@ const StockCaseDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-6">
-            {/* Case Description with Structured Sections */}
-            {showLongDescriptionCard && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Investeringscase</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {formatCaseDescription(stockCase.long_description ?? null)}
-                </CardContent>
-              </Card>
-            )}
-
-            {currentVersion?.description && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Analys</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {formatCaseDescription(currentVersion.description)}
-                </CardContent>
-              </Card>
-            )}
-
             {/* Combined Overview Card - only show if there are financial metrics */}
-            {(stockCase.entry_price || stockCase.current_price || stockCase.target_price || stockCase.stop_loss || stockCase.sector || stockCase.market_cap || stockCase.pe_ratio || stockCase.dividend_yield) && (
+            {(stockCase.entry_price || stockCase.current_price || stockCase.target_price || stockCase.stop_loss || stockCase.sector || stockCase.market_cap || stockCase.pe_ratio || stockCase.dividend_yield || fiftyTwoWeekSummary) && (
               <Card>
                 <CardHeader>
                   <CardTitle>Finansiell Översikt</CardTitle>
@@ -663,7 +651,28 @@ const StockCaseDetail = () => {
                         <p className="font-semibold">{stockCase.dividend_yield}</p>
                       </div>
                     )}
+                    {fiftyTwoWeekSummary && (
+                      <div className="col-span-2 md:col-span-4">
+                        <p className="text-sm text-muted-foreground">52-veckors spann</p>
+                        <p
+                          className="font-semibold"
+                          dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(fiftyTwoWeekSummary) }}
+                        />
+                      </div>
+                    )}
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Case Description with Structured Sections */}
+            {displayedAnalysisDescription && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Analys</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {formatCaseDescription(displayedAnalysisDescription)}
                 </CardContent>
               </Card>
             )}
@@ -687,10 +696,6 @@ const StockCaseDetail = () => {
             {/* AI Chat Integration - temporarily disabled per request */}
             {/* <StockCaseAIChat stockCase={stockCase} /> */}
 
-            {/* Comments Section with improved placeholder */}
-            <div id="comments-section">
-              <StockCaseComments stockCaseId={stockCase.id} />
-            </div>
           </div>
 
           {/* Sidebar */}
@@ -786,16 +791,6 @@ const StockCaseDetail = () => {
                       Gillningar
                     </span>
                     <span className="font-semibold">{likeCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <MessageCircle className="w-4 h-4" />
-                      Kommentarer
-                    </span>
-                    <span className="font-semibold">
-                      {/* TODO: Get actual comment count */}
-                      --
-                    </span>
                   </div>
                 </div>
               </CardContent>
