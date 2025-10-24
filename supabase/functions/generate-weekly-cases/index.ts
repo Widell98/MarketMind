@@ -2,6 +2,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { parse } from "https://deno.land/std@0.168.0/encoding/csv.ts";
+import { jsonrepair } from 'https://esm.sh/jsonrepair@3.6.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -667,7 +668,18 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
 
       try {
         const normalizedContent = extractJsonPayload(generatedContent);
-        const caseData = JSON.parse(normalizedContent);
+        let caseData: unknown;
+
+        try {
+          caseData = JSON.parse(normalizedContent);
+        } catch (initialParseError) {
+          try {
+            const repairedContent = jsonrepair(normalizedContent);
+            caseData = JSON.parse(repairedContent);
+          } catch (_) {
+            throw initialParseError;
+          }
+        }
         const sanitized = sanitizeCaseData(caseData);
 
         if (!sanitized) {
