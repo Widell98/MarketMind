@@ -22,6 +22,7 @@ import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 import AddStockCaseUpdateDialog from '@/components/AddStockCaseUpdateDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { formatCurrency } from '@/utils/currencyUtils';
+import { cn } from '@/lib/utils';
 import type { StockCase } from '@/types/stockCase';
 
 const StockCaseDetail = () => {
@@ -102,7 +103,8 @@ const StockCaseDetail = () => {
       image_url: stockCase?.image_url || '',
       created_at: stockCase?.created_at || '',
       user_id: stockCase?.user_id || '',
-      isOriginal: true
+      isOriginal: true,
+      update_type: 'original' as const,
     },
     ...(updates || []).map(update => ({
       ...update,
@@ -113,6 +115,28 @@ const StockCaseDetail = () => {
   // Get current version based on carousel index
   const currentVersion = timeline[currentImageIndex];
   const hasMultipleVersions = timeline.length > 1;
+
+  const isAiGeneratedCase = Boolean(stockCase.ai_generated);
+  const isAiGeneratedImage = currentVersion?.isOriginal
+    ? isAiGeneratedCase
+    : currentVersion?.update_type === 'ai_generated_update';
+
+  const imageWrapperClasses = cn(
+    'relative group mx-auto w-full rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300',
+    isAiGeneratedImage ? 'max-w-xl' : 'max-w-4xl'
+  );
+
+  const imageDisplayWrapperClasses = cn(
+    'overflow-hidden rounded-lg transition-all duration-300',
+    isAiGeneratedImage ? 'bg-muted/70 p-4' : ''
+  );
+
+  const imageElementClasses = cn(
+    'w-full h-auto transition-all duration-300 cursor-pointer',
+    isAiGeneratedImage
+      ? 'max-h-[280px] object-contain'
+      : 'max-h-[560px] object-cover'
+  );
 
   const normalizedCaseTitle = normalizeStockCaseTitle(stockCase.title, stockCase.company_name);
   const displayTitle = normalizeStockCaseTitle(currentVersion?.title, normalizedCaseTitle) || normalizedCaseTitle;
@@ -411,16 +435,20 @@ const StockCaseDetail = () => {
                 )}
               </div>
 
-              <div className="relative group mx-auto w-full max-w-2xl">
-                <img
-                  src={currentVersion.image_url}
-                  alt={displayTitle}
-                  className="w-full h-auto max-h-[360px] rounded-lg shadow-lg object-cover cursor-pointer hover:shadow-xl transition-all duration-300"
-                  onClick={() => {
-                    window.open(currentVersion.image_url, '_blank');
-                  }}
-                />
-                
+              <div className={imageWrapperClasses}>
+                <div className={imageDisplayWrapperClasses}>
+                  <img
+                    src={currentVersion.image_url}
+                    alt={displayTitle}
+                    loading="lazy"
+                    decoding="async"
+                    className={imageElementClasses}
+                    onClick={() => {
+                      window.open(currentVersion.image_url, '_blank');
+                    }}
+                  />
+                </div>
+
                 {/* Navigation arrows */}
                 {hasMultipleVersions && (
                   <>
@@ -446,8 +474,8 @@ const StockCaseDetail = () => {
 
                 {/* Expand button */}
                 <div className="absolute top-4 right-4">
-                  <Button 
-                    variant="secondary" 
+                  <Button
+                    variant="secondary"
                     size="sm"
                     onClick={() => window.open(currentVersion.image_url, '_blank')}
                     className="bg-black/70 hover:bg-black/80 text-white border-0"
@@ -463,6 +491,15 @@ const StockCaseDetail = () => {
                     <Badge variant="secondary" className="bg-black/70 text-white">
                       <History className="w-3 h-3 mr-1" />
                       Historisk
+                    </Badge>
+                  </div>
+                )}
+
+                {isAiGeneratedImage && (
+                  <div className="absolute bottom-4 left-4">
+                    <Badge variant="secondary" className="bg-black/70 text-white">
+                      <Brain className="w-3 h-3 mr-1" />
+                      AI-genererad bild
                     </Badge>
                   </div>
                 )}
