@@ -54,13 +54,70 @@ const sanitizeNumber = (value: unknown): number | null => {
   return null;
 };
 
-const normalizeParagraphs = (value: string): string =>
-  value
-    .replace(/\r\n/g, '\n')
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .join('\n\n');
+const normalizeParagraphs = (value: string): string => {
+  const normalized = value.replace(/\r\n/g, '\n').trim();
+
+  if (!normalized) {
+    return '';
+  }
+
+  const initialParagraphs = normalized
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter((paragraph) => paragraph.length > 0);
+
+  let paragraphs: string[] = [];
+
+  if (initialParagraphs.length > 1) {
+    paragraphs = initialParagraphs.map((paragraph) => paragraph.replace(/\s+/g, ' '));
+  } else {
+    const [singleBlock = normalized] = initialParagraphs.length === 1 ? initialParagraphs : [normalized];
+    const lineSeparated = singleBlock
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    if (lineSeparated.length > 1) {
+      paragraphs = lineSeparated.map((line) => line.replace(/\s+/g, ' '));
+    } else {
+      const sentences = singleBlock
+        .replace(/\s+/g, ' ')
+        .split(/(?<=[.!?])\s+(?=[A-ZÅÄÖ0-9])/u)
+        .map((sentence) => sentence.trim())
+        .filter((sentence) => sentence.length > 0);
+
+      if (sentences.length <= 1) {
+        paragraphs = [singleBlock.replace(/\s+/g, ' ')];
+      } else {
+        const assembled: string[] = [];
+        let current = '';
+
+        for (const sentence of sentences) {
+          if (!current) {
+            current = sentence;
+            continue;
+          }
+
+          const candidate = `${current} ${sentence}`;
+          if (candidate.length <= 400) {
+            current = candidate;
+          } else {
+            assembled.push(current);
+            current = sentence;
+          }
+        }
+
+        if (current) {
+          assembled.push(current);
+        }
+
+        paragraphs = assembled;
+      }
+    }
+  }
+
+  return paragraphs.join('\n\n');
+};
 
 const sanitizeLongDescription = (value: unknown): string | null => {
   if (typeof value !== 'string') {
@@ -546,6 +603,7 @@ Analysen ska:
 - Inledas med en kort men slagkraftig sammanfattning av bolagets kärnverksamhet och varför det är intressant just nu.
 - Beskriva bolagets styrkor (t.ex. marknadsposition, innovation, tillväxtpotential eller stabilitet).
 - Nämna minst ett aktuellt tema eller trend i branschen som påverkar bolaget (t.ex. elektrifiering, digitalisering, geopolitik, ESG).
+- Bestå av minst tre stycken separerade av tomma rader så att analysen blir lättläst.
 - Inkludera en balanserad syn på risker eller utmaningar, men håll fokus på möjligheterna.
 - Avsluta med ett resonemang om varför aktien kan vara attraktiv för investerare med ${style}-inriktning.
 
