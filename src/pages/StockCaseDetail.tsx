@@ -684,19 +684,23 @@ const StockCaseDetail = () => {
                         <p className="font-semibold">{stockCase.pe_ratio}</p>
                       </div>
                     )}
-                    {stockCase.dividend_yield && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Utdelning</p>
-                        <p className="font-semibold">{stockCase.dividend_yield}</p>
-                      </div>
-                    )}
-                    {fiftyTwoWeekSummary && (
-                      <div className="col-span-2 md:col-span-4">
-                        <p className="text-sm text-muted-foreground">52-veckors spann</p>
-                        <p
-                          className="font-semibold"
-                          dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(fiftyTwoWeekSummary) }}
-                        />
+                    {(stockCase.dividend_yield || fiftyTwoWeekSummary) && (
+                      <div className="col-span-2 flex flex-col gap-6 md:flex-row md:items-start">
+                        {stockCase.dividend_yield && (
+                          <div className="flex-1">
+                            <p className="text-sm text-muted-foreground">Utdelning</p>
+                            <p className="font-semibold">{stockCase.dividend_yield}</p>
+                          </div>
+                        )}
+                        {fiftyTwoWeekSummary && (
+                          <div className="flex-1">
+                            <p className="text-sm text-muted-foreground">52-veckors spann</p>
+                            <div
+                              className="font-semibold"
+                              dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(fiftyTwoWeekSummary) }}
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
