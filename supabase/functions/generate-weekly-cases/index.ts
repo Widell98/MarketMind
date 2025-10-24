@@ -285,9 +285,6 @@ const sanitizeCaseData = (rawCase: any) => {
     market_cap: marketCap,
     pe_ratio: peRatio,
     dividend_yield: dividendYield,
-    entry_price: sanitizeNumber(rawCase.entry_price),
-    target_price: sanitizeNumber(rawCase.target_price),
-    stop_loss: sanitizeNumber(rawCase.stop_loss),
     ticker,
     image_url: websiteInfo.logoUrl,
     currency: sanitizeCurrency(rawCase.currency),
@@ -520,10 +517,10 @@ serve(async (req) => {
       usedTickerSymbols.add(selectedTicker);
 
       const prompt = `
-Du är en professionell finansanalytiker som skriver realistiska aktiecase för svenska investerare.
+Du är en professionell finansanalytiker som skriver inspirerande aktiepitchar för svenska investerare.
 
 🎯 Uppdrag:
-Skapa ett detaljerat investeringscase för ett bolag inom sektorn "${sector}" med inriktning på "${style}"-investeringar.
+Skapa ett engagerande investeringscase för ett bolag inom sektorn "${sector}" med inriktning på "${style}"-strategier.
 
 📊 Fakta att utgå från:
 - Bolag: ${selectedName} (${selectedTicker})
@@ -533,13 +530,13 @@ Skapa ett detaljerat investeringscase för ett bolag inom sektorn "${sector}" me
 🧠 Stil och ton:
 - Professionell, trovärdig och pedagogisk ton.
 - Skriv på svenska.
-- Undvik överdrifter, använd faktabaserad argumentation.
+- Fokusera på att inspirera läsaren och lyfta investeringsargument snarare än exakta handelsnivåer.
 
 📈 Innehållskrav:
 1. Förklara varför bolaget är intressant för investerare inom "${style}"-strategin.
 2. Inkludera relevanta finansiella nyckeltal (P/E-tal, direktavkastning, marknadsvärde).
 3. Ange numeriska värden för 52-veckors högsta och lägsta kurs.
-4. Ange rimliga målpriser (target_price), köp-nivåer (entry_price) och stop-loss baserat på kursnivåer.
+4. Lyft fram 2–3 centrala katalysatorer eller händelser som kan driva aktien framåt.
 5. Lägg till bolagets officiella webbplats (endast domän, t.ex. "volvocars.com").
 
 📊 Analysdel – krav på innehåll och ton:
@@ -568,10 +565,7 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
   "fifty_two_week_high": number,
   "fifty_two_week_low": number,
   "ticker": "string",
-  "official_website": "string",
-  "target_price": number,
-  "entry_price": number,
-  "stop_loss": number
+  "official_website": "string"
 }`;
 
       console.log(`Generating case ${i + 1} for ${sector} - ${style}...`);
@@ -639,30 +633,22 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
           continue;
         }
 
-        const { ticker, ...caseWithoutTicker } = sanitized;
+        const { ticker, currency: sanitizedCurrency, ...caseWithoutTicker } = sanitized;
         const sanitizedTicker = normalizeTickerKey(ticker);
         if (sanitizedTicker !== expectedTicker) {
           warnings.push(`AI svarade med ticker ${sanitizedTicker || 'okänd'} istället för ${expectedTicker}. Sheet-ticker används.`);
         }
 
         const sheetInfo = findSheetTickerInfo(expectedTicker, sheetTickerIndex);
-        let entryPrice = sanitized.entry_price;
-        let targetPrice = sanitized.target_price;
-        let stopLoss = sanitized.stop_loss;
-        let currency = sanitized.currency;
+        let currency = sanitizedCurrency;
+        let currentPrice: number | null = null;
 
         if (sheetInfo) {
           const price = typeof sheetInfo.price === 'number' && Number.isFinite(sheetInfo.price)
             ? Number(sheetInfo.price)
             : null;
           if (price !== null) {
-            entryPrice = Number(price.toFixed(2));
-            if (!targetPrice || !Number.isFinite(targetPrice) || targetPrice <= 0) {
-              targetPrice = Number((price * 1.08).toFixed(2));
-            }
-            if (!stopLoss || !Number.isFinite(stopLoss) || stopLoss <= 0 || stopLoss >= entryPrice) {
-              stopLoss = Number((price * 0.92).toFixed(2));
-            }
+            currentPrice = Number(price.toFixed(2));
           }
 
           if (sheetInfo.currency && typeof sheetInfo.currency === 'string') {
@@ -677,14 +663,6 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
 
         const resolvedCurrency = currency ?? 'SEK';
 
-        if (entryPrice !== null && targetPrice !== null && targetPrice <= entryPrice) {
-          targetPrice = Number((entryPrice * 1.08).toFixed(2));
-        }
-
-        if (entryPrice !== null && stopLoss !== null && stopLoss >= entryPrice) {
-          stopLoss = Number((entryPrice * 0.92).toFixed(2));
-        }
-
         generatedCases.push({
           ...caseWithoutTicker,
           ticker: expectedTicker,
@@ -694,10 +672,10 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
           ai_batch_id: runId,
           generated_at: new Date().toISOString(),
           currency: resolvedCurrency,
-          entry_price: entryPrice,
-          current_price: entryPrice,
-          target_price: targetPrice,
-          stop_loss: stopLoss,
+          entry_price: null,
+          current_price: currentPrice,
+          target_price: null,
+          stop_loss: null,
         });
 
         console.log(`Successfully generated case: ${sanitized.title} (${expectedTicker})`);
