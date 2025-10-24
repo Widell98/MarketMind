@@ -627,7 +627,12 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
 
         const caseKey = `${sanitized.title.toLowerCase()}|${sanitized.company_name.toLowerCase()}`;
         const sanitizedTickerKey = normalizeTickerKey(sanitized.ticker);
-        if (existingCases.has(caseKey) || (sanitizedTickerKey && existingTickers.has(sanitizedTickerKey))) {
+        const expectedTicker = normalizeTickerKey(selectedTicker);
+        if (
+          existingCases.has(caseKey)
+          || (sanitizedTickerKey && existingTickers.has(sanitizedTickerKey))
+          || (expectedTicker && existingTickers.has(expectedTicker))
+        ) {
           const message = `Duplicate case skipped for ${sanitized.title}`;
           console.warn(message);
           warnings.push(message);
@@ -635,8 +640,6 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
         }
 
         const { ticker, ...caseWithoutTicker } = sanitized;
-
-        const expectedTicker = normalizeTickerKey(selectedTicker);
         const sanitizedTicker = normalizeTickerKey(ticker);
         if (sanitizedTicker !== expectedTicker) {
           warnings.push(`AI svarade med ticker ${sanitizedTicker || 'okänd'} istället för ${expectedTicker}. Sheet-ticker används.`);
