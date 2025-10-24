@@ -531,6 +531,19 @@ Skapa ett detaljerat investeringscase för ett bolag inom sektorn "${sector}" me
 4. Ange rimliga målpriser (target_price), köp-nivåer (entry_price) och stop-loss baserat på kursnivåer.
 5. Lägg till bolagets officiella webbplats (endast domän, t.ex. "volvocars.com").
 
+📊 Analysdel – krav på innehåll och ton:
+Skriv en engagerande men faktabaserad analys som skapar intresse för bolaget redan i de första meningarna.
+
+Analysen ska:
+- Inledas med en kort men slagkraftig sammanfattning av bolagets kärnverksamhet och varför det är intressant just nu.
+- Beskriva bolagets styrkor (t.ex. marknadsposition, innovation, tillväxtpotential eller stabilitet).
+- Nämna minst ett aktuellt tema eller trend i branschen som påverkar bolaget (t.ex. elektrifiering, digitalisering, geopolitik, ESG).
+- Inkludera en balanserad syn på risker eller utmaningar, men håll fokus på möjligheterna.
+- Avsluta med ett resonemang om varför aktien kan vara attraktiv för investerare med ${style}-inriktning.
+
+Exempel på önskad ton:
+"Med sin starka nisch inom järnvägsunderhåll och ökande efterfrågan på klimatsmarta transporter står Railcare väl positionerat för framtida tillväxt. Samtidigt ger bolagets stabila kontraktsbas och pålitliga kassaflöden en attraktiv risk/reward-profil för investerare som söker utdelning och defensiv exponering mot infrastruktursektorn."
+
 Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown):
 {
   "title": "string",
