@@ -710,14 +710,21 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
 
         const sheetInfo = findSheetTickerInfo(expectedTicker, sheetTickerIndex);
         let currency = sanitizedCurrency;
+        let entryPrice: number | null = null;
         let currentPrice: number | null = null;
+        let targetPrice: number | null = null;
+        let stopLoss: number | null = null;
 
         if (sheetInfo) {
           const price = typeof sheetInfo.price === 'number' && Number.isFinite(sheetInfo.price)
             ? Number(sheetInfo.price)
             : null;
           if (price !== null) {
-            currentPrice = Number(price.toFixed(2));
+            const rounded = Number(price.toFixed(2));
+            entryPrice = rounded;
+            currentPrice = rounded;
+            targetPrice = Number((rounded * 1.08).toFixed(2));
+            stopLoss = Number((rounded * 0.92).toFixed(2));
           }
 
           if (sheetInfo.currency && typeof sheetInfo.currency === 'string') {
@@ -741,10 +748,10 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
           ai_batch_id: runId,
           generated_at: new Date().toISOString(),
           currency: resolvedCurrency,
-          entry_price: null,
+          entry_price: entryPrice,
           current_price: currentPrice,
-          target_price: null,
-          stop_loss: null,
+          target_price: targetPrice,
+          stop_loss: stopLoss,
         });
 
         console.log(`Successfully generated case: ${sanitized.title} (${expectedTicker})`);
