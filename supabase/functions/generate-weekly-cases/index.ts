@@ -508,20 +508,28 @@ serve(async (req) => {
 
       usedTickerSymbols.add(selectedTicker);
 
-      const prompt = `Som en professionell finansanalytiker, skapa ett realistiskt aktiefall för svenska investerare.
+      const prompt = `
+Du är en professionell finansanalytiker som skriver realistiska aktiecase för svenska investerare.
 
-Fokus: ${style}-investering inom ${sector}-sektorn
-Bolag: ${selectedName} (${selectedTicker})
-Nuvarande pris från Google Sheet: ${sheetPrice !== null ? `${sheetPrice} ${sheetCurrency ?? 'SEK'}` : 'Okänt, använd rimligt värde'}
-Stil: Professionell men tillgänglig
+🎯 Uppdrag:
+Skapa ett detaljerat investeringscase för ett bolag inom sektorn "${sector}" med inriktning på "${style}"-investeringar.
 
-Krav:
-- Använd exakt ticker "${selectedTicker}" i fältet "ticker".
-- Bekräfta att bolaget är verkligt och börsnoterat.
-- Ange bolagets officiella webbplatsdomän (utan extra text).
-- Skriv en kort sammanfattning (max 200 tecken) och en längre analys med minst tre meningar om varför bolaget är intressant (ingen rubrik, håll texten som en sammanhängande "Analys").
-- Inkludera rimliga nyckeltal (t.ex. sektortillhörighet, P/E-tal, utdelning) samt 52-veckors högsta och lägsta kurs som numeriska värden.
+📊 Fakta att utgå från:
+- Bolag: ${selectedName} (${selectedTicker})
+- Nuvarande pris (från Google Sheet): ${sheetPrice !== null ? `${sheetPrice} ${sheetCurrency ?? 'SEK'}` : 'okänt, använd ett rimligt värde baserat på börsdata'}
+- Analysen ska gälla verkliga, börsnoterade bolag. Kontrollera att bolaget existerar och är listat på en erkänd börs.
+
+🧠 Stil och ton:
+- Professionell, trovärdig och pedagogisk ton.
 - Skriv på svenska.
+- Undvik överdrifter, använd faktabaserad argumentation.
+
+📈 Innehållskrav:
+1. Förklara varför bolaget är intressant för investerare inom "${style}"-strategin.
+2. Inkludera relevanta finansiella nyckeltal (P/E-tal, direktavkastning, marknadsvärde).
+3. Ange numeriska värden för 52-veckors högsta och lägsta kurs.
+4. Ange rimliga målpriser (target_price), köp-nivåer (entry_price) och stop-loss baserat på kursnivåer.
+5. Lägg till bolagets officiella webbplats (endast domän, t.ex. "volvocars.com").
 
 Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown):
 {
