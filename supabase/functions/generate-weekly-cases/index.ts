@@ -206,7 +206,11 @@ const sanitizeCaseData = (rawCase: any) => {
   const lowerDescription = descriptionRaw.toLowerCase();
   const forbiddenTerms = ['fiktiv', 'fiktivt', 'påhitt', 'låtsas', 'fictional'];
 
-  if (!title || !companyName || !descriptionRaw) {
+  if ((!rawTitle || rawTitle.length === 0) && (!companyName || companyName.length === 0)) {
+    return null;
+  }
+
+  if (!descriptionRaw) {
     return null;
   }
 
