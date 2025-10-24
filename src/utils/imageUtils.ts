@@ -5,18 +5,19 @@ export type OptimizedImageSource = {
   srcSet?: string;
 };
 
-export const CASE_IMAGE_PLACEHOLDER = '/case-image-placeholder.svg';
-
 export const handleCaseImageError = (
   event: React.SyntheticEvent<HTMLImageElement, Event>
 ) => {
   const image = event.currentTarget;
-  if (image.src.includes(CASE_IMAGE_PLACEHOLDER)) {
+  const originalSrc = image.dataset.originalSrc;
+
+  if (originalSrc && image.src !== originalSrc) {
+    image.src = originalSrc;
+    image.srcset = '';
     return;
   }
 
   image.onerror = null;
-  image.src = CASE_IMAGE_PLACEHOLDER;
   image.srcset = '';
 };
 

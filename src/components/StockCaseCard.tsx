@@ -10,7 +10,7 @@ import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useNavigate } from 'react-router-dom';
 import ShareStockCase from './ShareStockCase';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
+import { getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 interface StockCaseCardProps {
   stockCase: StockCase;
   onViewDetails: (id: string) => void;
@@ -149,7 +149,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
   const shortDescription = stockCase.description?.trim();
   const cleanedLongDescription = stripFiftyTwoWeekSummary(stockCase.long_description);
   const optimizedImageSources = getOptimizedCaseImage(stockCase.image_url);
-  const displayImageSrc = optimizedImageSources?.src ?? stockCase.image_url ?? CASE_IMAGE_PLACEHOLDER;
+  const displayImageSrc = optimizedImageSources?.src ?? stockCase.image_url ?? null;
   const displayImageSrcSet = optimizedImageSources?.srcSet;
   const previewText = shortDescription && shortDescription.length > 0
     ? shortDescription
@@ -246,6 +246,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
               loading="lazy"
               decoding="async"
               onError={handleCaseImageError}
+              data-original-src={stockCase.image_url || undefined}
             />
             <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/10 transition-all duration-300" />
           </div>}

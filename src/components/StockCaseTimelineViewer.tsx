@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { History, Clock, Image as ImageIcon, Trash2, FileText, ChevronLeft, ChevronRight, Edit3, ArrowLeft } from 'lucide-react';
 import { useStockCaseUpdates, StockCaseUpdate } from '@/hooks/useStockCaseUpdates';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
+import { getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -55,7 +55,7 @@ const StockCaseTimelineViewer: React.FC<StockCaseTimelineViewerProps> = ({
   // Current version based on carousel index
   const currentVersion = timeline[currentIndex];
   const optimizedImageSources = getOptimizedCaseImage(currentVersion?.image_url);
-  const displayImageSrc = optimizedImageSources?.src ?? currentVersion?.image_url ?? CASE_IMAGE_PLACEHOLDER;
+  const displayImageSrc = optimizedImageSources?.src ?? currentVersion?.image_url ?? null;
   const displayImageSrcSet = optimizedImageSources?.srcSet;
   const hasMultipleVersions = timeline.length > 1;
   const formatDate = (dateString: string) => {
@@ -164,6 +164,7 @@ const StockCaseTimelineViewer: React.FC<StockCaseTimelineViewerProps> = ({
                 loading="lazy"
                 decoding="async"
                 onError={handleCaseImageError}
+                data-original-src={currentVersion?.image_url || undefined}
               />
               
               {/* Navigation arrows - always visible if multiple versions */}

@@ -8,7 +8,7 @@ import { StockCase } from '@/types/stockCase';
 import { useStockCaseFollows } from '@/hooks/useStockCaseFollows';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
+import { getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 
 interface StockCaseListItemProps {
   stockCase: StockCase;
@@ -69,7 +69,7 @@ const StockCaseListItem: React.FC<StockCaseListItemProps> = ({ stockCase, onView
   };
 
   const optimizedImageSources = getOptimizedCaseImage(stockCase.image_url);
-  const displayImageSrc = optimizedImageSources?.src ?? stockCase.image_url ?? CASE_IMAGE_PLACEHOLDER;
+  const displayImageSrc = optimizedImageSources?.src ?? stockCase.image_url ?? null;
   const displayImageSrcSet = optimizedImageSources?.srcSet;
 
   return (
@@ -86,6 +86,7 @@ const StockCaseListItem: React.FC<StockCaseListItemProps> = ({ stockCase, onView
               loading="lazy"
               decoding="async"
               onError={handleCaseImageError}
+              data-original-src={stockCase.image_url || undefined}
             />
           </div>
         )}

@@ -6,7 +6,7 @@ import { TrendingUp, ArrowRight, Heart } from 'lucide-react';
 import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
+import { getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 
 const TrendingCases = () => {
   const { trendingCases, loading } = useTrendingStockCases(6);
@@ -76,7 +76,7 @@ const TrendingCases = () => {
         <div className="space-y-4">
           {trendingCases.map((stockCase, index) => {
             const optimizedSources = getOptimizedCaseImage(stockCase.image_url);
-            const displayImageSrc = optimizedSources?.src ?? stockCase.image_url ?? CASE_IMAGE_PLACEHOLDER;
+            const displayImageSrc = optimizedSources?.src ?? stockCase.image_url ?? null;
             const displayImageSrcSet = optimizedSources?.srcSet;
 
             return (
@@ -94,15 +94,22 @@ const TrendingCases = () => {
 
               {/* Company Image - Enhanced */}
               <div className="flex-shrink-0">
-                <img
-                  src={displayImageSrc}
-                  srcSet={displayImageSrcSet}
-                  alt={stockCase.company_name}
-                  className="w-20 h-20 rounded-xl object-cover shadow-md border border-gray-200 dark:border-gray-700 group-hover:shadow-lg transition-shadow"
-                  loading="lazy"
-                  decoding="async"
-                  onError={handleCaseImageError}
-                />
+                {displayImageSrc ? (
+                  <img
+                    src={displayImageSrc}
+                    srcSet={displayImageSrcSet}
+                    alt={stockCase.company_name}
+                    className="w-20 h-20 rounded-xl object-cover shadow-md border border-gray-200 dark:border-gray-700 group-hover:shadow-lg transition-shadow"
+                    loading="lazy"
+                    decoding="async"
+                    onError={handleCaseImageError}
+                    data-original-src={stockCase.image_url || undefined}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-xl bg-muted flex items-center justify-center text-xs text-muted-foreground border border-dashed border-gray-300 dark:border-gray-700">
+                    Ingen bild
+                  </div>
+                )}
               </div>
               
               {/* Content - Enhanced */}

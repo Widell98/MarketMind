@@ -8,7 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
+import { getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 
 interface RelatedStockCasesFromAnalysisProps {
   analysisId: string;
@@ -259,7 +259,7 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
       <CardContent className="space-y-4">
         {displayCases.map((stockCase) => {
           const optimizedSources = getOptimizedCaseImage(stockCase.image_url);
-          const displayImageSrc = optimizedSources?.src ?? stockCase.image_url ?? CASE_IMAGE_PLACEHOLDER;
+          const displayImageSrc = optimizedSources?.src ?? stockCase.image_url ?? null;
           const displayImageSrcSet = optimizedSources?.srcSet;
 
           return (
@@ -310,6 +310,7 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
                   loading="lazy"
                   decoding="async"
                   onError={handleCaseImageError}
+                  data-original-src={stockCase.image_url || undefined}
                 />
               )}
             </div>

@@ -10,7 +10,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import LoginPromptModal from '@/components/LoginPromptModal';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
+import { getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 
 interface CompactStockCaseCardProps {
   stockCase: any;
@@ -24,7 +24,7 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
 
   const isOwner = user && stockCase.user_id === user.id;
   const optimizedImageSources = getOptimizedCaseImage(stockCase.image_url);
-  const displayImageSrc = optimizedImageSources?.src ?? stockCase.image_url ?? CASE_IMAGE_PLACEHOLDER;
+  const displayImageSrc = optimizedImageSources?.src ?? stockCase.image_url ?? null;
   const displayImageSrcSet = optimizedImageSources?.srcSet;
 
   const handleClick = () => {
@@ -124,15 +124,22 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
       >
         {/* Image/Visual */}
         <div className="relative aspect-[4/3] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden mb-3">
-          <img
-            src={displayImageSrc}
-            srcSet={displayImageSrcSet}
-            alt={stockCase.title || 'Investeringscase'}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-            loading="lazy"
-            decoding="async"
-            onError={handleCaseImageError}
-          />
+          {displayImageSrc ? (
+            <img
+              src={displayImageSrc}
+              srcSet={displayImageSrcSet}
+              alt={stockCase.title || 'Investeringscase'}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+              loading="lazy"
+              decoding="async"
+              onError={handleCaseImageError}
+              data-original-src={stockCase.image_url || undefined}
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+              Ingen bild tillgänglig
+            </div>
+          )}
           
           {/* Status badge overlay */}
           <div className="absolute top-2 right-2">

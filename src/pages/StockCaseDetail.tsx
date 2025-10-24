@@ -19,7 +19,7 @@ import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
 import { highlightNumbersSafely } from '@/utils/sanitizer';
 import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
+import { getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 import AddStockCaseUpdateDialog from '@/components/AddStockCaseUpdateDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { formatCurrency } from '@/utils/currencyUtils';
@@ -124,7 +124,7 @@ const StockCaseDetail = () => {
 
   const hasRealImage = Boolean(currentVersion?.image_url);
   const optimizedImageSources = getOptimizedCaseImage(currentVersion?.image_url);
-  const displayImageSrc = optimizedImageSources?.src ?? currentVersion?.image_url ?? CASE_IMAGE_PLACEHOLDER;
+  const displayImageSrc = optimizedImageSources?.src ?? currentVersion?.image_url ?? null;
   const displayImageSrcSet = optimizedImageSources?.srcSet;
 
   const imageWrapperClasses = cn(
@@ -452,6 +452,7 @@ const StockCaseDetail = () => {
                     decoding="async"
                     className={imageElementClasses}
                     onError={handleCaseImageError}
+                    data-original-src={currentVersion?.image_url || undefined}
                     onClick={() => {
                       if (currentVersion.image_url) {
                         window.open(currentVersion.image_url, '_blank');

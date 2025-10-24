@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Heart, MessageCircle, Eye, Calendar, TrendingUp, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
+import { getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 
 interface ContentItem {
   id: string;
@@ -139,7 +139,7 @@ const ProfileContentGrid: React.FC<ProfileContentGridProps> = ({
             // Render stock cases as visual cards (Instagram-style)
             if (item.type === 'stock_case') {
               const optimizedSources = getOptimizedCaseImage(item.image_url);
-              const displayImageSrc = optimizedSources?.src ?? item.image_url ?? CASE_IMAGE_PLACEHOLDER;
+              const displayImageSrc = optimizedSources?.src ?? item.image_url ?? null;
               const displayImageSrcSet = optimizedSources?.srcSet;
 
               return (
@@ -150,15 +150,22 @@ const ProfileContentGrid: React.FC<ProfileContentGridProps> = ({
                 >
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="relative aspect-square md:aspect-auto">
-                      <img
-                        src={displayImageSrc}
-                        srcSet={displayImageSrcSet}
-                        alt={item.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                        decoding="async"
-                        onError={handleCaseImageError}
-                      />
+                      {displayImageSrc ? (
+                        <img
+                          src={displayImageSrc}
+                          srcSet={displayImageSrcSet}
+                          alt={item.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          loading="lazy"
+                          decoding="async"
+                          onError={handleCaseImageError}
+                          data-original-src={item.image_url || undefined}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground bg-muted">
+                          Ingen bild
+                        </div>
+                      )}
                       
                       {/* Status indicator */}
                       {item.status && (

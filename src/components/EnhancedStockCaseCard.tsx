@@ -12,7 +12,7 @@ import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useUserFollows } from '@/hooks/useUserFollows';
 import { useNavigate } from 'react-router-dom';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
+import { getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 
 interface EnhancedStockCaseCardProps {
   stockCase: StockCase;
@@ -38,7 +38,7 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
   const isOwner = user && stockCase.user_id === user.id;
   const isUserCase = !stockCase.ai_generated && stockCase.user_id;
   const optimizedImageSources = getOptimizedCaseImage(stockCase.image_url);
-  const displayImageSrc = optimizedImageSources?.src ?? stockCase.image_url ?? CASE_IMAGE_PLACEHOLDER;
+  const displayImageSrc = optimizedImageSources?.src ?? stockCase.image_url ?? null;
   const displayImageSrcSet = optimizedImageSources?.srcSet;
 
   const getStatusColor = (status: string) => {
@@ -294,6 +294,7 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
               loading="lazy"
               decoding="async"
               onError={handleCaseImageError}
+              data-original-src={stockCase.image_url || undefined}
             />
           </div>
         )}

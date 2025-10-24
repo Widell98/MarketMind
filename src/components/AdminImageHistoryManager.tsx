@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trash2, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 import { StockCaseImageHistory, useStockCaseImageHistory } from '@/hooks/useStockCaseImageHistory';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
+import { getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -85,20 +85,27 @@ const AdminImageHistoryManager: React.FC<AdminImageHistoryManagerProps> = ({
         <div className="space-y-4">
           {images.map((image) => {
             const optimizedSources = getOptimizedCaseImage(image.image_url);
-            const displayImageSrc = optimizedSources?.src ?? image.image_url ?? CASE_IMAGE_PLACEHOLDER;
+            const displayImageSrc = optimizedSources?.src ?? image.image_url ?? null;
             const displayImageSrcSet = optimizedSources?.srcSet;
 
             return (
               <div key={image.id} className="flex items-center gap-4 p-4 border rounded-lg">
-                <img
-                  src={displayImageSrc}
-                  srcSet={displayImageSrcSet}
-                  alt={image.description || 'Stock case image'}
-                  className="w-20 h-20 object-cover rounded-md"
-                  loading="lazy"
-                  decoding="async"
-                  onError={handleCaseImageError}
-                />
+                {displayImageSrc ? (
+                  <img
+                    src={displayImageSrc}
+                    srcSet={displayImageSrcSet}
+                    alt={image.description || 'Stock case image'}
+                    className="w-20 h-20 object-cover rounded-md"
+                    loading="lazy"
+                    decoding="async"
+                    onError={handleCaseImageError}
+                    data-original-src={image.image_url || undefined}
+                  />
+                ) : (
+                  <div className="w-20 h-20 flex items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
+                    Ingen bild
+                  </div>
+                )}
 
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">

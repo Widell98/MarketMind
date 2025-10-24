@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
+import { getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 
 interface RelatedStockCaseProps {
   stockCaseId: string;
@@ -116,7 +116,7 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
   }
 
   const optimizedImageSources = getOptimizedCaseImage(stockCase.image_url);
-  const displayImageSrc = optimizedImageSources?.src ?? stockCase.image_url ?? CASE_IMAGE_PLACEHOLDER;
+  const displayImageSrc = optimizedImageSources?.src ?? stockCase.image_url ?? null;
   const displayImageSrcSet = optimizedImageSources?.srcSet;
 
   return (
@@ -169,6 +169,7 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
                 loading="lazy"
                 decoding="async"
                 onError={handleCaseImageError}
+                data-original-src={stockCase.image_url || undefined}
               />
             )}
           </div>
