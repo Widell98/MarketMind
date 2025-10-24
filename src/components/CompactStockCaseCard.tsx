@@ -10,7 +10,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import LoginPromptModal from '@/components/LoginPromptModal';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage } from '@/utils/imageUtils';
+import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 
 interface CompactStockCaseCardProps {
   stockCase: any;
@@ -131,6 +131,7 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
             loading="lazy"
             decoding="async"
+            onError={handleCaseImageError}
           />
           
           {/* Status badge overlay */}

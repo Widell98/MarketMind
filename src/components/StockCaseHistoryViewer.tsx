@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { History, Clock, Image as ImageIcon, Trash2, FolderOpen, FileText } from 'lucide-react';
 import { useStockCaseUpdates, StockCaseUpdate } from '@/hooks/useStockCaseUpdates';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage } from '@/utils/imageUtils';
+import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 import { useAuth } from '@/contexts/AuthContext';
 interface StockCaseHistoryViewerProps {
   stockCaseId: string;
@@ -248,6 +248,7 @@ const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
                   className="w-full max-h-96 object-cover rounded-lg border"
                   loading="lazy"
                   decoding="async"
+                  onError={handleCaseImageError}
                 />
                 <div className="absolute top-2 right-2">
                   <Badge variant="secondary" className="bg-black/50 text-white">

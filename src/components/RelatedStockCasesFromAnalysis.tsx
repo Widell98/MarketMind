@@ -8,7 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage } from '@/utils/imageUtils';
+import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 
 interface RelatedStockCasesFromAnalysisProps {
   analysisId: string;
@@ -309,6 +309,7 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
                   className="w-12 h-12 rounded-lg object-cover ml-3"
                   loading="lazy"
                   decoding="async"
+                  onError={handleCaseImageError}
                 />
               )}
             </div>

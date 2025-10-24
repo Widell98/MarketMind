@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { History, Clock, Image as ImageIcon, Trash2, FileText, ChevronLeft, ChevronRight, Edit3, ArrowLeft } from 'lucide-react';
 import { useStockCaseUpdates, StockCaseUpdate } from '@/hooks/useStockCaseUpdates';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage } from '@/utils/imageUtils';
+import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -163,6 +163,7 @@ const StockCaseTimelineViewer: React.FC<StockCaseTimelineViewerProps> = ({
                 className="w-full h-full object-cover transition-all duration-300"
                 loading="lazy"
                 decoding="async"
+                onError={handleCaseImageError}
               />
               
               {/* Navigation arrows - always visible if multiple versions */}

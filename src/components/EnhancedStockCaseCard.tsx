@@ -12,7 +12,7 @@ import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useUserFollows } from '@/hooks/useUserFollows';
 import { useNavigate } from 'react-router-dom';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage } from '@/utils/imageUtils';
+import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 
 interface EnhancedStockCaseCardProps {
   stockCase: StockCase;
@@ -293,6 +293,7 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
               loading="lazy"
               decoding="async"
+              onError={handleCaseImageError}
             />
           </div>
         )}

@@ -19,7 +19,7 @@ import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
 import { highlightNumbersSafely } from '@/utils/sanitizer';
 import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage } from '@/utils/imageUtils';
+import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 import AddStockCaseUpdateDialog from '@/components/AddStockCaseUpdateDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { formatCurrency } from '@/utils/currencyUtils';
@@ -451,6 +451,7 @@ const StockCaseDetail = () => {
                     loading="lazy"
                     decoding="async"
                     className={imageElementClasses}
+                    onError={handleCaseImageError}
                     onClick={() => {
                       if (currentVersion.image_url) {
                         window.open(currentVersion.image_url, '_blank');

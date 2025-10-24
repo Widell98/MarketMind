@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Heart, MessageCircle, Eye, Calendar, TrendingUp, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage } from '@/utils/imageUtils';
+import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 
 interface ContentItem {
   id: string;
@@ -157,6 +157,7 @@ const ProfileContentGrid: React.FC<ProfileContentGridProps> = ({
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         loading="lazy"
                         decoding="async"
+                        onError={handleCaseImageError}
                       />
                       
                       {/* Status indicator */}

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trash2, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 import { StockCaseImageHistory, useStockCaseImageHistory } from '@/hooks/useStockCaseImageHistory';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage } from '@/utils/imageUtils';
+import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -97,6 +97,7 @@ const AdminImageHistoryManager: React.FC<AdminImageHistoryManagerProps> = ({
                   className="w-20 h-20 object-cover rounded-md"
                   loading="lazy"
                   decoding="async"
+                  onError={handleCaseImageError}
                 />
 
                 <div className="flex-1">

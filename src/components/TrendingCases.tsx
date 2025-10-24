@@ -6,7 +6,7 @@ import { TrendingUp, ArrowRight, Heart } from 'lucide-react';
 import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
-import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage } from '@/utils/imageUtils';
+import { CASE_IMAGE_PLACEHOLDER, getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 
 const TrendingCases = () => {
   const { trendingCases, loading } = useTrendingStockCases(6);
@@ -101,6 +101,7 @@ const TrendingCases = () => {
                   className="w-20 h-20 rounded-xl object-cover shadow-md border border-gray-200 dark:border-gray-700 group-hover:shadow-lg transition-shadow"
                   loading="lazy"
                   decoding="async"
+                  onError={handleCaseImageError}
                 />
               </div>
               

@@ -1,9 +1,24 @@
+import type React from 'react';
+
 export type OptimizedImageSource = {
   src: string;
   srcSet?: string;
 };
 
 export const CASE_IMAGE_PLACEHOLDER = '/case-image-placeholder.svg';
+
+export const handleCaseImageError = (
+  event: React.SyntheticEvent<HTMLImageElement, Event>
+) => {
+  const image = event.currentTarget;
+  if (image.src.includes(CASE_IMAGE_PLACEHOLDER)) {
+    return;
+  }
+
+  image.onerror = null;
+  image.src = CASE_IMAGE_PLACEHOLDER;
+  image.srcset = '';
+};
 
 const CLEARBIT_HOST = 'logo.clearbit.com';
 const DEFAULT_CLEARBIT_SIZE = 1200;
