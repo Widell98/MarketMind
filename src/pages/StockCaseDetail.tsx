@@ -662,13 +662,13 @@ const StockCaseDetail = () => {
                         <p className="font-bold text-lg text-primary">{formatCasePrice(stockCase.current_price)}</p>
                       </div>
                     )}
-                    {formatCasePrice(stockCase.target_price) && (
+                    {!isAiGeneratedCase && formatCasePrice(stockCase.target_price) && (
                       <div>
                         <p className="text-sm text-muted-foreground">Målpris</p>
                         <p className="font-bold text-lg text-green-600">{formatCasePrice(stockCase.target_price)}</p>
                       </div>
                     )}
-                    {formatCasePrice(stockCase.stop_loss) && (
+                    {!isAiGeneratedCase && formatCasePrice(stockCase.stop_loss) && (
                       <div>
                         <p className="text-sm text-muted-foreground">Stop Loss</p>
                         <p className="font-bold text-lg text-red-600">{formatCasePrice(stockCase.stop_loss)}</p>

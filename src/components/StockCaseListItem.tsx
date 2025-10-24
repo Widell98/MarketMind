@@ -138,7 +138,7 @@ const StockCaseListItem: React.FC<StockCaseListItemProps> = ({ stockCase, onView
                   </Badge>
                 )}
 
-                {stockCase.entry_price && stockCase.target_price && (
+                {stockCase.entry_price && stockCase.target_price && !stockCase.ai_generated && (
                   <span>Entry: {stockCase.entry_price} kr | Target: {stockCase.target_price} kr</span>
                 )}
               </div>

@@ -313,7 +313,7 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
               )}
             </div>
 
-            {(stockCase.entry_price || stockCase.current_price || stockCase.target_price) && (
+            {(stockCase.entry_price || stockCase.current_price || (stockCase.target_price && !stockCase.ai_generated)) && (
               <div className="grid grid-cols-3 gap-3 mb-3 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
                 {stockCase.entry_price && (
                   <div className="text-center">
@@ -327,7 +327,7 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
                     <p className="font-medium text-xs">{stockCase.current_price} kr</p>
                   </div>
                 )}
-                {stockCase.target_price && (
+                {stockCase.target_price && !stockCase.ai_generated && (
                   <div className="text-center">
                     <p className="text-xs text-gray-500 dark:text-gray-400">Mål</p>
                     <p className="font-medium text-xs">{stockCase.target_price} kr</p>

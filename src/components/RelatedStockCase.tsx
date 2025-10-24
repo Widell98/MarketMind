@@ -172,7 +172,7 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
             )}
           </div>
 
-          {(stockCase.entry_price || stockCase.current_price || stockCase.target_price) && (
+          {(stockCase.entry_price || stockCase.current_price || (stockCase.target_price && !stockCase.ai_generated)) && (
             <div className="grid grid-cols-3 gap-4 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
               {stockCase.entry_price && (
                 <div className="text-center">
@@ -186,7 +186,7 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
                   <p className="font-medium">{stockCase.current_price} kr</p>
                 </div>
               )}
-              {stockCase.target_price && (
+              {stockCase.target_price && !stockCase.ai_generated && (
                 <div className="text-center">
                   <p className="text-xs text-gray-500 dark:text-gray-400">Målkurs</p>
                   <p className="font-medium">{stockCase.target_price} kr</p>
