@@ -420,17 +420,28 @@ serve(async (req) => {
     const sectors = ['Technology', 'Healthcare', 'Finance', 'Energy', 'Consumer Goods', 'Real Estate'];
     const investmentStyles = ['Growth', 'Value', 'Dividend', 'ESG'];
 
-    const { data: recentCases } = await supabaseClient
+    const { data: existingCaseRows, error: existingCasesError } = await supabaseClient
       .from('stock_cases')
-      .select('title, company_name')
-      .eq('ai_generated', true)
-      .order('created_at', { ascending: false })
-      .limit(50);
+      .select('title, company_name, ticker')
+      .eq('ai_generated', true);
+
+    if (existingCasesError) {
+      console.error('Failed to fetch existing AI generated cases:', existingCasesError);
+      throw new Error('Kunde inte läsa befintliga AI-case');
+    }
 
     const existingCases = new Set<string>();
-    (recentCases || []).forEach((caseItem) => {
+    const existingTickers = new Set<string>();
+    (existingCaseRows || []).forEach((caseItem) => {
       if (caseItem.title && caseItem.company_name) {
         existingCases.add(`${caseItem.title.toLowerCase()}|${caseItem.company_name.toLowerCase()}`);
+      }
+
+      if (caseItem.ticker) {
+        const normalizedTicker = normalizeTickerKey(caseItem.ticker);
+        if (normalizedTicker) {
+          existingTickers.add(normalizedTicker);
+        }
       }
     });
 
@@ -615,14 +626,13 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
         }
 
         const caseKey = `${sanitized.title.toLowerCase()}|${sanitized.company_name.toLowerCase()}`;
-        if (existingCases.has(caseKey)) {
+        const sanitizedTickerKey = normalizeTickerKey(sanitized.ticker);
+        if (existingCases.has(caseKey) || (sanitizedTickerKey && existingTickers.has(sanitizedTickerKey))) {
           const message = `Duplicate case skipped for ${sanitized.title}`;
           console.warn(message);
           warnings.push(message);
           continue;
         }
-
-        existingCases.add(caseKey);
 
         const { ticker, ...caseWithoutTicker } = sanitized;
 
@@ -688,6 +698,8 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
         });
 
         console.log(`Successfully generated case: ${sanitized.title} (${expectedTicker})`);
+        existingCases.add(caseKey);
+        existingTickers.add(expectedTicker);
         generatedTickers.push({ title: sanitized.title, ticker: expectedTicker });
 
       } catch (parseError) {
