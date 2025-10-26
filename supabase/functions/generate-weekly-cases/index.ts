@@ -55,6 +55,14 @@ const sanitizeNumber = (value: unknown): number | null => {
   return null;
 };
 
+const formatSummaryNumber = (value: number): string => {
+  if (!Number.isFinite(value)) {
+    return '';
+  }
+
+  return value.toFixed(2).replace(/\.00$/, '').replace(/\.0$/, '');
+};
+
 const normalizeParagraphs = (value: string): string => {
   const normalized = value.replace(/\r\n/g, '\n').trim();
 
@@ -169,6 +177,23 @@ const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
   const tickerIdx = headers.findIndex((header) => /ticker/i.test(header) && !/simple/i.test(header));
   const currencyIdx = headers.findIndex((header) => /(currency|valuta)/i.test(header));
   const priceIdx = headers.findIndex((header) => /(price|senast|last)/i.test(header));
+  const peIdx = headers.findIndex((header) => {
+    const normalized = header.toLowerCase();
+    return normalized.includes('p/e')
+      || normalized.includes('pe-tal')
+      || normalized.includes('pe ratio')
+      || normalized.includes('p e');
+  });
+  const week52HighIdx = headers.findIndex((header) => {
+    const normalized = header.toLowerCase();
+    return normalized.includes('52')
+      && (normalized.includes('högsta') || normalized.includes('hogsta') || normalized.includes('high'));
+  });
+  const week52LowIdx = headers.findIndex((header) => {
+    const normalized = header.toLowerCase();
+    return normalized.includes('52')
+      && (normalized.includes('lägsta') || normalized.includes('lagsta') || normalized.includes('low'));
+  });
 
   if (tickerIdx === -1 && simpleTickerIdx === -1) {
     throw new Error('CSV saknar nödvändiga kolumner (Ticker eller Simple Ticker).');
@@ -182,6 +207,9 @@ const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
     const rawSymbol = tickerIdx !== -1 ? normalizeSheetValue(columns[tickerIdx]) : null;
     const rawCurrency = currencyIdx !== -1 ? normalizeSheetValue(columns[currencyIdx]) : null;
     const rawPrice = priceIdx !== -1 ? normalizeSheetValue(columns[priceIdx]) : null;
+    const rawPeRatio = peIdx !== -1 ? normalizeSheetValue(columns[peIdx]) : null;
+    const rawWeek52High = week52HighIdx !== -1 ? normalizeSheetValue(columns[week52HighIdx]) : null;
+    const rawWeek52Low = week52LowIdx !== -1 ? normalizeSheetValue(columns[week52LowIdx]) : null;
 
     const selectedSymbol = rawSimpleSymbol ?? rawSymbol;
     if (!selectedSymbol) continue;
@@ -196,11 +224,29 @@ const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
 
     const price = Number.isFinite(parsedPrice) ? Number(parsedPrice) : null;
 
+    let peRatio: string | null = null;
+    if (rawPeRatio) {
+      const parsedPe = sanitizeNumber(rawPeRatio);
+      if (parsedPe !== null) {
+        peRatio = parsedPe.toFixed(2).replace(/\.00$/, '').replace(/\.0$/, '');
+      } else {
+        peRatio = rawPeRatio;
+      }
+    }
+
+    const parsedWeekHigh = rawWeek52High ? sanitizeNumber(rawWeek52High) : null;
+    const parsedWeekLow = rawWeek52Low ? sanitizeNumber(rawWeek52Low) : null;
+    const weekHigh = parsedWeekHigh !== null ? Number(parsedWeekHigh.toFixed(2)) : null;
+    const weekLow = parsedWeekLow !== null ? Number(parsedWeekLow.toFixed(2)) : null;
+
     tickerMap.set(cleanedSymbol, {
       symbol: cleanedSymbol,
       name: rawName ?? cleanedSymbol,
       currency: rawCurrency ?? null,
       price,
+      peRatio,
+      fiftyTwoWeekHigh: weekHigh,
+      fiftyTwoWeekLow: weekLow,
     });
   }
 
@@ -215,7 +261,7 @@ const sanitizeCaseData = (rawCase: any) => {
   const rawTitle = typeof rawCase.title === 'string' ? rawCase.title.trim() : '';
   const companyName = typeof rawCase.company_name === 'string' ? rawCase.company_name.trim() : '';
   const descriptionRaw = typeof rawCase.description === 'string' ? rawCase.description.trim() : '';
-  let longDescription = sanitizeLongDescription(
+  const longDescription = sanitizeLongDescription(
     rawCase.analysis ?? rawCase.long_description ?? rawCase.investment_thesis,
   );
 
@@ -266,24 +312,6 @@ const sanitizeCaseData = (rawCase: any) => {
   const marketCap = rawCase.market_cap ? String(rawCase.market_cap).trim() : null;
   const peRatio = rawCase.pe_ratio ? String(rawCase.pe_ratio).trim() : null;
   const dividendYield = rawCase.dividend_yield ? String(rawCase.dividend_yield).trim() : null;
-  const fiftyTwoWeekHigh = sanitizeNumber(
-    rawCase.fifty_two_week_high ?? rawCase.week_52_high ?? rawCase['52_week_high'],
-  );
-  const fiftyTwoWeekLow = sanitizeNumber(
-    rawCase.fifty_two_week_low ?? rawCase.week_52_low ?? rawCase['52_week_low'],
-  );
-
-  const metricsSummary: string[] = [];
-  if (fiftyTwoWeekHigh !== null) {
-    metricsSummary.push(`52-veckors högsta: ${fiftyTwoWeekHigh}`);
-  }
-  if (fiftyTwoWeekLow !== null) {
-    metricsSummary.push(`52-veckors lägsta: ${fiftyTwoWeekLow}`);
-  }
-
-  if (metricsSummary.length > 0) {
-    longDescription = `${longDescription}\n\n${metricsSummary.join(' | ')}`;
-  }
 
   return {
     title: resolvedTitle,
@@ -305,6 +333,9 @@ type SheetTickerInfo = {
   price: number | null;
   currency: string | null;
   name?: string | null;
+  peRatio?: string | null;
+  fiftyTwoWeekHigh?: number | null;
+  fiftyTwoWeekLow?: number | null;
 };
 
 const normalizeTickerKey = (value: string): string => {
@@ -543,9 +574,9 @@ Skapa ett engagerande investeringscase för ett bolag inom sektorn "${sector}" m
 
 📈 Innehållskrav:
 1. Förklara varför bolaget är intressant för investerare inom "${style}"-strategin.
-2. Inkludera relevanta finansiella nyckeltal (P/E-tal, direktavkastning, marknadsvärde).
-3. Ange numeriska värden för 52-veckors högsta och lägsta kurs.
-4. Lyft fram 2–3 centrala katalysatorer eller händelser som kan driva aktien framåt.
+2. Lyft fram relevanta finansiella nyckeltal eller kvalitativa faktorer som stärker caset.
+3. Beskriv 2–3 centrala katalysatorer eller händelser som kan driva aktien framåt.
+4. Undvik att ange målpriser, stop loss eller 52-veckorsnivåer – fokusera på analysen.
 
 📊 Analysdel – krav på innehåll och ton:
 Skriv en engagerande men faktabaserad analys som skapar intresse för bolaget redan i de första meningarna.
@@ -570,9 +601,7 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
   "sector": "string",
   "market_cap": "string",
   "pe_ratio": "string",
-  "dividend_yield": "string",
-  "fifty_two_week_high": number,
-  "fifty_two_week_low": number
+  "dividend_yield": "string"
 }`;
 
       console.log(`Generating case ${i + 1} for ${sector} - ${style}...`);
@@ -657,6 +686,13 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
         let currentPrice: number | null = null;
         let targetPrice: number | null = null;
         let stopLoss: number | null = null;
+        let peRatioValue: string | null = caseWithoutTicker.pe_ratio ?? null;
+        let fiftyTwoWeekHigh: number | null = null;
+        let fiftyTwoWeekLow: number | null = null;
+        let finalLongDescription = caseWithoutTicker.long_description;
+        if (typeof finalLongDescription !== 'string') {
+          finalLongDescription = '';
+        }
 
         if (sheetInfo) {
           const price = typeof sheetInfo.price === 'number' && Number.isFinite(sheetInfo.price)
@@ -676,14 +712,48 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
               currency = resolvedCurrency;
             }
           }
+
+          if (sheetInfo.peRatio) {
+            peRatioValue = sheetInfo.peRatio;
+          }
+
+          if (typeof sheetInfo.fiftyTwoWeekHigh === 'number' && Number.isFinite(sheetInfo.fiftyTwoWeekHigh)) {
+            fiftyTwoWeekHigh = Number(sheetInfo.fiftyTwoWeekHigh);
+          }
+
+          if (typeof sheetInfo.fiftyTwoWeekLow === 'number' && Number.isFinite(sheetInfo.fiftyTwoWeekLow)) {
+            fiftyTwoWeekLow = Number(sheetInfo.fiftyTwoWeekLow);
+          }
         } else {
           warnings.push(`Prisdata saknas för ${expectedTicker}`);
+        }
+
+        if (typeof peRatioValue === 'string') {
+          peRatioValue = peRatioValue.trim();
+          if (peRatioValue.length === 0) {
+            peRatioValue = null;
+          }
+        }
+
+        const metricsSummary: string[] = [];
+        if (fiftyTwoWeekHigh !== null) {
+          metricsSummary.push(`52-veckors högsta: ${formatSummaryNumber(fiftyTwoWeekHigh)}`);
+        }
+        if (fiftyTwoWeekLow !== null) {
+          metricsSummary.push(`52-veckors lägsta: ${formatSummaryNumber(fiftyTwoWeekLow)}`);
+        }
+
+        if (metricsSummary.length > 0 && typeof finalLongDescription === 'string') {
+          const normalizedLongDescription = finalLongDescription.replace(/\n{3,}/g, '\n\n').trim();
+          const segments = [normalizedLongDescription, metricsSummary.join(' | ')].filter((segment) => segment.length > 0);
+          finalLongDescription = segments.join('\n\n');
         }
 
         const resolvedCurrency = currency ?? 'SEK';
 
         generatedCases.push({
           ...caseWithoutTicker,
+          long_description: finalLongDescription,
           ticker: expectedTicker,
           ai_generated: true,
           is_public: true,
@@ -695,6 +765,9 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
           current_price: currentPrice,
           target_price: targetPrice,
           stop_loss: stopLoss,
+          pe_ratio: peRatioValue,
+          fifty_two_week_high: fiftyTwoWeekHigh,
+          fifty_two_week_low: fiftyTwoWeekLow,
         });
 
         console.log(`Successfully generated case: ${sanitized.title} (${expectedTicker})`);
