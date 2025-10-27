@@ -67,14 +67,16 @@ const StockCaseListItem: React.FC<StockCaseListItemProps> = ({ stockCase, onView
     }
   };
 
+  const displayImageSrc = stockCase.image_url ?? null;
+
   return (
     <div className="group border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200 hover:shadow-md bg-white dark:bg-gray-800 cursor-pointer" onClick={() => onViewDetails(stockCase.id)}>
       <div className="flex items-center gap-4">
         {/* Image */}
-        {stockCase.image_url && (
+        {displayImageSrc && (
           <div className="flex-shrink-0">
             <img
-              src={stockCase.image_url}
+              src={displayImageSrc}
               alt={stockCase.company_name}
               className="w-16 h-16 rounded-lg object-cover"
             />
@@ -130,7 +132,7 @@ const StockCaseListItem: React.FC<StockCaseListItemProps> = ({ stockCase, onView
                   </Badge>
                 )}
 
-                {stockCase.entry_price && stockCase.target_price && (
+                {stockCase.entry_price && stockCase.target_price && !stockCase.ai_generated && (
                   <span>Entry: {stockCase.entry_price} kr | Target: {stockCase.target_price} kr</span>
                 )}
               </div>

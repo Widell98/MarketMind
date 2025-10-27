@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ToastAction } from '@/components/ui/toast';
-import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Calendar, Building, BarChart3, Eye, Users, AlertTriangle, Target, StopCircle, Brain, ShoppingCart, Plus, UserPlus, PlusCircle, History, ChevronLeft, ChevronRight, Trash2, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Calendar, Building, BarChart3, Eye, Users, AlertTriangle, Target, StopCircle, Brain, ShoppingCart, Plus, UserPlus, PlusCircle, History, ChevronLeft, ChevronRight, Trash2, MessageSquare, LineChart, Coins, Percent } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
@@ -22,7 +23,19 @@ import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 import AddStockCaseUpdateDialog from '@/components/AddStockCaseUpdateDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { formatCurrency } from '@/utils/currencyUtils';
+import { cn } from '@/lib/utils';
 import type { StockCase } from '@/types/stockCase';
+import { fetchSheetTickerMetrics, type SheetTickerMetrics } from '@/utils/sheetMetrics';
+
+type FinancialStat = {
+  key: string;
+  label: string;
+  icon?: LucideIcon;
+  value?: React.ReactNode;
+  valueHtml?: string | null;
+  valueClassName?: string;
+  description?: React.ReactNode;
+};
 
 const StockCaseDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -31,12 +44,51 @@ const StockCaseDetail = () => {
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [updateToDelete, setUpdateToDelete] = useState<string | null>(null);
+  const [sheetMetrics, setSheetMetrics] = useState<SheetTickerMetrics | null>(null);
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL LOGIC
   const { stockCase, loading, error } = useStockCase(id || '');
   const { likeCount, isLiked, toggleLike, loading: likesLoading } = useStockCaseLikes(id || '');
   const { followUser, unfollowUser, isFollowing } = useUserFollows();
   const { updates, isLoading: updatesLoading, deleteUpdate } = useStockCaseUpdates(id || '');
+
+  useEffect(() => {
+    const ticker = stockCase?.ticker ?? null;
+
+    if (!ticker) {
+      setSheetMetrics(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    let isActive = true;
+
+    setSheetMetrics(null);
+
+    fetchSheetTickerMetrics(ticker, { signal: controller.signal })
+      .then((metrics) => {
+        if (!isActive) {
+          return;
+        }
+        setSheetMetrics(metrics);
+      })
+      .catch((fetchError) => {
+        const errorObject = fetchError as Error;
+        if (errorObject?.name === 'AbortError') {
+          return;
+        }
+        console.error('Failed to load Google Sheet metrics', fetchError);
+        if (!isActive) {
+          return;
+        }
+        setSheetMetrics(null);
+      });
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [stockCase?.ticker]);
 
   // NOW we can have conditional logic and early returns
   if (loading) {
@@ -85,13 +137,27 @@ const StockCaseDetail = () => {
   const isPositivePerformance = performance && performance >= 0;
   const isOwner = user && stockCase.user_id === user.id;
   const caseCurrency = stockCase.currency?.toUpperCase() || 'SEK';
-  const formatCasePrice = (value?: number | null) => {
+
+  const formatPriceValue = (value: number | null | undefined, currencyCode: string): string | null => {
     if (typeof value !== 'number' || !Number.isFinite(value)) {
       return null;
     }
 
-    return formatCurrency(value, caseCurrency);
+    try {
+      return formatCurrency(value, currencyCode);
+    } catch (_error) {
+      const formatted = new Intl.NumberFormat('sv-SE', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      }).format(value);
+      return currencyCode ? `${formatted} ${currencyCode}` : formatted;
+    }
   };
+
+  const resolvedSheetCurrency = sheetMetrics?.currency?.toUpperCase() || caseCurrency;
+
+  const formatCasePrice = (value?: number | null) => formatPriceValue(value, caseCurrency);
+  const formatSheetPrice = (value?: number | null) => formatPriceValue(value, resolvedSheetCurrency);
 
   // Create timeline of all versions (original + updates)
   const timeline = [
@@ -102,7 +168,8 @@ const StockCaseDetail = () => {
       image_url: stockCase?.image_url || '',
       created_at: stockCase?.created_at || '',
       user_id: stockCase?.user_id || '',
-      isOriginal: true
+      isOriginal: true,
+      update_type: 'original' as const,
     },
     ...(updates || []).map(update => ({
       ...update,
@@ -113,6 +180,32 @@ const StockCaseDetail = () => {
   // Get current version based on carousel index
   const currentVersion = timeline[currentImageIndex];
   const hasMultipleVersions = timeline.length > 1;
+
+  const isAiGeneratedCase = Boolean(stockCase.ai_generated);
+  const isAiGeneratedImage = currentVersion?.isOriginal
+    ? isAiGeneratedCase
+    : currentVersion?.update_type === 'ai_generated_update';
+
+  const hasRealImage = Boolean(currentVersion?.image_url);
+  const displayImageSrc = currentVersion?.image_url ?? null;
+
+  const imageWrapperClasses = cn(
+    'relative group mx-auto w-full rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300',
+    isAiGeneratedImage ? 'max-w-xl' : 'max-w-4xl'
+  );
+
+  const imageDisplayWrapperClasses = cn(
+    'overflow-hidden rounded-lg transition-all duration-300',
+    isAiGeneratedImage ? 'bg-muted/70 p-4' : ''
+  );
+
+  const imageElementClasses = cn(
+    'w-full h-auto transition-all duration-300',
+    hasRealImage ? 'cursor-pointer' : 'cursor-default',
+    isAiGeneratedImage
+      ? 'max-h-[280px] object-contain'
+      : 'max-h-[560px] object-cover'
+  );
 
   const normalizedCaseTitle = normalizeStockCaseTitle(stockCase.title, stockCase.company_name);
   const displayTitle = normalizeStockCaseTitle(currentVersion?.title, normalizedCaseTitle) || normalizedCaseTitle;
@@ -297,7 +390,7 @@ const StockCaseDetail = () => {
     ?? stockCase.description
     ?? null;
 
-  let fiftyTwoWeekSummary: string | null = null;
+  let extractedFiftyTwoWeekSummary: string | null = null;
   let cleanedAnalysisDescription: string | null = rawAnalysisDescription;
 
   if (typeof rawAnalysisDescription === 'string') {
@@ -309,7 +402,7 @@ const StockCaseDetail = () => {
         .replace(/\s{2,}/g, ' ')
         .trim();
 
-      fiftyTwoWeekSummary = normalizedSummary;
+      extractedFiftyTwoWeekSummary = normalizedSummary;
 
       const withoutSummary = rawAnalysisDescription
         .replace(summaryMatch[0], '')
@@ -320,9 +413,241 @@ const StockCaseDetail = () => {
     }
   }
 
+  let extractedFiftyTwoWeekHighText: string | null = null;
+  let extractedFiftyTwoWeekLowText: string | null = null;
+
+  if (extractedFiftyTwoWeekSummary) {
+    const highMatch = extractedFiftyTwoWeekSummary.match(/52-veckors\s+högsta:\s*([0-9.,-]+)/i);
+    const lowMatch = extractedFiftyTwoWeekSummary.match(/52-veckors\s+lägsta:\s*([0-9.,-]+)/i);
+
+    extractedFiftyTwoWeekHighText = highMatch?.[1]?.trim()
+      ? `52-veckors högsta: ${highMatch[1].trim()}`
+      : null;
+    extractedFiftyTwoWeekLowText = lowMatch?.[1]?.trim()
+      ? `52-veckors lägsta: ${lowMatch[1].trim()}`
+      : null;
+  }
+
+  const formatSheetRangeValue = (value: number | null | undefined): string | null => {
+    if (value === null || value === undefined || Number.isNaN(value)) {
+      return null;
+    }
+
+    try {
+      const formatted = formatPriceValue(value, resolvedSheetCurrency);
+      if (formatted) {
+        return formatted;
+      }
+      return null;
+    } catch (_error) {
+      return new Intl.NumberFormat('sv-SE', {
+        maximumFractionDigits: 2,
+      }).format(value);
+    }
+  };
+
+  const sheetHighValue = formatSheetRangeValue(sheetMetrics?.fiftyTwoWeekHigh ?? null);
+  const sheetLowValue = formatSheetRangeValue(sheetMetrics?.fiftyTwoWeekLow ?? null);
+
+  const sheetFiftyTwoWeekHighText = sheetHighValue ? `52-veckors högsta: ${sheetHighValue}` : null;
+  const sheetFiftyTwoWeekLowText = sheetLowValue ? `52-veckors lägsta: ${sheetLowValue}` : null;
+
+  const finalFiftyTwoWeekHighText = sheetFiftyTwoWeekHighText ?? extractedFiftyTwoWeekHighText;
+  const finalFiftyTwoWeekLowText = sheetFiftyTwoWeekLowText ?? extractedFiftyTwoWeekLowText;
+
   const displayedAnalysisDescription = typeof cleanedAnalysisDescription === 'string'
     ? (cleanedAnalysisDescription.trim().length > 0 ? cleanedAnalysisDescription.trim() : null)
     : null;
+
+  const resolvedMarketCap = (() => {
+    const rawMarketCap = sheetMetrics?.marketCap ?? stockCase.market_cap ?? null;
+
+    if (!rawMarketCap) {
+      return null;
+    }
+
+    const trimmedValue = typeof rawMarketCap === 'string' ? rawMarketCap.trim() : String(rawMarketCap).trim();
+    if (!trimmedValue) {
+      return null;
+    }
+
+    const resolvedCurrencySource = sheetMetrics?.marketCap ? sheetMetrics?.currency : stockCase.currency;
+    const normalizedCurrency = resolvedCurrencySource?.toString().trim().toUpperCase();
+
+    if (!normalizedCurrency) {
+      return trimmedValue;
+    }
+
+    const upperValue = trimmedValue.toUpperCase();
+    if (upperValue.includes(normalizedCurrency)) {
+      return trimmedValue;
+    }
+
+    const hasCurrencySymbol = /[$€£¥₽₹₩₪₫₴₦₱฿₺₲₵₸₡₣₤₥₧₨₩₪]/u.test(trimmedValue);
+    if (hasCurrencySymbol) {
+      return `${trimmedValue} (${normalizedCurrency})`;
+    }
+
+    return `${trimmedValue} ${normalizedCurrency}`;
+  })();
+  const resolvedPeRatio = sheetMetrics?.peRatio ?? stockCase.pe_ratio;
+  const resolvedDividendYield = sheetMetrics?.dividendYield ?? stockCase.dividend_yield;
+
+  const renderStatValue = (stat: FinancialStat) => {
+    if (stat.valueHtml) {
+      return (
+        <span dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(stat.valueHtml) }} />
+      );
+    }
+
+    if (stat.value !== null && stat.value !== undefined) {
+      return stat.value;
+    }
+
+    return <span className="text-muted-foreground">—</span>;
+  };
+
+  const renderStatsList = (stats: FinancialStat[]) => {
+    if (!stats.length) {
+      return null;
+    }
+
+    return (
+      <dl className="space-y-2.5">
+        {stats.map((stat) => {
+          const IconComponent = stat.icon;
+          const valueClassName = stat.valueClassName
+            ? cn('font-semibold text-foreground', stat.valueClassName)
+            : 'text-base font-semibold text-foreground';
+
+          return (
+            <div key={stat.key} className="flex flex-col gap-1.5">
+              <dt className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {IconComponent ? <IconComponent className="h-3.5 w-3.5" /> : null}
+                <span>{stat.label}</span>
+              </dt>
+              <dd className={cn('leading-tight', valueClassName)}>{renderStatValue(stat)}</dd>
+              {stat.description ? (
+                <dd className="text-xs leading-snug text-muted-foreground">{stat.description}</dd>
+              ) : null}
+            </div>
+          );
+        })}
+      </dl>
+    );
+  };
+
+  const currentPriceDisplay = formatCasePrice(stockCase.current_price);
+  const sheetPriceDisplay = formatSheetPrice(sheetMetrics?.price ?? null);
+  const targetPriceDisplay = !isAiGeneratedCase ? formatCasePrice(stockCase.target_price) : null;
+  const stopLossDisplay = !isAiGeneratedCase ? formatCasePrice(stockCase.stop_loss) : null;
+
+  const pricingStats: FinancialStat[] = [];
+
+  if (currentPriceDisplay) {
+    pricingStats.push({
+      key: 'current-price',
+      label: 'Nuvarande pris',
+      icon: LineChart,
+      value: currentPriceDisplay,
+    });
+  }
+
+  if (sheetPriceDisplay && sheetPriceDisplay !== currentPriceDisplay) {
+    pricingStats.push({
+      key: 'sheet-price',
+      label: 'Senaste pris (Google Sheet)',
+      icon: LineChart,
+      value: sheetPriceDisplay,
+      valueClassName: 'text-lg text-muted-foreground',
+    });
+  }
+
+  if (targetPriceDisplay) {
+    pricingStats.push({
+      key: 'target-price',
+      label: 'Målpris',
+      icon: Target,
+      value: targetPriceDisplay,
+      valueClassName: 'text-emerald-600',
+    });
+  }
+
+  if (stopLossDisplay) {
+    pricingStats.push({
+      key: 'stop-loss',
+      label: 'Stop loss',
+      icon: StopCircle,
+      value: stopLossDisplay,
+      valueClassName: 'text-rose-600',
+    });
+  }
+
+  const companyStats: FinancialStat[] = [];
+
+  if (stockCase.sector) {
+    companyStats.push({
+      key: 'sector',
+      label: 'Sektor',
+      icon: Building,
+      value: stockCase.sector,
+      valueClassName: 'text-lg',
+    });
+  }
+
+  const fundamentalsStats: FinancialStat[] = [];
+
+  if (resolvedMarketCap) {
+    fundamentalsStats.push({
+      key: 'market-cap',
+      label: 'Börsvärde',
+      icon: Coins,
+      valueHtml: resolvedMarketCap,
+    });
+  }
+
+  if (resolvedPeRatio) {
+    fundamentalsStats.push({
+      key: 'pe-ratio',
+      label: 'P/E-tal',
+      icon: BarChart3,
+      valueHtml: resolvedPeRatio,
+    });
+  }
+
+  if (resolvedDividendYield) {
+    fundamentalsStats.push({
+      key: 'dividend-yield',
+      label: 'Utdelning',
+      icon: Percent,
+      valueHtml: resolvedDividendYield,
+    });
+  }
+
+  if (finalFiftyTwoWeekHighText || finalFiftyTwoWeekLowText) {
+    fundamentalsStats.push({
+      key: 'fifty-two-week-range',
+      label: '52-veckors spann',
+      icon: History,
+      value: (
+        <>
+          {finalFiftyTwoWeekHighText && (
+            <span dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(finalFiftyTwoWeekHighText) }} />
+          )}
+          {finalFiftyTwoWeekLowText && (
+            <span dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(finalFiftyTwoWeekLowText) }} />
+          )}
+        </>
+      ),
+      valueClassName: 'mt-3 flex flex-col gap-1 text-sm font-semibold leading-snug text-foreground',
+    });
+  }
+
+  const hasPricingMetrics = pricingStats.length > 0;
+  const hasCompanyDetails = companyStats.length > 0;
+  const hasSheetFundamentals = fundamentalsStats.length > 0;
+
+  const shouldShowFinancialOverview = hasPricingMetrics || hasCompanyDetails || hasSheetFundamentals;
 
   return (
     <Layout>
@@ -392,17 +717,11 @@ const StockCaseDetail = () => {
           </div>
 
           {/* Graph Section with Carousel */}
-          {currentVersion?.image_url && (
+          {displayImageSrc && (
             <div className="space-y-4">
               {/* Version info and controls */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {hasMultipleVersions && (
-                    <Badge variant="outline" className="text-xs">
-                      {currentImageIndex + 1} av {timeline.length}
-                    </Badge>
-                  )}
-                </div>
+              <div className="flex items-center justify-between min-h-[1.5rem]">
+                <div className="flex items-center gap-2 flex-1" aria-hidden="true" />
                 
                 {canDeleteCurrent && (
                   <Button 
@@ -417,16 +736,20 @@ const StockCaseDetail = () => {
                 )}
               </div>
 
-              <div className="relative group mx-auto w-full max-w-2xl">
-                <img
-                  src={currentVersion.image_url}
-                  alt={displayTitle}
-                  className="w-full h-auto max-h-[360px] rounded-lg shadow-lg object-cover cursor-pointer hover:shadow-xl transition-all duration-300"
-                  onClick={() => {
-                    window.open(currentVersion.image_url, '_blank');
-                  }}
-                />
-                
+              <div className={imageWrapperClasses}>
+                <div className={imageDisplayWrapperClasses}>
+                  <img
+                    src={displayImageSrc}
+                    alt={displayTitle}
+                    className={imageElementClasses}
+                    onClick={() => {
+                      if (currentVersion.image_url) {
+                        window.open(currentVersion.image_url, '_blank');
+                      }
+                    }}
+                  />
+                </div>
+
                 {/* Navigation arrows */}
                 {hasMultipleVersions && (
                   <>
@@ -452,8 +775,8 @@ const StockCaseDetail = () => {
 
                 {/* Expand button */}
                 <div className="absolute top-4 right-4">
-                  <Button 
-                    variant="secondary" 
+                  <Button
+                    variant="secondary"
                     size="sm"
                     onClick={() => window.open(currentVersion.image_url, '_blank')}
                     className="bg-black/70 hover:bg-black/80 text-white border-0"
@@ -472,7 +795,24 @@ const StockCaseDetail = () => {
                     </Badge>
                   </div>
                 )}
+
+                {isAiGeneratedImage && (
+                  <div className="absolute bottom-4 left-4">
+                    <Badge variant="secondary" className="bg-black/70 text-white">
+                      <Brain className="w-3 h-3 mr-1" />
+                      AI-genererad bild
+                    </Badge>
+                  </div>
+                )}
               </div>
+
+              {hasMultipleVersions && (
+                <div className="flex justify-center mt-2">
+                  <Badge variant="outline" className="text-xs">
+                    {currentImageIndex + 1} av {timeline.length}
+                  </Badge>
+                </div>
+              )}
 
               {/* Dots indicator */}
               {hasMultipleVersions && (
@@ -593,71 +933,37 @@ const StockCaseDetail = () => {
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-6">
             {/* Combined Overview Card - only show if there are financial metrics */}
-            {(stockCase.entry_price || stockCase.current_price || stockCase.target_price || stockCase.stop_loss || stockCase.sector || stockCase.market_cap || stockCase.pe_ratio || stockCase.dividend_yield || fiftyTwoWeekSummary) && (
+            {shouldShowFinancialOverview && (
               <Card>
                 <CardHeader>
                   <CardTitle>Finansiell Översikt</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    {/* Price Information */}
-                    {formatCasePrice(stockCase.entry_price) && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Inköpspris</p>
-                        <p className="font-bold text-lg text-primary">{formatCasePrice(stockCase.entry_price)}</p>
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {hasPricingMetrics && (
+                      <div className="flex flex-col gap-3 rounded-2xl border border-border/50 bg-card/80 p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Pris &amp; kursinformation
+                        </p>
+                        {renderStatsList(pricingStats)}
                       </div>
                     )}
-                    {formatCasePrice(stockCase.current_price) && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Nuvarande pris</p>
-                        <p className="font-bold text-lg text-primary">{formatCasePrice(stockCase.current_price)}</p>
+
+                    {hasCompanyDetails && (
+                      <div className="flex flex-col gap-3 rounded-2xl border border-border/50 bg-card/80 p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Bolagsinformation
+                        </p>
+                        {renderStatsList(companyStats)}
                       </div>
                     )}
-                    {formatCasePrice(stockCase.target_price) && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Målpris</p>
-                        <p className="font-bold text-lg text-green-600">{formatCasePrice(stockCase.target_price)}</p>
-                      </div>
-                    )}
-                    {formatCasePrice(stockCase.stop_loss) && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Stop Loss</p>
-                        <p className="font-bold text-lg text-red-600">{formatCasePrice(stockCase.stop_loss)}</p>
-                      </div>
-                    )}
-                    
-                    {/* Company Information */}
-                    {stockCase.sector && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Sektor</p>
-                        <p className="font-semibold">{stockCase.sector}</p>
-                      </div>
-                    )}
-                    {stockCase.market_cap && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Börsvärde</p>
-                        <p className="font-semibold">{stockCase.market_cap}</p>
-                      </div>
-                    )}
-                    {stockCase.pe_ratio && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">P/E-tal</p>
-                        <p className="font-semibold">{stockCase.pe_ratio}</p>
-                      </div>
-                    )}
-                    {stockCase.dividend_yield && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Utdelning</p>
-                        <p className="font-semibold">{stockCase.dividend_yield}</p>
-                      </div>
-                    )}
-                    {fiftyTwoWeekSummary && (
-                      <div className="col-span-2 md:col-span-4">
-                        <p className="text-sm text-muted-foreground">52-veckors spann</p>
-                        <p
-                          className="font-semibold"
-                          dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(fiftyTwoWeekSummary) }}
-                        />
+
+                    {hasSheetFundamentals && (
+                      <div className="flex flex-col gap-3 rounded-2xl border border-border/50 bg-card/80 p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Nyckeltal från Google Sheets
+                        </p>
+                        {renderStatsList(fundamentalsStats)}
                       </div>
                     )}
                   </div>
