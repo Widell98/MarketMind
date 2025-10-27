@@ -766,8 +766,6 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
           target_price: targetPrice,
           stop_loss: stopLoss,
           pe_ratio: peRatioValue,
-          fifty_two_week_high: fiftyTwoWeekHigh,
-          fifty_two_week_low: fiftyTwoWeekLow,
         });
 
         console.log(`Successfully generated case: ${sanitized.title} (${expectedTicker})`);
