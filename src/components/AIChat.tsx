@@ -88,8 +88,21 @@ const AIChat = ({
         inputRef.current?.focus();
       }, 100);
       setHasProcessedInitialMessage(true);
+
+      if (location.search) {
+        const newUrl = `${location.pathname}${location.hash ?? ''}`;
+        window.history.replaceState({}, document.title, newUrl);
+      }
     }
-  }, [initialStock, initialMessage, hasProcessedInitialMessage, createNewSession]);
+  }, [
+    initialStock,
+    initialMessage,
+    hasProcessedInitialMessage,
+    createNewSession,
+    location.pathname,
+    location.search,
+    location.hash
+  ]);
   useEffect(() => {
     // Handle navigation state for creating new sessions - always create new session when requested
     if (location.state?.createNewSession) {
