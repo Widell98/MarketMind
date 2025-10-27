@@ -9,9 +9,8 @@ import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { ToastAction } from '@/components/ui/toast';
-import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Calendar, Building, BarChart3, Eye, Users, AlertTriangle, Target, StopCircle, Brain, ShoppingCart, Plus, UserPlus, PlusCircle, History, ChevronLeft, ChevronRight, Trash2, MessageSquare, LineChart, Coins, Percent } from 'lucide-react';
+import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Building, BarChart3, Eye, Users, AlertTriangle, Target, StopCircle, Brain, ShoppingCart, Plus, UserPlus, PlusCircle, History, ChevronLeft, ChevronRight, Trash2, MessageSquare, LineChart, Coins, Percent } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -1204,56 +1203,6 @@ const StockCaseDetail = () => {
                 </CardContent>
               </Card>
             )}
-
-            {/* Case Details */}
-            <Card>
-              <CardContent className="pt-6 space-y-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="w-4 h-4" />
-                  <span>
-                    Skapad {formatDistanceToNow(new Date(stockCase.created_at), {
-                      addSuffix: true,
-                      locale: sv
-                    })}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Status:</span>
-                  <Badge variant={stockCase.status === 'winner' ? 'default' : stockCase.status === 'loser' ? 'destructive' : 'secondary'}>
-                    {stockCase.status === 'active' ? 'Aktiv' : stockCase.status === 'winner' ? 'Vinnare' : 'Förlorare'}
-                  </Badge>
-                </div>
-
-                {stockCase.case_categories && (
-                  <div>
-                    <span className="text-sm text-muted-foreground">Kategori:</span>
-                    <Badge 
-                      variant="outline" 
-                      className="ml-2" 
-                      style={{
-                        borderColor: stockCase.case_categories.color,
-                        color: stockCase.case_categories.color
-                      }}
-                    >
-                      {stockCase.case_categories.name}
-                    </Badge>
-                  </div>
-                )}
-
-                {/* Social Stats */}
-                <Separator />
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <Heart className="w-4 h-4" />
-                      Gillningar
-                    </span>
-                    <span className="font-semibold">{likeCount}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
 
             {/* Login Prompt for non-users */}
             {!user && (
