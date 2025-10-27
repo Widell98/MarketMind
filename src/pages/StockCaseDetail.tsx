@@ -351,9 +351,43 @@ const StockCaseDetail = () => {
     }
   }
 
+  let fiftyTwoWeekHighText: string | null = null;
+  let fiftyTwoWeekLowText: string | null = null;
+
+  if (fiftyTwoWeekSummary) {
+    const highMatch = fiftyTwoWeekSummary.match(/52-veckors\s+högsta:\s*([0-9.,-]+)/i);
+    const lowMatch = fiftyTwoWeekSummary.match(/52-veckors\s+lägsta:\s*([0-9.,-]+)/i);
+
+    fiftyTwoWeekHighText = highMatch?.[1]?.trim()
+      ? `52-veckors högsta: ${highMatch[1].trim()}`
+      : null;
+    fiftyTwoWeekLowText = lowMatch?.[1]?.trim()
+      ? `52-veckors lägsta: ${lowMatch[1].trim()}`
+      : null;
+  }
+
   const displayedAnalysisDescription = typeof cleanedAnalysisDescription === 'string'
     ? (cleanedAnalysisDescription.trim().length > 0 ? cleanedAnalysisDescription.trim() : null)
     : null;
+
+  const hasPricingMetrics = Boolean(
+    formatCasePrice(stockCase.entry_price)
+    || formatCasePrice(stockCase.current_price)
+    || (!isAiGeneratedCase && formatCasePrice(stockCase.target_price))
+    || (!isAiGeneratedCase && formatCasePrice(stockCase.stop_loss))
+  );
+
+  const hasCompanyDetails = Boolean(stockCase.sector);
+
+  const hasSheetFundamentals = Boolean(
+    stockCase.market_cap
+    || stockCase.pe_ratio
+    || stockCase.dividend_yield
+    || fiftyTwoWeekHighText
+    || fiftyTwoWeekLowText
+  );
+
+  const shouldShowFinancialOverview = hasPricingMetrics || hasCompanyDetails || hasSheetFundamentals;
 
   return (
     <Layout>
@@ -644,78 +678,111 @@ const StockCaseDetail = () => {
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-6">
             {/* Combined Overview Card - only show if there are financial metrics */}
-            {(stockCase.entry_price || stockCase.current_price || stockCase.target_price || stockCase.stop_loss || stockCase.sector || stockCase.market_cap || stockCase.pe_ratio || stockCase.dividend_yield || fiftyTwoWeekSummary) && (
+            {shouldShowFinancialOverview && (
               <Card>
                 <CardHeader>
                   <CardTitle>Finansiell Översikt</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    {/* Price Information */}
-                    {formatCasePrice(stockCase.entry_price) && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Inköpspris</p>
-                        <p className="font-bold text-lg text-primary">{formatCasePrice(stockCase.entry_price)}</p>
-                      </div>
-                    )}
-                    {formatCasePrice(stockCase.current_price) && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Nuvarande pris</p>
-                        <p className="font-bold text-lg text-primary">{formatCasePrice(stockCase.current_price)}</p>
-                      </div>
-                    )}
-                    {!isAiGeneratedCase && formatCasePrice(stockCase.target_price) && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Målpris</p>
-                        <p className="font-bold text-lg text-green-600">{formatCasePrice(stockCase.target_price)}</p>
-                      </div>
-                    )}
-                    {!isAiGeneratedCase && formatCasePrice(stockCase.stop_loss) && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Stop Loss</p>
-                        <p className="font-bold text-lg text-red-600">{formatCasePrice(stockCase.stop_loss)}</p>
-                      </div>
-                    )}
-                    
-                    {/* Company Information */}
-                    {stockCase.sector && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Sektor</p>
-                        <p className="font-semibold">{stockCase.sector}</p>
-                      </div>
-                    )}
-                    {stockCase.market_cap && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Börsvärde</p>
-                        <p className="font-semibold">{stockCase.market_cap}</p>
-                      </div>
-                    )}
-                    {stockCase.pe_ratio && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">P/E-tal</p>
-                        <p className="font-semibold">{stockCase.pe_ratio}</p>
-                      </div>
-                    )}
-                    {(stockCase.dividend_yield || fiftyTwoWeekSummary) && (
-                      <div className="col-span-2 flex flex-col gap-6 md:flex-row md:items-start">
-                        {stockCase.dividend_yield && (
-                          <div className="flex-1">
-                            <p className="text-sm text-muted-foreground">Utdelning</p>
-                            <p className="font-semibold">{stockCase.dividend_yield}</p>
+                <CardContent className="space-y-6">
+                  {hasPricingMetrics && (
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Prisdata</p>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        {formatCasePrice(stockCase.entry_price) && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">Inköpspris</p>
+                            <p className="font-bold text-lg text-primary">{formatCasePrice(stockCase.entry_price)}</p>
                           </div>
                         )}
-                        {fiftyTwoWeekSummary && (
-                          <div className="flex-1">
-                            <p className="text-sm text-muted-foreground">52-veckors spann</p>
-                            <div
-                              className="font-semibold"
-                              dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(fiftyTwoWeekSummary) }}
-                            />
+                        {formatCasePrice(stockCase.current_price) && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">Nuvarande pris</p>
+                            <p className="font-bold text-lg text-primary">{formatCasePrice(stockCase.current_price)}</p>
+                          </div>
+                        )}
+                        {!isAiGeneratedCase && formatCasePrice(stockCase.target_price) && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">Målpris</p>
+                            <p className="font-bold text-lg text-green-600">{formatCasePrice(stockCase.target_price)}</p>
+                          </div>
+                        )}
+                        {!isAiGeneratedCase && formatCasePrice(stockCase.stop_loss) && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">Stop Loss</p>
+                            <p className="font-bold text-lg text-red-600">{formatCasePrice(stockCase.stop_loss)}</p>
                           </div>
                         )}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
+
+                  {hasCompanyDetails && (
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bolagsinformation</p>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {stockCase.sector && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">Sektor</p>
+                            <p className="font-semibold">{stockCase.sector}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {hasSheetFundamentals && (
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nyckeltal (Google Sheets)</p>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {stockCase.market_cap && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">Börsvärde</p>
+                            <p className="font-semibold">
+                              <span dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(stockCase.market_cap) }} />
+                            </p>
+                          </div>
+                        )}
+                        {stockCase.pe_ratio && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">P/E-tal</p>
+                            <p className="font-semibold">
+                              <span dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(stockCase.pe_ratio) }} />
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {(stockCase.dividend_yield || fiftyTwoWeekHighText || fiftyTwoWeekLowText) && (
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          {stockCase.dividend_yield && (
+                            <div>
+                              <p className="text-sm text-muted-foreground">Utdelning</p>
+                              <p className="font-semibold">
+                                <span dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(stockCase.dividend_yield) }} />
+                              </p>
+                            </div>
+                          )}
+                          {(fiftyTwoWeekHighText || fiftyTwoWeekLowText) && (
+                            <div className="space-y-1">
+                              <p className="text-sm text-muted-foreground">52-veckors spann</p>
+                              <div className="font-semibold space-y-1">
+                                {fiftyTwoWeekHighText && (
+                                  <div
+                                    dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(fiftyTwoWeekHighText) }}
+                                  />
+                                )}
+                                {fiftyTwoWeekLowText && (
+                                  <div
+                                    dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(fiftyTwoWeekLowText) }}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
