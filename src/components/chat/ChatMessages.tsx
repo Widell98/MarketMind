@@ -170,12 +170,27 @@ const ChatMessages = ({
         ))}
 
         {isLoading && (
-          <div className="flex items-start gap-3">
-            <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-primary shadow-[0_10px_25px_rgba(15,23,42,0.08)] ring-1 ring-[#144272]/25 transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:ring-transparent dark:shadow-none">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/40 border-t-transparent dark:border-ai-border/70" />
+          <div
+            className="flex items-start gap-3"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-primary shadow-[0_10px_28px_rgba(15,23,42,0.1)] ring-1 ring-[#144272]/25 transition-colors dark:bg-ai-surface-muted/70 dark:text-ai-text-muted dark:ring-transparent dark:shadow-none">
+              <span className="relative flex h-5 w-5 items-center justify-center">
+                <span className="absolute h-full w-full rounded-full border border-primary/30 opacity-70 [animation:ping_1.6s_ease-out_infinite] dark:border-ai-border/70" />
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary/50 border-t-transparent dark:border-ai-border/80" />
+              </span>
             </div>
-            <div className="max-w-[70%] rounded-[18px] border border-[#205295]/22 bg-white/90 px-4 py-3 text-sm text-ai-text-muted shadow-[0_16px_40px_rgba(15,23,42,0.06)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble">
-              Assistenten tänker...
+            <div className="max-w-[70%] rounded-[18px] border border-[#205295]/22 bg-white/95 px-4 py-3 text-sm text-ai-text-muted shadow-[0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-colors dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-bubble">
+              <span className="inline-flex items-center gap-2">
+                <span>Assistenten tänker</span>
+                <span className="flex items-center gap-1" aria-hidden>
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary/70 [animation:pulse_1.4s_ease-in-out_infinite]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary/70 [animation:pulse_1.4s_ease-in-out_infinite] [animation-delay:140ms]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary/70 [animation:pulse_1.4s_ease-in-out_infinite] [animation-delay:280ms]" />
+                </span>
+              </span>
+              <span className="sr-only">Assistenten tänker...</span>
             </div>
           </div>
         )}
