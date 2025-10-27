@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
@@ -432,7 +432,7 @@ const StockCaseDetail = () => {
     ? (cleanedAnalysisDescription.trim().length > 0 ? cleanedAnalysisDescription.trim() : null)
     : null;
 
-  const resolvedMarketCap = useMemo(() => {
+  const resolvedMarketCap = (() => {
     const rawMarketCap = sheetMetrics?.marketCap ?? stockCase.market_cap ?? null;
 
     if (!rawMarketCap) {
@@ -462,7 +462,7 @@ const StockCaseDetail = () => {
     }
 
     return `${trimmedValue} ${normalizedCurrency}`;
-  }, [sheetMetrics?.currency, sheetMetrics?.marketCap, stockCase.currency, stockCase.market_cap]);
+  })();
   const resolvedPeRatio = sheetMetrics?.peRatio ?? stockCase.pe_ratio;
   const resolvedDividendYield = sheetMetrics?.dividendYield ?? stockCase.dividend_yield;
 
