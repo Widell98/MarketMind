@@ -197,7 +197,8 @@ const sanitizeCaseData = (rawCase: any) => {
   let longDescription = sanitizeLongDescription(
     rawCase.analysis ?? rawCase.long_description ?? rawCase.investment_thesis,
   );
-  const ticker = typeof rawCase.ticker === 'string' ? rawCase.ticker.trim().toUpperCase() : '';
+  const rawTicker = typeof rawCase.ticker === 'string' ? rawCase.ticker.trim().toUpperCase() : '';
+  const ticker = rawTicker && /^[A-Z0-9.-]{1,10}$/.test(rawTicker) ? rawTicker : '';
   const websiteInfo = sanitizeWebsite(
     rawCase.official_website ?? rawCase.company_website ?? rawCase.website ?? rawCase.source_url ?? rawCase.source,
   );
@@ -218,15 +219,7 @@ const sanitizeCaseData = (rawCase: any) => {
     return null;
   }
 
-  if (!ticker || !/^[A-Z0-9.-]{1,10}$/.test(ticker)) {
-    return null;
-  }
-
   if (!longDescription) {
-    return null;
-  }
-
-  if (!websiteInfo) {
     return null;
   }
 
@@ -289,7 +282,7 @@ const sanitizeCaseData = (rawCase: any) => {
     target_price: sanitizeNumber(rawCase.target_price),
     stop_loss: sanitizeNumber(rawCase.stop_loss),
     ticker,
-    image_url: websiteInfo.logoUrl,
+    image_url: websiteInfo?.logoUrl ?? null,
     currency: sanitizeCurrency(rawCase.currency),
   };
 };
@@ -509,42 +502,51 @@ serve(async (req) => {
       usedTickerSymbols.add(selectedTicker);
 
       const prompt = `
-Du är en professionell finansanalytiker som skriver realistiska aktiecase för svenska investerare.
+Du är en professionell finansanalytiker som skriver inspirerande men faktabaserade aktiepitchar för svenska investerare.
 
 🎯 Uppdrag:
-Skapa ett detaljerat investeringscase för ett bolag inom sektorn "${sector}" med inriktning på "${style}"-investeringar.
+Skapa ett välformulerat investeringscase för ett bolag inom sektorn "${sector}" med inriktning på "${style}"-strategier.
 
 📊 Fakta att utgå från:
 - Bolag: ${selectedName} (${selectedTicker})
 - Nuvarande pris (från Google Sheet): ${sheetPrice !== null ? `${sheetPrice} ${sheetCurrency ?? 'SEK'}` : 'okänt, använd ett rimligt värde baserat på börsdata'}
 - Analysen ska gälla verkliga, börsnoterade bolag. Kontrollera att bolaget existerar och är listat på en erkänd börs.
 
+💰 Prisreferens:
+Om prisdata finns, inkludera **en kort mening** som sätter priset i kontext – t.ex. om aktien handlas på en attraktiv nivå, nära årshögsta, eller i linje med sektorkollegor.
+Undvik teknisk analys eller exakta kursmål – håll kommentaren kort, som en del av helhetsanalysen.
+
 🧠 Stil och ton:
-- Professionell, trovärdig och pedagogisk ton.
 - Skriv på svenska.
-- Undvik överdrifter, använd faktabaserad argumentation.
+- Professionell, engagerande och lättillgänglig ton — som en erfaren analytiker som vill väcka intresse snarare än överösa med siffror.
+- Undvik jargong, men använd relevanta finansiella begrepp där det stärker trovärdigheten.
+- Fokusera på bolagets affärslogik, tillväxtmöjligheter och branschkontext — inte exakta handelsnivåer.
 
 📈 Innehållskrav:
-1. Förklara varför bolaget är intressant för investerare inom "${style}"-strategin.
-2. Inkludera relevanta finansiella nyckeltal (P/E-tal, direktavkastning, marknadsvärde).
-3. Ange numeriska värden för 52-veckors högsta och lägsta kurs.
-4. Ange rimliga målpriser (target_price), köp-nivåer (entry_price) och stop-loss baserat på kursnivåer.
-5. Lägg till bolagets officiella webbplats (endast domän, t.ex. "volvocars.com").
+1. Förklara varför bolaget är intressant för investerare med fokus på "${style}"-strategin.
+2. Lyft fram både kvantitativa och kvalitativa faktorer som stärker caset.
+3. Beskriv 2–3 tydliga tillväxtdrivare, trender eller marknadsförhållanden som påverkar bolaget – till exempel förändringar i efterfrågan, teknikutveckling, konkurrens, reglering eller makroekonomi.
+4. Välj endast faktorer som är relevanta för just detta bolag och sektor, utan att fokusera på någon specifik investeringsstil eller tema i onödan.
+5. Målet är att ge en balanserad och trovärdig helhetsbild som hjälper investerare att snabbt förstå bolagets läge, möjligheter och utmaningar.
+6. Undvik att ange målpris, stop-loss eller tekniska nivåer — fokusera på värdedrivande faktorer och berättelsen.
 
-📊 Analysdel – krav på innehåll och ton:
-Skriv en engagerande men faktabaserad analys som skapar intresse för bolaget redan i de första meningarna.
+🧩 Analysdel – krav på innehåll och struktur:
+Skriv en analytisk aktiepitch i tre till fem korta stycken (separerade med tomma rader) som flyter naturligt att läsa.
 
 Analysen ska:
-- Inledas med en kort men slagkraftig sammanfattning av bolagets kärnverksamhet och varför det är intressant just nu.
-- Beskriva bolagets styrkor (t.ex. marknadsposition, innovation, tillväxtpotential eller stabilitet).
-- Nämna minst ett aktuellt tema eller trend i branschen som påverkar bolaget (t.ex. elektrifiering, digitalisering, geopolitik, ESG).
-- Inkludera en balanserad syn på risker eller utmaningar, men håll fokus på möjligheterna.
-- Avsluta med ett resonemang om varför aktien kan vara attraktiv för investerare med ${style}-inriktning.
+- Börja med en slagkraftig introduktion som förklarar varför bolaget är intressant just nu.
+- Följa upp med bolagets kärnverksamhet, styrkor och marknadsposition.
+- Lyft fram aktuella drivkrafter eller marknadsfaktorer som påverkar bolaget.
+- Nämn kort en eller två risker eller utmaningar på ett balanserat sätt.
+- Om prisdata finns, väv in en naturlig mening om aktiens värdering eller prisnivå.
+- Avsluta med ett sammanfattande stycke som beskriver varför aktien är attraktiv för investerare med "${style}"-inriktning.
 
-Exempel på önskad ton:
-"Med sin starka nisch inom järnvägsunderhåll och ökande efterfrågan på klimatsmarta transporter står Railcare väl positionerat för framtida tillväxt. Samtidigt ger bolagets stabila kontraktsbas och pålitliga kassaflöden en attraktiv risk/reward-profil för investerare som söker utdelning och defensiv exponering mot infrastruktursektorn."
+💬 Exempel på ton:
+"Med sin ledande position inom hållbar logistik och ett växande europeiskt nätverk står bolaget väl rustat för att dra nytta av den ökande efterfrågan på effektiva transportlösningar. Den stabila lönsamheten och starka balansräkningen ger trygghet, samtidigt som bolaget erbjuder strukturell tillväxt inom en växande marknad. Aktien handlas kring 142 SEK, vilket är en rimlig värdering sett till bolagets långsiktiga potential."
 
-Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown):
+📦 Outputformat:
+Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
+
 {
   "title": "string",
   "company_name": "string",
@@ -553,15 +555,11 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
   "sector": "string",
   "market_cap": "string",
   "pe_ratio": "string",
-  "dividend_yield": "string",
-  "fifty_two_week_high": number,
-  "fifty_two_week_low": number,
-  "ticker": "string",
-  "official_website": "string",
-  "target_price": number,
-  "entry_price": number,
-  "stop_loss": number
-}`;
+  "dividend_yield": "string"
+}
+`;
+
+      const normalizedPrompt = prompt.trim();
 
       console.log(`Generating case ${i + 1} for ${sector} - ${style}...`);
 
@@ -680,6 +678,7 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
           status: 'active',
           ai_batch_id: runId,
           generated_at: new Date().toISOString(),
+          ai_prompt: normalizedPrompt,
           currency: resolvedCurrency,
           entry_price: entryPrice,
           current_price: entryPrice,
