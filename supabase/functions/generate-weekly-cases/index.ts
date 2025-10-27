@@ -88,10 +88,36 @@ const sanitizeCurrency = (value: unknown): string | null => {
   return trimmed;
 };
 
+const appendCurrencyIfMissing = (value: string | null, currency: string | null): string | null => {
+  if (!value) {
+    return null;
+  }
+
+  if (!currency) {
+    return value;
+  }
+
+  const trimmedCurrency = currency.trim().toUpperCase();
+  if (!trimmedCurrency) {
+    return value;
+  }
+
+  return value.toUpperCase().includes(trimmedCurrency)
+    ? value
+    : `${value} ${trimmedCurrency}`;
+};
+
 type SanitizedWebsite = {
   hostname: string;
   url: string;
   logoUrl: string;
+};
+
+const headerMatches = (header: string, patterns: RegExp[], requireAll = false): boolean => {
+  const normalized = header.trim().toLowerCase();
+  return requireAll
+    ? patterns.every((pattern) => pattern.test(normalized))
+    : patterns.some((pattern) => pattern.test(normalized));
 };
 
 const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
@@ -112,11 +138,15 @@ const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
   );
   const dataRows = rows.slice(1);
 
-  const companyIdx = headers.findIndex((header) => /company/i.test(header));
-  const simpleTickerIdx = headers.findIndex((header) => /simple\s*ticker/i.test(header));
-  const tickerIdx = headers.findIndex((header) => /ticker/i.test(header) && !/simple/i.test(header));
-  const currencyIdx = headers.findIndex((header) => /(currency|valuta)/i.test(header));
-  const priceIdx = headers.findIndex((header) => /(price|senast|last)/i.test(header));
+  const companyIdx = headers.findIndex((header) => headerMatches(header, [/company/, /bolag/]));
+  const simpleTickerIdx = headers.findIndex((header) => headerMatches(header, [/simple\s*ticker/]));
+  const tickerIdx = headers.findIndex((header) => headerMatches(header, [/ticker/]) && !headerMatches(header, [/simple/]));
+  const currencyIdx = headers.findIndex((header) => headerMatches(header, [/(currency|valuta)/]));
+  const priceIdx = headers.findIndex((header) => headerMatches(header, [/(price|senast|last)/]));
+  const marketCapIdx = headers.findIndex((header) => headerMatches(header, [/(market\s*cap|börsvärde|marketcap)/]));
+  const peRatioIdx = headers.findIndex((header) => headerMatches(header, [/(p\s*\/?\s*e|p\/e|pe\b)/]));
+  const fiftyTwoHighIdx = headers.findIndex((header) => headerMatches(header, [/(52|fifty\s*two)/, /(high|högsta|highs)/], true));
+  const fiftyTwoLowIdx = headers.findIndex((header) => headerMatches(header, [/(52|fifty\s*two)/, /(low|lägsta|lows)/], true));
 
   if (tickerIdx === -1 && simpleTickerIdx === -1) {
     throw new Error('CSV saknar nödvändiga kolumner (Ticker eller Simple Ticker).');
@@ -130,6 +160,10 @@ const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
     const rawSymbol = tickerIdx !== -1 ? normalizeSheetValue(columns[tickerIdx]) : null;
     const rawCurrency = currencyIdx !== -1 ? normalizeSheetValue(columns[currencyIdx]) : null;
     const rawPrice = priceIdx !== -1 ? normalizeSheetValue(columns[priceIdx]) : null;
+    const rawMarketCap = marketCapIdx !== -1 ? normalizeSheetValue(columns[marketCapIdx]) : null;
+    const rawPeRatio = peRatioIdx !== -1 ? normalizeSheetValue(columns[peRatioIdx]) : null;
+    const rawFiftyTwoHigh = fiftyTwoHighIdx !== -1 ? normalizeSheetValue(columns[fiftyTwoHighIdx]) : null;
+    const rawFiftyTwoLow = fiftyTwoLowIdx !== -1 ? normalizeSheetValue(columns[fiftyTwoLowIdx]) : null;
 
     const selectedSymbol = rawSimpleSymbol ?? rawSymbol;
     if (!selectedSymbol) continue;
@@ -149,6 +183,10 @@ const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
       name: rawName ?? cleanedSymbol,
       currency: rawCurrency ?? null,
       price,
+      marketCap: rawMarketCap ?? null,
+      peRatio: rawPeRatio ?? null,
+      fiftyTwoWeekHigh: rawFiftyTwoHigh ?? null,
+      fiftyTwoWeekLow: rawFiftyTwoLow ?? null,
     });
   }
 
@@ -292,6 +330,10 @@ type SheetTickerInfo = {
   price: number | null;
   currency: string | null;
   name?: string | null;
+  marketCap?: string | null;
+  peRatio?: string | null;
+  fiftyTwoWeekHigh?: string | null;
+  fiftyTwoWeekLow?: string | null;
 };
 
 const normalizeTickerKey = (value: string): string => {
@@ -498,6 +540,10 @@ serve(async (req) => {
       const sheetCurrency = typeof selectedTickerInfo.currency === 'string' && selectedTickerInfo.currency.trim().length > 0
         ? selectedTickerInfo.currency.trim().toUpperCase()
         : null;
+      const sheetMarketCapText = appendCurrencyIfMissing(selectedTickerInfo.marketCap ?? null, sheetCurrency);
+      const sheetPeRatioText = selectedTickerInfo.peRatio ?? null;
+      const sheetFiftyTwoHighText = appendCurrencyIfMissing(selectedTickerInfo.fiftyTwoWeekHigh ?? null, sheetCurrency);
+      const sheetFiftyTwoLowText = appendCurrencyIfMissing(selectedTickerInfo.fiftyTwoWeekLow ?? null, sheetCurrency);
 
       usedTickerSymbols.add(selectedTicker);
 
@@ -510,6 +556,10 @@ Skapa ett välformulerat investeringscase för ett bolag inom sektorn "${sector}
 📊 Fakta att utgå från:
 - Bolag: ${selectedName} (${selectedTicker})
 - Nuvarande pris (från Google Sheet): ${sheetPrice !== null ? `${sheetPrice} ${sheetCurrency ?? 'SEK'}` : 'okänt, använd ett rimligt värde baserat på börsdata'}
+- Börsvärde (från Google Sheet): ${sheetMarketCapText ?? 'saknas – om du inte hittar en aktuell uppgift, skriv att uppgiften saknas'}
+- P/E-tal (från Google Sheet): ${sheetPeRatioText ?? 'saknas – resonera kvalitativt kring värderingen utan att hitta på en exakt siffra'}
+- 52-veckors högsta (från Google Sheet): ${sheetFiftyTwoHighText ?? 'saknas – nämn bara om du har trovärdig data'}
+- 52-veckors lägsta (från Google Sheet): ${sheetFiftyTwoLowText ?? 'saknas – nämn bara om du har trovärdig data'}
 - Analysen ska gälla verkliga, börsnoterade bolag. Kontrollera att bolaget existerar och är listat på en erkänd börs.
 
 💰 Prisreferens:
@@ -670,8 +720,41 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
           stopLoss = Number((entryPrice * 0.92).toFixed(2));
         }
 
+        const sheetMarketCapValue = sheetInfo?.marketCap ?? null;
+        const sheetPeRatioValue = sheetInfo?.peRatio ?? null;
+        const sheetFiftyTwoHighValue = sheetInfo?.fiftyTwoWeekHigh ?? null;
+        const sheetFiftyTwoLowValue = sheetInfo?.fiftyTwoWeekLow ?? null;
+
+        const marketCapWithCurrency = caseWithoutTicker.market_cap
+          ?? appendCurrencyIfMissing(sheetMarketCapValue, resolvedCurrency)
+          ?? null;
+        const peRatioValue = caseWithoutTicker.pe_ratio ?? sheetPeRatioValue ?? null;
+        const sheetHighLine = appendCurrencyIfMissing(sheetFiftyTwoHighValue, resolvedCurrency);
+        const sheetLowLine = appendCurrencyIfMissing(sheetFiftyTwoLowValue, resolvedCurrency);
+
+        const metricsSummary: string[] = [];
+        if (sheetHighLine) {
+          metricsSummary.push(`52-veckors högsta (Google Sheet): ${sheetHighLine}`);
+        }
+        if (sheetLowLine) {
+          metricsSummary.push(`52-veckors lägsta (Google Sheet): ${sheetLowLine}`);
+        }
+        if (marketCapWithCurrency) {
+          metricsSummary.push(`Börsvärde (Google Sheet): ${marketCapWithCurrency}`);
+        }
+        if (peRatioValue) {
+          metricsSummary.push(`P/E-tal (Google Sheet): ${peRatioValue}`);
+        }
+
+        const enrichedLongDescription = metricsSummary.length > 0
+          ? `${caseWithoutTicker.long_description}\n\n${metricsSummary.join(' | ')}`
+          : caseWithoutTicker.long_description;
+
         generatedCases.push({
           ...caseWithoutTicker,
+          long_description: enrichedLongDescription,
+          market_cap: marketCapWithCurrency,
+          pe_ratio: peRatioValue,
           ticker: expectedTicker,
           ai_generated: true,
           is_public: true,
