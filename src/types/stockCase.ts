@@ -28,6 +28,7 @@ export interface StockCase {
   ai_generated?: boolean;
   ai_batch_id?: string;
   generated_at?: string;
+  ai_prompt?: string | null;
   currency?: string;
   timeframe?: string;
   target_reached?: boolean;

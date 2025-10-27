@@ -12,6 +12,7 @@ import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useUserFollows } from '@/hooks/useUserFollows';
 import { useNavigate } from 'react-router-dom';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface EnhancedStockCaseCardProps {
   stockCase: StockCase;
@@ -33,6 +34,7 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
   const { likeCount, isLiked, toggleLike } = useStockCaseLikes(stockCase.id);
   const { isFollowing, followUser, unfollowUser } = useUserFollows();
   const navigate = useNavigate();
+  const [isPromptDialogOpen, setIsPromptDialogOpen] = React.useState(false);
 
   const isOwner = user && stockCase.user_id === user.id;
   const isUserCase = !stockCase.ai_generated && stockCase.user_id;
@@ -67,12 +69,29 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
     return stockCase.performance_percentage || 0;
   };
 
-  const handleDiscussWithAI = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    // Navigate to stock case detail page and scroll to comments
-    navigate(`/stock-cases/${stockCase.id}`, { 
-      state: { scrollToComments: true } 
+  const handleDiscussWithAI = (e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+
+    const contextData = {
+      type: 'stock_case',
+      id: stockCase.id,
+      title: stockCase.title,
+      company: stockCase.company_name,
+      data: stockCase
+    };
+
+    navigate('/ai-chatt', {
+      state: {
+        contextData
+      }
     });
+  };
+
+  const handleViewPrompt = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsPromptDialogOpen(true);
   };
 
   const handleFollowToggle = async (e: React.MouseEvent) => {
@@ -277,10 +296,43 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
       </CardHeader>
       
       <CardContent className="flex-1 flex flex-col space-y-4">
+        {stockCase.ai_generated && (
+          <div className="rounded-lg border border-purple-200/60 bg-purple-50/70 p-3 text-sm dark:border-purple-900/60 dark:bg-purple-950/30">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 text-purple-700 dark:text-purple-200">
+                <Bot className="h-4 w-4" />
+                <span className="font-medium">Skapad av MarketMind AI</span>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {stockCase.ai_prompt ? (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="px-0 text-purple-700 hover:text-purple-900 dark:text-purple-200 dark:hover:text-purple-100"
+                    onClick={handleViewPrompt}
+                  >
+                    Visa prompt
+                  </Button>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Promptdata saknas</span>
+                )}
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="px-0 text-purple-700 hover:text-purple-900 dark:text-purple-200 dark:hover:text-purple-100"
+                  onClick={handleDiscussWithAI}
+                >
+                  Diskutera med AI
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Stock Image */}
         {stockCase.image_url && (
           <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-muted">
-            <img 
+            <img
               src={stockCase.image_url} 
               alt={`${stockCase.company_name} stock chart`} 
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
@@ -319,8 +371,8 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
         <div className="pt-4 border-t space-y-3">
           {/* Social actions */}
           <div className="flex items-center gap-2">
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               variant={isLiked ? "default" : "outline"} 
               onClick={e => {
                 e.stopPropagation();
@@ -344,6 +396,33 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
             </Button>
           </div>
         </div>
+
+        <Dialog open={isPromptDialogOpen} onOpenChange={setIsPromptDialogOpen}>
+          <DialogContent onClick={e => e.stopPropagation()} className="sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>AI-prompt för {stockCase.ticker || stockCase.company_name}</DialogTitle>
+              <DialogDescription>
+                Så här instruerades vår AI-assistent när caset skapades.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[50vh] overflow-y-auto rounded-md bg-muted p-4 text-left">
+              <pre className="whitespace-pre-wrap text-sm text-muted-foreground">
+                {stockCase.ai_prompt || 'Ingen prompt sparad för detta case.'}
+              </pre>
+            </div>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setIsPromptDialogOpen(false);
+                  handleDiscussWithAI();
+                }}
+              >
+                Öppna i AI-chatten
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
