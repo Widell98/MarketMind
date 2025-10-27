@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 
 export interface CommunityRecommendation {
   id: string;
@@ -92,7 +93,10 @@ export const useCommunityRecommendations = () => {
           .in('id', stockCaseIds);
 
         if (stockCasesError) throw stockCasesError;
-        stockCases = stockCasesData || [];
+        stockCases = (stockCasesData || []).map(stockCase => ({
+          ...stockCase,
+          title: normalizeStockCaseTitle(stockCase.title, stockCase.company_name),
+        }));
       }
 
       // Fetch analyses without user profiles first

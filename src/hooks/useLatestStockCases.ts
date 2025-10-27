@@ -1,12 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { StockCase } from '@/types/stockCase';
+import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 
 // Helper function to ensure proper typing from database
 const transformStockCase = (rawCase: any): StockCase => {
+  const normalizedTitle = normalizeStockCaseTitle(rawCase.title, rawCase.company_name);
+
   return {
     ...rawCase,
+    title: normalizedTitle,
     status: (rawCase.status || 'active') as 'active' | 'winner' | 'loser',
     is_public: rawCase.is_public ?? true,
   };
@@ -63,49 +67,112 @@ const enrichStockCases = async (stockCases: any[]): Promise<StockCase[]> => {
   });
 };
 
-export const useLatestStockCases = (limit: number = 6) => {
+type LatestStockCasesOptions = {
+  limit?: number;
+  aiGeneratedOnly?: boolean;
+  aiBatchId?: string;
+  includePrivate?: boolean;
+  enabled?: boolean;
+};
+
+export const useLatestStockCases = (limitOrOptions: number | LatestStockCasesOptions = 6) => {
+  const options = useMemo<LatestStockCasesOptions>(() => {
+    if (typeof limitOrOptions === 'number') {
+      return { limit: limitOrOptions };
+    }
+    return limitOrOptions ?? {};
+  }, [limitOrOptions]);
+
+  const {
+    limit = 6,
+    aiGeneratedOnly = false,
+    aiBatchId,
+    includePrivate = false,
+    enabled = true,
+  } = options;
+
   const [latestCases, setLatestCases] = useState<StockCase[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(Boolean(enabled));
+  const [error, setError] = useState<Error | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
   const { toast } = useToast();
 
+  const refetch = useCallback(() => {
+    setRefreshToken((token) => token + 1);
+  }, []);
+
   useEffect(() => {
+    let isCancelled = false;
+
     const fetchLatestCases = async () => {
+      if (!enabled) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
+        setError(null);
 
-        // Get the latest stock cases
-        const { data, error } = await supabase
+        let query = supabase
           .from('stock_cases')
           .select('*')
-          .eq('is_public', true)
           .order('created_at', { ascending: false })
           .limit(limit);
 
-        if (error) {
-          console.error('Error fetching latest cases:', error);
-          throw error;
+        if (!includePrivate) {
+          query = query.eq('is_public', true);
         }
 
-        // Enrich the data with profiles and categories
+        if (aiGeneratedOnly) {
+          query = query.eq('ai_generated', true);
+        }
+
+        if (aiBatchId) {
+          query = query.eq('ai_batch_id', aiBatchId);
+        }
+
+        const { data, error: fetchError } = await query;
+
+        if (fetchError) {
+          console.error('Error fetching latest cases:', fetchError);
+          throw fetchError;
+        }
+
         const enrichedData = await enrichStockCases(data || []);
-        setLatestCases(enrichedData);
-      } catch (error: any) {
-        console.error('Error fetching latest cases:', error);
+
+        if (!isCancelled) {
+          setLatestCases(enrichedData);
+        }
+      } catch (fetchError: any) {
+        if (isCancelled) return;
+
+        console.error('Error fetching latest cases:', fetchError);
+        setError(fetchError instanceof Error ? fetchError : new Error('Failed to load latest cases'));
+
         toast({
           title: "Error",
           description: "Failed to load latest cases",
           variant: "destructive",
         });
       } finally {
-        setLoading(false);
+        if (!isCancelled) {
+          setLoading(false);
+        }
       }
     };
 
     fetchLatestCases();
-  }, [limit, toast]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [aiBatchId, aiGeneratedOnly, includePrivate, limit, refreshToken, enabled, toast]);
 
   return {
     latestCases,
-    loading
+    loading,
+    error,
+    refetch,
   };
 };

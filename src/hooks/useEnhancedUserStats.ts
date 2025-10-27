@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 
 export interface EnhancedUserStats {
   stockCasesCount: number;
@@ -38,7 +39,7 @@ export const useEnhancedUserStats = (userId?: string) => {
       // Fetch stock cases stats
       const { data: stockCases } = await supabase
         .from('stock_cases')
-        .select('id, title, created_at, image_url')
+        .select('id, title, company_name, created_at, image_url')
         .eq('user_id', targetUserId)
         .eq('is_public', true);
 
@@ -50,9 +51,14 @@ export const useEnhancedUserStats = (userId?: string) => {
         .eq('is_public', true);
 
       // Calculate stock case likes
+      const sanitizedStockCases = (stockCases || []).map(stockCase => ({
+        ...stockCase,
+        title: normalizeStockCaseTitle(stockCase.title, stockCase.company_name),
+      }));
+
       let totalStockCaseLikes = 0;
-      if (stockCases?.length) {
-        for (const stockCase of stockCases) {
+      if (sanitizedStockCases.length) {
+        for (const stockCase of sanitizedStockCases) {
           const { data: likesData } = await supabase
             .rpc('get_stock_case_like_count', { case_id: stockCase.id });
           totalStockCaseLikes += likesData || 0;
@@ -70,7 +76,7 @@ export const useEnhancedUserStats = (userId?: string) => {
 
       // Get top performing content
       const allContent = [
-        ...(stockCases?.map(item => ({ ...item, type: 'stock_case', likes: 0 })) || []),
+        ...(sanitizedStockCases.map(item => ({ ...item, type: 'stock_case', likes: 0 })) || []),
         ...(analyses?.map(item => ({ ...item, type: 'analysis', likes: item.likes_count || 0 })) || [])
       ].sort((a, b) => b.likes - a.likes).slice(0, 3);
 

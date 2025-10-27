@@ -10,7 +10,7 @@ import CreateStockCaseDialog from '@/components/CreateStockCaseDialog';
 import StockCaseCard from '@/components/StockCaseCard';
 import EnhancedStockCaseCard from '@/components/EnhancedStockCaseCard';
 import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
-import AIWeeklyPicks from '@/components/AIWeeklyPicks';
+import AIGenerationAdminControls from '@/components/AIGenerationAdminControls';
 import { useStockCases } from '@/hooks/useStockCases';
 import { useFollowingStockCases } from '@/hooks/useFollowingStockCases';
 import { useAuth } from '@/contexts/AuthContext';
@@ -81,6 +81,7 @@ const StockCases = () => {
         stockCase.title.toLowerCase().includes(lowerSearchTerm) ||
         stockCase.company_name.toLowerCase().includes(lowerSearchTerm) ||
         stockCase.description?.toLowerCase().includes(lowerSearchTerm) ||
+        stockCase.long_description?.toLowerCase().includes(lowerSearchTerm) ||
         stockCase.profiles?.display_name?.toLowerCase().includes(lowerSearchTerm) ||
         stockCase.profiles?.username?.toLowerCase().includes(lowerSearchTerm)
       );
@@ -144,6 +145,7 @@ const StockCases = () => {
       stockCase.title.toLowerCase().includes(lowerSearchTerm) ||
       stockCase.company_name.toLowerCase().includes(lowerSearchTerm) ||
       stockCase.description?.toLowerCase().includes(lowerSearchTerm) ||
+      stockCase.long_description?.toLowerCase().includes(lowerSearchTerm) ||
       stockCase.profiles?.display_name?.toLowerCase().includes(lowerSearchTerm) ||
       stockCase.profiles?.username?.toLowerCase().includes(lowerSearchTerm)
     );
@@ -171,8 +173,8 @@ const StockCases = () => {
         {/* Breadcrumb Navigation */}
         <Breadcrumb />
         
-        {/* AI Weekly Picks Section - moved to top */}
-        <AIWeeklyPicks />
+        {/* AI generation status & controls */}
+        <AIGenerationAdminControls />
 
         {/* Header - moved below AI Weekly Picks */}
         <div className="flex items-center justify-between">

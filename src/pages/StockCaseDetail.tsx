@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useUserFollows } from '@/hooks/useUserFollows';
@@ -9,29 +9,194 @@ import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { ToastAction } from '@/components/ui/toast';
-import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Calendar, Building, BarChart3, Eye, Users, AlertTriangle, Target, StopCircle, Brain, ShoppingCart, Plus, UserPlus, PlusCircle, History, MessageCircle, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Building, BarChart3, Eye, Users, AlertTriangle, Target, StopCircle, Brain, ShoppingCart, Plus, UserPlus, PlusCircle, History, ChevronLeft, ChevronRight, Trash2, MessageSquare, LineChart, Coins, Percent } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
 import MarketSentimentAnalysis from '@/components/MarketSentimentAnalysis';
 import SaveOpportunityButton from '@/components/SaveOpportunityButton';
 import { highlightNumbersSafely } from '@/utils/sanitizer';
-import StockCaseComments from '@/components/StockCaseComments';
+import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 import AddStockCaseUpdateDialog from '@/components/AddStockCaseUpdateDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { formatCurrency } from '@/utils/currencyUtils';
+import { cn } from '@/lib/utils';
 import type { StockCase } from '@/types/stockCase';
+import { fetchSheetTickerMetrics, type SheetTickerMetrics } from '@/utils/sheetMetrics';
+
+const parseNumericFromString = (value: string): number | null => {
+  if (!value) {
+    return null;
+  }
+
+  const condensed = value.replace(/\s+/g, '');
+  const digitsAndSeparators = condensed.replace(/[^0-9,.-]/g, '');
+
+  const hasComma = digitsAndSeparators.includes(',');
+  const hasDot = digitsAndSeparators.includes('.');
+
+  const attemptParse = (candidate: string): number | null => {
+    if (!candidate) {
+      return null;
+    }
+
+    const parsed = Number(candidate);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  if (hasComma && hasDot) {
+    const noCommas = digitsAndSeparators.replace(/,/g, '');
+    const parsedNoCommas = attemptParse(noCommas);
+    if (parsedNoCommas !== null) {
+      return parsedNoCommas;
+    }
+
+    const swapped = digitsAndSeparators.replace(/\./g, '').replace(/,/g, '.');
+    const parsedSwapped = attemptParse(swapped);
+    if (parsedSwapped !== null) {
+      return parsedSwapped;
+    }
+  } else if (hasComma) {
+    const commaAsDecimal = digitsAndSeparators.replace(/\./g, '').replace(/,/g, '.');
+    const parsedCommaDecimal = attemptParse(commaAsDecimal);
+    if (parsedCommaDecimal !== null) {
+      return parsedCommaDecimal;
+    }
+
+    const noComma = digitsAndSeparators.replace(/,/g, '');
+    const parsedNoComma = attemptParse(noComma);
+    if (parsedNoComma !== null) {
+      return parsedNoComma;
+    }
+  } else if (hasDot) {
+    const dotAsDecimal = attemptParse(digitsAndSeparators);
+    if (dotAsDecimal !== null) {
+      return dotAsDecimal;
+    }
+
+    const noDot = digitsAndSeparators.replace(/\./g, '');
+    const parsedNoDot = attemptParse(noDot);
+    if (parsedNoDot !== null) {
+      return parsedNoDot;
+    }
+  } else {
+    const parsed = attemptParse(digitsAndSeparators);
+    if (parsed !== null) {
+      return parsed;
+    }
+  }
+
+  const fallback = attemptParse(digitsAndSeparators.replace(/,/g, '.'));
+  return fallback;
+};
+
+const formatRoundedUpNumber = (value: number, decimals: number): number => {
+  if (!Number.isFinite(value)) {
+    return value;
+  }
+
+  if (decimals <= 0) {
+    return Math.ceil(value);
+  }
+
+  const factor = 10 ** decimals;
+  return Math.ceil(value * factor) / factor;
+};
+
+const formatApproximateMarketCap = (
+  rawValue: string | number | null | undefined,
+  currencyHint: string | null | undefined,
+): string | null => {
+  if (rawValue === null || rawValue === undefined) {
+    return null;
+  }
+
+  const stringValue = typeof rawValue === 'number'
+    ? rawValue.toString()
+    : typeof rawValue === 'string'
+      ? rawValue.trim()
+      : '';
+
+  if (!stringValue) {
+    return null;
+  }
+
+  const detectedCurrencyMatch = stringValue.toUpperCase().match(/\b[A-Z]{3}\b/);
+  const resolvedCurrency = (currencyHint || detectedCurrencyMatch?.[0] || '').toUpperCase();
+
+  const numericValue = typeof rawValue === 'number'
+    ? rawValue
+    : parseNumericFromString(stringValue);
+
+  if (numericValue !== null && Number.isFinite(numericValue)) {
+    const absolute = Math.abs(numericValue);
+
+    let divisor = 1;
+    let unitLabel: string | null = null;
+
+    if (absolute >= 1_000_000_000_000) {
+      divisor = 1_000_000_000_000;
+      unitLabel = 'biljoner';
+    } else if (absolute >= 1_000_000_000) {
+      divisor = 1_000_000_000;
+      unitLabel = 'miljarder';
+    } else if (absolute >= 1_000_000) {
+      divisor = 1_000_000;
+      unitLabel = 'miljoner';
+    }
+
+    const normalized = numericValue / divisor;
+    const decimals = unitLabel ? 1 : 0;
+    const rounded = formatRoundedUpNumber(normalized, decimals);
+
+    const formattedNumber = new Intl.NumberFormat('sv-SE', {
+      minimumFractionDigits: unitLabel && !Number.isInteger(rounded) ? 1 : 0,
+      maximumFractionDigits: unitLabel ? 1 : 0,
+    }).format(rounded);
+
+    const parts = [
+      'Cirka',
+      formattedNumber,
+    ];
+
+    if (unitLabel) {
+      parts.push(unitLabel);
+    }
+
+    if (resolvedCurrency) {
+      parts.push(resolvedCurrency);
+    }
+
+    return parts.join(' ');
+  }
+
+  if (resolvedCurrency && !stringValue.toUpperCase().includes(resolvedCurrency)) {
+    return `${stringValue} ${resolvedCurrency}`;
+  }
+
+  return stringValue;
+};
+
+type FinancialStat = {
+  key: string;
+  label: string;
+  icon?: LucideIcon;
+  value?: React.ReactNode;
+  valueHtml?: string | null;
+  valueClassName?: string;
+  description?: React.ReactNode;
+};
 
 const StockCaseDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuth();
-  const [showFullDescription, setShowFullDescription] = useState(false);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [updateToDelete, setUpdateToDelete] = useState<string | null>(null);
+  const [sheetMetrics, setSheetMetrics] = useState<SheetTickerMetrics | null>(null);
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL LOGIC
   const { stockCase, loading, error } = useStockCase(id || '');
@@ -39,24 +204,49 @@ const StockCaseDetail = () => {
   const { followUser, unfollowUser, isFollowing } = useUserFollows();
   const { updates, isLoading: updatesLoading, deleteUpdate } = useStockCaseUpdates(id || '');
 
-  // Effect to scroll to comments when navigated from "Diskutera" button
   useEffect(() => {
-    if (location.state?.scrollToComments) {
-      setTimeout(() => {
-        const commentsSection = document.getElementById('comments-section');
-        if (commentsSection) {
-          commentsSection.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 500);
-      window.history.replaceState({}, document.title);
+    const ticker = stockCase?.ticker ?? null;
+
+    if (!ticker) {
+      setSheetMetrics(null);
+      return;
     }
-  }, [location.state]);
+
+    const controller = new AbortController();
+    let isActive = true;
+
+    setSheetMetrics(null);
+
+    fetchSheetTickerMetrics(ticker, { signal: controller.signal })
+      .then((metrics) => {
+        if (!isActive) {
+          return;
+        }
+        setSheetMetrics(metrics);
+      })
+      .catch((fetchError) => {
+        const errorObject = fetchError as Error;
+        if (errorObject?.name === 'AbortError') {
+          return;
+        }
+        console.error('Failed to load Google Sheet metrics', fetchError);
+        if (!isActive) {
+          return;
+        }
+        setSheetMetrics(null);
+      });
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [stockCase?.ticker]);
 
   // NOW we can have conditional logic and early returns
   if (loading) {
     return (
       <Layout>
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="max-w-5xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-1/2 mb-4"></div>
             <div className="h-4 bg-gray-200 rounded w-3/4 mb-6"></div>
@@ -79,7 +269,7 @@ const StockCaseDetail = () => {
   if (error || !stockCase) {
     return (
       <Layout>
-        <div className="max-w-4xl mx-auto text-center py-8">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-8">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
             Stock Case hittades inte
           </h1>
@@ -98,6 +288,28 @@ const StockCaseDetail = () => {
   const performance = stockCase.performance_percentage;
   const isPositivePerformance = performance && performance >= 0;
   const isOwner = user && stockCase.user_id === user.id;
+  const caseCurrency = stockCase.currency?.toUpperCase() || 'SEK';
+
+  const formatPriceValue = (value: number | null | undefined, currencyCode: string): string | null => {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      return null;
+    }
+
+    try {
+      return formatCurrency(value, currencyCode);
+    } catch (_error) {
+      const formatted = new Intl.NumberFormat('sv-SE', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      }).format(value);
+      return currencyCode ? `${formatted} ${currencyCode}` : formatted;
+    }
+  };
+
+  const resolvedSheetCurrency = sheetMetrics?.currency?.toUpperCase() || caseCurrency;
+
+  const formatCasePrice = (value?: number | null) => formatPriceValue(value, caseCurrency);
+  const formatSheetPrice = (value?: number | null) => formatPriceValue(value, resolvedSheetCurrency);
 
   // Create timeline of all versions (original + updates)
   const timeline = [
@@ -108,7 +320,8 @@ const StockCaseDetail = () => {
       image_url: stockCase?.image_url || '',
       created_at: stockCase?.created_at || '',
       user_id: stockCase?.user_id || '',
-      isOriginal: true
+      isOriginal: true,
+      update_type: 'original' as const,
     },
     ...(updates || []).map(update => ({
       ...update,
@@ -120,7 +333,34 @@ const StockCaseDetail = () => {
   const currentVersion = timeline[currentImageIndex];
   const hasMultipleVersions = timeline.length > 1;
 
-  const displayTitle = currentVersion?.title?.trim() ? currentVersion.title : stockCase.title;
+  const isAiGeneratedCase = Boolean(stockCase.ai_generated);
+  const isAiGeneratedImage = currentVersion?.isOriginal
+    ? isAiGeneratedCase
+    : currentVersion?.update_type === 'ai_generated_update';
+
+  const hasRealImage = Boolean(currentVersion?.image_url);
+  const displayImageSrc = currentVersion?.image_url ?? null;
+
+  const imageWrapperClasses = cn(
+    'relative group mx-auto w-full rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300',
+    isAiGeneratedImage ? 'max-w-xl' : 'max-w-4xl'
+  );
+
+  const imageDisplayWrapperClasses = cn(
+    'overflow-hidden rounded-lg transition-all duration-300',
+    isAiGeneratedImage ? 'bg-muted/70 p-4' : ''
+  );
+
+  const imageElementClasses = cn(
+    'w-full h-auto transition-all duration-300',
+    hasRealImage ? 'cursor-pointer' : 'cursor-default',
+    isAiGeneratedImage
+      ? 'max-h-[280px] object-contain'
+      : 'max-h-[560px] object-cover'
+  );
+
+  const normalizedCaseTitle = normalizeStockCaseTitle(stockCase.title, stockCase.company_name);
+  const displayTitle = normalizeStockCaseTitle(currentVersion?.title, normalizedCaseTitle) || normalizedCaseTitle;
 
   const handleShare = async () => {
     const shareTitle = displayTitle;
@@ -178,6 +418,18 @@ const StockCaseDetail = () => {
     }
   };
 
+  const handleDiscussWithAI = () => {
+    const companyName = stockCase.company_name || displayTitle || 'Aktiecase';
+    const ticker = stockCase.ticker ? ` (${stockCase.ticker})` : '';
+    navigate('/ai-chatt', {
+      state: {
+        createNewSession: true,
+        sessionName: `${companyName}${ticker}`,
+        initialMessage: `Kan vi diskutera ${companyName}${ticker} vidare? Jag vill få fler investeringsinsikter om aktien.`
+      }
+    });
+  };
+
   const handleSaveSuccess = () => {
     toast({
       title: "Sparad till portfölj!",
@@ -190,14 +442,6 @@ const StockCaseDetail = () => {
     if (typeof (window as any).refreshCommunityRecommendations === 'function') {
       (window as any).refreshCommunityRecommendations();
     }
-  };
-
-  // Format relative date
-  const formatRelativeDate = (dateString: string) => {
-    return formatDistanceToNow(new Date(dateString), {
-      addSuffix: true,
-      locale: sv
-    });
   };
 
   // Carousel navigation
@@ -293,9 +537,253 @@ const StockCaseDetail = () => {
     });
   };
 
+  const rawAnalysisDescription = stockCase.long_description
+    ?? currentVersion?.description
+    ?? stockCase.description
+    ?? null;
+
+  let extractedFiftyTwoWeekSummary: string | null = null;
+  let cleanedAnalysisDescription: string | null = rawAnalysisDescription;
+
+  if (typeof rawAnalysisDescription === 'string') {
+    const summaryMatch = rawAnalysisDescription.match(/52-veckors\s+högsta:\s*[0-9.,-]+\s*\|\s*52-veckors\s+lägsta:\s*[0-9.,-]+/i);
+
+    if (summaryMatch) {
+      const normalizedSummary = summaryMatch[0]
+        .replace(/\s*\|\s*/g, ' | ')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+
+      extractedFiftyTwoWeekSummary = normalizedSummary;
+
+      const withoutSummary = rawAnalysisDescription
+        .replace(summaryMatch[0], '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
+      cleanedAnalysisDescription = withoutSummary.length > 0 ? withoutSummary : null;
+    }
+  }
+
+  let extractedFiftyTwoWeekHighText: string | null = null;
+  let extractedFiftyTwoWeekLowText: string | null = null;
+
+  if (extractedFiftyTwoWeekSummary) {
+    const highMatch = extractedFiftyTwoWeekSummary.match(/52-veckors\s+högsta:\s*([0-9.,-]+)/i);
+    const lowMatch = extractedFiftyTwoWeekSummary.match(/52-veckors\s+lägsta:\s*([0-9.,-]+)/i);
+
+    extractedFiftyTwoWeekHighText = highMatch?.[1]?.trim()
+      ? `52-veckors högsta: ${highMatch[1].trim()}`
+      : null;
+    extractedFiftyTwoWeekLowText = lowMatch?.[1]?.trim()
+      ? `52-veckors lägsta: ${lowMatch[1].trim()}`
+      : null;
+  }
+
+  const formatSheetRangeValue = (value: number | null | undefined): string | null => {
+    if (value === null || value === undefined || Number.isNaN(value)) {
+      return null;
+    }
+
+    try {
+      const formatted = formatPriceValue(value, resolvedSheetCurrency);
+      if (formatted) {
+        return formatted;
+      }
+      return null;
+    } catch (_error) {
+      return new Intl.NumberFormat('sv-SE', {
+        maximumFractionDigits: 2,
+      }).format(value);
+    }
+  };
+
+  const sheetHighValue = formatSheetRangeValue(sheetMetrics?.fiftyTwoWeekHigh ?? null);
+  const sheetLowValue = formatSheetRangeValue(sheetMetrics?.fiftyTwoWeekLow ?? null);
+
+  const sheetFiftyTwoWeekHighText = sheetHighValue ? `52-veckors högsta: ${sheetHighValue}` : null;
+  const sheetFiftyTwoWeekLowText = sheetLowValue ? `52-veckors lägsta: ${sheetLowValue}` : null;
+
+  const finalFiftyTwoWeekHighText = sheetFiftyTwoWeekHighText ?? extractedFiftyTwoWeekHighText;
+  const finalFiftyTwoWeekLowText = sheetFiftyTwoWeekLowText ?? extractedFiftyTwoWeekLowText;
+
+  const displayedAnalysisDescription = typeof cleanedAnalysisDescription === 'string'
+    ? (cleanedAnalysisDescription.trim().length > 0 ? cleanedAnalysisDescription.trim() : null)
+    : null;
+
+  const resolvedMarketCap = formatApproximateMarketCap(
+    sheetMetrics?.marketCap ?? stockCase.market_cap ?? null,
+    sheetMetrics?.currency ?? stockCase.currency ?? null,
+  );
+  const resolvedPeRatio = sheetMetrics?.peRatio ?? stockCase.pe_ratio;
+  const resolvedDividendYield = sheetMetrics?.dividendYield ?? stockCase.dividend_yield;
+
+  const renderStatValue = (stat: FinancialStat) => {
+    if (stat.valueHtml) {
+      return (
+        <span dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(stat.valueHtml) }} />
+      );
+    }
+
+    if (stat.value !== null && stat.value !== undefined) {
+      return stat.value;
+    }
+
+    return <span className="text-muted-foreground">—</span>;
+  };
+
+  const renderStatsList = (stats: FinancialStat[]) => {
+    if (!stats.length) {
+      return null;
+    }
+
+    return (
+      <dl className="space-y-2.5">
+        {stats.map((stat) => {
+          const IconComponent = stat.icon;
+          const valueClassName = stat.valueClassName
+            ? cn('font-semibold text-foreground', stat.valueClassName)
+            : 'text-base font-semibold text-foreground';
+
+          return (
+            <div key={stat.key} className="flex flex-col gap-1.5">
+              <dt className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {IconComponent ? <IconComponent className="h-3.5 w-3.5" /> : null}
+                <span>{stat.label}</span>
+              </dt>
+              <dd className={cn('leading-tight', valueClassName)}>{renderStatValue(stat)}</dd>
+              {stat.description ? (
+                <dd className="text-xs leading-snug text-muted-foreground">{stat.description}</dd>
+              ) : null}
+            </div>
+          );
+        })}
+      </dl>
+    );
+  };
+
+  const currentPriceDisplay = formatCasePrice(stockCase.current_price);
+  const sheetPriceDisplay = formatSheetPrice(sheetMetrics?.price ?? null);
+  const targetPriceDisplay = !isAiGeneratedCase ? formatCasePrice(stockCase.target_price) : null;
+  const stopLossDisplay = !isAiGeneratedCase ? formatCasePrice(stockCase.stop_loss) : null;
+
+  const pricingStats: FinancialStat[] = [];
+
+  if (currentPriceDisplay) {
+    pricingStats.push({
+      key: 'current-price',
+      label: 'Nuvarande pris',
+      icon: LineChart,
+      value: currentPriceDisplay,
+    });
+  }
+
+  if (sheetPriceDisplay && sheetPriceDisplay !== currentPriceDisplay) {
+    pricingStats.push({
+      key: 'sheet-price',
+      label: 'Senaste pris (Google Sheet)',
+      icon: LineChart,
+      value: sheetPriceDisplay,
+      valueClassName: 'text-lg text-muted-foreground',
+    });
+  }
+
+  if (targetPriceDisplay) {
+    pricingStats.push({
+      key: 'target-price',
+      label: 'Målpris',
+      icon: Target,
+      value: targetPriceDisplay,
+      valueClassName: 'text-emerald-600',
+    });
+  }
+
+  if (stopLossDisplay) {
+    pricingStats.push({
+      key: 'stop-loss',
+      label: 'Stop loss',
+      icon: StopCircle,
+      value: stopLossDisplay,
+      valueClassName: 'text-rose-600',
+    });
+  }
+
+  const companyStats: FinancialStat[] = [];
+
+  if (stockCase.sector) {
+    companyStats.push({
+      key: 'sector',
+      label: 'Sektor',
+      icon: Building,
+      value: stockCase.sector,
+      valueClassName: 'text-lg',
+    });
+  }
+
+  const fundamentalsStats: FinancialStat[] = [];
+
+  if (resolvedMarketCap) {
+    fundamentalsStats.push({
+      key: 'market-cap',
+      label: 'Börsvärde',
+      icon: Coins,
+      valueHtml: resolvedMarketCap,
+    });
+  }
+
+  if (resolvedPeRatio) {
+    fundamentalsStats.push({
+      key: 'pe-ratio',
+      label: 'P/E-tal',
+      icon: BarChart3,
+      valueHtml: resolvedPeRatio,
+    });
+  }
+
+  if (resolvedDividendYield) {
+    fundamentalsStats.push({
+      key: 'dividend-yield',
+      label: 'Utdelning',
+      icon: Percent,
+      valueHtml: resolvedDividendYield,
+    });
+  }
+
+  if (finalFiftyTwoWeekHighText || finalFiftyTwoWeekLowText) {
+    fundamentalsStats.push({
+      key: 'fifty-two-week-range',
+      label: '52-veckors spann',
+      icon: History,
+      value: (
+        <>
+          {finalFiftyTwoWeekHighText && (
+            <span dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(finalFiftyTwoWeekHighText) }} />
+          )}
+          {finalFiftyTwoWeekLowText && (
+            <span dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(finalFiftyTwoWeekLowText) }} />
+          )}
+        </>
+      ),
+      valueClassName: 'mt-3 flex flex-col gap-1 text-sm font-semibold leading-snug text-foreground',
+    });
+  }
+
+  const hasPricingMetrics = pricingStats.length > 0;
+  const hasCompanyDetails = companyStats.length > 0;
+  const hasSheetFundamentals = fundamentalsStats.length > 0;
+
+  const shouldShowFinancialOverview = hasPricingMetrics || hasCompanyDetails || hasSheetFundamentals;
+
+  const overviewLogoSrc = stockCase.image_url || currentVersion?.image_url || null;
+  const overviewCompanyName = stockCase.company_name || displayTitle;
+  const overviewTicker = stockCase.ticker ? stockCase.ticker.toUpperCase() : null;
+  const showCreatorCard = Boolean(stockCase.profiles);
+  const showLoginPromptCard = !user;
+  const hasSidebarContent = showCreatorCard || showLoginPromptCard;
+
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto space-y-8">
+      <div className="max-w-6xl mx-auto space-y-10 px-4 sm:px-6 lg:px-8">
         {/* Header with Navigation */}
         <div className="flex items-center gap-4">
           <Button variant="outline" onClick={() => navigate('/discover')}>
@@ -323,7 +811,9 @@ const StockCaseDetail = () => {
               <p>
                 Case av{' '}
                 <span className="font-semibold text-foreground">
-                  {stockCase.profiles?.display_name || stockCase.profiles?.username || 'Okänd'}
+                  {stockCase.profiles?.display_name
+                    || stockCase.profiles?.username
+                    || (stockCase.ai_generated ? 'MarketMind-AI' : 'Okänd')}
                 </span>
                 {' • '}
                 <span>
@@ -361,23 +851,11 @@ const StockCaseDetail = () => {
           </div>
 
           {/* Graph Section with Carousel */}
-          {currentVersion?.image_url && (
+          {displayImageSrc && (
             <div className="space-y-4">
               {/* Version info and controls */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Badge variant={currentImageIndex === 0 ? "default" : "secondary"}>
-                    {currentVersion?.isOriginal ? 'Original' : currentImageIndex === 0 ? 'Senaste version' : 'Historisk version'}
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {formatRelativeDate(currentVersion.created_at)}
-                  </span>
-                  {hasMultipleVersions && (
-                    <Badge variant="outline" className="text-xs">
-                      {currentImageIndex + 1} av {timeline.length}
-                    </Badge>
-                  )}
-                </div>
+              <div className="flex items-center justify-between min-h-[1.5rem]">
+                <div className="flex items-center gap-2 flex-1" aria-hidden="true" />
                 
                 {canDeleteCurrent && (
                   <Button 
@@ -392,16 +870,20 @@ const StockCaseDetail = () => {
                 )}
               </div>
 
-              <div className="relative group">
-                <img
-                  src={currentVersion.image_url}
-                  alt={displayTitle}
-                  className="w-full h-auto rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300"
-                  onClick={() => {
-                    window.open(currentVersion.image_url, '_blank');
-                  }}
-                />
-                
+              <div className={imageWrapperClasses}>
+                <div className={imageDisplayWrapperClasses}>
+                  <img
+                    src={displayImageSrc}
+                    alt={displayTitle}
+                    className={imageElementClasses}
+                    onClick={() => {
+                      if (currentVersion.image_url) {
+                        window.open(currentVersion.image_url, '_blank');
+                      }
+                    }}
+                  />
+                </div>
+
                 {/* Navigation arrows */}
                 {hasMultipleVersions && (
                   <>
@@ -427,8 +909,8 @@ const StockCaseDetail = () => {
 
                 {/* Expand button */}
                 <div className="absolute top-4 right-4">
-                  <Button 
-                    variant="secondary" 
+                  <Button
+                    variant="secondary"
                     size="sm"
                     onClick={() => window.open(currentVersion.image_url, '_blank')}
                     className="bg-black/70 hover:bg-black/80 text-white border-0"
@@ -447,7 +929,24 @@ const StockCaseDetail = () => {
                     </Badge>
                   </div>
                 )}
+
+                {isAiGeneratedImage && (
+                  <div className="absolute bottom-4 left-4">
+                    <Badge variant="secondary" className="bg-black/70 text-white">
+                      <Brain className="w-3 h-3 mr-1" />
+                      AI-genererad bild
+                    </Badge>
+                  </div>
+                )}
               </div>
+
+              {hasMultipleVersions && (
+                <div className="flex justify-center mt-2">
+                  <Badge variant="outline" className="text-xs">
+                    {currentImageIndex + 1} av {timeline.length}
+                  </Badge>
+                </div>
+              )}
 
               {/* Dots indicator */}
               {hasMultipleVersions && (
@@ -479,10 +978,7 @@ const StockCaseDetail = () => {
                           : 'bg-muted hover:bg-muted/80'
                       }`}
                     >
-                      {version.isOriginal ? 'Original' : `V${timeline.length - index}`}
-                      <span className="block text-[10px] opacity-70 mt-0.5">
-                        {formatRelativeDate(version.created_at)}
-                      </span>
+                      {index === 0 ? 'Nuvarande' : `Historik ${index}`}
                     </button>
                   ))}
                 </div>
@@ -503,6 +999,14 @@ const StockCaseDetail = () => {
             <Button variant="outline" onClick={handleShare} className="flex items-center gap-2 text-lg px-6 py-3">
               <Share2 className="w-5 h-5" />
               Dela
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleDiscussWithAI}
+              className="flex items-center gap-2 text-lg px-6 py-3"
+            >
+              <MessageSquare className="w-5 h-5" />
+              Diskutera i AI-chatten
             </Button>
             <Button
               variant="outline"
@@ -559,81 +1063,89 @@ const StockCaseDetail = () => {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div
+          className={cn(
+            'grid gap-8 items-start',
+            hasSidebarContent
+              ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]'
+              : ''
+          )}
+        >
           {/* Main Content */}
-          <div className="lg:col-span-3 space-y-6">
+          <div
+            className={cn(
+              'space-y-6',
+              hasSidebarContent ? '' : 'lg:max-w-4xl lg:mx-auto'
+            )}
+          >
+            {/* Combined Overview Card - only show if there are financial metrics */}
+            {shouldShowFinancialOverview && (
+              <Card>
+                <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <CardTitle>Finansiell Översikt</CardTitle>
+                  {overviewLogoSrc ? (
+                    <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/40 px-3 py-2">
+                      <img
+                        src={overviewLogoSrc}
+                        alt={`${overviewCompanyName} logotyp`}
+                        loading="lazy"
+                        className="h-12 w-12 rounded-full border border-border/50 bg-white object-cover"
+                      />
+                      <div className="flex flex-col leading-tight">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Bolag
+                        </span>
+                        <span className="text-sm font-semibold text-foreground">
+                          {overviewCompanyName}
+                        </span>
+                        {overviewTicker ? (
+                          <span className="text-xs text-muted-foreground">{overviewTicker}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {hasPricingMetrics && (
+                      <div className="flex flex-col gap-3 rounded-2xl border border-border/50 bg-card/80 p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Pris &amp; kursinformation
+                        </p>
+                        {renderStatsList(pricingStats)}
+                      </div>
+                    )}
+
+                    {hasCompanyDetails && (
+                      <div className="flex flex-col gap-3 rounded-2xl border border-border/50 bg-card/80 p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Bolagsinformation
+                        </p>
+                        {renderStatsList(companyStats)}
+                      </div>
+                    )}
+
+                    {hasSheetFundamentals && (
+                      <div className="flex flex-col gap-3 rounded-2xl border border-border/50 bg-card/80 p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Nyckeltal från Google Sheets
+                        </p>
+                        {renderStatsList(fundamentalsStats)}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Case Description with Structured Sections */}
-            {currentVersion?.description && (
+            {displayedAnalysisDescription && (
               <Card>
                 <CardHeader>
                   <CardTitle>Analys</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {formatCaseDescription(currentVersion.description)}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Combined Overview Card - only show if there are financial metrics */}
-            {(stockCase.entry_price || stockCase.current_price || stockCase.target_price || stockCase.stop_loss || stockCase.sector || stockCase.market_cap || stockCase.pe_ratio || stockCase.dividend_yield) && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Finansiell Översikt</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    {/* Price Information */}
-                    {stockCase.entry_price && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Inköpspris</p>
-                        <p className="font-bold text-lg text-primary">{stockCase.entry_price} SEK</p>
-                      </div>
-                    )}
-                    {stockCase.current_price && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Nuvarande pris</p>
-                        <p className="font-bold text-lg text-primary">{stockCase.current_price} SEK</p>
-                      </div>
-                    )}
-                    {stockCase.target_price && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Målpris</p>
-                        <p className="font-bold text-lg text-green-600">{stockCase.target_price} SEK</p>
-                      </div>
-                    )}
-                    {stockCase.stop_loss && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Stop Loss</p>
-                        <p className="font-bold text-lg text-red-600">{stockCase.stop_loss} SEK</p>
-                      </div>
-                    )}
-                    
-                    {/* Company Information */}
-                    {stockCase.sector && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Sektor</p>
-                        <p className="font-semibold">{stockCase.sector}</p>
-                      </div>
-                    )}
-                    {stockCase.market_cap && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Börsvärde</p>
-                        <p className="font-semibold">{stockCase.market_cap}</p>
-                      </div>
-                    )}
-                    {stockCase.pe_ratio && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">P/E-tal</p>
-                        <p className="font-semibold">{stockCase.pe_ratio}</p>
-                      </div>
-                    )}
-                    {stockCase.dividend_yield && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Utdelning</p>
-                        <p className="font-semibold">{stockCase.dividend_yield}</p>
-                      </div>
-                    )}
-                  </div>
+                  {formatCaseDescription(displayedAnalysisDescription)}
                 </CardContent>
               </Card>
             )}
@@ -657,16 +1169,13 @@ const StockCaseDetail = () => {
             {/* AI Chat Integration - temporarily disabled per request */}
             {/* <StockCaseAIChat stockCase={stockCase} /> */}
 
-            {/* Comments Section with improved placeholder */}
-            <div id="comments-section">
-              <StockCaseComments stockCaseId={stockCase.id} />
-            </div>
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Creator Card - Enhanced */}
-            {stockCase.profiles && (
+          {hasSidebarContent ? (
+            <div className="space-y-6 lg:max-w-xl lg:mx-auto xl:max-w-none xl:mx-0 xl:sticky xl:top-24">
+              {/* Creator Card - Enhanced */}
+              {showCreatorCard && stockCase.profiles && (
               <Card>
                 <CardHeader>
                   <CardTitle>Skapad av</CardTitle>
@@ -697,9 +1206,9 @@ const StockCaseDetail = () => {
                     </div>
                     
                     {user && user.id !== stockCase.user_id && (
-                      <Button 
-                        variant="outline" 
-                        className="w-full" 
+                      <Button
+                        variant="outline"
+                        className="w-full"
                         onClick={handleFollowClick}
                       >
                         <UserPlus className="w-4 h-4 mr-2" />
@@ -709,70 +1218,10 @@ const StockCaseDetail = () => {
                   </div>
                 </CardContent>
               </Card>
-            )}
+              )}
 
-            {/* Case Details */}
-            <Card>
-              <CardContent className="pt-6 space-y-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="w-4 h-4" />
-                  <span>
-                    Skapad {formatDistanceToNow(new Date(stockCase.created_at), {
-                      addSuffix: true,
-                      locale: sv
-                    })}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Status:</span>
-                  <Badge variant={stockCase.status === 'winner' ? 'default' : stockCase.status === 'loser' ? 'destructive' : 'secondary'}>
-                    {stockCase.status === 'active' ? 'Aktiv' : stockCase.status === 'winner' ? 'Vinnare' : 'Förlorare'}
-                  </Badge>
-                </div>
-
-                {stockCase.case_categories && (
-                  <div>
-                    <span className="text-sm text-muted-foreground">Kategori:</span>
-                    <Badge 
-                      variant="outline" 
-                      className="ml-2" 
-                      style={{
-                        borderColor: stockCase.case_categories.color,
-                        color: stockCase.case_categories.color
-                      }}
-                    >
-                      {stockCase.case_categories.name}
-                    </Badge>
-                  </div>
-                )}
-
-                {/* Social Stats */}
-                <Separator />
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <Heart className="w-4 h-4" />
-                      Gillningar
-                    </span>
-                    <span className="font-semibold">{likeCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <MessageCircle className="w-4 h-4" />
-                      Kommentarer
-                    </span>
-                    <span className="font-semibold">
-                      {/* TODO: Get actual comment count */}
-                      --
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Login Prompt for non-users */}
-            {!user && (
+              {/* Login Prompt for non-users */}
+              {showLoginPromptCard && (
               <Card>
                 <CardContent className="p-4">
                   <div className="text-center">
@@ -785,8 +1234,9 @@ const StockCaseDetail = () => {
                   </div>
                 </CardContent>
               </Card>
-            )}
-          </div>
+              )}
+            </div>
+          ) : null}
         </div>
 
         {/* Risk Warning - moved to bottom */}
