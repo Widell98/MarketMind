@@ -809,7 +809,9 @@ const StockCaseDetail = () => {
               <p>
                 Case av{' '}
                 <span className="font-semibold text-foreground">
-                  {stockCase.profiles?.display_name || stockCase.profiles?.username || 'Okänd'}
+                  {stockCase.profiles?.display_name
+                    || stockCase.profiles?.username
+                    || (stockCase.ai_generated ? 'MarketMind-AI' : 'Okänd')}
                 </span>
                 {' • '}
                 <span>
