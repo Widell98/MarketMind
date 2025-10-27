@@ -557,42 +557,51 @@ serve(async (req) => {
       usedTickerSymbols.add(selectedTicker);
 
       const prompt = `
-Du är en professionell finansanalytiker som skriver inspirerande aktiepitchar för svenska investerare.
+Du är en professionell finansanalytiker som skriver inspirerande men faktabaserade aktiepitchar för svenska investerare.
 
 🎯 Uppdrag:
-Skapa ett engagerande investeringscase för ett bolag inom sektorn "${sector}" med inriktning på "${style}"-strategier.
+Skapa ett välformulerat investeringscase för ett bolag inom sektorn "${sector}" med inriktning på "${style}"-strategier.
 
 📊 Fakta att utgå från:
 - Bolag: ${selectedName} (${selectedTicker})
 - Nuvarande pris (från Google Sheet): ${sheetPrice !== null ? `${sheetPrice} ${sheetCurrency ?? 'SEK'}` : 'okänt, använd ett rimligt värde baserat på börsdata'}
 - Analysen ska gälla verkliga, börsnoterade bolag. Kontrollera att bolaget existerar och är listat på en erkänd börs.
 
+💰 Prisreferens:
+Om prisdata finns (${sheetPrice ? "ja" : "nej"}), inkludera **en kort mening** som sätter priset i kontext – t.ex. om aktien handlas på en attraktiv nivå, nära årshögsta, eller i linje med sektorkollegor.
+Undvik teknisk analys eller exakta kursmål – håll kommentaren kort, som ett led i helhetsanalysen.
+
 🧠 Stil och ton:
-- Professionell, trovärdig och pedagogisk ton.
 - Skriv på svenska.
-- Fokusera på att inspirera läsaren och lyfta investeringsargument snarare än exakta handelsnivåer.
+- Professionell, engagerande och lättillgänglig ton — som en erfaren analytiker som vill väcka intresse snarare än överösa med siffror.
+- Undvik jargong, men använd relevanta finansiella begrepp där det stärker trovärdigheten.
+- Fokusera på bolagets affärslogik, tillväxtmöjligheter och branschkontext — inte exakta handelsnivåer.
 
 📈 Innehållskrav:
-1. Förklara varför bolaget är intressant för investerare inom "${style}"-strategin.
-2. Lyft fram relevanta finansiella nyckeltal eller kvalitativa faktorer som stärker caset.
-3. Beskriv 2–3 centrala katalysatorer eller händelser som kan driva aktien framåt.
-4. Undvik att ange målpriser, stop loss eller 52-veckorsnivåer – fokusera på analysen.
+1. Förklara varför bolaget är intressant för investerare med fokus på "${style}"-strategin.
+2. Lyft fram både kvantitativa och kvalitativa faktorer som stärker caset.
+3. Beskriv 2–3 tydliga tillväxtdrivare, trender eller händelser som kan påverka aktien positivt.
+4. Inkludera en kort reflektion kring nuvarande prisnivå om sådan data finns.
+5. Undvik att ange målpris, stop-loss eller tekniska nivåer — fokusera på värdedrivande faktorer och berättelsen.
 
-📊 Analysdel – krav på innehåll och ton:
-Skriv en engagerande men faktabaserad analys som skapar intresse för bolaget redan i de första meningarna.
+🧩 Analysdel – krav på innehåll och struktur:
+Skriv en analytisk aktiepitch i tre till fem korta stycken (separerade med tomma rader) som flyter naturligt att läsa.
 
 Analysen ska:
-- Inledas med en kort men slagkraftig sammanfattning av bolagets kärnverksamhet och varför det är intressant just nu.
-- Beskriva bolagets styrkor (t.ex. marknadsposition, innovation, tillväxtpotential eller stabilitet).
-- Nämna minst ett aktuellt tema eller trend i branschen som påverkar bolaget (t.ex. elektrifiering, digitalisering, geopolitik, ESG).
-- Bestå av minst tre stycken separerade av tomma rader så att analysen blir lättläst.
-- Inkludera en balanserad syn på risker eller utmaningar, men håll fokus på möjligheterna.
-- Avsluta med ett resonemang om varför aktien kan vara attraktiv för investerare med ${style}-inriktning.
+- Börja med en slagkraftig introduktion som förklarar varför bolaget är intressant just nu.
+- Följa upp med bolagets kärnverksamhet, styrkor och marknadsposition.
+- Lyft fram aktuella drivkrafter, trender eller marknadsförhållanden som påverkar bolaget – till exempel förändringar i efterfrågan, teknikutveckling, konkurrens, reglering eller makroekonomi 
+- Välj de faktorer som är mest relevanta för just detta bolag och sektor, utan att fokusera på någon specifik investeringsstil eller tema i onödan 
+- Nämn kort en eller två risker eller utmaningar på ett balanserat sätt.
+- Om prisdata finns, väv in en naturlig mening om aktiens värdering eller prisnivå.
+- Avsluta med ett sammanfattande stycke som beskriver varför aktien är attraktiv för investerare med "${style}"-inriktning.
 
-Exempel på önskad ton:
-"Med sin starka nisch inom järnvägsunderhåll och ökande efterfrågan på klimatsmarta transporter står Railcare väl positionerat för framtida tillväxt. Samtidigt ger bolagets stabila kontraktsbas och pålitliga kassaflöden en attraktiv risk/reward-profil för investerare som söker utdelning och defensiv exponering mot infrastruktursektorn."
+💬 Exempel på ton:
+"Med sin ledande position inom hållbar logistik och ett växande europeiskt nätverk står bolaget väl rustat för att dra nytta av den gröna omställningen. Den stabila lönsamheten och starka balansräkningen ger trygghet, samtidigt som bolaget erbjuder strukturell tillväxt inom ett område med politiskt stöd. Aktien handlas kring 142 SEK, vilket är en rimlig värdering sett till bolagets långsiktiga potential."
 
-Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown):
+📦 Outputformat:
+Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
+
 {
   "title": "string",
   "company_name": "string",
@@ -602,7 +611,8 @@ Returnera ENDAST giltigt JSON i följande format (utan extra text eller markdown
   "market_cap": "string",
   "pe_ratio": "string",
   "dividend_yield": "string"
-}`;
+}
+`;
 
       console.log(`Generating case ${i + 1} for ${sector} - ${style}...`);
 
