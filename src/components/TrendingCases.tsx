@@ -73,12 +73,15 @@ const TrendingCases = () => {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {trendingCases.map((stockCase, index) => (
-            <div
-              key={stockCase.id}
-              className="flex items-center gap-4 p-4 rounded-xl hover:bg-white/50 dark:hover:bg-gray-800/50 transition-all duration-200 cursor-pointer border border-transparent hover:border-orange-200 dark:hover:border-orange-800 hover:shadow-md group"
-              onClick={() => navigate(`/stock-cases/${stockCase.id}`)}
-            >
+          {trendingCases.map((stockCase, index) => {
+            const displayImageSrc = stockCase.image_url ?? null;
+
+            return (
+              <div
+                key={stockCase.id}
+                className="flex items-center gap-4 p-4 rounded-xl hover:bg-white/50 dark:hover:bg-gray-800/50 transition-all duration-200 cursor-pointer border border-transparent hover:border-orange-200 dark:hover:border-orange-800 hover:shadow-md group"
+                onClick={() => navigate(`/stock-cases/${stockCase.id}`)}
+              >
               {/* Ranking Badge - Enhanced */}
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center text-white font-semibold text-sm shadow-lg group-hover:shadow-xl transition-shadow">
@@ -88,15 +91,15 @@ const TrendingCases = () => {
 
               {/* Company Image - Enhanced */}
               <div className="flex-shrink-0">
-                {stockCase.image_url ? (
+                {displayImageSrc ? (
                   <img
-                    src={stockCase.image_url}
+                    src={displayImageSrc}
                     alt={stockCase.company_name}
                     className="w-20 h-20 rounded-xl object-cover shadow-md border border-gray-200 dark:border-gray-700 group-hover:shadow-lg transition-shadow"
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center border border-gray-200 dark:border-gray-700 shadow-md group-hover:shadow-lg transition-shadow">
-                    <TrendingUp className="w-8 h-8 text-gray-400" />
+                  <div className="w-20 h-20 rounded-xl bg-muted flex items-center justify-center text-xs text-muted-foreground border border-dashed border-gray-300 dark:border-gray-700">
+                    Ingen bild
                   </div>
                 )}
               </div>
@@ -142,8 +145,9 @@ const TrendingCases = () => {
                   </span>
                 </div>
               )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       </CardContent>
     </Card>

@@ -63,7 +63,7 @@ Aktieinformation:
 - Titel: ${stockCase.title}
 ${stockCase.sector ? `- Sektor: ${stockCase.sector}` : ''}
 ${stockCase.current_price ? `- Nuvarande pris: ${stockCase.current_price} SEK` : ''}
-${stockCase.target_price ? `- Målkurs: ${stockCase.target_price} SEK` : ''}
+${stockCase.target_price && !stockCase.ai_generated ? `- Målkurs: ${stockCase.target_price} SEK` : ''}
 ${stockCase.description ? `- Beskrivning: ${stockCase.description}` : ''}
 
 KRITISKA REGLER:
