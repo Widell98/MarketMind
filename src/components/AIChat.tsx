@@ -104,20 +104,24 @@ const AIChat = ({
   useEffect(() => {
     // Handle initial stock and message from URL parameters - but only once
     if (initialStock && initialMessage && !hasProcessedInitialMessage) {
-      createNewSession(initialStock);
+      const startPrefilledSession = async () => {
+        await createNewSession(initialStock);
 
-      // Pre-fill the input with the initial message instead of sending it
-      const decodedMessage = decodeURIComponent(initialMessage);
-      setInput(decodedMessage);
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
-      setHasProcessedInitialMessage(true);
+        // Pre-fill the input with the initial message instead of sending it
+        const decodedMessage = decodeURIComponent(initialMessage);
+        setInput(decodedMessage);
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
+        setHasProcessedInitialMessage(true);
 
-      if (location.search) {
-        const newUrl = `${location.pathname}${location.hash ?? ''}`;
-        navigate(newUrl, { replace: true, state: location.state });
-      }
+        if (location.search) {
+          const newUrl = `${location.pathname}${location.hash ?? ''}`;
+          navigate(newUrl, { replace: true, state: location.state });
+        }
+      };
+
+      void startPrefilledSession();
     }
   }, [
     initialStock,
@@ -137,20 +141,24 @@ const AIChat = ({
         sessionName,
         initialMessage
       } = location.state;
-      // Always create a new session when explicitly requested
-      createNewSession(sessionName);
+      const startNewSession = async () => {
+        // Always create a new session when explicitly requested
+        await createNewSession(sessionName);
 
-      // Pre-fill the input with the initial message instead of sending it
-      if (initialMessage) {
-        setInput(initialMessage);
-        setTimeout(() => {
-          inputRef.current?.focus();
-        }, 100);
-      }
+        // Pre-fill the input with the initial message instead of sending it
+        if (initialMessage) {
+          setInput(initialMessage);
+          setTimeout(() => {
+            inputRef.current?.focus();
+          }, 100);
+        }
 
-      // Clear the state to prevent re-triggering
-      const currentUrl = `${location.pathname}${location.search}${location.hash ?? ''}`;
-      navigate(currentUrl, { replace: true, state: {} });
+        // Clear the state to prevent re-triggering
+        const currentUrl = `${location.pathname}${location.search}${location.hash ?? ''}`;
+        navigate(currentUrl, { replace: true, state: {} });
+      };
+
+      void startNewSession();
     }
   }, [
     location.state,
@@ -166,13 +174,16 @@ const AIChat = ({
         sessionName,
         message
       } = event.detail;
+      const startChat = async () => {
+        // Create new session and pre-fill input instead of auto-sending
+        await createNewSession(sessionName);
+        setInput(message);
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
+      };
 
-      // Create new session and pre-fill input instead of auto-sending
-      createNewSession(sessionName);
-      setInput(message);
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
+      void startChat();
     };
     const handleExamplePrompt = (event: CustomEvent) => {
       const {
