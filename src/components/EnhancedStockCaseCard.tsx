@@ -95,6 +95,8 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
 
   const performance = calculatePerformance();
   const PerformanceIcon = performance > 0 ? TrendingUp : performance < 0 ? TrendingDown : null;
+  const showTargetPriceMetric = Boolean(stockCase.target_price) && !stockCase.ai_generated;
+  const showPerformanceMetric = performance !== 0;
 
   // Determine card styling based on case status
   const getCardClassNames = () => {
@@ -280,10 +282,10 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
         {/* Stock Image */}
         {stockCase.image_url && (
           <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-muted">
-            <img 
-              src={stockCase.image_url} 
-              alt={`${stockCase.company_name} stock chart`} 
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+            <img
+              src={stockCase.image_url}
+              alt={stockCase.company_name ? `${stockCase.company_name} illustration` : 'Investeringscase'}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
           </div>
         )}
@@ -294,16 +296,16 @@ const EnhancedStockCaseCard: React.FC<EnhancedStockCaseCardProps> = ({
         </p>
         
         {/* Performance metrics */}
-        {(stockCase.target_price || performance !== 0) && (
+        {(showTargetPriceMetric || showPerformanceMetric) && (
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-            {stockCase.target_price && (
+            {showTargetPriceMetric && (
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">Målkurs</p>
                 <p className="text-sm font-semibold">{stockCase.target_price} kr</p>
               </div>
             )}
-            
-            {performance !== 0 && (
+
+            {showPerformanceMetric && (
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">Resultat</p>
                 <div className={`flex items-center gap-1 text-sm font-semibold ${getPerformanceColor(performance)}`}>

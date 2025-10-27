@@ -256,8 +256,11 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {displayCases.map((stockCase) => (
-          <div key={stockCase.id} className="border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+        {displayCases.map((stockCase) => {
+          const displayImageSrc = stockCase.image_url ?? null;
+
+          return (
+            <div key={stockCase.id} className="border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
@@ -296,15 +299,15 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
                 </div>
               </div>
               {stockCase.image_url && (
-                <img 
-                  src={stockCase.image_url} 
+                <img
+                  src={stockCase.image_url}
                   alt={stockCase.company_name}
                   className="w-12 h-12 rounded-lg object-cover ml-3"
                 />
               )}
             </div>
 
-            {(stockCase.entry_price || stockCase.current_price || stockCase.target_price) && (
+            {(stockCase.entry_price || stockCase.current_price || (stockCase.target_price && !stockCase.ai_generated)) && (
               <div className="grid grid-cols-3 gap-3 mb-3 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
                 {stockCase.entry_price && (
                   <div className="text-center">
@@ -318,7 +321,7 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
                     <p className="font-medium text-xs">{stockCase.current_price} kr</p>
                   </div>
                 )}
-                {stockCase.target_price && (
+                {stockCase.target_price && !stockCase.ai_generated && (
                   <div className="text-center">
                     <p className="text-xs text-gray-500 dark:text-gray-400">Mål</p>
                     <p className="font-medium text-xs">{stockCase.target_price} kr</p>
@@ -347,8 +350,9 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
                 Visa case
               </Button>
             </div>
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </CardContent>
     </Card>
   );
