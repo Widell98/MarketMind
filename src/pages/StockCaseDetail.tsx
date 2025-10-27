@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
@@ -25,6 +25,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { formatCurrency } from '@/utils/currencyUtils';
 import { cn } from '@/lib/utils';
 import type { StockCase } from '@/types/stockCase';
+import { fetchSheetTickerMetrics, type SheetTickerMetrics } from '@/utils/sheetMetrics';
 
 const StockCaseDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -33,12 +34,52 @@ const StockCaseDetail = () => {
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [updateToDelete, setUpdateToDelete] = useState<string | null>(null);
+  const [sheetMetrics, setSheetMetrics] = useState<SheetTickerMetrics | null>(null);
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL LOGIC
   const { stockCase, loading, error } = useStockCase(id || '');
   const { likeCount, isLiked, toggleLike, loading: likesLoading } = useStockCaseLikes(id || '');
   const { followUser, unfollowUser, isFollowing } = useUserFollows();
   const { updates, isLoading: updatesLoading, deleteUpdate } = useStockCaseUpdates(id || '');
+
+  useEffect(() => {
+    const ticker = stockCase?.ticker ?? null;
+    const aiGenerated = stockCase?.ai_generated === true;
+
+    if (!aiGenerated || !ticker) {
+      setSheetMetrics(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    let isActive = true;
+
+    setSheetMetrics(null);
+
+    fetchSheetTickerMetrics(ticker, { signal: controller.signal })
+      .then((metrics) => {
+        if (!isActive) {
+          return;
+        }
+        setSheetMetrics(metrics);
+      })
+      .catch((fetchError) => {
+        const errorObject = fetchError as Error;
+        if (errorObject?.name === 'AbortError') {
+          return;
+        }
+        console.error('Failed to load Google Sheet metrics', fetchError);
+        if (!isActive) {
+          return;
+        }
+        setSheetMetrics(null);
+      });
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [stockCase?.ai_generated, stockCase?.ticker]);
 
   // NOW we can have conditional logic and early returns
   if (loading) {
@@ -328,7 +369,7 @@ const StockCaseDetail = () => {
     ?? stockCase.description
     ?? null;
 
-  let fiftyTwoWeekSummary: string | null = null;
+  let extractedFiftyTwoWeekSummary: string | null = null;
   let cleanedAnalysisDescription: string | null = rawAnalysisDescription;
 
   if (typeof rawAnalysisDescription === 'string') {
@@ -340,7 +381,7 @@ const StockCaseDetail = () => {
         .replace(/\s{2,}/g, ' ')
         .trim();
 
-      fiftyTwoWeekSummary = normalizedSummary;
+      extractedFiftyTwoWeekSummary = normalizedSummary;
 
       const withoutSummary = rawAnalysisDescription
         .replace(summaryMatch[0], '')
@@ -351,24 +392,52 @@ const StockCaseDetail = () => {
     }
   }
 
-  let fiftyTwoWeekHighText: string | null = null;
-  let fiftyTwoWeekLowText: string | null = null;
+  let extractedFiftyTwoWeekHighText: string | null = null;
+  let extractedFiftyTwoWeekLowText: string | null = null;
 
-  if (fiftyTwoWeekSummary) {
-    const highMatch = fiftyTwoWeekSummary.match(/52-veckors\s+högsta:\s*([0-9.,-]+)/i);
-    const lowMatch = fiftyTwoWeekSummary.match(/52-veckors\s+lägsta:\s*([0-9.,-]+)/i);
+  if (extractedFiftyTwoWeekSummary) {
+    const highMatch = extractedFiftyTwoWeekSummary.match(/52-veckors\s+högsta:\s*([0-9.,-]+)/i);
+    const lowMatch = extractedFiftyTwoWeekSummary.match(/52-veckors\s+lägsta:\s*([0-9.,-]+)/i);
 
-    fiftyTwoWeekHighText = highMatch?.[1]?.trim()
+    extractedFiftyTwoWeekHighText = highMatch?.[1]?.trim()
       ? `52-veckors högsta: ${highMatch[1].trim()}`
       : null;
-    fiftyTwoWeekLowText = lowMatch?.[1]?.trim()
+    extractedFiftyTwoWeekLowText = lowMatch?.[1]?.trim()
       ? `52-veckors lägsta: ${lowMatch[1].trim()}`
       : null;
   }
 
+  const resolvedSheetCurrency = sheetMetrics?.currency?.toUpperCase() || caseCurrency;
+  const formatSheetRangeValue = (value: number | null | undefined): string | null => {
+    if (value === null || value === undefined || Number.isNaN(value)) {
+      return null;
+    }
+
+    try {
+      return formatCurrency(value, resolvedSheetCurrency);
+    } catch (_error) {
+      return new Intl.NumberFormat('sv-SE', {
+        maximumFractionDigits: 2,
+      }).format(value);
+    }
+  };
+
+  const sheetHighValue = formatSheetRangeValue(sheetMetrics?.fiftyTwoWeekHigh ?? null);
+  const sheetLowValue = formatSheetRangeValue(sheetMetrics?.fiftyTwoWeekLow ?? null);
+
+  const sheetFiftyTwoWeekHighText = sheetHighValue ? `52-veckors högsta: ${sheetHighValue}` : null;
+  const sheetFiftyTwoWeekLowText = sheetLowValue ? `52-veckors lägsta: ${sheetLowValue}` : null;
+
+  const finalFiftyTwoWeekHighText = sheetFiftyTwoWeekHighText ?? extractedFiftyTwoWeekHighText;
+  const finalFiftyTwoWeekLowText = sheetFiftyTwoWeekLowText ?? extractedFiftyTwoWeekLowText;
+
   const displayedAnalysisDescription = typeof cleanedAnalysisDescription === 'string'
     ? (cleanedAnalysisDescription.trim().length > 0 ? cleanedAnalysisDescription.trim() : null)
     : null;
+
+  const resolvedMarketCap = sheetMetrics?.marketCap ?? stockCase.market_cap;
+  const resolvedPeRatio = sheetMetrics?.peRatio ?? stockCase.pe_ratio;
+  const resolvedDividendYield = sheetMetrics?.dividendYield ?? stockCase.dividend_yield;
 
   const hasPricingMetrics = Boolean(
     formatCasePrice(stockCase.entry_price)
@@ -380,11 +449,11 @@ const StockCaseDetail = () => {
   const hasCompanyDetails = Boolean(stockCase.sector);
 
   const hasSheetFundamentals = Boolean(
-    stockCase.market_cap
-    || stockCase.pe_ratio
-    || stockCase.dividend_yield
-    || fiftyTwoWeekHighText
-    || fiftyTwoWeekLowText
+    resolvedMarketCap
+    || resolvedPeRatio
+    || resolvedDividendYield
+    || finalFiftyTwoWeekHighText
+    || finalFiftyTwoWeekLowText
   );
 
   const shouldShowFinancialOverview = hasPricingMetrics || hasCompanyDetails || hasSheetFundamentals;
@@ -734,46 +803,46 @@ const StockCaseDetail = () => {
                     <div className="space-y-3">
                       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nyckeltal (Google Sheets)</p>
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {stockCase.market_cap && (
+                        {resolvedMarketCap && (
                           <div>
                             <p className="text-sm text-muted-foreground">Börsvärde</p>
                             <p className="font-semibold">
-                              <span dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(stockCase.market_cap) }} />
+                              <span dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(resolvedMarketCap) }} />
                             </p>
                           </div>
                         )}
-                        {stockCase.pe_ratio && (
+                        {resolvedPeRatio && (
                           <div>
                             <p className="text-sm text-muted-foreground">P/E-tal</p>
                             <p className="font-semibold">
-                              <span dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(stockCase.pe_ratio) }} />
+                              <span dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(resolvedPeRatio) }} />
                             </p>
                           </div>
                         )}
                       </div>
 
-                      {(stockCase.dividend_yield || fiftyTwoWeekHighText || fiftyTwoWeekLowText) && (
+                      {(resolvedDividendYield || finalFiftyTwoWeekHighText || finalFiftyTwoWeekLowText) && (
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                          {stockCase.dividend_yield && (
+                          {resolvedDividendYield && (
                             <div>
                               <p className="text-sm text-muted-foreground">Utdelning</p>
                               <p className="font-semibold">
-                                <span dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(stockCase.dividend_yield) }} />
+                                <span dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(resolvedDividendYield) }} />
                               </p>
                             </div>
                           )}
-                          {(fiftyTwoWeekHighText || fiftyTwoWeekLowText) && (
+                          {(finalFiftyTwoWeekHighText || finalFiftyTwoWeekLowText) && (
                             <div className="space-y-1">
                               <p className="text-sm text-muted-foreground">52-veckors spann</p>
                               <div className="font-semibold space-y-1">
-                                {fiftyTwoWeekHighText && (
+                                {finalFiftyTwoWeekHighText && (
                                   <div
-                                    dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(fiftyTwoWeekHighText) }}
+                                    dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(finalFiftyTwoWeekHighText) }}
                                   />
                                 )}
-                                {fiftyTwoWeekLowText && (
+                                {finalFiftyTwoWeekLowText && (
                                   <div
-                                    dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(fiftyTwoWeekLowText) }}
+                                    dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(finalFiftyTwoWeekLowText) }}
                                   />
                                 )}
                               </div>
