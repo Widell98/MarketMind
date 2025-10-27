@@ -10,7 +10,6 @@ import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useNavigate } from 'react-router-dom';
 import ShareStockCase from './ShareStockCase';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 interface StockCaseCardProps {
   stockCase: StockCase;
   onViewDetails: (id: string) => void;
@@ -148,9 +147,6 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
   };
   const shortDescription = stockCase.description?.trim();
   const cleanedLongDescription = stripFiftyTwoWeekSummary(stockCase.long_description);
-  const optimizedImageSources = getOptimizedCaseImage(stockCase.image_url);
-  const displayImageSrc = optimizedImageSources?.src ?? stockCase.image_url ?? null;
-  const displayImageSrcSet = optimizedImageSources?.srcSet;
   const previewText = shortDescription && shortDescription.length > 0
     ? shortDescription
     : cleanedLongDescription
@@ -205,37 +201,15 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
               </div>}
 
               <div className="space-y-1">
-                {displayImageSrc ? <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/60 bg-muted">
-                      <img
-                        src={displayImageSrc}
-                        srcSet={displayImageSrcSet}
-                        alt={stockCase.company_name ? `${stockCase.company_name} logotyp` : 'Företagslogotyp'}
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                        decoding="async"
-                        onError={handleCaseImageError}
-                        data-original-src={stockCase.image_url || undefined}
-                      />
-                    </div>
-                    <div className="min-w-0 space-y-1">
-                      <CardTitle className="text-lg font-semibold leading-tight tracking-tight transition-colors group-hover:text-primary sm:text-xl">
-                        {stockCase.title}
-                      </CardTitle>
+                <CardTitle className="text-lg font-semibold leading-tight tracking-tight transition-colors group-hover:text-primary sm:text-xl">
+                  {stockCase.title}
+                </CardTitle>
 
-                      {stockCase.company_name && <p className="text-sm font-medium text-muted-foreground">
-                          {stockCase.company_name}
-                        </p>}
-                    </div>
-                  </div> : <>
-                    <CardTitle className="text-lg font-semibold leading-tight tracking-tight transition-colors group-hover:text-primary sm:text-xl">
-                      {stockCase.title}
-                    </CardTitle>
-
-                    {stockCase.company_name && <p className="text-sm font-medium text-muted-foreground">
-                        {stockCase.company_name}
-                      </p>}
-                  </>}
+                {stockCase.company_name && (
+                  <p className="text-sm font-medium text-muted-foreground">
+                    {stockCase.company_name}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -261,16 +235,11 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
 
       <CardContent className="flex flex-1 flex-col gap-4 px-4 pb-4 pt-0 sm:px-6 sm:pb-6">
         {/* Stock Image - Responsive */}
-        {displayImageSrc && <div className="relative w-full h-40 sm:h-48 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group/image">
+        {stockCase.image_url && <div className="relative w-full h-40 sm:h-48 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group/image">
             <img
-              src={displayImageSrc}
-              srcSet={displayImageSrcSet}
+              src={stockCase.image_url}
               alt={stockCase.company_name ? `${stockCase.company_name} illustration` : 'Investeringscase'}
               className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105"
-              loading="lazy"
-              decoding="async"
-              onError={handleCaseImageError}
-              data-original-src={stockCase.image_url || undefined}
             />
             <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/10 transition-all duration-300" />
           </div>}

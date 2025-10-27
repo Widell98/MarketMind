@@ -6,7 +6,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { History, Clock, Image as ImageIcon, Trash2, FolderOpen, FileText } from 'lucide-react';
 import { useStockCaseUpdates, StockCaseUpdate } from '@/hooks/useStockCaseUpdates';
-import { getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 import { useAuth } from '@/contexts/AuthContext';
 interface StockCaseHistoryViewerProps {
   stockCaseId: string;
@@ -52,9 +51,7 @@ const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
     isOriginal: false
   }))].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   const currentItem = timeline[currentIndex];
-  const optimizedImageSources = getOptimizedCaseImage(currentItem?.image_url);
-  const displayImageSrc = optimizedImageSources?.src ?? currentItem?.image_url ?? null;
-  const displayImageSrcSet = optimizedImageSources?.srcSet;
+  const displayImageSrc = currentItem?.image_url ?? null;
   const canDelete = user && currentItem && !currentItem.isOriginal && currentItem.user_id === user.id;
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('sv-SE', {
@@ -243,13 +240,8 @@ const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
             {displayImageSrc && <div className="relative">
                 <img
                   src={displayImageSrc}
-                  srcSet={displayImageSrcSet}
                   alt={`${currentItem.title} - ${formatDate(currentItem.created_at)}`}
                   className="w-full max-h-96 object-cover rounded-lg border"
-                  loading="lazy"
-                  decoding="async"
-                  onError={handleCaseImageError}
-                  data-original-src={currentItem.image_url || undefined}
                 />
                 <div className="absolute top-2 right-2">
                   <Badge variant="secondary" className="bg-black/50 text-white">

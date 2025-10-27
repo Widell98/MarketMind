@@ -8,7 +8,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
-import { getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 
 interface RelatedStockCasesFromAnalysisProps {
   analysisId: string;
@@ -258,9 +257,7 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
       </CardHeader>
       <CardContent className="space-y-4">
         {displayCases.map((stockCase) => {
-          const optimizedSources = getOptimizedCaseImage(stockCase.image_url);
-          const displayImageSrc = optimizedSources?.src ?? stockCase.image_url ?? null;
-          const displayImageSrcSet = optimizedSources?.srcSet;
+          const displayImageSrc = stockCase.image_url ?? null;
 
           return (
             <div key={stockCase.id} className="border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
@@ -301,16 +298,11 @@ const RelatedStockCasesFromAnalysis = ({ analysisId, companyName }: RelatedStock
                   </span>
                 </div>
               </div>
-              {displayImageSrc && (
+              {stockCase.image_url && (
                 <img
-                  src={displayImageSrc}
-                  srcSet={displayImageSrcSet}
+                  src={stockCase.image_url}
                   alt={stockCase.company_name}
                   className="w-12 h-12 rounded-lg object-cover ml-3"
-                  loading="lazy"
-                  decoding="async"
-                  onError={handleCaseImageError}
-                  data-original-src={stockCase.image_url || undefined}
                 />
               )}
             </div>

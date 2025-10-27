@@ -24,71 +24,6 @@ const normalizeSheetValue = (value?: string | null) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const normalizeWebsiteUrl = (value?: string | null): string | null => {
-  if (!value) {
-    return null;
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  const prefixed = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-
-  try {
-    const url = new URL(prefixed);
-    if (!url.hostname || url.hostname.includes(' ')) {
-      return null;
-    }
-
-    url.pathname = url.pathname.replace(/\/+/g, '/');
-    return url.toString();
-  } catch (_error) {
-    return null;
-  }
-};
-
-const normalizeLogoUrl = (value?: string | null): string | null => {
-  if (!value) {
-    return null;
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  const prefixed = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-
-  try {
-    const url = new URL(prefixed);
-    if (!url.hostname || url.hostname.includes(' ')) {
-      return null;
-    }
-    return url.toString();
-  } catch (_error) {
-    return null;
-  }
-};
-
-const buildClearbitLogoUrl = (website?: string | null): string | null => {
-  if (!website) {
-    return null;
-  }
-
-  try {
-    const parsed = new URL(website);
-    if (!parsed.hostname || parsed.hostname.includes(' ')) {
-      return null;
-    }
-
-    return `https://logo.clearbit.com/${parsed.hostname}`;
-  } catch (_error) {
-    return null;
-  }
-};
-
 const extractJsonPayload = (content: string): string => {
   const trimmed = content.trim();
 
@@ -297,21 +232,6 @@ const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
       || normalized.includes('börsvärde')
       || normalized.includes('borsvarde');
   });
-  const websiteIdx = headers.findIndex((header) => {
-    const normalized = header.toLowerCase();
-    return normalized.includes('website')
-      || normalized.includes('webbplats')
-      || normalized.includes('hemsida')
-      || normalized.includes('homepage')
-      || normalized.includes('url');
-  });
-  const logoIdx = headers.findIndex((header) => {
-    const normalized = header.toLowerCase();
-    return normalized.includes('logo')
-      || normalized.includes('logotyp')
-      || normalized.includes('image')
-      || normalized.includes('bild');
-  });
   const week52HighIdx = headers.findIndex((header) => {
     const normalized = header.toLowerCase();
     return normalized.includes('52')
@@ -338,8 +258,6 @@ const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
     const rawPeRatio = peIdx !== -1 ? normalizeSheetValue(columns[peIdx]) : null;
     const rawDividendYield = dividendIdx !== -1 ? normalizeSheetValue(columns[dividendIdx]) : null;
     const rawMarketCap = marketCapIdx !== -1 ? normalizeSheetValue(columns[marketCapIdx]) : null;
-    const rawWebsite = websiteIdx !== -1 ? normalizeSheetValue(columns[websiteIdx]) : null;
-    const rawLogo = logoIdx !== -1 ? normalizeSheetValue(columns[logoIdx]) : null;
     const rawWeek52High = week52HighIdx !== -1 ? normalizeSheetValue(columns[week52HighIdx]) : null;
     const rawWeek52Low = week52LowIdx !== -1 ? normalizeSheetValue(columns[week52LowIdx]) : null;
 
@@ -371,10 +289,6 @@ const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
     const weekHigh = parsedWeekHigh !== null ? Number(parsedWeekHigh.toFixed(2)) : null;
     const weekLow = parsedWeekLow !== null ? Number(parsedWeekLow.toFixed(2)) : null;
 
-    const website = normalizeWebsiteUrl(rawWebsite);
-    const explicitLogoUrl = normalizeLogoUrl(rawLogo);
-    const resolvedLogoUrl = explicitLogoUrl ?? buildClearbitLogoUrl(website);
-
     tickerMap.set(cleanedSymbol, {
       symbol: cleanedSymbol,
       name: rawName ?? cleanedSymbol,
@@ -385,8 +299,6 @@ const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
       dividendYield: formatDividendYield(rawDividendYield),
       fiftyTwoWeekHigh: weekHigh,
       fiftyTwoWeekLow: weekLow,
-      website,
-      logoUrl: resolvedLogoUrl,
     });
   }
 
@@ -478,8 +390,6 @@ type SheetTickerInfo = {
   dividendYield?: string | null;
   fiftyTwoWeekHigh?: number | null;
   fiftyTwoWeekLow?: number | null;
-  website?: string | null;
-  logoUrl?: string | null;
 };
 
 const normalizeTickerKey = (value: string): string => {
@@ -846,7 +756,6 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
         let fiftyTwoWeekHigh: number | null = null;
         let fiftyTwoWeekLow: number | null = null;
         let finalLongDescription = caseWithoutTicker.long_description;
-        let resolvedImageUrl: string | null = caseWithoutTicker.image_url ?? null;
         if (typeof finalLongDescription !== 'string') {
           finalLongDescription = '';
         }
@@ -861,10 +770,6 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
             currentPrice = rounded;
             targetPrice = Number((rounded * 1.08).toFixed(2));
             stopLoss = Number((rounded * 0.92).toFixed(2));
-          }
-
-          if (sheetInfo.logoUrl && !resolvedImageUrl) {
-            resolvedImageUrl = sheetInfo.logoUrl;
           }
 
           if (sheetInfo.currency && typeof sheetInfo.currency === 'string') {
@@ -922,7 +827,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
           ai_batch_id: runId,
           generated_at: new Date().toISOString(),
           currency: resolvedCurrency,
-          image_url: resolvedImageUrl,
+          image_url: caseWithoutTicker.image_url ?? null,
           entry_price: entryPrice,
           current_price: currentPrice,
           target_price: targetPrice,

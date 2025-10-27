@@ -8,7 +8,6 @@ import { StockCase } from '@/types/stockCase';
 import { useStockCaseFollows } from '@/hooks/useStockCaseFollows';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { getOptimizedCaseImage, handleCaseImageError } from '@/utils/imageUtils';
 
 interface StockCaseListItemProps {
   stockCase: StockCase;
@@ -68,9 +67,7 @@ const StockCaseListItem: React.FC<StockCaseListItemProps> = ({ stockCase, onView
     }
   };
 
-  const optimizedImageSources = getOptimizedCaseImage(stockCase.image_url);
-  const displayImageSrc = optimizedImageSources?.src ?? stockCase.image_url ?? null;
-  const displayImageSrcSet = optimizedImageSources?.srcSet;
+  const displayImageSrc = stockCase.image_url ?? null;
 
   return (
     <div className="group border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200 hover:shadow-md bg-white dark:bg-gray-800 cursor-pointer" onClick={() => onViewDetails(stockCase.id)}>
@@ -80,13 +77,8 @@ const StockCaseListItem: React.FC<StockCaseListItemProps> = ({ stockCase, onView
           <div className="flex-shrink-0">
             <img
               src={displayImageSrc}
-              srcSet={displayImageSrcSet}
               alt={stockCase.company_name}
               className="w-16 h-16 rounded-lg object-cover"
-              loading="lazy"
-              decoding="async"
-              onError={handleCaseImageError}
-              data-original-src={stockCase.image_url || undefined}
             />
           </div>
         )}
