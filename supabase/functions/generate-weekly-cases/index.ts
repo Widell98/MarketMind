@@ -63,6 +63,39 @@ const formatSummaryNumber = (value: number): string => {
   return value.toFixed(2).replace(/\.00$/, '').replace(/\.0$/, '');
 };
 
+const formatDividendYield = (value: string | null): string | null => {
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const compact = trimmed.replace(/\s+/g, '');
+  const simplePattern = /^-?\d+(?:[.,]\d+)?%?$/u;
+
+  if (!simplePattern.test(compact)) {
+    return trimmed;
+  }
+
+  const numeric = sanitizeNumber(trimmed);
+  if (numeric === null || !Number.isFinite(numeric)) {
+    return trimmed;
+  }
+
+  if (trimmed.includes('%')) {
+    return `${formatSummaryNumber(numeric)}%`;
+  }
+
+  if (Math.abs(numeric) <= 1) {
+    return `${formatSummaryNumber(numeric * 100)}%`;
+  }
+
+  return `${formatSummaryNumber(numeric)}%`;
+};
+
 const normalizeParagraphs = (value: string): string => {
   const normalized = value.replace(/\r\n/g, '\n').trim();
 
@@ -184,6 +217,21 @@ const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
       || normalized.includes('pe ratio')
       || normalized.includes('p e');
   });
+  const dividendIdx = headers.findIndex((header) => {
+    const normalized = header.toLowerCase();
+    return normalized.includes('dividend')
+      || normalized.includes('yield')
+      || normalized.includes('utdelning')
+      || normalized.includes('direktavkastning');
+  });
+  const marketCapIdx = headers.findIndex((header) => {
+    const normalized = header.toLowerCase();
+    return normalized.includes('market cap')
+      || normalized.includes('marketcapitalization')
+      || normalized.includes('marketcapitalisation')
+      || normalized.includes('börsvärde')
+      || normalized.includes('borsvarde');
+  });
   const week52HighIdx = headers.findIndex((header) => {
     const normalized = header.toLowerCase();
     return normalized.includes('52')
@@ -208,6 +256,8 @@ const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
     const rawCurrency = currencyIdx !== -1 ? normalizeSheetValue(columns[currencyIdx]) : null;
     const rawPrice = priceIdx !== -1 ? normalizeSheetValue(columns[priceIdx]) : null;
     const rawPeRatio = peIdx !== -1 ? normalizeSheetValue(columns[peIdx]) : null;
+    const rawDividendYield = dividendIdx !== -1 ? normalizeSheetValue(columns[dividendIdx]) : null;
+    const rawMarketCap = marketCapIdx !== -1 ? normalizeSheetValue(columns[marketCapIdx]) : null;
     const rawWeek52High = week52HighIdx !== -1 ? normalizeSheetValue(columns[week52HighIdx]) : null;
     const rawWeek52Low = week52LowIdx !== -1 ? normalizeSheetValue(columns[week52LowIdx]) : null;
 
@@ -245,6 +295,8 @@ const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
       currency: rawCurrency ?? null,
       price,
       peRatio,
+      marketCap: rawMarketCap ?? null,
+      dividendYield: formatDividendYield(rawDividendYield),
       fiftyTwoWeekHigh: weekHigh,
       fiftyTwoWeekLow: weekLow,
     });
@@ -334,6 +386,8 @@ type SheetTickerInfo = {
   currency: string | null;
   name?: string | null;
   peRatio?: string | null;
+  marketCap?: string | null;
+  dividendYield?: string | null;
   fiftyTwoWeekHigh?: number | null;
   fiftyTwoWeekLow?: number | null;
 };
@@ -696,7 +750,9 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
         let currentPrice: number | null = null;
         let targetPrice: number | null = null;
         let stopLoss: number | null = null;
-        let peRatioValue: string | null = caseWithoutTicker.pe_ratio ?? null;
+        let peRatioValue: string | null = null;
+        let marketCapValue: string | null = null;
+        let dividendYieldValue: string | null = null;
         let fiftyTwoWeekHigh: number | null = null;
         let fiftyTwoWeekLow: number | null = null;
         let finalLongDescription = caseWithoutTicker.long_description;
@@ -723,9 +779,9 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
             }
           }
 
-          if (sheetInfo.peRatio) {
-            peRatioValue = sheetInfo.peRatio;
-          }
+          peRatioValue = sheetInfo.peRatio ?? null;
+          marketCapValue = sheetInfo.marketCap ?? null;
+          dividendYieldValue = sheetInfo.dividendYield ?? null;
 
           if (typeof sheetInfo.fiftyTwoWeekHigh === 'number' && Number.isFinite(sheetInfo.fiftyTwoWeekHigh)) {
             fiftyTwoWeekHigh = Number(sheetInfo.fiftyTwoWeekHigh);
@@ -775,6 +831,8 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
           current_price: currentPrice,
           target_price: targetPrice,
           stop_loss: stopLoss,
+          market_cap: marketCapValue,
+          dividend_yield: dividendYieldValue,
           pe_ratio: peRatioValue,
         });
 
