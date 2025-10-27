@@ -53,6 +53,7 @@ const StockCaseTimelineViewer: React.FC<StockCaseTimelineViewerProps> = ({
 
   // Current version based on carousel index
   const currentVersion = timeline[currentIndex];
+  const displayImageSrc = currentVersion?.image_url ?? null;
   const hasMultipleVersions = timeline.length > 1;
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('sv-SE', {
@@ -148,14 +149,14 @@ const StockCaseTimelineViewer: React.FC<StockCaseTimelineViewerProps> = ({
       </div>
 
       {/* Main image carousel */}
-      {currentVersion?.image_url && (
+      {displayImageSrc && (
         <div className="space-y-3">
           <div className="relative group">
             <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
-              <img 
-                src={currentVersion.image_url} 
-                alt={currentVersion.title || ''} 
-                className="w-full h-full object-cover transition-all duration-300" 
+              <img
+                src={displayImageSrc}
+                alt={currentVersion.title || ''}
+                className="w-full h-full object-cover transition-all duration-300"
               />
               
               {/* Navigation arrows - always visible if multiple versions */}
