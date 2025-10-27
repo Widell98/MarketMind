@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { getExchangeRates, DEFAULT_EXCHANGE_RATES } from "../_shared/exchangeRates.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -79,24 +80,15 @@ const getSymbolVariants = (symbol: string | null, alternative?: string | null) =
   return [...variants];
 };
 
-const EXCHANGE_RATES: Record<string, number> = {
-  SEK: 1,
-  USD: 10.5,
-  EUR: 11.4,
-  GBP: 13.2,
-  NOK: 0.95,
-  DKK: 1.53,
-  JPY: 0.07,
-  CHF: 11.8,
-  CAD: 7.8,
-  AUD: 7.0,
-};
-
-const convertToSEK = (amount: number, currency?: string | null) => {
+const convertToSEK = (
+  amount: number,
+  currency?: string | null,
+  rates: Record<string, number> = DEFAULT_EXCHANGE_RATES,
+) => {
   if (!Number.isFinite(amount)) return null;
   const c = currency?.toUpperCase();
   if (!c || c === "SEK") return amount;
-  const rate = EXCHANGE_RATES[c];
+  const rate = rates[c];
   return typeof rate === "number" ? amount * rate : null;
 };
 
@@ -159,6 +151,8 @@ serve(async (req) => {
     if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
     const csvText = await res.text();
 
+    const exchangeRates = await getExchangeRates();
+
     // Parsning av CSV → rader
     const rows = csvText.split("\n").map((r) => r.split(","));
     const timestamp = new Date().toISOString();
@@ -198,7 +192,7 @@ serve(async (req) => {
       const pricePerUnitInSEK =
         priceCurrency === "SEK"
           ? pricePerUnit
-          : convertToSEK(pricePerUnit, priceCurrency);
+          : convertToSEK(pricePerUnit, priceCurrency, exchangeRates);
 
       // Hitta matchande innehav i Supabase
       let query = supabase.from("user_holdings").select("id, quantity");

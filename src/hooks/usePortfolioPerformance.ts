@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { resolveHoldingValue, convertToSEK } from '@/utils/currencyUtils';
+import { resolveHoldingValue, convertToSEK, refreshExchangeRates } from '@/utils/currencyUtils';
 import type { SheetTicker } from '@/hooks/useSheetTickers';
 
 type FinnhubPriceResponse = {
@@ -237,6 +237,10 @@ export const usePortfolioPerformance = () => {
 
     try {
       setLoading(true);
+
+      await refreshExchangeRates().catch((error) => {
+        console.warn('Failed to refresh exchange rates before performance calculation.', error);
+      });
 
       // Get all holdings (both securities and cash)
       const { data: allHoldings, error: holdingsError } = await supabase

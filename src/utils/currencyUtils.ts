@@ -1,24 +1,106 @@
-// Simple currency conversion utility
-// In a real application, you would fetch live exchange rates from an API
+import { supabase } from '@/integrations/supabase/client';
 
 export interface ExchangeRates {
   [key: string]: number;
 }
 
-// Base rates to SEK (Swedish Krona)
-// These should be updated regularly from a real API in production
-export const EXCHANGE_RATES: ExchangeRates = {
+export const DEFAULT_EXCHANGE_RATES: ExchangeRates = {
   SEK: 1.0,
-  USD: 10.5,   // 1 USD = ~10.5 SEK
-  EUR: 11.4,   // 1 EUR = ~11.4 SEK
-  GBP: 13.2,   // 1 GBP = ~13.2 SEK
-  NOK: 0.95,   // 1 NOK = ~0.95 SEK
-  DKK: 1.53,   // 1 DKK = ~1.53 SEK
-  JPY: 0.07,   // 1 JPY = ~0.07 SEK
-  CHF: 11.8,   // 1 CHF = ~11.8 SEK
-  CAD: 7.8,    // 1 CAD = ~7.8 SEK
-  AUD: 7.0,    // 1 AUD = ~7.0 SEK
+  USD: 10.5,
+  EUR: 11.4,
+  GBP: 13.2,
+  NOK: 0.95,
+  DKK: 1.53,
+  JPY: 0.07,
+  CHF: 11.8,
+  CAD: 7.8,
+  AUD: 7.0,
 };
+
+export let EXCHANGE_RATES: ExchangeRates = { ...DEFAULT_EXCHANGE_RATES };
+
+const REFRESH_INTERVAL_MS = 1000 * 60 * 60; // 1 hour
+let lastFetchedAt: number | null = null;
+let fetchPromise: Promise<ExchangeRates> | null = null;
+
+interface ExchangeRatesResponse {
+  success?: boolean;
+  rates?: ExchangeRates;
+}
+
+const normalizeRates = (rates: ExchangeRates | null | undefined): ExchangeRates => {
+  if (!rates) {
+    return { ...DEFAULT_EXCHANGE_RATES };
+  }
+
+  const normalized: ExchangeRates = { ...DEFAULT_EXCHANGE_RATES };
+  for (const [currency, defaultRate] of Object.entries(DEFAULT_EXCHANGE_RATES)) {
+    const incoming = rates[currency];
+    if (typeof incoming === 'number' && Number.isFinite(incoming) && incoming > 0) {
+      normalized[currency] = incoming;
+    } else {
+      normalized[currency] = defaultRate;
+    }
+  }
+
+  return normalized;
+};
+
+const fetchExchangeRates = async (): Promise<ExchangeRates> => {
+  if (typeof window === 'undefined') {
+    return EXCHANGE_RATES;
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke<ExchangeRatesResponse>('get-exchange-rates');
+    if (error) {
+      throw error;
+    }
+
+    const updatedRates = normalizeRates(data?.rates);
+    EXCHANGE_RATES = updatedRates;
+    lastFetchedAt = Date.now();
+    return EXCHANGE_RATES;
+  } catch (error) {
+    console.warn('Failed to refresh exchange rates, using cached values.', error);
+    if (!lastFetchedAt) {
+      EXCHANGE_RATES = { ...DEFAULT_EXCHANGE_RATES };
+    }
+    return EXCHANGE_RATES;
+  } finally {
+    fetchPromise = null;
+  }
+};
+
+const shouldRefreshRates = (force?: boolean) => {
+  if (force) return true;
+  if (!lastFetchedAt) return true;
+  return Date.now() - lastFetchedAt > REFRESH_INTERVAL_MS;
+};
+
+export const refreshExchangeRates = async (options: { force?: boolean } = {}): Promise<ExchangeRates> => {
+  if (typeof window === 'undefined') {
+    return EXCHANGE_RATES;
+  }
+
+  if (!shouldRefreshRates(options.force)) {
+    return EXCHANGE_RATES;
+  }
+
+  if (!fetchPromise) {
+    fetchPromise = fetchExchangeRates();
+  }
+
+  return fetchPromise;
+};
+
+export const getExchangeRates = (): ExchangeRates => ({ ...EXCHANGE_RATES });
+
+if (typeof window !== 'undefined') {
+  void refreshExchangeRates().catch(() => {
+    // Errors are logged in fetchExchangeRates; suppress unhandled rejection warnings.
+  });
+}
 
 /**
  * Convert amount from one currency to SEK

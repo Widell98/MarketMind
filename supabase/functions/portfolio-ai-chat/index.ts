@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { getExchangeRates, DEFAULT_EXCHANGE_RATES } from "../_shared/exchangeRates.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -126,27 +127,18 @@ const FINANCIAL_RELEVANCE_KEYWORDS = [
   'pris',
 ];
 
-const EXCHANGE_RATES: Record<string, number> = {
-  SEK: 1.0,
-  USD: 10.5,
-  EUR: 11.4,
-  GBP: 13.2,
-  NOK: 0.95,
-  DKK: 1.53,
-  JPY: 0.07,
-  CHF: 11.8,
-  CAD: 7.8,
-  AUD: 7.0,
-};
-
-const convertToSEK = (amount: number, fromCurrency?: string | null): number => {
+const convertToSEK = (
+  amount: number,
+  fromCurrency: string | null | undefined,
+  rates: Record<string, number> = DEFAULT_EXCHANGE_RATES,
+): number => {
   if (!amount || amount === 0) return 0;
 
   const currency = typeof fromCurrency === 'string' && fromCurrency.trim().length > 0
     ? fromCurrency.trim().toUpperCase()
     : 'SEK';
 
-  const rate = EXCHANGE_RATES[currency];
+  const rate = rates[currency];
 
   if (!rate) {
     console.warn(`Exchange rate not found for currency: ${currency}, defaulting to SEK`);
@@ -224,7 +216,10 @@ type HoldingValueBreakdown = {
   hasDirectPrice: boolean;
 };
 
-const resolveHoldingValue = (holding: HoldingRecord): HoldingValueBreakdown => {
+const resolveHoldingValue = (
+  holding: HoldingRecord,
+  rates: Record<string, number>,
+): HoldingValueBreakdown => {
   const quantity = parseNumericValue(holding?.quantity) ?? 0;
 
   const pricePerUnit = parseNumericValue(holding?.current_price_per_unit);
@@ -241,10 +236,10 @@ const resolveHoldingValue = (holding: HoldingRecord): HoldingValueBreakdown => {
   const hasDirectPrice = pricePerUnit !== null && quantity > 0;
   const rawValue = hasDirectPrice ? pricePerUnit * quantity : fallbackValue;
   const valueCurrency = hasDirectPrice ? baseCurrencyRaw : fallbackCurrency;
-  const valueInSEK = convertToSEK(rawValue, valueCurrency);
+  const valueInSEK = convertToSEK(rawValue, valueCurrency, rates);
 
   const pricePerUnitInSEK = pricePerUnit !== null
-    ? convertToSEK(pricePerUnit, baseCurrencyRaw)
+    ? convertToSEK(pricePerUnit, baseCurrencyRaw, rates)
     : quantity > 0
       ? valueInSEK / quantity
       : null;
@@ -689,6 +684,8 @@ serve(async (req) => {
         .eq('user_id', userId)
         .maybeSingle()
     ]);
+
+    const exchangeRates = await getExchangeRates();
 
     let sheetTickerSymbols: string[] = [];
     let sheetTickerNames: string[] = [];
@@ -1607,7 +1604,7 @@ contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
       if (actualHoldings.length > 0) {
         const holdingsWithValues = actualHoldings.map((holding) => ({
           holding,
-          value: resolveHoldingValue(holding),
+          value: resolveHoldingValue(holding, exchangeRates),
         }));
 
         const totalValue = holdingsWithValues.reduce((sum, item) => sum + item.value.valueInSEK, 0);
