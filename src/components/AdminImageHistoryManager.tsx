@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trash2, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
-import { StockCaseImageHistory, useStockCaseImageHistory } from '@/hooks/useStockCaseImageHistory';
+import { useStockCaseImageHistory } from '@/hooks/useStockCaseImageHistory';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -48,10 +47,10 @@ const AdminImageHistoryManager: React.FC<AdminImageHistoryManagerProps> = ({
       setDeletingImageId(imageId);
 
       await deleteImage(imageId);
-      
+
       // Force a manual refetch to ensure the UI updates
       await refetch();
-      
+
       toast({
         title: "Framgång",
         description: "Bilden har raderats från historiken",
@@ -89,7 +88,7 @@ const AdminImageHistoryManager: React.FC<AdminImageHistoryManagerProps> = ({
                 alt={image.description || 'Stock case image'}
                 className="w-20 h-20 object-cover rounded-md"
               />
-              
+
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-sm text-gray-600">
@@ -102,7 +101,7 @@ const AdminImageHistoryManager: React.FC<AdminImageHistoryManagerProps> = ({
                     </Badge>
                   )}
                 </div>
-                
+
                 {image.description && (
                   <p className="text-sm text-gray-700 mb-2">
                     {image.description}
@@ -127,7 +126,7 @@ const AdminImageHistoryManager: React.FC<AdminImageHistoryManagerProps> = ({
                       Radera bild från historik
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      Är du säker på att du vill radera denna bild från historiken? 
+                      Är du säker på att du vill radera denna bild från historiken?
                       Denna åtgärd kan inte ångras.
                       {image.is_current && (
                         <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">

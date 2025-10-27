@@ -51,6 +51,7 @@ const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
     isOriginal: false
   }))].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   const currentItem = timeline[currentIndex];
+  const displayImageSrc = currentItem?.image_url ?? null;
   const canDelete = user && currentItem && !currentItem.isOriginal && currentItem.user_id === user.id;
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('sv-SE', {
@@ -236,8 +237,12 @@ const StockCaseHistoryViewer: React.FC<StockCaseHistoryViewerProps> = ({
             </div>
 
             {/* Image */}
-            {currentItem.image_url && <div className="relative">
-                <img src={currentItem.image_url} alt={`${currentItem.title} - ${formatDate(currentItem.created_at)}`} className="w-full max-h-96 object-cover rounded-lg border" />
+            {displayImageSrc && <div className="relative">
+                <img
+                  src={displayImageSrc}
+                  alt={`${currentItem.title} - ${formatDate(currentItem.created_at)}`}
+                  className="w-full max-h-96 object-cover rounded-lg border"
+                />
                 <div className="absolute top-2 right-2">
                   <Badge variant="secondary" className="bg-black/50 text-white">
                     <ImageIcon className="w-3 h-3 mr-1" />

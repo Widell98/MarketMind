@@ -795,7 +795,12 @@ const UserStockCasesSection = ({ compact = false }: UserStockCasesSectionProps) 
                     </p>
                   )}
                   
-                  {(stockCase.entry_price || stockCase.current_price || stockCase.target_price || stockCase.stop_loss) && (
+                  {(
+                    stockCase.entry_price ||
+                    stockCase.current_price ||
+                    (stockCase.target_price && !stockCase.ai_generated) ||
+                    (stockCase.stop_loss && !stockCase.ai_generated)
+                  ) && (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
                       {stockCase.entry_price && (
                         <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
@@ -809,13 +814,13 @@ const UserStockCasesSection = ({ compact = false }: UserStockCasesSectionProps) 
                           <div className="text-sm font-semibold">{stockCase.current_price} kr</div>
                         </div>
                       )}
-                      {stockCase.target_price && (
+                      {stockCase.target_price && !stockCase.ai_generated && (
                         <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
                           <div className="text-xs text-gray-500 dark:text-gray-400">Target</div>
                           <div className="text-sm font-semibold">{stockCase.target_price} kr</div>
                         </div>
                       )}
-                      {stockCase.stop_loss && (
+                      {stockCase.stop_loss && !stockCase.ai_generated && (
                         <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
                           <div className="text-xs text-gray-500 dark:text-gray-400">Stop Loss</div>
                           <div className="text-sm font-semibold">{stockCase.stop_loss} kr</div>
