@@ -71,6 +71,30 @@ const AIChat = ({
   const location = useLocation();
   const navigate = useNavigate();
   const isPremium = subscription?.subscribed;
+  const draftStorageKey = useMemo(() => {
+    const sessionKey = currentSessionId ?? 'new';
+    const portfolioKey = portfolioId ?? 'default';
+    return `ai-chat-draft:${portfolioKey}:${sessionKey}`;
+  }, [currentSessionId, portfolioId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const storedDraft = sessionStorage.getItem(draftStorageKey);
+    if (storedDraft && !hasProcessedInitialMessage) {
+      setInput(storedDraft);
+    }
+  }, [draftStorageKey, hasProcessedInitialMessage]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (input) {
+      sessionStorage.setItem(draftStorageKey, input);
+    } else {
+      sessionStorage.removeItem(draftStorageKey);
+    }
+  }, [draftStorageKey, input]);
   useEffect(() => {
     // Auto-scroll when messages change
     messagesEndRef.current?.scrollIntoView({
