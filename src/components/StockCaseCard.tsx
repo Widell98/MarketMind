@@ -205,13 +205,37 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
               </div>}
 
               <div className="space-y-1">
-                <CardTitle className="text-lg font-semibold leading-tight tracking-tight transition-colors group-hover:text-primary sm:text-xl">
-                  {stockCase.title}
-                </CardTitle>
+                {displayImageSrc ? <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/60 bg-muted">
+                      <img
+                        src={displayImageSrc}
+                        srcSet={displayImageSrcSet}
+                        alt={stockCase.company_name ? `${stockCase.company_name} logotyp` : 'Företagslogotyp'}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                        onError={handleCaseImageError}
+                        data-original-src={stockCase.image_url || undefined}
+                      />
+                    </div>
+                    <div className="min-w-0 space-y-1">
+                      <CardTitle className="text-lg font-semibold leading-tight tracking-tight transition-colors group-hover:text-primary sm:text-xl">
+                        {stockCase.title}
+                      </CardTitle>
 
-                {stockCase.company_name && <p className="text-sm font-medium text-muted-foreground">
-                    {stockCase.company_name}
-                  </p>}
+                      {stockCase.company_name && <p className="text-sm font-medium text-muted-foreground">
+                          {stockCase.company_name}
+                        </p>}
+                    </div>
+                  </div> : <>
+                    <CardTitle className="text-lg font-semibold leading-tight tracking-tight transition-colors group-hover:text-primary sm:text-xl">
+                      {stockCase.title}
+                    </CardTitle>
+
+                    {stockCase.company_name && <p className="text-sm font-medium text-muted-foreground">
+                        {stockCase.company_name}
+                      </p>}
+                  </>}
               </div>
             </div>
 
