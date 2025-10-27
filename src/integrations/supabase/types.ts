@@ -55,6 +55,39 @@ export type Database = {
           },
         ]
       }
+      ai_generation_runs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          expected_count: number
+          generated_count: number
+          id: string
+          status: string
+          triggered_by: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          expected_count?: number
+          generated_count?: number
+          id?: string
+          status?: string
+          triggered_by?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          expected_count?: number
+          generated_count?: number
+          id?: string
+          status?: string
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
       ai_market_insights: {
         Row: {
           confidence_score: number | null
@@ -996,15 +1029,18 @@ export type Database = {
       }
       stock_cases: {
         Row: {
+          ai_batch_id: string | null
           admin_comment: string | null
           ai_generated: boolean | null
           category_id: string | null
           closed_at: string | null
           company_name: string
           created_at: string
+          generated_at: string | null
           currency: string | null
           current_price: number | null
           description: string | null
+          long_description: string | null
           dividend_yield: string | null
           entry_price: number | null
           id: string
@@ -1017,6 +1053,7 @@ export type Database = {
           status: string | null
           stop_loss: number | null
           stop_loss_hit: boolean
+          ticker: string | null
           target_price: number | null
           target_reached: boolean
           timeframe: string | null
@@ -1025,15 +1062,18 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          ai_batch_id?: string | null
           admin_comment?: string | null
           ai_generated?: boolean | null
           category_id?: string | null
           closed_at?: string | null
           company_name: string
           created_at?: string
+          generated_at?: string | null
           currency?: string | null
           current_price?: number | null
           description?: string | null
+          long_description?: string | null
           dividend_yield?: string | null
           entry_price?: number | null
           id?: string
@@ -1046,6 +1086,7 @@ export type Database = {
           status?: string | null
           stop_loss?: number | null
           stop_loss_hit?: boolean
+          ticker?: string | null
           target_price?: number | null
           target_reached?: boolean
           timeframe?: string | null
@@ -1054,15 +1095,18 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          ai_batch_id?: string | null
           admin_comment?: string | null
           ai_generated?: boolean | null
           category_id?: string | null
           closed_at?: string | null
           company_name?: string
           created_at?: string
+          generated_at?: string | null
           currency?: string | null
           current_price?: number | null
           description?: string | null
+          long_description?: string | null
           dividend_yield?: string | null
           entry_price?: number | null
           id?: string
@@ -1075,6 +1119,7 @@ export type Database = {
           status?: string | null
           stop_loss?: number | null
           stop_loss_hit?: boolean
+          ticker?: string | null
           target_price?: number | null
           target_reached?: boolean
           timeframe?: string | null
@@ -1088,6 +1133,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "case_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_cases_ai_batch_id_fkey"
+            columns: ["ai_batch_id"]
+            isOneToOne: false
+            referencedRelation: "ai_generation_runs"
             referencedColumns: ["id"]
           },
         ]

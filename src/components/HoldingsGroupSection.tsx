@@ -105,7 +105,7 @@ const HoldingsGroupSection: React.FC<HoldingsGroupSectionProps> = ({
 
       {isExpanded && (
         <CardContent className="pt-0">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {holdings.map((holding) => {
               const { valueInSEK: computedValue } = resolveHoldingValue(holding);
               const holdingPerformance = holdingPerformanceMap?.[holding.id];

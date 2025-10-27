@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
+import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 import { 
   Activity, 
   FileText, 
@@ -37,7 +38,7 @@ const ActivitySection = () => {
         
         supabase
           .from('stock_cases')
-          .select('id, title, created_at, status')
+          .select('id, title, company_name, created_at, status')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(5),
@@ -57,9 +58,14 @@ const ActivitySection = () => {
           .limit(7)
       ]);
 
+      const recentStockCases = (stockCasesResult.data || []).map((stockCase) => ({
+        ...stockCase,
+        title: normalizeStockCaseTitle(stockCase.title, stockCase.company_name),
+      }));
+
       return {
         recentAnalyses: analysesResult.data || [],
-        recentStockCases: stockCasesResult.data || [],
+        recentStockCases,
         recentComments: commentsResult.data || [],
         aiUsage: usageResult.data || []
       };

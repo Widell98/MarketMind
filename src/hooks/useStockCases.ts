@@ -1,17 +1,38 @@
 
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { StockCase } from '@/types/stockCase';
+import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 
-export const useStockCases = (followedOnly: boolean = false) => {
+type UseStockCasesOptions = {
+  followedOnly?: boolean;
+  aiGeneratedOnly?: boolean;
+  limit?: number;
+  aiBatchId?: string;
+};
+
+export const useStockCases = (followedOnlyOrOptions: boolean | UseStockCasesOptions = false) => {
   const { user } = useAuth();
 
-  const query = useQuery({
-    queryKey: ['stock-cases', followedOnly, user?.id],
-    queryFn: async () => {
-      console.log('useStockCases: Fetching stock cases, followedOnly:', followedOnly);
+  const options = useMemo<UseStockCasesOptions>(() => {
+    if (typeof followedOnlyOrOptions === 'boolean') {
+      return { followedOnly: followedOnlyOrOptions };
+    }
+    return followedOnlyOrOptions ?? {};
+  }, [followedOnlyOrOptions]);
 
+  const {
+    followedOnly = false,
+    aiGeneratedOnly = false,
+    limit,
+    aiBatchId,
+  } = options;
+
+  const query = useQuery({
+    queryKey: ['stock-cases', followedOnly, user?.id, aiGeneratedOnly, limit, aiBatchId],
+    queryFn: async () => {
       if (followedOnly && user) {
         // Get followed cases
         const { data: follows, error: followsError } = await supabase
@@ -25,43 +46,66 @@ export const useStockCases = (followedOnly: boolean = false) => {
         }
         
         if (!follows || follows.length === 0) {
-          console.log('No followed cases found');
           return [];
         }
 
         const stockCaseIds = follows.map(f => f.stock_case_id);
 
-        const { data: stockCases, error: casesError } = await supabase
+        let followedQuery = supabase
           .from('stock_cases')
           .select('*')
           .in('id', stockCaseIds)
           .eq('is_public', true)
           .order('created_at', { ascending: false });
 
+        if (aiGeneratedOnly) {
+          followedQuery = followedQuery.eq('ai_generated', true);
+        }
+
+        if (aiBatchId) {
+          followedQuery = followedQuery.eq('ai_batch_id', aiBatchId);
+        }
+
+        if (limit) {
+          followedQuery = followedQuery.limit(limit);
+        }
+
+        const { data: stockCases, error: casesError } = await followedQuery;
+
         if (casesError) {
           console.error('Error fetching followed stock cases:', casesError);
           throw casesError;
         }
-
-        console.log('Followed stock cases fetched:', stockCases?.length || 0);
 
         // Manually fetch profiles and categories
         return await enrichStockCases(stockCases || []);
       }
 
       // Get all public cases
-      const { data, error } = await supabase
+      let allCasesQuery = supabase
         .from('stock_cases')
         .select('*')
         .eq('is_public', true)
         .order('created_at', { ascending: false });
-      
+
+      if (aiGeneratedOnly) {
+        allCasesQuery = allCasesQuery.eq('ai_generated', true);
+      }
+
+      if (aiBatchId) {
+        allCasesQuery = allCasesQuery.eq('ai_batch_id', aiBatchId);
+      }
+
+      if (limit) {
+        allCasesQuery = allCasesQuery.limit(limit);
+      }
+
+      const { data, error } = await allCasesQuery;
+
       if (error) {
         console.error('Error fetching stock cases:', error);
         throw error;
       }
-      
-      console.log('All stock cases fetched:', data?.length || 0);
       
       // Manually fetch profiles and categories
       return await enrichStockCases(data || []);
@@ -145,8 +189,11 @@ const enrichStockCases = async (stockCases: any[]): Promise<StockCase[]> => {
     const profile = profilesData.find(p => p.id === stockCase.user_id);
     const category = categoriesData.find(c => c.id === stockCase.category_id);
 
+    const resolvedTitle = normalizeStockCaseTitle(stockCase.title, stockCase.company_name);
+
     return {
       ...stockCase,
+      title: resolvedTitle,
       status: (stockCase.status || 'active') as 'active' | 'winner' | 'loser',
       is_public: stockCase.is_public ?? true,
       likes_count: likesMap.get(stockCase.id) || 0,

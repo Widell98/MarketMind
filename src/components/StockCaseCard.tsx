@@ -133,6 +133,31 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
   const formattedPerformance = Number.isFinite(performance)
     ? `${performance > 0 ? '+' : ''}${performance.toFixed(1).replace('.', ',')}%`
     : '—';
+  const stripFiftyTwoWeekSummary = (value?: string | null): string => {
+    if (typeof value !== 'string') {
+      return '';
+    }
+
+    const match = value.match(/52-veckors\s+högsta:\s*[0-9.,-]+\s*\|\s*52-veckors\s+lägsta:\s*[0-9.,-]+/i);
+    if (!match) {
+      return value;
+    }
+
+    return value.replace(match[0], '').replace(/\s{3,}/g, ' ').trim();
+  };
+  const shortDescription = stockCase.description?.trim();
+  const cleanedLongDescription = stripFiftyTwoWeekSummary(stockCase.long_description);
+  const previewText = shortDescription && shortDescription.length > 0
+    ? shortDescription
+    : cleanedLongDescription
+      ? (() => {
+          const normalized = cleanedLongDescription.replace(/\s+/g, ' ').trim();
+          if (normalized.length <= 260) {
+            return normalized;
+          }
+          return `${normalized.slice(0, 257).trimEnd()}...`;
+        })()
+      : '';
 
   return <Card className={getCardClassNames()} onClick={() => onViewDetails(stockCase.id)}>
       <CardHeader className="px-4 pb-3 sm:px-6 sm:pb-4">
@@ -180,9 +205,11 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
                   {stockCase.title}
                 </CardTitle>
 
-                {stockCase.company_name && <p className="text-sm font-medium text-muted-foreground">
+                {stockCase.company_name && (
+                  <p className="text-sm font-medium text-muted-foreground">
                     {stockCase.company_name}
-                  </p>}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -208,13 +235,17 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
 
       <CardContent className="flex flex-1 flex-col gap-4 px-4 pb-4 pt-0 sm:px-6 sm:pb-6">
         {/* Stock Image - Responsive */}
-        {stockCase.image_url && <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group/image">
-            <img src={stockCase.image_url} alt={`${stockCase.company_name} stock chart`} className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105" />
+        {stockCase.image_url && <div className="relative w-full h-40 sm:h-48 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group/image">
+            <img
+              src={stockCase.image_url}
+              alt={stockCase.company_name ? `${stockCase.company_name} illustration` : 'Investeringscase'}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105"
+            />
             <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/10 transition-all duration-300" />
           </div>}
 
-        {stockCase.description && <p className="flex-1 text-sm text-muted-foreground line-clamp-3 sm:line-clamp-4">
-            {stockCase.description}
+        {previewText && <p className="flex-1 text-sm text-muted-foreground line-clamp-3 sm:line-clamp-4">
+            {previewText}
           </p>}
 
         <div className="mt-auto space-y-4">

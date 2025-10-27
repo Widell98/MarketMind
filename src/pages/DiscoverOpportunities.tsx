@@ -9,17 +9,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import PersonalizedRecommendations from '@/components/PersonalizedRecommendations';
 import AIRecommendations from '@/components/AIRecommendations';
-import AIWeeklyPicks from '@/components/AIWeeklyPicks';
+import AIGenerationAdminControls from '@/components/AIGenerationAdminControls';
 import SavedOpportunitiesSection from '@/components/SavedOpportunitiesSection';
 import StockCaseCard from '@/components/StockCaseCard';
 import AnalysisSection from '@/components/AnalysisSection';
 import { useStockCases } from '@/hooks/useStockCases';
 import { useTrendingStockCases } from '@/hooks/useTrendingStockCases';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 const DiscoverOpportunities = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('discover');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const { stockCases: allStockCases, loading: allLoading } = useStockCases(false);
@@ -93,8 +95,14 @@ const DiscoverOpportunities = () => {
     }
   ];
 
+  const [savedOpportunities, setSavedOpportunities] = useState(mockSavedOpportunities);
+
   const handleRemoveOpportunity = (id: string) => {
-    console.log('Removing opportunity:', id);
+    setSavedOpportunities(prev => prev.filter(opportunity => opportunity.id !== id));
+    toast({
+      title: 'Möjlighet borttagen',
+      description: 'Den sparade möjligheten har tagits bort från din lista.',
+    });
   };
 
   const handleViewOpportunity = (opportunity: any) => {
@@ -149,8 +157,8 @@ const DiscoverOpportunities = () => {
           <TabsContent value="discover" className="space-y-8">
             {user ? (
               <>
-                {/* AI Weekly Picks - New Section */}
-                <AIWeeklyPicks />
+                {/* AI generation status & controls */}
+                <AIGenerationAdminControls />
 
                 {/* Personalized AI Recommendations */}
                 <AIRecommendations />
@@ -292,11 +300,11 @@ const DiscoverOpportunities = () => {
           {/* Sparade Tab */}
           <TabsContent value="saved" className="space-y-6">
             {user ? (
-              <SavedOpportunitiesSection
-                opportunities={mockSavedOpportunities}
-                onRemove={handleRemoveOpportunity}
-                onView={handleViewOpportunity}
-                loading={false}
+        <SavedOpportunitiesSection
+          opportunities={savedOpportunities}
+          onRemove={handleRemoveOpportunity}
+          onView={handleViewOpportunity}
+          loading={false}
               />
             ) : (
               <Card className="text-center py-8 bg-gray-50 dark:bg-gray-800">

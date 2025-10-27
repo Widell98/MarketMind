@@ -36,6 +36,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { resolveHoldingValue } from '@/utils/currencyUtils';
 import { usePersistentDialogOpenState } from '@/hooks/usePersistentDialogOpenState';
 import { ADD_HOLDING_DIALOG_STORAGE_KEY } from '@/constants/storageKeys';
+import { useToast } from '@/hooks/use-toast';
 
 interface TransformedHolding {
   id: string;
@@ -79,6 +80,7 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
   } = useCashHoldings();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   const [showAddCashDialog, setShowAddCashDialog] = useState(false);
   const [editingCash, setEditingCash] = useState<{id: string, amount: number} | null>(null);
@@ -107,10 +109,12 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
   }, [holdingsPerformance]);
   
   const handleDeleteHolding = async (holdingId: string, holdingName: string) => {
-    console.log(`Deleting holding: ${holdingName} (${holdingId})`);
     const success = await deleteHolding(holdingId);
     if (success) {
-      console.log('Holding deleted successfully');
+      toast({
+        title: 'Innehav raderat',
+        description: `${holdingName} har tagits bort.`,
+      });
     }
   };
 

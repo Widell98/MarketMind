@@ -17,8 +17,6 @@ export const useUserRole = () => {
       }
 
       try {
-        console.log('Checking role for user:', user.id);
-        
         // Use server-side validation function instead of direct table query
         const { data, error } = await supabase.rpc('validate_admin_action');
 
@@ -27,7 +25,6 @@ export const useUserRole = () => {
           setIsAdmin(false);
         } else {
           setIsAdmin(!!data);
-          console.log('User is admin:', !!data);
         }
       } catch (error) {
         console.error('Error checking user role:', error);

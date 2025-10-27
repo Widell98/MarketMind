@@ -6,12 +6,15 @@ import Layout from '@/components/Layout';
 
 import StockCaseCard from '@/components/StockCaseCard';
 import EnhancedStockCasesSearch from '@/components/EnhancedStockCasesSearch';
+import AIGenerationAdminControls from '@/components/AIGenerationAdminControls';
 
 import { useStockCases } from '@/hooks/useStockCases';
+import { useToast } from '@/hooks/use-toast';
 
 const Discover = () => {
   const navigate = useNavigate();
   const { stockCases: allStockCases, loading: stockCasesLoading } = useStockCases(false);
+  const { toast } = useToast();
 
   const [caseSearchTerm, setCaseSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('');
@@ -30,6 +33,7 @@ const Discover = () => {
         const title = sc.title.toLowerCase();
         const company = sc.company_name?.toLowerCase();
         const description = sc.description?.toLowerCase();
+        const longDescription = sc.long_description?.toLowerCase();
         const displayName = sc.profiles?.display_name?.toLowerCase();
         const username = sc.profiles?.username?.toLowerCase();
 
@@ -37,6 +41,7 @@ const Discover = () => {
           title.includes(normalizedSearchTerm) ||
           company?.includes(normalizedSearchTerm) ||
           description?.includes(normalizedSearchTerm) ||
+          longDescription?.includes(normalizedSearchTerm) ||
           sector?.includes(normalizedSearchTerm) ||
           displayName?.includes(normalizedSearchTerm) ||
           username?.includes(normalizedSearchTerm)
@@ -111,7 +116,12 @@ const Discover = () => {
   }, [allStockCases]);
 
   const handleViewStockCaseDetails = (id: string) => navigate(`/stock-cases/${id}`);
-  const handleDeleteStockCase = (id: string) => console.log('Delete stock case:', id);
+  const handleDeleteStockCase = (id: string) => {
+    toast({
+      title: 'Funktion kommer snart',
+      description: 'Det går ännu inte att ta bort aktiecase från denna vy.',
+    });
+  };
   return (
     <Layout>
       <div className="w-full pb-12">
@@ -127,6 +137,8 @@ const Discover = () => {
               Hitta inspiration genom visuella aktiecase och AI-drivna idéer.
             </p>
           </section>
+
+          <AIGenerationAdminControls />
 
           <div className="w-full space-y-6 sm:space-y-8">
             <div className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">

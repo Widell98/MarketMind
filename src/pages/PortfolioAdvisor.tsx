@@ -26,7 +26,6 @@ const PortfolioAdvisor = () => {
 
         // If user already has a risk profile, redirect to implementation
         if (riskProfile) {
-          console.log('User already has risk profile, redirecting to implementation');
           navigate('/portfolio-implementation', { replace: true });
           return;
         }
@@ -39,7 +38,6 @@ const PortfolioAdvisor = () => {
           .limit(1);
 
         if (portfolios && portfolios.length > 0) {
-          console.log('User already has portfolios, redirecting to implementation');
           navigate('/portfolio-implementation', { replace: true });
           return;
         }

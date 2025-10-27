@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, MessageCircle, Edit } from 'lucide-react';
@@ -88,7 +87,7 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
         </Badge>
       );
     }
-    
+
     if (status === 'winner') {
       return (
         <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800 text-xs">
@@ -113,27 +112,27 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
   // Determine card styling based on case status
   const getCardClassNames = () => {
     let baseClasses = "group cursor-pointer";
-    
+
     if (stockCase.target_reached) {
       baseClasses += " rounded-lg border border-green-500/50 bg-gradient-to-br from-green-50/80 to-card dark:from-green-950/30 dark:to-card p-2";
     } else if (stockCase.stop_loss_hit) {
       baseClasses += " rounded-lg border border-red-500/50 bg-gradient-to-br from-red-50/80 to-card dark:from-red-950/30 dark:to-card p-2";
     }
-    
+
     return baseClasses;
   };
 
   return (
     <>
-      <div 
+      <div
         className={getCardClassNames()}
         onClick={handleClick}
       >
         {/* Image/Visual */}
         <div className="relative aspect-[4/3] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden mb-3">
           {stockCase.image_url ? (
-            <img 
-              src={stockCase.image_url} 
+            <img
+              src={stockCase.image_url}
               alt={stockCase.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
             />
@@ -142,7 +141,7 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
               <div className={`w-8 h-8 rounded-full ${getCategoryColor(stockCase.case_categories?.name || 'Tech')}`}></div>
             </div>
           )}
-          
+
           {/* Status badge overlay */}
           <div className="absolute top-2 right-2">
             {getStatusBadge(stockCase.status, stockCase.performance_percentage)}
@@ -163,31 +162,31 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
           <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
             {stockCase.title}
           </h3>
-          
+
           <p className="text-xs text-muted-foreground line-clamp-1">
             {stockCase.company_name}
           </p>
-          
+
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>av {stockCase.profiles?.display_name || stockCase.profiles?.username || 'Anonym'}</span>
             </div>
-            
+
             <div className="flex items-center gap-1">
               <button
                 onClick={handleLike}
                 className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full transition-colors ${
-                  isLiked 
-                    ? 'text-red-500 bg-red-50 dark:bg-red-900/20' 
+                  isLiked
+                    ? 'text-red-500 bg-red-50 dark:bg-red-900/20'
                     : 'text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
                 }`}
               >
                 <Heart className={`w-3 h-3 ${isLiked ? 'fill-current' : ''}`} />
                 <span>{likeCount}</span>
               </button>
-              
-              <SaveOpportunityButton 
-                itemType="stock_case" 
+
+              <SaveOpportunityButton
+                itemType="stock_case"
                 itemId={stockCase.id}
                 itemTitle={stockCase.title}
                 variant="ghost"
@@ -210,7 +209,7 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
                 <MessageCircle className="w-3 h-3 mr-1" />
                 Diskutera AI
               </Button>
-              
+
               {isOwner && (
                 <Button
                   variant="ghost"
@@ -224,16 +223,16 @@ const CompactStockCaseCard = ({ stockCase }: CompactStockCaseCardProps) => {
               )}
             </div>
           )}
-          
+
           <div className="text-xs text-muted-foreground">
             {formatDistanceToNow(new Date(stockCase.created_at), { addSuffix: true, locale: sv })}
           </div>
         </div>
       </div>
-      
-      <LoginPromptModal 
-        isOpen={showLoginPrompt} 
-        onClose={() => setShowLoginPrompt(false)} 
+
+      <LoginPromptModal
+        isOpen={showLoginPrompt}
+        onClose={() => setShowLoginPrompt(false)}
       />
     </>
   );

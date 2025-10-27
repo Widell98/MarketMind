@@ -39,6 +39,7 @@ import {
   STOCK_CASE_EDITING_ID_KEY,
   STOCK_CASE_IS_INDEX_KEY,
 } from '@/constants/storageKeys';
+import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 
 type StockCaseWithActions = {
   id: string;
@@ -149,7 +150,6 @@ const AdminStockCases = () => {
   // Add redirect effect for non-admin users
   useEffect(() => {
     if (!roleLoading && user && !isAdmin) {
-      console.log('Non-admin user trying to access admin page, redirecting...');
       toast({
         title: "Åtkomst nekad",
         description: "Du har inte behörighet att komma åt den här sidan",
@@ -236,9 +236,10 @@ const AdminStockCases = () => {
       const transformedData: StockCaseWithActions[] = (casesData || []).map(stockCase => {
         const profile = profilesData.find(p => p.id === stockCase.user_id);
         const category = categoriesData.find(c => c.id === stockCase.category_id);
-        
+
         return {
           ...stockCase,
+          title: normalizeStockCaseTitle(stockCase.title, stockCase.company_name),
           status: (stockCase.status || 'active') as 'active' | 'winner' | 'loser',
           profiles: profile ? { 
             username: profile.username, 

@@ -15,7 +15,6 @@ const Learning = () => {
 
   const handleQuizComplete = () => {
     // Quiz completion logic - reload progress data immediately
-    console.log('Quiz completed!');
     refetch(); // This will update the progress dashboard immediately
   };
 

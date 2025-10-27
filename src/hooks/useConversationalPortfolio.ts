@@ -87,7 +87,6 @@ export const useConversationalPortfolio = () => {
       isin?: string;
     }> = [];
 
-    console.log('Extracting recommendations from AI response:', aiResponse);
 
     try {
       const parsed = JSON.parse(aiResponse);
@@ -203,7 +202,6 @@ export const useConversationalPortfolio = () => {
       }
     });
 
-    console.log('Final extracted recommendations:', recommendations);
     return recommendations.slice(0, 10); // Limit to 10 recommendations
   };
 
@@ -1456,7 +1454,6 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       const targetAmountValue = resolvedTargetAmount !== null ? resolvedTargetAmount : null;
 
       const enhancedPrompt = buildEnhancedAIPrompt(mergedConversationData);
-      console.log('Generated enhanced AI prompt:', enhancedPrompt);
 
       const riskProfileData = {
         age: mergedConversationData.age ?? existingProfileData.age ?? 25,
@@ -1529,8 +1526,6 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         return null;
       }
 
-      console.log('Response from generate-portfolio:', aiResponse);
-      console.log('AI Response received:', aiResponse.aiRecommendations || aiResponse.aiResponse || aiResponse.response);
 
       const structuredPlan = aiResponse.plan;
 
@@ -1539,7 +1534,6 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         ? JSON.stringify(structuredPlan)
         : aiResponse.aiRecommendations || aiResponse.aiResponse || aiResponse.response || '';
 
-      console.log('Extracting recommendations from AI response:', aiRecommendationText?.substring(0, 100));
 
       // Extract stock recommendations from AI response or structured plan
       let stockRecommendations = extractStockRecommendations(aiRecommendationText);
@@ -1572,7 +1566,6 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
           stockRecommendations = mapped as typeof stockRecommendations;
         }
       }
-      console.log('Final extracted recommendations:', stockRecommendations);
 
       if (stockRecommendations.length === 0) {
         console.warn('No stock recommendations extracted, but continuing with portfolio creation');
@@ -1603,7 +1596,6 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         if (holdingsError) {
           console.error('Error saving stock recommendations:', holdingsError);
         } else {
-          console.log('Successfully saved stock recommendations to user_holdings');
         }
       }
 

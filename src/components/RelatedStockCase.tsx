@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 
 interface RelatedStockCaseProps {
   stockCaseId: string;
@@ -17,13 +18,9 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  console.log('RelatedStockCase: Fetching stock case with ID:', stockCaseId);
-
   const { data: stockCase, isLoading, error } = useQuery({
     queryKey: ['stock-case', stockCaseId],
     queryFn: async () => {
-      console.log('Fetching stock case from database...');
-      
       // First, get the stock case data
       const { data: caseData, error: fetchError } = await supabase
         .from('stock_cases')
@@ -36,8 +33,6 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
         `)
         .eq('id', stockCaseId)
         .single();
-
-      console.log('Stock case fetch result:', { caseData, fetchError });
 
       if (fetchError) {
         console.error('Error fetching stock case:', fetchError);
@@ -82,10 +77,11 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
         ]);
       }
 
-      console.log('Stats results:', { likeCountResult, followCountResult, userLikeResult, userFollowResult });
+      const normalizedTitle = normalizeStockCaseTitle(caseData.title, caseData.company_name);
 
       return {
         ...caseData,
+        title: normalizedTitle,
         likes_count: likeCountResult?.data || 0,
         follows_count: followCountResult?.data || 0,
         isLiked: userLikeResult?.data || false,
@@ -96,8 +92,6 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
     retry: 3,
     retryDelay: 1000,
   });
-
-  console.log('RelatedStockCase render state:', { stockCase, isLoading, error });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -117,11 +111,8 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
 
   // Don't render anything if loading, error, or no stock case
   if (isLoading || error || !stockCase) {
-    console.log('RelatedStockCase: Not rendering due to:', { isLoading, error, stockCase });
     return null;
   }
-
-  console.log('RelatedStockCase: Rendering with data:', stockCase);
 
   return (
     <Card>
@@ -165,15 +156,15 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
               </div>
             </div>
             {stockCase.image_url && (
-              <img 
-                src={stockCase.image_url} 
+              <img
+                src={stockCase.image_url}
                 alt={stockCase.company_name}
                 className="w-16 h-16 rounded-lg object-cover ml-4"
               />
             )}
           </div>
 
-          {(stockCase.entry_price || stockCase.current_price || stockCase.target_price) && (
+          {(stockCase.entry_price || stockCase.current_price || (stockCase.target_price && !stockCase.ai_generated)) && (
             <div className="grid grid-cols-3 gap-4 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
               {stockCase.entry_price && (
                 <div className="text-center">
@@ -187,7 +178,7 @@ const RelatedStockCase = ({ stockCaseId }: RelatedStockCaseProps) => {
                   <p className="font-medium">{stockCase.current_price} kr</p>
                 </div>
               )}
-              {stockCase.target_price && (
+              {stockCase.target_price && !stockCase.ai_generated && (
                 <div className="text-center">
                   <p className="text-xs text-gray-500 dark:text-gray-400">Målkurs</p>
                   <p className="font-medium">{stockCase.target_price} kr</p>

@@ -92,8 +92,6 @@ export const useUserHoldings = () => {
         return holding;
       });
 
-      console.log('All holdings fetched:', typedData);
-
       // Helper function to normalize company names for comparison
       const normalizeCompanyName = (name: string): string => {
         return name
@@ -131,13 +129,11 @@ export const useUserHoldings = () => {
         
         // Check if it matches any invalid pattern
         if (invalidPatterns.some(pattern => lowerName.includes(pattern))) {
-          console.log(`Filtering out strategy/concept item: ${name}`);
           return false;
         }
-        
+
         // Must have reasonable length (not too short, not too long)
         if (name.length < 2 || name.length > 60) {
-          console.log(`Filtering out item with invalid length: ${name}`);
           return false;
         }
         
@@ -158,7 +154,6 @@ export const useUserHoldings = () => {
           const normalizedName = normalizeCompanyName(recommendation.name);
           
           if (seenRecommendations.has(normalizedName)) {
-            console.log(`Filtering out duplicate: ${recommendation.name} (normalized: ${normalizedName})`);
             return false; // Skip duplicate
           }
           
@@ -167,8 +162,6 @@ export const useUserHoldings = () => {
         })
         // Sort by created_at to keep the most recent version
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-      console.log('Unique recommendations after deduplication:', uniqueRecommendations);
 
       // Use actual allocation data if available, otherwise add mock allocation data for display purposes
       const recommendationsWithAllocation = uniqueRecommendations.map((rec, index) => {
@@ -186,9 +179,6 @@ export const useUserHoldings = () => {
 
       // Separate actual holdings (no duplicates needed here since they're user-entered)
       const actualHoldingsData = typedData.filter(h => h.holding_type !== 'recommendation');
-
-      console.log('Final unique recommendations:', recommendationsWithAllocation);
-      console.log('Actual holdings:', actualHoldingsData);
 
       setHoldings([...actualHoldingsData, ...recommendationsWithAllocation]);
       setActualHoldings(actualHoldingsData);
