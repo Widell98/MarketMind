@@ -27,6 +27,159 @@ import { cn } from '@/lib/utils';
 import type { StockCase } from '@/types/stockCase';
 import { fetchSheetTickerMetrics, type SheetTickerMetrics } from '@/utils/sheetMetrics';
 
+const parseNumericFromString = (value: string): number | null => {
+  if (!value) {
+    return null;
+  }
+
+  const condensed = value.replace(/\s+/g, '');
+  const digitsAndSeparators = condensed.replace(/[^0-9,.-]/g, '');
+
+  const hasComma = digitsAndSeparators.includes(',');
+  const hasDot = digitsAndSeparators.includes('.');
+
+  const attemptParse = (candidate: string): number | null => {
+    if (!candidate) {
+      return null;
+    }
+
+    const parsed = Number(candidate);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  if (hasComma && hasDot) {
+    const noCommas = digitsAndSeparators.replace(/,/g, '');
+    const parsedNoCommas = attemptParse(noCommas);
+    if (parsedNoCommas !== null) {
+      return parsedNoCommas;
+    }
+
+    const swapped = digitsAndSeparators.replace(/\./g, '').replace(/,/g, '.');
+    const parsedSwapped = attemptParse(swapped);
+    if (parsedSwapped !== null) {
+      return parsedSwapped;
+    }
+  } else if (hasComma) {
+    const commaAsDecimal = digitsAndSeparators.replace(/\./g, '').replace(/,/g, '.');
+    const parsedCommaDecimal = attemptParse(commaAsDecimal);
+    if (parsedCommaDecimal !== null) {
+      return parsedCommaDecimal;
+    }
+
+    const noComma = digitsAndSeparators.replace(/,/g, '');
+    const parsedNoComma = attemptParse(noComma);
+    if (parsedNoComma !== null) {
+      return parsedNoComma;
+    }
+  } else if (hasDot) {
+    const dotAsDecimal = attemptParse(digitsAndSeparators);
+    if (dotAsDecimal !== null) {
+      return dotAsDecimal;
+    }
+
+    const noDot = digitsAndSeparators.replace(/\./g, '');
+    const parsedNoDot = attemptParse(noDot);
+    if (parsedNoDot !== null) {
+      return parsedNoDot;
+    }
+  } else {
+    const parsed = attemptParse(digitsAndSeparators);
+    if (parsed !== null) {
+      return parsed;
+    }
+  }
+
+  const fallback = attemptParse(digitsAndSeparators.replace(/,/g, '.'));
+  return fallback;
+};
+
+const formatRoundedUpNumber = (value: number, decimals: number): number => {
+  if (!Number.isFinite(value)) {
+    return value;
+  }
+
+  if (decimals <= 0) {
+    return Math.ceil(value);
+  }
+
+  const factor = 10 ** decimals;
+  return Math.ceil(value * factor) / factor;
+};
+
+const formatApproximateMarketCap = (
+  rawValue: string | number | null | undefined,
+  currencyHint: string | null | undefined,
+): string | null => {
+  if (rawValue === null || rawValue === undefined) {
+    return null;
+  }
+
+  const stringValue = typeof rawValue === 'number'
+    ? rawValue.toString()
+    : typeof rawValue === 'string'
+      ? rawValue.trim()
+      : '';
+
+  if (!stringValue) {
+    return null;
+  }
+
+  const detectedCurrencyMatch = stringValue.toUpperCase().match(/\b[A-Z]{3}\b/);
+  const resolvedCurrency = (currencyHint || detectedCurrencyMatch?.[0] || '').toUpperCase();
+
+  const numericValue = typeof rawValue === 'number'
+    ? rawValue
+    : parseNumericFromString(stringValue);
+
+  if (numericValue !== null && Number.isFinite(numericValue)) {
+    const absolute = Math.abs(numericValue);
+
+    let divisor = 1;
+    let unitLabel: string | null = null;
+
+    if (absolute >= 1_000_000_000_000) {
+      divisor = 1_000_000_000_000;
+      unitLabel = 'biljoner';
+    } else if (absolute >= 1_000_000_000) {
+      divisor = 1_000_000_000;
+      unitLabel = 'miljarder';
+    } else if (absolute >= 1_000_000) {
+      divisor = 1_000_000;
+      unitLabel = 'miljoner';
+    }
+
+    const normalized = numericValue / divisor;
+    const decimals = unitLabel ? 1 : 0;
+    const rounded = formatRoundedUpNumber(normalized, decimals);
+
+    const formattedNumber = new Intl.NumberFormat('sv-SE', {
+      minimumFractionDigits: unitLabel && !Number.isInteger(rounded) ? 1 : 0,
+      maximumFractionDigits: unitLabel ? 1 : 0,
+    }).format(rounded);
+
+    const parts = [
+      'Cirka',
+      formattedNumber,
+    ];
+
+    if (unitLabel) {
+      parts.push(unitLabel);
+    }
+
+    if (resolvedCurrency) {
+      parts.push(resolvedCurrency);
+    }
+
+    return parts.join(' ');
+  }
+
+  if (resolvedCurrency && !stringValue.toUpperCase().includes(resolvedCurrency)) {
+    return `${stringValue} ${resolvedCurrency}`;
+  }
+
+  return stringValue;
+};
+
 type FinancialStat = {
   key: string;
   label: string;
@@ -459,37 +612,10 @@ const StockCaseDetail = () => {
     ? (cleanedAnalysisDescription.trim().length > 0 ? cleanedAnalysisDescription.trim() : null)
     : null;
 
-  const resolvedMarketCap = (() => {
-    const rawMarketCap = sheetMetrics?.marketCap ?? stockCase.market_cap ?? null;
-
-    if (!rawMarketCap) {
-      return null;
-    }
-
-    const trimmedValue = typeof rawMarketCap === 'string' ? rawMarketCap.trim() : String(rawMarketCap).trim();
-    if (!trimmedValue) {
-      return null;
-    }
-
-    const resolvedCurrencySource = sheetMetrics?.marketCap ? sheetMetrics?.currency : stockCase.currency;
-    const normalizedCurrency = resolvedCurrencySource?.toString().trim().toUpperCase();
-
-    if (!normalizedCurrency) {
-      return trimmedValue;
-    }
-
-    const upperValue = trimmedValue.toUpperCase();
-    if (upperValue.includes(normalizedCurrency)) {
-      return trimmedValue;
-    }
-
-    const hasCurrencySymbol = /[$€£¥₽₹₩₪₫₴₦₱฿₺₲₵₸₡₣₤₥₧₨₩₪]/u.test(trimmedValue);
-    if (hasCurrencySymbol) {
-      return `${trimmedValue} (${normalizedCurrency})`;
-    }
-
-    return `${trimmedValue} ${normalizedCurrency}`;
-  })();
+  const resolvedMarketCap = formatApproximateMarketCap(
+    sheetMetrics?.marketCap ?? stockCase.market_cap ?? null,
+    sheetMetrics?.currency ?? stockCase.currency ?? null,
+  );
   const resolvedPeRatio = sheetMetrics?.peRatio ?? stockCase.pe_ratio;
   const resolvedDividendYield = sheetMetrics?.dividendYield ?? stockCase.dividend_yield;
 
@@ -648,6 +774,10 @@ const StockCaseDetail = () => {
   const hasSheetFundamentals = fundamentalsStats.length > 0;
 
   const shouldShowFinancialOverview = hasPricingMetrics || hasCompanyDetails || hasSheetFundamentals;
+
+  const overviewLogoSrc = stockCase.image_url || currentVersion?.image_url || null;
+  const overviewCompanyName = stockCase.company_name || displayTitle;
+  const overviewTicker = stockCase.ticker ? stockCase.ticker.toUpperCase() : null;
 
   return (
     <Layout>
@@ -935,8 +1065,29 @@ const StockCaseDetail = () => {
             {/* Combined Overview Card - only show if there are financial metrics */}
             {shouldShowFinancialOverview && (
               <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <CardTitle>Finansiell Översikt</CardTitle>
+                  {overviewLogoSrc ? (
+                    <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/40 px-3 py-2">
+                      <img
+                        src={overviewLogoSrc}
+                        alt={`${overviewCompanyName} logotyp`}
+                        loading="lazy"
+                        className="h-12 w-12 rounded-full border border-border/50 bg-white object-cover"
+                      />
+                      <div className="flex flex-col leading-tight">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Bolag
+                        </span>
+                        <span className="text-sm font-semibold text-foreground">
+                          {overviewCompanyName}
+                        </span>
+                        {overviewTicker ? (
+                          <span className="text-xs text-muted-foreground">{overviewTicker}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
