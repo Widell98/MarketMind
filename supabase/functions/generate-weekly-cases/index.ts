@@ -392,6 +392,107 @@ type SheetTickerInfo = {
   fiftyTwoWeekLow?: number | null;
 };
 
+type ClearbitSuggestion = {
+  name?: string;
+  domain?: string;
+  logo?: string;
+  ticker?: string;
+};
+
+const appendClearbitSizeParam = (url: string, size: number = 512): string => {
+  if (!url || !url.startsWith('http')) {
+    return url;
+  }
+
+  if (url.includes('size=')) {
+    return url;
+  }
+
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}size=${size}`;
+};
+
+const logoCache = new Map<string, string | null>();
+
+const fetchCompanyLogo = async (
+  companyName: string,
+  ticker: string | null,
+): Promise<string | null> => {
+  const cacheKey = `${companyName?.toLowerCase() ?? ''}|${ticker ?? ''}`;
+  if (logoCache.has(cacheKey)) {
+    return logoCache.get(cacheKey) ?? null;
+  }
+
+  const queries = Array.from(
+    new Set(
+      [companyName, ticker ? `${companyName} ${ticker}` : null, ticker]
+        .map((value) => (typeof value === 'string' ? value.trim() : ''))
+        .filter((value) => value.length > 0),
+    ),
+  );
+
+  const normalizedTicker = ticker ? normalizeTickerKey(ticker) : null;
+
+  for (const query of queries) {
+    try {
+      const response = await fetch(
+        `https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(query)}`,
+      );
+
+      if (!response.ok) {
+        continue;
+      }
+
+      const suggestions = await response.json();
+      if (!Array.isArray(suggestions)) {
+        continue;
+      }
+
+      const typedSuggestions = suggestions as ClearbitSuggestion[];
+      const preferredMatch = typedSuggestions.find((suggestion) => {
+        if (!suggestion) return false;
+        if (normalizedTicker && typeof suggestion.ticker === 'string') {
+          try {
+            return normalizeTickerKey(suggestion.ticker) === normalizedTicker;
+          } catch (_error) {
+            return false;
+          }
+        }
+        return false;
+      });
+
+      const fallbackMatch = typedSuggestions.find((suggestion) =>
+        suggestion
+        && typeof suggestion.name === 'string'
+        && suggestion.name.toLowerCase().includes(companyName.toLowerCase())
+      );
+
+      const match = preferredMatch ?? fallbackMatch ?? typedSuggestions[0];
+      if (!match) {
+        continue;
+      }
+
+      let logoUrl = typeof match.logo === 'string' ? match.logo.trim() : '';
+      const domain = typeof match.domain === 'string' ? match.domain.trim() : '';
+
+      if (!logoUrl && domain) {
+        logoUrl = `https://logo.clearbit.com/${domain}`;
+      }
+
+      if (logoUrl) {
+        const sizedLogo = appendClearbitSizeParam(logoUrl, 512);
+        logoCache.set(cacheKey, sizedLogo);
+        return sizedLogo;
+      }
+    } catch (error) {
+      console.warn('Failed to fetch logo from Clearbit suggestions', { query, error });
+    }
+  }
+
+  logoCache.set(cacheKey, null);
+  return null;
+};
+
 const normalizeTickerKey = (value: string): string => {
   const trimmed = value.trim().toUpperCase();
   const withoutPrefix = trimmed.includes(':') ? trimmed.split(':').pop() ?? trimmed : trimmed;
@@ -838,6 +939,11 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
 
         const resolvedCurrency = currency ?? 'SEK';
 
+        const resolvedLogoUrl = await fetchCompanyLogo(
+          caseWithoutTicker.company_name || selectedName,
+          expectedTicker,
+        );
+
         generatedCases.push({
           ...caseWithoutTicker,
           long_description: finalLongDescription,
@@ -848,7 +954,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
           ai_batch_id: runId,
           generated_at: new Date().toISOString(),
           currency: resolvedCurrency,
-          image_url: caseWithoutTicker.image_url ?? null,
+          image_url: resolvedLogoUrl ?? caseWithoutTicker.image_url ?? null,
           entry_price: entryPrice,
           current_price: currentPrice,
           target_price: targetPrice,
