@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
@@ -432,13 +432,42 @@ const StockCaseDetail = () => {
     ? (cleanedAnalysisDescription.trim().length > 0 ? cleanedAnalysisDescription.trim() : null)
     : null;
 
-  const resolvedMarketCap = sheetMetrics?.marketCap ?? stockCase.market_cap;
+  const resolvedMarketCap = useMemo(() => {
+    const rawMarketCap = sheetMetrics?.marketCap ?? stockCase.market_cap ?? null;
+
+    if (!rawMarketCap) {
+      return null;
+    }
+
+    const trimmedValue = typeof rawMarketCap === 'string' ? rawMarketCap.trim() : String(rawMarketCap).trim();
+    if (!trimmedValue) {
+      return null;
+    }
+
+    const resolvedCurrencySource = sheetMetrics?.marketCap ? sheetMetrics?.currency : stockCase.currency;
+    const normalizedCurrency = resolvedCurrencySource?.toString().trim().toUpperCase();
+
+    if (!normalizedCurrency) {
+      return trimmedValue;
+    }
+
+    const upperValue = trimmedValue.toUpperCase();
+    if (upperValue.includes(normalizedCurrency)) {
+      return trimmedValue;
+    }
+
+    const hasCurrencySymbol = /[$€£¥₽₹₩₪₫₴₦₱฿₺₲₵₸₡₣₤₥₧₨₩₪]/u.test(trimmedValue);
+    if (hasCurrencySymbol) {
+      return `${trimmedValue} (${normalizedCurrency})`;
+    }
+
+    return `${trimmedValue} ${normalizedCurrency}`;
+  }, [sheetMetrics?.currency, sheetMetrics?.marketCap, stockCase.currency, stockCase.market_cap]);
   const resolvedPeRatio = sheetMetrics?.peRatio ?? stockCase.pe_ratio;
   const resolvedDividendYield = sheetMetrics?.dividendYield ?? stockCase.dividend_yield;
 
   const hasPricingMetrics = Boolean(
-    formatCasePrice(stockCase.entry_price)
-    || formatCasePrice(stockCase.current_price)
+    formatCasePrice(stockCase.current_price)
     || (!isAiGeneratedCase && formatCasePrice(stockCase.target_price))
     || (!isAiGeneratedCase && formatCasePrice(stockCase.stop_loss))
   );
@@ -747,30 +776,32 @@ const StockCaseDetail = () => {
                 <CardContent className="space-y-6">
                   {hasPricingMetrics && (
                     <div className="space-y-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Prisdata</p>
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        {formatCasePrice(stockCase.entry_price) && (
-                          <div>
-                            <p className="text-sm text-muted-foreground">Inköpspris</p>
-                            <p className="font-bold text-lg text-primary">{formatCasePrice(stockCase.entry_price)}</p>
-                          </div>
-                        )}
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Pris &amp; kursinformation
+                      </p>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {formatCasePrice(stockCase.current_price) && (
-                          <div>
-                            <p className="text-sm text-muted-foreground">Nuvarande pris</p>
-                            <p className="font-bold text-lg text-primary">{formatCasePrice(stockCase.current_price)}</p>
+                          <div className="rounded-xl border border-border/60 bg-muted/40 p-4 shadow-sm">
+                            <p className="text-sm font-medium text-muted-foreground">Nuvarande pris</p>
+                            <p className="mt-2 text-2xl font-semibold text-primary">
+                              {formatCasePrice(stockCase.current_price)}
+                            </p>
                           </div>
                         )}
                         {!isAiGeneratedCase && formatCasePrice(stockCase.target_price) && (
-                          <div>
-                            <p className="text-sm text-muted-foreground">Målpris</p>
-                            <p className="font-bold text-lg text-green-600">{formatCasePrice(stockCase.target_price)}</p>
+                          <div className="rounded-xl border border-border/60 bg-muted/40 p-4 shadow-sm">
+                            <p className="text-sm font-medium text-muted-foreground">Målpris</p>
+                            <p className="mt-2 text-2xl font-semibold text-green-600">
+                              {formatCasePrice(stockCase.target_price)}
+                            </p>
                           </div>
                         )}
                         {!isAiGeneratedCase && formatCasePrice(stockCase.stop_loss) && (
-                          <div>
-                            <p className="text-sm text-muted-foreground">Stop Loss</p>
-                            <p className="font-bold text-lg text-red-600">{formatCasePrice(stockCase.stop_loss)}</p>
+                          <div className="rounded-xl border border-border/60 bg-muted/40 p-4 shadow-sm">
+                            <p className="text-sm font-medium text-muted-foreground">Stop loss</p>
+                            <p className="mt-2 text-2xl font-semibold text-red-600">
+                              {formatCasePrice(stockCase.stop_loss)}
+                            </p>
                           </div>
                         )}
                       </div>
@@ -793,55 +824,52 @@ const StockCaseDetail = () => {
 
                   {hasSheetFundamentals && (
                     <div className="space-y-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nyckeltal (Google Sheets)</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Nyckeltal från Google Sheets
+                      </p>
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {resolvedMarketCap && (
-                          <div>
-                            <p className="text-sm text-muted-foreground">Börsvärde</p>
-                            <p className="font-semibold">
+                          <div className="rounded-xl border border-border/60 bg-muted/40 p-4 shadow-sm">
+                            <p className="text-sm font-medium text-muted-foreground">Börsvärde</p>
+                            <p className="mt-2 text-lg font-semibold">
                               <span dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(resolvedMarketCap) }} />
                             </p>
                           </div>
                         )}
                         {resolvedPeRatio && (
-                          <div>
-                            <p className="text-sm text-muted-foreground">P/E-tal</p>
-                            <p className="font-semibold">
+                          <div className="rounded-xl border border-border/60 bg-muted/40 p-4 shadow-sm">
+                            <p className="text-sm font-medium text-muted-foreground">P/E-tal</p>
+                            <p className="mt-2 text-lg font-semibold">
                               <span dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(resolvedPeRatio) }} />
                             </p>
                           </div>
                         )}
+                        {resolvedDividendYield && (
+                          <div className="rounded-xl border border-border/60 bg-muted/40 p-4 shadow-sm">
+                            <p className="text-sm font-medium text-muted-foreground">Utdelning</p>
+                            <p className="mt-2 text-lg font-semibold">
+                              <span dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(resolvedDividendYield) }} />
+                            </p>
+                          </div>
+                        )}
+                        {(finalFiftyTwoWeekHighText || finalFiftyTwoWeekLowText) && (
+                          <div className="rounded-xl border border-border/60 bg-muted/40 p-4 shadow-sm">
+                            <p className="text-sm font-medium text-muted-foreground">52-veckors spann</p>
+                            <div className="mt-2 space-y-1 text-base font-semibold">
+                              {finalFiftyTwoWeekHighText && (
+                                <div
+                                  dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(finalFiftyTwoWeekHighText) }}
+                                />
+                              )}
+                              {finalFiftyTwoWeekLowText && (
+                                <div
+                                  dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(finalFiftyTwoWeekLowText) }}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
-
-                      {(resolvedDividendYield || finalFiftyTwoWeekHighText || finalFiftyTwoWeekLowText) && (
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                          {resolvedDividendYield && (
-                            <div>
-                              <p className="text-sm text-muted-foreground">Utdelning</p>
-                              <p className="font-semibold">
-                                <span dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(resolvedDividendYield) }} />
-                              </p>
-                            </div>
-                          )}
-                          {(finalFiftyTwoWeekHighText || finalFiftyTwoWeekLowText) && (
-                            <div className="space-y-1">
-                              <p className="text-sm text-muted-foreground">52-veckors spann</p>
-                              <div className="font-semibold space-y-1">
-                                {finalFiftyTwoWeekHighText && (
-                                  <div
-                                    dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(finalFiftyTwoWeekHighText) }}
-                                  />
-                                )}
-                                {finalFiftyTwoWeekLowText && (
-                                  <div
-                                    dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(finalFiftyTwoWeekLowText) }}
-                                  />
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   )}
                 </CardContent>
