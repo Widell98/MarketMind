@@ -621,9 +621,19 @@ Skapa ett välformulerat investeringscase för ett bolag inom sektorn "${sector}
 - Nuvarande pris (från Google Sheet): ${sheetPrice !== null ? `${sheetPrice} ${sheetCurrency ?? 'SEK'}` : 'okänt, använd ett rimligt värde baserat på börsdata'}
 - Analysen ska gälla verkliga, börsnoterade bolag. Kontrollera att bolaget existerar och är listat på en erkänd börs.
 
+💡 Hiss-pitch (kort presentation):
+Inled texten med en kort, tydlig mening (1–2 meningar) som beskriver bolaget på ett engagerande sätt.
+Den ska snabbt förklara:
+- vad bolaget gör,
+- inom vilken nisch eller marknad det verkar,
+- och varför det är intressant eller unikt.
+Exempel:
+"Hexatronic är en svensk leverantör av fiberoptiska lösningar som gynnas av den globala utbyggnaden av bredband."
+"Investor AB är ett av Nordens största investmentbolag med en portfölj som spänner över industri, hälsa och teknik."
+
 💰 Prisreferens:
 Om prisdata finns (${sheetPrice ? "ja" : "nej"}), inkludera **en kort mening** som sätter priset i kontext – t.ex. om aktien handlas på en attraktiv nivå, nära årshögsta, eller i linje med sektorkollegor.
-Undvik teknisk analys eller exakta kursmål – håll kommentaren kort, som ett led i helhetsanalysen.
+Undvik teknisk analys eller exakta kursmål – håll kommentaren kort, som en del av helhetsanalysen.
 
 🧠 Stil och ton:
 - Skriv på svenska.
@@ -631,27 +641,38 @@ Undvik teknisk analys eller exakta kursmål – håll kommentaren kort, som ett 
 - Undvik jargong, men använd relevanta finansiella begrepp där det stärker trovärdigheten.
 - Fokusera på bolagets affärslogik, tillväxtmöjligheter och branschkontext — inte exakta handelsnivåer.
 
+🎯 Förväntningar på analyskvalitet:
+Analysen ska vara konkret, faktabaserad och ge verklig insikt i bolaget.
+
+- Undvik generiska fraser som "stark balansräkning", "solid pipeline" eller "attraktivt läge".
+- Nämn minst ett **konkret exempel** kopplat till bolaget (t.ex. produkt, marknad, projekt, partnerskap eller geografisk expansion).
+- Om bolaget är verksamt inom en forskningsintensiv bransch (bioteknik, energi, teknologi etc.), inkludera en specifik produkt, tjänst eller utveckling som är central för bolaget.
+- Ge en tydlig motivering till **varför aktien kan vara intressant just nu** — t.ex. kommande lansering, förbättrad lönsamhet, orderbok, marknadstrend eller värderingsläge.
+- Skriv i tydliga, korta meningar som skulle fungera i en riktig analytikerpitch.
+- Undvik marknadsföringsspråk och håll fokus på analys och logik.
+
 📈 Innehållskrav:
-1. Förklara varför bolaget är intressant för investerare med fokus på "${style}"-strategin.
-2. Lyft fram både kvantitativa och kvalitativa faktorer som stärker caset.
-3. Beskriv 2–3 tydliga tillväxtdrivare, trender eller händelser som kan påverka aktien positivt.
-4. Inkludera en kort reflektion kring nuvarande prisnivå om sådan data finns.
-5. Undvik att ange målpris, stop-loss eller tekniska nivåer — fokusera på värdedrivande faktorer och berättelsen.
+1. Inled med en hiss-pitch som presenterar bolaget på ett tydligt och intresseväckande sätt.
+2. Förklara varför bolaget är intressant för investerare med fokus på "${style}"-strategin.
+3. Lyft fram både kvantitativa och kvalitativa faktorer som stärker caset.
+4. Beskriv 2–3 tydliga tillväxtdrivare, trender eller marknadsförhållanden som påverkar bolaget – till exempel förändringar i efterfrågan, teknikutveckling, konkurrens, reglering eller makroekonomi.
+5. Välj endast faktorer som är relevanta för just detta bolag och sektor, utan att fokusera på någon specifik investeringsstil eller tema i onödan.
+6. Målet är att ge en balanserad och trovärdig helhetsbild som hjälper investerare att snabbt förstå bolagets läge, möjligheter och utmaningar.
+7. Undvik att ange målpris, stop-loss eller tekniska nivåer — fokusera på värdedrivande faktorer och berättelsen.
 
 🧩 Analysdel – krav på innehåll och struktur:
 Skriv en analytisk aktiepitch i tre till fem korta stycken (separerade med tomma rader) som flyter naturligt att läsa.
 
 Analysen ska:
-- Börja med en slagkraftig introduktion som förklarar varför bolaget är intressant just nu.
+- Börja med hiss-pitchen.
 - Följa upp med bolagets kärnverksamhet, styrkor och marknadsposition.
-- Lyft fram aktuella drivkrafter, trender eller marknadsförhållanden som påverkar bolaget – till exempel förändringar i efterfrågan, teknikutveckling, konkurrens, reglering eller makroekonomi 
-- Välj de faktorer som är mest relevanta för just detta bolag och sektor, utan att fokusera på någon specifik investeringsstil eller tema i onödan 
+- Lyft fram aktuella drivkrafter eller marknadsfaktorer som påverkar bolaget.
 - Nämn kort en eller två risker eller utmaningar på ett balanserat sätt.
 - Om prisdata finns, väv in en naturlig mening om aktiens värdering eller prisnivå.
 - Avsluta med ett sammanfattande stycke som beskriver varför aktien är attraktiv för investerare med "${style}"-inriktning.
 
 💬 Exempel på ton:
-"Med sin ledande position inom hållbar logistik och ett växande europeiskt nätverk står bolaget väl rustat för att dra nytta av den gröna omställningen. Den stabila lönsamheten och starka balansräkningen ger trygghet, samtidigt som bolaget erbjuder strukturell tillväxt inom ett område med politiskt stöd. Aktien handlas kring 142 SEK, vilket är en rimlig värdering sett till bolagets långsiktiga potential."
+"Hexatronic är en svensk leverantör av fiberoptiska lösningar som gynnas av den globala utbyggnaden av bredband. Med en växande orderbok och stark marknadsposition i Europa fortsätter bolaget att kapitalisera på digitaliseringsvågen. Aktien handlas kring 97 SEK, vilket ger en intressant ingångsnivå sett till bolagets långsiktiga tillväxtpotential."
 
 📦 Outputformat:
 Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
