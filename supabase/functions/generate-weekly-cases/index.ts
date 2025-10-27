@@ -540,11 +540,6 @@ serve(async (req) => {
       const sheetCurrency = typeof selectedTickerInfo.currency === 'string' && selectedTickerInfo.currency.trim().length > 0
         ? selectedTickerInfo.currency.trim().toUpperCase()
         : null;
-      const sheetMarketCapText = appendCurrencyIfMissing(selectedTickerInfo.marketCap ?? null, sheetCurrency);
-      const sheetPeRatioText = selectedTickerInfo.peRatio ?? null;
-      const sheetFiftyTwoHighText = appendCurrencyIfMissing(selectedTickerInfo.fiftyTwoWeekHigh ?? null, sheetCurrency);
-      const sheetFiftyTwoLowText = appendCurrencyIfMissing(selectedTickerInfo.fiftyTwoWeekLow ?? null, sheetCurrency);
-
       usedTickerSymbols.add(selectedTicker);
 
       const prompt = `
@@ -556,10 +551,6 @@ Skapa ett välformulerat investeringscase för ett bolag inom sektorn "${sector}
 📊 Fakta att utgå från:
 - Bolag: ${selectedName} (${selectedTicker})
 - Nuvarande pris (från Google Sheet): ${sheetPrice !== null ? `${sheetPrice} ${sheetCurrency ?? 'SEK'}` : 'okänt, använd ett rimligt värde baserat på börsdata'}
-- Börsvärde (från Google Sheet): ${sheetMarketCapText ?? 'saknas – om du inte hittar en aktuell uppgift, skriv att uppgiften saknas'}
-- P/E-tal (från Google Sheet): ${sheetPeRatioText ?? 'saknas – resonera kvalitativt kring värderingen utan att hitta på en exakt siffra'}
-- 52-veckors högsta (från Google Sheet): ${sheetFiftyTwoHighText ?? 'saknas – nämn bara om du har trovärdig data'}
-- 52-veckors lägsta (från Google Sheet): ${sheetFiftyTwoLowText ?? 'saknas – nämn bara om du har trovärdig data'}
 - Analysen ska gälla verkliga, börsnoterade bolag. Kontrollera att bolaget existerar och är listat på en erkänd börs.
 
 💰 Prisreferens:
@@ -571,6 +562,16 @@ Undvik teknisk analys eller exakta kursmål – håll kommentaren kort, som en d
 - Professionell, engagerande och lättillgänglig ton — som en erfaren analytiker som vill väcka intresse snarare än överösa med siffror.
 - Undvik jargong, men använd relevanta finansiella begrepp där det stärker trovärdigheten.
 - Fokusera på bolagets affärslogik, tillväxtmöjligheter och branschkontext — inte exakta handelsnivåer.
+
+🎯 Förväntningar på analyskvalitet:
+Analysen ska vara konkret, faktabaserad och ge verklig insikt i bolaget.
+
+- Undvik generiska fraser som “stark balansräkning”, “solid pipeline” eller “attraktivt läge”.
+- Nämn minst ett **konkret exempel** kopplat till bolaget (t.ex. produkt, marknad, projekt, partnerskap eller geografisk expansion).
+- Om bolaget är verksamt inom en forskningsintensiv bransch (bioteknik, energi, teknologi etc.), inkludera en specifik produkt, tjänst eller utveckling som är central för bolaget.
+- Ge en tydlig motivering till **varför aktien kan vara intressant just nu** — t.ex. kommande lansering, förbättrad lönsamhet, orderbok, marknadstrend eller värderingsläge.
+- Skriv i tydliga, korta meningar som skulle fungera i en riktig analytikerpitch.
+- Undvik marknadsföringsspråk och håll fokus på analys och logik.
 
 📈 Innehållskrav:
 1. Förklara varför bolaget är intressant för investerare med fokus på "${style}"-strategin.
