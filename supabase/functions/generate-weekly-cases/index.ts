@@ -399,12 +399,35 @@ type ClearbitSuggestion = {
   ticker?: string;
 };
 
-const appendClearbitSizeParam = (url: string, size: number = 512): string => {
+const buildGoogleFaviconUrl = (domain: string): string | null => {
+  if (!domain) {
+    return null;
+  }
+
+  const trimmed = domain.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const normalized = trimmed
+    .replace(/^https?:\/\//iu, '')
+    .replace(/\/.*$/u, '')
+    .toLowerCase();
+
+  if (!normalized) {
+    return null;
+  }
+
+  const encodedDomain = encodeURIComponent(`https://${normalized}`);
+  return `https://www.google.com/s2/favicons?sz=256&domain_url=${encodedDomain}`;
+};
+
+const appendSizeParam = (url: string, size: number = 512): string => {
   if (!url || !url.startsWith('http')) {
     return url;
   }
 
-  if (url.includes('size=')) {
+  if (/[?&]size=\d+/iu.test(url)) {
     return url;
   }
 
@@ -472,15 +495,17 @@ const fetchCompanyLogo = async (
         continue;
       }
 
-      let logoUrl = typeof match.logo === 'string' ? match.logo.trim() : '';
       const domain = typeof match.domain === 'string' ? match.domain.trim() : '';
+      const googleLogo = domain ? buildGoogleFaviconUrl(domain) : null;
+      const clearbitLogo = typeof match.logo === 'string' ? match.logo.trim() : '';
 
-      if (!logoUrl && domain) {
-        logoUrl = `https://logo.clearbit.com/${domain}`;
+      if (googleLogo) {
+        logoCache.set(cacheKey, googleLogo);
+        return googleLogo;
       }
 
-      if (logoUrl) {
-        const sizedLogo = appendClearbitSizeParam(logoUrl, 512);
+      if (clearbitLogo) {
+        const sizedLogo = appendSizeParam(clearbitLogo, 512);
         logoCache.set(cacheKey, sizedLogo);
         return sizedLogo;
       }
