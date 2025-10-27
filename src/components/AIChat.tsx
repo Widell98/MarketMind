@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAIChat } from '@/hooks/useAIChat';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ChatMessages from './chat/ChatMessages';
@@ -69,6 +69,7 @@ const AIChat = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const isPremium = subscription?.subscribed;
   useEffect(() => {
     // Auto-scroll when messages change
@@ -91,7 +92,7 @@ const AIChat = ({
 
       if (location.search) {
         const newUrl = `${location.pathname}${location.hash ?? ''}`;
-        window.history.replaceState({}, document.title, newUrl);
+        navigate(newUrl, { replace: true, state: location.state });
       }
     }
   }, [
@@ -101,7 +102,9 @@ const AIChat = ({
     createNewSession,
     location.pathname,
     location.search,
-    location.hash
+    location.hash,
+    location.state,
+    navigate
   ]);
   useEffect(() => {
     // Handle navigation state for creating new sessions - always create new session when requested
@@ -122,9 +125,17 @@ const AIChat = ({
       }
 
       // Clear the state to prevent re-triggering
-      window.history.replaceState({}, document.title);
+      const currentUrl = `${location.pathname}${location.search}${location.hash ?? ''}`;
+      navigate(currentUrl, { replace: true, state: {} });
     }
-  }, [location.state, createNewSession]);
+  }, [
+    location.state,
+    location.pathname,
+    location.search,
+    location.hash,
+    createNewSession,
+    navigate
+  ]);
   useEffect(() => {
     const handleCreateStockChat = (event: CustomEvent) => {
       const {
