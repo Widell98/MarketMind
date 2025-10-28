@@ -880,9 +880,9 @@ const StockCaseDetail = () => {
       <div className="max-w-6xl mx-auto space-y-12 px-4 sm:px-6 lg:px-8">
         {/* Hero Section */}
         <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-card/80 shadow-[0_32px_80px_-40px_rgba(15,23,42,0.65)]">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-emerald-500/10 dark:from-primary/15 dark:via-transparent dark:to-emerald-400/10" />
-          <div className="absolute -top-24 -right-24 h-56 w-56 rounded-full bg-primary/15 blur-3xl dark:bg-primary/25" aria-hidden="true" />
-          <div className="absolute -bottom-32 -left-20 h-64 w-64 rounded-full bg-emerald-400/10 blur-3xl dark:bg-emerald-400/20" aria-hidden="true" />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/0 dark:from-primary/10 dark:via-transparent dark:to-primary/5" />
+          <div className="absolute -top-24 -right-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl dark:bg-primary/20" aria-hidden="true" />
+          <div className="absolute -bottom-32 -left-20 h-64 w-64 rounded-full bg-primary/5 blur-3xl dark:bg-primary/15" aria-hidden="true" />
 
           <div className="relative z-10 flex flex-col gap-8 px-6 py-8 sm:px-10 sm:py-12">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1075,7 +1075,7 @@ const StockCaseDetail = () => {
 
           {/* CTA Buttons */}
           <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/80 px-6 py-6 shadow-sm">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-emerald-500/10 dark:from-primary/10 dark:via-transparent dark:to-emerald-400/10" />
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/0 dark:from-primary/10 dark:via-transparent dark:to-primary/5" />
             <div className="relative z-10 space-y-4">
               <p className="text-center text-sm font-medium text-muted-foreground">
                 Välj hur du vill agera på detta case
@@ -1143,7 +1143,7 @@ const StockCaseDetail = () => {
           {/* Login prompt for non-users */}
           {!user && (
             <div className="relative overflow-hidden rounded-2xl border border-dashed border-primary/40 bg-primary/5 px-6 py-6 text-center shadow-sm dark:border-primary/30 dark:bg-primary/10">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent dark:from-primary/20" />
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent dark:from-primary/15" />
               <div className="relative z-10 space-y-3">
                 <div className="flex justify-center">
                   <Badge variant="outline" className="rounded-full border-primary/30 bg-primary/10 text-primary dark:border-primary/20 dark:text-primary-foreground">
