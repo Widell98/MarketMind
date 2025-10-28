@@ -495,19 +495,19 @@ const StockCaseDetail = () => {
         const cleaned = section.replace(/^bull case:?\s*/i, '');
 
         return (
-          <div
+          <article
             key={`analysis-bull-${index}`}
-            className="rounded-3xl border border-emerald-500/30 bg-emerald-500/5 p-6 shadow-sm transition-colors hover:border-emerald-400/70"
+            className="space-y-3 rounded-3xl border border-emerald-500/30 bg-emerald-500/5 p-6 shadow-sm"
           >
             <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
               <TrendingUp className="h-5 w-5" />
               <h3 className="text-lg font-semibold tracking-tight">Bull Case</h3>
             </div>
             <p
-              className="mt-3 text-sm leading-relaxed text-foreground/90 whitespace-pre-line lg:text-base"
+              className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line lg:text-base"
               dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(cleaned) }}
             />
-          </div>
+          </article>
         );
       }
 
@@ -515,45 +515,42 @@ const StockCaseDetail = () => {
         const cleaned = section.replace(/^bear case:?\s*/i, '');
 
         return (
-          <div
+          <article
             key={`analysis-bear-${index}`}
-            className="rounded-3xl border border-rose-500/30 bg-rose-500/5 p-6 shadow-sm transition-colors hover:border-rose-400/70"
+            className="space-y-3 rounded-3xl border border-rose-500/30 bg-rose-500/5 p-6 shadow-sm"
           >
             <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
               <TrendingDown className="h-5 w-5" />
               <h3 className="text-lg font-semibold tracking-tight">Bear Case</h3>
             </div>
             <p
-              className="mt-3 text-sm leading-relaxed text-foreground/90 whitespace-pre-line lg:text-base"
+              className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line lg:text-base"
               dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(cleaned) }}
             />
-          </div>
+          </article>
         );
       }
 
       if (normalized.includes('risk')) {
         return (
-          <div
+          <article
             key={`analysis-risk-${index}`}
-            className="rounded-3xl border border-amber-500/40 bg-amber-500/5 p-6 shadow-sm transition-colors hover:border-amber-400/70"
+            className="space-y-3 rounded-3xl border border-amber-500/40 bg-amber-500/5 p-6 shadow-sm"
           >
             <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400">
               <AlertTriangle className="h-5 w-5" />
               <h3 className="text-lg font-semibold tracking-tight">Risknivå</h3>
             </div>
             <p
-              className="mt-3 text-sm leading-relaxed text-foreground/90 whitespace-pre-line lg:text-base"
+              className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line lg:text-base"
               dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(section) }}
             />
-          </div>
+          </article>
         );
       }
 
       return (
-        <div
-          key={`analysis-generic-${index}`}
-          className="rounded-3xl border border-border/60 bg-card/70 p-6 shadow-sm backdrop-blur-sm transition-colors hover:border-border"
-        >
+        <div key={`analysis-generic-${index}`} className="space-y-3">
           <p
             className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line lg:text-base"
             dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(section) }}
@@ -1176,104 +1173,113 @@ const StockCaseDetail = () => {
               hasSidebarContent ? '' : 'lg:max-w-4xl lg:mx-auto'
             )}
           >
-            {/* Combined Overview Card - only show if there are financial metrics */}
-            {shouldShowFinancialOverview && (
-              <Card>
-                <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <CardTitle className="text-xl font-semibold tracking-tight lg:text-2xl">
-                    Finansiell Översikt
-                  </CardTitle>
-                  {overviewLogoSrc ? (
-                    <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/40 px-3 py-2">
-                      <img
-                        src={overviewLogoSrc}
-                        alt={`${overviewCompanyName} logotyp`}
-                        loading="lazy"
-                        className="h-12 w-12 rounded-full border border-border/50 bg-white object-cover"
-                      />
-                      <div className="flex flex-col leading-tight">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          Bolag
-                        </span>
-                        <span className="text-sm font-semibold text-foreground">
-                          {overviewCompanyName}
-                        </span>
-                        {overviewTicker ? (
-                          <span className="text-xs text-muted-foreground">{overviewTicker}</span>
-                        ) : null}
+            {(shouldShowFinancialOverview || displayedAnalysisDescription) && (
+              <div
+                className={cn(
+                  'grid gap-6',
+                  shouldShowFinancialOverview && displayedAnalysisDescription
+                    ? 'xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)] 2xl:grid-cols-[minmax(0,2fr)_minmax(360px,1fr)]'
+                    : ''
+                )}
+              >
+                {displayedAnalysisDescription && (
+                  <Card className={cn('order-2 xl:order-1', shouldShowFinancialOverview ? 'xl:h-full' : '')}>
+                    <CardHeader>
+                      <CardTitle className="text-xl font-semibold tracking-tight lg:text-2xl">Analys</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-5 text-sm leading-relaxed text-foreground/90 lg:text-base xl:text-lg">
+                        {formatCaseDescription(displayedAnalysisDescription)}
                       </div>
-                    </div>
-                  ) : null}
-                </CardHeader>
-                <CardContent className="space-y-6 xl:space-y-8">
-                  {overviewHighlightStats.length > 0 && (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
-                      {overviewHighlightStats.map(highlight => {
-                        const IconComponent = highlight.icon;
-                        return (
-                          <div
-                            key={highlight.key}
-                            className="group rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/40 p-5 shadow-sm transition-colors hover:border-primary/50"
-                          >
-                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                              {IconComponent ? (
-                                <IconComponent className="h-4 w-4 text-primary/70" />
-                              ) : null}
-                              <span>{highlight.label}</span>
-                            </div>
-                            <div className="mt-2 text-2xl font-semibold leading-tight tracking-tight text-foreground text-balance">
-                              {renderStatValue(highlight)}
-                            </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {shouldShowFinancialOverview && (
+                  <Card className={cn('order-1 xl:order-2', displayedAnalysisDescription ? 'xl:h-full' : '')}>
+                    <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <CardTitle className="text-xl font-semibold tracking-tight lg:text-2xl">
+                        Finansiell Översikt
+                      </CardTitle>
+                      {overviewLogoSrc ? (
+                        <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/40 px-3 py-2">
+                          <img
+                            src={overviewLogoSrc}
+                            alt={`${overviewCompanyName} logotyp`}
+                            loading="lazy"
+                            className="h-12 w-12 rounded-full border border-border/50 bg-white object-cover"
+                          />
+                          <div className="flex flex-col leading-tight">
+                            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              Bolag
+                            </span>
+                            <span className="text-sm font-semibold text-foreground">
+                              {overviewCompanyName}
+                            </span>
+                            {overviewTicker ? (
+                              <span className="text-xs text-muted-foreground">{overviewTicker}</span>
+                            ) : null}
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                        </div>
+                      ) : null}
+                    </CardHeader>
+                    <CardContent className="space-y-6 xl:space-y-8">
+                      {overviewHighlightStats.length > 0 && (
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3">
+                          {overviewHighlightStats.map(highlight => {
+                            const IconComponent = highlight.icon;
+                            return (
+                              <div
+                                key={highlight.key}
+                                className="group rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/40 p-5 shadow-sm transition-colors hover:border-primary/50"
+                              >
+                                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                  {IconComponent ? (
+                                    <IconComponent className="h-4 w-4 text-primary/70" />
+                                  ) : null}
+                                  <span>{highlight.label}</span>
+                                </div>
+                                <div className="mt-2 text-2xl font-semibold leading-tight tracking-tight text-foreground text-balance">
+                                  {renderStatValue(highlight)}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
 
-                  <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                    {hasPricingMetrics && (
-                      <div className="flex h-full flex-col gap-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          Pris &amp; kursinformation
-                        </p>
-                        {renderStatsList(pricingStats)}
+                      <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                        {hasPricingMetrics && (
+                          <div className="flex h-full flex-col gap-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              Pris &amp; kursinformation
+                            </p>
+                            {renderStatsList(pricingStats)}
+                          </div>
+                        )}
+
+                        {hasCompanyDetails && (
+                          <div className="flex h-full flex-col gap-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              Bolagsinformation
+                            </p>
+                            {renderStatsList(companyStats)}
+                          </div>
+                        )}
+
+                        {hasSheetFundamentals && (
+                          <div className="flex h-full flex-col gap-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              Nyckeltal från Google Sheets
+                            </p>
+                            {renderStatsList(fundamentalsStats)}
+                          </div>
+                        )}
                       </div>
-                    )}
-
-                    {hasCompanyDetails && (
-                      <div className="flex h-full flex-col gap-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          Bolagsinformation
-                        </p>
-                        {renderStatsList(companyStats)}
-                      </div>
-                    )}
-
-                    {hasSheetFundamentals && (
-                      <div className="flex h-full flex-col gap-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          Nyckeltal från Google Sheets
-                        </p>
-                        {renderStatsList(fundamentalsStats)}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Case Description with Structured Sections */}
-            {displayedAnalysisDescription && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl font-semibold tracking-tight lg:text-2xl">Analys</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                    {formatCaseDescription(displayedAnalysisDescription)}
-                  </div>
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             )}
 
             {/* Admin Comment */}
