@@ -315,6 +315,40 @@ interface Message {
   context?: MessageContext;
 }
 
+interface PendingSessionState {
+  requestId: string;
+  userMessage: Message;
+  detectionMessage?: Message;
+  aiMessage?: Message;
+}
+
+const pendingSessionStates = new Map<string, PendingSessionState>();
+
+const setPendingState = (sessionId: string, state: PendingSessionState) => {
+  pendingSessionStates.set(sessionId, state);
+};
+
+const updatePendingState = (sessionId: string, requestId: string, updates: Partial<PendingSessionState>) => {
+  const existing = pendingSessionStates.get(sessionId);
+  if (!existing || existing.requestId !== requestId) {
+    return;
+  }
+
+  pendingSessionStates.set(sessionId, {
+    ...existing,
+    ...updates,
+  });
+};
+
+const clearPendingState = (sessionId: string, requestId: string) => {
+  const existing = pendingSessionStates.get(sessionId);
+  if (existing && existing.requestId === requestId) {
+    pendingSessionStates.delete(sessionId);
+  }
+};
+
+const getPendingState = (sessionId: string) => pendingSessionStates.get(sessionId);
+
 export const useAIChat = (portfolioId?: string) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -409,6 +443,31 @@ export const useAIChat = (portfolioId?: string) => {
         clearEphemeralMessages();
       }
 
+      const pendingState = getPendingState(sessionId);
+      if (pendingState) {
+        const { userMessage, detectionMessage, aiMessage } = pendingState;
+        const existingIds = new Set(mergedMessages.map(message => message.id));
+        const pendingMessages: Message[] = [];
+
+        if (!existingIds.has(userMessage.id)) {
+          pendingMessages.push(userMessage);
+        }
+
+        if (detectionMessage && !existingIds.has(detectionMessage.id)) {
+          pendingMessages.push(detectionMessage);
+        }
+
+        if (aiMessage && !existingIds.has(aiMessage.id)) {
+          pendingMessages.push(aiMessage);
+        }
+
+        if (pendingMessages.length > 0) {
+          mergedMessages = [...mergedMessages, ...pendingMessages];
+        }
+
+        setIsLoading(true);
+      }
+
       if (skipClear) {
         setMessages(mergedMessages);
       } else {
@@ -481,6 +540,9 @@ export const useAIChat = (portfolioId?: string) => {
     // Clear messages immediately for new session
     setMessages([]);
     clearEphemeralMessages();
+    if (currentSessionId) {
+      pendingSessionStates.delete(currentSessionId);
+    }
     
     try {
       const now = new Date();
@@ -540,7 +602,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, toast, clearEphemeralMessages]);
+  }, [user, toast, clearEphemeralMessages, currentSessionId, portfolioId]);
 
   const deleteSession = useCallback(async (sessionId: string) => {
     if (!user) {
@@ -609,7 +671,8 @@ export const useAIChat = (portfolioId?: string) => {
       if (currentSessionId === sessionId) {
         setCurrentSessionId(null);
         setMessages([]);
-        
+        pendingSessionStates.delete(sessionId);
+
         // Load the most recent remaining session if any
         const remainingSessions = sessions.filter(s => s.id !== sessionId);
         if (remainingSessions.length > 0) {
@@ -661,6 +724,8 @@ export const useAIChat = (portfolioId?: string) => {
       if (sessionsError) {
         throw new Error(`Kunde inte radera sessioner: ${sessionsError.message}`);
       }
+
+      uniqueIds.forEach(id => pendingSessionStates.delete(id));
 
       const remainingSessions = sessions.filter(
         (session) => !uniqueIds.includes(session.id),
@@ -775,6 +840,9 @@ export const useAIChat = (portfolioId?: string) => {
     // Clear messages immediately when creating new session
     setMessages([]);
     clearEphemeralMessages();
+    if (currentSessionId) {
+      pendingSessionStates.delete(currentSessionId);
+    }
     
     try {
       const now = new Date();
@@ -825,7 +893,7 @@ export const useAIChat = (portfolioId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, toast, clearEphemeralMessages]);
+  }, [user, toast, clearEphemeralMessages, currentSessionId, portfolioId]);
 
   const sendMessageToSession = useCallback(async (content: string, sessionId?: string) => {
     
@@ -837,6 +905,7 @@ export const useAIChat = (portfolioId?: string) => {
     
     const trimmedContent = content.trim();
     const userMessageId = Date.now().toString() + '_user_temp';
+    const requestId = userMessageId;
     const userMessage: Message = {
       id: userMessageId,
       role: 'user',
@@ -866,6 +935,12 @@ export const useAIChat = (portfolioId?: string) => {
     if (detectionMessage) {
       addOrReplaceEphemeralMessage(detectionMessage);
     }
+
+    setPendingState(targetSessionId, {
+      requestId,
+      userMessage,
+      detectionMessage: detectionMessage ?? undefined,
+    });
 
     setMessages(prev => detectionMessage ? [...prev, userMessage, detectionMessage] : [...prev, userMessage]);
     setIsLoading(true);
@@ -909,6 +984,8 @@ export const useAIChat = (portfolioId?: string) => {
           variant: "destructive",
         });
         setMessages(prev => prev.filter(msg => !msg.id.includes('_temp')));
+        clearPendingState(targetSessionId, requestId);
+        setIsLoading(false);
         await fetchUsage();
         return;
       }
@@ -920,7 +997,7 @@ export const useAIChat = (portfolioId?: string) => {
       
       // Create placeholder AI message for streaming
       const aiMessageId = Date.now().toString() + '_ai_temp';
-      const aiMessage: Message = {
+      let aiMessage: Message = {
         id: aiMessageId,
         role: 'assistant',
         content: '',
@@ -930,8 +1007,9 @@ export const useAIChat = (portfolioId?: string) => {
           confidence: 0.8
         }
       };
-      
+
       setMessages(prev => [...prev, aiMessage]);
+      updatePendingState(targetSessionId, requestId, { aiMessage });
       
       // Process streaming response
       const reader = streamResponse.body?.getReader();
@@ -962,13 +1040,17 @@ export const useAIChat = (portfolioId?: string) => {
                     accumulatedContent += parsed.content;
                     
                     // Update message with new content
-                    setMessages(prev => prev.map(msg => 
-                      msg.id === aiMessageId 
-                        ? { ...msg, content: accumulatedContent }
+                    const updatedMessage: Message = { ...aiMessage, content: accumulatedContent };
+                    aiMessage = updatedMessage;
+
+                    setMessages(prev => prev.map(msg =>
+                      msg.id === aiMessageId
+                        ? updatedMessage
                         : msg
                     ));
+                    updatePendingState(targetSessionId, requestId, { aiMessage: updatedMessage });
                   }
-                  
+
                   // Check for profile updates
                   if (parsed.profileUpdates) {
                     profileUpdates = parsed.profileUpdates;
@@ -983,10 +1065,10 @@ export const useAIChat = (portfolioId?: string) => {
           
           // Update final message with profile update context if needed
           if (requiresConfirmation && profileUpdates) {
-            setMessages(prev => prev.map(msg => 
-              msg.id === aiMessageId 
-                ? { 
-                    ...msg, 
+            setMessages(prev => prev.map(msg =>
+              msg.id === aiMessageId
+                ? {
+                    ...msg,
                     context: {
                       ...msg.context,
                       profileUpdates,
@@ -995,8 +1077,20 @@ export const useAIChat = (portfolioId?: string) => {
                   }
                 : msg
             ));
+
+            const updatedMessage: Message = {
+              ...aiMessage,
+              context: {
+                ...aiMessage.context,
+                profileUpdates,
+                requiresConfirmation: true,
+              },
+            };
+
+            aiMessage = updatedMessage;
+            updatePendingState(targetSessionId, requestId, { aiMessage: updatedMessage });
           }
-          
+
         } finally {
           reader.releaseLock();
         }
@@ -1006,6 +1100,8 @@ export const useAIChat = (portfolioId?: string) => {
       setTimeout(() => {
         loadMessages(targetSessionId, true);
       }, 1000);
+
+      clearPendingState(targetSessionId, requestId);
 
       // Track usage
       const { error: usageError } = await supabase.rpc('increment_ai_usage', {
@@ -1025,9 +1121,10 @@ export const useAIChat = (portfolioId?: string) => {
         description: "Kunde inte skicka meddelandet. Försök igen.",
         variant: "destructive",
       });
-      
+
       // Remove the temporary user message on error
       setMessages(prev => prev.filter(msg => !msg.id.includes('_temp')));
+      clearPendingState(targetSessionId, requestId);
     } finally {
       setIsLoading(false);
     }
@@ -1298,7 +1395,11 @@ export const useAIChat = (portfolioId?: string) => {
   const clearMessages = useCallback(() => {
     setMessages([]);
     clearEphemeralMessages();
-  }, [clearEphemeralMessages]);
+    if (currentSessionId) {
+      pendingSessionStates.delete(currentSessionId);
+    }
+    setIsLoading(false);
+  }, [clearEphemeralMessages, currentSessionId]);
 
   useEffect(() => {
     if (!user || currentSessionId || sessions.length === 0) {
@@ -1309,6 +1410,37 @@ export const useAIChat = (portfolioId?: string) => {
     setCurrentSessionId(mostRecentSession.id);
     loadMessages(mostRecentSession.id);
   }, [user, sessions, currentSessionId, loadMessages]);
+
+  useEffect(() => {
+    if (!currentSessionId) {
+      return;
+    }
+
+    const pendingState = getPendingState(currentSessionId);
+    if (!pendingState) {
+      return;
+    }
+
+    setIsLoading(true);
+    setMessages(prev => {
+      const existingIds = new Set(prev.map(message => message.id));
+      const nextMessages = [...prev];
+
+      if (!existingIds.has(pendingState.userMessage.id)) {
+        nextMessages.push(pendingState.userMessage);
+      }
+
+      if (pendingState.detectionMessage && !existingIds.has(pendingState.detectionMessage.id)) {
+        nextMessages.push(pendingState.detectionMessage);
+      }
+
+      if (pendingState.aiMessage && !existingIds.has(pendingState.aiMessage.id)) {
+        nextMessages.push(pendingState.aiMessage);
+      }
+
+      return nextMessages;
+    });
+  }, [currentSessionId]);
 
   return {
     messages,
