@@ -179,7 +179,7 @@ export const fetchExchangeRatesFromFinnhub = async (): Promise<FinnhubResult> =>
 
       const rate = quotes[currency];
       if (isNumber(rate) && rate > 0) {
-        rates[currency] = rate;
+        rates[currency] = 1 / rate;
       } else {
         console.warn(`Finnhub returned invalid rate for ${currency}, using default.`);
         rates[currency] = DEFAULT_EXCHANGE_RATES[currency];
