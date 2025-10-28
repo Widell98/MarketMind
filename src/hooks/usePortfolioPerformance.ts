@@ -9,6 +9,8 @@ type FinnhubPriceResponse = {
   symbol: string;
   price: number;
   currency: string | null;
+  stale?: boolean;
+  fetchedAt?: string | null;
 };
 
 const parseNumeric = (value: unknown): number | null => {
