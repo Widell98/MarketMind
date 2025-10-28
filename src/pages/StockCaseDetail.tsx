@@ -255,7 +255,7 @@ const StockCaseDetail = () => {
                 <div className="h-64 bg-gray-200 rounded"></div>
                 <div className="h-32 bg-gray-200 rounded"></div>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-4 xl:space-y-5">
                 <div className="h-48 bg-gray-200 rounded"></div>
                 <div className="h-32 bg-gray-200 rounded"></div>
               </div>
@@ -349,7 +349,8 @@ const StockCaseDetail = () => {
 
   const fallbackLogoClasses = 'flex h-24 w-24 items-center justify-center rounded-full border border-border/60 bg-gradient-to-br from-primary/15 via-primary/5 to-primary/10 text-2xl font-bold uppercase text-primary shadow-sm';
 
-  const heroContainerClasses = 'relative overflow-hidden rounded-3xl border border-border/60 bg-card/60 p-6 shadow-sm sm:p-8';
+  const heroContainerClasses =
+    'relative overflow-hidden rounded-3xl border border-border/60 bg-card/60 p-6 shadow-sm sm:p-8 xl:p-10';
 
   const heroActionButtonClassName = 'w-full justify-center gap-2 rounded-full border-border/60 text-sm font-semibold transition hover:-translate-y-0.5 focus-visible:ring-offset-2 sm:w-auto sm:text-base';
 
@@ -715,7 +716,7 @@ const StockCaseDetail = () => {
     }
 
     return (
-      <dl className="grid gap-3">
+      <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {stats.map((stat) => {
           const IconComponent = stat.icon;
           const valueClassName = stat.valueClassName
@@ -878,7 +879,7 @@ const StockCaseDetail = () => {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto space-y-10 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1300px] space-y-12 px-4 sm:px-6 lg:px-8 xl:max-w-[1500px] xl:px-12 2xl:max-w-[1680px] 2xl:px-16">
         {/* Header with Navigation */}
         <div className="flex items-center gap-4">
           <Button variant="outline" onClick={() => navigate('/discover')}>
@@ -893,9 +894,9 @@ const StockCaseDetail = () => {
             <div className="absolute -inset-x-24 -top-40 h-64 bg-gradient-to-b from-primary/20 via-primary/10 to-transparent blur-3xl" />
             <div className="absolute bottom-[-20%] right-[-10%] h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
           </div>
-          <div className="relative flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
-            <div className="flex-1 space-y-6 text-center lg:text-left">
-              <div className="space-y-4">
+          <div className="relative flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between xl:gap-12">
+            <div className="flex-1 space-y-6 text-center lg:text-left xl:space-y-8">
+              <div className="space-y-4 xl:space-y-5">
                 <div className="flex flex-wrap items-center justify-center gap-3 lg:justify-start">
                   <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{displayTitle}</h1>
                   {stockCase.ai_generated === true && (
@@ -945,7 +946,7 @@ const StockCaseDetail = () => {
                   </Badge>
                 </div>
               )}
-              <div className="flex flex-wrap justify-center gap-3 sm:gap-4 lg:justify-start">
+              <div className="flex flex-wrap justify-center gap-3 sm:gap-4 lg:justify-start xl:gap-5">
                 <Button
                   variant="outline"
                   onClick={handleShare}
@@ -1012,7 +1013,7 @@ const StockCaseDetail = () => {
               )}
             </div>
             {shouldShowLogoPanel && (
-              <div className="flex flex-col items-center gap-4 lg:items-end">
+              <div className="flex flex-col items-center gap-4 lg:items-end xl:gap-6">
                 <div className="flex items-center justify-center gap-3 lg:justify-end">
                   {hasMultipleVersions && (
                     <Button
@@ -1071,7 +1072,7 @@ const StockCaseDetail = () => {
                   )}
                 </div>
 
-                <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground lg:justify-end">
+                <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground lg:justify-end xl:gap-3">
                   <Badge variant="outline" className="text-[11px]">
                     Uppdaterad {formatDistanceToNow(new Date(currentVersion.created_at), {
                       addSuffix: true,
@@ -1087,7 +1088,7 @@ const StockCaseDetail = () => {
                 </div>
 
                 {hasMultipleVersions && (
-                  <div className="flex justify-center gap-2 lg:justify-end">
+                  <div className="flex justify-center gap-2 lg:justify-end xl:gap-3">
                     {timeline.map((_, index) => (
                       <button
                         key={index}
@@ -1104,7 +1105,7 @@ const StockCaseDetail = () => {
                 )}
 
                 {hasMultipleVersions && (
-                  <div className="flex gap-2 overflow-x-auto pb-1 lg:justify-end">
+                  <div className="flex gap-2 overflow-x-auto pb-1 lg:justify-end xl:gap-3">
                     {timeline.map((version, index) => (
                       <button
                         key={version.id}
@@ -1162,10 +1163,10 @@ const StockCaseDetail = () => {
         {/* Main Content Grid */}
         <div
           className={cn(
-            'grid gap-8 items-start',
+            'grid items-start gap-8 lg:gap-10 xl:gap-12 2xl:gap-16',
             hasSidebarContent
-              ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]'
-              : ''
+              ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,1fr)] 2xl:grid-cols-[minmax(0,1.6fr)_minmax(360px,1fr)]'
+              : 'xl:mx-auto xl:max-w-[960px] 2xl:max-w-[1100px]'
           )}
         >
           {/* Main Content */}
@@ -1204,9 +1205,9 @@ const StockCaseDetail = () => {
                     </div>
                   ) : null}
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="space-y-6 xl:space-y-8">
                   {overviewHighlightStats.length > 0 && (
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
                       {overviewHighlightStats.map(highlight => {
                         const IconComponent = highlight.icon;
                         return (
@@ -1229,7 +1230,7 @@ const StockCaseDetail = () => {
                     </div>
                   )}
 
-                  <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                     {hasPricingMetrics && (
                       <div className="flex h-full flex-col gap-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1268,7 +1269,7 @@ const StockCaseDetail = () => {
                   <CardTitle className="text-xl font-semibold tracking-tight lg:text-2xl">Analys</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid gap-5 xl:grid-cols-2 2xl:grid-cols-3">
+                  <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                     {formatCaseDescription(displayedAnalysisDescription)}
                   </div>
                 </CardContent>
