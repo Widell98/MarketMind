@@ -200,6 +200,18 @@ const GUIDE_FLOWS: Record<string, GuideMessage> = {
         prompt: 'Skapa ett investeringscase för ett nordiskt tillväxtbolag inklusive risker, möjligheter och nyckeltal.',
         description: 'Låt AI ta fram ett strukturerat case',
         icon: <Target className="w-4 h-4" />
+      },
+      {
+        label: 'Aggressiv trendspaning',
+        prompt: 'Vilka tre högpotential-aktier visar starkast momentum just nu och passar en aggressiv riskprofil? Ge nivåer för entry, exit och bevakade risker.',
+        description: 'Fokus på kraftiga rörelser och tydliga nivåer',
+        icon: <TrendingUp className="w-4 h-4" />
+      },
+      {
+        label: 'Skapa en momentumplan',
+        prompt: 'Bygg en aggressiv kortsiktig strategi där jag viktar om min portfölj mot de mest trendande sektorerna kommande månad. Inkludera riskhantering.',
+        description: 'För dig som vill jaga nästa rusning',
+        icon: <Target className="w-4 h-4" />
       }
     ],
     isBot: true
@@ -335,6 +347,16 @@ const GUIDE_FLOWS: Record<string, GuideMessage> = {
         label: 'Jämför två case',
         prompt: 'Jämför två populära aktiecase inom förnybar energi från Discover och rekommendera det starkaste.',
         icon: <LineChart className="w-4 h-4" />
+      },
+      {
+        label: 'Aggressiva momentumcase',
+        prompt: 'Identifiera tre aggressiva aktiecase från Discover med starkt momentum, och motivera varför de kan fortsätta stiga på kort sikt.',
+        icon: <Sparkles className="w-4 h-4" />
+      },
+      {
+        label: 'Katalysjakt',
+        prompt: 'Vilka kommande katalysatorer driver de mest spekulativa casen just nu? Lista datum, triggers och förslag på exit-strategi.',
+        icon: <Target className="w-4 h-4" />
       }
     ],
     isBot: true
@@ -553,6 +575,24 @@ const GUIDE_FLOWS: Record<string, GuideMessage> = {
         prompt: 'Identifiera de största riskerna i en portfölj med tech- och energibolag och föreslå hedgar.',
         description: 'Minska nedsidan med konkreta åtgärder',
         icon: <ShieldCheck className="w-4 h-4" />
+      },
+      {
+        label: 'Trendande raketer',
+        prompt: 'Ta fram en lista över fem högvolatila aktier som trendar starkt just nu och föreslå hur jag kan spela på deras momentum under nästa kvartal.',
+        description: 'Perfekt för aggressiva momentumjagare',
+        icon: <TrendingUp className="w-4 h-4" />
+      },
+      {
+        label: 'Spekulativ swingplan',
+        prompt: 'Skapa en aggressiv swingtrading-plan för de mest omtalade casen just nu, inklusive nivåer för entry, stop-loss och mål.',
+        description: 'Strukturera din högre riskstrategi',
+        icon: <LineChart className="w-4 h-4" />
+      },
+      {
+        label: 'Aggressiv sektorrotation',
+        prompt: 'Vilka sektorer har starkast risk-on-sentiment just nu och hur kan jag allokera kapital aggressivt för att maximera kortsiktig avkastning?',
+        description: 'Få vägledning för offensiv allokering',
+        icon: <Target className="w-4 h-4" />
       }
     ],
     isBot: true
