@@ -97,6 +97,31 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
 
     return label.toLowerCase() === 'general' ? 'Allmänt' : label;
   };
+  const getCompanyInitials = (name?: string | null) => {
+    if (!name) {
+      return '—';
+    }
+
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return '—';
+    }
+
+    const words = trimmed.split(/\s+/);
+    if (words.length === 1) {
+      const letters = words[0].match(/[A-Za-zÅÄÖåäö]/g);
+      if (letters && letters.length > 0) {
+        return letters.slice(0, 2).join('').toUpperCase();
+      }
+
+      return words[0].slice(0, 2).toUpperCase();
+    }
+
+    const first = words[0][0] || '';
+    const last = words[words.length - 1][0] || '';
+
+    return `${first}${last}`.toUpperCase();
+  };
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('sv-SE', {
       year: 'numeric',
@@ -158,6 +183,44 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
           return `${normalized.slice(0, 257).trimEnd()}...`;
         })()
       : '';
+  const tickerLabel = stockCase.ticker?.toUpperCase();
+  const companyInitials = getCompanyInitials(stockCase.company_name || tickerLabel);
+  const renderCaseVisual = () => {
+    if (stockCase.ai_generated) {
+      return <div className="relative flex h-36 flex-col justify-between overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-br from-primary/15 via-card to-background p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+              <Bot className="h-5 w-5" />
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-sm font-semibold text-primary">AI-genererat case</p>
+              <p className="text-xs text-muted-foreground">Skapad av MarketMind Assistant</p>
+            </div>
+          </div>
+
+          {stockCase.company_name && <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Fokusbolag</p>
+              <p className="text-base font-semibold leading-tight text-foreground">{stockCase.company_name}</p>
+            </div>}
+
+          {tickerLabel && <div className="text-right text-xs font-semibold tracking-[0.35em] text-primary/70">{tickerLabel}</div>}
+
+          <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.25),_transparent_55%)]" />
+        </div>;
+    }
+
+    return <div className="flex h-40 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/70 bg-muted/30 p-5 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-2xl font-bold uppercase text-primary">
+          {companyInitials}
+        </div>
+
+        {tickerLabel && <span className="text-xs font-semibold uppercase tracking-[0.4em] text-muted-foreground">{tickerLabel}</span>}
+
+        <p className="max-w-[12rem] text-sm font-medium leading-snug text-muted-foreground">
+          {stockCase.company_name || 'Community-case'}
+        </p>
+      </div>;
+  };
 
   return <Card className={getCardClassNames()} onClick={() => onViewDetails(stockCase.id)}>
       <CardHeader className="px-4 pb-3 sm:px-6 sm:pb-4">
@@ -234,15 +297,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
       </CardHeader>
 
       <CardContent className="flex flex-1 flex-col gap-4 px-4 pb-4 pt-0 sm:px-6 sm:pb-6">
-        {/* Stock Image - Responsive */}
-        {stockCase.image_url && <div className="relative w-full h-40 sm:h-48 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group/image">
-            <img
-              src={stockCase.image_url}
-              alt={stockCase.company_name ? `${stockCase.company_name} illustration` : 'Investeringscase'}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105"
-            />
-            <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/10 transition-all duration-300" />
-          </div>}
+        {renderCaseVisual()}
 
         {previewText && <p className="flex-1 text-sm text-muted-foreground line-clamp-3 sm:line-clamp-4">
             {previewText}
