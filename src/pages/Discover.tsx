@@ -169,6 +169,7 @@ const Discover = () => {
                   onViewDetails={handleViewStockCaseDetails}
                   onDelete={handleDeleteStockCase}
                   showMetaBadges={false}
+                  viewMode={caseViewMode}
                 />
               ))}
             </div>

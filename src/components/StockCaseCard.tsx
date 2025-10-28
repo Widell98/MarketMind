@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Heart, Calendar, User, MoreHorizontal, Trash2, Bot, UserCircle, Edit } from 'lucide-react';
 import { StockCase } from '@/types/stockCase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,12 +16,14 @@ interface StockCaseCardProps {
   onViewDetails: (id: string) => void;
   onDelete?: (id: string) => void;
   showMetaBadges?: boolean;
+  viewMode?: 'grid' | 'list';
 }
 const StockCaseCard: React.FC<StockCaseCardProps> = ({
   stockCase,
   onViewDetails,
   onDelete,
-  showMetaBadges = true
+  showMetaBadges = true,
+  viewMode = 'grid'
 }) => {
   const {
     user
@@ -159,6 +162,96 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
         })()
       : '';
 
+  const logoInitials = React.useMemo(() => {
+    const source = stockCase.company_name || stockCase.ticker || stockCase.title;
+    if (!source) {
+      return '—';
+    }
+    const words = source.split(/\s+/).filter(Boolean);
+    if (words.length === 1) {
+      return words[0].slice(0, 2).toUpperCase();
+    }
+    return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+  }, [stockCase.company_name, stockCase.ticker, stockCase.title]);
+
+  const renderAiInsightBadge = (className?: string) => (
+    <Badge className={`flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/15 px-3 py-1 text-[11px] font-semibold text-purple-600 transition-colors duration-200 dark:border-purple-500/40 dark:bg-purple-500/10 dark:text-purple-300 ${className || ''}`}>
+      <Bot className="h-3 w-3" />
+      AI-genererad insikt
+    </Badge>
+  );
+
+  const formatCurrency = (value?: number | null) => {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      return '—';
+    }
+
+    return `${value.toLocaleString('sv-SE', {
+      minimumFractionDigits: value % 1 === 0 ? 0 : 2,
+      maximumFractionDigits: 2
+    })} ${stockCase.currency || 'SEK'}`.trim();
+  };
+
+  const calculateUpside = () => {
+    const { entry_price, target_price, current_price } = stockCase;
+    const basePrice = typeof entry_price === 'number' && entry_price > 0
+      ? entry_price
+      : typeof current_price === 'number' && current_price > 0
+        ? current_price
+        : null;
+
+    if (typeof target_price === 'number' && target_price > 0 && basePrice) {
+      return (target_price - basePrice) / basePrice * 100;
+    }
+
+    return null;
+  };
+
+  const formatUpside = (upside: number | null) => {
+    if (upside === null || !Number.isFinite(upside)) {
+      return '—';
+    }
+
+    const rounded = upside.toFixed(1).replace('.', ',');
+    return `${upside > 0 ? '+' : ''}${rounded}%`;
+  };
+
+  const deriveRiskLabel = () => {
+    if (typeof stockCase.entry_price === 'number' && typeof stockCase.stop_loss === 'number' && stockCase.entry_price > 0) {
+      const buffer = (stockCase.entry_price - stockCase.stop_loss) / stockCase.entry_price;
+
+      if (buffer <= 0.05) {
+        return 'Hög risk';
+      }
+
+      if (buffer <= 0.15) {
+        return 'Medel risk';
+      }
+
+      return 'Låg risk';
+    }
+
+    if (stockCase.timeframe) {
+      const timeframe = stockCase.timeframe.toLowerCase();
+
+      if (timeframe.includes('kort')) {
+        return 'Hög risk';
+      }
+
+      if (timeframe.includes('lång')) {
+        return 'Låg risk';
+      }
+    }
+
+    return stockCase.ai_generated ? 'AI-bedömd' : 'Medel risk';
+  };
+
+  const upside = calculateUpside();
+  const riskLabel = deriveRiskLabel();
+  const previewClampClasses = viewMode === 'list'
+    ? 'line-clamp-5 sm:line-clamp-6'
+    : 'line-clamp-3 sm:line-clamp-4';
+
   return <Card className={getCardClassNames()} onClick={() => onViewDetails(stockCase.id)}>
       <CardHeader className="px-4 pb-3 sm:px-6 sm:pb-4">
         <div className="flex flex-col gap-3">
@@ -189,10 +282,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
                     Ditt Case
                   </Badge>}
 
-                {stockCase.ai_generated && <Badge variant="outline" className="shrink-0 whitespace-nowrap border-purple-200 bg-purple-50 px-2.5 py-0.5 text-[11px] font-medium text-purple-700 dark:border-purple-800 dark:bg-purple-900/20 dark:text-purple-300 sm:text-xs">
-                    <Bot className="mr-1 h-3 w-3" />
-                    AI
-                  </Badge>}
+                {stockCase.ai_generated && <span className="shrink-0">{renderAiInsightBadge()}</span>}
 
                 {!stockCase.ai_generated && stockCase.user_id && <Badge variant="outline" className="shrink-0 whitespace-nowrap border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300 sm:text-xs">
                     <UserCircle className="mr-1 h-3 w-3" />
@@ -205,11 +295,17 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
                   {stockCase.title}
                 </CardTitle>
 
-                {stockCase.company_name && (
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {stockCase.company_name}
-                  </p>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  {stockCase.company_name && (
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {stockCase.company_name}
+                    </p>
+                  )}
+
+                  {!showMetaBadges && stockCase.ai_generated && (
+                    <span>{renderAiInsightBadge()}</span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -235,18 +331,58 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
 
       <CardContent className="flex flex-1 flex-col gap-4 px-4 pb-4 pt-0 sm:px-6 sm:pb-6">
         {/* Stock Image - Responsive */}
-        {stockCase.image_url && <div className="relative w-full h-40 sm:h-48 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group/image">
+        <div className="relative h-40 w-full overflow-hidden rounded-lg bg-muted/50 group/image sm:h-48">
+          {stockCase.image_url ? (
             <img
               src={stockCase.image_url}
               alt={stockCase.company_name ? `${stockCase.company_name} illustration` : 'Investeringscase'}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105"
+              className="h-full w-full object-cover transition-transform duration-300 group-hover/image:scale-105"
             />
-            <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/10 transition-all duration-300" />
-          </div>}
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted via-background to-muted/60 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Ingen bild tillgänglig
+            </div>
+          )}
+          <div className="absolute inset-0 bg-black/0 transition-all duration-300 group-hover/image:bg-black/10" />
 
-        {previewText && <p className="flex-1 text-sm text-muted-foreground line-clamp-3 sm:line-clamp-4">
+          <div className="absolute left-3 top-3 flex items-center">
+            <Avatar className="h-12 w-12 border-2 border-white/80 bg-background/90 text-sm font-semibold text-foreground shadow-lg backdrop-blur">
+              {stockCase.logo_url && <AvatarImage src={stockCase.logo_url} alt={stockCase.company_name || stockCase.title} className="object-contain" />}
+              <AvatarFallback className="bg-primary/10 text-primary">
+                {logoInitials}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+
+          {stockCase.ai_generated && !showMetaBadges && (
+            <div className="absolute right-3 top-3 flex max-w-[70%] justify-end">
+              {renderAiInsightBadge('whitespace-nowrap')}
+            </div>
+          )}
+        </div>
+
+        {previewText && <p className={`flex-1 text-sm text-muted-foreground ${previewClampClasses}`}>
             {previewText}
           </p>}
+
+        <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-3">
+          <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-3 sm:text-sm">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">Målkurs</span>
+              <span className="font-semibold text-foreground">{formatCurrency(stockCase.target_price)}</span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">Uppsida</span>
+              <span className={`font-semibold ${Number(upside) > 0 ? 'text-emerald-600 dark:text-emerald-300' : Number(upside) < 0 ? 'text-rose-600 dark:text-rose-300' : 'text-foreground'}`}>
+                {formatUpside(upside)}
+              </span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">Risknivå</span>
+              <span className="font-semibold text-foreground">{riskLabel}</span>
+            </div>
+          </div>
+        </div>
 
         <div className="mt-auto space-y-4">
           <div className="flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">

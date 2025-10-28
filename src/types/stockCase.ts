@@ -4,6 +4,7 @@ export interface StockCase {
   title: string;
   company_name: string;
   image_url?: string;
+  logo_url?: string;
   sector?: string;
   market_cap?: string;
   pe_ratio?: string;
