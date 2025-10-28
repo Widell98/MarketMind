@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ToastAction } from '@/components/ui/toast';
-import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Building, BarChart3, Eye, Users, AlertTriangle, Target, StopCircle, Brain, ShoppingCart, Plus, UserPlus, PlusCircle, History, ChevronLeft, ChevronRight, Trash2, MessageSquare, LineChart, Coins, Percent } from 'lucide-react';
+import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Building, BarChart3, Eye, Users, AlertTriangle, Target, StopCircle, Brain, ShoppingCart, Plus, UserPlus, PlusCircle, History, ChevronLeft, ChevronRight, Trash2, MessageSquare, LineChart, Coins, Percent, User, Clock, Tag, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -342,12 +342,12 @@ const StockCaseDetail = () => {
   const displayImageSrc = currentVersion?.image_url ?? null;
 
   const imageWrapperClasses = cn(
-    'relative group mx-auto w-full rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300',
+    'relative group mx-auto w-full overflow-hidden rounded-3xl border border-border/60 bg-card/80 shadow-[0_32px_80px_-40px_rgba(15,23,42,0.65)] transition-all duration-300 hover:shadow-[0_36px_96px_-48px_rgba(15,23,42,0.75)]',
     isAiGeneratedImage ? 'max-w-xl' : 'max-w-4xl'
   );
 
   const imageDisplayWrapperClasses = cn(
-    'overflow-hidden rounded-lg transition-all duration-300',
+    'overflow-hidden rounded-3xl transition-all duration-300',
     isAiGeneratedImage ? 'bg-muted/70 p-4' : ''
   );
 
@@ -355,7 +355,7 @@ const StockCaseDetail = () => {
     'w-full h-auto transition-all duration-300',
     hasRealImage ? 'cursor-pointer' : 'cursor-default',
     isAiGeneratedImage
-      ? 'max-h-[280px] object-contain'
+      ? 'max-h-[320px] object-contain'
       : 'max-h-[560px] object-cover'
   );
 
@@ -781,75 +781,151 @@ const StockCaseDetail = () => {
   const showLoginPromptCard = !user;
   const hasSidebarContent = showCreatorCard || showLoginPromptCard;
 
+  const actionButtonClasses = 'rounded-full border-border/60 bg-background/80 px-5 py-2.5 text-sm font-medium shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary/40';
+
+  const aiBadge = stockCase.ai_generated === true ? (
+    <Badge
+      variant="outline"
+      className="inline-flex items-center gap-1.5 rounded-full border-purple-500/40 bg-purple-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-purple-600 dark:border-purple-400/40 dark:bg-purple-500/10 dark:text-purple-300"
+    >
+      <Brain className="h-3.5 w-3.5" />
+      AI
+    </Badge>
+  ) : null;
+
+  const performanceBadge = performance !== null ? (
+    <Badge
+      variant="outline"
+      className={cn(
+        'inline-flex items-center gap-2 rounded-full border-0 px-4 py-2 text-sm font-semibold shadow-sm',
+        isPositivePerformance
+          ? 'bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300'
+          : 'bg-rose-500/15 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300'
+      )}
+    >
+      {isPositivePerformance ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+      {performance > 0 ? '+' : ''}{performance.toFixed(1)}%
+    </Badge>
+  ) : null;
+
+  const authorName = stockCase.profiles?.display_name
+    || stockCase.profiles?.username
+    || (stockCase.ai_generated ? 'MarketMind-AI' : 'Okänd');
+
+  const heroMetadataItems: React.ReactNode[] = [];
+
+  if (authorName) {
+    heroMetadataItems.push(
+      <span
+        key="author"
+        className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-1 text-xs font-medium text-foreground shadow-sm"
+      >
+        <User className="h-3.5 w-3.5 text-muted-foreground" />
+        {authorName}
+      </span>
+    );
+  }
+
+  if (stockCase.created_at) {
+    heroMetadataItems.push(
+      <span
+        key="published"
+        className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-1 text-xs font-medium text-foreground shadow-sm"
+      >
+        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+        {formatDistanceToNow(new Date(stockCase.created_at), {
+          addSuffix: true,
+          locale: sv,
+        })}
+      </span>
+    );
+  }
+
+  if (overviewTicker) {
+    heroMetadataItems.push(
+      <span
+        key="ticker"
+        className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-1 text-xs font-medium text-foreground shadow-sm"
+      >
+        <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+        {overviewTicker}
+      </span>
+    );
+  }
+
+  if (stockCase.case_categories) {
+    const categoryColor = stockCase.case_categories.color || '#6366f1';
+    const categoryTint = stockCase.case_categories.color ? `${stockCase.case_categories.color}1a` : 'rgba(99,102,241,0.12)';
+    heroMetadataItems.push(
+      <span
+        key="category"
+        className="inline-flex items-center gap-2 rounded-full border border-transparent px-3 py-1 text-xs font-semibold"
+        style={{
+          backgroundColor: categoryTint,
+          color: categoryColor,
+        }}
+      >
+        <Tag className="h-3.5 w-3.5" />
+        {stockCase.case_categories.name}
+      </span>
+    );
+  }
+
+  const heroSubtitle = [stockCase.company_name, overviewTicker ? `(${overviewTicker})` : null]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto space-y-10 px-4 sm:px-6 lg:px-8">
-        {/* Header with Navigation */}
-        <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => navigate('/discover')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Tillbaka
-          </Button>
+      <div className="max-w-6xl mx-auto space-y-12 px-4 sm:px-6 lg:px-8">
+        {/* Hero Section */}
+        <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-card/80 shadow-[0_32px_80px_-40px_rgba(15,23,42,0.65)]">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-emerald-500/10 dark:from-primary/15 dark:via-transparent dark:to-emerald-400/10" />
+          <div className="absolute -top-24 -right-24 h-56 w-56 rounded-full bg-primary/15 blur-3xl dark:bg-primary/25" aria-hidden="true" />
+          <div className="absolute -bottom-32 -left-20 h-64 w-64 rounded-full bg-emerald-400/10 blur-3xl dark:bg-emerald-400/20" aria-hidden="true" />
+
+          <div className="relative z-10 flex flex-col gap-8 px-6 py-8 sm:px-10 sm:py-12">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/discover')}
+                className="h-9 rounded-full border border-border/60 bg-background/70 px-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Tillbaka
+              </Button>
+
+              {performanceBadge ? (
+                <div className="flex items-center justify-end gap-2">
+                  {performanceBadge}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="space-y-4 text-center">
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{displayTitle}</h1>
+                {aiBadge}
+              </div>
+
+              {heroSubtitle ? (
+                <p className="text-base text-muted-foreground sm:text-lg">
+                  {heroSubtitle}
+                </p>
+              ) : null}
+
+              {heroMetadataItems.length > 0 ? (
+                <div className="flex flex-wrap items-center justify-center gap-2.5">
+                  {heroMetadataItems.map((item) => item)}
+                </div>
+              ) : null}
+            </div>
+          </div>
         </div>
 
-        {/* Hero Section with Improved Hierarchy */}
+        {/* Hero Content */}
         <div className="space-y-6">
-          {/* Title and Metadata */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-center gap-3">
-              <h1 className="text-5xl font-bold tracking-tight text-center">{displayTitle}</h1>
-              {stockCase.ai_generated === true && (
-                <Badge variant="outline" className="bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
-                  <Brain className="w-4 h-4 mr-1" />
-                  AI
-                </Badge>
-              )}
-            </div>
-            
-            {/* Subtitle with author, date, and category */}
-            <div className="text-center text-lg text-muted-foreground space-y-2">
-              <p>
-                Case av{' '}
-                <span className="font-semibold text-foreground">
-                  {stockCase.profiles?.display_name
-                    || stockCase.profiles?.username
-                    || (stockCase.ai_generated ? 'MarketMind-AI' : 'Okänd')}
-                </span>
-                {' • '}
-                <span>
-                  {formatDistanceToNow(new Date(stockCase.created_at), {
-                    addSuffix: true,
-                    locale: sv
-                  })}
-                </span>
-                {stockCase.case_categories && (
-                  <>
-                    {' • '}
-                    <span 
-                      className="font-medium"
-                      style={{ color: stockCase.case_categories.color }}
-                    >
-                      {stockCase.case_categories.name}
-                    </span>
-                  </>
-                )}
-              </p>
-            </div>
-
-            {/* Performance Badge */}
-            {performance !== null && (
-              <div className="flex justify-center">
-                <Badge 
-                  variant={isPositivePerformance ? "default" : "destructive"} 
-                  className="text-xl px-6 py-2"
-                >
-                  {isPositivePerformance ? <TrendingUp className="w-5 h-5 mr-2" /> : <TrendingDown className="w-5 h-5 mr-2" />}
-                  {performance > 0 ? '+' : ''}{performance.toFixed(1)}%
-                </Badge>
-              </div>
-            )}
-          </div>
-
           {/* Graph Section with Carousel */}
           {displayImageSrc && (
             <div className="space-y-4">
@@ -969,17 +1045,20 @@ const StockCaseDetail = () => {
               {hasMultipleVersions && (
                 <div className="flex gap-2 overflow-x-auto pb-2">
                   {timeline.map((version, index) => (
-                    <button
+                    <Button
                       key={version.id}
+                      variant={currentImageIndex === index ? 'default' : 'outline'}
+                      size="sm"
                       onClick={() => goToVersion(index)}
-                      className={`flex-shrink-0 px-3 py-2 rounded-md text-xs transition-colors ${
+                      className={cn(
+                        'flex-shrink-0 rounded-full border-border/60 px-4 text-xs font-semibold transition-all',
                         currentImageIndex === index
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted hover:bg-muted/80'
-                      }`}
+                          ? 'shadow-sm hover:bg-primary/90'
+                          : 'bg-background/70 text-muted-foreground hover:text-foreground'
+                      )}
                     >
-                      {index === 0 ? 'Nuvarande' : `Historik ${index}`}
-                    </button>
+                      {index === 0 ? 'Aktiv version' : `Historik ${index}`}
+                    </Button>
                   ))}
                 </div>
               )}
@@ -994,70 +1073,94 @@ const StockCaseDetail = () => {
             </div>
           )}
 
-          {/* CTA Buttons repositioned under the visual */}
-          <div className="flex flex-wrap items-center justify-center gap-4 py-4">
-            <Button variant="outline" onClick={handleShare} className="flex items-center gap-2 text-lg px-6 py-3">
-              <Share2 className="w-5 h-5" />
-              Dela
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleDiscussWithAI}
-              className="flex items-center gap-2 text-lg px-6 py-3"
-            >
-              <MessageSquare className="w-5 h-5" />
-              Diskutera i AI-chatten
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleLikeClick}
-              disabled={likesLoading}
-              className="flex items-center gap-2 text-lg px-6 py-3"
-            >
-              <Heart className={`w-5 h-5 ${isLiked ? 'fill-current text-red-500' : ''}`} />
-              {likeCount} Gilla
-            </Button>
-            {user && (
-              <SaveOpportunityButton
-                itemType="stock_case"
-                itemId={stockCase.id}
-                itemTitle={displayTitle}
-                onSaveSuccess={handleSaveSuccess}
-                size="lg"
-                className="text-lg px-6 py-3"
-              />
-            )}
-            {user && user.id !== stockCase.user_id && stockCase.user_id && (
-              <Button
-                variant="outline"
-                onClick={handleFollowClick}
-                className="flex items-center gap-2 text-lg px-6 py-3"
-              >
-                <UserPlus className="w-5 h-5" />
-                {isFollowing(stockCase.user_id) ? 'Sluta följ' : 'Följ författare'}
-              </Button>
-            )}
-            {isOwner && (
-              <Button
-                variant="outline"
-                onClick={() => setShowUpdateDialog(true)}
-                className="flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Lägg till uppdatering
-              </Button>
-            )}
+          {/* CTA Buttons */}
+          <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/80 px-6 py-6 shadow-sm">
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-emerald-500/10 dark:from-primary/10 dark:via-transparent dark:to-emerald-400/10" />
+            <div className="relative z-10 space-y-4">
+              <p className="text-center text-sm font-medium text-muted-foreground">
+                Välj hur du vill agera på detta case
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+                <Button
+                  variant="outline"
+                  onClick={handleShare}
+                  className={cn(actionButtonClasses, 'flex items-center gap-2')}
+                >
+                  <Share2 className="h-4 w-4" />
+                  Dela
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleDiscussWithAI}
+                  className={cn(actionButtonClasses, 'flex items-center gap-2')}
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Diskutera i AI-chatten
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleLikeClick}
+                  disabled={likesLoading}
+                  className={cn(actionButtonClasses, 'flex items-center gap-2')}
+                >
+                  <Heart className={cn('h-4 w-4', isLiked ? 'fill-current text-red-500' : '')} />
+                  {likeCount} Gilla
+                </Button>
+                {user && (
+                  <SaveOpportunityButton
+                    itemType="stock_case"
+                    itemId={stockCase.id}
+                    itemTitle={displayTitle}
+                    onSaveSuccess={handleSaveSuccess}
+                    size="lg"
+                    className={cn(actionButtonClasses, 'flex items-center gap-2')}
+                  />
+                )}
+                {user && user.id !== stockCase.user_id && stockCase.user_id && (
+                  <Button
+                    variant="outline"
+                    onClick={handleFollowClick}
+                    className={cn(actionButtonClasses, 'flex items-center gap-2')}
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    {isFollowing(stockCase.user_id) ? 'Sluta följ' : 'Följ författare'}
+                  </Button>
+                )}
+                {isOwner && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowUpdateDialog(true)}
+                    className={cn(actionButtonClasses, 'flex items-center gap-2')}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Lägg till uppdatering
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Login prompt for non-users */}
           {!user && (
-            <div className="text-center p-4 bg-muted rounded-lg">
-              <p className="text-muted-foreground mb-3">
-                Logga in för att gilla, spara och kommentera
-              </p>
-              <Button onClick={() => navigate('/auth')}>
-                Logga in
-              </Button>
+            <div className="relative overflow-hidden rounded-2xl border border-dashed border-primary/40 bg-primary/5 px-6 py-6 text-center shadow-sm dark:border-primary/30 dark:bg-primary/10">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent dark:from-primary/20" />
+              <div className="relative z-10 space-y-3">
+                <div className="flex justify-center">
+                  <Badge variant="outline" className="rounded-full border-primary/30 bg-primary/10 text-primary dark:border-primary/20 dark:text-primary-foreground">
+                    <Sparkles className="mr-1 h-3.5 w-3.5" />
+                    Bli medlem
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Logga in för att gilla, spara och kommentera
+                </p>
+                <Button
+                  onClick={() => navigate('/auth')}
+                  className={cn(actionButtonClasses, 'mx-auto flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90')}
+                >
+                  Logga in
+                </Button>
+              </div>
             </div>
           )}
         </div>
