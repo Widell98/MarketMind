@@ -185,34 +185,55 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
       : '';
   const tickerLabel = stockCase.ticker?.toUpperCase();
   const companyInitials = getCompanyInitials(stockCase.company_name || tickerLabel);
+  const renderCompanyLogo = (options?: { size?: 'sm' | 'lg' }) => {
+    const sizeClass = options?.size === 'sm' ? 'h-14 w-14' : 'h-20 w-20';
+    const textSizeClass = options?.size === 'sm' ? 'text-lg' : 'text-2xl';
+
+    if (stockCase.image_url) {
+      return <div className={`relative flex ${sizeClass} items-center justify-center overflow-hidden rounded-xl border border-border/40 bg-background shadow-sm`}>
+          <img
+            src={stockCase.image_url}
+            alt={`${stockCase.company_name || tickerLabel || 'bolag'} logotyp`}
+            className="h-full w-full object-contain p-3"
+          />
+        </div>;
+    }
+
+    return <div className={`flex ${sizeClass} items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/40 ${textSizeClass} font-bold uppercase text-primary`}>
+        {companyInitials}
+      </div>;
+  };
+
   const renderCaseVisual = () => {
     if (stockCase.ai_generated) {
-      return <div className="relative flex h-36 flex-col justify-between overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-br from-primary/15 via-card to-background p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-              <Bot className="h-5 w-5" />
+      return <div className="relative flex h-36 items-center justify-between gap-4 overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-br from-primary/15 via-card to-background p-4">
+          <div className="flex flex-col justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                <Bot className="h-5 w-5" />
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-sm font-semibold text-primary">AI-genererat case</p>
+                <p className="text-xs text-muted-foreground">Skapad av MarketMind Assistant</p>
+              </div>
             </div>
-            <div className="space-y-0.5">
-              <p className="text-sm font-semibold text-primary">AI-genererat case</p>
-              <p className="text-xs text-muted-foreground">Skapad av MarketMind Assistant</p>
-            </div>
+
+            {stockCase.company_name && <div className="space-y-1">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Fokusbolag</p>
+                <p className="text-base font-semibold leading-tight text-foreground">{stockCase.company_name}</p>
+              </div>}
+
+            {tickerLabel && <div className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/70">{tickerLabel}</div>}
           </div>
 
-          {stockCase.company_name && <div className="space-y-1">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Fokusbolag</p>
-              <p className="text-base font-semibold leading-tight text-foreground">{stockCase.company_name}</p>
-            </div>}
-
-          {tickerLabel && <div className="text-right text-xs font-semibold tracking-[0.35em] text-primary/70">{tickerLabel}</div>}
+          {renderCompanyLogo({ size: 'sm' })}
 
           <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.25),_transparent_55%)]" />
         </div>;
     }
 
     return <div className="flex h-40 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/70 bg-muted/30 p-5 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-2xl font-bold uppercase text-primary">
-          {companyInitials}
-        </div>
+        {renderCompanyLogo({ size: 'lg' })}
 
         {tickerLabel && <span className="text-xs font-semibold uppercase tracking-[0.4em] text-muted-foreground">{tickerLabel}</span>}
 
