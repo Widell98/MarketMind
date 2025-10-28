@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ToastAction } from '@/components/ui/toast';
-import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Building, BarChart3, Users, AlertTriangle, Target, StopCircle, Brain, ShoppingCart, Plus, UserPlus, PlusCircle, History, ChevronLeft, ChevronRight, Trash2, MessageSquare, LineChart, Coins, Percent, User, Clock, Tag, Sparkles } from 'lucide-react';
+import { ArrowLeft, Heart, Share2, TrendingUp, TrendingDown, Building, BarChart3, Users, AlertTriangle, Target, StopCircle, Brain, ShoppingCart, Plus, UserPlus, PlusCircle, History, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Trash2, MessageSquare, LineChart, Coins, Percent, User, Clock, Tag, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -198,6 +198,7 @@ const StockCaseDetail = () => {
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [updateToDelete, setUpdateToDelete] = useState<string | null>(null);
+  const [showFullFinancialDetails, setShowFullFinancialDetails] = useState(false);
   const [sheetMetrics, setSheetMetrics] = useState<SheetTickerMetrics | null>(null);
   const [isHeroLogoError, setIsHeroLogoError] = useState(false);
   const [isVersionDialogOpen, setIsVersionDialogOpen] = useState(false);
@@ -776,11 +777,50 @@ const StockCaseDetail = () => {
     });
   }
 
-  const hasPricingMetrics = pricingStats.length > 0;
-  const hasCompanyDetails = companyStats.length > 0;
-  const hasSheetFundamentals = fundamentalsStats.length > 0;
+  const findStatByKey = (key: string): FinancialStat | undefined =>
+    pricingStats.find((stat) => stat.key === key)
+    || companyStats.find((stat) => stat.key === key)
+    || fundamentalsStats.find((stat) => stat.key === key);
 
-  const shouldShowFinancialOverview = hasPricingMetrics || hasCompanyDetails || hasSheetFundamentals;
+  const summaryCandidateKeys: string[] = [
+    'current-price',
+    'target-price',
+    'market-cap',
+    'pe-ratio',
+    'dividend-yield',
+    'sector',
+    'sheet-price',
+    'stop-loss',
+    'fifty-two-week-range',
+  ];
+
+  let summaryStats = summaryCandidateKeys
+    .map((key) => findStatByKey(key))
+    .filter((stat): stat is FinancialStat => Boolean(stat));
+
+  if (summaryStats.length < 4) {
+    const fallbackStats = [...pricingStats, ...companyStats, ...fundamentalsStats].filter(
+      (stat) => !summaryStats.some((existing) => existing.key === stat.key),
+    );
+
+    summaryStats = [...summaryStats, ...fallbackStats].slice(0, 4);
+  } else {
+    summaryStats = summaryStats.slice(0, 4);
+  }
+
+  const summaryStatKeys = new Set(summaryStats.map((stat) => stat.key));
+
+  const detailPricingStats = pricingStats.filter((stat) => !summaryStatKeys.has(stat.key));
+  const detailCompanyStats = companyStats.filter((stat) => !summaryStatKeys.has(stat.key));
+  const detailFundamentalsStats = fundamentalsStats.filter((stat) => !summaryStatKeys.has(stat.key));
+
+  const hasSummaryStats = summaryStats.length > 0;
+  const hasDetailedFinancialStats =
+    detailPricingStats.length > 0
+    || detailCompanyStats.length > 0
+    || detailFundamentalsStats.length > 0;
+
+  const shouldShowFinancialOverview = hasSummaryStats || hasDetailedFinancialStats;
 
   const overviewLogoSrc =
     (!isHeroLogoError && (stockCase.image_url || currentVersion?.image_url || null)) || null;
@@ -1230,28 +1270,73 @@ const StockCaseDetail = () => {
                   ) : null}
                 </div>
 
-                <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                  {hasPricingMetrics ? (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Pris och kursinformation</p>
-                      {renderStatsList(pricingStats)}
-                    </div>
-                  ) : null}
+                {hasSummaryStats ? (
+                  <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    {summaryStats.map((stat) => {
+                      const IconComponent = stat.icon;
+                      const summaryValueClassName = stat.valueClassName
+                        ? cn('text-lg font-semibold tracking-tight text-foreground', stat.valueClassName)
+                        : 'text-lg font-semibold tracking-tight text-foreground';
 
-                  {hasCompanyDetails ? (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Bolagsinformation</p>
-                      {renderStatsList(companyStats)}
-                    </div>
-                  ) : null}
+                      return (
+                        <div
+                          key={stat.key}
+                          className="flex flex-col gap-2 rounded-2xl border border-border/30 bg-background/80 px-4 py-4 shadow-sm"
+                        >
+                          <span className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground/80">
+                            {IconComponent ? <IconComponent className="h-3.5 w-3.5" /> : null}
+                            {stat.label}
+                          </span>
+                          <div className={summaryValueClassName}>{renderStatValue(stat)}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
 
-                  {hasSheetFundamentals ? (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Nyckeltal</p>
-                      {renderStatsList(fundamentalsStats)}
-                    </div>
-                  ) : null}
-                </div>
+                {hasDetailedFinancialStats ? (
+                  <div className="mt-6 border-t border-border/20 pt-6">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="group inline-flex items-center gap-2 rounded-full border border-border/30 bg-background/80 px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-background"
+                      onClick={() => setShowFullFinancialDetails((prev) => !prev)}
+                    >
+                      {showFullFinancialDetails ? 'Dölj detaljer' : 'Visa detaljer'}
+                      {showFullFinancialDetails ? (
+                        <ChevronUp className="h-4 w-4 transition-transform group-hover:-translate-y-0.5" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 transition-transform group-hover:translate-y-0.5" />
+                      )}
+                    </Button>
+
+                    {showFullFinancialDetails ? (
+                      <div className="mt-5 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                        {detailPricingStats.length > 0 ? (
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Pris och kursinformation</p>
+                            {renderStatsList(detailPricingStats)}
+                          </div>
+                        ) : null}
+
+                        {detailCompanyStats.length > 0 ? (
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Bolagsinformation</p>
+                            {renderStatsList(detailCompanyStats)}
+                          </div>
+                        ) : null}
+
+                        {detailFundamentalsStats.length > 0 ? (
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Nyckeltal</p>
+                            {renderStatsList(detailFundamentalsStats)}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </section>
             )}
 
