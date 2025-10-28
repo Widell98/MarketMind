@@ -657,6 +657,11 @@ const StockCaseDetail = () => {
     return <span className="text-muted-foreground">—</span>;
   };
 
+  const currentPriceDisplay = formatCasePrice(stockCase.current_price);
+  const sheetPriceDisplay = formatSheetPrice(sheetMetrics?.price ?? null);
+  const targetPriceDisplay = !isAiGeneratedCase ? formatCasePrice(stockCase.target_price) : null;
+  const stopLossDisplay = !isAiGeneratedCase ? formatCasePrice(stockCase.stop_loss) : null;
+
   const overviewHighlightStats: FinancialStat[] = [];
 
   if (currentPriceDisplay) {
@@ -733,11 +738,6 @@ const StockCaseDetail = () => {
       </dl>
     );
   };
-
-  const currentPriceDisplay = formatCasePrice(stockCase.current_price);
-  const sheetPriceDisplay = formatSheetPrice(sheetMetrics?.price ?? null);
-  const targetPriceDisplay = !isAiGeneratedCase ? formatCasePrice(stockCase.target_price) : null;
-  const stopLossDisplay = !isAiGeneratedCase ? formatCasePrice(stockCase.stop_loss) : null;
 
   const pricingStats: FinancialStat[] = [];
 
