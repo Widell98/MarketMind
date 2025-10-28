@@ -341,6 +341,7 @@ const StockCaseDetail = () => {
 
   const hasRealImage = Boolean(currentVersion?.image_url);
   const displayImageSrc = currentVersion?.image_url ?? null;
+  const shouldShowHeroImage = Boolean(displayImageSrc && !isAiGeneratedCase);
 
   const imageWrapperClasses = cn(
     'relative group mx-auto w-full overflow-hidden rounded-3xl border border-border/60 bg-card/80 shadow-[0_32px_80px_-40px_rgba(15,23,42,0.65)] transition-all duration-300 hover:shadow-[0_36px_96px_-48px_rgba(15,23,42,0.75)]',
@@ -905,19 +906,8 @@ const StockCaseDetail = () => {
               ) : null}
             </div>
 
-            <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-center sm:gap-8 sm:text-left">
-              {overviewLogoSrc ? (
-                <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-border/60 bg-background/80 shadow-sm">
-                  <img
-                    src={overviewLogoSrc}
-                    alt={`${overviewCompanyName} logotyp`}
-                    className="h-full w-full object-cover"
-                    onError={() => setIsHeroLogoError(true)}
-                  />
-                </div>
-              ) : null}
-
-              <div className="space-y-3">
+            <div className="flex flex-col gap-6 text-center sm:flex-row sm:items-start sm:justify-between sm:gap-8 sm:text-left">
+              <div className="space-y-3 sm:max-w-2xl">
                 <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start">
                   <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{displayTitle}</h1>
                   {aiBadge}
@@ -935,6 +925,17 @@ const StockCaseDetail = () => {
                   </div>
                 ) : null}
               </div>
+
+              {overviewLogoSrc ? (
+                <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-border/60 bg-background/80 shadow-sm sm:mx-0 sm:ml-6 sm:flex-none sm:self-start">
+                  <img
+                    src={overviewLogoSrc}
+                    alt={`${overviewCompanyName} logotyp`}
+                    className="h-full w-full object-cover"
+                    onError={() => setIsHeroLogoError(true)}
+                  />
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -942,7 +943,7 @@ const StockCaseDetail = () => {
         {/* Hero Content */}
         <div className="space-y-6">
           {/* Graph Section with Carousel */}
-          {displayImageSrc && (
+          {shouldShowHeroImage && (
             <div className="space-y-4">
               {/* Version info and controls */}
               <div className="flex items-center justify-between min-h-[1.5rem]">
