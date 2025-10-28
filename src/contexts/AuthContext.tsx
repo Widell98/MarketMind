@@ -198,10 +198,41 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const resetPassword = async (email: string) => {
+    const normalizedEmail = email.trim();
+
+    if (!normalizedEmail) {
+      const error = new Error("Please enter a valid email address.");
+      toast({
+        title: "Password reset failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      return { data: null, error };
+    }
+
     try {
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      const baseUrl = typeof window !== 'undefined' && window.location?.origin
+        ? window.location.origin
+        : import.meta.env?.VITE_SITE_URL;
+
+      const resetPath = import.meta.env?.VITE_PASSWORD_RESET_REDIRECT_PATH ?? '/auth/reset-password';
+
+      let redirectTo: string | undefined;
+
+      if (baseUrl) {
+        try {
+          redirectTo = new URL(resetPath, baseUrl).toString();
+        } catch (urlError) {
+          console.warn('Failed to construct password reset redirect URL with URL API:', urlError);
+          const normalizedBase = baseUrl.replace(/\/$/, '');
+          const normalizedPath = resetPath.startsWith('/') ? resetPath : `/${resetPath}`;
+          redirectTo = `${normalizedBase}${normalizedPath}`;
+        }
+      }
+
+      const { data, error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
         // Security fix: Add email redirect for password reset
-        redirectTo: `${window.location.origin}/reset-password`
+        ...(redirectTo ? { redirectTo } : {}),
       });
 
       if (error) throw error;

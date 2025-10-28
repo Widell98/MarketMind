@@ -40,13 +40,17 @@ const ChatInput = memo(({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Check if user has reached limit
     if (isAtLimit && !isPremium) {
       setShowUpgradeModal(true);
       return;
     }
-    
+
+    if (isLoading || quotaExceeded) {
+      return;
+    }
+
     onSubmit(e);
   };
 
@@ -77,11 +81,16 @@ const ChatInput = memo(({
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  handleSubmit(e as unknown as React.FormEvent);
+                  if (!isLoading && !quotaExceeded) {
+                    handleSubmit(e as unknown as React.FormEvent);
+                  }
                 }
               }}
               placeholder={isAtLimit ? "Uppgradera till Premium för fler meddelanden" : "Skriv ditt meddelande här... (kostar 1 credit)"}
-              disabled={isLoading || quotaExceeded}
+              disabled={quotaExceeded}
+              readOnly={isLoading && !quotaExceeded}
+              aria-disabled={isLoading || quotaExceeded}
+              aria-busy={isLoading}
               className="min-h-[48px] max-h-[160px] w-full resize-none rounded-[18px] border border-[#205295]/22 bg-white/90 px-4 pr-12 text-sm shadow-[0_16px_40px_rgba(15,23,42,0.06)] transition-all duration-200 focus:border-primary/60 focus:shadow-[0_20px_55px_rgba(15,23,42,0.08)] focus:ring-2 focus:ring-primary/20 sm:px-5 sm:text-base dark:rounded-ai-md dark:border-ai-border/60 dark:bg-ai-surface dark:shadow-sm dark:focus:border-ai-border/80 dark:focus:ring-0"
               style={{ fontSize: '16px' }}
               rows={1}
