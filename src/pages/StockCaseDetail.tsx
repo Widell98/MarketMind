@@ -197,6 +197,7 @@ const StockCaseDetail = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [updateToDelete, setUpdateToDelete] = useState<string | null>(null);
   const [sheetMetrics, setSheetMetrics] = useState<SheetTickerMetrics | null>(null);
+  const [isHeroLogoError, setIsHeroLogoError] = useState(false);
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL LOGIC
   const { stockCase, loading, error } = useStockCase(id || '');
@@ -774,7 +775,8 @@ const StockCaseDetail = () => {
 
   const shouldShowFinancialOverview = hasPricingMetrics || hasCompanyDetails || hasSheetFundamentals;
 
-  const overviewLogoSrc = stockCase.image_url || currentVersion?.image_url || null;
+  const overviewLogoSrc =
+    (!isHeroLogoError && (stockCase.image_url || currentVersion?.image_url || null)) || null;
   const overviewCompanyName = stockCase.company_name || displayTitle;
   const overviewTicker = stockCase.ticker ? stockCase.ticker.toUpperCase() : null;
   const showCreatorCard = Boolean(stockCase.profiles);
@@ -903,23 +905,36 @@ const StockCaseDetail = () => {
               ) : null}
             </div>
 
-            <div className="space-y-4 text-center">
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{displayTitle}</h1>
-                {aiBadge}
-              </div>
-
-              {heroSubtitle ? (
-                <p className="text-base text-muted-foreground sm:text-lg">
-                  {heroSubtitle}
-                </p>
-              ) : null}
-
-              {heroMetadataItems.length > 0 ? (
-                <div className="flex flex-wrap items-center justify-center gap-2.5">
-                  {heroMetadataItems.map((item) => item)}
+            <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-center sm:gap-8 sm:text-left">
+              {overviewLogoSrc ? (
+                <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-border/60 bg-background/80 shadow-sm">
+                  <img
+                    src={overviewLogoSrc}
+                    alt={`${overviewCompanyName} logotyp`}
+                    className="h-full w-full object-cover"
+                    onError={() => setIsHeroLogoError(true)}
+                  />
                 </div>
               ) : null}
+
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start">
+                  <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{displayTitle}</h1>
+                  {aiBadge}
+                </div>
+
+                {heroSubtitle ? (
+                  <p className="text-base text-muted-foreground sm:text-lg">
+                    {heroSubtitle}
+                  </p>
+                ) : null}
+
+                {heroMetadataItems.length > 0 ? (
+                  <div className="flex flex-wrap items-center justify-center gap-2.5 sm:justify-start">
+                    {heroMetadataItems.map((item) => item)}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
