@@ -35,6 +35,9 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
   } = useStockCaseLikes(stockCase.id);
   const navigate = useNavigate();
   const isOwner = user && stockCase.user_id === user.id;
+  const isAiGenerated = Boolean(stockCase.ai_generated);
+  const fallbackInitialSource = stockCase.company_name || stockCase.title || 'AI';
+  const fallbackInitial = fallbackInitialSource.trim().charAt(0).toUpperCase() || 'A';
   
   // Determine card styling based on case status
   const getCardClassNames = () => {
@@ -44,8 +47,10 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
       baseClasses += " border-green-500/50 bg-gradient-to-br from-green-50/80 to-card dark:from-green-950/30 dark:to-card shadow-green-500/20";
     } else if (stockCase.stop_loss_hit) {
       baseClasses += " border-red-500/50 bg-gradient-to-br from-red-50/80 to-card dark:from-red-950/30 dark:to-card shadow-red-500/20";
+    } else if (isAiGenerated) {
+      baseClasses += " border-primary/40 bg-gradient-to-br from-primary/5 via-card to-card dark:from-primary/20 dark:via-card/40 dark:to-card";
     }
-    
+
     return baseClasses;
   };
   
@@ -159,6 +164,52 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
         })()
       : '';
 
+  const renderVisual = () => {
+    if (isAiGenerated) {
+      return (
+        <div className="relative flex h-40 w-full items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-purple-500/15 via-primary/15 to-blue-500/20 p-6 text-center dark:from-purple-900/30 dark:via-primary/20 dark:to-blue-900/40 sm:h-48">
+          <div
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(129,140,248,0.35),_transparent_62%)]"
+            aria-hidden="true"
+          />
+          <div className="relative z-10 flex flex-col items-center gap-3 text-center">
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-background/90 text-primary shadow-lg ring-4 ring-primary/20 dark:bg-background/70">
+              <span className="text-3xl font-semibold">{fallbackInitial}</span>
+              <span className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md">
+                <Bot className="h-4 w-4" />
+              </span>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-foreground">AI-genererat logokoncept</p>
+              <p className="text-xs text-muted-foreground">
+                Utformat av MarketMind AI för att signalera automatisering.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (stockCase.image_url) {
+      return (
+        <div className="group/image relative h-40 w-full overflow-hidden rounded-lg bg-muted sm:h-48">
+          <img
+            src={stockCase.image_url}
+            alt={stockCase.company_name ? `${stockCase.company_name} illustration` : 'Investeringscase'}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover/image:scale-105"
+          />
+          <div className="absolute inset-0 bg-black/0 transition-all duration-300 group-hover/image:bg-black/10" />
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex h-40 w-full items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/40 text-muted-foreground sm:h-48">
+        <span className="text-3xl font-semibold">{fallbackInitial}</span>
+      </div>
+    );
+  };
+
   return <Card className={getCardClassNames()} onClick={() => onViewDetails(stockCase.id)}>
       <CardHeader className="px-4 pb-3 sm:px-6 sm:pb-4">
         <div className="flex flex-col gap-3">
@@ -234,15 +285,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
       </CardHeader>
 
       <CardContent className="flex flex-1 flex-col gap-4 px-4 pb-4 pt-0 sm:px-6 sm:pb-6">
-        {/* Stock Image - Responsive */}
-        {stockCase.image_url && <div className="relative w-full h-40 sm:h-48 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 group/image">
-            <img
-              src={stockCase.image_url}
-              alt={stockCase.company_name ? `${stockCase.company_name} illustration` : 'Investeringscase'}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105"
-            />
-            <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/10 transition-all duration-300" />
-          </div>}
+        {renderVisual()}
 
         {previewText && <p className="flex-1 text-sm text-muted-foreground line-clamp-3 sm:line-clamp-4">
             {previewText}
