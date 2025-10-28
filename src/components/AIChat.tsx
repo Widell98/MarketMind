@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAIChat } from '@/hooks/useAIChat';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ChatMessages from './chat/ChatMessages';
@@ -69,7 +69,32 @@ const AIChat = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const isPremium = subscription?.subscribed;
+  const draftStorageKey = useMemo(() => {
+    const sessionKey = currentSessionId ?? 'new';
+    const portfolioKey = portfolioId ?? 'default';
+    return `ai-chat-draft:${portfolioKey}:${sessionKey}`;
+  }, [currentSessionId, portfolioId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const storedDraft = sessionStorage.getItem(draftStorageKey);
+    if (storedDraft && !hasProcessedInitialMessage) {
+      setInput(storedDraft);
+    }
+  }, [draftStorageKey, hasProcessedInitialMessage]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (input) {
+      sessionStorage.setItem(draftStorageKey, input);
+    } else {
+      sessionStorage.removeItem(draftStorageKey);
+    }
+  }, [draftStorageKey, input]);
   useEffect(() => {
     // Auto-scroll when messages change
     messagesEndRef.current?.scrollIntoView({
@@ -79,52 +104,98 @@ const AIChat = ({
   useEffect(() => {
     // Handle initial stock and message from URL parameters - but only once
     if (initialStock && initialMessage && !hasProcessedInitialMessage) {
-      createNewSession(initialStock);
+      const startPrefilledSession = async () => {
+        await createNewSession(initialStock);
 
-      // Pre-fill the input with the initial message instead of sending it
-      const decodedMessage = decodeURIComponent(initialMessage);
-      setInput(decodedMessage);
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
-      setHasProcessedInitialMessage(true);
-    }
-  }, [initialStock, initialMessage, hasProcessedInitialMessage, createNewSession]);
-  useEffect(() => {
-    // Handle navigation state for creating new sessions - always create new session when requested
-    if (location.state?.createNewSession) {
-      const {
-        sessionName,
-        initialMessage
-      } = location.state;
-      // Always create a new session when explicitly requested
-      createNewSession(sessionName);
-
-      // Pre-fill the input with the initial message instead of sending it
-      if (initialMessage) {
-        setInput(initialMessage);
+        // Pre-fill the input with the initial message instead of sending it
+        const decodedMessage = decodeURIComponent(initialMessage);
+        setInput(decodedMessage);
         setTimeout(() => {
           inputRef.current?.focus();
         }, 100);
+        setHasProcessedInitialMessage(true);
+
+        if (location.search) {
+          const newUrl = `${location.pathname}${location.hash ?? ''}`;
+          navigate(newUrl, { replace: true, state: location.state });
+        }
+      };
+
+      void startPrefilledSession();
+    }
+  }, [
+    initialStock,
+    initialMessage,
+    hasProcessedInitialMessage,
+    createNewSession,
+    location.pathname,
+    location.search,
+    location.hash,
+    location.state,
+    navigate
+  ]);
+  const hasHandledNavigationSessionRef = useRef(false);
+
+  useEffect(() => {
+    const navigationState = location.state as {
+      createNewSession?: boolean;
+      sessionName?: string;
+      initialMessage?: string;
+    } | undefined;
+
+    if (navigationState?.createNewSession) {
+      if (hasHandledNavigationSessionRef.current) {
+        return;
       }
 
-      // Clear the state to prevent re-triggering
-      window.history.replaceState({}, document.title);
+      hasHandledNavigationSessionRef.current = true;
+
+      const {
+        sessionName,
+        initialMessage
+      } = navigationState;
+      const startNewSession = async () => {
+        await createNewSession(sessionName);
+
+        if (initialMessage) {
+          setInput(initialMessage);
+          setTimeout(() => {
+            inputRef.current?.focus();
+          }, 100);
+        }
+
+        const currentUrl = `${location.pathname}${location.search}${location.hash ?? ''}`;
+        navigate(currentUrl, { replace: true, state: {} });
+      };
+
+      void startNewSession();
+    } else {
+      hasHandledNavigationSessionRef.current = false;
     }
-  }, [location.state, createNewSession]);
+  }, [
+    location.state,
+    location.pathname,
+    location.search,
+    location.hash,
+    createNewSession,
+    navigate
+  ]);
   useEffect(() => {
     const handleCreateStockChat = (event: CustomEvent) => {
       const {
         sessionName,
         message
       } = event.detail;
+      const startChat = async () => {
+        // Create new session and pre-fill input instead of auto-sending
+        await createNewSession(sessionName);
+        setInput(message);
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
+      };
 
-      // Create new session and pre-fill input instead of auto-sending
-      createNewSession(sessionName);
-      setInput(message);
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
+      void startChat();
     };
     const handleExamplePrompt = (event: CustomEvent) => {
       const {
