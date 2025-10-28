@@ -481,52 +481,83 @@ const StockCaseDetail = () => {
   // Format case description with sections
   const formatCaseDescription = (description: string | null) => {
     if (!description) return null;
-    
-    const sections = description.split('\n\n');
+
+    const sections = description
+      .split('\n\n')
+      .map(section => section.trim())
+      .filter(Boolean);
+
     return sections.map((section, index) => {
-      // Check if section starts with common labels
-      if (section.toLowerCase().startsWith('bull case')) {
+      const normalized = section.toLowerCase();
+
+      if (normalized.startsWith('bull case')) {
+        const cleaned = section.replace(/^bull case:?\s*/i, '');
+
         return (
-          <div key={index} className="space-y-2">
-            <h3 className="text-lg font-semibold text-green-600 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
-              Bull Case
-            </h3>
-            <p className="text-foreground leading-relaxed">{section.replace(/^bull case:?\s*/i, '')}</p>
+          <div
+            key={`analysis-bull-${index}`}
+            className="rounded-3xl border border-emerald-500/30 bg-emerald-500/5 p-6 shadow-sm transition-colors hover:border-emerald-400/70"
+          >
+            <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
+              <TrendingUp className="h-5 w-5" />
+              <h3 className="text-lg font-semibold tracking-tight">Bull Case</h3>
+            </div>
+            <p
+              className="mt-3 text-sm leading-relaxed text-foreground/90 whitespace-pre-line lg:text-base"
+              dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(cleaned) }}
+            />
           </div>
         );
       }
-      
-      if (section.toLowerCase().startsWith('bear case')) {
+
+      if (normalized.startsWith('bear case')) {
+        const cleaned = section.replace(/^bear case:?\s*/i, '');
+
         return (
-          <div key={index} className="space-y-2">
-            <h3 className="text-lg font-semibold text-red-600 flex items-center gap-2">
-              <TrendingDown className="w-5 h-5" />
-              Bear Case
-            </h3>
-            <p className="text-foreground leading-relaxed">{section.replace(/^bear case:?\s*/i, '')}</p>
+          <div
+            key={`analysis-bear-${index}`}
+            className="rounded-3xl border border-rose-500/30 bg-rose-500/5 p-6 shadow-sm transition-colors hover:border-rose-400/70"
+          >
+            <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
+              <TrendingDown className="h-5 w-5" />
+              <h3 className="text-lg font-semibold tracking-tight">Bear Case</h3>
+            </div>
+            <p
+              className="mt-3 text-sm leading-relaxed text-foreground/90 whitespace-pre-line lg:text-base"
+              dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(cleaned) }}
+            />
           </div>
         );
       }
-      
-      if (section.toLowerCase().includes('risk')) {
+
+      if (normalized.includes('risk')) {
         return (
-          <div key={index} className="space-y-2">
-            <h3 className="text-lg font-semibold text-orange-600 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5" />
-              Risknivå
-            </h3>
-            <p className="text-foreground leading-relaxed">{section}</p>
+          <div
+            key={`analysis-risk-${index}`}
+            className="rounded-3xl border border-amber-500/40 bg-amber-500/5 p-6 shadow-sm transition-colors hover:border-amber-400/70"
+          >
+            <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="h-5 w-5" />
+              <h3 className="text-lg font-semibold tracking-tight">Risknivå</h3>
+            </div>
+            <p
+              className="mt-3 text-sm leading-relaxed text-foreground/90 whitespace-pre-line lg:text-base"
+              dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(section) }}
+            />
           </div>
         );
       }
-      
+
       return (
-        <p 
-          key={index} 
-          className="text-foreground leading-relaxed mb-4"
-          dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(section) }}
-        />
+        <div
+          key={`analysis-generic-${index}`}
+          className="rounded-3xl border border-border/60 bg-card/70 p-6 shadow-sm backdrop-blur-sm transition-colors hover:border-border"
+        >
+          <p
+            className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line lg:text-base"
+            dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(section) }}
+          />
+        </div>
       );
     });
   };
@@ -626,18 +657,65 @@ const StockCaseDetail = () => {
     return <span className="text-muted-foreground">—</span>;
   };
 
+  const overviewHighlightStats: FinancialStat[] = [];
+
+  if (currentPriceDisplay) {
+    overviewHighlightStats.push({
+      key: 'highlight-current-price',
+      label: 'Aktuell kurs',
+      icon: LineChart,
+      value: currentPriceDisplay,
+    });
+  }
+
+  if (targetPriceDisplay) {
+    overviewHighlightStats.push({
+      key: 'highlight-target-price',
+      label: 'Målkurs',
+      icon: Target,
+      value: targetPriceDisplay,
+    });
+  }
+
+  if (resolvedMarketCap) {
+    overviewHighlightStats.push({
+      key: 'highlight-market-cap',
+      label: 'Börsvärde',
+      icon: Coins,
+      valueHtml: resolvedMarketCap,
+    });
+  }
+
+  if (resolvedPeRatio) {
+    overviewHighlightStats.push({
+      key: 'highlight-pe',
+      label: 'P/E-tal',
+      icon: BarChart3,
+      valueHtml: resolvedPeRatio,
+    });
+  }
+
+  if (resolvedDividendYield) {
+    overviewHighlightStats.push({
+      key: 'highlight-dividend',
+      label: 'Utdelning',
+      icon: Percent,
+      valueHtml: resolvedDividendYield,
+    });
+  }
+
   const renderStatsList = (stats: FinancialStat[]) => {
     if (!stats.length) {
       return null;
     }
 
     return (
-      <dl className="space-y-2.5">
+      <dl className="grid gap-3">
         {stats.map((stat) => {
           const IconComponent = stat.icon;
           const valueClassName = stat.valueClassName
-            ? cn('font-semibold text-foreground', stat.valueClassName)
-            : 'text-base font-semibold text-foreground';
+            ? cn('font-semibold', stat.valueClassName)
+            : 'text-lg font-semibold text-foreground';
 
           return (
             <div key={stat.key} className="flex flex-col gap-1.5">
@@ -1100,8 +1178,10 @@ const StockCaseDetail = () => {
             {/* Combined Overview Card - only show if there are financial metrics */}
             {shouldShowFinancialOverview && (
               <Card>
-                <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <CardTitle>Finansiell Översikt</CardTitle>
+                <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <CardTitle className="text-xl font-semibold tracking-tight lg:text-2xl">
+                    Finansiell Översikt
+                  </CardTitle>
                   {overviewLogoSrc ? (
                     <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/40 px-3 py-2">
                       <img
@@ -1124,10 +1204,34 @@ const StockCaseDetail = () => {
                     </div>
                   ) : null}
                 </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <CardContent className="space-y-6">
+                  {overviewHighlightStats.length > 0 && (
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
+                      {overviewHighlightStats.map(highlight => {
+                        const IconComponent = highlight.icon;
+                        return (
+                          <div
+                            key={highlight.key}
+                            className="group rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/40 p-5 shadow-sm transition-colors hover:border-primary/50"
+                          >
+                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                              {IconComponent ? (
+                                <IconComponent className="h-4 w-4 text-primary/70" />
+                              ) : null}
+                              <span>{highlight.label}</span>
+                            </div>
+                            <div className="mt-2 text-2xl font-semibold leading-tight tracking-tight text-foreground text-balance">
+                              {renderStatValue(highlight)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
                     {hasPricingMetrics && (
-                      <div className="flex flex-col gap-3 rounded-2xl border border-border/50 bg-card/80 p-4">
+                      <div className="flex h-full flex-col gap-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                           Pris &amp; kursinformation
                         </p>
@@ -1136,7 +1240,7 @@ const StockCaseDetail = () => {
                     )}
 
                     {hasCompanyDetails && (
-                      <div className="flex flex-col gap-3 rounded-2xl border border-border/50 bg-card/80 p-4">
+                      <div className="flex h-full flex-col gap-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                           Bolagsinformation
                         </p>
@@ -1145,7 +1249,7 @@ const StockCaseDetail = () => {
                     )}
 
                     {hasSheetFundamentals && (
-                      <div className="flex flex-col gap-3 rounded-2xl border border-border/50 bg-card/80 p-4">
+                      <div className="flex h-full flex-col gap-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                           Nyckeltal från Google Sheets
                         </p>
@@ -1161,10 +1265,12 @@ const StockCaseDetail = () => {
             {displayedAnalysisDescription && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Analys</CardTitle>
+                  <CardTitle className="text-xl font-semibold tracking-tight lg:text-2xl">Analys</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {formatCaseDescription(displayedAnalysisDescription)}
+                <CardContent>
+                  <div className="grid gap-5 xl:grid-cols-2 2xl:grid-cols-3">
+                    {formatCaseDescription(displayedAnalysisDescription)}
+                  </div>
                 </CardContent>
               </Card>
             )}
