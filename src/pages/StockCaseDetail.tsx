@@ -341,22 +341,10 @@ const StockCaseDetail = () => {
   const hasRealImage = Boolean(currentVersion?.image_url);
   const displayImageSrc = currentVersion?.image_url ?? null;
 
-  const imageWrapperClasses = cn(
-    'relative group mx-auto w-full rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300',
-    isAiGeneratedImage ? 'max-w-xl' : 'max-w-4xl'
-  );
-
-  const imageDisplayWrapperClasses = cn(
-    'overflow-hidden rounded-lg transition-all duration-300',
-    isAiGeneratedImage ? 'bg-muted/70 p-4' : ''
-  );
-
-  const imageElementClasses = cn(
-    'w-full h-auto transition-all duration-300',
-    hasRealImage ? 'cursor-pointer' : 'cursor-default',
-    isAiGeneratedImage
-      ? 'max-h-[280px] object-contain'
-      : 'max-h-[560px] object-cover'
+  const logoImageClasses = cn(
+    'block h-24 w-24 rounded-full border border-border/60 shadow-sm transition-transform duration-300',
+    hasRealImage ? 'cursor-pointer hover:scale-[1.03]' : 'cursor-default',
+    isAiGeneratedImage ? 'object-contain bg-muted/60 p-2' : 'object-cover'
   );
 
   const normalizedCaseTitle = normalizeStockCaseTitle(stockCase.title, stockCase.company_name);
@@ -850,129 +838,101 @@ const StockCaseDetail = () => {
             )}
           </div>
 
-          {/* Graph Section with Carousel */}
+          {/* Company logo & version controls */}
           {displayImageSrc && (
-            <div className="space-y-4">
-              {/* Version info and controls */}
-              <div className="flex items-center justify-between min-h-[1.5rem]">
-                <div className="flex items-center gap-2 flex-1" aria-hidden="true" />
-                
-                {canDeleteCurrent && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => setUpdateToDelete(currentVersion.id)} 
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="flex items-center justify-center gap-3">
+                {hasMultipleVersions && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={goToPrevious}
+                    className="h-9 w-9 rounded-full border border-border/60"
+                    aria-label="Visa föregående version"
                   >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    Ta bort version
+                    <ChevronLeft className="h-4 w-4" />
                   </Button>
                 )}
-              </div>
 
-              <div className={imageWrapperClasses}>
-                <div className={imageDisplayWrapperClasses}>
+                <div className="relative flex flex-col items-center">
                   <img
                     src={displayImageSrc}
                     alt={displayTitle}
-                    className={imageElementClasses}
+                    className={logoImageClasses}
                     onClick={() => {
                       if (currentVersion.image_url) {
                         window.open(currentVersion.image_url, '_blank');
                       }
                     }}
                   />
+
+                  {currentImageIndex > 0 && (
+                    <Badge variant="secondary" className="absolute -top-2 -left-2 text-[10px]">
+                      <History className="mr-1 h-3 w-3" />
+                      Historik
+                    </Badge>
+                  )}
+
+                  {isAiGeneratedImage && (
+                    <Badge variant="secondary" className="absolute -bottom-2 -left-2 text-[10px]">
+                      <Brain className="mr-1 h-3 w-3" />
+                      AI
+                    </Badge>
+                  )}
                 </div>
 
-                {/* Navigation arrows */}
                 {hasMultipleVersions && (
-                  <>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={goToPrevious}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/80 text-white border-0 opacity-80 hover:opacity-100 transition-opacity"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={goToNext}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/80 text-white border-0 opacity-80 hover:opacity-100 transition-opacity"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </>
-                )}
-
-                {/* Expand button */}
-                <div className="absolute top-4 right-4">
                   <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => window.open(currentVersion.image_url, '_blank')}
-                    className="bg-black/70 hover:bg-black/80 text-white border-0"
+                    variant="ghost"
+                    size="icon"
+                    onClick={goToNext}
+                    className="h-9 w-9 rounded-full border border-border/60"
+                    aria-label="Visa nästa version"
                   >
-                    <Eye className="w-4 h-4 mr-1" />
-                    Expandera
+                    <ChevronRight className="h-4 w-4" />
                   </Button>
-                </div>
-
-                {/* Version indicator */}
-                {currentImageIndex > 0 && (
-                  <div className="absolute top-4 left-4">
-                    <Badge variant="secondary" className="bg-black/70 text-white">
-                      <History className="w-3 h-3 mr-1" />
-                      Historisk
-                    </Badge>
-                  </div>
-                )}
-
-                {isAiGeneratedImage && (
-                  <div className="absolute bottom-4 left-4">
-                    <Badge variant="secondary" className="bg-black/70 text-white">
-                      <Brain className="w-3 h-3 mr-1" />
-                      AI-genererad bild
-                    </Badge>
-                  </div>
                 )}
               </div>
 
-              {hasMultipleVersions && (
-                <div className="flex justify-center mt-2">
-                  <Badge variant="outline" className="text-xs">
-                    {currentImageIndex + 1} av {timeline.length}
-                  </Badge>
-                </div>
-              )}
+              <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
+                <Badge variant="outline" className="text-[11px]">
+                  Uppdaterad {formatDistanceToNow(new Date(currentVersion.created_at), {
+                    addSuffix: true,
+                    locale: sv
+                  })}
+                </Badge>
 
-              {/* Dots indicator */}
+                {hasMultipleVersions && (
+                  <Badge variant="outline" className="text-[11px]">
+                    Version {currentImageIndex + 1} av {timeline.length}
+                  </Badge>
+                )}
+              </div>
+
               {hasMultipleVersions && (
                 <div className="flex justify-center gap-2">
                   {timeline.map((_, index) => (
                     <button
                       key={index}
                       onClick={() => goToVersion(index)}
-                      className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                        currentImageIndex === index 
-                          ? 'bg-primary scale-125' 
+                      className={`h-2 w-2 rounded-full transition-all duration-200 ${
+                        currentImageIndex === index
+                          ? 'bg-primary scale-125'
                           : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
                       }`}
+                      aria-label={`Visa version ${index + 1}`}
                     />
                   ))}
                 </div>
               )}
 
-              {/* Quick version selector */}
               {hasMultipleVersions && (
-                <div className="flex gap-2 overflow-x-auto pb-2">
+                <div className="flex gap-2 overflow-x-auto pb-1">
                   {timeline.map((version, index) => (
                     <button
                       key={version.id}
                       onClick={() => goToVersion(index)}
-                      className={`flex-shrink-0 px-3 py-2 rounded-md text-xs transition-colors ${
+                      className={`flex-shrink-0 rounded-md px-3 py-2 text-xs transition-colors ${
                         currentImageIndex === index
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-muted hover:bg-muted/80'
@@ -983,17 +943,43 @@ const StockCaseDetail = () => {
                   ))}
                 </div>
               )}
-              
-              {/* Graph Caption */}
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground italic">
+
+              <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
+                {hasRealImage && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-3 text-xs"
+                    onClick={() => {
+                      if (currentVersion.image_url) {
+                        window.open(currentVersion.image_url, '_blank');
+                      }
+                    }}
+                  >
+                    <Eye className="mr-1 h-3 w-3" />
+                    Öppna bild
+                  </Button>
+                )}
+
+                <span>
                   Teknisk analys: {stockCase.company_name} – Timeframe: {stockCase.timeframe || 'Ej specificerad'}
                   {stockCase.sector && ` • Sektor: ${stockCase.sector}`}
-                </p>
+                </span>
               </div>
+
+              {canDeleteCurrent && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setUpdateToDelete(currentVersion.id)}
+                  className="text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+                >
+                  <Trash2 className="mr-1 h-3 w-3" />
+                  Ta bort version
+                </Button>
+              )}
             </div>
           )}
-
           {/* CTA Buttons repositioned under the visual */}
           <div className="flex flex-wrap items-center justify-center gap-4 py-4">
             <Button variant="outline" onClick={handleShare} className="flex items-center gap-2 text-lg px-6 py-3">
