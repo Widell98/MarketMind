@@ -134,18 +134,29 @@ const AIChat = ({
     location.state,
     navigate
   ]);
+  const hasHandledNavigationSessionRef = useRef(false);
+
   useEffect(() => {
-    // Handle navigation state for creating new sessions - always create new session when requested
-    if (location.state?.createNewSession) {
+    const navigationState = location.state as {
+      createNewSession?: boolean;
+      sessionName?: string;
+      initialMessage?: string;
+    } | undefined;
+
+    if (navigationState?.createNewSession) {
+      if (hasHandledNavigationSessionRef.current) {
+        return;
+      }
+
+      hasHandledNavigationSessionRef.current = true;
+
       const {
         sessionName,
         initialMessage
-      } = location.state;
+      } = navigationState;
       const startNewSession = async () => {
-        // Always create a new session when explicitly requested
         await createNewSession(sessionName);
 
-        // Pre-fill the input with the initial message instead of sending it
         if (initialMessage) {
           setInput(initialMessage);
           setTimeout(() => {
@@ -153,12 +164,13 @@ const AIChat = ({
           }, 100);
         }
 
-        // Clear the state to prevent re-triggering
         const currentUrl = `${location.pathname}${location.search}${location.hash ?? ''}`;
         navigate(currentUrl, { replace: true, state: {} });
       };
 
       void startNewSession();
+    } else {
+      hasHandledNavigationSessionRef.current = false;
     }
   }, [
     location.state,
