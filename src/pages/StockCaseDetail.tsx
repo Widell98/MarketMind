@@ -255,7 +255,7 @@ const StockCaseDetail = () => {
                 <div className="h-64 bg-gray-200 rounded"></div>
                 <div className="h-32 bg-gray-200 rounded"></div>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-4 xl:space-y-5">
                 <div className="h-48 bg-gray-200 rounded"></div>
                 <div className="h-32 bg-gray-200 rounded"></div>
               </div>
@@ -341,23 +341,18 @@ const StockCaseDetail = () => {
   const hasRealImage = Boolean(currentVersion?.image_url);
   const displayImageSrc = currentVersion?.image_url ?? null;
 
-  const imageWrapperClasses = cn(
-    'relative group mx-auto w-full rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300',
-    isAiGeneratedImage ? 'max-w-xl' : 'max-w-4xl'
+  const logoImageClasses = cn(
+    'block h-24 w-24 rounded-full border border-border/60 shadow-sm transition-transform duration-300',
+    hasRealImage ? 'cursor-pointer hover:scale-[1.03]' : 'cursor-default',
+    isAiGeneratedImage ? 'object-contain bg-muted/60 p-2' : 'object-cover'
   );
 
-  const imageDisplayWrapperClasses = cn(
-    'overflow-hidden rounded-lg transition-all duration-300',
-    isAiGeneratedImage ? 'bg-muted/70 p-4' : ''
-  );
+  const fallbackLogoClasses = 'flex h-24 w-24 items-center justify-center rounded-full border border-border/60 bg-gradient-to-br from-primary/15 via-primary/5 to-primary/10 text-2xl font-bold uppercase text-primary shadow-sm';
 
-  const imageElementClasses = cn(
-    'w-full h-auto transition-all duration-300',
-    hasRealImage ? 'cursor-pointer' : 'cursor-default',
-    isAiGeneratedImage
-      ? 'max-h-[280px] object-contain'
-      : 'max-h-[560px] object-cover'
-  );
+  const heroContainerClasses =
+    'relative overflow-hidden rounded-3xl border border-border/60 bg-card/60 p-6 shadow-sm sm:p-8 xl:p-10';
+
+  const heroActionButtonClassName = 'w-full justify-center gap-2 rounded-full border-border/60 text-sm font-semibold transition hover:-translate-y-0.5 focus-visible:ring-offset-2 sm:w-auto sm:text-base';
 
   const normalizedCaseTitle = normalizeStockCaseTitle(stockCase.title, stockCase.company_name);
   const displayTitle = normalizeStockCaseTitle(currentVersion?.title, normalizedCaseTitle) || normalizedCaseTitle;
@@ -487,52 +482,80 @@ const StockCaseDetail = () => {
   // Format case description with sections
   const formatCaseDescription = (description: string | null) => {
     if (!description) return null;
-    
-    const sections = description.split('\n\n');
+
+    const sections = description
+      .split('\n\n')
+      .map(section => section.trim())
+      .filter(Boolean);
+
     return sections.map((section, index) => {
-      // Check if section starts with common labels
-      if (section.toLowerCase().startsWith('bull case')) {
+      const normalized = section.toLowerCase();
+
+      if (normalized.startsWith('bull case')) {
+        const cleaned = section.replace(/^bull case:?\s*/i, '');
+
         return (
-          <div key={index} className="space-y-2">
-            <h3 className="text-lg font-semibold text-green-600 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
-              Bull Case
-            </h3>
-            <p className="text-foreground leading-relaxed">{section.replace(/^bull case:?\s*/i, '')}</p>
-          </div>
+          <article
+            key={`analysis-bull-${index}`}
+            className="space-y-3 rounded-3xl border border-emerald-500/30 bg-emerald-500/5 p-6 shadow-sm"
+          >
+            <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
+              <TrendingUp className="h-5 w-5" />
+              <h3 className="text-lg font-semibold tracking-tight">Bull Case</h3>
+            </div>
+            <p
+              className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line lg:text-base"
+              dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(cleaned) }}
+            />
+          </article>
         );
       }
-      
-      if (section.toLowerCase().startsWith('bear case')) {
+
+      if (normalized.startsWith('bear case')) {
+        const cleaned = section.replace(/^bear case:?\s*/i, '');
+
         return (
-          <div key={index} className="space-y-2">
-            <h3 className="text-lg font-semibold text-red-600 flex items-center gap-2">
-              <TrendingDown className="w-5 h-5" />
-              Bear Case
-            </h3>
-            <p className="text-foreground leading-relaxed">{section.replace(/^bear case:?\s*/i, '')}</p>
-          </div>
+          <article
+            key={`analysis-bear-${index}`}
+            className="space-y-3 rounded-3xl border border-rose-500/30 bg-rose-500/5 p-6 shadow-sm"
+          >
+            <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
+              <TrendingDown className="h-5 w-5" />
+              <h3 className="text-lg font-semibold tracking-tight">Bear Case</h3>
+            </div>
+            <p
+              className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line lg:text-base"
+              dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(cleaned) }}
+            />
+          </article>
         );
       }
-      
-      if (section.toLowerCase().includes('risk')) {
+
+      if (normalized.includes('risk')) {
         return (
-          <div key={index} className="space-y-2">
-            <h3 className="text-lg font-semibold text-orange-600 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5" />
-              Risknivå
-            </h3>
-            <p className="text-foreground leading-relaxed">{section}</p>
-          </div>
+          <article
+            key={`analysis-risk-${index}`}
+            className="space-y-3 rounded-3xl border border-amber-500/40 bg-amber-500/5 p-6 shadow-sm"
+          >
+            <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="h-5 w-5" />
+              <h3 className="text-lg font-semibold tracking-tight">Risknivå</h3>
+            </div>
+            <p
+              className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line lg:text-base"
+              dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(section) }}
+            />
+          </article>
         );
       }
-      
+
       return (
-        <p 
-          key={index} 
-          className="text-foreground leading-relaxed mb-4"
-          dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(section) }}
-        />
+        <div key={`analysis-generic-${index}`} className="space-y-3">
+          <p
+            className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line lg:text-base"
+            dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(section) }}
+          />
+        </div>
       );
     });
   };
@@ -632,18 +655,70 @@ const StockCaseDetail = () => {
     return <span className="text-muted-foreground">—</span>;
   };
 
+  const currentPriceDisplay = formatCasePrice(stockCase.current_price);
+  const sheetPriceDisplay = formatSheetPrice(sheetMetrics?.price ?? null);
+  const targetPriceDisplay = !isAiGeneratedCase ? formatCasePrice(stockCase.target_price) : null;
+  const stopLossDisplay = !isAiGeneratedCase ? formatCasePrice(stockCase.stop_loss) : null;
+
+  const overviewHighlightStats: FinancialStat[] = [];
+
+  if (currentPriceDisplay) {
+    overviewHighlightStats.push({
+      key: 'highlight-current-price',
+      label: 'Aktuell kurs',
+      icon: LineChart,
+      value: currentPriceDisplay,
+    });
+  }
+
+  if (targetPriceDisplay) {
+    overviewHighlightStats.push({
+      key: 'highlight-target-price',
+      label: 'Målkurs',
+      icon: Target,
+      value: targetPriceDisplay,
+    });
+  }
+
+  if (resolvedMarketCap) {
+    overviewHighlightStats.push({
+      key: 'highlight-market-cap',
+      label: 'Börsvärde',
+      icon: Coins,
+      valueHtml: resolvedMarketCap,
+    });
+  }
+
+  if (resolvedPeRatio) {
+    overviewHighlightStats.push({
+      key: 'highlight-pe',
+      label: 'P/E-tal',
+      icon: BarChart3,
+      valueHtml: resolvedPeRatio,
+    });
+  }
+
+  if (resolvedDividendYield) {
+    overviewHighlightStats.push({
+      key: 'highlight-dividend',
+      label: 'Utdelning',
+      icon: Percent,
+      valueHtml: resolvedDividendYield,
+    });
+  }
+
   const renderStatsList = (stats: FinancialStat[]) => {
     if (!stats.length) {
       return null;
     }
 
     return (
-      <dl className="space-y-2.5">
+      <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {stats.map((stat) => {
           const IconComponent = stat.icon;
           const valueClassName = stat.valueClassName
-            ? cn('font-semibold text-foreground', stat.valueClassName)
-            : 'text-base font-semibold text-foreground';
+            ? cn('font-semibold', stat.valueClassName)
+            : 'text-lg font-semibold text-foreground';
 
           return (
             <div key={stat.key} className="flex flex-col gap-1.5">
@@ -661,11 +736,6 @@ const StockCaseDetail = () => {
       </dl>
     );
   };
-
-  const currentPriceDisplay = formatCasePrice(stockCase.current_price);
-  const sheetPriceDisplay = formatSheetPrice(sheetMetrics?.price ?? null);
-  const targetPriceDisplay = !isAiGeneratedCase ? formatCasePrice(stockCase.target_price) : null;
-  const stopLossDisplay = !isAiGeneratedCase ? formatCasePrice(stockCase.stop_loss) : null;
 
   const pricingStats: FinancialStat[] = [];
 
@@ -777,13 +847,36 @@ const StockCaseDetail = () => {
   const overviewLogoSrc = stockCase.image_url || currentVersion?.image_url || null;
   const overviewCompanyName = stockCase.company_name || displayTitle;
   const overviewTicker = stockCase.ticker ? stockCase.ticker.toUpperCase() : null;
+  const fallbackLogoLabel = (() => {
+    const base = (overviewCompanyName || displayTitle || '').trim();
+
+    if (!base) {
+      return null;
+    }
+
+    const words = base.split(/\s+/).filter(Boolean);
+
+    if (words.length === 0) {
+      return null;
+    }
+
+    if (words.length === 1) {
+      return words[0].slice(0, 2).toUpperCase();
+    }
+
+    const firstInitial = words[0]?.[0] ?? '';
+    const lastInitial = words[words.length - 1]?.[0] ?? '';
+
+    return `${firstInitial}${lastInitial}`.trim().toUpperCase() || null;
+  })();
+  const shouldShowLogoPanel = Boolean(displayImageSrc) || Boolean(fallbackLogoLabel);
   const showCreatorCard = Boolean(stockCase.profiles);
   const showLoginPromptCard = !user;
   const hasSidebarContent = showCreatorCard || showLoginPromptCard;
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto space-y-10 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1300px] space-y-12 px-4 sm:px-6 lg:px-8 xl:max-w-[1500px] xl:px-12 2xl:max-w-[1680px] 2xl:px-16">
         {/* Header with Navigation */}
         <div className="flex items-center gap-4">
           <Button variant="outline" onClick={() => navigate('/discover')}>
@@ -793,282 +886,284 @@ const StockCaseDetail = () => {
         </div>
 
         {/* Hero Section with Improved Hierarchy */}
-        <div className="space-y-6">
-          {/* Title and Metadata */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-center gap-3">
-              <h1 className="text-5xl font-bold tracking-tight text-center">{displayTitle}</h1>
-              {stockCase.ai_generated === true && (
-                <Badge variant="outline" className="bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
-                  <Brain className="w-4 h-4 mr-1" />
-                  AI
-                </Badge>
+        <section className={heroContainerClasses}>
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+            <div className="absolute -inset-x-24 -top-40 h-64 bg-gradient-to-b from-primary/20 via-primary/10 to-transparent blur-3xl" />
+            <div className="absolute bottom-[-20%] right-[-10%] h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
+          </div>
+          <div className="relative flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between xl:gap-12">
+            <div className="flex-1 space-y-6 text-center lg:text-left xl:space-y-8">
+              <div className="space-y-4 xl:space-y-5">
+                <div className="flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+                  <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{displayTitle}</h1>
+                  {stockCase.ai_generated === true && (
+                    <Badge variant="outline" className="bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+                      <Brain className="w-4 h-4 mr-1" />
+                      AI
+                    </Badge>
+                  )}
+                </div>
+                <div className="space-y-2 text-lg text-muted-foreground">
+                  <p className="text-center lg:text-left">
+                    Case av{' '}
+                    <span className="font-semibold text-foreground">
+                      {stockCase.profiles?.display_name
+                        || stockCase.profiles?.username
+                        || (stockCase.ai_generated ? 'MarketMind-AI' : 'Okänd')}
+                    </span>
+                    {' • '}
+                    <span>
+                      {formatDistanceToNow(new Date(stockCase.created_at), {
+                        addSuffix: true,
+                        locale: sv
+                      })}
+                    </span>
+                    {stockCase.case_categories && (
+                      <>
+                        {' • '}
+                        <span
+                          className="font-medium"
+                          style={{ color: stockCase.case_categories.color }}
+                        >
+                          {stockCase.case_categories.name}
+                        </span>
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+              {performance !== null && (
+                <div className="flex justify-center lg:justify-start">
+                  <Badge
+                    variant={isPositivePerformance ? "default" : "destructive"}
+                    className="px-6 py-2 text-xl"
+                  >
+                    {isPositivePerformance ? <TrendingUp className="w-5 h-5 mr-2" /> : <TrendingDown className="w-5 h-5 mr-2" />}
+                    {performance > 0 ? '+' : ''}{performance.toFixed(1)}%
+                  </Badge>
+                </div>
+              )}
+              <div className="flex flex-wrap justify-center gap-3 sm:gap-4 lg:justify-start xl:gap-5">
+                <Button
+                  variant="outline"
+                  onClick={handleShare}
+                  className={cn(heroActionButtonClassName, 'border-border/70 bg-background/70 px-5 py-3')}
+                >
+                  <Share2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                  Dela
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleDiscussWithAI}
+                  className={cn(heroActionButtonClassName, 'border-border/70 bg-background/70 px-5 py-3')}
+                >
+                  <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5" />
+                  Diskutera i AI-chatten
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleLikeClick}
+                  disabled={likesLoading}
+                  className={cn(heroActionButtonClassName, 'border-border/70 bg-background/70 px-5 py-3')}
+                >
+                  <Heart className={cn('h-4 w-4 sm:h-5 sm:w-5', isLiked ? 'fill-current text-red-500' : '')} />
+                  {likeCount} Gilla
+                </Button>
+                {user && (
+                  <SaveOpportunityButton
+                    itemType="stock_case"
+                    itemId={stockCase.id}
+                    itemTitle={displayTitle}
+                    onSaveSuccess={handleSaveSuccess}
+                    size="lg"
+                    className={cn(heroActionButtonClassName, 'border-primary/50 bg-primary px-5 py-3 text-primary-foreground hover:bg-primary/90 sm:min-w-[180px]')}
+                  />
+                )}
+                {user && user.id !== stockCase.user_id && stockCase.user_id && (
+                  <Button
+                    variant="outline"
+                    onClick={handleFollowClick}
+                    className={cn(heroActionButtonClassName, 'border-border/70 bg-background/70 px-5 py-3')}
+                  >
+                    <UserPlus className="h-4 w-4 sm:h-5 sm:w-5" />
+                    {isFollowing(stockCase.user_id) ? 'Sluta följ' : 'Följ författare'}
+                  </Button>
+                )}
+                {isOwner && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowUpdateDialog(true)}
+                    className={cn(heroActionButtonClassName, 'border-border/70 bg-background/70 px-5 py-3')}
+                  >
+                    <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+                    Lägg till uppdatering
+                  </Button>
+                )}
+              </div>
+              {!user && (
+                <div className="mt-2 rounded-2xl border border-dashed border-border/60 bg-muted/40 p-4 text-sm text-muted-foreground lg:max-w-xl">
+                  <p className="mb-3">Logga in för att gilla, spara och kommentera.</p>
+                  <Button onClick={() => navigate('/auth')} className="w-full justify-center rounded-full" size="sm">
+                    Logga in
+                  </Button>
+                </div>
               )}
             </div>
-            
-            {/* Subtitle with author, date, and category */}
-            <div className="text-center text-lg text-muted-foreground space-y-2">
-              <p>
-                Case av{' '}
-                <span className="font-semibold text-foreground">
-                  {stockCase.profiles?.display_name
-                    || stockCase.profiles?.username
-                    || (stockCase.ai_generated ? 'MarketMind-AI' : 'Okänd')}
-                </span>
-                {' • '}
-                <span>
-                  {formatDistanceToNow(new Date(stockCase.created_at), {
-                    addSuffix: true,
-                    locale: sv
-                  })}
-                </span>
-                {stockCase.case_categories && (
-                  <>
-                    {' • '}
-                    <span 
-                      className="font-medium"
-                      style={{ color: stockCase.case_categories.color }}
+            {shouldShowLogoPanel && (
+              <div className="flex flex-col items-center gap-4 lg:items-end xl:gap-6">
+                <div className="flex items-center justify-center gap-3 lg:justify-end">
+                  {hasMultipleVersions && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={goToPrevious}
+                      className="h-9 w-9 rounded-full border border-border/60 bg-background/70 backdrop-blur"
+                      aria-label="Visa föregående version"
                     >
-                      {stockCase.case_categories.name}
-                    </span>
-                  </>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <div className="relative flex flex-col items-center">
+                    {hasRealImage ? (
+                      <img
+                        src={displayImageSrc ?? undefined}
+                        alt={displayTitle}
+                        className={logoImageClasses}
+                        onClick={() => {
+                          if (currentVersion.image_url) {
+                            window.open(currentVersion.image_url, '_blank');
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className={fallbackLogoClasses} aria-hidden="true">
+                        {fallbackLogoLabel}
+                      </div>
+                    )}
+
+                    {currentImageIndex > 0 && (
+                      <Badge variant="secondary" className="absolute -top-2 -left-2 text-[10px]">
+                        <History className="mr-1 h-3 w-3" />
+                        Historik
+                      </Badge>
+                    )}
+
+                    {isAiGeneratedImage && (
+                      <Badge variant="secondary" className="absolute -bottom-2 -right-2 text-[10px]">
+                        <Brain className="mr-1 h-3 w-3" />
+                        AI
+                      </Badge>
+                    )}
+                  </div>
+
+                  {hasMultipleVersions && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={goToNext}
+                      className="h-9 w-9 rounded-full border border-border/60 bg-background/70 backdrop-blur"
+                      aria-label="Visa nästa version"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground lg:justify-end xl:gap-3">
+                  <Badge variant="outline" className="text-[11px]">
+                    Uppdaterad {formatDistanceToNow(new Date(currentVersion.created_at), {
+                      addSuffix: true,
+                      locale: sv
+                    })}
+                  </Badge>
+
+                  {hasMultipleVersions && (
+                    <Badge variant="outline" className="text-[11px]">
+                      Version {currentImageIndex + 1} av {timeline.length}
+                    </Badge>
+                  )}
+                </div>
+
+                {hasMultipleVersions && (
+                  <div className="flex justify-center gap-2 lg:justify-end xl:gap-3">
+                    {timeline.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => goToVersion(index)}
+                        className={`h-2 w-2 rounded-full transition-all duration-200 ${
+                          currentImageIndex === index
+                            ? 'scale-125 bg-primary'
+                            : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                        }`}
+                        aria-label={`Visa version ${index + 1}`}
+                      />
+                    ))}
+                  </div>
                 )}
-              </p>
-            </div>
 
-            {/* Performance Badge */}
-            {performance !== null && (
-              <div className="flex justify-center">
-                <Badge 
-                  variant={isPositivePerformance ? "default" : "destructive"} 
-                  className="text-xl px-6 py-2"
-                >
-                  {isPositivePerformance ? <TrendingUp className="w-5 h-5 mr-2" /> : <TrendingDown className="w-5 h-5 mr-2" />}
-                  {performance > 0 ? '+' : ''}{performance.toFixed(1)}%
-                </Badge>
-              </div>
-            )}
-          </div>
+                {hasMultipleVersions && (
+                  <div className="flex gap-2 overflow-x-auto pb-1 lg:justify-end xl:gap-3">
+                    {timeline.map((version, index) => (
+                      <button
+                        key={version.id}
+                        onClick={() => goToVersion(index)}
+                        className={`flex-shrink-0 rounded-md px-3 py-2 text-xs transition-colors ${
+                          currentImageIndex === index
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted hover:bg-muted/80'
+                        }`}
+                      >
+                        {index === 0 ? 'Nuvarande' : `Historik ${index}`}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
-          {/* Graph Section with Carousel */}
-          {displayImageSrc && (
-            <div className="space-y-4">
-              {/* Version info and controls */}
-              <div className="flex items-center justify-between min-h-[1.5rem]">
-                <div className="flex items-center gap-2 flex-1" aria-hidden="true" />
-                
+                <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground lg:justify-end">
+                  {hasRealImage && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-3 text-xs"
+                      onClick={() => {
+                        if (currentVersion.image_url) {
+                          window.open(currentVersion.image_url, '_blank');
+                        }
+                      }}
+                    >
+                      <Eye className="mr-1 h-3 w-3" />
+                      Öppna bild
+                    </Button>
+                  )}
+
+                  <span className="max-w-[280px] text-center leading-snug lg:text-right">
+                    Teknisk analys: {stockCase.company_name} – Timeframe: {stockCase.timeframe || 'Ej specificerad'}
+                    {stockCase.sector && ` • Sektor: ${stockCase.sector}`}
+                  </span>
+                </div>
+
                 {canDeleteCurrent && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => setUpdateToDelete(currentVersion.id)} 
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setUpdateToDelete(currentVersion.id)}
+                    className="text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
                   >
-                    <Trash2 className="w-4 h-4 mr-1" />
+                    <Trash2 className="mr-1 h-3 w-3" />
                     Ta bort version
                   </Button>
                 )}
               </div>
-
-              <div className={imageWrapperClasses}>
-                <div className={imageDisplayWrapperClasses}>
-                  <img
-                    src={displayImageSrc}
-                    alt={displayTitle}
-                    className={imageElementClasses}
-                    onClick={() => {
-                      if (currentVersion.image_url) {
-                        window.open(currentVersion.image_url, '_blank');
-                      }
-                    }}
-                  />
-                </div>
-
-                {/* Navigation arrows */}
-                {hasMultipleVersions && (
-                  <>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={goToPrevious}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/80 text-white border-0 opacity-80 hover:opacity-100 transition-opacity"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={goToNext}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/80 text-white border-0 opacity-80 hover:opacity-100 transition-opacity"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </>
-                )}
-
-                {/* Expand button */}
-                <div className="absolute top-4 right-4">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => window.open(currentVersion.image_url, '_blank')}
-                    className="bg-black/70 hover:bg-black/80 text-white border-0"
-                  >
-                    <Eye className="w-4 h-4 mr-1" />
-                    Expandera
-                  </Button>
-                </div>
-
-                {/* Version indicator */}
-                {currentImageIndex > 0 && (
-                  <div className="absolute top-4 left-4">
-                    <Badge variant="secondary" className="bg-black/70 text-white">
-                      <History className="w-3 h-3 mr-1" />
-                      Historisk
-                    </Badge>
-                  </div>
-                )}
-
-                {isAiGeneratedImage && (
-                  <div className="absolute bottom-4 left-4">
-                    <Badge variant="secondary" className="bg-black/70 text-white">
-                      <Brain className="w-3 h-3 mr-1" />
-                      AI-genererad bild
-                    </Badge>
-                  </div>
-                )}
-              </div>
-
-              {hasMultipleVersions && (
-                <div className="flex justify-center mt-2">
-                  <Badge variant="outline" className="text-xs">
-                    {currentImageIndex + 1} av {timeline.length}
-                  </Badge>
-                </div>
-              )}
-
-              {/* Dots indicator */}
-              {hasMultipleVersions && (
-                <div className="flex justify-center gap-2">
-                  {timeline.map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => goToVersion(index)}
-                      className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                        currentImageIndex === index 
-                          ? 'bg-primary scale-125' 
-                          : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
-                      }`}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {/* Quick version selector */}
-              {hasMultipleVersions && (
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {timeline.map((version, index) => (
-                    <button
-                      key={version.id}
-                      onClick={() => goToVersion(index)}
-                      className={`flex-shrink-0 px-3 py-2 rounded-md text-xs transition-colors ${
-                        currentImageIndex === index
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted hover:bg-muted/80'
-                      }`}
-                    >
-                      {index === 0 ? 'Nuvarande' : `Historik ${index}`}
-                    </button>
-                  ))}
-                </div>
-              )}
-              
-              {/* Graph Caption */}
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground italic">
-                  Teknisk analys: {stockCase.company_name} – Timeframe: {stockCase.timeframe || 'Ej specificerad'}
-                  {stockCase.sector && ` • Sektor: ${stockCase.sector}`}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* CTA Buttons repositioned under the visual */}
-          <div className="flex flex-wrap items-center justify-center gap-4 py-4">
-            <Button variant="outline" onClick={handleShare} className="flex items-center gap-2 text-lg px-6 py-3">
-              <Share2 className="w-5 h-5" />
-              Dela
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleDiscussWithAI}
-              className="flex items-center gap-2 text-lg px-6 py-3"
-            >
-              <MessageSquare className="w-5 h-5" />
-              Diskutera i AI-chatten
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleLikeClick}
-              disabled={likesLoading}
-              className="flex items-center gap-2 text-lg px-6 py-3"
-            >
-              <Heart className={`w-5 h-5 ${isLiked ? 'fill-current text-red-500' : ''}`} />
-              {likeCount} Gilla
-            </Button>
-            {user && (
-              <SaveOpportunityButton
-                itemType="stock_case"
-                itemId={stockCase.id}
-                itemTitle={displayTitle}
-                onSaveSuccess={handleSaveSuccess}
-                size="lg"
-                className="text-lg px-6 py-3"
-              />
-            )}
-            {user && user.id !== stockCase.user_id && stockCase.user_id && (
-              <Button
-                variant="outline"
-                onClick={handleFollowClick}
-                className="flex items-center gap-2 text-lg px-6 py-3"
-              >
-                <UserPlus className="w-5 h-5" />
-                {isFollowing(stockCase.user_id) ? 'Sluta följ' : 'Följ författare'}
-              </Button>
-            )}
-            {isOwner && (
-              <Button
-                variant="outline"
-                onClick={() => setShowUpdateDialog(true)}
-                className="flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Lägg till uppdatering
-              </Button>
             )}
           </div>
-
-          {/* Login prompt for non-users */}
-          {!user && (
-            <div className="text-center p-4 bg-muted rounded-lg">
-              <p className="text-muted-foreground mb-3">
-                Logga in för att gilla, spara och kommentera
-              </p>
-              <Button onClick={() => navigate('/auth')}>
-                Logga in
-              </Button>
-            </div>
-          )}
-        </div>
-
+        </section>
         {/* Main Content Grid */}
         <div
           className={cn(
-            'grid gap-8 items-start',
+            'grid items-start gap-8 lg:gap-10 xl:gap-12 2xl:gap-16',
             hasSidebarContent
-              ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]'
-              : ''
+              ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,1fr)] 2xl:grid-cols-[minmax(0,1.6fr)_minmax(360px,1fr)]'
+              : 'xl:mx-auto xl:max-w-[960px] 2xl:max-w-[1100px]'
           )}
         >
           {/* Main Content */}
@@ -1078,76 +1173,118 @@ const StockCaseDetail = () => {
               hasSidebarContent ? '' : 'lg:max-w-4xl lg:mx-auto'
             )}
           >
-            {/* Combined Overview Card - only show if there are financial metrics */}
-            {shouldShowFinancialOverview && (
-              <Card>
-                <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <CardTitle>Finansiell Översikt</CardTitle>
-                  {overviewLogoSrc ? (
-                    <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/40 px-3 py-2">
-                      <img
-                        src={overviewLogoSrc}
-                        alt={`${overviewCompanyName} logotyp`}
-                        loading="lazy"
-                        className="h-12 w-12 rounded-full border border-border/50 bg-white object-cover"
-                      />
-                      <div className="flex flex-col leading-tight">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          Bolag
-                        </span>
-                        <span className="text-sm font-semibold text-foreground">
-                          {overviewCompanyName}
-                        </span>
-                        {overviewTicker ? (
-                          <span className="text-xs text-muted-foreground">{overviewTicker}</span>
-                        ) : null}
+            {(shouldShowFinancialOverview || displayedAnalysisDescription) && (
+              <div
+                className={cn(
+                  'grid gap-6',
+                  shouldShowFinancialOverview && displayedAnalysisDescription
+                    ? 'xl:grid-cols-[minmax(0,2.15fr)_minmax(300px,0.85fr)] 2xl:grid-cols-[minmax(0,2.4fr)_minmax(340px,0.9fr)]'
+                    : ''
+                )}
+              >
+                {displayedAnalysisDescription && (
+                  <Card className={cn('order-2 xl:order-1', shouldShowFinancialOverview ? 'xl:h-full' : '')}>
+                    <CardHeader>
+                      <CardTitle className="text-xl font-semibold tracking-tight lg:text-2xl">Analys</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-5 text-sm leading-relaxed text-foreground/90 lg:text-base xl:text-lg">
+                        {formatCaseDescription(displayedAnalysisDescription)}
                       </div>
-                    </div>
-                  ) : null}
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {hasPricingMetrics && (
-                      <div className="flex flex-col gap-3 rounded-2xl border border-border/50 bg-card/80 p-4">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          Pris &amp; kursinformation
-                        </p>
-                        {renderStatsList(pricingStats)}
-                      </div>
-                    )}
+                    </CardContent>
+                  </Card>
+                )}
 
-                    {hasCompanyDetails && (
-                      <div className="flex flex-col gap-3 rounded-2xl border border-border/50 bg-card/80 p-4">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          Bolagsinformation
-                        </p>
-                        {renderStatsList(companyStats)}
-                      </div>
+                {shouldShowFinancialOverview && (
+                  <Card
+                    className={cn(
+                      'order-1 xl:order-2 xl:justify-self-end',
+                      displayedAnalysisDescription ? 'xl:h-full xl:max-w-[360px] 2xl:max-w-[400px]' : ''
                     )}
+                  >
+                    <CardHeader className="flex flex-col gap-4">
+                      <CardTitle className="text-xl font-semibold tracking-tight lg:text-2xl">
+                        Finansiell Översikt
+                      </CardTitle>
+                      {overviewLogoSrc ? (
+                        <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/40 px-3 py-2">
+                          <img
+                            src={overviewLogoSrc}
+                            alt={`${overviewCompanyName} logotyp`}
+                            loading="lazy"
+                            className="h-12 w-12 rounded-full border border-border/50 bg-white object-cover"
+                          />
+                          <div className="flex flex-col leading-tight">
+                            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              Bolag
+                            </span>
+                            <span className="text-sm font-semibold text-foreground">
+                              {overviewCompanyName}
+                            </span>
+                            {overviewTicker ? (
+                              <span className="text-xs text-muted-foreground">{overviewTicker}</span>
+                            ) : null}
+                          </div>
+                        </div>
+                      ) : null}
+                    </CardHeader>
+                    <CardContent className="space-y-6 xl:space-y-7">
+                      {overviewHighlightStats.length > 0 && (
+                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                          {overviewHighlightStats.map(highlight => {
+                            const IconComponent = highlight.icon;
+                            return (
+                              <div
+                                key={highlight.key}
+                                className="group rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/40 p-5 shadow-sm transition-colors hover:border-primary/50"
+                              >
+                                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                  {IconComponent ? (
+                                    <IconComponent className="h-4 w-4 text-primary/70" />
+                                  ) : null}
+                                  <span>{highlight.label}</span>
+                                </div>
+                                <div className="mt-2 text-2xl font-semibold leading-tight tracking-tight text-foreground text-balance">
+                                  {renderStatValue(highlight)}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
 
-                    {hasSheetFundamentals && (
-                      <div className="flex flex-col gap-3 rounded-2xl border border-border/50 bg-card/80 p-4">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          Nyckeltal från Google Sheets
-                        </p>
-                        {renderStatsList(fundamentalsStats)}
+                      <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                        {hasPricingMetrics && (
+                          <div className="flex h-full flex-col gap-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              Pris &amp; kursinformation
+                            </p>
+                            {renderStatsList(pricingStats)}
+                          </div>
+                        )}
+
+                        {hasCompanyDetails && (
+                          <div className="flex h-full flex-col gap-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              Bolagsinformation
+                            </p>
+                            {renderStatsList(companyStats)}
+                          </div>
+                        )}
+
+                        {hasSheetFundamentals && (
+                          <div className="flex h-full flex-col gap-4 rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              Nyckeltal från Google Sheets
+                            </p>
+                            {renderStatsList(fundamentalsStats)}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Case Description with Structured Sections */}
-            {displayedAnalysisDescription && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Analys</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {formatCaseDescription(displayedAnalysisDescription)}
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             )}
 
             {/* Admin Comment */}
