@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { convertToSek, getExchangeRates } from "../_shared/currency.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -79,32 +80,13 @@ const getSymbolVariants = (symbol: string | null, alternative?: string | null) =
   return [...variants];
 };
 
-const EXCHANGE_RATES: Record<string, number> = {
-  SEK: 1,
-  USD: 10.5,
-  EUR: 11.4,
-  GBP: 13.2,
-  NOK: 0.95,
-  DKK: 1.53,
-  JPY: 0.07,
-  CHF: 11.8,
-  CAD: 7.8,
-  AUD: 7.0,
-};
-
-const convertToSEK = (amount: number, currency?: string | null) => {
-  if (!Number.isFinite(amount)) return null;
-  const c = currency?.toUpperCase();
-  if (!c || c === "SEK") return amount;
-  const rate = EXCHANGE_RATES[c];
-  return typeof rate === "number" ? amount * rate : null;
-};
-
 // === Edge Function ===
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const { rates: exchangeRates } = await getExchangeRates("SEK");
+
     let payload: { ticker?: string } | null = null;
     if (req.method === "POST") {
       try {
@@ -198,7 +180,7 @@ serve(async (req) => {
       const pricePerUnitInSEK =
         priceCurrency === "SEK"
           ? pricePerUnit
-          : convertToSEK(pricePerUnit, priceCurrency);
+          : convertToSek(pricePerUnit, priceCurrency, exchangeRates);
 
       // Hitta matchande innehav i Supabase
       let query = supabase.from("user_holdings").select("id, quantity");

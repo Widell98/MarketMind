@@ -8,5 +8,9 @@ enabled = true
 enabled = true
 # external_url tas bort – hanteras automatiskt av CLI/dashboard
 
+[functions]
+[functions.env]
+FINNHUB_API_KEY = ""
+
 [functions.generate-portfolio]
 verify_jwt = false

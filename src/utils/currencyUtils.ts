@@ -1,68 +1,140 @@
-// Simple currency conversion utility
+// Simple currency conversion utility with Finnhub-backed rates
 // In a real application, you would fetch live exchange rates from an API
 
 export interface ExchangeRates {
   [key: string]: number;
 }
 
-// Base rates to SEK (Swedish Krona)
-// These should be updated regularly from a real API in production
+// Base rates to SEK (Swedish Krona) used as a static fallback
 export const EXCHANGE_RATES: ExchangeRates = {
   SEK: 1.0,
-  USD: 10.5,   // 1 USD = ~10.5 SEK
-  EUR: 11.4,   // 1 EUR = ~11.4 SEK
-  GBP: 13.2,   // 1 GBP = ~13.2 SEK
-  NOK: 0.95,   // 1 NOK = ~0.95 SEK
-  DKK: 1.53,   // 1 DKK = ~1.53 SEK
-  JPY: 0.07,   // 1 JPY = ~0.07 SEK
-  CHF: 11.8,   // 1 CHF = ~11.8 SEK
-  CAD: 7.8,    // 1 CAD = ~7.8 SEK
-  AUD: 7.0,    // 1 AUD = ~7.0 SEK
+  USD: 10.5,
+  EUR: 11.4,
+  GBP: 13.2,
+  NOK: 0.95,
+  DKK: 1.53,
+  JPY: 0.07,
+  CHF: 11.8,
+  CAD: 7.8,
+  AUD: 7.0,
 };
 
-/**
- * Convert amount from one currency to SEK
- */
-export const convertToSEK = (amount: number, fromCurrency: string): number => {
-  if (!amount || amount === 0) return 0;
-  
-  const currency = fromCurrency?.toUpperCase() || 'SEK';
-  const rate = EXCHANGE_RATES[currency];
-  
-  if (!rate) {
-    console.warn(`Exchange rate not found for currency: ${currency}, defaulting to SEK`);
-    return amount;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+export type ForexRateCacheEntry = {
+  base: string;
+  fetchedAt: number;
+  rates: ExchangeRates;
+  source: string;
+};
+
+let cachedRates: ForexRateCacheEntry | null = null;
+
+const buildRatesFromFallback = (base: string): ExchangeRates => {
+  const normalizedBase = base.toUpperCase();
+  if (normalizedBase === 'SEK') {
+    return { ...EXCHANGE_RATES };
   }
-  
-  return amount * rate;
+
+  const baseRate = EXCHANGE_RATES[normalizedBase];
+  if (!baseRate) {
+    return { ...EXCHANGE_RATES };
+  }
+
+  const derived: ExchangeRates = {};
+  for (const [currency, rateToSek] of Object.entries(EXCHANGE_RATES)) {
+    if (!rateToSek || rateToSek <= 0) continue;
+    if (currency === normalizedBase) {
+      derived[currency] = 1;
+      continue;
+    }
+    derived[currency] = rateToSek / baseRate;
+  }
+  derived[normalizedBase] = 1;
+  return derived;
 };
 
-/**
- * Convert amount from SEK to target currency
- */
-export const convertFromSEK = (amountInSEK: number, toCurrency: string): number => {
+export const getForexRates = async (base = 'SEK'): Promise<ForexRateCacheEntry> => {
+  const normalizedBase = base.toUpperCase();
+  const now = Date.now();
+
+  if (cachedRates && cachedRates.base === normalizedBase && now - cachedRates.fetchedAt < CACHE_TTL_MS) {
+    return cachedRates;
+  }
+
+  try {
+    const response = await fetch(`/api/forex-rates?base=${encodeURIComponent(normalizedBase)}`);
+    if (!response.ok) throw new Error(`Failed to load forex rates: ${response.status}`);
+    const payload = await response.json();
+
+    if (!payload?.success || typeof payload?.rates !== 'object' || payload.rates === null) {
+      throw new Error('Invalid forex rate payload');
+    }
+
+    cachedRates = {
+      base: typeof payload.base === 'string' ? payload.base.toUpperCase() : normalizedBase,
+      fetchedAt: typeof payload.fetchedAt === 'number' ? payload.fetchedAt : now,
+      rates: payload.rates as ExchangeRates,
+      source: typeof payload.source === 'string' ? payload.source : 'api',
+    };
+
+    return cachedRates;
+  } catch (error) {
+    console.warn('Falling back to static forex rates', error);
+    const fallbackRates = buildRatesFromFallback(normalizedBase);
+    cachedRates = {
+      base: normalizedBase,
+      fetchedAt: now,
+      rates: fallbackRates,
+      source: 'fallback',
+    };
+    return cachedRates;
+  }
+};
+
+export const convertToSek = (
+  amount: number | null | undefined,
+  currency?: string | null,
+  rates?: ExchangeRates,
+): number | null => {
+  if (typeof amount !== 'number' || !Number.isFinite(amount)) return null;
+
+  const normalizedCurrency = currency?.toUpperCase() ?? 'SEK';
+  if (normalizedCurrency === 'SEK') return amount;
+
+  const activeRates = rates ?? cachedRates?.rates ?? EXCHANGE_RATES;
+  const rate = activeRates?.[normalizedCurrency];
+
+  if (typeof rate === 'number' && Number.isFinite(rate)) {
+    return amount * rate;
+  }
+
+  const fallbackRate = EXCHANGE_RATES[normalizedCurrency];
+  return typeof fallbackRate === 'number' && Number.isFinite(fallbackRate) ? amount * fallbackRate : null;
+};
+
+export const convertToSEK = convertToSek;
+
+export const convertFromSEK = (amountInSEK: number, toCurrency: string, rates?: ExchangeRates): number => {
   if (!amountInSEK || amountInSEK === 0) return 0;
-  
-  const currency = toCurrency?.toUpperCase() || 'SEK';
-  const rate = EXCHANGE_RATES[currency];
-  
+
+  const normalizedCurrency = toCurrency?.toUpperCase() || 'SEK';
+  const activeRates = rates ?? cachedRates?.rates ?? EXCHANGE_RATES;
+  const rate = activeRates?.[normalizedCurrency];
+
   if (!rate) {
-    console.warn(`Exchange rate not found for currency: ${currency}, defaulting to SEK`);
+    console.warn(`Exchange rate not found for currency: ${normalizedCurrency}, defaulting to SEK`);
     return amountInSEK;
   }
-  
+
   return amountInSEK / rate;
 };
 
-/**
- * Convert between any two currencies
- */
-export const convertCurrency = (amount: number, fromCurrency: string, toCurrency: string): number => {
+export const convertCurrency = (amount: number, fromCurrency: string, toCurrency: string, rates?: ExchangeRates): number => {
   if (!amount || amount === 0) return 0;
 
-  // First convert to SEK, then to target currency
-  const amountInSEK = convertToSEK(amount, fromCurrency);
-  return convertFromSEK(amountInSEK, toCurrency);
+  const amountInSEK = convertToSek(amount, fromCurrency, rates) ?? 0;
+  return convertFromSEK(amountInSEK, toCurrency, rates);
 };
 
 const parseNumericValue = (value: unknown): number | null => {
@@ -100,10 +172,7 @@ export interface HoldingValueBreakdown {
   hasDirectPrice: boolean;
 }
 
-/**
- * Resolve holding value information including normalized SEK totals
- */
-export const resolveHoldingValue = (holding: HoldingLike): HoldingValueBreakdown => {
+export const resolveHoldingValue = (holding: HoldingLike, rates?: ExchangeRates): HoldingValueBreakdown => {
   const quantity = parseNumericValue(holding?.quantity) ?? 0;
 
   const pricePerUnit = parseNumericValue(holding?.current_price_per_unit);
@@ -120,10 +189,10 @@ export const resolveHoldingValue = (holding: HoldingLike): HoldingValueBreakdown
   const hasDirectPrice = pricePerUnit !== null && quantity > 0;
   const rawValue = hasDirectPrice ? pricePerUnit * quantity : fallbackValue;
   const valueCurrency = hasDirectPrice ? baseCurrencyRaw : fallbackCurrency;
-  const valueInSEK = convertToSEK(rawValue, valueCurrency);
+  const valueInSEK = convertToSek(rawValue, valueCurrency, rates) ?? 0;
 
   const pricePerUnitInSEK = pricePerUnit !== null
-    ? convertToSEK(pricePerUnit, baseCurrencyRaw)
+    ? convertToSek(pricePerUnit, baseCurrencyRaw, rates)
     : quantity > 0
       ? valueInSEK / quantity
       : null;
@@ -140,21 +209,17 @@ export const resolveHoldingValue = (holding: HoldingLike): HoldingValueBreakdown
   };
 };
 
-/**
- * Format currency amount with proper symbol and locale
- */
 export const formatCurrency = (amount: number, currency: string = 'SEK', locale: string = 'sv-SE'): string => {
   if (!amount && amount !== 0) return '0 kr';
-  
+
   try {
     return new Intl.NumberFormat(locale, {
       style: 'currency',
-      currency: currency,
+      currency,
       minimumFractionDigits: 0,
-      maximumFractionDigits: currency === 'JPY' ? 0 : 2
+      maximumFractionDigits: currency === 'JPY' ? 0 : 2,
     }).format(amount);
   } catch (error) {
-    // Fallback for unsupported currencies
     const symbols = {
       SEK: 'kr',
       USD: '$',
@@ -165,17 +230,14 @@ export const formatCurrency = (amount: number, currency: string = 'SEK', locale:
       JPY: '¥',
       CHF: 'CHF',
       CAD: 'C$',
-      AUD: 'A$'
-    };
-    
+      AUD: 'A$',
+    } as const;
+
     const symbol = symbols[currency as keyof typeof symbols] || currency;
     return `${Math.round(amount).toLocaleString()} ${symbol}`;
   }
 };
 
-/**
- * Get currency symbol
- */
 export const getCurrencySymbol = (currency: string): string => {
   const symbols = {
     SEK: 'kr',
@@ -187,25 +249,26 @@ export const getCurrencySymbol = (currency: string): string => {
     JPY: '¥',
     CHF: 'CHF',
     CAD: 'C$',
-    AUD: 'A$'
-  };
-  
+    AUD: 'A$',
+  } as const;
+
   return symbols[currency as keyof typeof symbols] || currency;
 };
 
-/**
- * Calculate normalized value for portfolio calculations
- * Converts all holdings to SEK for fair comparison
- */
-export const getNormalizedValue = (holding: HoldingLike): number => {
-  return resolveHoldingValue(holding).valueInSEK;
+export const getNormalizedValue = (holding: HoldingLike, rates?: ExchangeRates): number => {
+  return resolveHoldingValue(holding, rates).valueInSEK;
 };
 
-/**
- * Calculate total portfolio value in SEK from mixed currency holdings
- */
-export const calculateTotalPortfolioValue = (holdings: HoldingLike[]): number => {
+export const calculateTotalPortfolioValue = (holdings: HoldingLike[], rates?: ExchangeRates): number => {
   return holdings.reduce((total, holding) => {
-    return total + resolveHoldingValue(holding).valueInSEK;
+    return total + resolveHoldingValue(holding, rates).valueInSEK;
   }, 0);
+};
+
+export const __internal = {
+  buildRatesFromFallback,
+  getCachedRates: () => cachedRates,
+  setCachedRates: (entry: ForexRateCacheEntry | null) => {
+    cachedRates = entry;
+  },
 };

@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { convertToSek, getExchangeRates } from "../_shared/currency.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -126,36 +127,6 @@ const FINANCIAL_RELEVANCE_KEYWORDS = [
   'pris',
 ];
 
-const EXCHANGE_RATES: Record<string, number> = {
-  SEK: 1.0,
-  USD: 10.5,
-  EUR: 11.4,
-  GBP: 13.2,
-  NOK: 0.95,
-  DKK: 1.53,
-  JPY: 0.07,
-  CHF: 11.8,
-  CAD: 7.8,
-  AUD: 7.0,
-};
-
-const convertToSEK = (amount: number, fromCurrency?: string | null): number => {
-  if (!amount || amount === 0) return 0;
-
-  const currency = typeof fromCurrency === 'string' && fromCurrency.trim().length > 0
-    ? fromCurrency.trim().toUpperCase()
-    : 'SEK';
-
-  const rate = EXCHANGE_RATES[currency];
-
-  if (!rate) {
-    console.warn(`Exchange rate not found for currency: ${currency}, defaulting to SEK`);
-    return amount;
-  }
-
-  return amount * rate;
-};
-
 const parseNumericValue = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value;
@@ -224,7 +195,10 @@ type HoldingValueBreakdown = {
   hasDirectPrice: boolean;
 };
 
-const resolveHoldingValue = (holding: HoldingRecord): HoldingValueBreakdown => {
+const resolveHoldingValue = (
+  holding: HoldingRecord,
+  rates: Record<string, number>,
+): HoldingValueBreakdown => {
   const quantity = parseNumericValue(holding?.quantity) ?? 0;
 
   const pricePerUnit = parseNumericValue(holding?.current_price_per_unit);
@@ -241,10 +215,10 @@ const resolveHoldingValue = (holding: HoldingRecord): HoldingValueBreakdown => {
   const hasDirectPrice = pricePerUnit !== null && quantity > 0;
   const rawValue = hasDirectPrice ? pricePerUnit * quantity : fallbackValue;
   const valueCurrency = hasDirectPrice ? baseCurrencyRaw : fallbackCurrency;
-  const valueInSEK = convertToSEK(rawValue, valueCurrency);
+  const valueInSEK = convertToSek(rawValue, valueCurrency, rates) ?? 0;
 
   const pricePerUnitInSEK = pricePerUnit !== null
-    ? convertToSEK(pricePerUnit, baseCurrencyRaw)
+    ? convertToSek(pricePerUnit, baseCurrencyRaw, rates)
     : quantity > 0
       ? valueInSEK / quantity
       : null;
@@ -636,6 +610,8 @@ serve(async (req) => {
       console.error('Missing required fields:', { message: !!message, userId: !!userId });
       throw new Error('Message and userId are required');
     }
+
+    const { rates: exchangeRates } = await getExchangeRates('SEK');
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
@@ -1607,7 +1583,7 @@ contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
       if (actualHoldings.length > 0) {
         const holdingsWithValues = actualHoldings.map((holding) => ({
           holding,
-          value: resolveHoldingValue(holding),
+          value: resolveHoldingValue(holding, exchangeRates),
         }));
 
         const totalValue = holdingsWithValues.reduce((sum, item) => sum + item.value.valueInSEK, 0);

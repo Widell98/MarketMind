@@ -81,6 +81,7 @@ The portfolio features rely on two Supabase Edge Functions: `update-portfolio-pr
    - `GOOGLE_SERVICE_ACCOUNT` – JSON credentials for a service account with Google Sheets read access.
    - `GOOGLE_SHEET_ID` – The spreadsheet ID that holds the ticker and price data.
    - `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` – Needed by `update-portfolio-prices` to update the database.
+   - `FINNHUB_API_KEY` – Used by the shared currency helper to fetch live FX rates. When absent, the functions fall back to static reference rates.
 4. Confirm that the frontend points to the same Supabase project by verifying the URL and anon key configured in `src/integrations/supabase/client.ts`.
 5. You can manually test that the functions respond by running:
    ```bash
@@ -91,6 +92,12 @@ The portfolio features rely on two Supabase Edge Functions: `update-portfolio-pr
    Replace the URL and token with your project details. A successful response contains `{ "success": true, "tickers": [...] }`.
 
 If any of these steps fail the UI will surface helpful diagnostics (for example in the “Lägg till innehav” dialog) explaining what needs to be fixed.
+
+### Currency conversion setup
+
+- **Supabase Edge Functions**: Set the `FINNHUB_API_KEY` secret via `supabase functions secrets set FINNHUB_API_KEY=<your-key>` so `update-portfolio-prices` and `portfolio-ai-chat` can hydrate the shared rate cache.
+- **Local development**: Add `FINNHUB_API_KEY` to your root `.env` file (see `.env` for the placeholder) before running `npm run dev` or invoking the edge functions locally.
+- **Frontend usage**: Exchange rates are served through the internal `/api/forex-rates` proxy. Rates are cached on both the server and client, and a static SEK-based map is used if Finnhub is unreachable.
 
 ### Real-time research with Tavily
 
