@@ -1178,7 +1178,7 @@ const StockCaseDetail = () => {
                 className={cn(
                   'grid gap-6',
                   shouldShowFinancialOverview && displayedAnalysisDescription
-                    ? 'xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)] 2xl:grid-cols-[minmax(0,2fr)_minmax(360px,1fr)]'
+                    ? 'xl:grid-cols-[minmax(0,2.15fr)_minmax(300px,0.85fr)] 2xl:grid-cols-[minmax(0,2.4fr)_minmax(340px,0.9fr)]'
                     : ''
                 )}
               >
@@ -1196,8 +1196,13 @@ const StockCaseDetail = () => {
                 )}
 
                 {shouldShowFinancialOverview && (
-                  <Card className={cn('order-1 xl:order-2', displayedAnalysisDescription ? 'xl:h-full' : '')}>
-                    <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <Card
+                    className={cn(
+                      'order-1 xl:order-2 xl:justify-self-end',
+                      displayedAnalysisDescription ? 'xl:h-full xl:max-w-[360px] 2xl:max-w-[400px]' : ''
+                    )}
+                  >
+                    <CardHeader className="flex flex-col gap-4">
                       <CardTitle className="text-xl font-semibold tracking-tight lg:text-2xl">
                         Finansiell Översikt
                       </CardTitle>
@@ -1223,9 +1228,9 @@ const StockCaseDetail = () => {
                         </div>
                       ) : null}
                     </CardHeader>
-                    <CardContent className="space-y-6 xl:space-y-8">
+                    <CardContent className="space-y-6 xl:space-y-7">
                       {overviewHighlightStats.length > 0 && (
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3">
+                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                           {overviewHighlightStats.map(highlight => {
                             const IconComponent = highlight.icon;
                             return (
