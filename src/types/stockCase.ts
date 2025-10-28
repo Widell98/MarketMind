@@ -16,6 +16,7 @@ export interface StockCase {
   target_price?: number;
   stop_loss?: number;
   performance_percentage?: number;
+  performance_trend?: number[];
   likes_count?: number;
   status: 'active' | 'winner' | 'loser';
   created_at: string;
@@ -28,6 +29,7 @@ export interface StockCase {
   ai_generated?: boolean;
   ai_batch_id?: string;
   generated_at?: string;
+  key_thesis?: string;
   currency?: string;
   timeframe?: string;
   target_reached?: boolean;
