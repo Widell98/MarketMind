@@ -1,3 +1,5 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8";
+
 export const DEFAULT_EXCHANGE_RATES: Record<string, number> = {
   SEK: 1.0,
   USD: 10.5,
@@ -18,22 +20,141 @@ interface FinnhubRatesResponse {
   quote?: Record<string, number>;
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
+const EXCHANGE_RATES_CACHE_TABLE = "exchange_rates_cache";
+const CACHE_BASE_CURRENCY = "SEK";
+const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour
 
-const isNumber = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isFinite(value);
+const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? null;
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? null;
 
-export const fetchExchangeRatesFromFinnhub = async (): Promise<Record<string, number>> => {
-  const apiKey = Deno.env.get('FINNHUB_API_KEY');
-  if (!apiKey) {
-    console.warn('FINNHUB_API_KEY is not configured. Falling back to default exchange rates.');
-    return { ...DEFAULT_EXCHANGE_RATES };
+let supabaseClient: ReturnType<typeof createClient> | null = null;
+
+const getSupabaseClient = () => {
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.warn("Supabase credentials are not configured. Skipping exchange rate caching.");
+    return null;
   }
 
-  const url = new URL('https://finnhub.io/api/v1/forex/rates');
-  url.searchParams.set('base', 'SEK');
-  url.searchParams.set('token', apiKey);
+  if (!supabaseClient) {
+    supabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false },
+    });
+  }
+
+  return supabaseClient;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const isNumber = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+
+const normalizeRates = (rates: Record<string, number> | null | undefined): Record<string, number> => {
+  const normalized: Record<string, number> = { ...DEFAULT_EXCHANGE_RATES };
+
+  if (!rates) {
+    return normalized;
+  }
+
+  for (const [currency, defaultRate] of Object.entries(DEFAULT_EXCHANGE_RATES)) {
+    const incoming = rates[currency];
+    if (isNumber(incoming) && incoming > 0) {
+      normalized[currency] = incoming;
+    } else {
+      normalized[currency] = defaultRate;
+    }
+  }
+
+  return normalized;
+};
+
+interface CachedExchangeRates {
+  rates: Record<string, number>;
+  fetchedAt: number;
+}
+
+interface ExchangeRatesCacheRow {
+  base_currency: string;
+  rates: Record<string, number> | null;
+  fetched_at: string | null;
+}
+
+const getCachedExchangeRates = async (): Promise<CachedExchangeRates | null> => {
+  const client = getSupabaseClient();
+  if (!client) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await client
+      .from<ExchangeRatesCacheRow>(EXCHANGE_RATES_CACHE_TABLE)
+      .select("rates, fetched_at")
+      .eq("base_currency", CACHE_BASE_CURRENCY)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Failed to read cached exchange rates:", error);
+      return null;
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    const fetchedAt = data.fetched_at ? Date.parse(data.fetched_at) : NaN;
+    if (!Number.isFinite(fetchedAt)) {
+      return null;
+    }
+
+    return {
+      rates: normalizeRates(data.rates ?? null),
+      fetchedAt,
+    };
+  } catch (error) {
+    console.error("Error retrieving cached exchange rates:", error);
+    return null;
+  }
+};
+
+const cacheExchangeRates = async (rates: Record<string, number>) => {
+  const client = getSupabaseClient();
+  if (!client) {
+    return;
+  }
+
+  try {
+    const { error } = await client
+      .from(EXCHANGE_RATES_CACHE_TABLE)
+      .upsert({
+        base_currency: CACHE_BASE_CURRENCY,
+        rates,
+        fetched_at: new Date().toISOString(),
+      });
+
+    if (error) {
+      console.error("Failed to cache exchange rates:", error);
+    }
+  } catch (error) {
+    console.error("Error while caching exchange rates:", error);
+  }
+};
+
+interface FinnhubResult {
+  rates: Record<string, number>;
+  fetchedFromFinnhub: boolean;
+}
+
+export const fetchExchangeRatesFromFinnhub = async (): Promise<FinnhubResult> => {
+  const apiKey = Deno.env.get("FINNHUB_API_KEY");
+  if (!apiKey) {
+    console.warn("FINNHUB_API_KEY is not configured. Falling back to default exchange rates.");
+    return { rates: { ...DEFAULT_EXCHANGE_RATES }, fetchedFromFinnhub: false };
+  }
+
+  const url = new URL("https://finnhub.io/api/v1/forex/rates");
+  url.searchParams.set("base", CACHE_BASE_CURRENCY);
+  url.searchParams.set("token", apiKey);
 
   try {
     const response = await fetch(url);
@@ -45,13 +166,13 @@ export const fetchExchangeRatesFromFinnhub = async (): Promise<Record<string, nu
     const quotes = isRecord(data) && isRecord(data.quote) ? data.quote : null;
 
     if (!quotes) {
-      throw new Error('Finnhub response did not contain quote data');
+      throw new Error("Finnhub response did not contain quote data");
     }
 
     const rates: Record<string, number> = {};
 
     for (const currency of SUPPORTED_CURRENCIES) {
-      if (currency === 'SEK') {
+      if (currency === CACHE_BASE_CURRENCY) {
         rates[currency] = 1.0;
         continue;
       }
@@ -65,13 +186,30 @@ export const fetchExchangeRatesFromFinnhub = async (): Promise<Record<string, nu
       }
     }
 
-    return rates;
+    return { rates: normalizeRates(rates), fetchedFromFinnhub: true };
   } catch (error) {
-    console.error('Failed to fetch exchange rates from Finnhub:', error);
-    return { ...DEFAULT_EXCHANGE_RATES };
+    console.error("Failed to fetch exchange rates from Finnhub:", error);
+    return { rates: { ...DEFAULT_EXCHANGE_RATES }, fetchedFromFinnhub: false };
   }
 };
 
 export const getExchangeRates = async (): Promise<Record<string, number>> => {
-  return await fetchExchangeRatesFromFinnhub();
+  const cached = await getCachedExchangeRates();
+  if (cached && Date.now() - cached.fetchedAt <= CACHE_TTL_MS) {
+    return cached.rates;
+  }
+
+  const { rates: freshRates, fetchedFromFinnhub } = await fetchExchangeRatesFromFinnhub();
+
+  if (fetchedFromFinnhub) {
+    await cacheExchangeRates(freshRates);
+    return freshRates;
+  }
+
+  if (cached) {
+    return cached.rates;
+  }
+
+  await cacheExchangeRates(freshRates);
+  return freshRates;
 };
