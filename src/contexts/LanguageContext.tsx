@@ -116,7 +116,9 @@ const translations = {
     'portfolio.updated': 'Uppdaterad',
     
     // Footer
-    'footer.copyright': 'All rights reserved.',
+    'footer.terms': 'Användarvillkor',
+    'footer.privacy': 'Integritetspolicy',
+    'footer.copyright': 'Alla rättigheter förbehållna.',
     
     // Common
     'common.user': 'användare'
@@ -226,6 +228,8 @@ const translations = {
     'portfolio.updated': 'Updated',
     
     // Footer
+    'footer.terms': 'Terms of Service',
+    'footer.privacy': 'Privacy Policy',
     'footer.copyright': 'All rights reserved.',
     
     // Common
