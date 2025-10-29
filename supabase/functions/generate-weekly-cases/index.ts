@@ -305,6 +305,74 @@ const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
   return Array.from(tickerMap.values());
 };
 
+const buildConciseDescription = (primary: string | null | undefined, fallback?: string | null): string => {
+  const primaryValue = typeof primary === 'string' ? primary.trim() : '';
+  const fallbackValue = typeof fallback === 'string' ? fallback.trim() : '';
+  const candidateSource = primaryValue.length > 0 ? primaryValue : fallbackValue;
+  const normalized = candidateSource.replace(/\s+/g, ' ').trim();
+
+  if (!normalized) {
+    return '';
+  }
+
+  const sentences = normalized
+    .split(/(?<=[.!?])\s+(?=[A-ZÅÄÖ0-9])/u)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0);
+
+  const MAX_LENGTH = 240;
+  const MAX_SENTENCES = 2;
+
+  if (sentences.length === 0) {
+    return normalized.length > MAX_LENGTH
+      ? `${normalized.slice(0, MAX_LENGTH - 3).trimEnd()}...`
+      : normalized;
+  }
+
+  const chosen: string[] = [];
+
+  for (const sentence of sentences) {
+    if (chosen.length >= MAX_SENTENCES) {
+      break;
+    }
+
+    const existing = chosen.join(' ');
+    const tentative = existing.length > 0 ? `${existing} ${sentence}` : sentence;
+
+    if (tentative.length > MAX_LENGTH) {
+      if (chosen.length === 0) {
+        return sentence.length > MAX_LENGTH
+          ? `${sentence.slice(0, MAX_LENGTH - 3).trimEnd()}...`
+          : sentence;
+      }
+
+      const remaining = MAX_LENGTH - existing.length - (existing.length > 0 ? 1 : 0);
+      if (remaining > 24) {
+        const truncated = sentence.slice(0, remaining - 3).trimEnd();
+        if (truncated.length > 0) {
+          chosen.push(`${truncated}...`);
+        }
+      }
+
+      break;
+    }
+
+    chosen.push(sentence);
+  }
+
+  if (chosen.length === 0) {
+    const [firstSentence] = sentences;
+    return firstSentence.length > MAX_LENGTH
+      ? `${firstSentence.slice(0, MAX_LENGTH - 3).trimEnd()}...`
+      : firstSentence;
+  }
+
+  const assembled = chosen.join(' ');
+  return assembled.length > MAX_LENGTH
+    ? `${assembled.slice(0, MAX_LENGTH - 3).trimEnd()}...`
+    : assembled;
+};
+
 const sanitizeCaseData = (rawCase: any) => {
   if (!rawCase || typeof rawCase !== 'object') {
     return null;
@@ -357,8 +425,7 @@ const sanitizeCaseData = (rawCase: any) => {
   const cleanedTitle = rawTitle ? stripInvestmentAnalysisPrefix(rawTitle) : '';
   const resolvedTitle = cleanedTitle || rawTitle || companyName;
 
-  const description = descriptionRaw.replace(/\s+/g, ' ');
-  const shortDescription = description.length > 280 ? `${description.slice(0, 277).trimEnd()}...` : description;
+  const shortDescription = buildConciseDescription(descriptionRaw, longDescription);
 
   const sector = typeof rawCase.sector === 'string' ? rawCase.sector.trim() : null;
   const marketCap = rawCase.market_cap ? String(rawCase.market_cap).trim() : null;
