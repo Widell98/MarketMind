@@ -200,11 +200,6 @@ const Index = () => {
                       {t('hero.cta.start')}
                     </Link>
                   </Button>
-                  <Button asChild variant="ghost" size="lg" className="text-primary hover:bg-primary/5 font-medium px-8 py-4 rounded-xl transition-all duration-300 text-lg">
-                    <Link to="/ai-chatt">
-                      {t('hero.cta.demo')}
-                    </Link>
-                  </Button>
                 </div>
               </div>
 
