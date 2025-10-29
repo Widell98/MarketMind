@@ -22,6 +22,7 @@ import { normalizeStockCaseTitle } from '@/utils/stockCaseText';
 import AddStockCaseUpdateDialog from '@/components/AddStockCaseUpdateDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { formatCurrency } from '@/utils/currencyUtils';
 import { cn } from '@/lib/utils';
 import type { StockCase } from '@/types/stockCase';
@@ -191,6 +192,50 @@ type FinancialStat = {
   description?: React.ReactNode;
 };
 
+const buildAiHeroIntro = (
+  primary?: string | null,
+  secondary?: string | null,
+  tertiary?: string | null,
+): string | null => {
+  const sources = [primary, secondary, tertiary]
+    .map((value) => (typeof value === 'string' ? value.trim() : ''))
+    .filter((value) => value.length > 0);
+
+  if (!sources.length) {
+    return null;
+  }
+
+  const normalized = sources.join(' ').replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const sentences = normalized
+    .split(/(?<=[.!?])\s+(?=[A-ZÅÄÖ0-9])/u)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+
+  if (!sentences.length) {
+    const limited = normalized.slice(0, 480).trim();
+    return limited.length < normalized.length ? `${limited}...` : limited;
+  }
+
+  const desiredCount = sentences.length >= 3
+    ? 3
+    : sentences.length >= 2
+      ? 2
+      : 1;
+
+  let assembled = sentences.slice(0, desiredCount).join(' ');
+  const MAX_LENGTH = 480;
+
+  if (assembled.length > MAX_LENGTH) {
+    assembled = `${assembled.slice(0, MAX_LENGTH - 3).trimEnd()}...`;
+  }
+
+  return assembled;
+};
+
 const StockCaseDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -202,6 +247,7 @@ const StockCaseDetail = () => {
   const [sheetMetrics, setSheetMetrics] = useState<SheetTickerMetrics | null>(null);
   const [isHeroLogoError, setIsHeroLogoError] = useState(false);
   const [isVersionDialogOpen, setIsVersionDialogOpen] = useState(false);
+  const [showFullAiPitch, setShowFullAiPitch] = useState(false);
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL LOGIC
   const { stockCase, loading, error } = useStockCase(id || '');
@@ -246,6 +292,10 @@ const StockCaseDetail = () => {
       controller.abort();
     };
   }, [stockCase?.ticker]);
+
+  useEffect(() => {
+    setShowFullAiPitch(false);
+  }, [stockCase?.id]);
 
   // NOW we can have conditional logic and early returns
   if (loading) {
@@ -493,8 +543,28 @@ const StockCaseDetail = () => {
   // Format case description with sections
   const formatCaseDescription = (description: string | null) => {
     if (!description) return null;
-    
-    const sections = description.split('\n\n');
+
+    const normalizedDescription = description.replace(/\r\n/g, '\n').trim();
+    if (!normalizedDescription) {
+      return null;
+    }
+
+    let sections = normalizedDescription
+      .split(/\n{2,}/)
+      .map((section) => section.trim())
+      .filter((section) => section.length > 0);
+
+    if (sections.length <= 1) {
+      const fallbackSections = normalizedDescription
+        .split(/\n+/)
+        .map((section) => section.trim())
+        .filter((section) => section.length > 0);
+
+      if (fallbackSections.length > 1) {
+        sections = fallbackSections;
+      }
+    }
+
     return sections.map((section, index) => {
       // Check if section starts with common labels
       if (section.toLowerCase().startsWith('bull case')) {
@@ -534,10 +604,10 @@ const StockCaseDetail = () => {
       }
       
       return (
-        <p 
-          key={index} 
+        <p
+          key={index}
           className="text-foreground leading-relaxed mb-4"
-          dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(section) }}
+          dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(section.replace(/\n/g, '<br />')) }}
         />
       );
     });
@@ -616,6 +686,39 @@ const StockCaseDetail = () => {
   const displayedAnalysisDescription = typeof cleanedAnalysisDescription === 'string'
     ? (cleanedAnalysisDescription.trim().length > 0 ? cleanedAnalysisDescription.trim() : null)
     : null;
+
+  const heroPitchIntro = isAiGeneratedCase
+    ? buildAiHeroIntro(
+      stockCase.ai_intro,
+      stockCase.description,
+      displayedAnalysisDescription ?? stockCase.long_description ?? null,
+    )
+    : null;
+
+  const renderAiHeroIntroBox = (includeTrigger: boolean) => (
+    <div className="rounded-3xl border border-border/40 bg-muted/20 p-5 text-left shadow-inner">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">
+        <Brain className="h-4 w-4 text-muted-foreground/70" />
+        AI-pitchöversikt
+      </div>
+      <p
+        className="mt-3 text-base leading-relaxed text-foreground"
+        dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(heroPitchIntro ?? '') }}
+      />
+      {includeTrigger ? (
+        <CollapsibleTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold"
+          >
+            {showFullAiPitch ? 'Dölj full pitch' : 'Läs hela pitchen'}
+            {showFullAiPitch ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </CollapsibleTrigger>
+      ) : null}
+    </div>
+  );
 
   const resolvedMarketCap = formatApproximateMarketCap(
     sheetMetrics?.marketCap ?? stockCase.market_cap ?? null,
@@ -965,6 +1068,30 @@ const StockCaseDetail = () => {
                   <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                     {heroMetadataItems.map((item) => item)}
                   </div>
+                ) : null}
+
+                {isAiGeneratedCase && heroPitchIntro ? (
+                  displayedAnalysisDescription ? (
+                    <Collapsible
+                      open={showFullAiPitch}
+                      onOpenChange={setShowFullAiPitch}
+                      className="w-full text-left"
+                    >
+                      {renderAiHeroIntroBox(true)}
+                      <CollapsibleContent className="mt-4 space-y-4">
+                        <Card className="border border-border/40 bg-background/95 shadow-[0_18px_40px_-45px_rgba(15,23,42,0.55)]">
+                          <CardHeader>
+                            <CardTitle>Full pitch</CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-6">
+                            {formatCaseDescription(displayedAnalysisDescription)}
+                          </CardContent>
+                        </Card>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ) : (
+                    renderAiHeroIntroBox(false)
+                  )
                 ) : null}
               </div>
 
@@ -1341,7 +1468,7 @@ const StockCaseDetail = () => {
             )}
 
             {/* Case Description with Structured Sections */}
-            {displayedAnalysisDescription && (
+            {!isAiGeneratedCase && displayedAnalysisDescription && (
               <Card>
                 <CardHeader>
                   <CardTitle>Analys</CardTitle>
