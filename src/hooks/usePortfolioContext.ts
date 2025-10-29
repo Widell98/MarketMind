@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { useCashHoldings } from '@/hooks/useCashHoldings';
-import { getNormalizedValue, convertToSEK } from '@/utils/currencyUtils';
+import { getNormalizedValue, convertToSEK, refreshExchangeRates } from '@/utils/currencyUtils';
 
 export interface PortfolioContext {
   totalValue: number;
@@ -42,9 +42,25 @@ export const usePortfolioContext = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user && actualHoldings && cashHoldings) {
-      calculatePortfolioContext();
-    }
+    let cancelled = false;
+
+    const prepareContext = async () => {
+      if (!user || !actualHoldings || !cashHoldings) return;
+
+      await refreshExchangeRates().catch((error) => {
+        console.warn('Failed to refresh exchange rates before portfolio calculation.', error);
+      });
+
+      if (!cancelled) {
+        calculatePortfolioContext();
+      }
+    };
+
+    void prepareContext();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user, actualHoldings, cashHoldings, performance]);
 
   const calculatePortfolioContext = () => {
