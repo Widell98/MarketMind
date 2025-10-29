@@ -8,16 +8,11 @@ import {
   ArrowUpRight,
   TrendingUp,
   Wallet,
-  Shield,
   MessageCircle,
   CheckCircle,
   Star,
-  Heart,
   Target,
-  Coffee,
   HandHeart,
-  MapPin,
-  Clock,
   Zap,
   DollarSign,
   MessageSquare,
@@ -37,6 +32,7 @@ import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAIInsights } from '@/hooks/useAIInsights';
 import { useFinancialProgress } from '@/hooks/useFinancialProgress';
+import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 
@@ -80,6 +76,10 @@ const Index = () => {
     activePortfolio,
     loading
   } = usePortfolio();
+  const {
+    riskProfile,
+    loading: riskProfileLoading
+  } = useRiskProfile();
   const {
     performance
   } = usePortfolioPerformance();
@@ -425,46 +425,100 @@ const Index = () => {
               </div>
             </div>}
 
-          {/* Enhanced personal welcome for users without portfolio */}
-          {user && !hasPortfolio && !loading && <div className="mb-12 sm:mb-16">
-              <Card className="rounded-3xl border-slate-200 bg-gradient-to-r from-slate-50 to-indigo-50 shadow-lg dark:border-slate-700 dark:from-slate-800 dark:to-indigo-900/20">
-                <div className="rounded-3xl border bg-card/60 p-6 text-center shadow-lg backdrop-blur-sm sm:p-12">
-                  <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 sm:mb-8 sm:h-20 sm:w-20">
-                    <HandHeart className="h-8 w-8 text-primary sm:h-10 sm:w-10" />
+          {/* Enhanced personal welcome for users who still need a risk profile */}
+          {user && !riskProfile && !riskProfileLoading && <div className="mb-12 sm:mb-16">
+              <Card className="rounded-3xl border-slate-200 bg-gradient-to-br from-slate-50 via-white to-indigo-50 shadow-lg dark:border-slate-700 dark:from-slate-900 dark:via-slate-900/60 dark:to-indigo-900/40">
+                <div className="rounded-3xl border bg-card/60 p-6 shadow-lg backdrop-blur-sm sm:p-12">
+                  <div className="flex flex-col items-center text-center">
+                    <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 sm:mb-8 sm:h-20 sm:w-20">
+                      <Brain className="h-8 w-8 text-primary sm:h-10 sm:w-10" />
+                    </div>
+                    <h3 className="mb-4 text-2xl font-semibold text-foreground sm:mb-6 sm:text-3xl">AI Portfolio Advisor</h3>
+                    <p className="mx-auto mb-10 max-w-2xl text-base leading-relaxed text-muted-foreground sm:mb-12 sm:text-lg">
+                      Skapa din personliga investeringsstrategi genom en naturlig chatt-konversation.
+                    </p>
                   </div>
-                  <h3 className="mb-4 text-2xl font-semibold text-foreground sm:mb-6 sm:text-3xl">Välkommen hem!</h3>
-                  <p className="mx-auto mb-8 max-w-2xl text-base leading-relaxed text-muted-foreground sm:mb-12 sm:text-lg">
-                    Nu ska vi lära känna varandra ordentligt. Tänk på mig som din personliga ai-rådgivare som hjälper dig bygga
-                    den ekonomiska trygghet du drömmer om. Vi tar det i din takt, steg för steg.
-                  </p>
 
-                  {/* Personal journey section */}
-                  <div className="mb-8 rounded-2xl border bg-card p-6 shadow-sm sm:mb-12 sm:p-8">
-                    <h4 className="mb-6 flex items-center justify-center gap-3 text-lg font-semibold text-foreground">
-                      <MapPin className="h-5 w-5 text-primary" />
-                      Din personliga resa börjar här
-                    </h4>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
-                      <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/10 bg-primary/5 p-5 sm:p-6">
-                        <Coffee className="h-6 w-6 text-primary" />
-                        <span className="font-medium text-foreground">Berätta om dig</span>
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6 sm:p-8">
+                      <div className="mb-4 flex items-center gap-3">
+                        <MessageCircle className="h-5 w-5 text-primary" />
+                        <span className="text-lg font-semibold text-foreground">Chattbaserad konsultation</span>
                       </div>
-                      <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/10 bg-primary/5 p-5 sm:p-6">
-                        <HandHeart className="h-6 w-6 text-primary" />
-                        <span className="font-medium text-foreground">Vi skapar trygghet</span>
+                      <ul className="space-y-3 text-sm text-muted-foreground sm:text-base">
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="mt-0.5 h-4 w-4 text-primary" />
+                          <span>Naturlig konversation med AI-rådgivare</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="mt-0.5 h-4 w-4 text-primary" />
+                          <span>En fråga i taget för bättre fokus</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="mt-0.5 h-4 w-4 text-primary" />
+                          <span>Anpassade följdfrågor baserat på dina svar</span>
+                        </li>
+                      </ul>
+                    </div>
+                    <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6 sm:p-8">
+                      <div className="mb-4 flex items-center gap-3">
+                        <Target className="h-5 w-5 text-primary" />
+                        <span className="text-lg font-semibold text-foreground">Personlig analys</span>
                       </div>
-                      <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/10 bg-primary/5 p-5 sm:p-6">
-                        <Clock className="h-6 w-6 text-primary" />
-                        <span className="font-medium text-foreground">Vi följs åt framåt</span>
-                      </div>
+                      <ul className="space-y-3 text-sm text-muted-foreground sm:text-base">
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="mt-0.5 h-4 w-4 text-primary" />
+                          <span>Analyserar dina intressen och mål</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="mt-0.5 h-4 w-4 text-primary" />
+                          <span>Föreslår konkreta investeringar</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="mt-0.5 h-4 w-4 text-primary" />
+                          <span>Skapar actionable strategi</span>
+                        </li>
+                      </ul>
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:justify-center sm:gap-4">
+                  <div className="mt-10 rounded-2xl border bg-card/70 p-6 sm:mt-12 sm:p-8">
+                    <div className="mb-6 flex items-center justify-center gap-3 text-lg font-semibold text-foreground">
+                      <Zap className="h-5 w-5 text-primary" />
+                      Så här fungerar det:
+                    </div>
+                    <ol className="grid gap-4 text-left sm:grid-cols-2 sm:gap-6">
+                      {[{
+                        step: '1',
+                        title: 'Starta en chatt med AI-rådgivaren',
+                      }, {
+                        step: '2',
+                        title: 'Svara på frågor om dina mål och preferenser',
+                      }, {
+                        step: '3',
+                        title: 'Få en personlig portföljstrategi med konkreta rekommendationer',
+                      }, {
+                        step: '4',
+                        title: 'Implementera strategin med våra verktyg',
+                      }].map(({ step, title }) => (
+                        <li
+                          key={step}
+                          className="flex items-start gap-4 rounded-xl border border-dashed border-primary/30 bg-background/80 p-4 sm:p-5"
+                        >
+                          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-lg font-semibold text-primary-foreground">
+                            {step}
+                          </span>
+                          <span className="text-sm text-muted-foreground sm:text-base">{title}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+
+                  <div className="mt-10 flex flex-col items-stretch gap-3 sm:mt-12 sm:flex-row sm:justify-center sm:gap-4">
                     <Button asChild size="lg" className="w-full rounded-xl bg-primary px-6 py-4 text-lg font-medium text-primary-foreground shadow-lg transition-all duration-300 hover:bg-primary/90 hover:shadow-xl sm:w-auto sm:px-8">
                       <Link to="/portfolio-advisor?direct=true">
-                        <Coffee className="mr-2 h-5 w-5" />
-                        Låt oss lära känna varandra
+                        <Sparkles className="mr-2 h-5 w-5" />
+                        Starta din chatt
                       </Link>
                     </Button>
                     <Button asChild variant="outline" size="lg" className="w-full rounded-xl px-6 py-4 text-lg font-medium transition-all duration-300 hover:bg-muted/50 sm:w-auto sm:px-8">
