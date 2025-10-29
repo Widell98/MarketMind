@@ -1,31 +1,259 @@
 // Simple currency conversion utility
-// In a real application, you would fetch live exchange rates from an API
+// Fetches live exchange rates from Finnhub when possible, while keeping
+// sensible fallbacks so calculations keep working offline or during API
+// outages.
 
 export interface ExchangeRates {
   [key: string]: number;
 }
 
-// Base rates to SEK (Swedish Krona)
-// These should be updated regularly from a real API in production
-export const EXCHANGE_RATES: ExchangeRates = {
+const DEFAULT_EXCHANGE_RATES: ExchangeRates = {
   SEK: 1.0,
-  USD: 10.5,   // 1 USD = ~10.5 SEK
-  EUR: 11.4,   // 1 EUR = ~11.4 SEK
-  GBP: 13.2,   // 1 GBP = ~13.2 SEK
-  NOK: 0.95,   // 1 NOK = ~0.95 SEK
-  DKK: 1.53,   // 1 DKK = ~1.53 SEK
-  JPY: 0.07,   // 1 JPY = ~0.07 SEK
-  CHF: 11.8,   // 1 CHF = ~11.8 SEK
-  CAD: 7.8,    // 1 CAD = ~7.8 SEK
-  AUD: 7.0,    // 1 AUD = ~7.0 SEK
 };
+
+const SUPPORTED_CURRENCIES = ['SEK', 'USD', 'EUR', 'GBP', 'NOK', 'DKK', 'JPY', 'CHF', 'CAD', 'AUD'];
+
+const EXCHANGE_RATES_STORAGE_KEY = 'marketmind.exchangeRates.sekBase';
+
+const getLocalStorage = (): Storage | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    return window.localStorage;
+  } catch (error) {
+    console.warn('LocalStorage är inte tillgänglig, sparade växelkurser ignoreras.', error);
+    return null;
+  }
+};
+
+interface PersistedExchangeRates {
+  rates: ExchangeRates;
+  updatedAt: number;
+}
+
+const loadPersistedExchangeRates = (): PersistedExchangeRates | null => {
+  const storage = getLocalStorage();
+  if (!storage) {
+    return null;
+  }
+
+  try {
+    const stored = storage.getItem(EXCHANGE_RATES_STORAGE_KEY);
+    if (!stored) {
+      return null;
+    }
+
+    const parsed = JSON.parse(stored) as Partial<PersistedExchangeRates> | null;
+    if (!parsed || typeof parsed !== 'object') {
+      return null;
+    }
+
+    if (!parsed.rates || typeof parsed.rates !== 'object') {
+      return null;
+    }
+
+    if (typeof parsed.updatedAt !== 'number' || Number.isNaN(parsed.updatedAt)) {
+      return null;
+    }
+
+    const normalizedRates: ExchangeRates = { ...DEFAULT_EXCHANGE_RATES };
+    for (const currency of SUPPORTED_CURRENCIES) {
+      const value = (parsed.rates as ExchangeRates)[currency];
+      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+        normalizedRates[currency] = value;
+      }
+    }
+
+    return {
+      updatedAt: parsed.updatedAt,
+      rates: normalizedRates,
+    };
+  } catch (error) {
+    console.warn('Kunde inte läsa sparade växelkurser från localStorage.', error);
+    return null;
+  }
+};
+
+const persistExchangeRates = (rates: ExchangeRates) => {
+  const storage = getLocalStorage();
+  if (!storage) {
+    return;
+  }
+
+  try {
+    const sanitizedRates: ExchangeRates = { ...DEFAULT_EXCHANGE_RATES };
+    for (const currency of SUPPORTED_CURRENCIES) {
+      const value = rates[currency];
+      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+        sanitizedRates[currency] = value;
+      }
+    }
+
+    const payload: PersistedExchangeRates = {
+      updatedAt: Date.now(),
+      rates: sanitizedRates,
+    };
+
+    storage.setItem(EXCHANGE_RATES_STORAGE_KEY, JSON.stringify(payload));
+  } catch (error) {
+    console.warn('Kunde inte spara växelkurser i localStorage.', error);
+  }
+};
+
+const persistedExchangeRates = loadPersistedExchangeRates();
+
+export let EXCHANGE_RATES: ExchangeRates =
+  persistedExchangeRates?.rates ?? { ...DEFAULT_EXCHANGE_RATES };
+
+const FINNHUB_API_KEY = import.meta.env?.VITE_FINNHUB_API_KEY as string | undefined;
+const FINNHUB_BASE_CURRENCY = 'SEK';
+const FINNHUB_ENDPOINT = 'https://finnhub.io/api/v1/forex/rates';
+const EXCHANGE_REFRESH_INTERVAL_MS = 1000 * 60 * 60; // 1 hour
+
+interface FinnhubRatesResponse {
+  base?: string;
+  quote?: Record<string, unknown>;
+}
+
+let lastSuccessfulRatesUpdate: number | null = persistedExchangeRates?.updatedAt ?? null;
+let ongoingRatesFetch: Promise<ExchangeRates> | null = null;
+
+const parseFinnhubRates = (response: FinnhubRatesResponse): ExchangeRates | null => {
+  if (!response || typeof response !== 'object') {
+    return null;
+  }
+
+  if (typeof response.base !== 'string' || response.base.toUpperCase() !== FINNHUB_BASE_CURRENCY) {
+    return null;
+  }
+
+  if (!response.quote || typeof response.quote !== 'object') {
+    return null;
+  }
+
+  const rates: ExchangeRates = { [FINNHUB_BASE_CURRENCY]: 1 };
+
+  for (const currency of SUPPORTED_CURRENCIES) {
+    if (currency === FINNHUB_BASE_CURRENCY) {
+      rates[currency] = 1;
+      continue;
+    }
+
+    const rawQuote = response.quote[currency];
+    if (typeof rawQuote === 'number' && Number.isFinite(rawQuote) && rawQuote > 0) {
+      // Finnhub returns how much of the quote currency equals 1 SEK.
+      // To get 1 unit of the foreign currency in SEK we invert the quote.
+      rates[currency] = 1 / rawQuote;
+    } else if (typeof rawQuote === 'string') {
+      const parsed = parseFloat(rawQuote);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        rates[currency] = 1 / parsed;
+      }
+    }
+  }
+
+  return rates;
+};
+
+const fetchExchangeRatesFromFinnhub = async (): Promise<ExchangeRates | null> => {
+  if (typeof fetch !== 'function') {
+    return null;
+  }
+
+  if (!FINNHUB_API_KEY) {
+    console.warn('FINNHUB_API_KEY saknas – använder sparade eller fallbackkurser.');
+    return null;
+  }
+
+  try {
+    const url = new URL(FINNHUB_ENDPOINT);
+    url.searchParams.set('base', FINNHUB_BASE_CURRENCY);
+    url.searchParams.set('token', FINNHUB_API_KEY);
+
+    const response = await fetch(url.toString());
+
+    if (!response.ok) {
+      throw new Error(`Finnhub exchange rate request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const json = (await response.json()) as FinnhubRatesResponse;
+    const parsed = parseFinnhubRates(json);
+
+    if (!parsed) {
+      throw new Error('Finnhub exchange rate response saknar giltiga data.');
+    }
+
+    return { ...DEFAULT_EXCHANGE_RATES, ...EXCHANGE_RATES, ...parsed };
+  } catch (error) {
+    console.warn('Kunde inte hämta växelkurser från Finnhub, använder sparade eller fallbackkurser.', error);
+    return null;
+  }
+};
+
+const shouldRefreshRates = (): boolean => {
+  if (!lastSuccessfulRatesUpdate) {
+    return true;
+  }
+
+  return Date.now() - lastSuccessfulRatesUpdate > EXCHANGE_REFRESH_INTERVAL_MS;
+};
+
+export const refreshExchangeRates = async (force = false): Promise<ExchangeRates> => {
+  if (!force && !shouldRefreshRates()) {
+    return EXCHANGE_RATES;
+  }
+
+  if (!ongoingRatesFetch) {
+    ongoingRatesFetch = fetchExchangeRatesFromFinnhub()
+      .then((rates) => {
+        if (rates) {
+          EXCHANGE_RATES = rates;
+          lastSuccessfulRatesUpdate = Date.now();
+          persistExchangeRates(EXCHANGE_RATES);
+        }
+
+        return EXCHANGE_RATES;
+      })
+      .finally(() => {
+        ongoingRatesFetch = null;
+      });
+  }
+
+  const activeFetch = ongoingRatesFetch;
+
+  if (!activeFetch) {
+    return EXCHANGE_RATES;
+  }
+
+  try {
+    return await activeFetch;
+  } catch (error) {
+    console.warn('Fel vid hämtning av växelkurser från Finnhub:', error);
+    return EXCHANGE_RATES;
+  }
+};
+
+const triggerBackgroundRefresh = () => {
+  if (shouldRefreshRates()) {
+    void refreshExchangeRates();
+  }
+};
+
+// Kick off an initial background refresh as soon as the module is loaded in a browser
+if (typeof window !== 'undefined') {
+  triggerBackgroundRefresh();
+}
 
 /**
  * Convert amount from one currency to SEK
  */
 export const convertToSEK = (amount: number, fromCurrency: string): number => {
   if (!amount || amount === 0) return 0;
-  
+
+  triggerBackgroundRefresh();
+
   const currency = fromCurrency?.toUpperCase() || 'SEK';
   const rate = EXCHANGE_RATES[currency];
   
@@ -42,7 +270,9 @@ export const convertToSEK = (amount: number, fromCurrency: string): number => {
  */
 export const convertFromSEK = (amountInSEK: number, toCurrency: string): number => {
   if (!amountInSEK || amountInSEK === 0) return 0;
-  
+
+  triggerBackgroundRefresh();
+
   const currency = toCurrency?.toUpperCase() || 'SEK';
   const rate = EXCHANGE_RATES[currency];
   
