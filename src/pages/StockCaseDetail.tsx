@@ -321,6 +321,7 @@ const StockCaseDetail = () => {
   }, [stockCase?.id]);
 
   const navigationButtonBaseClasses = 'rounded-full border border-border/40 bg-background/70 text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground';
+  const navigationTooltipClassName = 'border border-border/60 bg-foreground text-background shadow-lg';
 
   const CaseNavigationControls = (
     { layout = 'inline' }: { layout?: 'inline' | 'overlay' | 'page' } = {}
@@ -342,8 +343,8 @@ const StockCaseDetail = () => {
       if (layout === 'page') {
         return (
           <div className="pointer-events-none absolute inset-y-0 left-1/2 hidden w-[min(100%,72rem)] -translate-x-1/2 items-center justify-between px-3 sm:px-6 lg:flex">
-            <div className="h-12 w-12 -translate-x-10 animate-pulse rounded-full border border-border/30 bg-muted/40" />
-            <div className="h-12 w-12 translate-x-10 animate-pulse rounded-full border border-border/30 bg-muted/40" />
+            <div className="h-14 w-14 -translate-x-12 animate-pulse rounded-full border border-border/30 bg-muted/40" />
+            <div className="h-14 w-14 translate-x-12 animate-pulse rounded-full border border-border/30 bg-muted/40" />
           </div>
         );
       }
@@ -372,7 +373,7 @@ const StockCaseDetail = () => {
                     variant="ghost"
                     size="icon"
                     className={cn(
-                      'h-12 w-12 -translate-x-10 text-foreground shadow-lg hover:-translate-x-11 hover:shadow-xl',
+                      'h-14 w-14 -translate-x-12 text-foreground shadow-xl hover:-translate-x-14 hover:shadow-2xl',
                       'transition-transform duration-200',
                       navigationButtonBaseClasses,
                       'bg-background/95 hover:bg-background'
@@ -380,12 +381,12 @@ const StockCaseDetail = () => {
                     disabled={!previousCase}
                     onClick={() => handleNavigateToNeighbor(previousCase?.id)}
                   >
-                    <ChevronLeft className="h-5 w-5" />
+                    <ChevronLeft className="h-6 w-6" />
                     <span className="sr-only">Föregående case</span>
                   </Button>
                 </span>
               </TooltipTrigger>
-              <TooltipContent sideOffset={6}>
+              <TooltipContent side="right" sideOffset={8} className={navigationTooltipClassName}>
                 {previousCaseTitle ? `Föregående: ${previousCaseTitle}` : 'Föregående case'}
               </TooltipContent>
             </Tooltip>
@@ -397,7 +398,7 @@ const StockCaseDetail = () => {
                     variant="ghost"
                     size="icon"
                     className={cn(
-                      'h-12 w-12 translate-x-10 text-foreground shadow-lg hover:translate-x-11 hover:shadow-xl',
+                      'h-14 w-14 translate-x-12 text-foreground shadow-xl hover:translate-x-14 hover:shadow-2xl',
                       'transition-transform duration-200',
                       navigationButtonBaseClasses,
                       'bg-background/95 hover:bg-background'
@@ -405,12 +406,12 @@ const StockCaseDetail = () => {
                     disabled={!nextCase}
                     onClick={() => handleNavigateToNeighbor(nextCase?.id)}
                   >
-                    <ChevronRight className="h-5 w-5" />
+                    <ChevronRight className="h-6 w-6" />
                     <span className="sr-only">Nästa case</span>
                   </Button>
                 </span>
               </TooltipTrigger>
-              <TooltipContent sideOffset={6}>
+              <TooltipContent side="left" sideOffset={8} className={navigationTooltipClassName}>
                 {nextCaseTitle ? `Nästa: ${nextCaseTitle}` : 'Nästa case'}
               </TooltipContent>
             </Tooltip>
@@ -444,7 +445,7 @@ const StockCaseDetail = () => {
                   </Button>
                 </span>
               </TooltipTrigger>
-              <TooltipContent sideOffset={6}>
+              <TooltipContent side="right" sideOffset={8} className={navigationTooltipClassName}>
                 {previousCaseTitle ? `Föregående: ${previousCaseTitle}` : 'Föregående case'}
               </TooltipContent>
             </Tooltip>
@@ -469,7 +470,7 @@ const StockCaseDetail = () => {
                   </Button>
                 </span>
               </TooltipTrigger>
-              <TooltipContent sideOffset={6}>
+              <TooltipContent side="left" sideOffset={8} className={navigationTooltipClassName}>
                 {nextCaseTitle ? `Nästa: ${nextCaseTitle}` : 'Nästa case'}
               </TooltipContent>
             </Tooltip>
@@ -497,7 +498,7 @@ const StockCaseDetail = () => {
                 </Button>
               </span>
             </TooltipTrigger>
-            <TooltipContent sideOffset={6}>
+            <TooltipContent side="top" sideOffset={8} className={navigationTooltipClassName}>
               {previousCaseTitle ? `Föregående: ${previousCaseTitle}` : 'Föregående case'}
             </TooltipContent>
           </Tooltip>
@@ -517,7 +518,7 @@ const StockCaseDetail = () => {
                 </Button>
               </span>
             </TooltipTrigger>
-            <TooltipContent sideOffset={6}>
+            <TooltipContent side="top" sideOffset={8} className={navigationTooltipClassName}>
               {nextCaseTitle ? `Nästa: ${nextCaseTitle}` : 'Nästa case'}
             </TooltipContent>
           </Tooltip>
