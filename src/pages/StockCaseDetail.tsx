@@ -690,7 +690,7 @@ const StockCaseDetail = () => {
   if (sheetPriceDisplay && sheetPriceDisplay !== currentPriceDisplay) {
     pricingStats.push({
       key: 'sheet-price',
-      label: 'Senaste pris (Google Sheet)',
+      label: 'Senaste pris',
       icon: LineChart,
       value: sheetPriceDisplay,
       valueClassName: 'text-lg text-muted-foreground',

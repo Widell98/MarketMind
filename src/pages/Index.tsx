@@ -399,16 +399,16 @@ const Index = () => {
                           key={title}
                           asChild
                           variant="outline"
-                          className="group h-full w-full justify-start rounded-2xl border-border/60 bg-card/60 p-4 text-left transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 hover:shadow-md sm:p-5 whitespace-normal"
+                          className="group h-full w-full justify-center rounded-2xl border-border/60 bg-card/60 p-4 text-center transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 hover:shadow-md sm:p-5 whitespace-normal"
                         >
                           <Link
                             to={to}
-                            className="flex h-full w-full flex-col items-start gap-3 text-left !whitespace-normal"
+                            className="flex h-full w-full flex-col items-center gap-3 text-center !whitespace-normal"
                           >
                             <div className="flex items-center justify-center rounded-xl bg-primary/10 p-3 text-primary transition-all group-hover:bg-primary group-hover:text-primary-foreground">
                               <Icon className="h-5 w-5" />
                             </div>
-                            <div className="w-full space-y-1">
+                            <div className="w-full space-y-1 text-center">
                               <p className="break-words text-sm font-semibold text-foreground sm:text-base">
                                 {title}
                               </p>
