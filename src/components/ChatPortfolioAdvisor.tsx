@@ -4,6 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Brain,
   Send,
   User,
@@ -166,6 +176,7 @@ const ChatPortfolioAdvisor = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [waitingForAnswer, setWaitingForAnswer] = useState(false);
   const [holdings, setHoldings] = useState<Holding[]>([]);
+  const [holdingToRemove, setHoldingToRemove] = useState<Holding | null>(null);
   const [showHoldingsInput, setShowHoldingsInput] = useState(false);
   const [localLoading, setLoading] = useState(false);
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
@@ -904,6 +915,13 @@ const ChatPortfolioAdvisor = () => {
 
   const removeHolding = (id: string) => {
     setHoldings(prev => prev.filter(holding => holding.id !== id));
+  };
+
+  const handleHoldingDeleteConfirm = () => {
+    if (holdingToRemove) {
+      removeHolding(holdingToRemove.id);
+      setHoldingToRemove(null);
+    }
   };
 
   const submitHoldings = () => {
@@ -1811,7 +1829,7 @@ const ChatPortfolioAdvisor = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => removeHolding(holding.id)}
+                                  onClick={() => setHoldingToRemove(holding)}
                                   className="h-8 sm:h-9 px-2 text-red-600 hover:text-red-700"
                                   disabled={holdings.length === 1}
                                 >
@@ -1822,7 +1840,38 @@ const ChatPortfolioAdvisor = () => {
                           </div>
 
                           <datalist id={tickerDatalistId}>{tickerOptions}</datalist>
-                          
+
+                          <AlertDialog
+                            open={!!holdingToRemove}
+                            onOpenChange={(open) => {
+                              if (!open) {
+                                setHoldingToRemove(null);
+                              }
+                            }}
+                          >
+                            <AlertDialogContent className="rounded-2xl">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="text-lg font-semibold">
+                                  Ta bort innehav
+                                </AlertDialogTitle>
+                                <AlertDialogDescription className="text-sm text-muted-foreground">
+                                  Är du säker på att du vill ta bort {holdingToRemove?.name || 'detta innehav'}? Denna åtgärd kan inte ångras.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="rounded-lg">
+                                  Avbryt
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={handleHoldingDeleteConfirm}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Ta bort
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+
                           {/* Holdings Summary */}
                           {holdings.some(h => h.name && h.quantity > 0 && h.purchasePrice > 0) && (
                             <div className="bg-green-50 border border-green-200 rounded-lg p-3">
