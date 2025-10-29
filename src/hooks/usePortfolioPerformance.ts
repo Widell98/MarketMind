@@ -860,18 +860,6 @@ export const usePortfolioPerformance = () => {
         descriptionParts.push('Tickern matchade inga innehav att uppdatera.');
       }
 
-      if (priceSource === 'finnhub') {
-        descriptionParts.push('Pris hämtat via Finnhub');
-        if (!matchedTicker) {
-          descriptionParts.push('Google Sheets-listan saknade match – använde Finnhub-symbolen');
-        }
-      } else if (priceSource === 'sheet') {
-        descriptionParts.push('Pris från Google Sheets användes');
-        if (livePriceError) {
-          descriptionParts.push('Live-priset kunde inte hämtas just nu');
-        }
-      }
-
       const toastTitle = updatedCount > 0
         ? `Pris uppdaterat för ${canonicalSymbol}`
         : `Inget pris uppdaterades för ${canonicalSymbol}`;

@@ -1032,6 +1032,7 @@ export type Database = {
           ai_batch_id: string | null
           admin_comment: string | null
           ai_generated: boolean | null
+          ai_intro: string | null
           category_id: string | null
           closed_at: string | null
           company_name: string
@@ -1065,6 +1066,7 @@ export type Database = {
           ai_batch_id?: string | null
           admin_comment?: string | null
           ai_generated?: boolean | null
+          ai_intro?: string | null
           category_id?: string | null
           closed_at?: string | null
           company_name: string
@@ -1098,6 +1100,7 @@ export type Database = {
           ai_batch_id?: string | null
           admin_comment?: string | null
           ai_generated?: boolean | null
+          ai_intro?: string | null
           category_id?: string | null
           closed_at?: string | null
           company_name?: string

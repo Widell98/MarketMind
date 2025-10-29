@@ -8,16 +8,16 @@ export interface ExchangeRates {
 // Base rates to SEK (Swedish Krona)
 // These should be updated regularly from a real API in production
 export const EXCHANGE_RATES: ExchangeRates = {
-  SEK: 1.0,
-  USD: 10.5,   // 1 USD = ~10.5 SEK
-  EUR: 11.4,   // 1 EUR = ~11.4 SEK
-  GBP: 13.2,   // 1 GBP = ~13.2 SEK
-  NOK: 0.95,   // 1 NOK = ~0.95 SEK
-  DKK: 1.53,   // 1 DKK = ~1.53 SEK
-  JPY: 0.07,   // 1 JPY = ~0.07 SEK
-  CHF: 11.8,   // 1 CHF = ~11.8 SEK
-  CAD: 7.8,    // 1 CAD = ~7.8 SEK
-  AUD: 7.0,    // 1 AUD = ~7.0 SEK
+  SEK: 1,
+  USD: 9.40,
+  EUR: 10.92,
+  GBP: 12.52,
+  NOK: 0.94,
+  DKK: 1.46,
+  JPY: 0.062,
+  CHF: 11.82,
+  CAD: 6.70,
+  AUD: 6.13,
 };
 
 /**

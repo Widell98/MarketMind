@@ -305,6 +305,140 @@ const fetchSheetTickers = async (): Promise<SheetTickerInfo[]> => {
   return Array.from(tickerMap.values());
 };
 
+const buildConciseDescription = (primary: string | null | undefined, fallback?: string | null): string => {
+  const primaryValue = typeof primary === 'string' ? primary.trim() : '';
+  const fallbackValue = typeof fallback === 'string' ? fallback.trim() : '';
+  const candidateSource = primaryValue.length > 0 ? primaryValue : fallbackValue;
+  const normalized = candidateSource.replace(/\s+/g, ' ').trim();
+
+  if (!normalized) {
+    return '';
+  }
+
+  const sentences = normalized
+    .split(/(?<=[.!?])\s+(?=[A-ZÅÄÖ0-9])/u)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0);
+
+  const pickIntroSentence = (): string => {
+    if (sentences.length > 0) {
+      return sentences[0];
+    }
+
+    return normalized;
+  };
+
+  const shortenSentence = (sentence: string): string => {
+    const cleanSentence = sentence.replace(/\s+/g, ' ').trim();
+    if (!cleanSentence) {
+      return '';
+    }
+
+    const MAX_WORDS = 22;
+    const MAX_LENGTH = 140;
+
+    const words = cleanSentence.split(/\s+/u);
+    let truncated = cleanSentence;
+    let wasTrimmed = false;
+
+    if (words.length > MAX_WORDS) {
+      truncated = words.slice(0, MAX_WORDS).join(' ');
+      wasTrimmed = true;
+    }
+
+    if (truncated.length > MAX_LENGTH) {
+      truncated = truncated.slice(0, MAX_LENGTH - 3).trimEnd();
+      wasTrimmed = true;
+    }
+
+    let result = truncated.replace(/[-,:;]+$/u, '').replace(/\s+/g, ' ').trim();
+    const hadTerminalPunctuation = /[.!?]+$/u.test(result);
+    if (hadTerminalPunctuation) {
+      result = result.replace(/[.!?]+$/u, '').trim();
+    }
+
+    if (!result) {
+      return '';
+    }
+
+    if (wasTrimmed) {
+      return `${result}...`;
+    }
+
+    return result;
+  };
+
+  const intro = shortenSentence(pickIntroSentence());
+
+  if (intro) {
+    return intro;
+  }
+
+  return shortenSentence(normalized);
+};
+
+const buildAiIntro = (
+  longAnalysis: string | null | undefined,
+  fallback?: string | null,
+): string | null => {
+  const primaryValue = typeof longAnalysis === 'string' ? longAnalysis.trim() : '';
+  const fallbackValue = typeof fallback === 'string' ? fallback.trim() : '';
+  const candidate = primaryValue.length > 0 ? primaryValue : fallbackValue;
+
+  if (!candidate) {
+    return null;
+  }
+
+  const normalizedParagraphs = normalizeParagraphs(candidate);
+  if (!normalizedParagraphs) {
+    return null;
+  }
+
+  const flattened = normalizedParagraphs.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!flattened) {
+    return null;
+  }
+
+  const sentences = flattened
+    .split(/(?<=[.!?])\s+(?=[A-ZÅÄÖ0-9])/u)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0);
+
+  if (sentences.length === 0) {
+    return null;
+  }
+
+  const MAX_SENTENCES = 3;
+  const MIN_SENTENCES = 2;
+  const MAX_LENGTH = 600;
+
+  const assembled: string[] = [];
+
+  for (const sentence of sentences) {
+    if (assembled.length >= MAX_SENTENCES) {
+      break;
+    }
+
+    assembled.push(sentence);
+
+    const currentText = assembled.join(' ');
+    if (currentText.length >= MAX_LENGTH) {
+      assembled[assembled.length - 1] = sentence.replace(/[.!?]+$/u, '').trim();
+      break;
+    }
+
+    if (assembled.length >= MIN_SENTENCES && currentText.length >= 280) {
+      break;
+    }
+  }
+
+  if (assembled.length === 0) {
+    return null;
+  }
+
+  return assembled.join(' ').replace(/\s+/g, ' ').trim();
+};
+
 const sanitizeCaseData = (rawCase: any) => {
   if (!rawCase || typeof rawCase !== 'object') {
     return null;
@@ -357,8 +491,8 @@ const sanitizeCaseData = (rawCase: any) => {
   const cleanedTitle = rawTitle ? stripInvestmentAnalysisPrefix(rawTitle) : '';
   const resolvedTitle = cleanedTitle || rawTitle || companyName;
 
-  const description = descriptionRaw.replace(/\s+/g, ' ');
-  const shortDescription = description.length > 280 ? `${description.slice(0, 277).trimEnd()}...` : description;
+  const shortDescription = buildConciseDescription(descriptionRaw, longDescription);
+  const aiIntro = buildAiIntro(longDescription, descriptionRaw);
 
   const sector = typeof rawCase.sector === 'string' ? rawCase.sector.trim() : null;
   const marketCap = rawCase.market_cap ? String(rawCase.market_cap).trim() : null;
@@ -370,6 +504,7 @@ const sanitizeCaseData = (rawCase: any) => {
     company_name: companyName,
     description: shortDescription,
     long_description: longDescription,
+    ai_intro: aiIntro,
     sector,
     market_cap: marketCap,
     pe_ratio: peRatio,
@@ -748,14 +883,11 @@ Skapa ett välformulerat investeringscase för ett bolag inom sektorn "${sector}
 - Analysen ska gälla verkliga, börsnoterade bolag. Kontrollera att bolaget existerar och är listat på en erkänd börs.
 
 💡 Hiss-pitch (kort presentation):
-Inled texten med en kort, tydlig mening (1–2 meningar) som beskriver bolaget på ett engagerande sätt.
-Den ska snabbt förklara:
-- vad bolaget gör,
-- inom vilken nisch eller marknad det verkar,
-- och varför det är intressant eller unikt.
-Exempel:
-"Hexatronic är en svensk leverantör av fiberoptiska lösningar som gynnas av den globala utbyggnaden av bredband."
-"Investor AB är ett av Nordens största investmentbolag med en portfölj som spänner över industri, hälsa och teknik."
+Inled texten med en skarp hiss-pitch på 1–2 meningar som sätter kroken. Den ska:
+- visa vad bolaget gör och vilken marknad det adresserar,
+- lyfta fram en unik styrka, produkt eller position som väcker intresse,
+- antyda varför tajmingen är spännande just nu.
+Använd konkreta fakta eller välkända referenser när det är möjligt.
 
 💰 Prisreferens:
 Om prisdata finns (${sheetPrice ? "ja" : "nej"}), inkludera **en kort mening** som sätter priset i kontext – t.ex. om aktien handlas på en attraktiv nivå, nära årshögsta, eller i linje med sektorkollegor.
@@ -766,6 +898,7 @@ Undvik teknisk analys eller exakta kursmål – håll kommentaren kort, som en d
 - Professionell, engagerande och lättillgänglig ton — som en erfaren analytiker som vill väcka intresse snarare än överösa med siffror.
 - Undvik jargong, men använd relevanta finansiella begrepp där det stärker trovärdigheten.
 - Fokusera på bolagets affärslogik, tillväxtmöjligheter och branschkontext — inte exakta handelsnivåer.
+- Använd levande, konkreta formuleringar som hjälper läsaren att visualisera bolagets momentum.
 
 🎯 Förväntningar på analyskvalitet:
 Analysen ska vara konkret, faktabaserad och ge verklig insikt i bolaget.
@@ -774,28 +907,30 @@ Analysen ska vara konkret, faktabaserad och ge verklig insikt i bolaget.
 - Nämn minst ett **konkret exempel** kopplat till bolaget (t.ex. produkt, marknad, projekt, partnerskap eller geografisk expansion).
 - Om bolaget är verksamt inom en forskningsintensiv bransch (bioteknik, energi, teknologi etc.), inkludera en specifik produkt, tjänst eller utveckling som är central för bolaget.
 - Ge en tydlig motivering till **varför aktien kan vara intressant just nu** — t.ex. kommande lansering, förbättrad lönsamhet, orderbok, marknadstrend eller värderingsläge.
+- Lyft gärna fram en datapunkt (t.ex. tillväxttakt, marknadsandel, backlog) som gör caset mer konkret.
 - Skriv i tydliga, korta meningar som skulle fungera i en riktig analytikerpitch.
 - Undvik marknadsföringsspråk och håll fokus på analys och logik.
 
-📈 Innehållskrav:
-1. Inled med en hiss-pitch som presenterar bolaget på ett tydligt och intresseväckande sätt.
-2. Förklara varför bolaget är intressant för investerare med fokus på "${style}"-strategin.
-3. Lyft fram både kvantitativa och kvalitativa faktorer som stärker caset.
-4. Beskriv 2–3 tydliga tillväxtdrivare, trender eller marknadsförhållanden som påverkar bolaget – till exempel förändringar i efterfrågan, teknikutveckling, konkurrens, reglering eller makroekonomi.
-5. Välj endast faktorer som är relevanta för just detta bolag och sektor, utan att fokusera på någon specifik investeringsstil eller tema i onödan.
-6. Målet är att ge en balanserad och trovärdig helhetsbild som hjälper investerare att snabbt förstå bolagets läge, möjligheter och utmaningar.
-7. Undvik att ange målpris, stop-loss eller tekniska nivåer — fokusera på värdedrivande faktorer och berättelsen.
+📈 Innehållskrav och struktur:
+Skriv en analytisk aktiepitch i exakt fyra korta stycken (separerade med tomma rader) som flyter naturligt att läsa.
 
-🧩 Analysdel – krav på innehåll och struktur:
-Skriv en analytisk aktiepitch i tre till fem korta stycken (separerade med tomma rader) som flyter naturligt att läsa.
+Stycke 1 – "Hiss-pitch":
+- Den engagerande öppningen enligt instruktionerna ovan.
 
-Analysen ska:
-- Börja med hiss-pitchen.
-- Följa upp med bolagets kärnverksamhet, styrkor och marknadsposition.
-- Lyft fram aktuella drivkrafter eller marknadsfaktorer som påverkar bolaget.
-- Nämn kort en eller två risker eller utmaningar på ett balanserat sätt.
-- Om prisdata finns, väv in en naturlig mening om aktiens värdering eller prisnivå.
-- Avsluta med ett sammanfattande stycke som beskriver varför aktien är attraktiv för investerare med "${style}"-inriktning.
+Stycke 2 – "Varför bolaget sticker ut":
+- Beskriv kärnverksamheten, nyckelprodukter/tjänster och hur bolaget positionerar sig mot konkurrenter.
+- Lyft fram en konkret styrka eller differentierare som gör bolaget intressant för investerare.
+
+Stycke 3 – "Katalysatorer just nu":
+- Lista 2–3 specifika drivkrafter, marknadstrender eller händelser som kan driva aktien kommande 6–18 månader.
+- Minst en katalysator ska vara tidsbunden eller kopplad till ett identifierbart initiativ (t.ex. produktlansering, regulatorisk förändring, expansionsplan, marginalmål).
+- Om prisdata finns, väv in en naturlig mening som sätter värderingen i sammanhang här.
+
+Stycke 4 – "Risker och slutsats":
+- Beskriv kort en eller två risker eller utmaningar och hur bolaget adresserar dem.
+- Avsluta med en tydlig slutsats om varför aktien är attraktiv för investerare med "${style}"-inriktning just nu, och inkludera en motiverande "varför agera"-formulering.
+
+Texten ska vara 180–350 ord, utan punktlistor, och varje stycke ska bestå av 2–4 meningar.
 
 💬 Exempel på ton:
 "Hexatronic är en svensk leverantör av fiberoptiska lösningar som gynnas av den globala utbyggnaden av bredband. Med en växande orderbok och stark marknadsposition i Europa fortsätter bolaget att kapitalisera på digitaliseringsvågen. Aktien handlas kring 97 SEK, vilket ger en intressant ingångsnivå sett till bolagets långsiktiga tillväxtpotential."
@@ -846,6 +981,13 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
 
       const data = await response.json();
       const generatedContent = data?.choices?.[0]?.message?.content;
+
+      console.log('OpenAI weekly case response content', {
+        ticker: selectedTicker,
+        sector,
+        style,
+        content: generatedContent,
+      });
 
       if (!generatedContent) {
         const message = 'OpenAI response did not contain content';
@@ -972,6 +1114,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
         generatedCases.push({
           ...caseWithoutTicker,
           long_description: finalLongDescription,
+          ai_intro: caseWithoutTicker.ai_intro ?? null,
           ticker: expectedTicker,
           ai_generated: true,
           is_public: true,

@@ -51,6 +51,8 @@ const AIRecommendations = () => {
   const [isAllRecommendationsOpen, setIsAllRecommendationsOpen] = useState(false);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [isClearingRecommendations, setIsClearingRecommendations] = useState(false);
+  const [recommendationToDelete, setRecommendationToDelete] = useState<UserHolding | null>(null);
+  const [isDeletingRecommendation, setIsDeletingRecommendation] = useState(false);
   const totalRecommendations = aiRecommendations.length;
   const displayedRecommendations = useMemo(
     () => aiRecommendations.slice(0, 6),
@@ -66,7 +68,7 @@ const AIRecommendations = () => {
       isAI
       onAdd={(e) => handleAddToPortfolio(recommendation, e)}
       onDiscuss={(e) => handleDiscussWithAI(recommendation, e)}
-      onDelete={(e) => handleDeleteRecommendation(recommendation, e)}
+      onDelete={(e) => handleDeleteRecommendationRequest(recommendation, e)}
       onClick={() => handleViewRecommendation(recommendation)}
     />
   );
@@ -132,12 +134,28 @@ const AIRecommendations = () => {
     handleViewRecommendation(recommendation);
   };
 
-  const handleDeleteRecommendation = async (
+  const handleDeleteRecommendationRequest = (
     recommendation: UserHolding,
     e: React.MouseEvent<HTMLButtonElement>
   ) => {
     e.stopPropagation();
-    await deleteHolding(recommendation.id);
+    setRecommendationToDelete(recommendation);
+  };
+
+  const handleCancelDeleteRecommendation = () => {
+    if (isDeletingRecommendation) return;
+    setRecommendationToDelete(null);
+  };
+
+  const handleConfirmDeleteRecommendation = async () => {
+    if (!recommendationToDelete) return;
+    setIsDeletingRecommendation(true);
+    const success = await deleteHolding(recommendationToDelete.id);
+    setIsDeletingRecommendation(false);
+
+    if (success) {
+      setRecommendationToDelete(null);
+    }
   };
 
   const handleClearAllRecommendations = async () => {
@@ -254,72 +272,74 @@ const AIRecommendations = () => {
     <>
       <Card className="bg-card/30 backdrop-blur-xl border-border/20 shadow-lg rounded-3xl overflow-hidden">
         <CardHeader className="pb-6 bg-gradient-to-r from-primary/5 to-purple/5 border-b border-border/20">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <CardTitle className="text-xl font-semibold flex items-center gap-3 flex-wrap">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex flex-col items-center text-center gap-3 sm:items-start sm:text-left">
+              <CardTitle className="text-xl font-semibold flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:text-left">
                 <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
                   <Brain className="w-5 h-5 text-primary" />
                 </div>
-                AI-Rekommenderade Innehav
+                <span>AI-Rekommenderade Innehav</span>
                 {totalRecommendations > 0 && (
                   <Badge
                     variant="outline"
-                    className="bg-primary/10 text-primary border-primary/20 ml-2 px-3 py-1 rounded-full"
+                    className="bg-primary/10 text-primary border-primary/20 px-3 py-1 rounded-full"
                   >
                     {totalRecommendations} rekommendationer
                   </Badge>
                 )}
               </CardTitle>
-              <CardDescription className="text-muted-foreground mt-2 ml-13 leading-relaxed">
+              <CardDescription className="text-muted-foreground leading-relaxed text-center sm:text-left">
                 Personaliserade investeringsförslag baserade på din profil
               </CardDescription>
             </div>
-            <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl"
-                  disabled={totalRecommendations === 0 || isClearingRecommendations}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Rensa alla
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent className="rounded-2xl">
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="flex items-center gap-2">
-                    <Trash2 className="w-5 h-5 text-red-600" />
-                    Rensa alla AI-rekommendationer
-                  </AlertDialogTitle>
-                  <AlertDialogDescription className="text-base">
-                    Är du säker på att du vill radera alla AI-rekommenderade innehav? Den här åtgärden kan inte ångras.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel className="rounded-xl">Avbryt</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-red-600 hover:bg-red-700 rounded-xl"
-                    onClick={handleClearAllRecommendations}
-                    disabled={isClearingRecommendations}
+            <div className="flex justify-center lg:justify-end">
+              <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl"
+                    disabled={totalRecommendations === 0 || isClearingRecommendations}
                   >
-                    {isClearingRecommendations ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-4 h-4 mr-2" />
-                    )}
-                    Rensa
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Rensa alla
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="rounded-2xl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <Trash2 className="w-5 h-5 text-red-600" />
+                      Rensa alla AI-rekommendationer
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="text-base">
+                      Är du säker på att du vill radera alla AI-rekommenderade innehav? Den här åtgärden kan inte ångras.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="rounded-xl">Avbryt</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-red-600 hover:bg-red-700 rounded-xl"
+                      onClick={handleClearAllRecommendations}
+                      disabled={isClearingRecommendations}
+                    >
+                      {isClearingRecommendations ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4 mr-2" />
+                      )}
+                      Rensa
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
         </CardHeader>
 
         <CardContent className="p-6 sm:p-8">
           {/* Header: antal och vy-val */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-            <div className="text-sm text-muted-foreground font-medium">
+            <div className="text-sm text-muted-foreground font-medium text-center sm:text-left">
               {totalRecommendations} AI-rekommendationer
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
@@ -358,7 +378,7 @@ const AIRecommendations = () => {
               {displayedRecommendations.map(renderRecommendationCard)}
             </div>
           ) : (
-            <div className="space-y-4 max-h-96 overflow-y-auto">
+            <div className="space-y-4 sm:max-h-96 sm:overflow-y-auto">
               {displayedRecommendations.map(renderRecommendationCard)}
             </div>
           )}
@@ -376,6 +396,48 @@ const AIRecommendations = () => {
         </CardContent>
       </Card>
 
+      <AlertDialog
+        open={!!recommendationToDelete}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCancelDeleteRecommendation();
+          }
+        }}
+      >
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-semibold">
+              Ta bort rekommendation
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Är du säker på att du vill ta bort {recommendationToDelete?.name || 'denna'} AI-rekommendation? Denna åtgärd kan
+              inte ångras.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="rounded-xl"
+              onClick={handleCancelDeleteRecommendation}
+              disabled={isDeletingRecommendation}
+            >
+              Avbryt
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 rounded-xl"
+              onClick={handleConfirmDeleteRecommendation}
+              disabled={isDeletingRecommendation}
+            >
+              {isDeletingRecommendation ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4 mr-2" />
+              )}
+              Ta bort
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Dialog open={isAllRecommendationsOpen} onOpenChange={setIsAllRecommendationsOpen}>
         <DialogContent className="max-w-4xl w-[95vw] max-h-[85vh] overflow-hidden bg-card">
           <DialogHeader className="text-left">
@@ -389,7 +451,7 @@ const AIRecommendations = () => {
           </DialogHeader>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground text-center sm:text-left">
               {totalRecommendations} AI-rekommendationer
             </span>
             <div className="flex items-center justify-center sm:justify-end gap-1">

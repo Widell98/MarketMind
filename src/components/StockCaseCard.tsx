@@ -10,6 +10,72 @@ import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
 import { useNavigate } from 'react-router-dom';
 import ShareStockCase from './ShareStockCase';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+
+const buildCardPreview = (primary?: string | null, fallback?: string | null): string => {
+  const primaryValue = typeof primary === 'string' ? primary.trim() : '';
+  const fallbackValue = typeof fallback === 'string' ? fallback.trim() : '';
+  const candidateSource = primaryValue.length > 0 ? primaryValue : fallbackValue;
+  const normalized = candidateSource.replace(/\s+/g, ' ').trim();
+
+  if (!normalized) {
+    return '';
+  }
+
+  const sentences = normalized
+    .split(/(?<=[.!?])\s+(?=[A-ZÅÄÖ0-9])/u)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0);
+
+  const pickIntroSentence = sentences.length > 0 ? sentences[0] : normalized;
+
+  const shortenSentence = (sentence: string): string => {
+    const cleanSentence = sentence.replace(/\s+/g, ' ').trim();
+    if (!cleanSentence) {
+      return '';
+    }
+
+    const MAX_WORDS = 22;
+    const MAX_LENGTH = 140;
+
+    const words = cleanSentence.split(/\s+/u);
+    let truncated = cleanSentence;
+    let trimmedByWords = false;
+
+    if (words.length > MAX_WORDS) {
+      truncated = words.slice(0, MAX_WORDS).join(' ');
+      trimmedByWords = true;
+    }
+
+    let trimmedByChars = false;
+    if (truncated.length > MAX_LENGTH) {
+      truncated = truncated.slice(0, MAX_LENGTH - 3).trimEnd();
+      trimmedByChars = true;
+    }
+
+    let result = truncated.replace(/[-,:;]+$/u, '').replace(/\s+/g, ' ').trim();
+    const hadTerminalPunctuation = /[.!?]+$/u.test(result);
+    if (hadTerminalPunctuation) {
+      result = result.replace(/[.!?]+$/u, '').trim();
+    }
+
+    if (!result) {
+      return '';
+    }
+
+    if (trimmedByWords || trimmedByChars) {
+      return `${result}...`;
+    }
+
+    return result;
+  };
+
+  const intro = shortenSentence(pickIntroSentence);
+  if (intro) {
+    return intro;
+  }
+
+  return shortenSentence(normalized);
+};
 interface StockCaseCardProps {
   stockCase: StockCase;
   onViewDetails: (id: string) => void;
@@ -147,17 +213,7 @@ const StockCaseCard: React.FC<StockCaseCardProps> = ({
   };
   const shortDescription = stockCase.description?.trim();
   const cleanedLongDescription = stripFiftyTwoWeekSummary(stockCase.long_description);
-  const previewText = shortDescription && shortDescription.length > 0
-    ? shortDescription
-    : cleanedLongDescription
-      ? (() => {
-          const normalized = cleanedLongDescription.replace(/\s+/g, ' ').trim();
-          if (normalized.length <= 260) {
-            return normalized;
-          }
-          return `${normalized.slice(0, 257).trimEnd()}...`;
-        })()
-      : '';
+  const previewText = buildCardPreview(shortDescription, cleanedLongDescription);
 
   return <Card className={getCardClassNames()} onClick={() => onViewDetails(stockCase.id)}>
       <CardHeader className="px-4 pb-3 sm:px-6 sm:pb-4">
