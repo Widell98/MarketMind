@@ -1,9 +1,13 @@
 // Simple currency conversion utility
 // In a real application, you would fetch live exchange rates from an API
 
+export interface ExchangeRates {
+  [key: string]: number;
+}
+
 // Base rates to SEK (Swedish Krona)
 // These should be updated regularly from a real API in production
-export const EXCHANGE_RATES: Record<string, number> = {
+export const EXCHANGE_RATES: ExchangeRates = {
   SEK: 1,
   USD: 9.40,
   EUR: 10.92,
