@@ -262,9 +262,6 @@ const Index = () => {
                 <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
                 <div className="pointer-events-none absolute -bottom-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-muted/40 blur-3xl" />
                 <div className="relative mx-auto flex max-w-5xl flex-col items-center text-center gap-8">
-                  <Badge className="border-primary/20 bg-primary/10 text-primary">
-                    Marknadsintelligens för nästa generation sparare
-                  </Badge>
                   <div>
                     <h1 className="text-4xl font-medium text-foreground sm:text-6xl sm:leading-tight">
                       {t('hero.title1')}
