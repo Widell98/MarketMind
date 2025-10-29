@@ -860,10 +860,6 @@ export const usePortfolioPerformance = () => {
         descriptionParts.push('Tickern matchade inga innehav att uppdatera.');
       }
 
-      if (priceSource === 'sheet' && livePriceError) {
-        descriptionParts.push('Live-priset kunde inte hämtas just nu');
-      }
-
       const toastTitle = updatedCount > 0
         ? `Pris uppdaterat för ${canonicalSymbol}`
         : `Inget pris uppdaterades för ${canonicalSymbol}`;

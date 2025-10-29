@@ -37,6 +37,16 @@ import { resolveHoldingValue } from '@/utils/currencyUtils';
 import { usePersistentDialogOpenState } from '@/hooks/usePersistentDialogOpenState';
 import { ADD_HOLDING_DIALOG_STORAGE_KEY } from '@/constants/storageKeys';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog';
 
 interface TransformedHolding {
   id: string;
@@ -99,6 +109,8 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [isChartOpen, setIsChartOpen] = useState(false);
   const [refreshingTicker, setRefreshingTicker] = useState<string | null>(null);
+  const [holdingToDelete, setHoldingToDelete] = useState<{ id: string; name: string; type: 'cash' | 'holding' } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const holdingPerformanceMap = useMemo<Record<string, HoldingPerformance>>(() => {
     const map: Record<string, HoldingPerformance> = {};
@@ -115,7 +127,10 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
         title: 'Innehav raderat',
         description: `${holdingName} har tagits bort.`,
       });
+      return true;
     }
+
+    return false;
   };
 
   const handleDiscussHolding = (holdingName: string, symbol?: string) => {
@@ -154,7 +169,39 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
   };
 
   const handleDeleteCash = async (id: string) => {
-    await deleteCashHolding(id);
+    return deleteCashHolding(id);
+  };
+
+  const handleRequestDelete = (id: string, name: string, type: 'cash' | 'holding') => {
+    setHoldingToDelete({ id, name, type });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!holdingToDelete) {
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      const wasDeleted = holdingToDelete.type === 'cash'
+        ? await handleDeleteCash(holdingToDelete.id)
+        : await handleDeleteHolding(holdingToDelete.id, holdingToDelete.name);
+
+      if (wasDeleted) {
+        setHoldingToDelete(null);
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    if (isDeleting) {
+      return;
+    }
+
+    setHoldingToDelete(null);
   };
 
 
@@ -446,7 +493,9 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
                           setEditingCash({ id: cash.id, amount: cash.current_value });
                         }
                       } : handleEditHolding}
-                      onDelete={group.key === 'cash' ? handleDeleteCash : handleDeleteHolding}
+                      onDelete={group.key === 'cash'
+                        ? (id: string, name: string) => handleRequestDelete(id, name, 'cash')
+                        : (id: string, name: string) => handleRequestDelete(id, name, 'holding')}
                       onRefreshPrice={group.key === 'cash' ? undefined : handleUpdateHoldingPrice}
                       isUpdatingPrice={updating}
                       refreshingTicker={refreshingTicker}
@@ -471,6 +520,38 @@ const UserHoldingsManager: React.FC<UserHoldingsManagerProps> = ({ sectorData = 
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={!!holdingToDelete}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCancelDelete();
+          }
+        }}
+      >
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {holdingToDelete?.type === 'cash' ? 'Ta bort kassainnehav' : 'Ta bort innehav'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Är du säker på att du vill ta bort {holdingToDelete?.name || 'detta'} {holdingToDelete?.type === 'cash' ? 'kassainnehav' : 'innehav'}? Denna åtgärd kan inte ångras.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelDelete} disabled={isDeleting}>
+              Avbryt
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Tar bort...' : 'Ta bort'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Sector Allocation Dialog */}
       <Dialog open={isChartOpen} onOpenChange={setIsChartOpen}>

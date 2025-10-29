@@ -51,6 +51,8 @@ const AIRecommendations = () => {
   const [isAllRecommendationsOpen, setIsAllRecommendationsOpen] = useState(false);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [isClearingRecommendations, setIsClearingRecommendations] = useState(false);
+  const [recommendationToDelete, setRecommendationToDelete] = useState<UserHolding | null>(null);
+  const [isDeletingRecommendation, setIsDeletingRecommendation] = useState(false);
   const totalRecommendations = aiRecommendations.length;
   const displayedRecommendations = useMemo(
     () => aiRecommendations.slice(0, 6),
@@ -66,7 +68,7 @@ const AIRecommendations = () => {
       isAI
       onAdd={(e) => handleAddToPortfolio(recommendation, e)}
       onDiscuss={(e) => handleDiscussWithAI(recommendation, e)}
-      onDelete={(e) => handleDeleteRecommendation(recommendation, e)}
+      onDelete={(e) => handleDeleteRecommendationRequest(recommendation, e)}
       onClick={() => handleViewRecommendation(recommendation)}
     />
   );
@@ -132,12 +134,28 @@ const AIRecommendations = () => {
     handleViewRecommendation(recommendation);
   };
 
-  const handleDeleteRecommendation = async (
+  const handleDeleteRecommendationRequest = (
     recommendation: UserHolding,
     e: React.MouseEvent<HTMLButtonElement>
   ) => {
     e.stopPropagation();
-    await deleteHolding(recommendation.id);
+    setRecommendationToDelete(recommendation);
+  };
+
+  const handleCancelDeleteRecommendation = () => {
+    if (isDeletingRecommendation) return;
+    setRecommendationToDelete(null);
+  };
+
+  const handleConfirmDeleteRecommendation = async () => {
+    if (!recommendationToDelete) return;
+    setIsDeletingRecommendation(true);
+    const success = await deleteHolding(recommendationToDelete.id);
+    setIsDeletingRecommendation(false);
+
+    if (success) {
+      setRecommendationToDelete(null);
+    }
   };
 
   const handleClearAllRecommendations = async () => {
@@ -377,6 +395,48 @@ const AIRecommendations = () => {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={!!recommendationToDelete}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCancelDeleteRecommendation();
+          }
+        }}
+      >
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-semibold">
+              Ta bort rekommendation
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Är du säker på att du vill ta bort {recommendationToDelete?.name || 'denna'} AI-rekommendation? Denna åtgärd kan
+              inte ångras.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="rounded-xl"
+              onClick={handleCancelDeleteRecommendation}
+              disabled={isDeletingRecommendation}
+            >
+              Avbryt
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 rounded-xl"
+              onClick={handleConfirmDeleteRecommendation}
+              disabled={isDeletingRecommendation}
+            >
+              {isDeletingRecommendation ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4 mr-2" />
+              )}
+              Ta bort
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={isAllRecommendationsOpen} onOpenChange={setIsAllRecommendationsOpen}>
         <DialogContent className="max-w-4xl w-[95vw] max-h-[85vh] overflow-hidden bg-card">

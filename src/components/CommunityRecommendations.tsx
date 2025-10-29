@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, Brain, ArrowRight, Sparkles, LayoutGrid, List as ListIcon } from 'lucide-react';
+import { Users, Brain, ArrowRight, Sparkles, LayoutGrid, List as ListIcon, Loader2, Trash2 } from 'lucide-react';
 import RecommendationCard from '@/components/RecommendationCard';
 import { useCommunityRecommendations, CommunityRecommendation } from '@/hooks/useCommunityRecommendations';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +14,16 @@ import { useUserHoldings, UserHolding } from '@/hooks/useUserHoldings';
 import AddHoldingDialog from '@/components/AddHoldingDialog';
 import { usePersistentDialogOpenState } from '@/hooks/usePersistentDialogOpenState';
 import { ADD_HOLDING_DIALOG_STORAGE_KEY } from '@/constants/storageKeys';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog';
 
 declare global {
   interface Window {
@@ -46,6 +56,8 @@ const CommunityRecommendations: React.FC = () => {
   } = usePersistentDialogOpenState(ADD_HOLDING_DIALOG_STORAGE_KEY, 'community-recommendations');
   const [selectedRecommendation, setSelectedRecommendation] = useState<SelectedRecommendation | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [recommendationToDelete, setRecommendationToDelete] = useState<CommunityRecommendation | null>(null);
+  const [isDeletingRecommendation, setIsDeletingRecommendation] = useState(false);
 
   // Expose refetch function globally so SaveOpportunityButton can use it
   React.useEffect(() => {
@@ -149,9 +161,12 @@ const CommunityRecommendations: React.FC = () => {
     navigate('/ai-chatt', { state: { contextData } });
   };
 
-  const handleDeleteRecommendation = async (recommendation: CommunityRecommendation, e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleDeleteRecommendationRequest = (
+    recommendation: CommunityRecommendation,
+    e: React.MouseEvent<HTMLButtonElement>
+  ) => {
     e.stopPropagation();
-    
+
     if (!user) {
       toast({
         title: "Fel",
@@ -161,11 +176,24 @@ const CommunityRecommendations: React.FC = () => {
       return;
     }
 
+    setRecommendationToDelete(recommendation);
+  };
+
+  const handleCancelDeleteRecommendation = () => {
+    if (isDeletingRecommendation) return;
+    setRecommendationToDelete(null);
+  };
+
+  const handleConfirmDeleteRecommendation = async () => {
+    if (!recommendationToDelete || !user) return;
+
+    setIsDeletingRecommendation(true);
+
     try {
       const { error } = await supabase
         .from('saved_opportunities')
         .delete()
-        .eq('id', recommendation.id);
+        .eq('id', recommendationToDelete.id);
 
       if (error) throw error;
 
@@ -174,7 +202,7 @@ const CommunityRecommendations: React.FC = () => {
         description: "Rekommendationen har tagits bort från din lista."
       });
 
-      // Refresh the recommendations list
+      setRecommendationToDelete(null);
       refetch();
     } catch (error) {
       console.error('Error deleting recommendation:', error);
@@ -183,6 +211,8 @@ const CommunityRecommendations: React.FC = () => {
         description: "Kunde inte ta bort rekommendationen. Försök igen senare.",
         variant: "destructive"
       });
+    } finally {
+      setIsDeletingRecommendation(false);
     }
   };
 
@@ -347,7 +377,7 @@ const CommunityRecommendations: React.FC = () => {
                   author={getCreatorInfo(recommendation) || undefined}
                   onAdd={(e) => handleAddToPortfolio(recommendation, e)}
                   onDiscuss={(e) => handleDiscussWithAI(recommendation, e)}
-                  onDelete={(e) => handleDeleteRecommendation(recommendation, e)}
+                  onDelete={(e) => handleDeleteRecommendationRequest(recommendation, e)}
                   onClick={() => handleViewItem(recommendation)}
                 />
               ))}
@@ -374,7 +404,7 @@ const CommunityRecommendations: React.FC = () => {
                 author={getCreatorInfo(recommendation) || undefined}
                 onAdd={(e) => handleAddToPortfolio(recommendation, e)}
                 onDiscuss={(e) => handleDiscussWithAI(recommendation, e)}
-                onDelete={(e) => handleDeleteRecommendation(recommendation, e)}
+                onDelete={(e) => handleDeleteRecommendationRequest(recommendation, e)}
                 onClick={() => handleViewItem(recommendation)}
               />
             ))}
@@ -391,6 +421,48 @@ const CommunityRecommendations: React.FC = () => {
           </div>
         )}
       </CardContent>
+
+      <AlertDialog
+        open={!!recommendationToDelete}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCancelDeleteRecommendation();
+          }
+        }}
+      >
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-semibold">
+              Ta bort rekommendation
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Är du säker på att du vill ta bort {recommendationToDelete ? getItemTitle(recommendationToDelete) : 'denna rekommendation'} från dina sparade rekommendationer?
+              Denna åtgärd kan inte ångras.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="rounded-xl"
+              onClick={handleCancelDeleteRecommendation}
+              disabled={isDeletingRecommendation}
+            >
+              Avbryt
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 rounded-xl"
+              onClick={handleConfirmDeleteRecommendation}
+              disabled={isDeletingRecommendation}
+            >
+              {isDeletingRecommendation ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4 mr-2" />
+              )}
+              Ta bort
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AddHoldingDialog
         isOpen={isAddHoldingOpen}
