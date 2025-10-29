@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
@@ -27,6 +27,9 @@ import { cn } from '@/lib/utils';
 import type { StockCase } from '@/types/stockCase';
 import { fetchSheetTickerMetrics, type SheetTickerMetrics } from '@/utils/sheetMetrics';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const parseNumericFromString = (value: string): number | null => {
   if (!value) {
@@ -191,23 +194,78 @@ type FinancialStat = {
   description?: React.ReactNode;
 };
 
+type NavigationCase = Pick<StockCase, 'id' | 'title' | 'company_name' | 'ai_generated' | 'created_at'>;
+
 const StockCaseDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const analysisSectionRef = useRef<HTMLDivElement | null>(null);
   const [updateToDelete, setUpdateToDelete] = useState<string | null>(null);
   const [showFullFinancialDetails, setShowFullFinancialDetails] = useState(false);
   const [sheetMetrics, setSheetMetrics] = useState<SheetTickerMetrics | null>(null);
   const [isHeroLogoError, setIsHeroLogoError] = useState(false);
   const [isVersionDialogOpen, setIsVersionDialogOpen] = useState(false);
 
+  const {
+    data: navigationCases = [],
+    isLoading: navigationLoading,
+    error: navigationError,
+  } = useQuery<NavigationCase[]>({
+    queryKey: ['stock-case-navigation'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('stock_cases')
+        .select('id, title, company_name, ai_generated, created_at')
+        .eq('is_public', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to fetch stock case navigation list', error);
+        throw error;
+      }
+
+      return (data || []) as NavigationCase[];
+    },
+  });
+
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL LOGIC
   const { stockCase, loading, error } = useStockCase(id || '');
   const { likeCount, isLiked, toggleLike, loading: likesLoading } = useStockCaseLikes(id || '');
   const { followUser, unfollowUser, isFollowing } = useUserFollows();
   const { updates, isLoading: updatesLoading, deleteUpdate } = useStockCaseUpdates(id || '');
+
+  const { previousCase, nextCase } = useMemo(() => {
+    if (!stockCase?.id) {
+      return { previousCase: null as NavigationCase | null, nextCase: null as NavigationCase | null };
+    }
+
+    const currentIndex = navigationCases.findIndex((navigationCase) => navigationCase.id === stockCase.id);
+
+    if (currentIndex === -1) {
+      return { previousCase: null as NavigationCase | null, nextCase: null as NavigationCase | null };
+    }
+
+    const prev = currentIndex > 0 ? navigationCases[currentIndex - 1] : null;
+    const next = currentIndex < navigationCases.length - 1 ? navigationCases[currentIndex + 1] : null;
+
+    return { previousCase: prev, nextCase: next };
+  }, [navigationCases, stockCase?.id]);
+
+  const previousCaseTitle = previousCase
+    ? normalizeStockCaseTitle(previousCase.title, previousCase.company_name)
+    : null;
+  const nextCaseTitle = nextCase ? normalizeStockCaseTitle(nextCase.title, nextCase.company_name) : null;
+
+  const handleNavigateToNeighbor = (caseId?: string | null) => {
+    if (!caseId) {
+      return;
+    }
+
+    navigate(`/stock-cases/${caseId}`);
+  };
 
   useEffect(() => {
     const ticker = stockCase?.ticker ?? null;
@@ -246,6 +304,89 @@ const StockCaseDetail = () => {
       controller.abort();
     };
   }, [stockCase?.ticker]);
+
+  useEffect(() => {
+    if (!stockCase?.id) {
+      return;
+    }
+
+    setCurrentImageIndex(0);
+    setShowFullFinancialDetails(false);
+    setShowUpdateDialog(false);
+    setIsHeroLogoError(false);
+
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [stockCase?.id]);
+
+  const navigationButtonBaseClasses = 'rounded-full border border-border/40 bg-background/70 text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground';
+
+  const CaseNavigationControls = () => {
+    if (navigationError) {
+      return null;
+    }
+
+    if (navigationLoading) {
+      return (
+        <div className="flex items-center gap-2">
+          <div className="h-9 w-9 animate-pulse rounded-full border border-border/30 bg-muted/40" />
+          <div className="h-9 w-9 animate-pulse rounded-full border border-border/30 bg-muted/40" />
+        </div>
+      );
+    }
+
+    if (!previousCase && !nextCase) {
+      return null;
+    }
+
+    return (
+      <TooltipProvider delayDuration={150}>
+        <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={cn('h-9 w-9', navigationButtonBaseClasses)}
+                  disabled={!previousCase}
+                  onClick={() => handleNavigateToNeighbor(previousCase?.id)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="sr-only">Föregående case</span>
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent sideOffset={6}>
+              {previousCaseTitle ? `Föregående: ${previousCaseTitle}` : 'Föregående case'}
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={cn('h-9 w-9', navigationButtonBaseClasses)}
+                  disabled={!nextCase}
+                  onClick={() => handleNavigateToNeighbor(nextCase?.id)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                  <span className="sr-only">Nästa case</span>
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent sideOffset={6}>
+              {nextCaseTitle ? `Nästa: ${nextCaseTitle}` : 'Nästa case'}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
+    );
+  };
 
   // NOW we can have conditional logic and early returns
   if (loading) {
@@ -491,7 +632,7 @@ const StockCaseDetail = () => {
   const canDeleteCurrent = user && currentVersion && !currentVersion.isOriginal && currentVersion.user_id === user.id;
 
   // Format case description with sections
-  const formatCaseDescription = (description: string | null) => {
+  const formatCaseDescription = (description: string | null): React.ReactNode[] | null => {
     if (!description) return null;
 
     const normalizedDescription = description.replace(/\r\n/g, '\n').trim();
@@ -636,6 +777,9 @@ const StockCaseDetail = () => {
   const displayedAnalysisDescription = typeof cleanedAnalysisDescription === 'string'
     ? (cleanedAnalysisDescription.trim().length > 0 ? cleanedAnalysisDescription.trim() : null)
     : null;
+
+  const formattedAnalysisContent = formatCaseDescription(displayedAnalysisDescription);
+  const hasAnalysisContent = Boolean(formattedAnalysisContent?.length);
 
   const resolvedMarketCap = formatApproximateMarketCap(
     sheetMetrics?.marketCap ?? stockCase.market_cap ?? null,
@@ -840,7 +984,7 @@ const StockCaseDetail = () => {
     || detailCompanyStats.length > 0
     || detailFundamentalsStats.length > 0;
 
-  const shouldShowFinancialOverview = hasSummaryStats || hasDetailedFinancialStats;
+  const shouldShowFinancialOverview = !isAiGeneratedCase && (hasSummaryStats || hasDetailedFinancialStats);
 
   const overviewLogoSrc =
     (!isHeroLogoError && (stockCase.image_url || currentVersion?.image_url || null)) || null;
@@ -850,13 +994,133 @@ const StockCaseDetail = () => {
   const showLoginPromptCard = !user;
   const hasSidebarContent = showCreatorCard || showLoginPromptCard;
 
+  const renderPrimaryActionContent = () => (
+    <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
+      <p className="text-center text-sm font-medium text-muted-foreground sm:text-left">
+        Välj hur du vill agera på detta case
+      </p>
+      <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
+        {user && (
+          <SaveOpportunityButton
+            itemType="stock_case"
+            itemId={stockCase.id}
+            itemTitle={displayTitle}
+            onSaveSuccess={handleSaveSuccess}
+            variant="default"
+            size="lg"
+            className="rounded-full px-6 py-2.5 text-sm font-semibold shadow-sm hover:bg-primary/90"
+          />
+        )}
+
+        <TooltipProvider delayDuration={150}>
+          <div className="flex items-center gap-2 rounded-full bg-muted/30 px-2 py-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleShare}
+                  className="rounded-full text-muted-foreground hover:text-foreground"
+                  aria-label="Dela"
+                >
+                  <Share2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Dela</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleDiscussWithAI}
+                  className="rounded-full text-muted-foreground hover:text-foreground"
+                  aria-label="Diskutera i AI-chatten"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Diskutera i AI-chatten</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleLikeClick}
+                  disabled={likesLoading}
+                  className="rounded-full text-muted-foreground hover:text-foreground"
+                  aria-label={isLiked ? 'Ta bort gilla-markering' : 'Gilla case'}
+                >
+                  <Heart className={cn('h-4 w-4', isLiked ? 'fill-current text-red-500' : '')} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{isLiked ? 'Ta bort gilla-markering' : 'Gilla case'}</TooltipContent>
+            </Tooltip>
+            <span className="min-w-[2rem] text-center text-xs font-semibold text-muted-foreground">
+              {likeCount}
+            </span>
+
+            {user && user.id !== stockCase.user_id && stockCase.user_id ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleFollowClick}
+                    className="rounded-full text-muted-foreground hover:text-foreground"
+                    aria-label={isFollowing(stockCase.user_id) ? 'Sluta följ författare' : 'Följ författare'}
+                  >
+                    <UserPlus className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isFollowing(stockCase.user_id) ? 'Sluta följ' : 'Följ författare'}
+                </TooltipContent>
+              </Tooltip>
+            ) : null}
+
+            {isOwner ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowUpdateDialog(true)}
+                    className="rounded-full text-muted-foreground hover:text-foreground"
+                    aria-label="Lägg till uppdatering"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Lägg till uppdatering</TooltipContent>
+              </Tooltip>
+            ) : null}
+          </div>
+        </TooltipProvider>
+      </div>
+    </div>
+  );
+
+  const fallbackAiIntro = displayedAnalysisDescription
+    ? displayedAnalysisDescription.split(/\n{2,}/)[0]?.trim() ?? null
+    : null;
+  const aiHeroIntroText = stockCase.ai_generated
+    ? (stockCase.ai_intro?.trim() || stockCase.description?.trim() || fallbackAiIntro)
+    : null;
+  const aiHeroIntroHtml = aiHeroIntroText
+    ? highlightNumbersSafely(aiHeroIntroText.replace(/\n+/g, ' '))
+    : null;
+
   const aiBadge = stockCase.ai_generated === true ? (
     <Badge
       variant="outline"
-      className="inline-flex items-center gap-1.5 rounded-full border-purple-500/40 bg-purple-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-purple-600 dark:border-purple-400/40 dark:bg-purple-500/10 dark:text-purple-300"
+      className="inline-flex items-center gap-1.5 rounded-full border-border/50 bg-muted/30 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
     >
       <Brain className="h-3.5 w-3.5" />
-      AI
+      AI pitch
     </Badge>
   ) : null;
 
@@ -946,61 +1210,180 @@ const StockCaseDetail = () => {
     <Layout>
       <div className="max-w-6xl mx-auto space-y-12 px-4 sm:px-6 lg:px-8">
         {/* Hero Section */}
-        <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.65)]">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent dark:from-primary/15 dark:via-transparent dark:to-transparent" />
+        {isAiGeneratedCase ? (
+          <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.55)]">
+            <div className="absolute inset-0 bg-gradient-to-br from-muted/15 via-transparent to-muted/5 dark:from-muted/20 dark:via-transparent dark:to-muted/10" />
 
-          <div className="relative z-10 flex flex-col gap-8">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/discover')}
-                className="h-9 rounded-full border border-border/40 bg-background/70 px-4 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground"
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Tillbaka
-              </Button>
-
-              {performanceBadge ? (
-                <div className="flex items-center justify-end gap-2">
-                  {performanceBadge}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="flex flex-col gap-6 text-center sm:flex-row sm:items-start sm:justify-between sm:gap-8 sm:text-left">
-              <div className="space-y-3 sm:max-w-2xl">
-                <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start">
-                  <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{displayTitle}</h1>
-                  {aiBadge}
+            <div className="relative z-10 space-y-8">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/discover')}
+                    className="h-9 rounded-full border border-border/40 bg-background/70 px-4 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground"
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Tillbaka
+                  </Button>
+                  <CaseNavigationControls />
                 </div>
 
-                {heroSubtitle ? (
-                  <p className="text-base text-muted-foreground sm:text-lg">
-                    {heroSubtitle}
-                  </p>
-                ) : null}
-
-                {heroMetadataItems.length > 0 ? (
-                  <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                    {heroMetadataItems.map((item) => item)}
+                {performanceBadge ? (
+                  <div className="flex items-center justify-end gap-2">
+                    {performanceBadge}
                   </div>
                 ) : null}
               </div>
 
-              {overviewLogoSrc ? (
-                <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-border/30 bg-background/80 shadow-sm sm:mx-0 sm:ml-6 sm:flex-none sm:self-start">
-                  <img
-                    src={overviewLogoSrc}
-                    alt={`${overviewCompanyName} logotyp`}
-                    className="h-full w-full object-cover"
-                    onError={() => setIsHeroLogoError(true)}
-                  />
+              <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)]">
+                <div className="space-y-5">
+                  <div className="flex flex-wrap items-center gap-3">
+                    {aiBadge}
+                  </div>
+
+                  <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{displayTitle}</h1>
+
+                  {heroSubtitle ? (
+                    <p className="text-base text-muted-foreground sm:text-lg">
+                      {heroSubtitle}
+                    </p>
+                  ) : null}
+
+                  {heroMetadataItems.length > 0 ? (
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
+                      {heroMetadataItems.map((item) => item)}
+                    </div>
+                  ) : null}
+
+                  {aiHeroIntroHtml ? (
+                    <div className="space-y-2">
+                      <p
+                        className="text-base leading-relaxed text-foreground sm:text-lg"
+                        dangerouslySetInnerHTML={{ __html: aiHeroIntroHtml }}
+                      />
+                      {hasAnalysisContent ? (
+                        <DropdownMenu modal={false}>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 py-2 h-auto px-0 text-sm font-semibold text-muted-foreground underline-offset-4 hover:underline"
+                            >
+                              Visa full analys
+                              <ChevronDown className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="start"
+                            className="w-[min(90vw,640px)] max-h-[70vh] overflow-y-auto border border-border/40 bg-background/95 p-0 shadow-lg"
+                          >
+                            <div className="space-y-4 px-4 py-4 text-left">
+                              {formattedAnalysisContent}
+                            </div>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
+
+                <div className="space-y-4">
+                  {overviewLogoSrc ? (
+                    <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-border/30 bg-background/80 shadow-sm sm:mx-0 sm:ml-auto sm:flex-none">
+                      <img
+                        src={overviewLogoSrc}
+                        alt={`${overviewCompanyName} logotyp`}
+                        className="h-full w-full object-cover"
+                        onError={() => setIsHeroLogoError(true)}
+                      />
+                    </div>
+                  ) : null}
+
+                  {summaryStats.length > 0 ? (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {summaryStats.map((stat) => (
+                        <div
+                          key={stat.key}
+                          className="rounded-2xl border border-border/40 bg-background/80 p-4 shadow-sm"
+                        >
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">
+                            {stat.label}
+                          </p>
+                          <div className="mt-2 text-lg font-semibold text-foreground">
+                            {renderStatValue(stat)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="rounded-[28px] border border-border/30 bg-muted/20 px-6 py-6 shadow-[0_24px_60px_-60px_rgba(15,23,42,0.45)]">
+                {renderPrimaryActionContent()}
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.65)]">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent dark:from-primary/15 dark:via-transparent dark:to-transparent" />
+
+            <div className="relative z-10 flex flex-col gap-8">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/discover')}
+                    className="h-9 rounded-full border border-border/40 bg-background/70 px-4 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground"
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Tillbaka
+                  </Button>
+                  <CaseNavigationControls />
+                </div>
+
+                {performanceBadge ? (
+                  <div className="flex items-center justify-end gap-2">
+                    {performanceBadge}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="flex flex-col gap-6 text-center sm:flex-row sm:items-start sm:justify-between sm:gap-8 sm:text-left">
+                <div className="space-y-3 sm:max-w-2xl">
+                  <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start">
+                    <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{displayTitle}</h1>
+                    {aiBadge}
+                  </div>
+
+                  {heroSubtitle ? (
+                    <p className="text-base text-muted-foreground sm:text-lg">
+                      {heroSubtitle}
+                    </p>
+                  ) : null}
+
+                  {heroMetadataItems.length > 0 ? (
+                    <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                      {heroMetadataItems.map((item) => item)}
+                    </div>
+                  ) : null}
+                </div>
+
+                {overviewLogoSrc ? (
+                  <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-border/30 bg-background/80 shadow-sm sm:mx-0 sm:ml-6 sm:flex-none sm:self-start">
+                    <img
+                      src={overviewLogoSrc}
+                      alt={`${overviewCompanyName} logotyp`}
+                      className="h-full w-full object-cover"
+                      onError={() => setIsHeroLogoError(true)}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Hero Content */}
         <div className="space-y-6">
@@ -1114,115 +1497,11 @@ const StockCaseDetail = () => {
           )}
 
           {/* CTA Buttons */}
-          <div className="rounded-[32px] border border-border/40 bg-background/90 px-6 py-6 shadow-[0_24px_60px_-50px_rgba(15,23,42,0.55)]">
-            <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
-              <p className="text-center text-sm font-medium text-muted-foreground sm:text-left">
-                Välj hur du vill agera på detta case
-              </p>
-              <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
-                {user && (
-                  <SaveOpportunityButton
-                    itemType="stock_case"
-                    itemId={stockCase.id}
-                    itemTitle={displayTitle}
-                    onSaveSuccess={handleSaveSuccess}
-                    variant="default"
-                    size="lg"
-                    className="rounded-full px-6 py-2.5 text-sm font-semibold shadow-sm hover:bg-primary/90"
-                  />
-                )}
-
-                <TooltipProvider delayDuration={150}>
-                  <div className="flex items-center gap-2 rounded-full bg-muted/30 px-2 py-1">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={handleShare}
-                          className="rounded-full text-muted-foreground hover:text-foreground"
-                          aria-label="Dela"
-                        >
-                          <Share2 className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Dela</TooltipContent>
-                    </Tooltip>
-
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={handleDiscussWithAI}
-                          className="rounded-full text-muted-foreground hover:text-foreground"
-                          aria-label="Diskutera i AI-chatten"
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Diskutera i AI-chatten</TooltipContent>
-                    </Tooltip>
-
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={handleLikeClick}
-                          disabled={likesLoading}
-                          className="rounded-full text-muted-foreground hover:text-foreground"
-                          aria-label={isLiked ? 'Ta bort gilla-markering' : 'Gilla case'}
-                        >
-                          <Heart className={cn('h-4 w-4', isLiked ? 'fill-current text-red-500' : '')} />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>{isLiked ? 'Ta bort gilla-markering' : 'Gilla case'}</TooltipContent>
-                    </Tooltip>
-                    <span className="min-w-[2rem] text-center text-xs font-semibold text-muted-foreground">
-                      {likeCount}
-                    </span>
-
-                    {user && user.id !== stockCase.user_id && stockCase.user_id ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={handleFollowClick}
-                            className="rounded-full text-muted-foreground hover:text-foreground"
-                            aria-label={isFollowing(stockCase.user_id) ? 'Sluta följ författare' : 'Följ författare'}
-                          >
-                            <UserPlus className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {isFollowing(stockCase.user_id) ? 'Sluta följ' : 'Följ författare'}
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : null}
-
-                    {isOwner ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setShowUpdateDialog(true)}
-                            className="rounded-full text-muted-foreground hover:text-foreground"
-                            aria-label="Lägg till uppdatering"
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Lägg till uppdatering</TooltipContent>
-                      </Tooltip>
-                    ) : null}
-                  </div>
-                </TooltipProvider>
-              </div>
+          {!isAiGeneratedCase && (
+            <div className="rounded-[32px] border border-border/40 bg-background/90 px-6 py-6 shadow-[0_24px_60px_-50px_rgba(15,23,42,0.55)]">
+              {renderPrimaryActionContent()}
             </div>
-          </div>
+          )}
 
           {/* Login prompt for non-users */}
           {!user && (
@@ -1361,16 +1640,18 @@ const StockCaseDetail = () => {
             )}
 
             {/* Case Description with Structured Sections */}
-            {displayedAnalysisDescription && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Analys</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {formatCaseDescription(displayedAnalysisDescription)}
-                </CardContent>
-              </Card>
-            )}
+            {hasAnalysisContent && !isAiGeneratedCase ? (
+              <div ref={analysisSectionRef}>
+                <Card>
+                  <CardHeader className="flex flex-wrap items-center justify-between gap-3">
+                    <CardTitle className="flex items-center gap-2">Analys</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {formattedAnalysisContent}
+                  </CardContent>
+                </Card>
+              </div>
+            ) : null}
 
             {/* Admin Comment */}
             {stockCase.admin_comment && (
