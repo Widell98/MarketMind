@@ -377,6 +377,68 @@ const buildConciseDescription = (primary: string | null | undefined, fallback?: 
   return shortenSentence(normalized);
 };
 
+const buildAiIntro = (
+  longAnalysis: string | null | undefined,
+  fallback?: string | null,
+): string | null => {
+  const primaryValue = typeof longAnalysis === 'string' ? longAnalysis.trim() : '';
+  const fallbackValue = typeof fallback === 'string' ? fallback.trim() : '';
+  const candidate = primaryValue.length > 0 ? primaryValue : fallbackValue;
+
+  if (!candidate) {
+    return null;
+  }
+
+  const normalizedParagraphs = normalizeParagraphs(candidate);
+  if (!normalizedParagraphs) {
+    return null;
+  }
+
+  const flattened = normalizedParagraphs.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!flattened) {
+    return null;
+  }
+
+  const sentences = flattened
+    .split(/(?<=[.!?])\s+(?=[A-ZÅÄÖ0-9])/u)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0);
+
+  if (sentences.length === 0) {
+    return null;
+  }
+
+  const MAX_SENTENCES = 3;
+  const MIN_SENTENCES = 2;
+  const MAX_LENGTH = 600;
+
+  const assembled: string[] = [];
+
+  for (const sentence of sentences) {
+    if (assembled.length >= MAX_SENTENCES) {
+      break;
+    }
+
+    assembled.push(sentence);
+
+    const currentText = assembled.join(' ');
+    if (currentText.length >= MAX_LENGTH) {
+      assembled[assembled.length - 1] = sentence.replace(/[.!?]+$/u, '').trim();
+      break;
+    }
+
+    if (assembled.length >= MIN_SENTENCES && currentText.length >= 280) {
+      break;
+    }
+  }
+
+  if (assembled.length === 0) {
+    return null;
+  }
+
+  return assembled.join(' ').replace(/\s+/g, ' ').trim();
+};
+
 const sanitizeCaseData = (rawCase: any) => {
   if (!rawCase || typeof rawCase !== 'object') {
     return null;
@@ -430,6 +492,7 @@ const sanitizeCaseData = (rawCase: any) => {
   const resolvedTitle = cleanedTitle || rawTitle || companyName;
 
   const shortDescription = buildConciseDescription(descriptionRaw, longDescription);
+  const aiIntro = buildAiIntro(longDescription, descriptionRaw);
 
   const sector = typeof rawCase.sector === 'string' ? rawCase.sector.trim() : null;
   const marketCap = rawCase.market_cap ? String(rawCase.market_cap).trim() : null;
@@ -441,6 +504,7 @@ const sanitizeCaseData = (rawCase: any) => {
     company_name: companyName,
     description: shortDescription,
     long_description: longDescription,
+    ai_intro: aiIntro,
     sector,
     market_cap: marketCap,
     pe_ratio: peRatio,
@@ -1050,6 +1114,7 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
         generatedCases.push({
           ...caseWithoutTicker,
           long_description: finalLongDescription,
+          ai_intro: caseWithoutTicker.ai_intro ?? null,
           ticker: expectedTicker,
           ai_generated: true,
           is_public: true,
