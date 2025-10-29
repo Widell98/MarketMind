@@ -4,12 +4,10 @@ import {
   Brain,
   UserPlus,
   BarChart3,
-  Users,
   ArrowUpRight,
   TrendingUp,
   Wallet,
   Shield,
-  MessageCircle,
   CheckCircle,
   Star,
   Heart,
@@ -18,8 +16,6 @@ import {
   HandHeart,
   MapPin,
   Clock,
-  Zap,
-  DollarSign,
   MessageSquare,
   Settings,
   Building2,
@@ -53,6 +49,20 @@ type SummaryCard = {
   value: string;
   helper: string;
   helperClassName: string;
+};
+
+type HeroHighlight = {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+};
+
+type FeatureSection = {
+  icon: React.ComponentType<{ className?: string }>;
+  badge: string;
+  title: string;
+  description: string;
+  points: string[];
 };
 
 const insightTypeLabels: Record<'performance' | 'allocation' | 'risk' | 'opportunity', string> = {
@@ -154,6 +164,77 @@ const Index = () => {
     },
   ], []);
 
+  const heroHighlights = React.useMemo<HeroHighlight[]>(
+    () => [
+      {
+        icon: Sparkles,
+        title: 'AI-styrd guidning',
+        description: 'Få rekommendationer baserade på mer än 200 datapunkter i realtid.',
+      },
+      {
+        icon: Shield,
+        title: 'Säker investering',
+        description: 'Bankklassad säkerhet och tydlig transparens kring varje beslut.',
+      },
+      {
+        icon: TrendingUp,
+        title: 'Marknaden i fokus',
+        description: 'Håll dig uppdaterad med signaler, case och analyser samlade på ett ställe.',
+      },
+    ],
+    [],
+  );
+
+  const featureSections = React.useMemo<FeatureSection[]>(
+    () => [
+      {
+        icon: MessageSquare,
+        badge: 'Conversational AI',
+        title: 'Prata med din investeringsassistent',
+        description: 'Ställ frågor om marknaden, din portfölj eller strategier och få svar på sekunder.',
+        points: [
+          'AI-chat på svenska och engelska',
+          'Scenarier och simuleringar för dina idéer',
+          'Handlingsbara nästa steg för ditt sparande',
+        ],
+      },
+      {
+        icon: BarChart3,
+        badge: 'Portföljinsikter',
+        title: 'Förstå din helhetsbild på ett ögonblick',
+        description: 'Få en smart översikt över tillgångar, riskspridning och hur nära du är dina mål.',
+        points: [
+          'Automatiska sammanställningar av dina innehav',
+          'Risk- och måluppföljning i realtid',
+          'Konkreta rekommendationer för att optimera portföljen',
+        ],
+      },
+      {
+        icon: Building2,
+        badge: 'Discover',
+        title: 'Utforska marknaden visuellt',
+        description: 'Hitta nästa bolag genom interaktiva grafer, case och uppdaterade fakta.',
+        points: [
+          'Djupdyk i bolag med tydliga styrkor och svagheter',
+          'Filtrera på teman, hållbarhet och potential',
+          'Spara favoriter och följ förändringar över tid',
+        ],
+      },
+      {
+        icon: Settings,
+        badge: 'Automatisering',
+        title: 'Bygg en plan som följer dig',
+        description: 'Sätt mål, skapa regler för ombalansering och få påminnelser när något händer.',
+        points: [
+          'Smart påminnelse när marknaden rör sig',
+          'Förslag på köp, sälj eller byt när läget är rätt',
+          'Samarbeta med rådgivare eller dela insikter med vänner',
+        ],
+      },
+    ],
+    [],
+  );
+
   const lastUpdatedLabel = React.useMemo(() => {
     if (!insightsLastUpdated) {
       return null;
@@ -175,80 +256,156 @@ const Index = () => {
       <div className="min-h-0 bg-background">
         <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-8 lg:py-12">
           
-          {/* Hero Section - Apple-inspired clean design */}
-          {!user && <div className="text-center mb-20">
-              {/* Hero Content */}
-              <div className="max-w-4xl mx-auto mb-16">
-                <div className="mb-6">
-                  
-                </div>
-                
-                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-medium text-foreground mb-8 leading-tight tracking-tight">
-                  {t('hero.title1')}
-                  <br />
-                  <span className="text-primary">{t('hero.title2')}</span>
-                </h1>
-                
-                <p className="text-xl text-muted-foreground leading-relaxed mb-12 max-w-2xl mx-auto font-light">
-                  {t('hero.subtitle')}
-                </p>
-                
-                {/* Clean CTA Buttons */}
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
-                  <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-lg">
-                    <Link to="/auth">
-                      {t('hero.cta.start')}
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-
-              {/* How it works - Clean Apple style */}
-              <div className="max-w-4xl mx-auto mb-20">
-                <h2 className="text-3xl font-semibold text-foreground mb-4">{t('howItWorks.title')}</h2>
-                <p className="text-lg text-muted-foreground mb-16 max-w-2xl mx-auto">
-                  {t('howItWorks.subtitle')}
-                </p>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-12">
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-                      <MessageSquare className="w-8 h-8 text-primary" />
-                    </div>
-                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step1.title')}</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {t('howItWorks.step1.description')}
+          {!user && (
+            <div className="space-y-24">
+              <section className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-b from-background via-background to-muted/40 px-4 py-16 shadow-sm sm:px-8 sm:py-20">
+                <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
+                <div className="pointer-events-none absolute -bottom-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-muted/40 blur-3xl" />
+                <div className="relative mx-auto flex max-w-5xl flex-col items-center text-center gap-8">
+                  <Badge className="border-primary/20 bg-primary/10 text-primary">
+                    Marknadsintelligens för nästa generation sparare
+                  </Badge>
+                  <div>
+                    <h1 className="text-4xl font-medium text-foreground sm:text-6xl sm:leading-tight">
+                      {t('hero.title1')}
+                      <br />
+                      <span className="text-primary">{t('hero.title2')}</span>
+                    </h1>
+                    <p className="mt-6 text-lg text-muted-foreground sm:text-xl">
+                      {t('hero.subtitle')}
                     </p>
                   </div>
-                  
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-                      <Brain className="w-8 h-8 text-primary" />
+                  <div className="flex flex-col items-center gap-3 sm:flex-row">
+                    <Button asChild size="lg" className="w-full rounded-xl bg-primary px-8 py-4 text-lg font-medium text-primary-foreground shadow-lg transition hover:bg-primary/90 hover:shadow-xl sm:w-auto">
+                      <Link to="/auth">{t('hero.cta.start')}</Link>
+                    </Button>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle className="h-4 w-4 text-emerald-500" />
+                      <span>Gratis att testa — inga kortuppgifter krävs</span>
                     </div>
-                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step2.title')}</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {t('howItWorks.step2.description')}
-                    </p>
                   </div>
-                  
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-                      <BarChart3 className="w-8 h-8 text-primary" />
-                    </div>
-                    <h3 className="text-xl font-semibold mb-3 text-foreground">{t('howItWorks.step3.title')}</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {t('howItWorks.step3.description')}
-                    </p>
+                  <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
+                    {heroHighlights.map(({ icon: Icon, title, description }) => (
+                      <Card key={title} className="h-full border-border/60 bg-card/70 p-5 text-left shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <p className="text-sm font-semibold text-foreground">{title}</p>
+                        </div>
+                        <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{description}</p>
+                      </Card>
+                    ))}
                   </div>
                 </div>
-              </div>
+              </section>
 
-            {/* Clean Examples Section */}
-              
+              <section className="space-y-12">
+                <div className="mx-auto max-w-3xl text-center">
+                  <Badge variant="outline" className="border-border/60 text-xs uppercase tracking-widest text-muted-foreground">
+                    Funktioner
+                  </Badge>
+                  <h2 className="mt-4 text-3xl font-semibold text-foreground sm:text-4xl">Allt du behöver för att fatta smartare beslut</h2>
+                  <p className="mt-4 text-lg text-muted-foreground">
+                    MarketMind kombinerar analysverktyg, AI och portföljstyrning i en sammanhållen upplevelse. Utforska hur de olika modulerna arbetar tillsammans.
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {featureSections.map(({ icon: Icon, badge, title, description, points }) => (
+                    <Card key={title} className="flex h-full flex-col gap-4 rounded-3xl border-border/60 bg-card/80 p-6 shadow-sm transition hover:border-primary/30 hover:shadow-md">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <Badge className="mb-1 w-fit border-primary/10 bg-primary/10 text-xs uppercase tracking-wide text-primary">
+                              {badge}
+                            </Badge>
+                            <h3 className="text-xl font-semibold text-foreground">{title}</h3>
+                          </div>
+                        </div>
+                        <ArrowUpRight className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+                      <ul className="space-y-2 text-left text-sm text-muted-foreground">
+                        {points.map((point) => (
+                          <li key={point} className="flex items-start gap-2">
+                            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                            <span>{point}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </Card>
+                  ))}
+                </div>
+              </section>
 
-              {/* Final CTA - Apple style */}
-              
-            </div>}
+              <section className="rounded-3xl border border-border/60 bg-card/70 p-8 shadow-sm sm:p-12">
+                <div className="mx-auto grid max-w-5xl items-center gap-8 sm:grid-cols-[1.1fr_0.9fr]">
+                  <div className="space-y-6">
+                    <h2 className="text-3xl font-semibold text-foreground sm:text-4xl">Så fungerar MarketMind innan du loggar in</h2>
+                    <p className="text-lg text-muted-foreground">
+                      Följ tre enkla steg för att komma igång. Plattformen lär känna dina mål, analyserar marknaden och guidar dig genom varje beslut.
+                    </p>
+                    <div className="space-y-4">
+                      <div className="flex gap-3 rounded-2xl border border-border/60 bg-background/80 p-4">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                          <UserPlus className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground">Skapa ett kostnadsfritt konto</p>
+                          <p className="text-sm text-muted-foreground">Berätta om dina mål och risknivå så förbereder vi personliga insikter.</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3 rounded-2xl border border-border/60 bg-background/80 p-4">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                          <Brain className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground">Utforska analyser och case</p>
+                          <p className="text-sm text-muted-foreground">Få AI-genererade förslag, djupgående bolagsprofiler och dagsfärska signaler.</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3 rounded-2xl border border-border/60 bg-background/80 p-4">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                          <BarChart3 className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground">Bygg din första portföljplan</p>
+                          <p className="text-sm text-muted-foreground">Simulera scenarier, sätt mål och låt MarketMind guida nästa steg.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <Card className="h-full rounded-3xl border-border/60 bg-background/60 p-6 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                        <Heart className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-primary">Vad våra användare uppskattar</p>
+                        <p className="text-lg font-semibold text-foreground">"En digital rådgivare som alltid är vaken."</p>
+                      </div>
+                    </div>
+                    <p className="mt-6 text-sm text-muted-foreground leading-relaxed">
+                      MarketMind samlar allt från nyheter till AI-dragna insikter. Som ny användare får du snabbt en känsla för hur beslutsstödet fungerar innan du binder dig till något.
+                    </p>
+                    <div className="mt-6 grid grid-cols-2 gap-4 text-sm text-muted-foreground">
+                      <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-4">
+                        <p className="text-2xl font-semibold text-foreground">+42%</p>
+                        <p>Känner sig tryggare i sina beslut</p>
+                      </div>
+                      <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-4">
+                        <p className="text-2xl font-semibold text-foreground">9/10</p>
+                        <p>Rekommenderar MarketMind till en vän</p>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              </section>
+            </div>
+          )}
 
           {/* Clean Dashboard for logged-in users */}
           {user && hasPortfolio && <div className="min-h-0 bg-background">
