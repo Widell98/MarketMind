@@ -974,7 +974,7 @@ const StockCaseDetail = () => {
   const aiBadge = stockCase.ai_generated === true ? (
     <Badge
       variant="outline"
-      className="inline-flex items-center gap-1.5 rounded-full border-sky-500/40 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-600 dark:border-sky-400/40 dark:bg-sky-500/10 dark:text-sky-300"
+      className="inline-flex items-center gap-1.5 rounded-full border-border/50 bg-muted/30 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
     >
       <Brain className="h-3.5 w-3.5" />
       AI pitch
@@ -1068,8 +1068,8 @@ const StockCaseDetail = () => {
       <div className="max-w-6xl mx-auto space-y-12 px-4 sm:px-6 lg:px-8">
         {/* Hero Section */}
         {isAiGeneratedCase ? (
-          <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(37,99,235,0.45)]">
-            <div className="absolute inset-0 bg-gradient-to-br from-sky-500/15 via-transparent to-transparent dark:from-sky-500/20 dark:via-transparent dark:to-transparent" />
+          <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.55)]">
+            <div className="absolute inset-0 bg-gradient-to-br from-muted/15 via-transparent to-muted/5 dark:from-muted/20 dark:via-transparent dark:to-muted/10" />
 
             <div className="relative z-10 space-y-8">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1135,7 +1135,7 @@ const StockCaseDetail = () => {
                       {summaryStats.map((stat) => (
                         <div
                           key={stat.key}
-                          className="rounded-2xl border border-sky-200/40 bg-background/80 p-4 shadow-sm"
+                          className="rounded-2xl border border-border/40 bg-background/80 p-4 shadow-sm"
                         >
                           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">
                             {stat.label}
@@ -1150,7 +1150,7 @@ const StockCaseDetail = () => {
                 </div>
               </div>
 
-              <div className="rounded-[28px] border border-sky-400/40 bg-sky-500/10 px-6 py-6 shadow-[0_24px_60px_-50px_rgba(37,99,235,0.45)]">
+              <div className="rounded-[28px] border border-border/30 bg-muted/20 px-6 py-6 shadow-[0_24px_60px_-60px_rgba(15,23,42,0.45)]">
                 {renderPrimaryActionContent()}
               </div>
             </div>
@@ -1470,10 +1470,10 @@ const StockCaseDetail = () => {
             {/* Case Description with Structured Sections */}
             {displayedAnalysisDescription && (
               isAiGeneratedCase ? (
-                <Card className="border-sky-400/40 bg-sky-500/5 dark:bg-sky-950/20">
+                <Card className="border-border/30 bg-muted/20">
                   <CardHeader className="space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <CardTitle className="flex items-center gap-2 text-sky-700 dark:text-sky-200">
+                      <CardTitle className="flex items-center gap-2 text-foreground">
                         <Sparkles className="h-5 w-5" />
                         Full pitch
                       </CardTitle>
