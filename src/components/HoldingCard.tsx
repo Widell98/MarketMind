@@ -62,6 +62,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
 
   const Icon = getHoldingIcon();
   const isCash = holding.holding_type === 'cash';
+  const [isLogoError, setIsLogoError] = React.useState(false);
 
   const {
     valueInSEK: displayValue,
@@ -85,6 +86,11 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
   const isRefreshing = Boolean(
     isUpdatingPrice && refreshingTicker && normalizedSymbol && refreshingTicker === normalizedSymbol
   );
+  const logoUrl = !isCash && normalizedSymbol ? `https://financialmodelingprep.com/image-stock/${normalizedSymbol}.png` : null;
+
+  React.useEffect(() => {
+    setIsLogoError(false);
+  }, [normalizedSymbol]);
 
   const handleSuggestionAction = (suggestionId: string, action: string) => {
     // Handle suggestion actions here
@@ -103,8 +109,17 @@ const HoldingCard: React.FC<HoldingCardProps> = ({
           {/* Header */}
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-3 min-w-0 flex-1">
-              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                <Icon className="w-5 h-5 text-muted-foreground" />
+              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {logoUrl && !isLogoError ? (
+                  <img
+                    src={logoUrl}
+                    alt={`${holding.name} logotyp`}
+                    className="w-full h-full object-contain p-1 bg-white"
+                    onError={() => setIsLogoError(true)}
+                  />
+                ) : (
+                  <Icon className="w-5 h-5 text-muted-foreground" />
+                )}
               </div>
               
               <div className="min-w-0 flex-1">
