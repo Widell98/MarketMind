@@ -141,7 +141,7 @@ const Index = () => {
     {
       icon: MessageSquare,
       title: 'AI Chat',
-      description: 'Få personliga investeringsråd',
+      description: 'Få personliga marknadsinsikter',
       to: '/ai-chatt',
     },
     {
@@ -158,8 +158,8 @@ const Index = () => {
     },
     {
       icon: Settings,
-      title: 'Portföljrådgivare',
-      description: 'Optimera din portfölj',
+      title: 'Portföljguide',
+      description: 'AI-stött stöd för din portfölj',
       to: '/portfolio-advisor',
     },
   ], []);
@@ -173,8 +173,8 @@ const Index = () => {
       },
       {
         icon: Shield,
-        title: 'Säker investering',
-        description: 'Bankklassad säkerhet och tydlig transparens kring varje beslut.',
+        title: 'Datasäkerhet i fokus',
+        description: 'Bankklassad säkerhet och tydlig transparens kring varje steg i din analys.',
       },
       {
         icon: TrendingUp,
@@ -224,7 +224,7 @@ const Index = () => {
         icon: Settings,
         badge: 'Portföljstöd',
         title: 'Optimera din strategi tillsammans med MarketMind',
-        description: 'Använd rådgivaren för att balansera risk, simulera scenarier och förstå effekten av dina val.',
+        description: 'Använd investeringsguiden för att balansera risk, simulera scenarier och förstå effekten av dina val.',
         points: [
           'Simulera olika portföljvikter och se utfallet direkt',
           'Få AI-stödda rekommendationer baserade på dina mål',
@@ -382,7 +382,7 @@ const Index = () => {
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-primary">Vad våra användare uppskattar</p>
-                        <p className="text-lg font-semibold text-foreground">"En digital rådgivare som alltid är vaken."</p>
+                        <p className="text-lg font-semibold text-foreground">"En digital investeringsguide som alltid är vaken."</p>
                       </div>
                     </div>
                     <p className="mt-6 text-sm text-muted-foreground leading-relaxed">
@@ -583,8 +583,8 @@ const Index = () => {
                   </div>
                   <h3 className="mb-4 text-2xl font-semibold text-foreground sm:mb-6 sm:text-3xl">Välkommen hem!</h3>
                   <p className="mx-auto mb-8 max-w-2xl text-base leading-relaxed text-muted-foreground sm:mb-12 sm:text-lg">
-                    Nu ska vi lära känna varandra ordentligt. Tänk på mig som din personliga ai-rådgivare som hjälper dig bygga
-                    den ekonomiska trygghet du drömmer om. Vi tar det i din takt, steg för steg.
+                    Nu ska vi lära känna varandra ordentligt. Tänk på mig som din personliga AI-guide som hjälper dig bygga den
+                    ekonomiska trygghet du drömmer om. Vi tar det i din takt, steg för steg.
                   </p>
 
                   {/* Personal journey section */}
