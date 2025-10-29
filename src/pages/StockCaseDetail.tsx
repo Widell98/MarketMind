@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import type { StockCase } from '@/types/stockCase';
 import { fetchSheetTickerMetrics, type SheetTickerMetrics } from '@/utils/sheetMetrics';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const parseNumericFromString = (value: string): number | null => {
   if (!value) {
@@ -396,15 +397,6 @@ const StockCaseDetail = () => {
     }
   };
 
-  const scrollToAnalysisSection = () => {
-    const node = analysisSectionRef.current;
-    if (!node) {
-      return;
-    }
-
-    node.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
   const handleLikeClick = () => {
     if (!user) {
       toast({
@@ -501,7 +493,7 @@ const StockCaseDetail = () => {
   const canDeleteCurrent = user && currentVersion && !currentVersion.isOriginal && currentVersion.user_id === user.id;
 
   // Format case description with sections
-  const formatCaseDescription = (description: string | null) => {
+  const formatCaseDescription = (description: string | null): React.ReactNode[] | null => {
     if (!description) return null;
 
     const normalizedDescription = description.replace(/\r\n/g, '\n').trim();
@@ -646,6 +638,9 @@ const StockCaseDetail = () => {
   const displayedAnalysisDescription = typeof cleanedAnalysisDescription === 'string'
     ? (cleanedAnalysisDescription.trim().length > 0 ? cleanedAnalysisDescription.trim() : null)
     : null;
+
+  const formattedAnalysisContent = formatCaseDescription(displayedAnalysisDescription);
+  const hasAnalysisContent = Boolean(formattedAnalysisContent?.length);
 
   const resolvedMarketCap = formatApproximateMarketCap(
     sheetMetrics?.marketCap ?? stockCase.market_cap ?? null,
@@ -1125,15 +1120,26 @@ const StockCaseDetail = () => {
                         className="text-base leading-relaxed text-foreground sm:text-lg"
                         dangerouslySetInnerHTML={{ __html: aiHeroIntroHtml }}
                       />
-                      {displayedAnalysisDescription ? (
-                        <Button
-                          type="button"
-                          variant="link"
-                          className="h-auto px-0 text-sm font-semibold text-muted-foreground underline-offset-4 hover:underline"
-                          onClick={scrollToAnalysisSection}
-                        >
-                          Visa full analys
-                        </Button>
+                      {hasAnalysisContent ? (
+                        <DropdownMenu modal={false}>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 py-2 h-auto px-0 text-sm font-semibold text-muted-foreground underline-offset-4 hover:underline"
+                            >
+                              Visa full analys
+                              <ChevronDown className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="start"
+                            className="w-[min(90vw,640px)] max-h-[70vh] overflow-y-auto border border-border/40 bg-background/95 p-0 shadow-lg"
+                          >
+                            <div className="space-y-4 px-4 py-4 text-left">
+                              {formattedAnalysisContent}
+                            </div>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       ) : null}
                     </div>
                   ) : null}
@@ -1489,21 +1495,14 @@ const StockCaseDetail = () => {
             )}
 
             {/* Case Description with Structured Sections */}
-            {displayedAnalysisDescription ? (
+            {hasAnalysisContent && !isAiGeneratedCase ? (
               <div ref={analysisSectionRef}>
-                <Card className={cn(isAiGeneratedCase ? 'border-border/30 bg-muted/20' : undefined)}>
-                  <CardHeader className={cn(
-                    'flex flex-wrap items-center justify-between gap-3',
-                    isAiGeneratedCase ? 'space-y-0' : undefined
-                  )}>
-                    <CardTitle className="flex items-center gap-2">
-                      {isAiGeneratedCase ? <Sparkles className="h-4 w-4 text-muted-foreground" /> : null}
-                      Analys
-                    </CardTitle>
-                    {isAiGeneratedCase ? aiBadge : null}
+                <Card>
+                  <CardHeader className="flex flex-wrap items-center justify-between gap-3">
+                    <CardTitle className="flex items-center gap-2">Analys</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {formatCaseDescription(displayedAnalysisDescription)}
+                    {formattedAnalysisContent}
                   </CardContent>
                 </Card>
               </div>
