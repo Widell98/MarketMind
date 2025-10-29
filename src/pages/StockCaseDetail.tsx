@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
@@ -28,6 +28,8 @@ import type { StockCase } from '@/types/stockCase';
 import { fetchSheetTickerMetrics, type SheetTickerMetrics } from '@/utils/sheetMetrics';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const parseNumericFromString = (value: string): number | null => {
   if (!value) {
@@ -192,6 +194,8 @@ type FinancialStat = {
   description?: React.ReactNode;
 };
 
+type NavigationCase = Pick<StockCase, 'id' | 'title' | 'company_name' | 'ai_generated' | 'created_at'>;
+
 const StockCaseDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -205,11 +209,63 @@ const StockCaseDetail = () => {
   const [isHeroLogoError, setIsHeroLogoError] = useState(false);
   const [isVersionDialogOpen, setIsVersionDialogOpen] = useState(false);
 
+  const {
+    data: navigationCases = [],
+    isLoading: navigationLoading,
+    error: navigationError,
+  } = useQuery<NavigationCase[]>({
+    queryKey: ['stock-case-navigation'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('stock_cases')
+        .select('id, title, company_name, ai_generated, created_at')
+        .eq('is_public', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to fetch stock case navigation list', error);
+        throw error;
+      }
+
+      return (data || []) as NavigationCase[];
+    },
+  });
+
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL LOGIC
   const { stockCase, loading, error } = useStockCase(id || '');
   const { likeCount, isLiked, toggleLike, loading: likesLoading } = useStockCaseLikes(id || '');
   const { followUser, unfollowUser, isFollowing } = useUserFollows();
   const { updates, isLoading: updatesLoading, deleteUpdate } = useStockCaseUpdates(id || '');
+
+  const { previousCase, nextCase } = useMemo(() => {
+    if (!stockCase?.id) {
+      return { previousCase: null as NavigationCase | null, nextCase: null as NavigationCase | null };
+    }
+
+    const currentIndex = navigationCases.findIndex((navigationCase) => navigationCase.id === stockCase.id);
+
+    if (currentIndex === -1) {
+      return { previousCase: null as NavigationCase | null, nextCase: null as NavigationCase | null };
+    }
+
+    const prev = currentIndex > 0 ? navigationCases[currentIndex - 1] : null;
+    const next = currentIndex < navigationCases.length - 1 ? navigationCases[currentIndex + 1] : null;
+
+    return { previousCase: prev, nextCase: next };
+  }, [navigationCases, stockCase?.id]);
+
+  const previousCaseTitle = previousCase
+    ? normalizeStockCaseTitle(previousCase.title, previousCase.company_name)
+    : null;
+  const nextCaseTitle = nextCase ? normalizeStockCaseTitle(nextCase.title, nextCase.company_name) : null;
+
+  const handleNavigateToNeighbor = (caseId?: string | null) => {
+    if (!caseId) {
+      return;
+    }
+
+    navigate(`/stock-cases/${caseId}`);
+  };
 
   useEffect(() => {
     const ticker = stockCase?.ticker ?? null;
@@ -248,6 +304,89 @@ const StockCaseDetail = () => {
       controller.abort();
     };
   }, [stockCase?.ticker]);
+
+  useEffect(() => {
+    if (!stockCase?.id) {
+      return;
+    }
+
+    setCurrentImageIndex(0);
+    setShowFullFinancialDetails(false);
+    setShowUpdateDialog(false);
+    setIsHeroLogoError(false);
+
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [stockCase?.id]);
+
+  const navigationButtonBaseClasses = 'rounded-full border border-border/40 bg-background/70 text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground';
+
+  const CaseNavigationControls = () => {
+    if (navigationError) {
+      return null;
+    }
+
+    if (navigationLoading) {
+      return (
+        <div className="flex items-center gap-2">
+          <div className="h-9 w-9 animate-pulse rounded-full border border-border/30 bg-muted/40" />
+          <div className="h-9 w-9 animate-pulse rounded-full border border-border/30 bg-muted/40" />
+        </div>
+      );
+    }
+
+    if (!previousCase && !nextCase) {
+      return null;
+    }
+
+    return (
+      <TooltipProvider delayDuration={150}>
+        <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={cn('h-9 w-9', navigationButtonBaseClasses)}
+                  disabled={!previousCase}
+                  onClick={() => handleNavigateToNeighbor(previousCase?.id)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="sr-only">Föregående case</span>
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent sideOffset={6}>
+              {previousCaseTitle ? `Föregående: ${previousCaseTitle}` : 'Föregående case'}
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={cn('h-9 w-9', navigationButtonBaseClasses)}
+                  disabled={!nextCase}
+                  onClick={() => handleNavigateToNeighbor(nextCase?.id)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                  <span className="sr-only">Nästa case</span>
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent sideOffset={6}>
+              {nextCaseTitle ? `Nästa: ${nextCaseTitle}` : 'Nästa case'}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
+    );
+  };
 
   // NOW we can have conditional logic and early returns
   if (loading) {
@@ -1077,15 +1216,18 @@ const StockCaseDetail = () => {
 
             <div className="relative z-10 space-y-8">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/discover')}
-                  className="h-9 rounded-full border border-border/40 bg-background/70 px-4 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground"
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Tillbaka
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/discover')}
+                    className="h-9 rounded-full border border-border/40 bg-background/70 px-4 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground"
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Tillbaka
+                  </Button>
+                  <CaseNavigationControls />
+                </div>
 
                 {performanceBadge ? (
                   <div className="flex items-center justify-end gap-2">
@@ -1188,15 +1330,18 @@ const StockCaseDetail = () => {
 
             <div className="relative z-10 flex flex-col gap-8">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/discover')}
-                  className="h-9 rounded-full border border-border/40 bg-background/70 px-4 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground"
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Tillbaka
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/discover')}
+                    className="h-9 rounded-full border border-border/40 bg-background/70 px-4 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground"
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Tillbaka
+                  </Button>
+                  <CaseNavigationControls />
+                </div>
 
                 {performanceBadge ? (
                   <div className="flex items-center justify-end gap-2">
