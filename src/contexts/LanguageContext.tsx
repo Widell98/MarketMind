@@ -25,7 +25,7 @@ const translations = {
     
     // Hero section
     'hero.title1': 'Din personliga',
-    'hero.title2': 'finansiella rådgivare',
+    'hero.title2': 'investeringsguide',
     'hero.subtitle': 'Optimera din portfölj, förstå marknaden och få stöd i osäkra tider. Enkelt, tryggt, smart.',
     'hero.cta.start': 'Kom igång gratis',
     'hero.cta.demo': 'Se hur det fungerar →',
@@ -137,7 +137,7 @@ const translations = {
     
     // Hero section
     'hero.title1': 'Your personal',
-    'hero.title2': 'financial advisor',
+    'hero.title2': 'investment guide',
     'hero.subtitle': 'Optimize your portfolio, understand the market and get support during uncertain times. Simple, secure, smart.',
     'hero.cta.start': 'Get started for free',
     'hero.cta.demo': 'See how it works →',
