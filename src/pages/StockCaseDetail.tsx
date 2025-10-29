@@ -323,7 +323,7 @@ const StockCaseDetail = () => {
   const navigationButtonBaseClasses = 'rounded-full border border-border/40 bg-background/70 text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground';
 
   const CaseNavigationControls = (
-    { layout = 'inline' }: { layout?: 'inline' | 'overlay' } = {}
+    { layout = 'inline' }: { layout?: 'inline' | 'overlay' | 'page' } = {}
   ) => {
     if (navigationError) {
       return null;
@@ -339,6 +339,15 @@ const StockCaseDetail = () => {
         );
       }
 
+      if (layout === 'page') {
+        return (
+          <div className="pointer-events-none absolute inset-y-0 left-1/2 hidden w-[min(100%,72rem)] -translate-x-1/2 items-center justify-between px-3 sm:px-6 lg:flex">
+            <div className="h-12 w-12 -translate-x-10 animate-pulse rounded-full border border-border/30 bg-muted/40" />
+            <div className="h-12 w-12 translate-x-10 animate-pulse rounded-full border border-border/30 bg-muted/40" />
+          </div>
+        );
+      }
+
       return (
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 animate-pulse rounded-full border border-border/30 bg-muted/40" />
@@ -349,6 +358,65 @@ const StockCaseDetail = () => {
 
     if (!previousCase && !nextCase) {
       return null;
+    }
+
+    if (layout === 'page') {
+      return (
+        <TooltipProvider delayDuration={150}>
+          <div className="pointer-events-none absolute inset-y-0 left-1/2 hidden w-[min(100%,72rem)] -translate-x-1/2 items-center justify-between px-3 sm:px-6 lg:flex">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="pointer-events-auto inline-flex">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      'h-12 w-12 -translate-x-10 text-foreground shadow-lg hover:-translate-x-11 hover:shadow-xl',
+                      'transition-transform duration-200',
+                      navigationButtonBaseClasses,
+                      'bg-background/95 hover:bg-background'
+                    )}
+                    disabled={!previousCase}
+                    onClick={() => handleNavigateToNeighbor(previousCase?.id)}
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                    <span className="sr-only">Föregående case</span>
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent sideOffset={6}>
+                {previousCaseTitle ? `Föregående: ${previousCaseTitle}` : 'Föregående case'}
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="pointer-events-auto inline-flex">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      'h-12 w-12 translate-x-10 text-foreground shadow-lg hover:translate-x-11 hover:shadow-xl',
+                      'transition-transform duration-200',
+                      navigationButtonBaseClasses,
+                      'bg-background/95 hover:bg-background'
+                    )}
+                    disabled={!nextCase}
+                    onClick={() => handleNavigateToNeighbor(nextCase?.id)}
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                    <span className="sr-only">Nästa case</span>
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent sideOffset={6}>
+                {nextCaseTitle ? `Nästa: ${nextCaseTitle}` : 'Nästa case'}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
+      );
     }
 
     if (layout === 'overlay') {
@@ -1278,8 +1346,10 @@ const StockCaseDetail = () => {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto space-y-12 px-4 sm:px-6 lg:px-8">
-        {/* Hero Section */}
+      <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <CaseNavigationControls layout="page" />
+        <div className="space-y-12">
+          {/* Hero Section */}
         {isAiGeneratedCase ? (
           <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.55)]">
             <div className="absolute inset-0 bg-gradient-to-br from-muted/15 via-transparent to-muted/5 dark:from-muted/20 dark:via-transparent dark:to-muted/10" />
@@ -1455,11 +1525,9 @@ const StockCaseDetail = () => {
 
         {/* Hero Content */}
         <div className="space-y-6">
-          {!shouldShowHeroImage && (
-            <div className="flex justify-center sm:justify-end">
-              <CaseNavigationControls />
-            </div>
-          )}
+          <div className="flex justify-center lg:hidden">
+            <CaseNavigationControls />
+          </div>
           {/* Graph Section with Carousel */}
           {shouldShowHeroImage && (
             <div className="space-y-4">
@@ -1481,7 +1549,6 @@ const StockCaseDetail = () => {
               </div>
 
               <div className={imageWrapperClasses}>
-                <CaseNavigationControls layout="overlay" />
                 <div className={imageDisplayWrapperClasses}>
                   <img
                     src={displayImageSrc}
@@ -1814,8 +1881,9 @@ const StockCaseDetail = () => {
           </CardContent>
         </Card>
       </div>
+    </div>
 
-      <Dialog open={isVersionDialogOpen} onOpenChange={setIsVersionDialogOpen}>
+    <Dialog open={isVersionDialogOpen} onOpenChange={setIsVersionDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Versionshistorik</DialogTitle>
