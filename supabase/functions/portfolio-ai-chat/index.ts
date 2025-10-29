@@ -126,6 +126,21 @@ const FINANCIAL_RELEVANCE_KEYWORDS = [
   'pris',
 ];
 
+const PRICE_REQUEST_KEYWORDS = [
+  'price',
+  'share price',
+  'stock price',
+  'pris',
+  'pris på',
+  'kurs',
+  'aktiekurs',
+  'quote',
+  'vad står',
+  'handlas',
+  'kostar',
+  'trading at',
+];
+
 const EXCHANGE_RATES: Record<string, number> = {
   SEK: 1.0,
   USD: 10.5,
@@ -191,15 +206,264 @@ const removeDiacritics = (value: string): string =>
 const escapeRegExp = (value: string): string =>
   value.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&');
 
-type SheetTickerEdgeItem = {
-  symbol?: string | null;
-  name?: string | null;
-  price?: number | null;
-  currency?: string | null;
+type YahooSearchQuote = {
+  symbol?: string;
+  shortname?: string;
+  longname?: string;
+  regularMarketPrice?: number;
+  regularMarketTime?: number;
+  currency?: string;
 };
 
-type SheetTickerEdgeResponse = {
-  tickers?: SheetTickerEdgeItem[];
+type YahooSearchResponse = {
+  quotes?: YahooSearchQuote[];
+};
+
+type YahooSearchVariant = {
+  lang: string;
+  region: string;
+};
+
+type YahooPriceResult = {
+  symbol: string;
+  name: string;
+  price: number;
+  currency: string;
+  marketTime: number | null;
+};
+
+const formatPriceWithCurrency = (price: number, currency: string): string => {
+  try {
+    return new Intl.NumberFormat('sv-SE', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 2,
+    }).format(price);
+  } catch (_error) {
+    return `${price.toFixed(2)} ${currency}`;
+  }
+};
+
+const formatMarketTimestamp = (timestamp: number | null): string => {
+  if (!timestamp) {
+    return 'tid okänd';
+  }
+
+  const date = new Date(timestamp * 1000);
+  try {
+    return new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Europe/Stockholm',
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date);
+  } catch (_error) {
+    return date.toISOString();
+  }
+};
+
+const fetchYahooPriceForTicker = async (ticker: string): Promise<YahooPriceResult | null> => {
+  const trimmedTicker = ticker.trim();
+  if (!trimmedTicker) {
+    return null;
+  }
+
+  const normalizedTicker = normalizeIdentifier(trimmedTicker);
+  const lowerTicker = trimmedTicker.toLowerCase();
+
+  const searchVariants: YahooSearchVariant[] = [
+    { lang: 'en-US', region: 'US' },
+    { lang: 'sv-SE', region: 'SE' },
+    { lang: 'en-GB', region: 'GB' },
+  ];
+
+  const computeQuoteScore = (quote: YahooSearchQuote): number => {
+    let score = 0;
+
+    const rawSymbol = typeof quote.symbol === 'string' ? quote.symbol.trim() : '';
+    const upperSymbol = rawSymbol.toUpperCase();
+    const lowerSymbol = rawSymbol.toLowerCase();
+    const normalizedSymbol = normalizeIdentifier(rawSymbol);
+
+    if (upperSymbol === trimmedTicker.toUpperCase()) {
+      score += 120;
+    }
+
+    if (normalizedTicker && normalizedSymbol) {
+      if (normalizedSymbol === normalizedTicker) {
+        score += 100;
+      } else if (normalizedSymbol.startsWith(normalizedTicker)) {
+        score += 70;
+      } else if (normalizedSymbol.includes(normalizedTicker)) {
+        score += 45;
+      }
+    }
+
+    if (lowerSymbol === lowerTicker) {
+      score += 35;
+    } else if (lowerSymbol.startsWith(lowerTicker)) {
+      score += 25;
+    } else if (lowerSymbol.includes(lowerTicker)) {
+      score += 15;
+    }
+
+    if (rawSymbol.length > 0) {
+      const lengthDifference = Math.abs(rawSymbol.length - trimmedTicker.length);
+      score += Math.max(0, 12 - lengthDifference * 3);
+    }
+
+    const shortname = typeof quote.shortname === 'string' ? quote.shortname.trim() : '';
+    const longname = typeof quote.longname === 'string' ? quote.longname.trim() : '';
+
+    const normalizedShort = shortname ? normalizeIdentifier(shortname) : null;
+    const normalizedLong = longname ? normalizeIdentifier(longname) : null;
+
+    if (shortname) {
+      const lowerShort = shortname.toLowerCase();
+      if (lowerShort === lowerTicker) {
+        score += 30;
+      } else if (lowerShort.includes(lowerTicker)) {
+        score += 20;
+      }
+
+      if (normalizedTicker && normalizedShort) {
+        if (normalizedShort === normalizedTicker) {
+          score += 25;
+        } else if (normalizedShort.includes(normalizedTicker)) {
+          score += 15;
+        }
+      }
+    }
+
+    if (longname) {
+      const lowerLong = longname.toLowerCase();
+      if (lowerLong === lowerTicker) {
+        score += 20;
+      } else if (lowerLong.includes(lowerTicker)) {
+        score += 12;
+      }
+
+      if (normalizedTicker && normalizedLong) {
+        if (normalizedLong === normalizedTicker) {
+          score += 18;
+        } else if (normalizedLong.includes(normalizedTicker)) {
+          score += 10;
+        }
+      }
+    }
+
+    if (typeof quote.regularMarketPrice === 'number' && Number.isFinite(quote.regularMarketPrice)) {
+      score += 5;
+    }
+
+    if (typeof quote.regularMarketTime === 'number' && Number.isFinite(quote.regularMarketTime)) {
+      score += 2;
+    }
+
+    return score;
+  };
+
+  const attemptLookup = async (variant: YahooSearchVariant): Promise<YahooPriceResult | null> => {
+    const params = new URLSearchParams({
+      q: trimmedTicker,
+      lang: variant.lang,
+      region: variant.region,
+      quotesCount: '6',
+      newsCount: '0',
+    });
+
+    try {
+      const response = await fetch(`https://query2.finance.yahoo.com/v1/finance/search?${params.toString()}`, {
+        headers: {
+          'User-Agent': 'MarketMindPriceLookup/1.0',
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.error('Yahoo Finance price lookup failed:', trimmedTicker, variant, response.status, response.statusText);
+        return null;
+      }
+
+      const data = await response.json() as YahooSearchResponse;
+      const quotes = Array.isArray(data?.quotes) ? data.quotes : [];
+      if (quotes.length === 0) {
+        console.warn('Yahoo Finance returned no quotes for ticker:', trimmedTicker, variant);
+        return null;
+      }
+
+      const quotesWithPrice = quotes.filter((quote) =>
+        typeof quote?.regularMarketPrice === 'number' && Number.isFinite(quote.regularMarketPrice)
+      );
+
+      if (quotesWithPrice.length === 0) {
+        console.warn('Yahoo Finance quotes missing prices for ticker:', trimmedTicker, variant);
+        return null;
+      }
+
+      const [bestMatch] = quotesWithPrice
+        .map((quote) => ({ quote, score: computeQuoteScore(quote) }))
+        .sort((a, b) => b.score - a.score);
+
+      if (!bestMatch || bestMatch.score < 20) {
+        console.warn('Yahoo Finance could not confidently match ticker to quote:', trimmedTicker, variant);
+        return null;
+      }
+
+      const matchedQuote = bestMatch.quote;
+
+      const marketPrice = typeof matchedQuote.regularMarketPrice === 'number'
+        && Number.isFinite(matchedQuote.regularMarketPrice)
+        ? matchedQuote.regularMarketPrice
+        : null;
+
+      if (marketPrice === null) {
+        return null;
+      }
+
+      const marketTime = typeof matchedQuote.regularMarketTime === 'number'
+        && Number.isFinite(matchedQuote.regularMarketTime)
+        ? matchedQuote.regularMarketTime
+        : null;
+
+      const resolvedSymbol = typeof matchedQuote.symbol === 'string' && matchedQuote.symbol.trim().length > 0
+        ? matchedQuote.symbol.trim().toUpperCase()
+        : (normalizedTicker ?? trimmedTicker.toUpperCase());
+
+      const resolvedCurrency = typeof matchedQuote.currency === 'string' && matchedQuote.currency.trim().length > 0
+        ? matchedQuote.currency.trim().toUpperCase()
+        : 'USD';
+
+      const resolvedName = typeof matchedQuote.shortname === 'string' && matchedQuote.shortname.trim().length > 0
+        ? matchedQuote.shortname.trim()
+        : typeof matchedQuote.longname === 'string' && matchedQuote.longname.trim().length > 0
+          ? matchedQuote.longname.trim()
+          : resolvedSymbol;
+
+      return {
+        symbol: resolvedSymbol,
+        name: resolvedName,
+        price: marketPrice,
+        currency: resolvedCurrency,
+        marketTime,
+      };
+    } catch (error) {
+      console.error('Unexpected error when calling Yahoo Finance search API for ticker:', trimmedTicker, variant, error);
+      return null;
+    }
+  };
+
+  for (const variant of searchVariants) {
+    const result = await attemptLookup(variant);
+    if (result) {
+      return result;
+    }
+  }
+
+  console.warn('Yahoo Finance lookup exhausted all locale variants for ticker:', trimmedTicker);
+  return null;
 };
 
 type HoldingRecord = {
@@ -690,63 +954,8 @@ serve(async (req) => {
         .maybeSingle()
     ]);
 
-    let sheetTickerSymbols: string[] = [];
-    let sheetTickerNames: string[] = [];
-
-    try {
-      const { data: sheetTickerData, error: sheetTickerError } = await supabase.functions.invoke('list-sheet-tickers');
-
-      if (sheetTickerError) {
-        console.error('Failed to fetch Google Sheets tickers:', sheetTickerError);
-      } else {
-        const typedData = sheetTickerData as SheetTickerEdgeResponse | null;
-        const rawTickers = Array.isArray(typedData?.tickers)
-          ? (typedData?.tickers as SheetTickerEdgeItem[])
-          : [];
-
-        const symbolSet = new Set<string>();
-        const nameSet = new Set<string>();
-
-        for (const item of rawTickers) {
-          if (!item || typeof item !== 'object') continue;
-
-          const rawSymbol = typeof item.symbol === 'string' ? item.symbol : null;
-          if (rawSymbol) {
-            const trimmedSymbol = rawSymbol.trim();
-            const withoutPrefix = trimmedSymbol.includes(':')
-              ? trimmedSymbol.split(':').pop() ?? trimmedSymbol
-              : trimmedSymbol;
-            const cleanedSymbol = withoutPrefix.replace(/\s+/g, '').toUpperCase();
-            if (cleanedSymbol.length > 0) {
-              symbolSet.add(cleanedSymbol);
-            }
-          }
-
-          const rawName = typeof item.name === 'string' ? item.name : null;
-          if (rawName) {
-            const normalizedWhitespaceName = rawName.replace(/\s+/g, ' ').trim();
-            if (normalizedWhitespaceName.length > 0) {
-              nameSet.add(normalizedWhitespaceName);
-
-              const diacriticsStripped = removeDiacritics(normalizedWhitespaceName).trim();
-              if (diacriticsStripped.length > 0 && diacriticsStripped !== normalizedWhitespaceName) {
-                nameSet.add(diacriticsStripped);
-              }
-            }
-          }
-        }
-
-        sheetTickerSymbols = Array.from(symbolSet);
-        sheetTickerNames = Array.from(nameSet);
-
-        console.log('Loaded Google Sheets tickers:', {
-          symbols: sheetTickerSymbols.length,
-          names: sheetTickerNames.length,
-        });
-      }
-    } catch (error) {
-      console.error('Unexpected error when loading Google Sheets tickers:', error);
-    }
+    const sheetTickerSymbols: string[] = [];
+    const sheetTickerNames: string[] = [];
 
     // ENHANCED INTENT DETECTION FOR PROFILE UPDATES
     const detectProfileUpdates = (message: string) => {
@@ -1404,6 +1613,64 @@ serve(async (req) => {
       }
     }
 
+    let yahooPriceContext = '';
+    let yahooPriceSources: string[] = [];
+
+    const shouldFetchYahooPrices = (() => {
+      if (detectedTickers.length === 0) {
+        return false;
+      }
+
+      const normalizedMessage = message.toLowerCase();
+      const hasPriceKeyword = PRICE_REQUEST_KEYWORDS.some(keyword => normalizedMessage.includes(keyword));
+
+      if (hasPriceKeyword) {
+        return true;
+      }
+
+      if (detectedTickers.length === 1) {
+        const strippedMessage = message.replace(/[?!.,]/g, '').trim();
+        const tickerPattern = new RegExp(`^${escapeRegExp(detectedTickers[0])}$`, 'i');
+        if (tickerPattern.test(strippedMessage)) {
+          return true;
+        }
+      }
+
+      return false;
+    })();
+
+    if (shouldFetchYahooPrices) {
+      const uniqueTickers = Array.from(new Set(detectedTickers));
+      const tickersForLookup = uniqueTickers.slice(0, 3);
+
+      console.log('Price request detected – fetching Yahoo Finance quotes for:', tickersForLookup);
+
+      const yahooResults = await Promise.all(tickersForLookup.map(fetchYahooPriceForTicker));
+      const validResults = yahooResults.filter((result): result is YahooPriceResult => result !== null);
+
+      if (validResults.length > 0) {
+        const contextLines = validResults.map((result) => {
+          const priceText = formatPriceWithCurrency(result.price, result.currency);
+          const timeText = formatMarketTimestamp(result.marketTime);
+          return `- ${result.symbol} (${result.name}): ${priceText} (senast uppdaterad ${timeText}).`;
+        });
+
+        yahooPriceContext = [
+          '\n\nAKTUELLA KURSER (hämtade via Yahoo Finance sök-API – behandla dem som cirkapriser och ange alltid källan i svaret):',
+          ...contextLines,
+          '- Var tydlig med att priser kan vara fördröjda jämfört med marknaden i realtid.',
+        ].join('\n');
+
+        yahooPriceSources = Array.from(new Set(validResults.map((result) =>
+          `https://finance.yahoo.com/quote/${encodeURIComponent(result.symbol)}`
+        )));
+
+        console.log('Yahoo Finance prices fetched successfully for:', validResults.map(result => result.symbol));
+      } else {
+        console.warn('Yahoo Finance price lookup returned no usable results.');
+      }
+    }
+
     // AI Memory update function
     const updateAIMemory = async (supabase: any, userId: string, userMessage: string, aiResponse: string, existingMemory: any) => {
       try {
@@ -1738,6 +2005,10 @@ contextInfo += intentPrompts[userIntent] || intentPrompts.general_advice;
       }
     }
 
+    if (yahooPriceContext) {
+      contextInfo += yahooPriceContext;
+    }
+
 // Add response structure requirements
 contextInfo += `
 SVARSSTRUKTUR (ANPASSNINGSBAR):
@@ -1784,18 +2055,23 @@ VIKTIGT:
       historyLength: chatHistory.length
     });
 
-    const hasMarketData = tavilyContext.formattedContext.length > 0;
-    let tavilySourceInstruction = '';
-    if (tavilyContext.sources.length > 0) {
-      const formattedSourcesList = tavilyContext.sources
+    const hasMarketData = tavilyContext.formattedContext.length > 0 || yahooPriceContext.length > 0;
+    const combinedSources = Array.from(new Set([
+      ...yahooPriceSources,
+      ...tavilyContext.sources,
+    ]));
+
+    let sourceInstruction = '';
+    if (combinedSources.length > 0) {
+      const formattedSourcesList = combinedSources
         .map((url, index) => `${index + 1}. ${url}`)
         .join('\n');
-      tavilySourceInstruction = `\n\nKÄLLHÄNVISNINGAR FÖR AGENTEN:\n${formattedSourcesList}\n\nINSTRUKTION: Avsluta alltid ditt svar med en sektion "Källor:" som listar dessa länkar i samma ordning och med en länk per rad.`;
+      sourceInstruction = `\n\nKÄLLHÄNVISNINGAR FÖR AGENTEN:\n${formattedSourcesList}\n\nINSTRUKTION: Avsluta alltid ditt svar med en sektion "Källor:" som listar dessa länkar i samma ordning och med en länk per rad.`;
     }
 
     // Build messages array with enhanced context
     const messages = [
-      { role: 'system', content: contextInfo + tavilyContext.formattedContext + tavilySourceInstruction },
+      { role: 'system', content: contextInfo + tavilyContext.formattedContext + sourceInstruction },
       ...chatHistory,
       { role: 'user', content: message }
     ];
