@@ -280,8 +280,9 @@ const Auth = () => {
             </Tabs>
           )}
         </CardContent>
-        <CardFooter className="text-center text-sm text-muted-foreground">
-          <Link to="/terms">Användarvillkor</Link> och <Link to="/privacy">Integritetspolicy</Link>
+        <CardFooter className="text-center text-sm text-muted-foreground flex flex-col gap-1">
+          <Link to="/terms">Användarvillkor</Link>
+          <Link to="/privacy">Integritetspolicy</Link>
         </CardFooter>
       </Card>
     </div>
