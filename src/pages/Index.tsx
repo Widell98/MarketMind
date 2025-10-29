@@ -222,13 +222,13 @@ const Index = () => {
       },
       {
         icon: Settings,
-        badge: 'Automatisering',
-        title: 'Bygg en plan som följer dig',
-        description: 'Sätt mål, skapa regler för ombalansering och få påminnelser när något händer.',
+        badge: 'Portföljstöd',
+        title: 'Optimera din strategi tillsammans med MarketMind',
+        description: 'Använd rådgivaren för att balansera risk, simulera scenarier och förstå effekten av dina val.',
         points: [
-          'Smart påminnelse när marknaden rör sig',
-          'Förslag på köp, sälj eller byt när läget är rätt',
-          'Samarbeta med rådgivare eller dela insikter med vänner',
+          'Simulera olika portföljvikter och se utfallet direkt',
+          'Få AI-stödda rekommendationer baserade på dina mål',
+          'Följ upp dina beslut med tydliga nästa steg inne i plattformen',
         ],
       },
     ],
@@ -391,16 +391,16 @@ const Index = () => {
                     <p className="mt-6 text-sm text-muted-foreground leading-relaxed">
                       MarketMind samlar allt från nyheter till AI-dragna insikter. Som ny användare får du snabbt en känsla för hur beslutsstödet fungerar innan du binder dig till något.
                     </p>
-                    <div className="mt-6 grid grid-cols-2 gap-4 text-sm text-muted-foreground">
-                      <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-4">
-                        <p className="text-2xl font-semibold text-foreground">+42%</p>
-                        <p>Känner sig tryggare i sina beslut</p>
-                      </div>
-                      <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-4">
-                        <p className="text-2xl font-semibold text-foreground">9/10</p>
-                        <p>Rekommenderar MarketMind till en vän</p>
-                      </div>
-                    </div>
+                    <ul className="mt-6 space-y-3 text-sm leading-relaxed text-muted-foreground">
+                      <li className="flex items-start gap-2">
+                        <CheckCircle className="mt-0.5 h-4 w-4 text-emerald-500" />
+                        <span>Utforska AI-genererade analyser innan du bestämmer dig.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle className="mt-0.5 h-4 w-4 text-emerald-500" />
+                        <span>Testa funktionerna gratis och se hur verktygen passar dina mål.</span>
+                      </li>
+                    </ul>
                   </Card>
                 </div>
               </section>
