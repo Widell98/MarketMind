@@ -105,8 +105,16 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             {/* Footer */}
             {showFooter && (
               <footer className="bg-card border-t border-border py-4 sm:py-6 lg:py-8 mt-auto flex-shrink-0">
-                <div className="container-responsive text-center text-xs sm:text-sm lg:text-base text-muted-foreground">
-                  © {new Date().getFullYear()} Market Mind. {t('footer.copyright')}
+                <div className="container-responsive text-center sm:text-left text-xs sm:text-sm lg:text-base text-muted-foreground flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                  <span>© {new Date().getFullYear()} Market Mind. {t('footer.copyright')}</span>
+                  <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+                    <Link to="/terms" className="hover:text-foreground transition-colors">
+                      {t('footer.terms')}
+                    </Link>
+                    <Link to="/privacy" className="hover:text-foreground transition-colors">
+                      {t('footer.privacy')}
+                    </Link>
+                  </nav>
                 </div>
               </footer>
             )}

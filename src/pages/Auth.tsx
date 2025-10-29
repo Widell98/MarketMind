@@ -12,16 +12,16 @@ import * as z from 'zod';
 import { Loader2 } from 'lucide-react';
 
 const loginSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+  email: z.string().email({ message: "Ange en giltig e-postadress" }),
+  password: z.string().min(6, { message: "Lösenordet måste vara minst 6 tecken" }),
 });
 
 const signupSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
-  username: z.string().min(3, { message: "Username must be at least 3 characters" })
-    .regex(/^[a-z0-9_]+$/, { message: "Username can only contain lowercase letters, numbers, and underscores" }),
-  displayName: z.string().min(2, { message: "Display name must be at least 2 characters" }),
+  email: z.string().email({ message: "Ange en giltig e-postadress" }),
+  password: z.string().min(6, { message: "Lösenordet måste vara minst 6 tecken" }),
+  username: z.string().min(3, { message: "Användarnamnet måste vara minst 3 tecken" })
+    .regex(/^[a-z0-9_]+$/, { message: "Användarnamnet får endast innehålla små bokstäver, siffror och understreck" }),
+  displayName: z.string().min(2, { message: "Visningsnamnet måste vara minst 2 tecken" }),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -104,16 +104,16 @@ const Auth = () => {
             Market Mentor
           </CardTitle>
           <CardDescription>
-            Sign in to access your personalized market insights
+            Logga in för att få tillgång till dina personliga marknadsinsikter
           </CardDescription>
         </CardHeader>
         <CardContent>
           {showForgotPassword ? (
             <div className="space-y-4">
               <div className="text-center">
-                <h3 className="text-lg font-medium">Reset Password</h3>
+                <h3 className="text-lg font-medium">Återställ lösenord</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Enter your email to receive reset instructions
+                  Ange din e-post för att få instruktioner för återställning
                 </p>
               </div>
               <form onSubmit={(e) => {
@@ -126,30 +126,30 @@ const Auth = () => {
                   <Input
                     name="email"
                     type="email"
-                    placeholder="your@email.com"
+                    placeholder="din@epost.com"
                     required
                   />
                 </div>
                 <Button type="submit" className="w-full bg-finance-navy hover:bg-finance-blue text-white">
-                  Send Reset Email
+                  Skicka återställningsmejl
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   className="w-full"
                   onClick={() => setShowForgotPassword(false)}
                 >
-                  Back to Login
+                  Tillbaka till inloggning
                 </Button>
               </form>
             </div>
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                <TabsTrigger value="login">Logga in</TabsTrigger>
+                <TabsTrigger value="signup">Skapa konto</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="login">
                 <Form {...loginForm}>
                   <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
@@ -158,9 +158,9 @@ const Auth = () => {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel>E-post</FormLabel>
                           <FormControl>
-                            <Input placeholder="your@email.com" {...field} />
+                            <Input placeholder="din@epost.com" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -172,7 +172,7 @@ const Auth = () => {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Password</FormLabel>
+                          <FormLabel>Lösenord</FormLabel>
                           <FormControl>
                             <Input type="password" placeholder="••••••••" {...field} />
                           </FormControl>
@@ -181,30 +181,30 @@ const Auth = () => {
                       )}
                     />
                     
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       className="w-full bg-finance-navy hover:bg-finance-blue text-white"
                       disabled={loginForm.formState.isSubmitting}
                     >
                       {loginForm.formState.isSubmitting ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : null}
-                      Sign In
+                      Logga in
                     </Button>
-                    
+
                     <div className="text-center">
                       <button
                         type="button"
                         onClick={() => setShowForgotPassword(true)}
                         className="text-sm text-finance-navy hover:text-finance-blue underline"
                       >
-                        Forgot your password?
+                        Glömt ditt lösenord?
                       </button>
                     </div>
                   </form>
                 </Form>
               </TabsContent>
-              
+
               <TabsContent value="signup">
                 <Form {...signupForm}>
                   <form onSubmit={signupForm.handleSubmit(onSignupSubmit)} className="space-y-4">
@@ -213,9 +213,9 @@ const Auth = () => {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel>E-post</FormLabel>
                           <FormControl>
-                            <Input placeholder="your@email.com" {...field} />
+                            <Input placeholder="din@epost.com" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -227,9 +227,9 @@ const Auth = () => {
                       name="username"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Username</FormLabel>
+                          <FormLabel>Användarnamn</FormLabel>
                           <FormControl>
-                            <Input placeholder="username" {...field} />
+                            <Input placeholder="användarnamn" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -241,9 +241,9 @@ const Auth = () => {
                       name="displayName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Display Name</FormLabel>
+                          <FormLabel>Visningsnamn</FormLabel>
                           <FormControl>
-                            <Input placeholder="Your Name" {...field} />
+                            <Input placeholder="Ditt namn" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -255,7 +255,7 @@ const Auth = () => {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Password</FormLabel>
+                          <FormLabel>Lösenord</FormLabel>
                           <FormControl>
                             <Input type="password" placeholder="••••••••" {...field} />
                           </FormControl>
@@ -264,15 +264,15 @@ const Auth = () => {
                       )}
                     />
                     
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       className="w-full bg-finance-navy hover:bg-finance-blue text-white"
                       disabled={signupForm.formState.isSubmitting}
                     >
                       {signupForm.formState.isSubmitting ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : null}
-                      Create Account
+                      Skapa konto
                     </Button>
                   </form>
                 </Form>
@@ -281,7 +281,7 @@ const Auth = () => {
           )}
         </CardContent>
         <CardFooter className="text-center text-sm text-muted-foreground">
-          <Link to="/terms">Terms of Service</Link> and <Link to="/privacy">Privacy Policy</Link>
+          <Link to="/terms">Användarvillkor</Link> och <Link to="/privacy">Integritetspolicy</Link>
         </CardFooter>
       </Card>
     </div>
