@@ -258,7 +258,7 @@ const Index = () => {
           
           {!user && (
             <div className="space-y-24">
-              <section className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-b from-background via-background to-muted/40 px-4 py-16 shadow-sm sm:px-8 sm:py-20">
+              <section className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-background via-background to-muted/40 px-4 py-16 shadow-sm sm:px-8 sm:py-20">
                 <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
                 <div className="pointer-events-none absolute -bottom-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-muted/40 blur-3xl" />
                 <div className="relative mx-auto flex max-w-5xl flex-col items-center text-center gap-8">
