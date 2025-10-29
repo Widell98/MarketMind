@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStockCase } from '@/hooks/useStockCases';
 import { useStockCaseLikes } from '@/hooks/useStockCaseLikes';
@@ -27,7 +27,6 @@ import { cn } from '@/lib/utils';
 import type { StockCase } from '@/types/stockCase';
 import { fetchSheetTickerMetrics, type SheetTickerMetrics } from '@/utils/sheetMetrics';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const parseNumericFromString = (value: string): number | null => {
   if (!value) {
@@ -198,6 +197,7 @@ const StockCaseDetail = () => {
   const { user } = useAuth();
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const analysisSectionRef = useRef<HTMLDivElement | null>(null);
   const [updateToDelete, setUpdateToDelete] = useState<string | null>(null);
   const [showFullFinancialDetails, setShowFullFinancialDetails] = useState(false);
   const [sheetMetrics, setSheetMetrics] = useState<SheetTickerMetrics | null>(null);
@@ -394,6 +394,15 @@ const StockCaseDetail = () => {
         description: "Stock case-länken har kopierats till urklipp"
       });
     }
+  };
+
+  const scrollToAnalysisSection = () => {
+    const node = analysisSectionRef.current;
+    if (!node) {
+      return;
+    }
+
+    node.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const handleLikeClick = () => {
@@ -1111,10 +1120,22 @@ const StockCaseDetail = () => {
                   ) : null}
 
                   {aiHeroIntroHtml ? (
-                    <p
-                      className="text-base leading-relaxed text-foreground sm:text-lg"
-                      dangerouslySetInnerHTML={{ __html: aiHeroIntroHtml }}
-                    />
+                    <div className="space-y-2">
+                      <p
+                        className="text-base leading-relaxed text-foreground sm:text-lg"
+                        dangerouslySetInnerHTML={{ __html: aiHeroIntroHtml }}
+                      />
+                      {displayedAnalysisDescription ? (
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="h-auto px-0 text-sm font-semibold text-muted-foreground underline-offset-4 hover:underline"
+                          onClick={scrollToAnalysisSection}
+                        >
+                          Visa full analys
+                        </Button>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
 
@@ -1468,45 +1489,25 @@ const StockCaseDetail = () => {
             )}
 
             {/* Case Description with Structured Sections */}
-            {displayedAnalysisDescription && (
-              isAiGeneratedCase ? (
-                <Card className="border-border/30 bg-muted/20">
-                  <CardHeader className="space-y-2">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <CardTitle className="flex items-center gap-2 text-foreground">
-                        <Sparkles className="h-5 w-5" />
-                        Full pitch
-                      </CardTitle>
-                      {aiBadge}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Fördjupa dig i hela AI-genererade investeringscaset.
-                    </p>
-                  </CardHeader>
-                  <CardContent>
-                    <Accordion type="single" collapsible className="w-full">
-                      <AccordionItem value="ai-full-pitch">
-                        <AccordionTrigger className="text-sm font-semibold text-foreground">
-                          Visa full AI-analys
-                        </AccordionTrigger>
-                        <AccordionContent className="space-y-6 pt-4">
-                          {formatCaseDescription(displayedAnalysisDescription)}
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Analys</CardTitle>
+            {displayedAnalysisDescription ? (
+              <div ref={analysisSectionRef}>
+                <Card className={cn(isAiGeneratedCase ? 'border-border/30 bg-muted/20' : undefined)}>
+                  <CardHeader className={cn(
+                    'flex flex-wrap items-center justify-between gap-3',
+                    isAiGeneratedCase ? 'space-y-0' : undefined
+                  )}>
+                    <CardTitle className="flex items-center gap-2">
+                      {isAiGeneratedCase ? <Sparkles className="h-4 w-4 text-muted-foreground" /> : null}
+                      Analys
+                    </CardTitle>
+                    {isAiGeneratedCase ? aiBadge : null}
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {formatCaseDescription(displayedAnalysisDescription)}
                   </CardContent>
                 </Card>
-              )
-            )}
+              </div>
+            ) : null}
 
             {/* Admin Comment */}
             {stockCase.admin_comment && (
