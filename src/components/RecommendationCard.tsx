@@ -65,12 +65,12 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             </div>
           )}
 
-          <div className="flex items-center gap-2 pt-2 border-t">
+          <div className="flex flex-col gap-2 pt-3 mt-3 border-t border-border/50 sm:flex-row sm:items-center">
             <Button
               variant="outline"
               size="sm"
               onClick={onAdd}
-              className="text-xs flex-1"
+              className="text-xs w-full sm:flex-1"
             >
               <ShoppingCart className="w-3 h-3 mr-1" />
               Lägg till i portfölj
@@ -79,7 +79,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
               variant="outline"
               size="sm"
               onClick={onDiscuss}
-              className="text-xs flex-1"
+              className="text-xs w-full sm:flex-1"
             >
               <MessageCircle className="w-3 h-3 mr-1" />
               Diskutera
@@ -88,7 +88,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
               variant="ghost"
               size="sm"
               onClick={onDelete}
-              className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-xs"
+              className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-xs w-full sm:w-auto"
             >
               <Trash2 className="w-3 h-3" />
             </Button>

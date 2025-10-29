@@ -283,28 +283,26 @@ const CommunityRecommendations: React.FC = () => {
   return (
     <Card className="bg-card/30 backdrop-blur-xl border-border/20 shadow-lg rounded-3xl overflow-hidden">
       <CardHeader className="pb-6 bg-gradient-to-r from-primary/5 to-purple/5 border-b border-border/20">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <CardTitle className="text-xl font-semibold flex items-center gap-3 flex-wrap">
-              <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
-                <Users className="w-5 h-5 text-primary" />
-              </div>
-              Community-rekommenderade Innehav
-              {recommendations.length > 0 && (
-                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 ml-2 px-3 py-1 rounded-full">
-                  {recommendations.length} rekommendationer
-                </Badge>
-              )}
-            </CardTitle>
-            <CardDescription className="text-muted-foreground mt-2 ml-13 leading-relaxed">
-              Dina sparade stock-cases och analyser från communityn
-            </CardDescription>
-          </div>
+        <div className="flex flex-col items-center gap-3 text-center sm:items-start sm:text-left">
+          <CardTitle className="text-xl font-semibold flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:text-left">
+            <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <Users className="w-5 h-5 text-primary" />
+            </div>
+            <span>Community-rekommenderade Innehav</span>
+            {recommendations.length > 0 && (
+              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 rounded-full">
+                {recommendations.length} rekommendationer
+              </Badge>
+            )}
+          </CardTitle>
+          <CardDescription className="text-muted-foreground leading-relaxed text-center sm:text-left">
+            Dina sparade stock-cases och analyser från communityn
+          </CardDescription>
         </div>
       </CardHeader>
       <CardContent className="p-6 sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-          <div className="text-sm text-muted-foreground font-medium">
+          <div className="text-sm text-muted-foreground font-medium text-center sm:text-left">
             {recommendations.length} sparade rekommendationer
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
@@ -365,7 +363,7 @@ const CommunityRecommendations: React.FC = () => {
             )}
           </>
         ) : (
-          <div className={`space-y-4 ${recommendations.length > 5 ? 'max-h-96 overflow-y-auto pr-2' : ''}`}>
+          <div className={`space-y-4 ${recommendations.length > 5 ? 'sm:max-h-96 sm:overflow-y-auto sm:pr-2' : ''}`}>
             {recommendations.slice(0, 6).map((recommendation) => (
               <RecommendationCard
                 key={recommendation.id}
