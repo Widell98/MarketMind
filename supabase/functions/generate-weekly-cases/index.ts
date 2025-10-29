@@ -320,57 +320,61 @@ const buildConciseDescription = (primary: string | null | undefined, fallback?: 
     .map((sentence) => sentence.trim())
     .filter((sentence) => sentence.length > 0);
 
-  const MAX_LENGTH = 240;
-  const MAX_SENTENCES = 2;
-
-  if (sentences.length === 0) {
-    return normalized.length > MAX_LENGTH
-      ? `${normalized.slice(0, MAX_LENGTH - 3).trimEnd()}...`
-      : normalized;
-  }
-
-  const chosen: string[] = [];
-
-  for (const sentence of sentences) {
-    if (chosen.length >= MAX_SENTENCES) {
-      break;
+  const pickIntroSentence = (): string => {
+    if (sentences.length > 0) {
+      return sentences[0];
     }
 
-    const existing = chosen.join(' ');
-    const tentative = existing.length > 0 ? `${existing} ${sentence}` : sentence;
+    return normalized;
+  };
 
-    if (tentative.length > MAX_LENGTH) {
-      if (chosen.length === 0) {
-        return sentence.length > MAX_LENGTH
-          ? `${sentence.slice(0, MAX_LENGTH - 3).trimEnd()}...`
-          : sentence;
-      }
-
-      const remaining = MAX_LENGTH - existing.length - (existing.length > 0 ? 1 : 0);
-      if (remaining > 24) {
-        const truncated = sentence.slice(0, remaining - 3).trimEnd();
-        if (truncated.length > 0) {
-          chosen.push(`${truncated}...`);
-        }
-      }
-
-      break;
+  const shortenSentence = (sentence: string): string => {
+    const cleanSentence = sentence.replace(/\s+/g, ' ').trim();
+    if (!cleanSentence) {
+      return '';
     }
 
-    chosen.push(sentence);
+    const MAX_WORDS = 22;
+    const MAX_LENGTH = 140;
+
+    const words = cleanSentence.split(/\s+/u);
+    let truncated = cleanSentence;
+    let wasTrimmed = false;
+
+    if (words.length > MAX_WORDS) {
+      truncated = words.slice(0, MAX_WORDS).join(' ');
+      wasTrimmed = true;
+    }
+
+    if (truncated.length > MAX_LENGTH) {
+      truncated = truncated.slice(0, MAX_LENGTH - 3).trimEnd();
+      wasTrimmed = true;
+    }
+
+    let result = truncated.replace(/[-,:;]+$/u, '').replace(/\s+/g, ' ').trim();
+    const hadTerminalPunctuation = /[.!?]+$/u.test(result);
+    if (hadTerminalPunctuation) {
+      result = result.replace(/[.!?]+$/u, '').trim();
+    }
+
+    if (!result) {
+      return '';
+    }
+
+    if (wasTrimmed) {
+      return `${result}...`;
+    }
+
+    return result;
+  };
+
+  const intro = shortenSentence(pickIntroSentence());
+
+  if (intro) {
+    return intro;
   }
 
-  if (chosen.length === 0) {
-    const [firstSentence] = sentences;
-    return firstSentence.length > MAX_LENGTH
-      ? `${firstSentence.slice(0, MAX_LENGTH - 3).trimEnd()}...`
-      : firstSentence;
-  }
-
-  const assembled = chosen.join(' ');
-  return assembled.length > MAX_LENGTH
-    ? `${assembled.slice(0, MAX_LENGTH - 3).trimEnd()}...`
-    : assembled;
+  return shortenSentence(normalized);
 };
 
 const sanitizeCaseData = (rawCase: any) => {
