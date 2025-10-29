@@ -918,6 +918,13 @@ Returnera **endast** giltig JSON (utan markdown, kommentarer eller extra text):
       const data = await response.json();
       const generatedContent = data?.choices?.[0]?.message?.content;
 
+      console.log('OpenAI weekly case response content', {
+        ticker: selectedTicker,
+        sector,
+        style,
+        content: generatedContent,
+      });
+
       if (!generatedContent) {
         const message = 'OpenAI response did not contain content';
         console.error(message, data);
