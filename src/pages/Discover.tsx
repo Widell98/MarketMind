@@ -10,11 +10,13 @@ import AIGenerationAdminControls from '@/components/AIGenerationAdminControls';
 
 import { useStockCases } from '@/hooks/useStockCases';
 import { useToast } from '@/hooks/use-toast';
+import { useUserRole } from '@/hooks/useUserRole';
 
 const Discover = () => {
   const navigate = useNavigate();
   const { stockCases: allStockCases, loading: stockCasesLoading } = useStockCases(false);
   const { toast } = useToast();
+  const { isAdmin } = useUserRole();
 
   const [caseSearchTerm, setCaseSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('');
@@ -167,7 +169,7 @@ const Discover = () => {
                   key={sc.id}
                   stockCase={sc}
                   onViewDetails={handleViewStockCaseDetails}
-                  onDelete={handleDeleteStockCase}
+                  onDelete={isAdmin ? handleDeleteStockCase : undefined}
                   showMetaBadges={false}
                 />
               ))}
