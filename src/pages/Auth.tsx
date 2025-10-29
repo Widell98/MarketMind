@@ -281,7 +281,8 @@ const Auth = () => {
           )}
         </CardContent>
         <CardFooter className="text-center text-sm text-muted-foreground">
-          <Link to="/terms">Användarvillkor</Link> och <Link to="/privacy">Integritetspolicy</Link>
+          <Link to="/terms">Användarvillkor</Link>{' '}och{' '}
+          <Link to="/privacy">Integritetspolicy</Link>
         </CardFooter>
       </Card>
     </div>

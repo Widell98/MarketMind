@@ -450,25 +450,28 @@ const Index = () => {
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
                       <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/10 bg-primary/5 p-5 sm:p-6">
                         <Shield className="h-6 w-6 text-primary" />
-                        <span className="font-medium text-foreground">Skapa din riskprofil</span>
-                        <p className="text-center text-xs text-muted-foreground sm:text-sm">Svara på några frågor om mål, tidshorisont och risktolerans.</p>
+                        <span className="font-medium text-foreground">Berätta om dig</span>
+                        <p className="text-center text-xs text-muted-foreground sm:text-sm">Dela dina mål, erfarenhet och hur du känner inför risk.</p>
                       </div>
                       <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/10 bg-primary/5 p-5 sm:p-6">
                         <Target className="h-6 w-6 text-primary" />
-                        <span className="font-medium text-foreground">Forma din strategi</span>
-                        <p className="text-center text-xs text-muted-foreground sm:text-sm">Vi använder dina svar för att föreslå en plan som passar dig.</p>
+                        <span className="font-medium text-foreground">Vi skapar trygghet</span>
+                        <p className="text-center text-xs text-muted-foreground sm:text-sm">Vi analyserar dina svar och tar fram en plan som känns hållbar.</p>
                       </div>
                       <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/10 bg-primary/5 p-5 sm:p-6">
                         <Sparkles className="h-6 w-6 text-primary" />
-                        <span className="font-medium text-foreground">Lås upp smart rådgivning</span>
-                        <p className="text-center text-xs text-muted-foreground sm:text-sm">Få AI-insikter, rekommendationer och guidning baserat på din profil.</p>
+                        <span className="font-medium text-foreground">Vi följs åt framåt</span>
+                        <p className="text-center text-xs text-muted-foreground sm:text-sm">Få löpande AI-insikter, rekommendationer och stöd i varje steg.</p>
                       </div>
                     </div>
                   </div>
 
-                  <p className="mx-auto mb-10 max-w-2xl text-sm text-muted-foreground sm:mb-12 sm:text-base">
-                    Din riskprofil gör att vi kan ge dig mer relevanta rekommendationer, bättre portföljförslag och följa upp dina mål över tid.
-                  </p>
+                  <div className="mx-auto mb-10 max-w-2xl space-y-3 text-sm text-muted-foreground sm:mb-12 sm:text-base">
+                    <p>
+                      Din riskprofil gör att vi kan ge dig mer relevanta rekommendationer, bättre portföljförslag och följa upp dina mål över tid.
+                    </p>
+                    <p className="font-medium text-foreground">Låt oss lära känna varandra.</p>
+                  </div>
 
                   <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:justify-center sm:gap-4">
                     <Button asChild size="lg" className="w-full rounded-xl bg-primary px-6 py-4 text-lg font-medium text-primary-foreground shadow-lg transition-all duration-300 hover:bg-primary/90 hover:shadow-xl sm:w-auto sm:px-8">
