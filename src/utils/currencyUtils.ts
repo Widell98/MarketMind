@@ -9,20 +9,103 @@ export interface ExchangeRates {
 
 const DEFAULT_EXCHANGE_RATES: ExchangeRates = {
   SEK: 1.0,
-  USD: 10.5,
-  EUR: 11.4,
-  GBP: 13.2,
-  NOK: 0.95,
-  DKK: 1.53,
-  JPY: 0.07,
-  CHF: 11.8,
-  CAD: 7.8,
-  AUD: 7.0,
 };
 
-const SUPPORTED_CURRENCIES = Object.keys(DEFAULT_EXCHANGE_RATES);
+const SUPPORTED_CURRENCIES = ['SEK', 'USD', 'EUR', 'GBP', 'NOK', 'DKK', 'JPY', 'CHF', 'CAD', 'AUD'];
 
-export let EXCHANGE_RATES: ExchangeRates = { ...DEFAULT_EXCHANGE_RATES };
+const EXCHANGE_RATES_STORAGE_KEY = 'marketmind.exchangeRates.sekBase';
+
+const getLocalStorage = (): Storage | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    return window.localStorage;
+  } catch (error) {
+    console.warn('LocalStorage är inte tillgänglig, sparade växelkurser ignoreras.', error);
+    return null;
+  }
+};
+
+interface PersistedExchangeRates {
+  rates: ExchangeRates;
+  updatedAt: number;
+}
+
+const loadPersistedExchangeRates = (): PersistedExchangeRates | null => {
+  const storage = getLocalStorage();
+  if (!storage) {
+    return null;
+  }
+
+  try {
+    const stored = storage.getItem(EXCHANGE_RATES_STORAGE_KEY);
+    if (!stored) {
+      return null;
+    }
+
+    const parsed = JSON.parse(stored) as Partial<PersistedExchangeRates> | null;
+    if (!parsed || typeof parsed !== 'object') {
+      return null;
+    }
+
+    if (!parsed.rates || typeof parsed.rates !== 'object') {
+      return null;
+    }
+
+    if (typeof parsed.updatedAt !== 'number' || Number.isNaN(parsed.updatedAt)) {
+      return null;
+    }
+
+    const normalizedRates: ExchangeRates = { ...DEFAULT_EXCHANGE_RATES };
+    for (const currency of SUPPORTED_CURRENCIES) {
+      const value = (parsed.rates as ExchangeRates)[currency];
+      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+        normalizedRates[currency] = value;
+      }
+    }
+
+    return {
+      updatedAt: parsed.updatedAt,
+      rates: normalizedRates,
+    };
+  } catch (error) {
+    console.warn('Kunde inte läsa sparade växelkurser från localStorage.', error);
+    return null;
+  }
+};
+
+const persistExchangeRates = (rates: ExchangeRates) => {
+  const storage = getLocalStorage();
+  if (!storage) {
+    return;
+  }
+
+  try {
+    const sanitizedRates: ExchangeRates = { ...DEFAULT_EXCHANGE_RATES };
+    for (const currency of SUPPORTED_CURRENCIES) {
+      const value = rates[currency];
+      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+        sanitizedRates[currency] = value;
+      }
+    }
+
+    const payload: PersistedExchangeRates = {
+      updatedAt: Date.now(),
+      rates: sanitizedRates,
+    };
+
+    storage.setItem(EXCHANGE_RATES_STORAGE_KEY, JSON.stringify(payload));
+  } catch (error) {
+    console.warn('Kunde inte spara växelkurser i localStorage.', error);
+  }
+};
+
+const persistedExchangeRates = loadPersistedExchangeRates();
+
+export let EXCHANGE_RATES: ExchangeRates =
+  persistedExchangeRates?.rates ?? { ...DEFAULT_EXCHANGE_RATES };
 
 const FINNHUB_API_KEY = import.meta.env?.VITE_FINNHUB_API_KEY as string | undefined;
 const FINNHUB_BASE_CURRENCY = 'SEK';
@@ -34,7 +117,7 @@ interface FinnhubRatesResponse {
   quote?: Record<string, unknown>;
 }
 
-let lastSuccessfulRatesUpdate: number | null = null;
+let lastSuccessfulRatesUpdate: number | null = persistedExchangeRates?.updatedAt ?? null;
 let ongoingRatesFetch: Promise<ExchangeRates> | null = null;
 
 const parseFinnhubRates = (response: FinnhubRatesResponse): ExchangeRates | null => {
@@ -80,7 +163,7 @@ const fetchExchangeRatesFromFinnhub = async (): Promise<ExchangeRates | null> =>
   }
 
   if (!FINNHUB_API_KEY) {
-    console.warn('FINNHUB_API_KEY saknas – använder hårdkodade växelkurser.');
+    console.warn('FINNHUB_API_KEY saknas – använder sparade eller fallbackkurser.');
     return null;
   }
 
@@ -102,9 +185,9 @@ const fetchExchangeRatesFromFinnhub = async (): Promise<ExchangeRates | null> =>
       throw new Error('Finnhub exchange rate response saknar giltiga data.');
     }
 
-    return { ...DEFAULT_EXCHANGE_RATES, ...parsed };
+    return { ...DEFAULT_EXCHANGE_RATES, ...EXCHANGE_RATES, ...parsed };
   } catch (error) {
-    console.warn('Kunde inte hämta växelkurser från Finnhub, använder fallback.', error);
+    console.warn('Kunde inte hämta växelkurser från Finnhub, använder sparade eller fallbackkurser.', error);
     return null;
   }
 };
@@ -128,6 +211,7 @@ export const refreshExchangeRates = async (force = false): Promise<ExchangeRates
         if (rates) {
           EXCHANGE_RATES = rates;
           lastSuccessfulRatesUpdate = Date.now();
+          persistExchangeRates(EXCHANGE_RATES);
         }
 
         return EXCHANGE_RATES;
