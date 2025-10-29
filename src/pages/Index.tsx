@@ -14,10 +14,8 @@ import {
   Star,
   Heart,
   Target,
-  Coffee,
   HandHeart,
   MapPin,
-  Clock,
   Zap,
   DollarSign,
   MessageSquare,
@@ -37,6 +35,7 @@ import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAIInsights } from '@/hooks/useAIInsights';
 import { useFinancialProgress } from '@/hooks/useFinancialProgress';
+import { useRiskProfile } from '@/hooks/useRiskProfile';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 
@@ -80,6 +79,10 @@ const Index = () => {
     activePortfolio,
     loading
   } = usePortfolio();
+  const {
+    riskProfile,
+    loading: riskProfileLoading
+  } = useRiskProfile();
   const {
     performance
   } = usePortfolioPerformance();
@@ -425,8 +428,8 @@ const Index = () => {
               </div>
             </div>}
 
-          {/* Enhanced personal welcome for users without portfolio */}
-          {user && !hasPortfolio && !loading && <div className="mb-12 sm:mb-16">
+          {/* Enhanced personal welcome for users who still need a risk profile */}
+          {user && !riskProfile && !riskProfileLoading && <div className="mb-12 sm:mb-16">
               <Card className="rounded-3xl border-slate-200 bg-gradient-to-r from-slate-50 to-indigo-50 shadow-lg dark:border-slate-700 dark:from-slate-800 dark:to-indigo-900/20">
                 <div className="rounded-3xl border bg-card/60 p-6 text-center shadow-lg backdrop-blur-sm sm:p-12">
                   <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 sm:mb-8 sm:h-20 sm:w-20">
@@ -446,25 +449,32 @@ const Index = () => {
                     </h4>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
                       <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/10 bg-primary/5 p-5 sm:p-6">
-                        <Coffee className="h-6 w-6 text-primary" />
-                        <span className="font-medium text-foreground">Berätta om dig</span>
+                        <Shield className="h-6 w-6 text-primary" />
+                        <span className="font-medium text-foreground">Skapa din riskprofil</span>
+                        <p className="text-center text-xs text-muted-foreground sm:text-sm">Svara på några frågor om mål, tidshorisont och risktolerans.</p>
                       </div>
                       <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/10 bg-primary/5 p-5 sm:p-6">
-                        <HandHeart className="h-6 w-6 text-primary" />
-                        <span className="font-medium text-foreground">Vi skapar trygghet</span>
+                        <Target className="h-6 w-6 text-primary" />
+                        <span className="font-medium text-foreground">Forma din strategi</span>
+                        <p className="text-center text-xs text-muted-foreground sm:text-sm">Vi använder dina svar för att föreslå en plan som passar dig.</p>
                       </div>
                       <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/10 bg-primary/5 p-5 sm:p-6">
-                        <Clock className="h-6 w-6 text-primary" />
-                        <span className="font-medium text-foreground">Vi följs åt framåt</span>
+                        <Sparkles className="h-6 w-6 text-primary" />
+                        <span className="font-medium text-foreground">Lås upp smart rådgivning</span>
+                        <p className="text-center text-xs text-muted-foreground sm:text-sm">Få AI-insikter, rekommendationer och guidning baserat på din profil.</p>
                       </div>
                     </div>
                   </div>
 
+                  <p className="mx-auto mb-10 max-w-2xl text-sm text-muted-foreground sm:mb-12 sm:text-base">
+                    Din riskprofil gör att vi kan ge dig mer relevanta rekommendationer, bättre portföljförslag och följa upp dina mål över tid.
+                  </p>
+
                   <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:justify-center sm:gap-4">
                     <Button asChild size="lg" className="w-full rounded-xl bg-primary px-6 py-4 text-lg font-medium text-primary-foreground shadow-lg transition-all duration-300 hover:bg-primary/90 hover:shadow-xl sm:w-auto sm:px-8">
                       <Link to="/portfolio-advisor?direct=true">
-                        <Coffee className="mr-2 h-5 w-5" />
-                        Låt oss lära känna varandra
+                        <Shield className="mr-2 h-5 w-5" />
+                        Skapa din riskprofil
                       </Link>
                     </Button>
                     <Button asChild variant="outline" size="lg" className="w-full rounded-xl px-6 py-4 text-lg font-medium transition-all duration-300 hover:bg-muted/50 sm:w-auto sm:px-8">
