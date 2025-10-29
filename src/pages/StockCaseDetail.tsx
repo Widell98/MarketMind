@@ -493,8 +493,28 @@ const StockCaseDetail = () => {
   // Format case description with sections
   const formatCaseDescription = (description: string | null) => {
     if (!description) return null;
-    
-    const sections = description.split('\n\n');
+
+    const normalizedDescription = description.replace(/\r\n/g, '\n').trim();
+    if (!normalizedDescription) {
+      return null;
+    }
+
+    let sections = normalizedDescription
+      .split(/\n{2,}/)
+      .map((section) => section.trim())
+      .filter((section) => section.length > 0);
+
+    if (sections.length <= 1) {
+      const fallbackSections = normalizedDescription
+        .split(/\n+/)
+        .map((section) => section.trim())
+        .filter((section) => section.length > 0);
+
+      if (fallbackSections.length > 1) {
+        sections = fallbackSections;
+      }
+    }
+
     return sections.map((section, index) => {
       // Check if section starts with common labels
       if (section.toLowerCase().startsWith('bull case')) {
@@ -534,10 +554,10 @@ const StockCaseDetail = () => {
       }
       
       return (
-        <p 
-          key={index} 
+        <p
+          key={index}
           className="text-foreground leading-relaxed mb-4"
-          dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(section) }}
+          dangerouslySetInnerHTML={{ __html: highlightNumbersSafely(section.replace(/\n/g, '<br />')) }}
         />
       );
     });
