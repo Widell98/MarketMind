@@ -10,6 +10,7 @@ export interface StockCase {
   dividend_yield?: string;
   description?: string;
   long_description?: string;
+  ai_intro?: string;
   ticker?: string;
   entry_price?: number;
   current_price?: number;
