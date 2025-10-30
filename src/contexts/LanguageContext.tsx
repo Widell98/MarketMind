@@ -30,7 +30,6 @@ const translations = {
     'hero.cta.start': 'Kom igång gratis',
     'hero.cta.demo': 'Se hur det fungerar →',
     'hero.cta.final': 'Kom igång gratis idag',
-    'hero.disclaimer': 'MarketMind tillhandahåller AI-baserad analys och allmän information, inte individuell investeringsrådgivning. För personlig rådgivning, kontakta en licensierad rådgivare.',
     
     // Examples section
     'examples.title': 'Personliga råd för alla',
@@ -119,6 +118,7 @@ const translations = {
     // Footer
     'footer.terms': 'Användarvillkor',
     'footer.privacy': 'Integritetspolicy',
+    'footer.disclaimer': 'MarketMind tillhandahåller AI-baserad analys och allmän information, inte individuell investeringsrådgivning. För personlig rådgivning, kontakta en licensierad rådgivare.',
     'footer.copyright': 'Alla rättigheter förbehållna.',
     
     // Common
@@ -143,7 +143,6 @@ const translations = {
     'hero.cta.start': 'Get started for free',
     'hero.cta.demo': 'See how it works →',
     'hero.cta.final': 'Get started for free today',
-    'hero.disclaimer': 'MarketMind provides AI-powered analysis and general information, not individualized investment advice. For personal advice, contact a licensed advisor.',
     
     // Examples section
     'examples.title': 'Personal advice for everyone',
@@ -232,6 +231,7 @@ const translations = {
     // Footer
     'footer.terms': 'Terms of Service',
     'footer.privacy': 'Privacy Policy',
+    'footer.disclaimer': 'MarketMind provides AI-powered analysis and general information, not individualized investment advice. For personal advice, contact a licensed advisor.',
     'footer.copyright': 'All rights reserved.',
     
     // Common

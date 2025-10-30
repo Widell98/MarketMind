@@ -251,12 +251,6 @@ const Index = () => {
             {/* Clean Examples Section */}
 
 
-              {/* Final CTA - Apple style */}
-              <div className="mt-20 text-center">
-                <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-                  {t('hero.disclaimer')}
-                </p>
-              </div>
             </div>}
 
           {/* Clean Dashboard for logged-in users */}
