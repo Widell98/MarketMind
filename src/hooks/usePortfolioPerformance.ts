@@ -6,9 +6,11 @@ import { resolveHoldingValue, convertToSEK } from '@/utils/currencyUtils';
 import type { SheetTicker } from '@/hooks/useSheetTickers';
 
 type FinnhubPriceResponse = {
+  success?: boolean;
   symbol: string;
-  price: number;
+  price: number | null;
   currency: string | null;
+  error?: string;
 };
 
 const parseNumeric = (value: unknown): number | null => {

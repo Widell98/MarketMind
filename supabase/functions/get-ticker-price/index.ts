@@ -25,7 +25,7 @@ serve(async (req) => {
 
   if (!finnhubApiKey) {
     return new Response(
-      JSON.stringify({ error: "FINNHUB_API_KEY is not configured." }),
+      JSON.stringify({ success: false, error: "FINNHUB_API_KEY is not configured." }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -38,7 +38,7 @@ serve(async (req) => {
 
     if (!symbol || typeof symbol !== "string" || symbol.trim().length === 0) {
       return new Response(
-        JSON.stringify({ error: "A valid ticker symbol is required." }),
+        JSON.stringify({ success: false, error: "A valid ticker symbol is required." }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -51,10 +51,18 @@ serve(async (req) => {
     const quoteData = await fetchQuote(normalizedSymbol);
 
     if (!quoteData || typeof quoteData.price !== "number") {
+      const profileData = await fetchProfile(normalizedSymbol);
+
       return new Response(
-        JSON.stringify({ error: "Finnhub returned no price for the requested symbol." }),
+        JSON.stringify({
+          success: false,
+          symbol: normalizedSymbol,
+          price: null,
+          currency: profileData?.currency ?? null,
+          error: "Finnhub returned no price for the requested symbol.",
+        }),
         {
-          status: 404,
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
@@ -64,6 +72,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
+        success: true,
         symbol: normalizedSymbol,
         price: quoteData.price,
         currency: profileData?.currency ?? null,
@@ -77,7 +86,7 @@ serve(async (req) => {
     const message = error instanceof Error ? error.message : "Unknown error";
 
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ success: false, error: message }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

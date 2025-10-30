@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -11,11 +11,115 @@ import { useUserHoldings } from '@/hooks/useUserHoldings';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency, resolveHoldingValue } from '@/utils/currencyUtils';
+import { supabase } from '@/integrations/supabase/client';
+
+type LivePriceMap = Record<string, { price: number; currency: string | null } | undefined>;
 
 const CurrentHoldingsPrices: React.FC = () => {
   const { actualHoldings, loading: holdingsLoading } = useUserHoldings();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [livePrices, setLivePrices] = useState<LivePriceMap>({});
+  const [livePriceState, setLivePriceState] = useState<{ loading: boolean; error: string | null }>({
+    loading: false,
+    error: null,
+  });
+
+  useEffect(() => {
+    if (!user) {
+      setLivePrices({});
+      setLivePriceState({ loading: false, error: null });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || holdingsLoading) {
+      return;
+    }
+
+    const symbols = Array.from(
+      new Set(
+        actualHoldings
+          .map((holding) => (typeof holding.symbol === 'string' ? holding.symbol.trim().toUpperCase() : ''))
+          .filter((symbol) => symbol.length > 0)
+      )
+    );
+
+    if (symbols.length === 0) {
+      setLivePrices({});
+      setLivePriceState((prev) => (prev.loading || prev.error ? { loading: false, error: null } : prev));
+      return;
+    }
+
+    let isMounted = true;
+    setLivePriceState({ loading: true, error: null });
+
+    (async () => {
+      const nextPrices: LivePriceMap = {};
+      let encounteredError: string | null = null;
+
+      for (const symbol of symbols) {
+        try {
+          const { data, error } = await supabase.functions.invoke<{
+            success?: boolean;
+            symbol?: string;
+            price?: number | null;
+            currency?: string | null;
+            error?: string;
+          }>('get-ticker-price', {
+            body: { symbol },
+          });
+
+          if (error) {
+            console.warn('Edge function error when fetching Finnhub price for', symbol, error);
+            if (!encounteredError) {
+              encounteredError = error.message ?? 'Kunde inte hämta live-priser just nu.';
+            }
+            continue;
+          }
+
+          const rawPrice = typeof data?.price === 'number' && Number.isFinite(data.price) && data.price > 0
+            ? data.price
+            : null;
+
+          if (rawPrice === null) {
+            if (data?.error && !encounteredError) {
+              encounteredError = data.error;
+            }
+            continue;
+          }
+
+          const resolvedCurrency = typeof data?.currency === 'string' && data.currency.trim().length > 0
+            ? data.currency.trim().toUpperCase()
+            : null;
+
+          nextPrices[symbol] = { price: rawPrice, currency: resolvedCurrency };
+        } catch (err) {
+          console.error('Unexpected error fetching Finnhub price for', symbol, err);
+          if (!encounteredError) {
+            encounteredError = err instanceof Error ? err.message : 'Ett oväntat fel uppstod vid prisuppdateringen.';
+          }
+        }
+      }
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (Object.keys(nextPrices).length > 0) {
+        setLivePrices((prev) => ({ ...prev, ...nextPrices }));
+      }
+
+      setLivePriceState({
+        loading: false,
+        error: encounteredError,
+      });
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [actualHoldings, holdingsLoading, user]);
 
   if (!user) {
     return (
@@ -45,30 +149,43 @@ const CurrentHoldingsPrices: React.FC = () => {
     );
   }
 
-  const pricedHoldings = actualHoldings
-    .filter((holding) => holding.holding_type !== 'cash')
-    .map((holding) => {
-      const {
-        pricePerUnit,
-        priceCurrency,
-        pricePerUnitInSEK,
-        valueInOriginalCurrency,
-        valueCurrency,
-        valueInSEK,
-      } = resolveHoldingValue(holding);
+  const pricedHoldings = useMemo(() => {
+    return actualHoldings
+      .filter((holding) => holding.holding_type !== 'cash')
+      .map((holding) => {
+        const normalizedSymbol = typeof holding.symbol === 'string' ? holding.symbol.trim().toUpperCase() : '';
+        const live = normalizedSymbol ? livePrices[normalizedSymbol] : undefined;
 
-      return {
-        id: holding.id,
-        name: holding.name,
-        symbol: holding.symbol,
-        price: pricePerUnit,
-        currency: priceCurrency,
-        priceInSEK: pricePerUnitInSEK,
-        valueOriginal: valueInOriginalCurrency,
-        valueCurrency,
-        valueSEK: valueInSEK,
-      };
-    });
+        const holdingWithLivePrice = live
+          ? {
+              ...holding,
+              current_price_per_unit: live.price,
+              price_currency: live.currency ?? holding.price_currency ?? holding.currency,
+            }
+          : holding;
+
+        const {
+          pricePerUnit,
+          priceCurrency,
+          pricePerUnitInSEK,
+          valueInOriginalCurrency,
+          valueCurrency,
+          valueInSEK,
+        } = resolveHoldingValue(holdingWithLivePrice);
+
+        return {
+          id: holding.id,
+          name: holding.name,
+          symbol: holding.symbol,
+          price: pricePerUnit,
+          currency: priceCurrency,
+          priceInSEK: pricePerUnitInSEK,
+          valueOriginal: valueInOriginalCurrency,
+          valueCurrency,
+          valueSEK: valueInSEK,
+        };
+      });
+  }, [actualHoldings, livePrices]);
 
   return (
     <Card>
@@ -77,6 +194,11 @@ const CurrentHoldingsPrices: React.FC = () => {
           <Activity className="w-5 h-5 text-green-600" /> Aktuella priser
         </CardTitle>
         <CardDescription className="text-xs sm:text-sm">
+          {livePriceState.loading
+            ? 'Hämtar live-priser från Finnhub...'
+            : livePriceState.error
+              ? livePriceState.error
+              : 'Visar senaste registrerade prisuppgifter.'}
         </CardDescription>
       </CardHeader>
       <CardContent>
