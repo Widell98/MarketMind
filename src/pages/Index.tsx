@@ -267,13 +267,8 @@ const Index = () => {
               </div>
 
               {/* How it works - Clean Apple style */}
-              <div className="mx-auto mt-16 max-w-5xl">
-                <h2 className="text-3xl font-semibold text-foreground mb-4 text-center">{t('howItWorks.title')}</h2>
-                <p className="text-lg text-muted-foreground mb-16 max-w-2xl mx-auto text-center">
-                  {t('howItWorks.subtitle')}
-                </p>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-12">
+              <div className="mx-auto mt-12 max-w-5xl">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 sm:gap-8 lg:gap-12">
                   <div className="text-center">
                     <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
                       <MessageSquare className="w-8 h-8 text-primary" />
