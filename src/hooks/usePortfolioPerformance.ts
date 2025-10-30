@@ -13,6 +13,18 @@ type FinnhubPriceResponse = {
   profileFetched?: boolean;
 };
 
+const logFinnhubInvocationWarning = (...args: unknown[]) => {
+  if (import.meta.env.DEV) {
+    console.warn(...args);
+  }
+};
+
+const logFinnhubInvocationError = (...args: unknown[]) => {
+  if (import.meta.env.DEV) {
+    console.error(...args);
+  }
+};
+
 const parseNumeric = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value;
@@ -466,7 +478,7 @@ export const usePortfolioPerformance = () => {
           });
 
           if (liveError) {
-            console.warn('Finnhub live price request failed for', normalizedSymbol, liveError);
+            logFinnhubInvocationWarning('Finnhub live price request failed for', normalizedSymbol, liveError);
             finnhubPriceCache.set(normalizedSymbol, null);
             return null;
           }
@@ -491,7 +503,7 @@ export const usePortfolioPerformance = () => {
           finnhubPriceCache.set(normalizedSymbol, null);
           return null;
         } catch (error) {
-          console.error('Unexpected error invoking get-ticker-price for', normalizedSymbol, error);
+          logFinnhubInvocationError('Unexpected error invoking get-ticker-price for', normalizedSymbol, error);
           finnhubPriceCache.set(normalizedSymbol, null);
           return null;
         }

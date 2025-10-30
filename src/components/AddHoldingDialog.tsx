@@ -213,6 +213,12 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     let isActive = true;
     setPriceFetchState({ loading: true, error: null });
 
+    const logFinnhubPriceFetchError = (...args: unknown[]) => {
+      if (import.meta.env.DEV) {
+        console.error(...args);
+      }
+    };
+
     (async () => {
       try {
         const { data, error } = await supabase.functions.invoke('get-ticker-price', {
@@ -257,7 +263,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
         setPriceFetchState({ loading: false, error: null });
       } catch (err) {
-        console.error('Failed to fetch Finnhub price:', err);
+        logFinnhubPriceFetchError('Failed to fetch Finnhub price:', err);
         if (!isActive) {
           return;
         }
