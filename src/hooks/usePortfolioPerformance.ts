@@ -3,12 +3,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { resolveHoldingValue, convertToSEK } from '@/utils/currencyUtils';
+import { mapEdgeFunctionErrorMessage } from '@/utils/mapEdgeFunctionError';
 import type { SheetTicker } from '@/hooks/useSheetTickers';
 
 type FinnhubPriceResponse = {
   symbol: string;
   price: number;
   currency: string | null;
+  profileFetched?: boolean;
 };
 
 const logFinnhubInvocationWarning = (...args: unknown[]) => {
@@ -447,21 +449,32 @@ export const usePortfolioPerformance = () => {
       let finnhubUpdateCount = 0;
       let sheetUpdateCount = 0;
 
-      const finnhubPriceCache = new Map<string, FinnhubPriceResponse | null>();
+      type CachedFinnhubPrice = FinnhubPriceResponse & { profileFetched: boolean };
 
-      const fetchFinnhubPrice = async (symbol: string): Promise<FinnhubPriceResponse | null> => {
+      const finnhubPriceCache = new Map<string, CachedFinnhubPrice | null>();
+
+      const fetchFinnhubPrice = async (
+        symbol: string,
+        includeProfile: boolean,
+      ): Promise<CachedFinnhubPrice | null> => {
         const normalizedSymbol = symbol.trim().toUpperCase();
         if (normalizedSymbol.length === 0) {
           return null;
         }
 
         if (finnhubPriceCache.has(normalizedSymbol)) {
-          return finnhubPriceCache.get(normalizedSymbol) ?? null;
+          const cachedEntry = finnhubPriceCache.get(normalizedSymbol);
+          if (!cachedEntry) {
+            return null;
+          }
+          if (!includeProfile || cachedEntry.profileFetched || Boolean(cachedEntry.currency)) {
+            return cachedEntry;
+          }
         }
 
         try {
           const { data: liveData, error: liveError } = await supabase.functions.invoke<FinnhubPriceResponse>('get-ticker-price', {
-            body: { symbol: normalizedSymbol },
+            body: { symbol: normalizedSymbol, includeProfile },
           });
 
           if (liveError) {
@@ -474,11 +487,13 @@ export const usePortfolioPerformance = () => {
             const currency = typeof liveData.currency === 'string' && liveData.currency.trim().length > 0
               ? liveData.currency.trim().toUpperCase()
               : null;
+            const profileFetched = Boolean(liveData.profileFetched || (includeProfile && currency));
 
-            const result: FinnhubPriceResponse = {
+            const result: CachedFinnhubPrice = {
               symbol: normalizedSymbol,
               price: liveData.price,
               currency,
+              profileFetched,
             };
 
             finnhubPriceCache.set(normalizedSymbol, result);
@@ -494,7 +509,7 @@ export const usePortfolioPerformance = () => {
         }
       };
 
-      for (const holding of typedHoldings) {
+      const processHolding = async (holding: HoldingRow) => {
         const symbolVariants = getSymbolVariants(holding.symbol);
         let matchedTicker: SheetTicker | undefined;
 
@@ -523,6 +538,15 @@ export const usePortfolioPerformance = () => {
           }
         }
 
+        let resolvedPrice: number | null = null;
+        let resolvedCurrency: string | null = matchedTicker?.currency ? matchedTicker.currency.toUpperCase() : null;
+        let priceSource: 'finnhub' | 'sheet' | null = null;
+
+        if (matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0) {
+          resolvedPrice = matchedTicker.price;
+          priceSource = 'sheet';
+        }
+
         const candidateSymbols: string[] = [];
         const addCandidate = (value?: string | null) => {
           const normalized = normalizeValue(value);
@@ -541,25 +565,31 @@ export const usePortfolioPerformance = () => {
         addCandidate(stripSymbolPrefix(holding.symbol));
         getSymbolVariants(matchedTicker?.symbol ?? holding.symbol).forEach(addCandidate);
 
-        let resolvedPrice: number | null = null;
-        let resolvedCurrency: string | null = matchedTicker?.currency ? matchedTicker.currency.toUpperCase() : null;
-        let priceSource: 'finnhub' | 'sheet' | null = null;
+        let needsLivePrice = resolvedPrice === null;
+        let needsProfile = !resolvedCurrency;
 
-        for (const candidate of candidateSymbols) {
-          const livePrice = await fetchFinnhubPrice(candidate);
-          if (livePrice) {
-            resolvedPrice = livePrice.price;
-            if (livePrice.currency) {
-              resolvedCurrency = livePrice.currency;
+        if (needsLivePrice || needsProfile) {
+          for (const candidate of candidateSymbols) {
+            const livePrice = await fetchFinnhubPrice(candidate, needsProfile);
+            if (!livePrice) {
+              continue;
             }
-            priceSource = 'finnhub';
-            break;
-          }
-        }
 
-        if (resolvedPrice === null && matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0) {
-          resolvedPrice = matchedTicker.price;
-          priceSource = 'sheet';
+            if (needsLivePrice) {
+              resolvedPrice = livePrice.price;
+              priceSource = 'finnhub';
+              needsLivePrice = false;
+            }
+
+            if (needsProfile && livePrice.currency) {
+              resolvedCurrency = livePrice.currency;
+              needsProfile = false;
+            }
+
+            if (!needsLivePrice && !needsProfile) {
+              break;
+            }
+          }
         }
 
         if (resolvedPrice === null) {
@@ -567,7 +597,7 @@ export const usePortfolioPerformance = () => {
             symbol: holding.symbol ?? undefined,
             name: holding.name ?? undefined,
           });
-          continue;
+          return;
         }
 
         if (!resolvedCurrency) {
@@ -617,7 +647,24 @@ export const usePortfolioPerformance = () => {
             sheetUpdateCount++;
           }
         }
-      }
+      };
+
+      let nextIndex = 0;
+      const concurrencyLimit = 5;
+      const workerCount = Math.min(concurrencyLimit, typedHoldings.length);
+
+      await Promise.all(
+        Array.from({ length: workerCount }, async () => {
+          while (true) {
+            const currentIndex = nextIndex;
+            nextIndex += 1;
+            if (currentIndex >= typedHoldings.length) {
+              break;
+            }
+            await processHolding(typedHoldings[currentIndex]);
+          }
+        }),
+      );
 
       const descriptionParts: string[] = [];
 
@@ -718,14 +765,19 @@ export const usePortfolioPerformance = () => {
       let priceSource: 'finnhub' | 'sheet' | null = null;
       let livePriceError: string | null = null;
 
+      const includeProfile = !resolvedCurrency;
+
       try {
         const { data: liveData, error: liveError } = await supabase.functions.invoke<FinnhubPriceResponse>('get-ticker-price', {
-          body: { symbol: normalizedFinnhubSymbol },
+          body: { symbol: normalizedFinnhubSymbol, includeProfile },
         });
 
         if (liveError) {
-          livePriceError = liveError.message ?? 'Kunde inte hämta live-pris från Finnhub.';
-          logFinnhubInvocationWarning('Finnhub live price request failed:', liveError);
+          livePriceError = mapEdgeFunctionErrorMessage(
+            liveError.message,
+            'Kunde inte hämta live-pris från Finnhub.',
+          );
+          console.warn('Finnhub live price request failed:', liveError);
         } else if (liveData && typeof liveData.price === 'number' && Number.isFinite(liveData.price) && liveData.price > 0) {
           resolvedPrice = liveData.price;
           if (typeof liveData.currency === 'string' && liveData.currency.trim().length > 0) {
@@ -734,8 +786,12 @@ export const usePortfolioPerformance = () => {
           priceSource = 'finnhub';
         }
       } catch (error) {
-        livePriceError = error instanceof Error ? error.message : 'Okänt fel vid hämtning av live-pris.';
-        logFinnhubInvocationError('Unexpected error invoking get-ticker-price:', error);
+        const rawMessage = error instanceof Error ? error.message : null;
+        livePriceError = mapEdgeFunctionErrorMessage(
+          rawMessage,
+          'Okänt fel vid hämtning av live-pris.',
+        );
+        console.error('Unexpected error invoking get-ticker-price:', error);
       }
 
       if (resolvedPrice === null && matchedTicker) {

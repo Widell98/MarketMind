@@ -22,6 +22,7 @@ import useSheetTickers, { SheetTicker, RawSheetTicker, sanitizeSheetTickerList }
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { ADD_HOLDING_FORM_STORAGE_KEY } from '@/constants/storageKeys';
 import { supabase } from '@/integrations/supabase/client';
+import { mapEdgeFunctionErrorMessage } from '@/utils/mapEdgeFunctionError';
 
 interface AddHoldingDialogProps {
   isOpen: boolean;
@@ -229,7 +230,11 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
         }
 
         if (error) {
-          throw new Error(error.message ?? 'Kunde inte hämta live-priset.');
+          const message = mapEdgeFunctionErrorMessage(
+            error.message,
+            'Kunde inte hämta live-priset.',
+          );
+          throw new Error(message);
         }
 
         const rawPrice = data?.price;
@@ -263,7 +268,10 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
           return;
         }
 
-        const message = err instanceof Error ? err.message : 'Kunde inte hämta live-priset.';
+        const message = mapEdgeFunctionErrorMessage(
+          err instanceof Error ? err.message : null,
+          'Kunde inte hämta live-priset.',
+        );
         setPriceFetchState({ loading: false, error: message });
       }
     })();

@@ -18,6 +18,16 @@ interface FinnhubProfileResponse {
   currency?: string;
 }
 
+type CacheEntry = {
+  price: number;
+  currency: string | null;
+  profileFetched: boolean;
+  expiresAt: number;
+};
+
+const CACHE_TTL_MS = 60_000; // 1 minute cache window for identical lookups
+const priceCache = new Map<string, CacheEntry>();
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -34,7 +44,11 @@ serve(async (req) => {
   }
 
   try {
-    const { symbol } = await req.json();
+    const body = await req.json();
+    const symbol = typeof body?.symbol === "string" ? body.symbol : null;
+    const includeProfile = typeof body?.includeProfile === "boolean"
+      ? body.includeProfile
+      : true;
 
     if (!symbol || typeof symbol !== "string" || symbol.trim().length === 0) {
       return new Response(
@@ -47,10 +61,66 @@ serve(async (req) => {
     }
 
     const normalizedSymbol = symbol.trim().toUpperCase();
+    const now = Date.now();
+    const cached = priceCache.get(normalizedSymbol);
+    const isCachedValid = cached && cached.expiresAt > now;
 
-    const quoteData = await fetchQuote(normalizedSymbol);
+    if (isCachedValid && (!includeProfile || cached.profileFetched)) {
+      const refreshedEntry: CacheEntry = {
+        ...cached!,
+        expiresAt: now + CACHE_TTL_MS,
+      };
+      priceCache.set(normalizedSymbol, refreshedEntry);
 
-    if (!quoteData || typeof quoteData.price !== "number") {
+      return new Response(
+        JSON.stringify({
+          symbol: normalizedSymbol,
+          price: refreshedEntry.price,
+          currency: refreshedEntry.currency,
+          profileFetched: refreshedEntry.profileFetched,
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    let price: number | null = null;
+    const cachedCurrency: string | null = isCachedValid ? cached!.currency : cached?.currency ?? null;
+    let profileFetched = isCachedValid ? cached!.profileFetched : cached?.profileFetched ?? false;
+
+    if (!isCachedValid) {
+      const quoteData = await fetchQuote(normalizedSymbol);
+
+      if (!quoteData || typeof quoteData.price !== "number") {
+        return new Response(
+          JSON.stringify({ error: "Finnhub returned no price for the requested symbol." }),
+          {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      price = quoteData.price;
+      profileFetched = false;
+    } else {
+      price = cached!.price;
+    }
+
+    let finalCurrency = cachedCurrency;
+    let finalProfileFetched = profileFetched;
+
+    if (includeProfile && (!finalProfileFetched || !finalCurrency)) {
+      const profileData = await fetchProfile(normalizedSymbol);
+      finalProfileFetched = true;
+
+      if (profileData?.currency) {
+        finalCurrency = profileData.currency;
+      }
+    }
+
+    if (price === null) {
       return new Response(
         JSON.stringify({ error: "Finnhub returned no price for the requested symbol." }),
         {
@@ -60,13 +130,21 @@ serve(async (req) => {
       );
     }
 
-    const profileData = await fetchProfile(normalizedSymbol);
+    const cacheEntry: CacheEntry = {
+      price,
+      currency: finalCurrency ?? null,
+      profileFetched: finalProfileFetched,
+      expiresAt: now + CACHE_TTL_MS,
+    };
+
+    priceCache.set(normalizedSymbol, cacheEntry);
 
     return new Response(
       JSON.stringify({
         symbol: normalizedSymbol,
-        price: quoteData.price,
-        currency: profileData?.currency ?? null,
+        price,
+        currency: cacheEntry.currency,
+        profileFetched: cacheEntry.profileFetched,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
