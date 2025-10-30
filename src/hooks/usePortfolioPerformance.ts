@@ -9,6 +9,7 @@ type FinnhubPriceResponse = {
   symbol: string;
   price: number;
   currency: string | null;
+  profileFetched?: boolean;
 };
 
 const parseNumeric = (value: unknown): number | null => {
@@ -435,21 +436,32 @@ export const usePortfolioPerformance = () => {
       let finnhubUpdateCount = 0;
       let sheetUpdateCount = 0;
 
-      const finnhubPriceCache = new Map<string, FinnhubPriceResponse | null>();
+      type CachedFinnhubPrice = FinnhubPriceResponse & { profileFetched: boolean };
 
-      const fetchFinnhubPrice = async (symbol: string): Promise<FinnhubPriceResponse | null> => {
+      const finnhubPriceCache = new Map<string, CachedFinnhubPrice | null>();
+
+      const fetchFinnhubPrice = async (
+        symbol: string,
+        includeProfile: boolean,
+      ): Promise<CachedFinnhubPrice | null> => {
         const normalizedSymbol = symbol.trim().toUpperCase();
         if (normalizedSymbol.length === 0) {
           return null;
         }
 
         if (finnhubPriceCache.has(normalizedSymbol)) {
-          return finnhubPriceCache.get(normalizedSymbol) ?? null;
+          const cachedEntry = finnhubPriceCache.get(normalizedSymbol);
+          if (!cachedEntry) {
+            return null;
+          }
+          if (!includeProfile || cachedEntry.profileFetched || Boolean(cachedEntry.currency)) {
+            return cachedEntry;
+          }
         }
 
         try {
           const { data: liveData, error: liveError } = await supabase.functions.invoke<FinnhubPriceResponse>('get-ticker-price', {
-            body: { symbol: normalizedSymbol },
+            body: { symbol: normalizedSymbol, includeProfile },
           });
 
           if (liveError) {
@@ -462,11 +474,13 @@ export const usePortfolioPerformance = () => {
             const currency = typeof liveData.currency === 'string' && liveData.currency.trim().length > 0
               ? liveData.currency.trim().toUpperCase()
               : null;
+            const profileFetched = Boolean(liveData.profileFetched || (includeProfile && currency));
 
-            const result: FinnhubPriceResponse = {
+            const result: CachedFinnhubPrice = {
               symbol: normalizedSymbol,
               price: liveData.price,
               currency,
+              profileFetched,
             };
 
             finnhubPriceCache.set(normalizedSymbol, result);
@@ -482,7 +496,7 @@ export const usePortfolioPerformance = () => {
         }
       };
 
-      for (const holding of typedHoldings) {
+      const processHolding = async (holding: HoldingRow) => {
         const symbolVariants = getSymbolVariants(holding.symbol);
         let matchedTicker: SheetTicker | undefined;
 
@@ -511,43 +525,48 @@ export const usePortfolioPerformance = () => {
           }
         }
 
-        const candidateSymbols: string[] = [];
-        const addCandidate = (value?: string | null) => {
-          const normalized = normalizeValue(value);
-          if (!normalized) {
-            return;
-          }
-          const upper = normalized.toUpperCase();
-          if (!candidateSymbols.includes(upper)) {
-            candidateSymbols.push(upper);
-          }
-        };
-
-        addCandidate(matchedTicker?.symbol);
-        addCandidate(holding.symbol);
-        addCandidate(stripSymbolPrefix(matchedTicker?.symbol));
-        addCandidate(stripSymbolPrefix(holding.symbol));
-        getSymbolVariants(matchedTicker?.symbol ?? holding.symbol).forEach(addCandidate);
-
         let resolvedPrice: number | null = null;
         let resolvedCurrency: string | null = matchedTicker?.currency ? matchedTicker.currency.toUpperCase() : null;
         let priceSource: 'finnhub' | 'sheet' | null = null;
 
-        for (const candidate of candidateSymbols) {
-          const livePrice = await fetchFinnhubPrice(candidate);
-          if (livePrice) {
-            resolvedPrice = livePrice.price;
-            if (livePrice.currency) {
-              resolvedCurrency = livePrice.currency;
-            }
-            priceSource = 'finnhub';
-            break;
-          }
-        }
-
-        if (resolvedPrice === null && matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0) {
+        if (matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0) {
           resolvedPrice = matchedTicker.price;
           priceSource = 'sheet';
+        }
+
+        const candidateSymbols: string[] = [];
+
+        if (resolvedPrice === null) {
+          const addCandidate = (value?: string | null) => {
+            const normalized = normalizeValue(value);
+            if (!normalized) {
+              return;
+            }
+            const upper = normalized.toUpperCase();
+            if (!candidateSymbols.includes(upper)) {
+              candidateSymbols.push(upper);
+            }
+          };
+
+          addCandidate(matchedTicker?.symbol);
+          addCandidate(holding.symbol);
+          addCandidate(stripSymbolPrefix(matchedTicker?.symbol));
+          addCandidate(stripSymbolPrefix(holding.symbol));
+          getSymbolVariants(matchedTicker?.symbol ?? holding.symbol).forEach(addCandidate);
+
+          const needsProfile = !resolvedCurrency;
+
+          for (const candidate of candidateSymbols) {
+            const livePrice = await fetchFinnhubPrice(candidate, needsProfile);
+            if (livePrice) {
+              resolvedPrice = livePrice.price;
+              if (livePrice.currency) {
+                resolvedCurrency = livePrice.currency;
+              }
+              priceSource = 'finnhub';
+              break;
+            }
+          }
         }
 
         if (resolvedPrice === null) {
@@ -555,7 +574,7 @@ export const usePortfolioPerformance = () => {
             symbol: holding.symbol ?? undefined,
             name: holding.name ?? undefined,
           });
-          continue;
+          return;
         }
 
         if (!resolvedCurrency) {
@@ -605,7 +624,24 @@ export const usePortfolioPerformance = () => {
             sheetUpdateCount++;
           }
         }
-      }
+      };
+
+      let nextIndex = 0;
+      const concurrencyLimit = 5;
+      const workerCount = Math.min(concurrencyLimit, typedHoldings.length);
+
+      await Promise.all(
+        Array.from({ length: workerCount }, async () => {
+          while (true) {
+            const currentIndex = nextIndex;
+            nextIndex += 1;
+            if (currentIndex >= typedHoldings.length) {
+              break;
+            }
+            await processHolding(typedHoldings[currentIndex]);
+          }
+        }),
+      );
 
       const descriptionParts: string[] = [];
 
@@ -706,9 +742,11 @@ export const usePortfolioPerformance = () => {
       let priceSource: 'finnhub' | 'sheet' | null = null;
       let livePriceError: string | null = null;
 
+      const includeProfile = !resolvedCurrency;
+
       try {
         const { data: liveData, error: liveError } = await supabase.functions.invoke<FinnhubPriceResponse>('get-ticker-price', {
-          body: { symbol: normalizedFinnhubSymbol },
+          body: { symbol: normalizedFinnhubSymbol, includeProfile },
         });
 
         if (liveError) {
