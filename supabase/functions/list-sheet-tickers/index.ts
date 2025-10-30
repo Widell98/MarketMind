@@ -166,24 +166,30 @@ const fetchFinnhubQuote = async (symbol: string): Promise<number | null> => {
     return null;
   }
 
-  const url = new URL("https://finnhub.io/api/v1/quote");
-  url.searchParams.set("symbol", symbol);
-  url.searchParams.set("token", finnhubApiKey);
+  try {
+    const url = new URL("https://finnhub.io/api/v1/quote");
+    url.searchParams.set("symbol", symbol);
+    url.searchParams.set("token", finnhubApiKey);
 
-  const response = await fetch(url, { method: "GET" });
+    const response = await fetch(url, { method: "GET" });
 
-  if (!response.ok) {
-    throw new Error(`Finnhub quote request failed: ${response.status} ${response.statusText}`);
+    if (!response.ok) {
+      console.warn(`Finnhub quote request failed for ${symbol}: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    const data = await response.json() as { c?: number; pc?: number };
+    const price = typeof data.c === "number" && Number.isFinite(data.c) && data.c > 0
+      ? data.c
+      : typeof data.pc === "number" && Number.isFinite(data.pc) && data.pc > 0
+        ? data.pc
+        : null;
+
+    return price;
+  } catch (error) {
+    console.warn(`Finnhub quote lookup threw for ${symbol}:`, error);
+    return null;
   }
-
-  const data = await response.json() as { c?: number; pc?: number };
-  const price = typeof data.c === "number" && Number.isFinite(data.c) && data.c > 0
-    ? data.c
-    : typeof data.pc === "number" && Number.isFinite(data.pc) && data.pc > 0
-      ? data.pc
-      : null;
-
-  return price;
 };
 
 const fetchFinnhubProfile = async (symbol: string): Promise<string | null> => {
@@ -191,24 +197,29 @@ const fetchFinnhubProfile = async (symbol: string): Promise<string | null> => {
     return null;
   }
 
-  const url = new URL("https://finnhub.io/api/v1/stock/profile2");
-  url.searchParams.set("symbol", symbol);
-  url.searchParams.set("token", finnhubApiKey);
+  try {
+    const url = new URL("https://finnhub.io/api/v1/stock/profile2");
+    url.searchParams.set("symbol", symbol);
+    url.searchParams.set("token", finnhubApiKey);
 
-  const response = await fetch(url, { method: "GET" });
+    const response = await fetch(url, { method: "GET" });
 
-  if (!response.ok) {
-    console.warn(`Finnhub profile request failed for ${symbol}: ${response.status}`);
+    if (!response.ok) {
+      console.warn(`Finnhub profile request failed for ${symbol}: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    const data = await response.json() as { currency?: string | null };
+    if (!data || typeof data.currency !== "string") {
+      return null;
+    }
+
+    const trimmed = data.currency.trim();
+    return trimmed.length > 0 ? trimmed.toUpperCase() : null;
+  } catch (error) {
+    console.warn(`Finnhub profile lookup threw for ${symbol}:`, error);
     return null;
   }
-
-  const data = await response.json() as { currency?: string | null };
-  if (!data || typeof data.currency !== "string") {
-    return null;
-  }
-
-  const trimmed = data.currency.trim();
-  return trimmed.length > 0 ? trimmed.toUpperCase() : null;
 };
 
 const enrichTickersWithFinnhub = async (
