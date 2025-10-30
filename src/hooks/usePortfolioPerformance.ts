@@ -536,35 +536,45 @@ export const usePortfolioPerformance = () => {
         }
 
         const candidateSymbols: string[] = [];
+        const addCandidate = (value?: string | null) => {
+          const normalized = normalizeValue(value);
+          if (!normalized) {
+            return;
+          }
+          const upper = normalized.toUpperCase();
+          if (!candidateSymbols.includes(upper)) {
+            candidateSymbols.push(upper);
+          }
+        };
 
-        if (resolvedPrice === null) {
-          const addCandidate = (value?: string | null) => {
-            const normalized = normalizeValue(value);
-            if (!normalized) {
-              return;
-            }
-            const upper = normalized.toUpperCase();
-            if (!candidateSymbols.includes(upper)) {
-              candidateSymbols.push(upper);
-            }
-          };
+        addCandidate(matchedTicker?.symbol);
+        addCandidate(holding.symbol);
+        addCandidate(stripSymbolPrefix(matchedTicker?.symbol));
+        addCandidate(stripSymbolPrefix(holding.symbol));
+        getSymbolVariants(matchedTicker?.symbol ?? holding.symbol).forEach(addCandidate);
 
-          addCandidate(matchedTicker?.symbol);
-          addCandidate(holding.symbol);
-          addCandidate(stripSymbolPrefix(matchedTicker?.symbol));
-          addCandidate(stripSymbolPrefix(holding.symbol));
-          getSymbolVariants(matchedTicker?.symbol ?? holding.symbol).forEach(addCandidate);
+        let needsLivePrice = resolvedPrice === null;
+        let needsProfile = !resolvedCurrency;
 
-          const needsProfile = !resolvedCurrency;
-
+        if (needsLivePrice || needsProfile) {
           for (const candidate of candidateSymbols) {
             const livePrice = await fetchFinnhubPrice(candidate, needsProfile);
-            if (livePrice) {
+            if (!livePrice) {
+              continue;
+            }
+
+            if (needsLivePrice) {
               resolvedPrice = livePrice.price;
-              if (livePrice.currency) {
-                resolvedCurrency = livePrice.currency;
-              }
               priceSource = 'finnhub';
+              needsLivePrice = false;
+            }
+
+            if (needsProfile && livePrice.currency) {
+              resolvedCurrency = livePrice.currency;
+              needsProfile = false;
+            }
+
+            if (!needsLivePrice && !needsProfile) {
               break;
             }
           }
