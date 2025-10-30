@@ -24,12 +24,27 @@ const translations = {
     'nav.login': 'Logga in',
     
     // Hero section
-    'hero.title1': 'Din personliga',
-    'hero.title2': 'finansiella rådgivare',
-    'hero.subtitle': 'Optimera din portfölj, förstå marknaden och få stöd i osäkra tider. Enkelt, tryggt, smart.',
+    'hero.title1': 'Din AI-partner',
+    'hero.title2': 'för marknadsinsikter och portföljanalys',
+    'hero.subtitle': 'Optimera din portfölj, förstå marknaden och få stöd i osäkra tider – enkelt, tryggt, smart.',
     'hero.cta.start': 'Kom igång gratis',
     'hero.cta.demo': 'Se hur det fungerar →',
     'hero.cta.final': 'Kom igång gratis idag',
+    'hero.badge': 'Market Mind',
+    'hero.headline': 'AI som hjälper dig förstå marknaden och bygga en starkare portfölj',
+    'hero.highlight1': 'Personliga AI-insikter anpassade efter dina mål.',
+    'hero.highlight2': 'Banknivå-säkerhet och tydligt integritetsskydd.',
+    'hero.highlight3': 'Allt du behöver för att förstå marknaden på några minuter.',
+    'hero.integrity': 'Din integritet hanteras säkert och konfidentiellt.',
+    'hero.chart.portfolioValueLabel': 'Portföljvärde',
+    'hero.chart.portfolioValue': '312 450 kr',
+    'hero.chart.performanceBadge': '+12.4%',
+    'hero.chart.aiSignalLabel': 'AI-signal',
+    'hero.chart.aiSignalValue': 'Hög potential',
+    'hero.chart.aiSignalDescription': 'Starka momentum-siffror senaste månaden.',
+    'hero.chart.riskLabel': 'Risknivå',
+    'hero.chart.riskValue': 'Balanserad',
+    'hero.chart.riskDescription': 'Portföljen är väl diversifierad.',
     
     // Examples section
     'examples.title': 'Personliga råd för alla',
@@ -48,14 +63,14 @@ const translations = {
     'examples.dividend.answer': '"Klart! Utdelningsaktier med 4-6% direktavkastning!"',
     
     // How it works
-    'howItWorks.title': 'Så enkelt är det',
-    'howItWorks.subtitle': 'Tre enkla steg till din personliga investeringsstrategi',
+    'howItWorks.title': 'Så enkelt fungerar det',
+    'howItWorks.subtitle': 'Tre steg till din personliga investeringsöversikt',
     'howItWorks.step1.title': 'Berätta om dig',
-    'howItWorks.step1.description': 'Vi lär känna dina mål, riskprofil och drömmar i en enkel konversation',
-    'howItWorks.step2.title': 'AI skapar din plan',
-    'howItWorks.step2.description': 'Avancerad AI bygger en personlig portfölj baserad på dina behov',
+    'howItWorks.step1.description': 'Vi lär känna dina mål, erfarenhet och risktolerans i en enkel konversation.',
+    'howItWorks.step2.title': 'AI analyserar din profil',
+    'howItWorks.step2.description': 'Avancerad AI visar hur en balanserad portfölj kan se ut baserat på din risknivå.',
     'howItWorks.step3.title': 'Följ din utveckling',
-    'howItWorks.step3.description': 'Löpande uppföljning och anpassning när ditt liv förändras',
+    'howItWorks.step3.description': 'Få löpande insikter, marknadssignaler och inspiration när din situation förändras.',
     
     // Final CTA
     'finalCta.title': 'Redo att börja din resa?',
@@ -118,6 +133,7 @@ const translations = {
     // Footer
     'footer.terms': 'Användarvillkor',
     'footer.privacy': 'Integritetspolicy',
+    'footer.disclaimer': 'MarketMind tillhandahåller AI-baserad analys och allmän information, inte individuell investeringsrådgivning. För personlig rådgivning, kontakta en licensierad rådgivare.',
     'footer.copyright': 'Alla rättigheter förbehållna.',
     
     // Common
@@ -136,12 +152,27 @@ const translations = {
     'nav.login': 'Login',
     
     // Hero section
-    'hero.title1': 'Your personal',
-    'hero.title2': 'financial advisor',
-    'hero.subtitle': 'Optimize your portfolio, understand the market and get support during uncertain times. Simple, secure, smart.',
+    'hero.title1': 'Your personal AI-powered',
+    'hero.title2': 'investment guide',
+    'hero.subtitle': 'Optimize your portfolio, understand the market, and get support in uncertain times – simple, secure, smart.',
     'hero.cta.start': 'Get started for free',
     'hero.cta.demo': 'See how it works →',
     'hero.cta.final': 'Get started for free today',
+    'hero.badge': 'Market Mind',
+    'hero.headline': 'AI that helps you understand the market and build a stronger portfolio',
+    'hero.highlight1': 'Personalized AI insights tailored to your goals.',
+    'hero.highlight2': 'Bank-grade security with transparent privacy.',
+    'hero.highlight3': 'Everything you need to understand the market in minutes.',
+    'hero.integrity': 'Your privacy is handled securely and confidentially.',
+    'hero.chart.portfolioValueLabel': 'Portfolio value',
+    'hero.chart.portfolioValue': '312 450 kr',
+    'hero.chart.performanceBadge': '+12.4%',
+    'hero.chart.aiSignalLabel': 'AI signal',
+    'hero.chart.aiSignalValue': 'High potential',
+    'hero.chart.aiSignalDescription': 'Strong momentum figures over the last month.',
+    'hero.chart.riskLabel': 'Risk level',
+    'hero.chart.riskValue': 'Balanced',
+    'hero.chart.riskDescription': 'The portfolio is well diversified.',
     
     // Examples section
     'examples.title': 'Personal advice for everyone',
@@ -160,14 +191,14 @@ const translations = {
     'examples.dividend.answer': '"Sure! Dividend stocks with 4-6% direct yield!"',
     
     // How it works
-    'howItWorks.title': 'It\'s that simple',
-    'howItWorks.subtitle': 'Three simple steps to your personal investment strategy',
+    'howItWorks.title': 'How it works',
+    'howItWorks.subtitle': 'Three steps to your personal investment overview',
     'howItWorks.step1.title': 'Tell us about yourself',
-    'howItWorks.step1.description': 'We get to know your goals, risk profile and dreams in a simple conversation',
-    'howItWorks.step2.title': 'AI creates your plan',
-    'howItWorks.step2.description': 'Advanced AI builds a personal portfolio based on your needs',
-    'howItWorks.step3.title': 'Follow your progress',
-    'howItWorks.step3.description': 'Continuous monitoring and adjustment as your life changes',
+    'howItWorks.step1.description': 'We get to know your goals, experience, and risk tolerance in a simple conversation.',
+    'howItWorks.step2.title': 'AI analyses your profile',
+    'howItWorks.step2.description': 'Advanced AI illustrates what a balanced portfolio could look like based on your risk level.',
+    'howItWorks.step3.title': 'Track your progress',
+    'howItWorks.step3.description': 'Receive ongoing insights, market signals, and inspiration as your situation evolves.',
     
     // Final CTA
     'finalCta.title': 'Ready to start your journey?',
@@ -230,6 +261,7 @@ const translations = {
     // Footer
     'footer.terms': 'Terms of Service',
     'footer.privacy': 'Privacy Policy',
+    'footer.disclaimer': 'MarketMind provides AI-powered analysis and general information, not individualized investment advice. For personal advice, contact a licensed advisor.',
     'footer.copyright': 'All rights reserved.',
     
     // Common
