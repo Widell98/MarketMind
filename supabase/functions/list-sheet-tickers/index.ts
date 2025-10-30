@@ -50,7 +50,13 @@ const fetchSheetTickers = async () => {
 
   const tickerMap = new Map<
     string,
-    { name: string; symbol: string; currency: string | null; price: number | null }
+    {
+      name: string;
+      symbol: string;
+      currency: string | null;
+      price: number | null;
+      source: "sheet" | "external";
+    }
   >();
 
   for (const cols of dataRows) {
@@ -77,6 +83,7 @@ const fetchSheetTickers = async () => {
       name: rawName ?? cleanedSymbol,
       currency: rawCurrency ?? null,
       price,
+      source: "sheet",
     });
   }
 
@@ -120,6 +127,7 @@ const fetchYahooTickers = async (query: string) => {
     symbol: string;
     currency: string | null;
     price: number | null;
+    source: "sheet" | "external";
   }[] = [];
 
   for (const quote of quotes) {
@@ -153,6 +161,7 @@ const fetchYahooTickers = async (query: string) => {
       name,
       currency,
       price,
+      source: "external",
     });
   }
 

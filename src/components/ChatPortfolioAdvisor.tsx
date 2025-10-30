@@ -208,11 +208,22 @@ const ChatPortfolioAdvisor = () => {
     const mergeTicker = (ticker: SheetTicker) => {
       const symbol = ticker.symbol.toUpperCase();
       const cached = finnhubPriceCache[symbol];
+      const existing = map.get(symbol);
+
+      if (existing && existing.source === 'sheet' && ticker.source === 'external') {
+        map.set(symbol, {
+          ...existing,
+          price: cached?.price ?? existing.price ?? ticker.price ?? null,
+          currency: cached?.currency ?? existing.currency ?? ticker.currency ?? null
+        });
+        return;
+      }
+
       map.set(symbol, {
         ...ticker,
         symbol,
-        price: cached?.price ?? ticker.price ?? null,
-        currency: cached?.currency ?? ticker.currency ?? null
+        price: cached?.price ?? ticker.price ?? existing?.price ?? null,
+        currency: cached?.currency ?? ticker.currency ?? existing?.currency ?? null
       });
     };
 
@@ -278,7 +289,16 @@ const ChatPortfolioAdvisor = () => {
           setDynamicTickers(prev => {
             const map = new Map<string, SheetTicker>();
             prev.forEach(item => map.set(item.symbol.toUpperCase(), item));
-            list.forEach(item => map.set(item.symbol.toUpperCase(), item));
+            list.forEach(item => {
+              const key = item.symbol.toUpperCase();
+              const existing = map.get(key);
+
+              if (existing?.source === 'sheet' && item.source === 'external') {
+                return;
+              }
+
+              map.set(key, item);
+            });
             return Array.from(map.values());
           });
         }

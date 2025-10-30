@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+export type SheetTickerSource = 'sheet' | 'external' | 'unknown';
+
 export type SheetTicker = {
   name: string;
   symbol: string;
   price: number | null;
   currency: string | null;
+  source: SheetTickerSource;
 };
 
 export type RawSheetTicker = {
@@ -13,6 +16,24 @@ export type RawSheetTicker = {
   name?: string | null;
   price?: number | null;
   currency?: string | null;
+  source?: string | null;
+};
+
+const normalizeSource = (rawSource?: string | null): SheetTickerSource => {
+  if (typeof rawSource !== 'string') {
+    return 'sheet';
+  }
+
+  const trimmed = rawSource.trim().toLowerCase();
+  if (!trimmed) {
+    return 'sheet';
+  }
+
+  if (trimmed === 'sheet' || trimmed === 'external') {
+    return trimmed;
+  }
+
+  return 'unknown';
 };
 
 export const sanitizeSheetTickerList = (list: RawSheetTicker[]): SheetTicker[] =>
@@ -37,12 +58,14 @@ export const sanitizeSheetTickerList = (list: RawSheetTicker[]): SheetTicker[] =
       const resolvedCurrency = typeof item.currency === 'string' && item.currency.trim().length > 0
         ? item.currency.trim().toUpperCase()
         : null;
+      const source = normalizeSource(item.source);
 
       return {
         symbol: normalizedSymbol,
         name: resolvedName,
         price: resolvedPrice,
         currency: resolvedCurrency,
+        source,
       };
     })
     .filter((item): item is SheetTicker => item !== null);

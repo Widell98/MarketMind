@@ -98,7 +98,14 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     });
 
     yahooTickers.forEach((ticker) => {
-      map.set(ticker.symbol.toUpperCase(), ticker);
+      const key = ticker.symbol.toUpperCase();
+      const existing = map.get(key);
+
+      if (existing?.source === 'sheet') {
+        return;
+      }
+
+      map.set(key, ticker);
     });
 
     return Array.from(map.values()).map((ticker) => {
@@ -201,10 +208,13 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       return;
     }
 
-    const hasExistingPrice = typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0;
+    const hasExistingPriceFromSheet = matchedTicker.source !== 'external'
+      && typeof matchedTicker.price === 'number'
+      && Number.isFinite(matchedTicker.price)
+      && matchedTicker.price > 0;
     const existingFetchedPrice = fetchedPrices[normalizedSymbol];
 
-    if (hasExistingPrice || existingFetchedPrice) {
+    if (hasExistingPriceFromSheet || existingFetchedPrice) {
       setPriceFetchState((prev) => (prev.loading || prev.error ? { loading: false, error: null } : prev));
       return;
     }
