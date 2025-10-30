@@ -173,49 +173,106 @@ const Index = () => {
   }, [insightsLastUpdated]);
   return <Layout>
       <div className="min-h-0 bg-background">
-        <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-8 lg:py-12">
+        <div className="w-full max-w-5xl xl:max-w-6xl mx-auto px-3 sm:px-6 py-5 sm:py-9 lg:py-12">
           
           {/* Hero Section - Apple-inspired clean design */}
-          {!user && <div className="text-center mb-20">
+          {!user && <div className="mb-16 sm:mb-20 lg:mb-24">
               {/* Hero Content */}
-              <div className="max-w-4xl mx-auto mb-16">
-                <div className="mb-6">
-                  
+              <section className="relative flex flex-col justify-center overflow-hidden rounded-[28px] border border-border/60 bg-card/70 px-6 py-10 shadow-sm backdrop-blur sm:px-10 sm:py-12 lg:px-14 min-h-[calc(100vh-160px)] sm:min-h-[calc(100vh-180px)] lg:min-h-[calc(100vh-220px)]">
+                <div className="grid gap-10 lg:gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center">
+                  <div className="text-left">
+                    <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-sm font-medium text-primary">
+                      <span className="inline-flex h-2 w-2 rounded-full bg-primary"></span>
+                      {t('hero.badge')}
+                    </div>
+                    <h1 className="text-4xl font-semibold text-foreground sm:text-5xl lg:text-[3.2rem] lg:leading-[1.05]">
+                      {t('hero.headline')}
+                    </h1>
+                    <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg">{t('hero.subtitle')}</p>
+                    <div className="mt-7 flex flex-col gap-3 text-sm text-muted-foreground sm:text-base">
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                        <span>{t('hero.highlight1')}</span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <Shield className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                        <span>{t('hero.highlight2')}</span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <TrendingUp className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                        <span>{t('hero.highlight3')}</span>
+                      </div>
+                    </div>
+                    <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
+                      <Button asChild size="lg" className="h-12 rounded-2xl bg-primary px-8 text-base font-semibold text-primary-foreground shadow-lg transition-all duration-300 hover:bg-primary/90 hover:shadow-xl">
+                        <Link to="/auth" className="flex items-center gap-2">
+                          {t('hero.cta.start')}
+                          <ArrowUpRight className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground sm:text-base">
+                        <Shield className="h-5 w-5 text-primary" />
+                        <span>{t('hero.integrity')}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Card className="relative overflow-hidden rounded-[28px] border border-border/60 bg-gradient-to-br from-primary/5 via-background to-background p-5 shadow-lg sm:p-8 lg:p-10">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">{t('hero.chart.portfolioValueLabel')}</p>
+                        <p className="mt-2 text-3xl font-semibold text-foreground">{t('hero.chart.portfolioValue')}</p>
+                      </div>
+                      <Badge className="rounded-full bg-emerald-500/10 text-xs font-semibold text-emerald-600">
+                        {t('hero.chart.performanceBadge')}
+                      </Badge>
+                    </div>
+                    <div className="mt-7">
+                      <svg viewBox="0 0 400 180" className="h-40 w-full sm:h-44 lg:h-48">
+                        <defs>
+                          <linearGradient id="heroGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="rgba(59,130,246,0.35)" />
+                            <stop offset="100%" stopColor="rgba(59,130,246,0)" />
+                          </linearGradient>
+                        </defs>
+                        <path
+                          d="M20 140L80 120L140 150L200 90L260 110L320 60L380 80"
+                          fill="none"
+                          stroke="hsl(var(--primary))"
+                          strokeWidth="8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M20 140L80 120L140 150L200 90L260 110L320 60L380 80L380 180L20 180Z"
+                          fill="url(#heroGradient)"
+                        />
+                      </svg>
+                    </div>
+                    <div className="grid gap-4 border-t border-border/60 pt-6 sm:grid-cols-2">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('hero.chart.aiSignalLabel')}</p>
+                        <p className="mt-1 text-sm font-medium text-foreground">{t('hero.chart.aiSignalValue')}</p>
+                        <p className="text-xs text-muted-foreground">{t('hero.chart.aiSignalDescription')}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('hero.chart.riskLabel')}</p>
+                        <p className="mt-1 text-sm font-medium text-foreground">{t('hero.chart.riskValue')}</p>
+                        <p className="text-xs text-muted-foreground">{t('hero.chart.riskDescription')}</p>
+                      </div>
+                    </div>
+                    <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-primary/10 blur-2xl" />
+                    <div className="absolute -bottom-12 -left-6 h-36 w-36 rounded-full bg-sky-500/10 blur-3xl" />
+                  </Card>
                 </div>
-                
-                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-medium text-foreground mb-8 leading-tight tracking-tight">
-                  {t('hero.title1')}
-                  <br />
-                  <span className="text-primary">{t('hero.title2')}</span>
-                </h1>
-                
-                <p className="text-xl text-muted-foreground leading-relaxed mb-12 max-w-2xl mx-auto font-light">
-                  {t('hero.subtitle')}
-                </p>
-                
-                {/* Clean CTA Buttons */}
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
-                  <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-lg">
-                    <Link to="/auth">
-                      {t('hero.cta.start')}
-                    </Link>
-                  </Button>
-                  <Button asChild variant="ghost" size="lg" className="text-primary hover:bg-primary/5 font-medium px-8 py-4 rounded-xl transition-all duration-300 text-lg">
-                    <Link to="/ai-chatt">
-                      {t('hero.cta.demo')}
-                    </Link>
-                  </Button>
-                </div>
-              </div>
+              </section>
 
               {/* How it works - Clean Apple style */}
-              <div className="max-w-4xl mx-auto mb-20">
-                <h2 className="text-3xl font-semibold text-foreground mb-4">{t('howItWorks.title')}</h2>
-                <p className="text-lg text-muted-foreground mb-16 max-w-2xl mx-auto">
-                  {t('howItWorks.subtitle')}
-                </p>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-12">
+              <div className="mx-auto mt-16 max-w-5xl sm:mt-20">
+                <div className="text-center">
+                  <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">{t('howItWorks.title')}</h2>
+                  <p className="mt-3 text-base text-muted-foreground sm:text-lg">{t('howItWorks.subtitle')}</p>
+                </div>
+                <div className="mt-10 grid grid-cols-1 gap-6 sm:mt-12 sm:grid-cols-2 lg:grid-cols-3 sm:gap-8 lg:gap-12">
                   <div className="text-center">
                     <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
                       <MessageSquare className="w-8 h-8 text-primary" />
