@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+export type SheetTickerSource = 'sheet' | 'yahoo' | string;
+
 export type SheetTicker = {
   name: string;
   symbol: string;
   price: number | null;
   currency: string | null;
+  source?: SheetTickerSource | null;
 };
 
 export type RawSheetTicker = {
@@ -13,9 +16,13 @@ export type RawSheetTicker = {
   name?: string | null;
   price?: number | null;
   currency?: string | null;
+  source?: SheetTickerSource | null;
 };
 
-export const sanitizeSheetTickerList = (list: RawSheetTicker[]): SheetTicker[] =>
+export const sanitizeSheetTickerList = (
+  list: RawSheetTicker[],
+  defaultSource?: SheetTickerSource | null
+): SheetTicker[] =>
   list
     .map((item): SheetTicker | null => {
       if (!item || typeof item.symbol !== 'string') {
@@ -37,12 +44,14 @@ export const sanitizeSheetTickerList = (list: RawSheetTicker[]): SheetTicker[] =
       const resolvedCurrency = typeof item.currency === 'string' && item.currency.trim().length > 0
         ? item.currency.trim().toUpperCase()
         : null;
+      const resolvedSource = item.source ?? defaultSource ?? null;
 
       return {
         symbol: normalizedSymbol,
         name: resolvedName,
         price: resolvedPrice,
         currency: resolvedCurrency,
+        source: resolvedSource,
       };
     })
     .filter((item): item is SheetTicker => item !== null);
@@ -86,12 +95,13 @@ const useSheetTickers = () => {
         const list = Array.isArray(data?.tickers)
           ? (data.tickers as RawSheetTicker[])
           : [];
+        const source = typeof data?.source === 'string' ? data.source : 'sheet';
 
         if (list.length === 0) {
           console.warn('list-sheet-tickers edge function returned an empty list.');
         }
 
-        setTickers(sanitizeSheetTickerList(list));
+        setTickers(sanitizeSheetTickerList(list, source));
       } catch (err) {
         if (!isMounted) {
           return;

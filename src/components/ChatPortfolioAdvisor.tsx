@@ -206,15 +206,62 @@ const ChatPortfolioAdvisor = () => {
 
   const combinedTickers = useMemo(() => {
     const map = new Map<string, SheetTicker>();
+
+    const normalizeName = (name?: string | null) => name?.trim().toLowerCase() ?? null;
+
     const mergeTicker = (ticker: SheetTicker) => {
       const symbol = ticker.symbol.toUpperCase();
-      const cached = finnhubPriceCache[symbol];
-      map.set(symbol, {
-        ...ticker,
-        symbol,
-        price: cached?.price ?? ticker.price ?? null,
-        currency: cached?.currency ?? ticker.currency ?? null
-      });
+      const existing = map.get(symbol);
+
+      if (!existing) {
+        const cached = finnhubPriceCache[symbol];
+        map.set(symbol, {
+          ...ticker,
+          symbol,
+          price: cached?.price ?? ticker.price ?? null,
+          currency: cached?.currency ?? ticker.currency ?? null
+        });
+        return;
+      }
+
+      const existingName = normalizeName(existing.name);
+      const newName = normalizeName(ticker.name);
+      const symbolName = symbol.toLowerCase();
+      const namesMatch = Boolean(existingName && newName && (existingName === newName || existingName === symbolName || newName === symbolName));
+
+      const existingSource = existing.source ?? null;
+      const newSource = ticker.source ?? null;
+
+      if (existingSource === 'sheet' && newSource !== 'sheet' && existingName && newName && !namesMatch) {
+        return;
+      }
+
+      if (newSource === 'sheet' && existingSource !== 'sheet') {
+        const cached = finnhubPriceCache[symbol];
+        map.set(symbol, {
+          ...existing,
+          ...ticker,
+          symbol,
+          price: cached?.price ?? ticker.price ?? existing.price ?? null,
+          currency: cached?.currency ?? ticker.currency ?? existing.currency ?? null
+        });
+        return;
+      }
+
+      const shouldUpdateName = (!existingName || existingName === symbolName) && newName && newName !== symbolName;
+      const shouldUpdatePrice = (!existing.price && ticker.price) || (!existing.currency && ticker.currency);
+      const shouldReplace = shouldUpdateName || shouldUpdatePrice || (namesMatch && existingSource !== newSource);
+
+      if (shouldReplace) {
+        const cached = finnhubPriceCache[symbol];
+        map.set(symbol, {
+          ...existing,
+          ...ticker,
+          symbol,
+          price: cached?.price ?? ticker.price ?? existing.price ?? null,
+          currency: cached?.currency ?? ticker.currency ?? existing.currency ?? null
+        });
+      }
     };
 
     tickers.forEach(mergeTicker);
@@ -273,13 +320,53 @@ const ChatPortfolioAdvisor = () => {
           throw new Error(error.message ?? 'Kunde inte hämta tickers.');
         }
 
-        const list = Array.isArray(data?.tickers) ? sanitizeSheetTickerList(data?.tickers) : [];
+        const list = Array.isArray(data?.tickers)
+          ? sanitizeSheetTickerList(data?.tickers, typeof data?.source === 'string' ? data.source : 'yahoo')
+          : [];
 
         if (list.length > 0) {
           setDynamicTickers(prev => {
             const map = new Map<string, SheetTicker>();
-            prev.forEach(item => map.set(item.symbol.toUpperCase(), item));
-            list.forEach(item => map.set(item.symbol.toUpperCase(), item));
+
+            const mergeTicker = (ticker: SheetTicker) => {
+              const symbol = ticker.symbol.toUpperCase();
+              const existing = map.get(symbol);
+
+              if (!existing) {
+                map.set(symbol, ticker);
+                return;
+              }
+
+              const normalizeName = (name?: string | null) => name?.trim().toLowerCase() ?? null;
+              const existingName = normalizeName(existing.name);
+              const newName = normalizeName(ticker.name);
+              const symbolName = symbol.toLowerCase();
+              const namesMatch = Boolean(existingName && newName && (existingName === newName || existingName === symbolName || newName === symbolName));
+
+              const existingSource = existing.source ?? null;
+              const newSource = ticker.source ?? null;
+
+              if (existingSource === 'sheet' && newSource !== 'sheet' && existingName && newName && !namesMatch) {
+                return;
+              }
+
+              if (newSource === 'sheet' && existingSource !== 'sheet') {
+                map.set(symbol, { ...existing, ...ticker, symbol });
+                return;
+              }
+
+              const shouldUpdateName = (!existingName || existingName === symbolName) && newName && newName !== symbolName;
+              const shouldUpdatePrice = (!existing.price && ticker.price) || (!existing.currency && ticker.currency);
+              const shouldReplace = shouldUpdateName || shouldUpdatePrice || (namesMatch && existingSource !== newSource);
+
+              if (shouldReplace) {
+                map.set(symbol, { ...existing, ...ticker, symbol });
+              }
+            };
+
+            prev.forEach(item => mergeTicker(item));
+            list.forEach(item => mergeTicker(item));
+
             return Array.from(map.values());
           });
         }

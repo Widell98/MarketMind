@@ -94,13 +94,45 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   const combinedTickers = useMemo(() => {
     const map = new Map<string, SheetTicker>();
 
-    sheetTickers.forEach((ticker) => {
-      map.set(ticker.symbol.toUpperCase(), ticker);
-    });
+    const normalizeName = (name?: string | null) => name?.trim().toLowerCase() ?? null;
 
-    yahooTickers.forEach((ticker) => {
-      map.set(ticker.symbol.toUpperCase(), ticker);
-    });
+    const mergeTicker = (ticker: SheetTicker) => {
+      const symbol = ticker.symbol.toUpperCase();
+      const existing = map.get(symbol);
+
+      if (!existing) {
+        map.set(symbol, { ...ticker, symbol });
+        return;
+      }
+
+      const existingName = normalizeName(existing.name);
+      const newName = normalizeName(ticker.name);
+      const symbolName = symbol.toLowerCase();
+      const namesMatch = Boolean(existingName && newName && (existingName === newName || existingName === symbolName || newName === symbolName));
+
+      const existingSource = existing.source ?? null;
+      const newSource = ticker.source ?? null;
+
+      if (existingSource === 'sheet' && newSource !== 'sheet' && existingName && newName && !namesMatch) {
+        return;
+      }
+
+      if (newSource === 'sheet' && existingSource !== 'sheet') {
+        map.set(symbol, { ...existing, ...ticker, symbol });
+        return;
+      }
+
+      const shouldUpdateName = (!existingName || existingName === symbolName) && newName && newName !== symbolName;
+      const shouldUpdatePrice = (!existing.price && ticker.price) || (!existing.currency && ticker.currency);
+      const shouldReplace = shouldUpdateName || shouldUpdatePrice || (namesMatch && existingSource !== newSource);
+
+      if (shouldReplace) {
+        map.set(symbol, { ...existing, ...ticker, symbol });
+      }
+    };
+
+    sheetTickers.forEach(mergeTicker);
+    yahooTickers.forEach(mergeTicker);
 
     return Array.from(map.values()).map((ticker) => {
       const fetched = fetchedPrices[ticker.symbol.toUpperCase()];
@@ -170,8 +202,9 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
           const list = Array.isArray(data?.tickers)
             ? (data.tickers as RawSheetTicker[])
             : [];
+          const source = typeof data?.source === 'string' ? data.source : 'yahoo';
 
-          setYahooTickers(sanitizeSheetTickerList(list));
+          setYahooTickers(sanitizeSheetTickerList(list, source));
           setYahooError(null);
         } catch (err) {
           if (!isActive) {
