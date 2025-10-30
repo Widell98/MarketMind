@@ -249,6 +249,12 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
         const rawPrice = data?.price;
         const rawCurrency = typeof data?.currency === 'string' ? data.currency : null;
+        const resolvedSymbol = typeof data?.symbol === 'string' && data.symbol.trim().length > 0
+          ? data.symbol.trim().toUpperCase()
+          : null;
+        const requestedSymbol = typeof data?.requestedSymbol === 'string' && data.requestedSymbol.trim().length > 0
+          ? data.requestedSymbol.trim().toUpperCase()
+          : null;
 
         if (typeof rawPrice !== 'number' || !Number.isFinite(rawPrice) || rawPrice <= 0) {
           throw new Error('Inget pris kunde hämtas för den valda tickern.');
@@ -256,19 +262,32 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
         setFetchedPrices((prev) => {
           const normalizedCurrency = rawCurrency ? rawCurrency.trim().toUpperCase() : null;
-          const existing = prev[lookupSymbol];
-
-          if (existing && existing.price === rawPrice && existing.currency === normalizedCurrency) {
-            return prev;
+          const keysToUpdate = new Set<string>();
+          keysToUpdate.add(lookupSymbol);
+          if (resolvedSymbol) {
+            keysToUpdate.add(resolvedSymbol);
+          }
+          if (requestedSymbol) {
+            keysToUpdate.add(requestedSymbol);
           }
 
-          return {
-            ...prev,
-            [lookupSymbol]: {
+          let hasChanges = false;
+          const next = { ...prev };
+
+          keysToUpdate.forEach((key) => {
+            const existing = prev[key];
+            if (existing && existing.price === rawPrice && existing.currency === normalizedCurrency) {
+              return;
+            }
+
+            next[key] = {
               price: rawPrice,
               currency: normalizedCurrency,
-            },
-          };
+            };
+            hasChanges = true;
+          });
+
+          return hasChanges ? next : prev;
         });
 
         setPriceFetchState({ loading: false, error: null });

@@ -9,6 +9,9 @@ type FinnhubPriceResponse = {
   symbol: string;
   price: number;
   currency: string | null;
+  requestedSymbol?: string | null;
+  resolvedSymbol?: string | null;
+  source?: string | null;
 };
 
 const parseNumeric = (value: unknown): number | null => {
@@ -462,14 +465,30 @@ export const usePortfolioPerformance = () => {
             const currency = typeof liveData.currency === 'string' && liveData.currency.trim().length > 0
               ? liveData.currency.trim().toUpperCase()
               : null;
+            const resolvedSymbol = typeof liveData.symbol === 'string' && liveData.symbol.trim().length > 0
+              ? liveData.symbol.trim().toUpperCase()
+              : normalizedSymbol;
+            const requestedSymbol = typeof liveData.requestedSymbol === 'string' && liveData.requestedSymbol.trim().length > 0
+              ? liveData.requestedSymbol.trim().toUpperCase()
+              : normalizedSymbol;
 
             const result: FinnhubPriceResponse = {
-              symbol: normalizedSymbol,
+              symbol: resolvedSymbol,
               price: liveData.price,
               currency,
+              requestedSymbol,
+              resolvedSymbol,
+              source: liveData.source ?? 'finnhub',
             };
 
             finnhubPriceCache.set(normalizedSymbol, result);
+            if (resolvedSymbol !== normalizedSymbol) {
+              finnhubPriceCache.set(resolvedSymbol, result);
+            }
+            if (requestedSymbol !== normalizedSymbol && requestedSymbol !== resolvedSymbol) {
+              finnhubPriceCache.set(requestedSymbol, result);
+            }
+
             return result;
           }
 

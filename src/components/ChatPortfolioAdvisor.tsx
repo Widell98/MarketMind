@@ -334,21 +334,41 @@ const ChatPortfolioAdvisor = () => {
             typeof priceData?.currency === 'string' && priceData.currency.trim().length > 0
               ? priceData.currency.trim().toUpperCase()
               : null;
+          const resolvedSymbol = typeof priceData?.symbol === 'string' && priceData.symbol.trim().length > 0
+            ? priceData.symbol.trim().toUpperCase()
+            : null;
+          const requestedSymbol = typeof priceData?.requestedSymbol === 'string' && priceData.requestedSymbol.trim().length > 0
+            ? priceData.requestedSymbol.trim().toUpperCase()
+            : null;
 
           if (resolvedPrice !== null) {
             setFinnhubPriceCache(prev => {
-              const existing = prev[normalizedSymbol];
-              if (existing && existing.price === resolvedPrice && existing.currency === resolvedCurrency) {
-                return prev;
+              const keysToUpdate = new Set<string>();
+              keysToUpdate.add(normalizedSymbol);
+              if (resolvedSymbol) {
+                keysToUpdate.add(resolvedSymbol);
+              }
+              if (requestedSymbol) {
+                keysToUpdate.add(requestedSymbol);
               }
 
-              return {
-                ...prev,
-                [normalizedSymbol]: {
-                  price: resolvedPrice,
-                  currency: resolvedCurrency ?? null
+              let hasChanges = false;
+              const next = { ...prev };
+
+              keysToUpdate.forEach((key) => {
+                const existing = prev[key];
+                if (existing && existing.price === resolvedPrice && existing.currency === resolvedCurrency) {
+                  return;
                 }
-              };
+
+                next[key] = {
+                  price: resolvedPrice,
+                  currency: resolvedCurrency ?? null,
+                };
+                hasChanges = true;
+              });
+
+              return hasChanges ? next : prev;
             });
           }
         } catch (error) {
