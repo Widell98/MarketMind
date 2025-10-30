@@ -90,6 +90,10 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     return rawSymbol ? rawSymbol.toUpperCase() : '';
   }, [formData.symbol]);
 
+  const sheetTickerSymbols = useMemo(() => {
+    return new Set(sheetTickers.map((ticker) => ticker.symbol.toUpperCase()));
+  }, [sheetTickers]);
+
   const combinedTickers = useMemo(() => {
     const map = new Map<string, SheetTicker>();
 
@@ -136,6 +140,9 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   }, [combinedTickers]);
 
   const matchedTicker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) ?? null : null;
+  const isSheetManagedTicker = matchedTicker
+    ? sheetTickerSymbols.has(matchedTicker.symbol.toUpperCase())
+    : false;
 
   useEffect(() => {
     const trimmedSymbol = formData.symbol.trim();
@@ -197,6 +204,11 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
   useEffect(() => {
     if (!normalizedSymbol || !matchedTicker) {
+      setPriceFetchState((prev) => (prev.loading || prev.error ? { loading: false, error: null } : prev));
+      return;
+    }
+
+    if (isSheetManagedTicker) {
       setPriceFetchState((prev) => (prev.loading || prev.error ? { loading: false, error: null } : prev));
       return;
     }
@@ -265,7 +277,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     return () => {
       isActive = false;
     };
-  }, [normalizedSymbol, matchedTicker, fetchedPrices]);
+  }, [normalizedSymbol, matchedTicker, fetchedPrices, isSheetManagedTicker]);
 
   // Update form data when initialData changes
   useEffect(() => {

@@ -263,6 +263,8 @@ const ChatPortfolioAdvisor = () => {
         return;
       }
 
+      let sheetMatch: SheetTicker | null = null;
+
       try {
         const { data, error } = await supabase.functions.invoke<{ tickers?: RawSheetTicker[] }>('list-sheet-tickers', {
           body: { query: normalizedSymbol }
@@ -275,6 +277,8 @@ const ChatPortfolioAdvisor = () => {
         const list = Array.isArray(data?.tickers) ? sanitizeSheetTickerList(data?.tickers) : [];
 
         if (list.length > 0) {
+          sheetMatch = list.find((item) => item.symbol.toUpperCase() === normalizedSymbol) ?? null;
+
           setDynamicTickers(prev => {
             const map = new Map<string, SheetTicker>();
             prev.forEach(item => map.set(item.symbol.toUpperCase(), item));
@@ -284,6 +288,29 @@ const ChatPortfolioAdvisor = () => {
         }
       } catch (error) {
         console.warn('Failed to fetch ticker suggestions:', error);
+      }
+
+      const sheetPrice = sheetMatch && typeof sheetMatch.price === 'number' && Number.isFinite(sheetMatch.price) && sheetMatch.price > 0
+        ? sheetMatch.price
+        : null;
+      const normalizedSheetCurrency = sheetMatch?.currency ? sheetMatch.currency.toUpperCase() : null;
+
+      if (sheetPrice !== null) {
+        setFinnhubPriceCache(prev => {
+          const existing = prev[normalizedSymbol];
+          if (existing && existing.price === sheetPrice && existing.currency === normalizedSheetCurrency) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+            [normalizedSymbol]: {
+              price: sheetPrice,
+              currency: normalizedSheetCurrency,
+            },
+          };
+        });
+        return;
       }
 
       if (!finnhubPriceCache[normalizedSymbol]) {

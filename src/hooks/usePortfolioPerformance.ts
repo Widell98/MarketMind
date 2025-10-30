@@ -511,34 +511,35 @@ export const usePortfolioPerformance = () => {
           }
         }
 
-        const candidateSymbols: string[] = [];
-        const addCandidate = (value?: string | null) => {
-          const normalized = normalizeValue(value);
-          if (!normalized) {
-            return;
-          }
-          const upper = normalized.toUpperCase();
-          if (!candidateSymbols.includes(upper)) {
-            candidateSymbols.push(upper);
-          }
-        };
-
-        addCandidate(matchedTicker?.symbol);
-        addCandidate(holding.symbol);
-        addCandidate(stripSymbolPrefix(matchedTicker?.symbol));
-        addCandidate(stripSymbolPrefix(holding.symbol));
-        getSymbolVariants(matchedTicker?.symbol ?? holding.symbol).forEach(addCandidate);
-
         let resolvedPrice: number | null = null;
         let resolvedCurrency: string | null = matchedTicker?.currency ? matchedTicker.currency.toUpperCase() : null;
         let priceSource: 'finnhub' | 'sheet' | null = null;
+        const isSheetManagedHolding = Boolean(matchedTicker);
 
         if (matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0) {
           resolvedPrice = matchedTicker.price;
           priceSource = 'sheet';
         }
 
-        if (resolvedPrice === null) {
+        if (resolvedPrice === null && !isSheetManagedHolding) {
+          const candidateSymbols: string[] = [];
+          const addCandidate = (value?: string | null) => {
+            const normalized = normalizeValue(value);
+            if (!normalized) {
+              return;
+            }
+            const upper = normalized.toUpperCase();
+            if (!candidateSymbols.includes(upper)) {
+              candidateSymbols.push(upper);
+            }
+          };
+
+          addCandidate(matchedTicker?.symbol);
+          addCandidate(holding.symbol);
+          addCandidate(stripSymbolPrefix(matchedTicker?.symbol));
+          addCandidate(stripSymbolPrefix(holding.symbol));
+          getSymbolVariants(matchedTicker?.symbol ?? holding.symbol).forEach(addCandidate);
+
           for (const candidate of candidateSymbols) {
             const livePrice = await fetchFinnhubPrice(candidate);
             if (livePrice) {
@@ -552,12 +553,14 @@ export const usePortfolioPerformance = () => {
           }
         }
 
-        if (resolvedPrice === null && matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0) {
-          resolvedPrice = matchedTicker.price;
-          priceSource = 'sheet';
-        }
-
         if (resolvedPrice === null) {
+          if (isSheetManagedHolding) {
+            unmatchedHoldings.push({
+              symbol: holding.symbol ?? matchedTicker?.symbol ?? undefined,
+              name: holding.name ?? matchedTicker?.name ?? undefined,
+            });
+            continue;
+          }
           unmatchedHoldings.push({
             symbol: holding.symbol ?? undefined,
             name: holding.name ?? undefined,
@@ -712,36 +715,41 @@ export const usePortfolioPerformance = () => {
       let resolvedCurrency = matchedTicker?.currency ? matchedTicker.currency.toUpperCase() : null;
       let priceSource: 'finnhub' | 'sheet' | null = null;
       let livePriceError: string | null = null;
+      const isSheetManagedTicker = Boolean(matchedTicker);
 
-      try {
-        const { data: liveData, error: liveError } = await supabase.functions.invoke<FinnhubPriceResponse>('get-ticker-price', {
-          body: { symbol: normalizedFinnhubSymbol },
-        });
-
-        if (liveError) {
-          livePriceError = liveError.message ?? 'Kunde inte hämta live-pris från Finnhub.';
-          console.warn('Finnhub live price request failed:', liveError);
-        } else if (liveData && typeof liveData.price === 'number' && Number.isFinite(liveData.price) && liveData.price > 0) {
-          resolvedPrice = liveData.price;
-          if (typeof liveData.currency === 'string' && liveData.currency.trim().length > 0) {
-            resolvedCurrency = liveData.currency.trim().toUpperCase();
-          }
-          priceSource = 'finnhub';
-        }
-      } catch (error) {
-        livePriceError = error instanceof Error ? error.message : 'Okänt fel vid hämtning av live-pris.';
-        console.error('Unexpected error invoking get-ticker-price:', error);
+      if (isSheetManagedTicker && typeof matchedTicker?.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0) {
+        resolvedPrice = matchedTicker.price;
+        priceSource = 'sheet';
       }
 
-      if (resolvedPrice === null && matchedTicker) {
-        if (typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0) {
-          resolvedPrice = matchedTicker.price;
-          priceSource = 'sheet';
+      if (resolvedPrice === null && !isSheetManagedTicker) {
+        try {
+          const { data: liveData, error: liveError } = await supabase.functions.invoke<FinnhubPriceResponse>('get-ticker-price', {
+            body: { symbol: normalizedFinnhubSymbol },
+          });
+
+          if (liveError) {
+            livePriceError = liveError.message ?? 'Kunde inte hämta live-pris från Finnhub.';
+            console.warn('Finnhub live price request failed:', liveError);
+          } else if (liveData && typeof liveData.price === 'number' && Number.isFinite(liveData.price) && liveData.price > 0) {
+            resolvedPrice = liveData.price;
+            if (typeof liveData.currency === 'string' && liveData.currency.trim().length > 0) {
+              resolvedCurrency = liveData.currency.trim().toUpperCase();
+            }
+            priceSource = 'finnhub';
+          }
+        } catch (error) {
+          livePriceError = error instanceof Error ? error.message : 'Okänt fel vid hämtning av live-pris.';
+          console.error('Unexpected error invoking get-ticker-price:', error);
         }
+      }
+
+      if (resolvedPrice === null && isSheetManagedTicker) {
+        throw new Error(`Tickern ${canonicalSymbol} saknar ett pris i Google Sheets-dokumentet. Uppdatera kalkylarket och försök igen.`);
       }
 
       if (resolvedPrice === null) {
-        throw new Error(`Tickern ${canonicalSymbol} saknar ett giltigt pris just nu.`);
+        throw new Error(`Tickern ${canonicalSymbol} saknar ett giltigt pris just nu.${livePriceError ? ` ${livePriceError}` : ''}`);
       }
 
       const pricePerUnit = resolvedPrice;
