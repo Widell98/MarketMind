@@ -31,6 +31,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import useSheetTickers, { RawSheetTicker, SheetTicker, sanitizeSheetTickerList } from '@/hooks/useSheetTickers';
+import { mapEdgeFunctionErrorMessage } from '@/utils/mapEdgeFunctionError';
 
 interface QuestionOption {
   value: string;
@@ -296,7 +297,11 @@ const ChatPortfolioAdvisor = () => {
           );
 
           if (priceError) {
-            throw new Error(priceError.message ?? 'Kunde inte hämta live-pris.');
+            const message = mapEdgeFunctionErrorMessage(
+              priceError.message,
+              'Kunde inte hämta live-pris.',
+            );
+            throw new Error(message);
           }
 
           const resolvedPrice =

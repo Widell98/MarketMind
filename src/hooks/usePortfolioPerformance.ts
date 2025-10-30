@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { resolveHoldingValue, convertToSEK } from '@/utils/currencyUtils';
+import { mapEdgeFunctionErrorMessage } from '@/utils/mapEdgeFunctionError';
 import type { SheetTicker } from '@/hooks/useSheetTickers';
 
 type FinnhubPriceResponse = {
@@ -750,7 +751,10 @@ export const usePortfolioPerformance = () => {
         });
 
         if (liveError) {
-          livePriceError = liveError.message ?? 'Kunde inte hämta live-pris från Finnhub.';
+          livePriceError = mapEdgeFunctionErrorMessage(
+            liveError.message,
+            'Kunde inte hämta live-pris från Finnhub.',
+          );
           console.warn('Finnhub live price request failed:', liveError);
         } else if (liveData && typeof liveData.price === 'number' && Number.isFinite(liveData.price) && liveData.price > 0) {
           resolvedPrice = liveData.price;
@@ -760,7 +764,11 @@ export const usePortfolioPerformance = () => {
           priceSource = 'finnhub';
         }
       } catch (error) {
-        livePriceError = error instanceof Error ? error.message : 'Okänt fel vid hämtning av live-pris.';
+        const rawMessage = error instanceof Error ? error.message : null;
+        livePriceError = mapEdgeFunctionErrorMessage(
+          rawMessage,
+          'Okänt fel vid hämtning av live-pris.',
+        );
         console.error('Unexpected error invoking get-ticker-price:', error);
       }
 
