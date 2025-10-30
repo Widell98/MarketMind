@@ -173,23 +173,23 @@ const Index = () => {
   }, [insightsLastUpdated]);
   return <Layout>
       <div className="min-h-0 bg-background">
-        <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-8 lg:py-12">
+        <div className="w-full max-w-5xl xl:max-w-6xl mx-auto px-3 sm:px-6 py-5 sm:py-9 lg:py-12">
           
           {/* Hero Section - Apple-inspired clean design */}
-          {!user && <div className="mb-20">
+          {!user && <div className="mb-16 sm:mb-20">
               {/* Hero Content */}
-              <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-card/70 px-6 py-12 shadow-sm backdrop-blur sm:px-12 lg:px-16">
-                <div className="grid gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center">
+              <div className="relative overflow-hidden rounded-[28px] border border-border/60 bg-card/70 px-6 py-10 shadow-sm backdrop-blur sm:px-10 sm:py-12 lg:px-14">
+                <div className="grid gap-10 lg:gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center">
                   <div className="text-left">
                     <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-sm font-medium text-primary">
                       <span className="inline-flex h-2 w-2 rounded-full bg-primary"></span>
                       {t('hero.badge')}
                     </div>
-                    <h1 className="text-4xl font-semibold text-foreground sm:text-5xl lg:text-[3.6rem] lg:leading-[1.05]">
+                    <h1 className="text-4xl font-semibold text-foreground sm:text-5xl lg:text-[3.2rem] lg:leading-[1.05]">
                       {t('hero.headline')}
                     </h1>
-                    <p className="mt-6 text-lg leading-relaxed text-muted-foreground sm:text-xl">{t('hero.subtitle')}</p>
-                    <div className="mt-8 flex flex-col gap-3 text-sm text-muted-foreground sm:text-base">
+                    <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg">{t('hero.subtitle')}</p>
+                    <div className="mt-7 flex flex-col gap-3 text-sm text-muted-foreground sm:text-base">
                       <div className="flex items-start gap-3">
                         <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
                         <span>{t('hero.highlight1')}</span>
@@ -203,8 +203,8 @@ const Index = () => {
                         <span>{t('hero.highlight3')}</span>
                       </div>
                     </div>
-                    <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
-                      <Button asChild size="lg" className="h-14 rounded-2xl bg-primary px-10 text-base font-semibold text-primary-foreground shadow-lg transition-all duration-300 hover:bg-primary/90 hover:shadow-xl">
+                    <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
+                      <Button asChild size="lg" className="h-12 rounded-2xl bg-primary px-8 text-base font-semibold text-primary-foreground shadow-lg transition-all duration-300 hover:bg-primary/90 hover:shadow-xl">
                         <Link to="/auth" className="flex items-center gap-2">
                           {t('hero.cta.start')}
                           <ArrowUpRight className="h-4 w-4" />
@@ -216,7 +216,7 @@ const Index = () => {
                       </div>
                     </div>
                   </div>
-                  <Card className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-primary/5 via-background to-background p-6 shadow-lg sm:p-10">
+                  <Card className="relative overflow-hidden rounded-[28px] border border-border/60 bg-gradient-to-br from-primary/5 via-background to-background p-5 shadow-lg sm:p-8 lg:p-10">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-muted-foreground">{t('hero.chart.portfolioValueLabel')}</p>
@@ -226,8 +226,8 @@ const Index = () => {
                         {t('hero.chart.performanceBadge')}
                       </Badge>
                     </div>
-                    <div className="mt-8">
-                      <svg viewBox="0 0 400 180" className="h-48 w-full">
+                    <div className="mt-7">
+                      <svg viewBox="0 0 400 180" className="h-40 w-full sm:h-44 lg:h-48">
                         <defs>
                           <linearGradient id="heroGradient" x1="0%" y1="0%" x2="0%" y2="100%">
                             <stop offset="0%" stopColor="rgba(59,130,246,0.35)" />
