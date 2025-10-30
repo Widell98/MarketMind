@@ -11,6 +11,18 @@ type FinnhubPriceResponse = {
   currency: string | null;
 };
 
+const logFinnhubInvocationWarning = (...args: unknown[]) => {
+  if (import.meta.env.DEV) {
+    console.warn(...args);
+  }
+};
+
+const logFinnhubInvocationError = (...args: unknown[]) => {
+  if (import.meta.env.DEV) {
+    console.error(...args);
+  }
+};
+
 const parseNumeric = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value;
@@ -453,7 +465,7 @@ export const usePortfolioPerformance = () => {
           });
 
           if (liveError) {
-            console.warn('Finnhub live price request failed for', normalizedSymbol, liveError);
+            logFinnhubInvocationWarning('Finnhub live price request failed for', normalizedSymbol, liveError);
             finnhubPriceCache.set(normalizedSymbol, null);
             return null;
           }
@@ -476,7 +488,7 @@ export const usePortfolioPerformance = () => {
           finnhubPriceCache.set(normalizedSymbol, null);
           return null;
         } catch (error) {
-          console.error('Unexpected error invoking get-ticker-price for', normalizedSymbol, error);
+          logFinnhubInvocationError('Unexpected error invoking get-ticker-price for', normalizedSymbol, error);
           finnhubPriceCache.set(normalizedSymbol, null);
           return null;
         }
@@ -713,7 +725,7 @@ export const usePortfolioPerformance = () => {
 
         if (liveError) {
           livePriceError = liveError.message ?? 'Kunde inte hämta live-pris från Finnhub.';
-          console.warn('Finnhub live price request failed:', liveError);
+          logFinnhubInvocationWarning('Finnhub live price request failed:', liveError);
         } else if (liveData && typeof liveData.price === 'number' && Number.isFinite(liveData.price) && liveData.price > 0) {
           resolvedPrice = liveData.price;
           if (typeof liveData.currency === 'string' && liveData.currency.trim().length > 0) {
@@ -723,7 +735,7 @@ export const usePortfolioPerformance = () => {
         }
       } catch (error) {
         livePriceError = error instanceof Error ? error.message : 'Okänt fel vid hämtning av live-pris.';
-        console.error('Unexpected error invoking get-ticker-price:', error);
+        logFinnhubInvocationError('Unexpected error invoking get-ticker-price:', error);
       }
 
       if (resolvedPrice === null && matchedTicker) {
