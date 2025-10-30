@@ -268,8 +268,8 @@ const Index = () => {
 
               {/* How it works - Clean Apple style */}
               <div className="mx-auto mt-16 max-w-5xl">
-                <h2 className="text-3xl font-semibold text-foreground mb-4">{t('howItWorks.title')}</h2>
-                <p className="text-lg text-muted-foreground mb-16 max-w-2xl mx-auto">
+                <h2 className="text-3xl font-semibold text-foreground mb-4 text-center">{t('howItWorks.title')}</h2>
+                <p className="text-lg text-muted-foreground mb-16 max-w-2xl mx-auto text-center">
                   {t('howItWorks.subtitle')}
                 </p>
                 
