@@ -8,6 +8,8 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const finnhubApiKey = Deno.env.get("FINNHUB_API_KEY");
+
 // Din publicerade CSV-URL
 const CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRJZtyoepzQZSQw-LXTp0vmnpPVMqluTiPZJkPp61g5KsfEp08CA6LZ7CNoTfIgYe-E7lvCZ_ToMuF4/pub?gid=2130484499&single=true&output=csv";
@@ -159,6 +161,99 @@ const fetchYahooTickers = async (query: string) => {
   return tickers;
 };
 
+const fetchFinnhubQuote = async (symbol: string): Promise<number | null> => {
+  if (!finnhubApiKey) {
+    return null;
+  }
+
+  const url = new URL("https://finnhub.io/api/v1/quote");
+  url.searchParams.set("symbol", symbol);
+  url.searchParams.set("token", finnhubApiKey);
+
+  const response = await fetch(url, { method: "GET" });
+
+  if (!response.ok) {
+    throw new Error(`Finnhub quote request failed: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json() as { c?: number; pc?: number };
+  const price = typeof data.c === "number" && Number.isFinite(data.c) && data.c > 0
+    ? data.c
+    : typeof data.pc === "number" && Number.isFinite(data.pc) && data.pc > 0
+      ? data.pc
+      : null;
+
+  return price;
+};
+
+const fetchFinnhubProfile = async (symbol: string): Promise<string | null> => {
+  if (!finnhubApiKey) {
+    return null;
+  }
+
+  const url = new URL("https://finnhub.io/api/v1/stock/profile2");
+  url.searchParams.set("symbol", symbol);
+  url.searchParams.set("token", finnhubApiKey);
+
+  const response = await fetch(url, { method: "GET" });
+
+  if (!response.ok) {
+    console.warn(`Finnhub profile request failed for ${symbol}: ${response.status}`);
+    return null;
+  }
+
+  const data = await response.json() as { currency?: string | null };
+  if (!data || typeof data.currency !== "string") {
+    return null;
+  }
+
+  const trimmed = data.currency.trim();
+  return trimmed.length > 0 ? trimmed.toUpperCase() : null;
+};
+
+const enrichTickersWithFinnhub = async (
+  tickers: {
+    name: string;
+    symbol: string;
+    currency: string | null;
+    price: number | null;
+  }[],
+) => {
+  if (!finnhubApiKey) {
+    return tickers;
+  }
+
+  const results: typeof tickers = [];
+
+  for (const ticker of tickers) {
+    const normalizedSymbol = ticker.symbol.toUpperCase();
+
+    try {
+      const [price, currency] = await Promise.all([
+        fetchFinnhubQuote(normalizedSymbol).catch((error) => {
+          console.warn(`Finnhub quote lookup failed for ${normalizedSymbol}:`, error);
+          return null;
+        }),
+        fetchFinnhubProfile(normalizedSymbol).catch((error) => {
+          console.warn(`Finnhub profile lookup failed for ${normalizedSymbol}:`, error);
+          return null;
+        }),
+      ]);
+
+      results.push({
+        ...ticker,
+        price: price ?? ticker.price,
+        currency: currency ?? ticker.currency,
+      });
+    } catch (error) {
+      console.warn(`Failed to enrich ${normalizedSymbol} with Finnhub data:`, error);
+      results.push(ticker);
+    }
+  }
+
+  return results;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -180,8 +275,9 @@ serve(async (req) => {
   try {
     if (query) {
       const yahooTickers = await fetchYahooTickers(query);
+      const enrichedTickers = await enrichTickersWithFinnhub(yahooTickers);
       return new Response(
-        JSON.stringify({ success: true, source: "yahoo", tickers: yahooTickers }),
+        JSON.stringify({ success: true, source: "yahoo", tickers: enrichedTickers }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
