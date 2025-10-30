@@ -533,15 +533,22 @@ export const usePortfolioPerformance = () => {
         let resolvedCurrency: string | null = matchedTicker?.currency ? matchedTicker.currency.toUpperCase() : null;
         let priceSource: 'finnhub' | 'sheet' | null = null;
 
-        for (const candidate of candidateSymbols) {
-          const livePrice = await fetchFinnhubPrice(candidate);
-          if (livePrice) {
-            resolvedPrice = livePrice.price;
-            if (livePrice.currency) {
-              resolvedCurrency = livePrice.currency;
+        if (matchedTicker && typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0) {
+          resolvedPrice = matchedTicker.price;
+          priceSource = 'sheet';
+        }
+
+        if (resolvedPrice === null) {
+          for (const candidate of candidateSymbols) {
+            const livePrice = await fetchFinnhubPrice(candidate);
+            if (livePrice) {
+              resolvedPrice = livePrice.price;
+              if (livePrice.currency) {
+                resolvedCurrency = livePrice.currency;
+              }
+              priceSource = 'finnhub';
+              break;
             }
-            priceSource = 'finnhub';
-            break;
           }
         }
 
