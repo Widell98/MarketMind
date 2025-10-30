@@ -203,7 +203,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   }, [formData.symbol]);
 
   useEffect(() => {
-    if (!normalizedSymbol || !matchedTicker) {
+    if (!normalizedSymbol) {
       setPriceFetchState((prev) => (prev.loading || prev.error ? { loading: false, error: null } : prev));
       return;
     }
@@ -213,8 +213,17 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
       return;
     }
 
-    const hasExistingPrice = typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0;
-    const existingFetchedPrice = fetchedPrices[normalizedSymbol];
+    const lookupSymbol = matchedTicker?.symbol?.trim().toUpperCase() ?? normalizedSymbol;
+
+    if (!lookupSymbol) {
+      setPriceFetchState((prev) => (prev.loading || prev.error ? { loading: false, error: null } : prev));
+      return;
+    }
+
+    const hasExistingPrice = matchedTicker
+      ? typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0
+      : false;
+    const existingFetchedPrice = fetchedPrices[lookupSymbol];
 
     if (hasExistingPrice || existingFetchedPrice) {
       setPriceFetchState((prev) => (prev.loading || prev.error ? { loading: false, error: null } : prev));
@@ -227,7 +236,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     (async () => {
       try {
         const { data, error } = await supabase.functions.invoke('get-ticker-price', {
-          body: { symbol: normalizedSymbol },
+          body: { symbol: lookupSymbol },
         });
 
         if (!isActive) {
@@ -247,7 +256,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
         setFetchedPrices((prev) => {
           const normalizedCurrency = rawCurrency ? rawCurrency.trim().toUpperCase() : null;
-          const existing = prev[normalizedSymbol];
+          const existing = prev[lookupSymbol];
 
           if (existing && existing.price === rawPrice && existing.currency === normalizedCurrency) {
             return prev;
@@ -255,7 +264,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
           return {
             ...prev,
-            [normalizedSymbol]: {
+            [lookupSymbol]: {
               price: rawPrice,
               currency: normalizedCurrency,
             },
