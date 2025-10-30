@@ -131,7 +131,7 @@ const Index = () => {
     {
       icon: MessageSquare,
       title: 'AI Chat',
-      description: 'Få personliga investeringsråd',
+      description: 'Utforska AI-drivna investeringsinsikter',
       to: '/ai-chatt',
     },
     {
@@ -148,8 +148,8 @@ const Index = () => {
     },
     {
       icon: Settings,
-      title: 'Portföljrådgivare',
-      description: 'Optimera din portfölj',
+      title: 'Portföljguide',
+      description: 'Se hur en balanserad portfölj kan se ut',
       to: '/portfolio-advisor',
     },
   ], []);
@@ -206,6 +206,9 @@ const Index = () => {
                     </Link>
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+                  {t('hero.disclaimer')}
+                </p>
               </div>
 
               {/* How it works - Clean Apple style */}
@@ -434,7 +437,7 @@ const Index = () => {
                   </div>
                   <h3 className="mb-4 text-2xl font-semibold text-foreground sm:mb-6 sm:text-3xl">Välkommen hem!</h3>
                   <p className="mx-auto mb-8 max-w-2xl text-base leading-relaxed text-muted-foreground sm:mb-12 sm:text-lg">
-                    Nu ska vi lära känna varandra ordentligt. Tänk på mig som din personliga ai-rådgivare som hjälper dig bygga
+                    Nu ska vi lära känna varandra ordentligt. Tänk på MarketMind som din personliga AI-guide som hjälper dig bygga
                     den ekonomiska trygghet du drömmer om. Vi tar det i din takt, steg för steg.
                   </p>
 
