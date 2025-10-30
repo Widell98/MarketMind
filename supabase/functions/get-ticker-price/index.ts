@@ -90,11 +90,20 @@ async function fetchQuote(symbol: string): Promise<{ price: number } | null> {
   try {
     const url = new URL("https://finnhub.io/api/v1/quote");
     url.searchParams.set("symbol", symbol);
-    url.searchParams.set("token", finnhubApiKey ?? "");
-
-    const response = await fetch(url, { method: "GET" });
+    if (finnhubApiKey) {
+      url.searchParams.set("token", finnhubApiKey);
+    }
+    const response = await fetch(url, {
+      method: "GET",
+      headers: finnhubHeaders(),
+    });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error(
+          "Finnhub rejected the request (403). Verify that your FINNHUB_API_KEY is valid and has sufficient permissions.",
+        );
+      }
       throw new Error(`Finnhub quote request failed: ${response.status} ${response.statusText}`);
     }
 
@@ -120,11 +129,19 @@ async function fetchProfile(symbol: string): Promise<FinnhubProfileResponse | nu
   try {
     const url = new URL("https://finnhub.io/api/v1/stock/profile2");
     url.searchParams.set("symbol", symbol);
-    url.searchParams.set("token", finnhubApiKey ?? "");
-
-    const response = await fetch(url, { method: "GET" });
+    if (finnhubApiKey) {
+      url.searchParams.set("token", finnhubApiKey);
+    }
+    const response = await fetch(url, {
+      method: "GET",
+      headers: finnhubHeaders(),
+    });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        console.warn("Finnhub profile request returned 403. Falling back without currency data.");
+        return null;
+      }
       console.warn(`Finnhub profile request failed for ${symbol}: ${response.status}`);
       return null;
     }
@@ -139,4 +156,17 @@ async function fetchProfile(symbol: string): Promise<FinnhubProfileResponse | nu
     console.error("Error fetching Finnhub profile:", error);
     return null;
   }
+}
+
+function finnhubHeaders(): HeadersInit {
+  const headers: HeadersInit = {
+    "User-Agent": "supabase-edge-function",
+    Accept: "application/json",
+  };
+
+  if (finnhubApiKey) {
+    headers["X-Finnhub-Token"] = finnhubApiKey;
+  }
+
+  return headers;
 }

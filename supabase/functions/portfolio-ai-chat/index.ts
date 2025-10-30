@@ -196,6 +196,7 @@ type SheetTickerEdgeItem = {
   name?: string | null;
   price?: number | null;
   currency?: string | null;
+  source?: string | null;
 };
 
 type SheetTickerEdgeResponse = {
