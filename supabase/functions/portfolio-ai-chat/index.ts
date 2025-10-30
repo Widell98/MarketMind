@@ -1,11 +1,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { buildCorsHeaders } from "../_shared/cors.ts";
+import { createScopedLogger, generateRequestId } from "../_shared/logger.ts";
 
 const REALTIME_KEYWORDS = [
   'kväll',
@@ -149,7 +146,6 @@ const convertToSEK = (amount: number, fromCurrency?: string | null): number => {
   const rate = EXCHANGE_RATES[currency];
 
   if (!rate) {
-    console.warn(`Exchange rate not found for currency: ${currency}, defaulting to SEK`);
     return amount;
   }
 
@@ -323,7 +319,6 @@ const normalizeHostname = (url: string): string | null => {
     const { hostname } = new URL(url);
     return hostname.replace(/^www\./, '').toLowerCase();
   } catch (error) {
-    console.warn('Kunde inte tolka URL från Tavily-resultat:', url, error);
     return null;
   }
 };
@@ -382,22 +377,17 @@ const formatTavilyResults = (
       .filter((result: TavilySearchResult) => {
         const url = typeof result.url === 'string' ? result.url : '';
         if (!url || !isAllowedDomain(url, allowedDomains)) {
-          if (url) {
-            console.log('Filtrerar bort otillåten domän från Tavily-resultat:', url);
-          }
           return false;
         }
 
         const snippetText = selectSnippetSource(result);
         const combinedText = [result.title, snippetText].filter(Boolean).join(' ');
         if (!combinedText) {
-          console.log('Filtrerar bort Tavily-resultat utan relevant innehåll:', url);
           return false;
         }
 
         const hasRelevance = hasFinancialRelevance(combinedText);
         if (!hasRelevance && combinedText.length < 60) {
-          console.log('Filtrerar bort Tavily-resultat med låg finansiell relevans:', url);
           return false;
         }
 
@@ -448,7 +438,6 @@ const fetchTavilyContext = async (
 ): Promise<TavilyContextPayload> => {
   const tavilyApiKey = Deno.env.get('TAVILY_API_KEY');
   if (!tavilyApiKey) {
-    console.warn('TAVILY_API_KEY saknas i miljövariablerna. Hoppar över realtidssökning.');
     return { formattedContext: '', sources: [] };
   }
 
@@ -540,7 +529,6 @@ const fetchTavilyContext = async (
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('Fel vid anrop till Tavily API:', errorText);
           return { context: { formattedContext: '', sources: [] }, rawResultCount: 0 };
         }
 
@@ -571,17 +559,15 @@ const fetchTavilyContext = async (
         const logMessage = rawResultCount === 0
           ? 'Tavily-sökning gav inga resultat för prioriterade finansdomäner, testar med utökad lista.'
           : 'Tavily-sökning gav inga relevanta resultat inom prioriterade finansdomäner, försöker med utökad lista.';
-        console.log(logMessage);
       }
     }
 
     return lastContext;
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
-      console.warn('Tavily-förfrågan avbröts på grund av timeout.');
-    } else {
-      console.error('Undantag vid anrop till Tavily API:', error);
+      return { formattedContext: '', sources: [] };
     }
+    return { formattedContext: '', sources: [] };
     return { formattedContext: '', sources: [] };
   }
 };
@@ -609,49 +595,58 @@ const FINANCIAL_DATA_KEYWORDS = [
 ];
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  const requestId = generateRequestId();
+  const { headers: corsHeaders, originAllowed } = buildCorsHeaders(req);
+  const logger = createScopedLogger('PORTFOLIO-AI-CHAT', requestId);
+  logger.info('Request received', { method: req.method, url: req.url });
+
   if (req.method === 'OPTIONS') {
+    if (!originAllowed) {
+      logger.warn('Rejected preflight due to disallowed origin');
+      return new Response('Origin not allowed', { status: 403, headers: corsHeaders });
+    }
+
     return new Response(null, { headers: corsHeaders });
   }
 
-  console.log('=== PORTFOLIO AI CHAT FUNCTION STARTED ===');
-  console.log('Request method:', req.method);
-  console.log('Request URL:', req.url);
+  if (!originAllowed) {
+    logger.warn('Blocked request due to disallowed origin');
+    return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
+      status: 403,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 
   try {
     const requestBody = await req.json();
-    console.log('Request body received:', JSON.stringify(requestBody, null, 2));
-    
+    logger.debug('Request body received', { keys: Object.keys(requestBody ?? {}) });
+
     const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData, stream } = requestBody;
 
-    console.log('Portfolio AI Chat function called with:', { 
-      message: message?.substring(0, 50) + '...', 
-      userId, 
-      portfolioId, 
+    logger.debug('Invocation payload summary', {
+      hasMessage: Boolean(message),
+      hasUserId: Boolean(userId),
+      portfolioId,
       sessionId,
-      analysisType 
+      analysisType
     });
 
     if (!message || !userId) {
-      console.error('Missing required fields:', { message: !!message, userId: !!userId });
+      logger.warn('Missing required fields', { hasMessage: Boolean(message), hasUserId: Boolean(userId) });
       throw new Error('Message and userId are required');
     }
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
-      console.error('OpenAI API key not found in environment');
+      logger.error('OpenAI API key not configured');
       throw new Error('OpenAI API key not configured');
     }
-
-    console.log('OpenAI API key found, length:', openAIApiKey.length);
 
     // Initialize Supabase client
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
-
-    console.log('Supabase client initialized');
 
     // Fetch all user data in parallel for better performance
     const [
@@ -697,7 +692,7 @@ serve(async (req) => {
       const { data: sheetTickerData, error: sheetTickerError } = await supabase.functions.invoke('list-sheet-tickers');
 
       if (sheetTickerError) {
-        console.error('Failed to fetch Google Sheets tickers:', sheetTickerError);
+        logger.warn('Failed to fetch Google Sheets tickers', { message: sheetTickerError.message });
       } else {
         const typedData = sheetTickerData as SheetTickerEdgeResponse | null;
         const rawTickers = Array.isArray(typedData?.tickers)
@@ -739,13 +734,13 @@ serve(async (req) => {
         sheetTickerSymbols = Array.from(symbolSet);
         sheetTickerNames = Array.from(nameSet);
 
-        console.log('Loaded Google Sheets tickers:', {
+        logger.debug('Loaded Google Sheets tickers', {
           symbols: sheetTickerSymbols.length,
           names: sheetTickerNames.length,
         });
       }
     } catch (error) {
-      console.error('Unexpected error when loading Google Sheets tickers:', error);
+      logger.warn('Unexpected error when loading Google Sheets tickers', { message: (error as Error).message });
     }
 
     // ENHANCED INTENT DETECTION FOR PROFILE UPDATES
@@ -952,7 +947,7 @@ serve(async (req) => {
     const profileChangeDetection = detectProfileUpdates(message);
 
     const isPremium = subscriber?.subscribed || false;
-    console.log('User premium status:', isPremium);
+    logger.info('User premium status checked', { isPremium });
 
     const investmentContextPattern = /(aktie|aktier|börs|portfölj|fond|investera|bolag|innehav|kurs|marknad|stock|share|equity)/i;
     const hasInvestmentContext = investmentContextPattern.test(message);
@@ -1213,7 +1208,7 @@ serve(async (req) => {
         return { formattedContext: '', sources: [] };
       }
 
-      console.log('Tavily StockAnalysis-förfrågan, prioriterade URL:er:', urlCandidates.slice(0, 6));
+      logger.debug('Tavily StockAnalysis request URLs prepared', { candidates: urlCandidates.slice(0, 6) });
 
       const targetedQuery = buildStockAnalysisQuery(ticker, urlCandidates);
 
@@ -1330,7 +1325,7 @@ serve(async (req) => {
     };
 
     const userIntent = detectIntent(message);
-    console.log('Detected user intent:', userIntent);
+    logger.info('Detected user intent', { userIntent });
 
     const shouldFetchTavily = !isSimplePersonalAdviceRequest && (
       isStockMentionRequest || hasRealTimeTrigger
@@ -1339,7 +1334,7 @@ serve(async (req) => {
       const logMessage = isStockMentionRequest
         ? 'Aktieomnämnande upptäckt – anropar Tavily för relevanta nyheter.'
         : 'Fråga upptäckt som realtidsfråga – anropar Tavily.';
-      console.log(logMessage);
+      logger.debug('Intent classification note', { message: logMessage });
 
       const shouldPrioritizeStockAnalysis = primaryDetectedTicker && (isStockAnalysisRequest || isFinancialDataRequest);
 
@@ -1386,13 +1381,13 @@ serve(async (req) => {
       };
 
       if (shouldPrioritizeStockAnalysis) {
-        console.log(`Försöker hämta finansiell data för ${primaryDetectedTicker} från stockanalysis.com.`);
+        logger.debug('Attempting to fetch StockAnalysis data', { ticker: primaryDetectedTicker });
         tavilyContext = await fetchStockAnalysisFinancialContext(primaryDetectedTicker, message);
 
         if (tavilyContext.formattedContext) {
-          console.log('Lyckades hämta data från stockanalysis.com.');
+          logger.debug('StockAnalysis data fetch succeeded');
         } else {
-          console.log('Inga resultat från stockanalysis.com, försöker med bredare Tavily-sökning.');
+          logger.debug('StockAnalysis data missing; falling back to Tavily search');
           tavilyContext = await fetchTavilyContext(message, buildDefaultTavilyOptions());
         }
       } else {
@@ -1400,7 +1395,7 @@ serve(async (req) => {
       }
 
       if (tavilyContext.formattedContext) {
-        console.log('Tavily-kontent hämtad och läggs till i kontexten.');
+        logger.debug('Tavily content added to context');
       }
     }
 
@@ -1459,12 +1454,12 @@ serve(async (req) => {
           });
 
         if (error) {
-          console.error('Error updating AI memory:', error);
+          logger.warn('Failed to update AI memory', { message: error.message });
         } else {
-          console.log('AI memory updated successfully');
+          logger.debug('AI memory updated successfully');
         }
       } catch (error) {
-        console.error('Error in updateAIMemory:', error);
+        logger.warn('Error in updateAIMemory helper', { message: (error as Error).message });
       }
     };
 
@@ -1777,7 +1772,8 @@ VIKTIGT:
     // Force using gpt-4o to avoid streaming restrictions and reduce cost
     const model = 'gpt-4o';
 
-    console.log('Selected model:', model, 'for request type:', {
+    logger.info('Selected model for request', {
+      model,
       isStockAnalysis: isStockAnalysisRequest,
       isPortfolioOptimization: isPortfolioOptimizationRequest,
       messageLength: message.length,
@@ -1813,7 +1809,7 @@ VIKTIGT:
       isPremium
     };
 
-    console.log('TELEMETRY START:', telemetryData);
+    logger.info('Telemetry start', telemetryData);
 
     // Save user message to database first
     if (sessionId) {
@@ -1831,9 +1827,9 @@ VIKTIGT:
               timestamp: new Date().toISOString()
             }
           });
-        console.log('User message saved to database');
+        logger.debug('User message saved to database');
       } catch (error) {
-        console.error('Error saving user message:', error);
+        logger.warn('Error saving user message', { message: (error as Error).message });
       }
     }
 
@@ -1855,8 +1851,8 @@ VIKTIGT:
 
       if (!nonStreamResp.ok) {
         const errorBody = await nonStreamResp.text();
-        console.error('OpenAI API error response:', errorBody);
-        console.error('TELEMETRY ERROR:', { ...telemetryData, error: errorBody });
+        logger.error('OpenAI API error response', { body: errorBody });
+        logger.error('Telemetry error', { ...telemetryData, error: errorBody });
         throw new Error(`OpenAI API error: ${nonStreamResp.status} - ${errorBody}`);
       }
 
@@ -1885,7 +1881,7 @@ VIKTIGT:
           });
       }
 
-      console.log('TELEMETRY COMPLETE:', { ...telemetryData, responseLength: aiMessage.length, completed: true });
+      logger.info('Telemetry complete', { ...telemetryData, responseLength: aiMessage.length, completed: true });
 
       return new Response(
         JSON.stringify({
@@ -1914,8 +1910,8 @@ VIKTIGT:
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error('OpenAI API error response:', errorBody);
-      console.error('TELEMETRY ERROR:', { ...telemetryData, error: errorBody });
+      logger.error('OpenAI API error response', { body: errorBody });
+      logger.error('Telemetry error', { ...telemetryData, error: errorBody });
       throw new Error(`OpenAI API error: ${response.status} - ${errorBody}`);
     }
 
@@ -1946,7 +1942,7 @@ VIKTIGT:
                   await updateAIMemory(supabase, userId, message, aiMessage, aiMemory);
                   
                   // Send final telemetry
-                  console.log('TELEMETRY COMPLETE:', { 
+                  logger.info('Telemetry complete', { 
                     ...telemetryData, 
                     responseLength: aiMessage.length,
                     completed: true 
@@ -1997,8 +1993,8 @@ VIKTIGT:
             }
           }
         } catch (error) {
-          console.error('Streaming error:', error);
-          console.error('TELEMETRY STREAM ERROR:', { ...telemetryData, error: error.message });
+          logger.error('Streaming error', { message: (error as Error).message });
+          logger.error('Telemetry stream error', { ...telemetryData, error: (error as Error).message });
           controller.error(error);
         }
       }
@@ -2014,7 +2010,7 @@ VIKTIGT:
     });
 
   } catch (error) {
-    console.error('Error in portfolio-ai-chat function:', error);
+    logger.error('Error in portfolio-ai-chat function', { message: (error as Error).message });
     return new Response(
       JSON.stringify({ 
         error: error.message || 'Internal server error',

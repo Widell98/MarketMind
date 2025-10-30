@@ -2,20 +2,17 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { buildCorsHeaders } from "../_shared/cors.ts";
+import { createScopedLogger, generateRequestId } from "../_shared/logger.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-const jsonResponse = (body: Record<string, unknown>, status = 200) =>
+const jsonResponse = (corsHeaders: Record<string, string>, body: Record<string, unknown>, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
-const quotaExceededResponse = () =>
-  jsonResponse({
+const quotaExceededResponse = (corsHeaders: Record<string, string>) =>
+  jsonResponse(corsHeaders, {
     success: false,
     error: 'quota_exceeded',
     message: 'Du har nått din dagliga gräns för OpenAI API-användning. Vänligen kontrollera din fakturering eller försök igen senare.'
@@ -33,14 +30,29 @@ function detectSector(name: string, symbol?: string) {
 }
 
 serve(async (req) => {
+  const requestId = generateRequestId();
+  const { headers: corsHeaders, originAllowed } = buildCorsHeaders(req);
+  const logger = createScopedLogger("GENERATE-PORTFOLIO", requestId);
+
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    if (!originAllowed) {
+      logger.warn('Rejected preflight due to disallowed origin');
+      return new Response('Origin not allowed', { status: 403, headers: corsHeaders });
+    }
+
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  if (!originAllowed) {
+    logger.warn('Blocked request due to disallowed origin');
+    return jsonResponse(corsHeaders, { success: false, error: 'Origin not allowed' }, 403);
   }
 
   try {
+    logger.info('Function started');
     const { riskProfileId, userId, conversationPrompt, conversationData } = await req.json();
 
-    console.log('Generate portfolio request:', {
+    logger.debug('Generate portfolio request', {
       riskProfileId,
       userId,
       hasConversationPrompt: Boolean(conversationPrompt),
@@ -64,11 +76,11 @@ serve(async (req) => {
       .single();
 
     if (riskError || !riskProfile) {
-      console.error('Error fetching risk profile:', riskError);
+      logger.error('Failed to fetch risk profile', { reason: riskError?.message ?? 'not_found' });
       throw new Error('Risk profile not found');
     }
 
-    console.log('Risk profile found:', riskProfile);
+    logger.info('Risk profile loaded', { riskProfileId: riskProfile.id });
 
     // Get existing holdings to avoid duplicates
     const { data: holdings } = await supabase
@@ -518,11 +530,11 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
       try {
         messages.push({ role: 'user', content: `Rå konsultationsdata (JSON):\n${JSON.stringify(conversationData)}` });
       } catch (jsonError) {
-        console.warn('Could not serialize conversationData for OpenAI message:', jsonError);
+        logger.warn('Failed to serialize conversation data', { message: (jsonError as Error).message });
       }
     }
 
-    console.log('Calling OpenAI API with gpt-4o...');
+    logger.info('Calling OpenAI API', { model: 'gpt-4o' });
 
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -540,11 +552,11 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
 
     if (!openAIResponse.ok) {
       const errorText = await openAIResponse.text();
-      console.error('OpenAI API error:', errorText);
+      logger.error('OpenAI API error', { status: openAIResponse.status, bodyPreview: errorText.slice(0, 2000) });
 
       // Handle specific quota exceeded error
       if (openAIResponse.status === 429) {
-        return quotaExceededResponse();
+        return quotaExceededResponse(corsHeaders);
       }
 
       throw new Error(`OpenAI API error: ${openAIResponse.status}`);
@@ -553,18 +565,17 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
     const openAIData = await openAIResponse.json();
     const aiRecommendationsRaw = openAIData.choices?.[0]?.message?.content?.trim() || '';
 
-    console.log('OpenAI full response:', JSON.stringify(openAIData, null, 2));
-    console.log('AI recommendations received:', aiRecommendationsRaw);
+    logger.debug('OpenAI response received', { hasRecommendations: Boolean(aiRecommendationsRaw) });
 
     if (!aiRecommendationsRaw) {
-      console.error('No AI recommendations received from OpenAI');
+      logger.error('Missing AI recommendations from OpenAI');
       throw new Error('No AI response received from OpenAI');
     }
 
     let { plan: structuredPlan, recommendedStocks } = extractStructuredPlan(aiRecommendationsRaw, riskProfile);
 
     if (!structuredPlan || recommendedStocks.length === 0) {
-      console.warn('Structured plan missing, attempting fallback parsing of AI response.');
+      logger.warn('Structured plan missing; attempting fallback parsing');
       const fallbackPlan = buildFallbackPlanFromText(aiRecommendationsRaw, riskProfile);
       if (fallbackPlan) {
         structuredPlan = fallbackPlan.plan;
@@ -573,8 +584,8 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
     }
 
     if (!structuredPlan || recommendedStocks.length === 0) {
-      console.error('AI response was missing structured recommendations even after fallback. Raw output:', aiRecommendationsRaw);
-      return jsonResponse({
+      logger.error('AI response missing structured recommendations after fallback');
+      return jsonResponse(corsHeaders, {
         success: true,
         aiRecommendations: aiRecommendationsRaw,
         aiResponse: aiRecommendationsRaw,
@@ -606,7 +617,7 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
       is_active: true
     };
 
-    console.log('Creating portfolio with data:', portfolioData);
+    logger.debug('Creating portfolio with normalized data');
 
     // Insert portfolio
     const { data: portfolio, error: portfolioError } = await supabase
@@ -616,11 +627,11 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
       .single();
 
     if (portfolioError) {
-      console.error('Error creating portfolio:', portfolioError);
+      logger.error('Failed to create portfolio', { reason: portfolioError.message });
       throw new Error('Failed to create portfolio');
     }
 
-    console.log('Portfolio created successfully:', portfolio.id);
+    logger.info('Portfolio created', { portfolioId: portfolio.id });
 
     // Add recommended stocks to user_holdings as recommendations
     if (recommendedStocks.length > 0) {
@@ -639,23 +650,23 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
         purchase_date: new Date().toISOString().split('T')[0]
       }));
 
-      console.log('Inserting holdings data:', holdingsData);
+      logger.debug('Inserting holdings data', { count: holdingsData.length });
 
       const { error: holdingsError } = await supabase
         .from('user_holdings')
         .insert(holdingsData);
 
       if (holdingsError) {
-        console.error('Error inserting holdings:', holdingsError);
+        logger.warn('Failed to insert holdings', { reason: holdingsError.message });
         // Don't throw error here as portfolio is already created
       } else {
-        console.log('Holdings inserted successfully');
+        logger.debug('Holdings inserted successfully');
       }
     }
 
-    console.log('Returning response with normalized plan:', normalizedResponse.substring(0, 200));
+    logger.info('Returning response', { normalizedPlanLength: normalizedResponse.length });
 
-    return jsonResponse({
+    return jsonResponse(corsHeaders, {
       success: true,
       portfolio: portfolio,
       aiRecommendations: normalizedResponse,
@@ -667,15 +678,15 @@ Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerst�
     });
 
   } catch (error) {
-    console.error('Error in generate-portfolio function:', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error('Error in generate-portfolio function', { message: errorMessage });
 
     // Check if it's a quota-related error
     if (errorMessage.includes('quota') || errorMessage.includes('insufficient_quota')) {
-      return quotaExceededResponse();
+      return quotaExceededResponse(corsHeaders);
     }
 
-    return jsonResponse({
+    return jsonResponse(corsHeaders, {
       success: false,
       error: errorMessage
     }, 500);
@@ -969,8 +980,7 @@ function extractStructuredPlan(rawText: string, riskProfile: any): { plan: any |
       plan,
       recommendedStocks
     };
-  } catch (error) {
-    console.warn('Failed to parse structured plan JSON:', error);
+  } catch (_error) {
     return { plan: null, recommendedStocks: [] };
   }
 }

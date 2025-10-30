@@ -1,11 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { buildCorsHeaders } from "../_shared/cors.ts";
 
 const finnhubApiKey = Deno.env.get("FINNHUB_API_KEY");
 
@@ -19,8 +14,24 @@ interface FinnhubProfileResponse {
 }
 
 serve(async (req) => {
+  const { headers: corsHeaders, originAllowed } = buildCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
+    if (!originAllowed) {
+      return new Response("Origin not allowed", { status: 403, headers: corsHeaders });
+    }
+
     return new Response(null, { headers: corsHeaders });
+  }
+
+  if (!originAllowed) {
+    return new Response(
+      JSON.stringify({ error: "Origin not allowed" }),
+      {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 
   if (!finnhubApiKey) {

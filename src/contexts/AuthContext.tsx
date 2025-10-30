@@ -156,9 +156,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       return { data, error: null };
     } catch (error: any) {
-      // Security logging for failed login attempts
+      // Security logging for failed login attempts without exposing user identifiers
       console.warn('Login attempt failed', {
-        email: email.substring(0, 3) + '***', // Partial email for privacy
         error: error.message,
         timestamp: new Date().toISOString(),
         userAgent: navigator.userAgent,

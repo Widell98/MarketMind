@@ -3,15 +3,37 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://qifolopsdeeyrevbuxfl.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpZm9sb3BzZGVleXJldmJ1eGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5MzY3MjMsImV4cCI6MjA2MzUxMjcyM30.x89y179_8EDl1NwTryhXfUDMzdxrnfomZfRmhmySMhM";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL) {
+  throw new Error('VITE_SUPABASE_URL is not defined. Please configure it in your environment variables.');
+}
+
+if (!SUPABASE_PUBLISHABLE_KEY) {
+  throw new Error('VITE_SUPABASE_ANON_KEY is not defined. Please configure it in your environment variables.');
+}
+
+const memoryStorage = (() => {
+  const store = new Map<string, string>();
+
+  return {
+    getItem: async (key: string) => store.get(key) ?? null,
+    setItem: async (key: string, value: string) => {
+      store.set(key, value);
+    },
+    removeItem: async (key: string) => {
+      store.delete(key);
+    }
+  };
+})();
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
+    storage: memoryStorage,
     persistSession: true,
     autoRefreshToken: true,
   }
