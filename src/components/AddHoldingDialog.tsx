@@ -90,6 +90,10 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     return rawSymbol ? rawSymbol.toUpperCase() : '';
   }, [formData.symbol]);
 
+  const sheetTickerSymbols = useMemo(() => {
+    return new Set(sheetTickers.map((ticker) => ticker.symbol.toUpperCase()));
+  }, [sheetTickers]);
+
   const combinedTickers = useMemo(() => {
     const map = new Map<string, SheetTicker>();
 
@@ -136,6 +140,9 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   }, [combinedTickers]);
 
   const matchedTicker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) ?? null : null;
+  const isSheetManagedTicker = matchedTicker
+    ? sheetTickerSymbols.has(matchedTicker.symbol.toUpperCase())
+    : false;
 
   useEffect(() => {
     const trimmedSymbol = formData.symbol.trim();
@@ -196,13 +203,27 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
   }, [formData.symbol]);
 
   useEffect(() => {
-    if (!normalizedSymbol || !matchedTicker) {
+    if (!normalizedSymbol) {
       setPriceFetchState((prev) => (prev.loading || prev.error ? { loading: false, error: null } : prev));
       return;
     }
 
-    const hasExistingPrice = typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0;
-    const existingFetchedPrice = fetchedPrices[normalizedSymbol];
+    if (isSheetManagedTicker) {
+      setPriceFetchState((prev) => (prev.loading || prev.error ? { loading: false, error: null } : prev));
+      return;
+    }
+
+    const lookupSymbol = matchedTicker?.symbol?.trim().toUpperCase() ?? normalizedSymbol;
+
+    if (!lookupSymbol) {
+      setPriceFetchState((prev) => (prev.loading || prev.error ? { loading: false, error: null } : prev));
+      return;
+    }
+
+    const hasExistingPrice = matchedTicker
+      ? typeof matchedTicker.price === 'number' && Number.isFinite(matchedTicker.price) && matchedTicker.price > 0
+      : false;
+    const existingFetchedPrice = fetchedPrices[lookupSymbol];
 
     if (hasExistingPrice || existingFetchedPrice) {
       setPriceFetchState((prev) => (prev.loading || prev.error ? { loading: false, error: null } : prev));
@@ -215,7 +236,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     (async () => {
       try {
         const { data, error } = await supabase.functions.invoke('get-ticker-price', {
-          body: { symbol: normalizedSymbol },
+          body: { symbol: lookupSymbol },
         });
 
         if (!isActive) {
@@ -228,6 +249,12 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
         const rawPrice = data?.price;
         const rawCurrency = typeof data?.currency === 'string' ? data.currency : null;
+        const resolvedSymbol = typeof data?.symbol === 'string' && data.symbol.trim().length > 0
+          ? data.symbol.trim().toUpperCase()
+          : null;
+        const requestedSymbol = typeof data?.requestedSymbol === 'string' && data.requestedSymbol.trim().length > 0
+          ? data.requestedSymbol.trim().toUpperCase()
+          : null;
 
         if (typeof rawPrice !== 'number' || !Number.isFinite(rawPrice) || rawPrice <= 0) {
           throw new Error('Inget pris kunde hämtas för den valda tickern.');
@@ -235,19 +262,32 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
 
         setFetchedPrices((prev) => {
           const normalizedCurrency = rawCurrency ? rawCurrency.trim().toUpperCase() : null;
-          const existing = prev[normalizedSymbol];
-
-          if (existing && existing.price === rawPrice && existing.currency === normalizedCurrency) {
-            return prev;
+          const keysToUpdate = new Set<string>();
+          keysToUpdate.add(lookupSymbol);
+          if (resolvedSymbol) {
+            keysToUpdate.add(resolvedSymbol);
+          }
+          if (requestedSymbol) {
+            keysToUpdate.add(requestedSymbol);
           }
 
-          return {
-            ...prev,
-            [normalizedSymbol]: {
+          let hasChanges = false;
+          const next = { ...prev };
+
+          keysToUpdate.forEach((key) => {
+            const existing = prev[key];
+            if (existing && existing.price === rawPrice && existing.currency === normalizedCurrency) {
+              return;
+            }
+
+            next[key] = {
               price: rawPrice,
               currency: normalizedCurrency,
-            },
-          };
+            };
+            hasChanges = true;
+          });
+
+          return hasChanges ? next : prev;
         });
 
         setPriceFetchState({ loading: false, error: null });
@@ -265,7 +305,7 @@ const AddHoldingDialog: React.FC<AddHoldingDialogProps> = ({
     return () => {
       isActive = false;
     };
-  }, [normalizedSymbol, matchedTicker, fetchedPrices]);
+  }, [normalizedSymbol, matchedTicker, fetchedPrices, isSheetManagedTicker]);
 
   // Update form data when initialData changes
   useEffect(() => {
