@@ -24,8 +24,8 @@ const translations = {
     'nav.login': 'Logga in',
     
     // Hero section
-    'hero.title1': 'AI som hjälper dig',
-    'hero.title2': 'förstå marknaden bättre',
+    'hero.title1': 'Din AI-partner',
+    'hero.title2': 'för marknadsinsikter och portföljanalys',
     'hero.subtitle': 'Optimera din portfölj, förstå marknaden och få stöd i osäkra tider – enkelt, tryggt, smart.',
     'hero.cta.start': 'Kom igång gratis',
     'hero.cta.demo': 'Se hur det fungerar →',
