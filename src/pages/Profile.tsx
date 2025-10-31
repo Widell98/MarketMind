@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ExportSharingSection from '@/components/ExportSharingSection';
-import { TrendingUp, FileText, Plus, Brain, CreditCard, Share2, Trash2 } from 'lucide-react';
+import { TrendingUp, FileText, Plus, Brain, CreditCard, Share2, Trash2, Loader2 } from 'lucide-react';
 import UserAnalysesSection from '@/components/UserAnalysesSection';
 import SavedOpportunitiesSection from '@/components/SavedOpportunitiesSection';
 import EnhancedProfileHeader from '@/components/EnhancedProfileHeader';
@@ -400,10 +400,17 @@ const Profile = () => {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteAccount}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-lg"
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-lg flex items-center"
               disabled={isDeletingAccount}
             >
-              {isDeletingAccount ? 'Raderar...' : 'Radera konto'}
+              {isDeletingAccount ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Raderar...
+                </>
+              ) : (
+                'Radera konto'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
