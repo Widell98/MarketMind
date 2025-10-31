@@ -19,6 +19,7 @@ export interface ConversationData {
     purchasePrice: number;
     symbol?: string;
     currency?: string;
+    priceCurrency?: string;
   }>;
   age?: number;
   experience?: string;
