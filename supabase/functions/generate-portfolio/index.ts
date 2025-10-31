@@ -430,12 +430,12 @@ Rådgivningsregler:
 
 Regler för preferenser:
 - Om användaren visar intresse för krypto, teknik eller tillväxt: inkludera kryptorelaterade och högbeta-tillgångar i rimlig andel.
-- Om användaren har hållbarhetsfokus: inkludera ESG-fonder och gröna bolag (t.ex. Handelsbanken Hållbar Energi, iShares Clean Energy).
-- Om risktoleransen är konservativ: prioritera investmentbolag, defensiva aktier (Investor, Axfood) och breda indexfonder.
-- Om risktoleransen är balanserad: kombinera svenska fonder, investmentbolag och globala ETF:er.
+- Om användaren har hållbarhetsfokus: inkludera investmentbolag med tydligt hållbarhetsarbete och gröna kvalitetsbolag (t.ex. Latour, Öresund, Boliden, NIBE).
+- Om risktoleransen är konservativ: prioritera investmentbolag, defensiva aktier (Investor, Axfood) och eventuellt räntebärande alternativ.
+- Om risktoleransen är balanserad: kombinera investmentbolag och stabila aktier från Sverige, USA eller andra etablerade marknader med internationell exponering.
 - Om risktoleransen är aggressiv: inkludera tillväxt, småbolag, krypto och innovativa sektorer.
-- Om användaren efterfrågar investmentbolag: inkludera exempelvis Investor, Latour eller Kinnevik.
-- Om kunden vill ha svenska företag: fokusera på OMX-noterade bolag och svenska fonder.
+- Om användaren efterfrågar investmentbolag: inkludera exempelvis Investor, Latour eller Kinnevik samt gärna väletablerade internationella alternativ som Berkshire Hathaway eller Brookfield.
+- Om kunden vill ha svenska företag: fokusera på OMX-noterade bolag och investmentbolag.
 
 Formatkrav:
 - Leverera svaret som giltig JSON utan extra text.
@@ -446,8 +446,8 @@ Formatkrav:
   "next_steps": ["Konkreta råd för nästa steg"],
   "recommended_assets": [
     {
-      "name": "Exakt namn på aktie/fond/ETF",
-      "ticker": "Ticker eller fondkod",
+      "name": "Exakt namn på aktie eller investmentbolag",
+      "ticker": "Ticker",
       "sector": "Sektor",
       "allocation_percent": 0,
       "rationale": "Analys kopplad till användarens mål och risk",
@@ -458,7 +458,7 @@ Formatkrav:
 }
 - Summan av allocation_percent ska vara 100 och varje post måste innehålla analys, portföljroll och tydlig koppling till kundprofilen.
 - Föreslå aldrig identiska portföljer till olika användare och återanvänd inte samma textblock.
-- Ange alltid korrekt ticker eller fondkod för varje rekommendation.
+- Ange alltid korrekt ticker för varje rekommendation.
 - Undvik överdrivna varningar men påminn om risk och att historisk avkastning inte garanterar framtida resultat.
 `;
 
@@ -491,9 +491,9 @@ Erfarenhetsnivå: ${experienceSummary}
 
 ⚙️ Anpassa rekommendationerna:
 - Om användaren gillar krypto eller teknik → inkludera mer risk och tillväxt.
-- Om användaren prioriterar hållbarhet → fokusera på ESG-fonder och gröna bolag.
+- Om användaren prioriterar hållbarhet → fokusera på investmentbolag med hållbarhetsprofil och gröna bolag.
 - Om användaren är konservativ → ge defensiva och stabila innehav.
-- Om användaren är balanserad → kombinera investmentbolag, svenska fonder och globala ETF:er.
+- Om användaren är balanserad → kombinera investmentbolag och stabila bolag från Sverige, USA eller andra etablerade marknader tillsammans med internationella kvalitetsaktier.
 - Om användaren är aggressiv → inkludera tillväxtaktier, krypto och innovativa ETF:er.
 
 Svara ENDAST med giltig JSON enligt formatet i systeminstruktionen och säkerställ att all text är på svenska.`;
@@ -857,12 +857,12 @@ function fallbackActionSummary(riskProfile: any): string {
 function fallbackRiskAlignment(riskProfile: any): string {
   const tolerance = (riskProfile?.risk_tolerance || 'moderate').toLowerCase();
   if (tolerance === 'conservative') {
-    return 'Tyngdpunkten ligger på stabila fonder och kvalitetsbolag med lägre volatilitet för att skydda kapitalet samtidigt som tillväxtpotential finns kvar.';
+    return 'Tyngdpunkten ligger på stabila investmentbolag och kvalitetsbolag med lägre volatilitet för att skydda kapitalet samtidigt som tillväxtpotential finns kvar.';
   }
   if (tolerance === 'aggressive') {
-    return 'Portföljen kombinerar basfonder med offensiva tillväxtbolag så att du får högre avkastningspotential men med tillräcklig riskspridning.';
+    return 'Portföljen kombinerar basinvestmentbolag med offensiva tillväxtbolag så att du får högre avkastningspotential men med tillräcklig riskspridning.';
   }
-  return 'Mixen av breda indexfonder och selektiva kvalitetsbolag ger en balanserad risk där både stabilitet och tillväxt vägs in.';
+  return 'Mixen av ledande investmentbolag och selektiva kvalitetsbolag ger en balanserad risk där både stabilitet och tillväxt vägs in.';
 }
 
 function determineRiskRole(stock: { sector?: string }, riskProfile: any): string {

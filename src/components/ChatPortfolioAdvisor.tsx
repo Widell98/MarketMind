@@ -608,7 +608,7 @@ const ChatPortfolioAdvisor = () => {
       hasOptions: true,
       options: [
         { value: 'stocks', label: 'Aktier' },
-        { value: 'funds_etfs', label: 'Fonder/ETF:er' },
+        { value: 'investment_companies', label: 'Investmentbolag' },
         { value: 'crypto', label: 'Kryptovalutor' },
         { value: 'commodities', label: 'Råvaror (t.ex. guld, olja)' }
       ]
@@ -680,9 +680,9 @@ const ChatPortfolioAdvisor = () => {
       showIf: () => conversationData.isBeginnerInvestor === true,
       options: [
         { value: 'step_by_step', label: 'Komma igång steg-för-steg' },
-        { value: 'learn_basics', label: 'Lära mig grunderna om aktier & fonder' },
+        { value: 'learn_basics', label: 'Lära mig grunderna om aktier & investmentbolag' },
         { value: 'starter_portfolio', label: 'Få förslag på en enkel startportfölj' },
-        { value: 'investment_inspiration', label: 'Inspiration till olika investeringstyper (aktier, fonder, krypto m.m.)' }
+        { value: 'investment_inspiration', label: 'Inspiration till olika investeringstyper (aktier, investmentbolag, krypto m.m.)' }
       ]
     },
     {
