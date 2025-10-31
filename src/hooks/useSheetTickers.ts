@@ -9,6 +9,7 @@ export type SheetTicker = {
   price: number | null;
   currency: string | null;
   source?: SheetTickerSource | null;
+  holdingType?: string | null;
 };
 
 export type RawSheetTicker = {
@@ -17,6 +18,7 @@ export type RawSheetTicker = {
   price?: number | null;
   currency?: string | null;
   source?: SheetTickerSource | null;
+  holdingType?: string | null;
 };
 
 export const sanitizeSheetTickerList = (
@@ -46,12 +48,17 @@ export const sanitizeSheetTickerList = (
         : null;
       const resolvedSource = item.source ?? defaultSource ?? null;
 
+      const resolvedHoldingType = typeof item.holdingType === 'string' && item.holdingType.trim().length > 0
+        ? item.holdingType.trim().toLowerCase()
+        : null;
+
       return {
         symbol: normalizedSymbol,
         name: resolvedName,
         price: resolvedPrice,
         currency: resolvedCurrency,
         source: resolvedSource,
+        holdingType: resolvedHoldingType,
       };
     })
     .filter((item): item is SheetTicker => item !== null);

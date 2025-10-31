@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { fetchYahooFundQuote } from "../_shared/fund-provider.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -208,6 +209,7 @@ serve(async (req) => {
       }
 
       query = query.neq("holding_type", "cash");
+      query = query.neq("holding_type", "fund");
 
       if (symbolVariants.length > 0 && namePattern) {
         query.or(
@@ -263,6 +265,112 @@ serve(async (req) => {
           errors++;
         } else updated++;
       }
+    }
+
+    try {
+      let fundQuery = supabase
+        .from("user_holdings")
+        .select("id, symbol, name, quantity, holding_type");
+
+      if (!isServiceRequest && userId) {
+        fundQuery = fundQuery.eq("user_id", userId);
+      }
+
+      fundQuery = fundQuery.eq("holding_type", "fund");
+
+      if (requestedTicker) {
+        fundQuery = fundQuery.ilike("symbol", requestedTicker);
+      }
+
+      const { data: fundHoldings, error: fundSelectErr } = await fundQuery;
+
+      if (fundSelectErr) {
+        console.error("Error selecting fund holdings:", fundSelectErr);
+        errors++;
+      } else if (fundHoldings && fundHoldings.length > 0) {
+        const holdingsBySymbol = new Map<string, typeof fundHoldings>();
+
+        for (const holding of fundHoldings) {
+          const normalizedSymbol = normalizeSymbol(holding.symbol);
+          if (!normalizedSymbol) {
+            unmatched.push({ symbol: holding.symbol ?? undefined, name: holding.name ?? undefined });
+            continue;
+          }
+
+          const existing = holdingsBySymbol.get(normalizedSymbol) ?? [];
+          existing.push(holding);
+          holdingsBySymbol.set(normalizedSymbol, existing);
+        }
+
+        for (const [symbol, groupedHoldings] of holdingsBySymbol.entries()) {
+          try {
+            const quote = await fetchYahooFundQuote(symbol);
+
+            if (!quote || quote.price === null) {
+              unmatched.push({ symbol, name: groupedHoldings[0]?.name ?? undefined });
+              console.warn(`No price found for fund ${symbol}`);
+              continue;
+            }
+
+            const pricePerUnit = quote.price;
+            const priceCurrency = quote.currency ?? "SEK";
+            const pricePerUnitInSEK = priceCurrency === "SEK"
+              ? pricePerUnit
+              : convertToSEK(pricePerUnit, priceCurrency);
+
+            if (requestedTicker && !processedRequestedTicker) {
+              const fundVariants = getSymbolVariants(symbol, symbol);
+              if (fundVariants.some((variant) => variant === requestedTicker)) {
+                processedRequestedTicker = true;
+              }
+            }
+
+            for (const holding of groupedHoldings) {
+              const q = Number.isFinite(holding.quantity)
+                ? holding.quantity
+                : parseFloat(String(holding.quantity ?? "").replace(",", "."));
+              const quantity = Number.isFinite(q) ? q : 0;
+              const computedValue =
+                pricePerUnitInSEK !== null && Number.isFinite(quantity)
+                  ? quantity * pricePerUnitInSEK
+                  : quantity === 0
+                    ? 0
+                    : null;
+
+              const payload: Record<string, unknown> = {
+                current_price_per_unit: pricePerUnit,
+                price_currency: priceCurrency,
+                updated_at: timestamp,
+              };
+
+              if (computedValue !== null) {
+                payload.current_value = computedValue;
+              }
+
+              const { error: updateErr } = await supabase
+                .from("user_holdings")
+                .update(payload)
+                .eq("id", holding.id);
+
+              if (updateErr) {
+                console.error(`Error updating fund holding ${holding.id}:`, updateErr);
+                errors++;
+              } else {
+                updated++;
+              }
+            }
+          } catch (fundErr) {
+            console.error(`Error updating fund ${symbol}:`, fundErr);
+            errors++;
+            unmatched.push({ symbol, name: groupedHoldings[0]?.name ?? undefined });
+          }
+        }
+      } else if (requestedTicker) {
+        console.warn(`No fund holdings matched ticker ${requestedTicker}`);
+      }
+    } catch (fundProcessingError) {
+      console.error("Unexpected error when processing fund holdings:", fundProcessingError);
+      errors++;
     }
 
     return new Response(
