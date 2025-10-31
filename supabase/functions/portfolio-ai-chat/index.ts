@@ -37,7 +37,6 @@ const REALTIME_KEYWORDS = [
 const TRUSTED_TAVILY_DOMAINS = [
   'di.se',
   'affarsvarlden.se',
-  'placera.se',
   'reuters.com',
   'bloomberg.com',
   'ft.com',
