@@ -884,10 +884,38 @@ const ChatPortfolioAdvisor = () => {
     if (/(name|namn|företag|company|bolag)/.test(normalized)) return 'name' as const;
     if (/(symbol|ticker|kortnamn|isin)/.test(normalized)) return 'symbol' as const;
     if (/(quantity|antal|shares|mängd|aktier|innehav)/.test(normalized)) return 'quantity' as const;
-    if (/(purchase|köppris|pris|inköpspris|cost|avg)/.test(normalized)) return 'purchasePrice' as const;
+    if (/(purchase|köppris|pris|inköpspris|cost|avg|kurs)/.test(normalized)) return 'purchasePrice' as const;
     if (/(currency|valuta)/.test(normalized)) return 'currency' as const;
 
     return null;
+  };
+
+  const extractCurrencyFromHeader = (header: string) => {
+    const upper = header.toUpperCase();
+
+    const explicitMatch = upper.match(/\b([A-Z]{3})\b/);
+    if (explicitMatch) {
+      return explicitMatch[1];
+    }
+
+    if (/SEK|KRON/iu.test(upper)) return 'SEK';
+    if (/USD|DOLLAR/iu.test(upper)) return 'USD';
+    if (/EUR|EURO/iu.test(upper)) return 'EUR';
+    if (/GBP|POUND/iu.test(upper)) return 'GBP';
+    if (/NOK/iu.test(upper)) return 'NOK';
+    if (/DKK/iu.test(upper)) return 'DKK';
+
+    return undefined;
+  };
+
+  const inferCurrencyFromSymbol = (symbolRaw: string) => {
+    const symbol = symbolRaw.trim().toUpperCase();
+    if (symbol.endsWith('.ST')) return 'SEK';
+    if (symbol.endsWith('.OL')) return 'NOK';
+    if (symbol.endsWith('.CO')) return 'DKK';
+    if (symbol.endsWith('.HE')) return 'EUR';
+    if (symbol.endsWith('.L')) return 'GBP';
+    return undefined;
   };
 
   const parseHoldingsFromCSV = useCallback(
@@ -920,14 +948,21 @@ const ChatPortfolioAdvisor = () => {
       }
 
       const mappedHeaders = headerParts.map(part => normalizeHeader(part));
+      const headerCurrencyHints = headerParts.map(part => extractCurrencyFromHeader(part));
       const hasHeaderRow = mappedHeaders.some(Boolean);
 
-      const columnIndex: Partial<Record<'name' | 'symbol' | 'quantity' | 'purchasePrice' | 'currency', number>> = {};
+      const columnIndices: Record<'name' | 'symbol' | 'quantity' | 'purchasePrice' | 'currency', number[]> = {
+        name: [],
+        symbol: [],
+        quantity: [],
+        purchasePrice: [],
+        currency: []
+      };
 
       if (hasHeaderRow) {
         mappedHeaders.forEach((field, index) => {
           if (field) {
-            columnIndex[field] = index;
+            columnIndices[field].push(index);
           }
         });
       } else {
@@ -940,7 +975,7 @@ const ChatPortfolioAdvisor = () => {
         ];
         headerParts.forEach((_, index) => {
           if (index < defaultOrder.length) {
-            columnIndex[defaultOrder[index]] = index;
+            columnIndices[defaultOrder[index]].push(index);
           }
         });
       }
@@ -954,18 +989,69 @@ const ChatPortfolioAdvisor = () => {
 
         const parts = line.split(delimiter).map(part => part.replace(/^"|"$/g, '').trim());
         const getValue = (field: 'name' | 'symbol' | 'quantity' | 'purchasePrice' | 'currency') => {
-          const index = columnIndex[field];
-          return typeof index === 'number' ? parts[index] ?? '' : '';
+          const indices = columnIndices[field];
+          if (!indices || indices.length === 0) {
+            return '';
+          }
+
+          for (const index of indices) {
+            if (typeof index !== 'number') continue;
+            const value = parts[index];
+            if (typeof value === 'string' && value.trim().length > 0) {
+              return value;
+            }
+          }
+
+          const [firstIndex] = indices;
+          return typeof firstIndex === 'number' ? parts[firstIndex] ?? '' : '';
         };
+
+        const quantityIndices = columnIndices.quantity;
+        let quantity = NaN;
+        for (const index of quantityIndices) {
+          if (typeof index !== 'number') continue;
+          const raw = parts[index] ?? '';
+          const parsed = parseLocaleNumber(raw);
+          if (Number.isFinite(parsed) && parsed > 0) {
+            quantity = parsed;
+            break;
+          }
+        }
+
+        const purchasePriceCandidates = columnIndices.purchasePrice;
+        let purchasePrice = NaN;
+        let priceCurrencyHint: string | undefined;
+        for (const index of purchasePriceCandidates) {
+          if (typeof index !== 'number') continue;
+          const raw = parts[index] ?? '';
+          const parsed = parseLocaleNumber(raw);
+
+          if (Number.isFinite(parsed) && parsed > 0) {
+            purchasePrice = parsed;
+            priceCurrencyHint = headerCurrencyHints[index];
+            break;
+          }
+        }
+
+        if (Number.isNaN(quantity)) {
+          const fallbackRaw = getValue('quantity');
+          const fallbackParsed = parseLocaleNumber(fallbackRaw);
+          if (Number.isFinite(fallbackParsed) && fallbackParsed > 0) {
+            quantity = fallbackParsed;
+          }
+        }
+
+        if (Number.isNaN(purchasePrice)) {
+          const fallbackRaw = getValue('purchasePrice');
+          const fallbackParsed = parseLocaleNumber(fallbackRaw);
+          if (Number.isFinite(fallbackParsed) && fallbackParsed > 0) {
+            purchasePrice = fallbackParsed;
+          }
+        }
 
         const nameRaw = getValue('name');
         const symbolRaw = getValue('symbol');
-        const quantityRaw = getValue('quantity');
-        const purchasePriceRaw = getValue('purchasePrice');
         const currencyRaw = getValue('currency');
-
-        const quantity = parseLocaleNumber(quantityRaw);
-        const purchasePrice = parseLocaleNumber(purchasePriceRaw);
 
         const hasValidQuantity = Number.isFinite(quantity) && quantity > 0;
         const hasValidPrice = Number.isFinite(purchasePrice) && purchasePrice > 0;
@@ -975,9 +1061,18 @@ const ChatPortfolioAdvisor = () => {
           continue;
         }
 
-        const resolvedCurrency = currencyRaw
-          ? currencyRaw.replace(/[^a-zA-Z]/g, '').toUpperCase() || 'SEK'
-          : 'SEK';
+        const resolvedCurrency = (() => {
+          const currencyFromValue = currencyRaw
+            ? currencyRaw.replace(/[^a-zA-Z]/g, '').toUpperCase() || undefined
+            : undefined;
+          const inferredFromSymbol = inferCurrencyFromSymbol(symbolRaw);
+          return (
+            currencyFromValue ||
+            priceCurrencyHint ||
+            inferredFromSymbol ||
+            'SEK'
+          );
+        })();
 
         parsedHoldings.push(
           createHolding({
