@@ -22,6 +22,7 @@ import {
   Plus,
   Trash2,
   Check,
+  Upload,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationalPortfolio, type ConversationData } from '@/hooks/useConversationalPortfolio';
@@ -198,6 +199,16 @@ const ChatPortfolioAdvisor = () => {
   const [dynamicTickers, setDynamicTickers] = useState<SheetTicker[]>([]);
   const [finnhubPriceCache, setFinnhubPriceCache] = useState<Record<string, { price: number; currency: string | null }>>({});
   const symbolLookupTimeouts = useRef<Map<string, number>>(new Map());
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isImportingHoldings, setIsImportingHoldings] = useState(false);
+
+  const generateHoldingId = useCallback(() => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  }, []);
 
   const priceFormatter = useMemo(
     () => new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
@@ -818,19 +829,371 @@ const ChatPortfolioAdvisor = () => {
     setMessages(prev => [...prev, message]);
   };
 
-  const addHolding = () => {
-    const newHolding: Holding = {
-      id: Date.now().toString(),
+  const createHolding = useCallback(
+    (overrides: Partial<Holding> = {}): Holding => ({
+      id: generateHoldingId(),
       name: '',
       symbol: '',
       quantity: 0,
       purchasePrice: 0,
       nameManuallyEdited: false,
       priceManuallyEdited: false,
-      currency: 'SEK'
-    };
+      currency: 'SEK',
+      ...overrides
+    }),
+    [generateHoldingId]
+  );
+
+  const addHolding = () => {
+    const newHolding = createHolding();
     setHoldings(prev => [...prev, newHolding]);
   };
+
+  const parseLocaleNumber = (value: string) => {
+    const sanitized = value
+      .replace(/\s+/g, '')
+      .replace(/[^0-9,\.\-]/g, '')
+      .replace(/kr/gi, '')
+      .replace(/\u00a0/g, '');
+
+    if (!sanitized) {
+      return NaN;
+    }
+
+    let normalized = sanitized;
+
+    const hasComma = sanitized.includes(',');
+    const hasDot = sanitized.includes('.');
+
+    if (hasComma && hasDot) {
+      // Assume dot as thousands separator and comma as decimal separator
+      normalized = sanitized.replace(/\./g, '').replace(/,/g, '.');
+    } else if (hasComma) {
+      normalized = sanitized.replace(/,/g, '.');
+    }
+
+    const parsed = Number.parseFloat(normalized);
+    return Number.isFinite(parsed) ? parsed : NaN;
+  };
+
+  const normalizeHeader = (header: string) => {
+    const normalized = header.trim().toLowerCase();
+
+    if (!normalized) return null;
+
+    if (/(symbol|ticker)/.test(normalized)) return 'symbol' as const;
+    if (/(kortnamn)/.test(normalized)) return 'symbol' as const;
+    if (/(isin)/.test(normalized)) return 'symbol' as const;
+    if (/(name|namn|företag|company|bolag)/.test(normalized) && !/kortnamn/.test(normalized)) {
+      return 'name' as const;
+    }
+    if (/(quantity|antal|shares|mängd|aktier|innehav|volym|volume)/.test(normalized)) return 'quantity' as const;
+    if (/(purchase|köppris|pris|inköpspris|cost|avg|gav|kurs)/.test(normalized)) return 'purchasePrice' as const;
+    if (/(currency|valuta)/.test(normalized)) return 'currency' as const;
+
+    return null;
+  };
+
+  const extractCurrencyFromHeader = (header: string) => {
+    const upper = header.toUpperCase();
+
+    const explicitMatch = upper.match(/\b([A-Z]{3})\b/);
+    if (explicitMatch) {
+      return explicitMatch[1];
+    }
+
+    if (/SEK|KRON/iu.test(upper)) return 'SEK';
+    if (/USD|DOLLAR/iu.test(upper)) return 'USD';
+    if (/EUR|EURO/iu.test(upper)) return 'EUR';
+    if (/GBP|POUND/iu.test(upper)) return 'GBP';
+    if (/NOK/iu.test(upper)) return 'NOK';
+    if (/DKK/iu.test(upper)) return 'DKK';
+
+    return undefined;
+  };
+
+  const inferCurrencyFromSymbol = (symbolRaw: string) => {
+    const symbol = symbolRaw.trim().toUpperCase();
+    if (symbol.endsWith('.ST')) return 'SEK';
+    if (symbol.endsWith('.OL')) return 'NOK';
+    if (symbol.endsWith('.CO')) return 'DKK';
+    if (symbol.endsWith('.HE')) return 'EUR';
+    if (symbol.endsWith('.L')) return 'GBP';
+    return undefined;
+  };
+
+  const isLikelyISIN = (value: string) => {
+    const normalized = value.trim().toUpperCase();
+    return /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(normalized);
+  };
+
+  const parseHoldingsFromCSV = useCallback(
+    (text: string): Holding[] => {
+      const sanitizedText = text.replace(/\uFEFF/g, '');
+
+      const lines = sanitizedText
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+      if (lines.length === 0) {
+        return [];
+      }
+
+      const detectDelimiter = (line: string) => {
+        const semicolonCount = (line.match(/;/g) || []).length;
+        const commaCount = (line.match(/,/g) || []).length;
+        if (semicolonCount === 0 && commaCount === 0) {
+          return ',';
+        }
+        return semicolonCount >= commaCount ? ';' : ',';
+      };
+
+      const headerLine = lines[0];
+      let delimiter = detectDelimiter(headerLine);
+      let headerParts = headerLine
+        .split(delimiter)
+        .map(part => part.replace(/^"|"$/g, '').replace(/^\uFEFF/, ''));
+
+      if (headerParts.length === 1 && delimiter === ',' && headerLine.includes(';')) {
+        delimiter = ';';
+        headerParts = headerLine.split(delimiter).map(part => part.replace(/^"|"$/g, ''));
+      }
+
+      const mappedHeaders = headerParts.map(part => normalizeHeader(part));
+      const headerCurrencyHints = headerParts.map(part => extractCurrencyFromHeader(part));
+      const hasHeaderRow = mappedHeaders.some(Boolean);
+
+      const columnIndices: Record<'name' | 'symbol' | 'quantity' | 'purchasePrice' | 'currency', number[]> = {
+        name: [],
+        symbol: [],
+        quantity: [],
+        purchasePrice: [],
+        currency: []
+      };
+
+      if (hasHeaderRow) {
+        mappedHeaders.forEach((field, index) => {
+          if (field) {
+            columnIndices[field].push(index);
+          }
+        });
+      } else {
+        const defaultOrder: Array<'name' | 'symbol' | 'quantity' | 'purchasePrice' | 'currency'> = [
+          'name',
+          'symbol',
+          'quantity',
+          'purchasePrice',
+          'currency'
+        ];
+        headerParts.forEach((_, index) => {
+          if (index < defaultOrder.length) {
+            columnIndices[defaultOrder[index]].push(index);
+          }
+        });
+      }
+
+      const startIndex = hasHeaderRow ? 1 : 0;
+      const parsedHoldings: Holding[] = [];
+
+      for (let i = startIndex; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line) continue;
+
+        const parts = line
+          .split(delimiter)
+          .map(part => part.replace(/^"|"$/g, '').replace(/^\uFEFF/, '').trim());
+        const getValue = (field: 'name' | 'symbol' | 'quantity' | 'purchasePrice' | 'currency') => {
+          const indices = columnIndices[field];
+          if (!indices || indices.length === 0) {
+            return '';
+          }
+
+          for (const index of indices) {
+            if (typeof index !== 'number') continue;
+            const value = parts[index];
+            if (typeof value === 'string' && value.trim().length > 0) {
+              return value;
+            }
+          }
+
+          const [firstIndex] = indices;
+          return typeof firstIndex === 'number' ? parts[firstIndex] ?? '' : '';
+        };
+
+        const quantityIndices = columnIndices.quantity;
+        let quantity = NaN;
+        for (const index of quantityIndices) {
+          if (typeof index !== 'number') continue;
+          const raw = parts[index] ?? '';
+          const parsed = parseLocaleNumber(raw);
+          if (Number.isFinite(parsed) && parsed > 0) {
+            quantity = parsed;
+            break;
+          }
+        }
+
+        const purchasePriceCandidates = columnIndices.purchasePrice;
+        let purchasePrice = NaN;
+        let priceCurrencyHint: string | undefined;
+        for (const index of purchasePriceCandidates) {
+          if (typeof index !== 'number') continue;
+          const raw = parts[index] ?? '';
+          const parsed = parseLocaleNumber(raw);
+
+          if (Number.isFinite(parsed) && parsed > 0) {
+            purchasePrice = parsed;
+            priceCurrencyHint = headerCurrencyHints[index];
+            break;
+          }
+        }
+
+        if (Number.isNaN(quantity)) {
+          const fallbackRaw = getValue('quantity');
+          const fallbackParsed = parseLocaleNumber(fallbackRaw);
+          if (Number.isFinite(fallbackParsed) && fallbackParsed > 0) {
+            quantity = fallbackParsed;
+          }
+        }
+
+        if (Number.isNaN(purchasePrice)) {
+          const fallbackRaw = getValue('purchasePrice');
+          const fallbackParsed = parseLocaleNumber(fallbackRaw);
+          if (Number.isFinite(fallbackParsed) && fallbackParsed > 0) {
+            purchasePrice = fallbackParsed;
+          }
+        }
+
+        const nameRaw = getValue('name');
+        const symbolRaw = (() => {
+          const indices = columnIndices.symbol;
+          if (!indices || indices.length === 0) {
+            return '';
+          }
+
+          let fallback = '';
+          for (const index of indices) {
+            if (typeof index !== 'number') continue;
+            const raw = parts[index];
+            if (typeof raw !== 'string') continue;
+            const trimmed = raw.trim();
+            if (!trimmed) continue;
+
+            if (!isLikelyISIN(trimmed)) {
+              return trimmed;
+            }
+
+            if (!fallback) {
+              fallback = trimmed;
+            }
+          }
+
+          return fallback;
+        })();
+        const currencyRaw = getValue('currency');
+
+        const hasValidQuantity = Number.isFinite(quantity) && quantity > 0;
+        const hasValidPrice = Number.isFinite(purchasePrice) && purchasePrice > 0;
+        const hasNameOrSymbol = Boolean(nameRaw.trim() || symbolRaw.trim());
+
+        if (!hasValidQuantity || !hasValidPrice || !hasNameOrSymbol) {
+          continue;
+        }
+
+        const resolvedCurrency = (() => {
+          const currencyFromValue = currencyRaw
+            ? currencyRaw.replace(/[^a-zA-Z]/g, '').toUpperCase() || undefined
+            : undefined;
+          const inferredFromSymbol = inferCurrencyFromSymbol(symbolRaw);
+          return (
+            currencyFromValue ||
+            priceCurrencyHint ||
+            inferredFromSymbol ||
+            'SEK'
+          );
+        })();
+
+        parsedHoldings.push(
+          createHolding({
+            name: nameRaw.trim() || symbolRaw.trim().toUpperCase(),
+            symbol: symbolRaw.trim().toUpperCase(),
+            quantity,
+            purchasePrice,
+            nameManuallyEdited: true,
+            priceManuallyEdited: true,
+            currency: resolvedCurrency
+          })
+        );
+      }
+
+      return parsedHoldings;
+    },
+    [createHolding]
+  );
+
+  const handleHoldingsFileUpload = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) {
+        return;
+      }
+
+      setIsImportingHoldings(true);
+
+      const resetInput = () => {
+        if (event.target) {
+          event.target.value = '';
+        }
+      };
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const text = typeof reader.result === 'string' ? reader.result : '';
+
+          const parsed = parseHoldingsFromCSV(text);
+
+          if (!parsed.length) {
+            throw new Error('Kunde inte tolka några innehav från CSV-filen. Kontrollera formatet.');
+          }
+
+          setHoldings(parsed);
+          toast({
+            title: 'Innehav importerade',
+            description: `${parsed.length} innehav har laddats in från din CSV-fil.`,
+          });
+        } catch (error) {
+          console.error('Failed to parse holdings CSV:', error);
+          toast({
+            title: 'Fel vid import',
+            description: error instanceof Error ? error.message : 'Kunde inte läsa CSV-filen. Försök igen.',
+            variant: 'destructive',
+          });
+        } finally {
+          setIsImportingHoldings(false);
+          resetInput();
+        }
+      };
+
+      reader.onerror = () => {
+        console.error('File reading error');
+        toast({
+          title: 'Fel vid import',
+          description: 'Kunde inte läsa CSV-filen. Försök igen.',
+          variant: 'destructive',
+        });
+        setIsImportingHoldings(false);
+        resetInput();
+      };
+
+      reader.readAsText(file);
+    },
+    [parseHoldingsFromCSV, toast]
+  );
+
+  const openHoldingsFileDialog = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
 
   const handleHoldingNameChange = (id: string, value: string) => {
     setHoldings(prev =>
@@ -1128,18 +1491,7 @@ const ChatPortfolioAdvisor = () => {
           true
         );
         setShowHoldingsInput(true);
-        setHoldings([
-          {
-            id: '1',
-            name: '',
-            symbol: '',
-            quantity: 0,
-            purchasePrice: 0,
-            nameManuallyEdited: false,
-            priceManuallyEdited: false,
-            currency: 'SEK'
-          }
-        ]);
+        setHoldings([createHolding()]);
       }, 1000);
 
       prepareQuestionForAnswer(null);
@@ -1866,6 +2218,9 @@ const ChatPortfolioAdvisor = () => {
                               <Check className="w-4 h-4 text-green-600" />
                               Fyll i dina innehav nedan. Symbol/ticker är valfritt men rekommenderat för bättre analys.
                             </p>
+                            <p className="text-xs text-muted-foreground">
+                              Du kan också importera en CSV-fil med kolumnerna namn, symbol, antal, köppris och valuta.
+                            </p>
                             {tickersLoading && (
                               <p className="text-xs text-muted-foreground">Hämtar tickerlista från Google Sheets...</p>
                             )}
@@ -1981,8 +2336,25 @@ const ChatPortfolioAdvisor = () => {
                               </div>
                             </div>
                           )}
-                          
+
                           <div className="flex gap-2 flex-wrap">
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept=".csv,text/csv"
+                              className="hidden"
+                              onChange={handleHoldingsFileUpload}
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={openHoldingsFileDialog}
+                              disabled={isImportingHoldings}
+                              className="flex items-center gap-1 text-xs sm:text-sm"
+                            >
+                              <Upload className="w-3 h-3" />
+                              {isImportingHoldings ? 'Importerar...' : 'Importera CSV'}
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
