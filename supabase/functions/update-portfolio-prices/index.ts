@@ -1,7 +1,97 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import { fetchYahooFundQuote } from "../_shared/fund-provider.ts";
+
+interface FundQuoteResult {
+  symbol: string;
+  name: string;
+  price: number;
+  currency: string | null;
+}
+
+const YAHOO_QUOTE_ENDPOINT = "https://query1.finance.yahoo.com/v7/finance/quote";
+
+const YAHOO_HEADERS = {
+  "User-Agent": "MarketMindFundSearch/1.0",
+  Accept: "application/json",
+};
+
+const normalizeFundSymbol = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed.toUpperCase() : null;
+};
+
+const normalizeFundName = (value: unknown, fallbackSymbol: string): string => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.length > 0) {
+      return trimmed;
+    }
+  }
+  return fallbackSymbol;
+};
+
+const normalizeFundCurrency = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed.toUpperCase() : null;
+};
+
+const normalizeFundPrice = (value: unknown): number | null => {
+  if (typeof value !== "number") return null;
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return value;
+};
+
+const fetchYahooFundQuote = async (symbol: string): Promise<FundQuoteResult | null> => {
+  const normalizedSymbol = normalizeFundSymbol(symbol);
+  if (!normalizedSymbol) {
+    return null;
+  }
+
+  const params = new URLSearchParams({
+    symbols: normalizedSymbol,
+  });
+
+  const response = await fetch(`${YAHOO_QUOTE_ENDPOINT}?${params.toString()}`, {
+    headers: YAHOO_HEADERS,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Yahoo Finance quote request failed: ${response.status} ${response.statusText}`);
+  }
+
+  const json = await response.json();
+  const quote = json?.quoteResponse?.result && Array.isArray(json.quoteResponse.result)
+    ? json.quoteResponse.result[0]
+    : null;
+
+  if (!quote || typeof quote !== "object") {
+    return null;
+  }
+
+  const price = normalizeFundPrice((quote as Record<string, unknown>).regularMarketPrice);
+  const currency = normalizeFundCurrency((quote as Record<string, unknown>).currency);
+
+  if (price === null) {
+    return null;
+  }
+
+  const name = normalizeFundName(
+    typeof quote.shortName === "string" && quote.shortName.trim().length > 0
+      ? quote.shortName
+      : quote.longName,
+    normalizedSymbol,
+  );
+
+  return {
+    symbol: normalizedSymbol,
+    name,
+    price,
+    currency,
+  };
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
