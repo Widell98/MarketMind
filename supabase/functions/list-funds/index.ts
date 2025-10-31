@@ -81,14 +81,23 @@ const searchYahooFunds = async (query: string): Promise<FundSearchResult[]> => {
 
     const quoteType = typeof quote.quoteType === "string" ? quote.quoteType.toUpperCase() : "";
     const typeDisplay = typeof quote.typeDisp === "string" ? quote.typeDisp.toUpperCase() : "";
-    const isFund = quoteType === "MUTUALFUND" || typeDisplay.includes("FUND");
+    const isFund =
+      quoteType === "MUTUALFUND" ||
+      quoteType === "ETF" ||
+      typeDisplay.includes("FUND");
 
     if (!isFund) continue;
 
     seen.add(symbol);
 
-    const price = normalizePrice((quote as Record<string, unknown>).regularMarketPrice);
-    const currency = normalizeCurrency((quote as Record<string, unknown>).currency);
+    const price =
+      normalizePrice((quote as Record<string, unknown>).regularMarketPrice) ??
+      normalizePrice((quote as Record<string, unknown>).regularMarketPreviousClose);
+    const exchange =
+      typeof quote.exchange === "string" ? quote.exchange.trim().toUpperCase() : "";
+    const currency =
+      normalizeCurrency((quote as Record<string, unknown>).currency) ??
+      (exchange === "LSE" ? "GBP" : exchange === "STO" ? "SEK" : null);
     const name = normalizeName(
       typeof quote.shortname === "string" && quote.shortname.trim().length > 0
         ? quote.shortname

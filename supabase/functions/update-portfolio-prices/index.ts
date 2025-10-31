@@ -71,8 +71,14 @@ const fetchYahooFundQuote = async (symbol: string): Promise<FundQuoteResult | nu
     return null;
   }
 
-  const price = normalizeFundPrice((quote as Record<string, unknown>).regularMarketPrice);
-  const currency = normalizeFundCurrency((quote as Record<string, unknown>).currency);
+  const price =
+    normalizeFundPrice((quote as Record<string, unknown>).regularMarketPrice) ??
+    normalizeFundPrice((quote as Record<string, unknown>).regularMarketPreviousClose);
+  const exchange =
+    typeof quote.exchange === "string" ? quote.exchange.trim().toUpperCase() : "";
+  const currency =
+    normalizeFundCurrency((quote as Record<string, unknown>).currency) ??
+    (exchange === "LSE" ? "GBP" : exchange === "STO" ? "SEK" : null);
 
   if (price === null) {
     return null;
