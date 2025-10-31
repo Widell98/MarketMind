@@ -337,7 +337,7 @@ export const useConversationalPortfolio = () => {
       find_new_investments: 'Hitta nya intressanta investeringar',
       learn_more: 'Lära mig mer om investeringar',
       step_by_step: 'Komma igång steg-för-steg',
-      learn_basics: 'Lära mig grunderna om aktier & fonder',
+      learn_basics: 'Lära mig grunderna om aktier & investmentbolag',
       starter_portfolio: 'Få förslag på en enkel startportfölj',
       investment_inspiration: 'Inspiration till olika investeringstyper',
     });
@@ -355,7 +355,7 @@ export const useConversationalPortfolio = () => {
 
     const preferredAssetsText = mapValue(conversationData.preferredAssets, {
       stocks: 'Aktier',
-      funds_etfs: 'Fonder/ETF:er',
+      investment_companies: 'Investmentbolag',
       crypto: 'Kryptovalutor',
       commodities: 'Råvaror (t.ex. guld, olja)',
     }) ?? conversationData.preferredAssets;
@@ -545,23 +545,23 @@ NYBÖRJARE - UTFÖRLIG EKONOMISK PROFIL:`;
 
 UPPDRAG FÖR NYBÖRJARE:
 1. Skapa en nybörjarvänlig portfölj som STARKT kopplar till användarens ekonomiska situation och intressen
-2. Föreslå konkreta svenska och nordiska företag/fonder som matchar deras intressen och geografi
+2. Föreslå konkreta investmentbolag och kvalitetsaktier som matchar deras intressen och geografi, gärna välkända alternativ från Sverige eller USA som är lätta att handla från Sverige
 3. Ta STOR hänsyn till deras ekonomiska buffert och förpliktelser
 4. Anpassa riskexponering baserat på deras psykologiska profil och reaktionsmönster
 5. Förklara VARFÖR varje innehav passar deras specifika profil
 6. Inkludera utbildande element om diversifiering
 7. Ge enkla, actionable steg för att komma igång
-8. Föreslå specifika svenska fonder och ETF:er som är lätta att köpa på Avanza/Nordnet
+8. Föreslå specifika investmentbolag (svenska, amerikanska eller andra väletablerade) och lättillgängliga kvalitetsaktier som är enkla att köpa via Avanza/Nordnet eller motsvarande plattformar
 9. Förklara risker på ett förståeligt sätt kopplat till deras komfortnivå
 10. Föreslå en detaljerad månadsplan baserad på deras inkomst och tillgängliga kapital
 
 VIKTIGT: Använd EXAKT detta format för varje rekommendation och INKLUDERA ALLTID SYMBOLER:
 1. **Företagsnamn (BÖRSSYMBOL)**: Beskrivning av varför denna investering passar din profil. Allokering: XX%
-2. **Fondnamn (FONDKOD)**: Beskrivning av fonden och varför den passar. Allokering: XX%
+2. **Investmentbolag (BÖRSSYMBOL)**: Beskrivning av varför detta bolag passar. Allokering: XX%
 
 EXEMPEL (ANPASSA MED ANVÄNDARSPECIFIKA DATA):
 1. **Företag A (TICKER-A)**: Kort beskrivning kopplad till användarens profil. Allokering: 15%
-2. **Fond B (FOND-B)**: Kort beskrivning kopplad till användarens mål. Allokering: 20%`;
+  2. **Investmentbolag B (TICKER-B)**: Kort beskrivning kopplad till användarens mål. Allokering: 20%`;
 
     } else {
       prompt += `
@@ -651,11 +651,11 @@ UPPDRAG FÖR ERFAREN INVESTERARE:
 
 VIKTIGT: Använd EXAKT detta format för varje rekommendation och INKLUDERA ALLTID SYMBOLER:
 1. **Företagsnamn (BÖRSSYMBOL)**: Beskrivning av varför denna investering passar din profil. Allokering: XX%
-2. **Fondnamn (FONDKOD)**: Beskrivning av fonden och varför den passar. Allokering: XX%
+2. **Investmentbolag (BÖRSSYMBOL)**: Beskrivning av varför detta bolag passar. Allokering: XX%
 
 EXEMPEL (ANPASSA MED ANVÄNDARSPECIFIKA DATA):
 1. **Företag A (TICKER-A)**: Kort beskrivning kopplad till användarens profil. Allokering: 15%
-2. **Fond B (FOND-B)**: Kort beskrivning kopplad till användarens mål. Allokering: 20%`;
+  2. **Investmentbolag B (TICKER-B)**: Kort beskrivning kopplad till användarens mål. Allokering: 20%`;
     }
 
     const investmentPurposes = conversationData.investmentPurpose && conversationData.investmentPurpose.length > 0
@@ -773,7 +773,7 @@ Föreslå ALDRIG samma portfölj till olika användare
 **Investeringsrekommendationer:**
 
 1. **Företagsnamn (SYMBOL)**: Detaljerad beskrivning. Allokering: XX%
-2. **Fondnamn (FONDKOD)**: Detaljerad beskrivning. Allokering: XX%
+2. **Investmentbolag (SYMBOL)**: Detaljerad beskrivning. Allokering: XX%
 
 Ge en välstrukturerad, personlig och actionable portföljstrategi på svenska som är perfekt anpassad för användarens specifika situation, erfarenhetsnivå och psykologiska profil.
 
@@ -1278,15 +1278,15 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
           return 'commodities';
         }
         if (mergedConversationData.sustainabilityPreference && mergedConversationData.sustainabilityPreference !== 'not_priority') {
-          return 'funds_etfs';
+          return 'investment_companies';
         }
         if (mergedConversationData.riskTolerance === 'conservative') {
-          return 'funds_etfs';
+          return 'investment_companies';
         }
         if (mergedConversationData.riskTolerance === 'aggressive') {
           return 'stocks';
         }
-        return mergedConversationData.isBeginnerInvestor ? 'funds_etfs' : 'stocks';
+        return mergedConversationData.isBeginnerInvestor ? 'investment_companies' : 'stocks';
       })();
 
       mergedConversationData.preferredAssets = resolvedPreferredAsset;
@@ -1295,8 +1295,8 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
 
       if (resolvedPreferredAsset === 'crypto') {
         derivedSectorSignals.push('Kryptovalutor');
-      } else if (resolvedPreferredAsset === 'funds_etfs') {
-        derivedSectorSignals.push('Fonder & ETF:er');
+      } else if (resolvedPreferredAsset === 'investment_companies') {
+        derivedSectorSignals.push('Investmentbolag');
       } else if (resolvedPreferredAsset === 'commodities') {
         derivedSectorSignals.push('Råvaror');
       } else if (resolvedPreferredAsset === 'stocks') {

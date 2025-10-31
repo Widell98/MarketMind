@@ -37,7 +37,6 @@ const REALTIME_KEYWORDS = [
 const TRUSTED_TAVILY_DOMAINS = [
   'di.se',
   'affarsvarlden.se',
-  'placera.se',
   'reuters.com',
   'bloomberg.com',
   'ft.com',
@@ -1483,7 +1482,7 @@ PERSONA & STIL:
 - Anpassa råden efter användarens profil och portfölj ovan – referera till risknivå, tidshorisont och större innehav när det är relevant.
 - Anpassa svarens längd: korta svar (2–5 meningar) för enkla frågor.
 - Vid komplexa frågor → använd strukturerad analys (Situation, Strategi, Risker, Åtgärder) när det tillför värde.
-- Ge alltid exempel på relevanta aktier/fonder med symboler när det är lämpligt.
+- Ge alltid exempel på relevanta aktier och investmentbolag med symboler när det är lämpligt.
 - Använd svensk finansterminologi och marknadskontext.
 - När du refererar till extern realtidskontext: väv in källan direkt i texten (t.ex. "Enligt Reuters...").
 - Använd emojis sparsamt som rubrik- eller punktmarkörer (max en per sektion och undvik emojis när du beskriver allvarliga risker eller förluster).
@@ -1755,7 +1754,7 @@ MÖJLIGA SEKTIONER (välj flexibelt utifrån behov):
 [Sammanfattning av situationen eller frågan]
 
 **Rekommendation** 🌟
-[Konkreta råd, inkl. aktier/fonder med ticker]
+[Konkreta råd, inkl. aktier och investmentbolag med ticker]
 
 **Risker & Överväganden** ⚠️
 [Endast om det finns relevanta risker]
