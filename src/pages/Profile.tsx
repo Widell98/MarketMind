@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ExportSharingSection from '@/components/ExportSharingSection';
-import { TrendingUp, FileText, Plus, Brain, CreditCard, Share2 } from 'lucide-react';
+import { TrendingUp, FileText, Plus, Brain, CreditCard, Share2, Trash2 } from 'lucide-react';
 import UserAnalysesSection from '@/components/UserAnalysesSection';
 import SavedOpportunitiesSection from '@/components/SavedOpportunitiesSection';
 import EnhancedProfileHeader from '@/components/EnhancedProfileHeader';
@@ -25,9 +25,10 @@ import { useSavedOpportunities } from '@/hooks/useSavedOpportunities';
 import { supabase } from '@/integrations/supabase/client';
 import UserInvestmentAnalysis from '@/components/UserInvestmentAnalysis';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useToast } from '@/hooks/use-toast';
 
 const Profile = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateCaseDialogOpen, setIsCreateCaseDialogOpen] = useState(false);
@@ -36,12 +37,15 @@ const Profile = () => {
   const [caseToEdit, setCaseToEdit] = useState<any>(null);
   const [profileData, setProfileData] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
-  
+  const [isDeleteAccountDialogOpen, setIsDeleteAccountDialogOpen] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
   const { stats } = useEnhancedUserStats();
   const { isAdmin, loading: roleLoading } = useUserRole();
   const { savedItems, removeOpportunity } = useSavedOpportunities();
   const { stockCases, loading: stockCasesLoading, refetch } = useStockCases();
   const { deleteStockCase } = useStockCaseOperations();
+  const { toast } = useToast();
 
   // Fetch profile data
   React.useEffect(() => {
@@ -133,6 +137,39 @@ const Profile = () => {
   const handleEditCase = (stockCase: any) => {
     setCaseToEdit(stockCase);
     setIsEditCaseDialogOpen(true);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user?.id) return;
+
+    setIsDeletingAccount(true);
+    try {
+      const { error } = await supabase.functions.invoke('delete-profile', {
+        body: {}
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: 'Konto raderat',
+        description: 'Ditt konto har raderats permanent.'
+      });
+
+      await signOut();
+      navigate('/auth?account-deleted=true');
+    } catch (error: any) {
+      console.error('Error deleting account:', error);
+      toast({
+        title: 'Raderingen misslyckades',
+        description: error?.message || 'Kunde inte radera ditt konto. Försök igen.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsDeletingAccount(false);
+      setIsDeleteAccountDialogOpen(false);
+    }
   };
 
   return (
@@ -267,6 +304,27 @@ const Profile = () => {
 
             <TabsContent value="membership" className="space-y-8">
               <MembershipSection />
+
+              <Card className="border-destructive/40">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-destructive">
+                    <Trash2 className="w-5 h-5" />
+                    Radera konto
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Detta tar bort ditt konto permanent tillsammans med din profil och relaterad data. Åtgärden kan inte ångras.
+                  </p>
+                  <Button
+                    variant="destructive"
+                    className="rounded-lg"
+                    onClick={() => setIsDeleteAccountDialogOpen(true)}
+                  >
+                    Radera mitt konto
+                  </Button>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </div>
@@ -327,6 +385,29 @@ const Profile = () => {
           </AlertDialog>
         </>
       )}
+
+      <AlertDialog open={isDeleteAccountDialogOpen} onOpenChange={(open) => !isDeletingAccount && setIsDeleteAccountDialogOpen(open)}>
+        <AlertDialogContent className="rounded-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-semibold">Radera konto</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              Detta kommer att radera ditt konto permanent och logga ut dig från plattformen. Fortsätt endast om du är säker.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-lg" disabled={isDeletingAccount}>
+              Avbryt
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAccount}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-lg"
+              disabled={isDeletingAccount}
+            >
+              {isDeletingAccount ? 'Raderar...' : 'Radera konto'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 };
