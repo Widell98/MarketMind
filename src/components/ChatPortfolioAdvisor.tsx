@@ -918,6 +918,11 @@ const ChatPortfolioAdvisor = () => {
     return undefined;
   };
 
+  const isLikelyISIN = (value: string) => {
+    const normalized = value.trim().toUpperCase();
+    return /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(normalized);
+  };
+
   const parseHoldingsFromCSV = useCallback(
     (text: string): Holding[] => {
       const sanitizedText = text.replace(/\uFEFF/g, '');
@@ -1056,7 +1061,31 @@ const ChatPortfolioAdvisor = () => {
         }
 
         const nameRaw = getValue('name');
-        const symbolRaw = getValue('symbol');
+        const symbolRaw = (() => {
+          const indices = columnIndices.symbol;
+          if (!indices || indices.length === 0) {
+            return '';
+          }
+
+          let fallback = '';
+          for (const index of indices) {
+            if (typeof index !== 'number') continue;
+            const raw = parts[index];
+            if (typeof raw !== 'string') continue;
+            const trimmed = raw.trim();
+            if (!trimmed) continue;
+
+            if (!isLikelyISIN(trimmed)) {
+              return trimmed;
+            }
+
+            if (!fallback) {
+              fallback = trimmed;
+            }
+          }
+
+          return fallback;
+        })();
         const currencyRaw = getValue('currency');
 
         const hasValidQuantity = Number.isFinite(quantity) && quantity > 0;
