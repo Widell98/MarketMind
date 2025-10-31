@@ -1688,6 +1688,7 @@ const ChatPortfolioAdvisor = () => {
           : null;
         const manualPrice = holding.purchasePrice > 0 ? roundToTwo(holding.purchasePrice) : null;
         const resolvedPrice = sheetPrice ?? manualPrice;
+        const resolvedPurchasePrice = manualPrice ?? (resolvedPrice !== null ? resolvedPrice : null);
         const tickerCurrency = ticker?.currency?.trim()?.toUpperCase() || null;
         const manualCurrency = holding.priceCurrency?.trim()?.toUpperCase() || null;
         const holdingCurrency = holding.currency?.trim()?.toUpperCase() || null;
@@ -1708,7 +1709,7 @@ const ChatPortfolioAdvisor = () => {
           name: holding.name,
           symbol: normalizedSymbol,
           quantity,
-          purchase_price: manualPrice,
+          purchase_price: resolvedPurchasePrice,
           current_price_per_unit: resolvedPrice,
           price_currency: priceCurrency,
           current_value: currentValue,
