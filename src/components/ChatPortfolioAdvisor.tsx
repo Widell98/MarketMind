@@ -2,6 +2,13 @@ import React, { useState, useRef, useEffect, useMemo, useId, useCallback } from 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
@@ -72,6 +79,7 @@ interface Holding {
   priceManuallyEdited: boolean;
   currency: string;
   priceCurrency?: string;
+  currencyManuallyEdited: boolean;
 }
 
 
@@ -198,6 +206,10 @@ const ChatPortfolioAdvisor = () => {
   const rawTickerListId = useId();
   const tickerDatalistId = `advisor-sheet-tickers-${rawTickerListId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const [dynamicTickers, setDynamicTickers] = useState<SheetTicker[]>([]);
+  const manualCurrencyOptions = useMemo(
+    () => ['SEK', 'USD', 'EUR', 'GBP', 'NOK', 'DKK', 'CHF', 'JPY', 'CAD'],
+    []
+  );
   const [finnhubPriceCache, setFinnhubPriceCache] = useState<Record<string, { price: number; currency: string | null }>>({});
   const symbolLookupTimeouts = useRef<Map<string, number>>(new Map());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -831,18 +843,32 @@ const ChatPortfolioAdvisor = () => {
   };
 
   const createHolding = useCallback(
-    (overrides: Partial<Holding> = {}): Holding => ({
-      id: generateHoldingId(),
-      name: '',
-      symbol: '',
-      quantity: 0,
-      purchasePrice: 0,
-      nameManuallyEdited: false,
-      priceManuallyEdited: false,
-      currency: 'SEK',
-      priceCurrency: 'SEK',
-      ...overrides
-    }),
+    (overrides: Partial<Holding> = {}): Holding => {
+      const baseHolding: Holding = {
+        id: generateHoldingId(),
+        name: '',
+        symbol: '',
+        quantity: 0,
+        purchasePrice: 0,
+        nameManuallyEdited: false,
+        priceManuallyEdited: false,
+        currency: 'SEK',
+        priceCurrency: 'SEK',
+        currencyManuallyEdited: false,
+        ...overrides,
+      } as Holding;
+
+      const resolvedCurrency = overrides.currency ?? baseHolding.currency ?? 'SEK';
+      const resolvedPriceCurrency = overrides.priceCurrency ?? baseHolding.priceCurrency ?? resolvedCurrency;
+      const resolvedCurrencyManuallyEdited = overrides.currencyManuallyEdited ?? baseHolding.currencyManuallyEdited ?? false;
+
+      return {
+        ...baseHolding,
+        currency: resolvedCurrency,
+        priceCurrency: resolvedPriceCurrency,
+        currencyManuallyEdited: resolvedCurrencyManuallyEdited,
+      };
+    },
     [generateHoldingId]
   );
 
@@ -1266,15 +1292,11 @@ const ChatPortfolioAdvisor = () => {
         const resolvedTickerCurrency = ticker?.currency?.trim()?.toUpperCase();
         const symbolChanged = normalizedSymbol !== (holding.symbol?.trim().toUpperCase() || '');
 
-        const fallbackCurrency = normalizedSymbol ? holding.currency : 'SEK';
-        const fallbackPriceCurrency = normalizedSymbol ? holding.priceCurrency : 'SEK';
-
         let updatedHolding: Holding = {
           ...holding,
           symbol: normalizedSymbol,
-          currency: resolvedTickerCurrency || fallbackCurrency,
-          priceCurrency: resolvedTickerCurrency || fallbackPriceCurrency,
-          priceManuallyEdited: symbolChanged ? false : holding.priceManuallyEdited
+          priceManuallyEdited: symbolChanged ? false : holding.priceManuallyEdited,
+          currencyManuallyEdited: symbolChanged ? false : holding.currencyManuallyEdited,
         };
 
         if (ticker) {
@@ -1302,9 +1324,21 @@ const ChatPortfolioAdvisor = () => {
               };
             }
           }
+
+          if (
+            resolvedTickerCurrency &&
+            (!holding.currencyManuallyEdited || symbolChanged)
+          ) {
+            updatedHolding = {
+              ...updatedHolding,
+              currency: resolvedTickerCurrency,
+              priceCurrency: resolvedTickerCurrency,
+              currencyManuallyEdited: false,
+            };
+          }
         }
 
-        if (!ticker && normalizedSymbol.length === 0 && holding.currency !== 'SEK') {
+        if (!ticker && normalizedSymbol.length === 0 && !holding.currencyManuallyEdited) {
           updatedHolding = {
             ...updatedHolding,
             currency: 'SEK',
@@ -1348,6 +1382,21 @@ const ChatPortfolioAdvisor = () => {
     );
   };
 
+  const handleHoldingCurrencyChange = (id: string, currency: string) => {
+    setHoldings(prev =>
+      prev.map(holding =>
+        holding.id === id
+          ? {
+              ...holding,
+              currency,
+              priceCurrency: currency,
+              currencyManuallyEdited: true,
+            }
+          : holding
+      )
+    );
+  };
+
   useEffect(() => {
     if (tickerLookup.size === 0) {
       return;
@@ -1379,8 +1428,13 @@ const ChatPortfolioAdvisor = () => {
           }
         }
 
-        if (resolvedCurrency && holding.currency !== resolvedCurrency) {
-          nextHolding = { ...nextHolding, currency: resolvedCurrency };
+        if (resolvedCurrency && holding.currency !== resolvedCurrency && !holding.currencyManuallyEdited) {
+          nextHolding = {
+            ...nextHolding,
+            currency: resolvedCurrency,
+            priceCurrency: resolvedCurrency,
+            currencyManuallyEdited: false,
+          };
           modified = true;
         }
 
@@ -2300,7 +2354,7 @@ const ChatPortfolioAdvisor = () => {
                             {holdings.map(holding => (
                               <div
                                 key={holding.id}
-                                className="grid grid-cols-1 sm:grid-cols-5 gap-2 p-3 bg-background/50 rounded-lg border"
+                                className="grid grid-cols-1 sm:grid-cols-6 gap-2 p-3 bg-background/50 rounded-lg border"
                               >
                                 <Input
                                   placeholder="Företagsnamn *"
@@ -2335,6 +2389,21 @@ const ChatPortfolioAdvisor = () => {
                                   min="0"
                                   step="0.01"
                                 />
+                                <Select
+                                  value={(holding.priceCurrency || holding.currency || 'SEK').toUpperCase()}
+                                  onValueChange={(value) => handleHoldingCurrencyChange(holding.id, value)}
+                                >
+                                  <SelectTrigger className="h-9 text-xs sm:text-sm">
+                                    <SelectValue placeholder="Valuta" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {manualCurrencyOptions.map(option => (
+                                      <SelectItem key={`${holding.id}-${option}`} value={option}>
+                                        {option}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                                 <Button
                                   variant="outline"
                                   size="sm"
