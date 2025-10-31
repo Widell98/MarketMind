@@ -920,7 +920,9 @@ const ChatPortfolioAdvisor = () => {
 
   const parseHoldingsFromCSV = useCallback(
     (text: string): Holding[] => {
-      const lines = text
+      const sanitizedText = text.replace(/\uFEFF/g, '');
+
+      const lines = sanitizedText
         .split(/\r?\n/)
         .map(line => line.trim())
         .filter(line => line.length > 0);
@@ -940,7 +942,9 @@ const ChatPortfolioAdvisor = () => {
 
       const headerLine = lines[0];
       let delimiter = detectDelimiter(headerLine);
-      let headerParts = headerLine.split(delimiter).map(part => part.replace(/^"|"$/g, ''));
+      let headerParts = headerLine
+        .split(delimiter)
+        .map(part => part.replace(/^"|"$/g, '').replace(/^\uFEFF/, ''));
 
       if (headerParts.length === 1 && delimiter === ',' && headerLine.includes(';')) {
         delimiter = ';';
@@ -987,7 +991,9 @@ const ChatPortfolioAdvisor = () => {
         const line = lines[i];
         if (!line) continue;
 
-        const parts = line.split(delimiter).map(part => part.replace(/^"|"$/g, '').trim());
+        const parts = line
+          .split(delimiter)
+          .map(part => part.replace(/^"|"$/g, '').replace(/^\uFEFF/, '').trim());
         const getValue = (field: 'name' | 'symbol' | 'quantity' | 'purchasePrice' | 'currency') => {
           const indices = columnIndices[field];
           if (!indices || indices.length === 0) {
