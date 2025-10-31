@@ -883,8 +883,8 @@ const ChatPortfolioAdvisor = () => {
 
     if (/(name|namn|företag|company|bolag)/.test(normalized)) return 'name' as const;
     if (/(symbol|ticker|kortnamn|isin)/.test(normalized)) return 'symbol' as const;
-    if (/(quantity|antal|shares|mängd|aktier|innehav)/.test(normalized)) return 'quantity' as const;
-    if (/(purchase|köppris|pris|inköpspris|cost|avg|kurs)/.test(normalized)) return 'purchasePrice' as const;
+    if (/(quantity|antal|shares|mängd|aktier|innehav|volym|volume)/.test(normalized)) return 'quantity' as const;
+    if (/(purchase|köppris|pris|inköpspris|cost|avg|gav|kurs)/.test(normalized)) return 'purchasePrice' as const;
     if (/(currency|valuta)/.test(normalized)) return 'currency' as const;
 
     return null;
