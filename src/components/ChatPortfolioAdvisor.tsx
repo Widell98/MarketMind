@@ -22,6 +22,7 @@ import {
   Plus,
   Trash2,
   Check,
+  Upload,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationalPortfolio, type ConversationData } from '@/hooks/useConversationalPortfolio';
@@ -198,6 +199,16 @@ const ChatPortfolioAdvisor = () => {
   const [dynamicTickers, setDynamicTickers] = useState<SheetTicker[]>([]);
   const [finnhubPriceCache, setFinnhubPriceCache] = useState<Record<string, { price: number; currency: string | null }>>({});
   const symbolLookupTimeouts = useRef<Map<string, number>>(new Map());
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isImportingHoldings, setIsImportingHoldings] = useState(false);
+
+  const generateHoldingId = useCallback(() => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  }, []);
 
   const priceFormatter = useMemo(
     () => new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
@@ -818,19 +829,237 @@ const ChatPortfolioAdvisor = () => {
     setMessages(prev => [...prev, message]);
   };
 
-  const addHolding = () => {
-    const newHolding: Holding = {
-      id: Date.now().toString(),
+  const createHolding = useCallback(
+    (overrides: Partial<Holding> = {}): Holding => ({
+      id: generateHoldingId(),
       name: '',
       symbol: '',
       quantity: 0,
       purchasePrice: 0,
       nameManuallyEdited: false,
       priceManuallyEdited: false,
-      currency: 'SEK'
-    };
+      currency: 'SEK',
+      ...overrides
+    }),
+    [generateHoldingId]
+  );
+
+  const addHolding = () => {
+    const newHolding = createHolding();
     setHoldings(prev => [...prev, newHolding]);
   };
+
+  const parseLocaleNumber = (value: string) => {
+    const sanitized = value
+      .replace(/\s+/g, '')
+      .replace(/[^0-9,\.\-]/g, '')
+      .replace(/kr/gi, '')
+      .replace(/\u00a0/g, '');
+
+    if (!sanitized) {
+      return NaN;
+    }
+
+    let normalized = sanitized;
+
+    const hasComma = sanitized.includes(',');
+    const hasDot = sanitized.includes('.');
+
+    if (hasComma && hasDot) {
+      // Assume dot as thousands separator and comma as decimal separator
+      normalized = sanitized.replace(/\./g, '').replace(/,/g, '.');
+    } else if (hasComma) {
+      normalized = sanitized.replace(/,/g, '.');
+    }
+
+    const parsed = Number.parseFloat(normalized);
+    return Number.isFinite(parsed) ? parsed : NaN;
+  };
+
+  const normalizeHeader = (header: string) => {
+    const normalized = header.trim().toLowerCase();
+
+    if (!normalized) return null;
+
+    if (/(name|namn|företag|company|bolag)/.test(normalized)) return 'name' as const;
+    if (/(symbol|ticker|kortnamn|isin)/.test(normalized)) return 'symbol' as const;
+    if (/(quantity|antal|shares|mängd|aktier|innehav)/.test(normalized)) return 'quantity' as const;
+    if (/(purchase|köppris|pris|inköpspris|cost|avg)/.test(normalized)) return 'purchasePrice' as const;
+    if (/(currency|valuta)/.test(normalized)) return 'currency' as const;
+
+    return null;
+  };
+
+  const parseHoldingsFromCSV = useCallback(
+    (text: string): Holding[] => {
+      const lines = text
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+      if (lines.length === 0) {
+        return [];
+      }
+
+      const detectDelimiter = (line: string) => {
+        const semicolonCount = (line.match(/;/g) || []).length;
+        const commaCount = (line.match(/,/g) || []).length;
+        if (semicolonCount === 0 && commaCount === 0) {
+          return ',';
+        }
+        return semicolonCount >= commaCount ? ';' : ',';
+      };
+
+      const headerLine = lines[0];
+      let delimiter = detectDelimiter(headerLine);
+      let headerParts = headerLine.split(delimiter).map(part => part.replace(/^"|"$/g, ''));
+
+      if (headerParts.length === 1 && delimiter === ',' && headerLine.includes(';')) {
+        delimiter = ';';
+        headerParts = headerLine.split(delimiter).map(part => part.replace(/^"|"$/g, ''));
+      }
+
+      const mappedHeaders = headerParts.map(part => normalizeHeader(part));
+      const hasHeaderRow = mappedHeaders.some(Boolean);
+
+      const columnIndex: Partial<Record<'name' | 'symbol' | 'quantity' | 'purchasePrice' | 'currency', number>> = {};
+
+      if (hasHeaderRow) {
+        mappedHeaders.forEach((field, index) => {
+          if (field) {
+            columnIndex[field] = index;
+          }
+        });
+      } else {
+        const defaultOrder: Array<'name' | 'symbol' | 'quantity' | 'purchasePrice' | 'currency'> = [
+          'name',
+          'symbol',
+          'quantity',
+          'purchasePrice',
+          'currency'
+        ];
+        headerParts.forEach((_, index) => {
+          if (index < defaultOrder.length) {
+            columnIndex[defaultOrder[index]] = index;
+          }
+        });
+      }
+
+      const startIndex = hasHeaderRow ? 1 : 0;
+      const parsedHoldings: Holding[] = [];
+
+      for (let i = startIndex; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line) continue;
+
+        const parts = line.split(delimiter).map(part => part.replace(/^"|"$/g, '').trim());
+        const getValue = (field: 'name' | 'symbol' | 'quantity' | 'purchasePrice' | 'currency') => {
+          const index = columnIndex[field];
+          return typeof index === 'number' ? parts[index] ?? '' : '';
+        };
+
+        const nameRaw = getValue('name');
+        const symbolRaw = getValue('symbol');
+        const quantityRaw = getValue('quantity');
+        const purchasePriceRaw = getValue('purchasePrice');
+        const currencyRaw = getValue('currency');
+
+        const quantity = parseLocaleNumber(quantityRaw);
+        const purchasePrice = parseLocaleNumber(purchasePriceRaw);
+
+        const hasValidQuantity = Number.isFinite(quantity) && quantity > 0;
+        const hasValidPrice = Number.isFinite(purchasePrice) && purchasePrice > 0;
+        const hasNameOrSymbol = Boolean(nameRaw.trim() || symbolRaw.trim());
+
+        if (!hasValidQuantity || !hasValidPrice || !hasNameOrSymbol) {
+          continue;
+        }
+
+        const resolvedCurrency = currencyRaw
+          ? currencyRaw.replace(/[^a-zA-Z]/g, '').toUpperCase() || 'SEK'
+          : 'SEK';
+
+        parsedHoldings.push(
+          createHolding({
+            name: nameRaw.trim() || symbolRaw.trim().toUpperCase(),
+            symbol: symbolRaw.trim().toUpperCase(),
+            quantity,
+            purchasePrice,
+            nameManuallyEdited: true,
+            priceManuallyEdited: true,
+            currency: resolvedCurrency
+          })
+        );
+      }
+
+      return parsedHoldings;
+    },
+    [createHolding]
+  );
+
+  const handleHoldingsFileUpload = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) {
+        return;
+      }
+
+      setIsImportingHoldings(true);
+
+      const resetInput = () => {
+        if (event.target) {
+          event.target.value = '';
+        }
+      };
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const text = typeof reader.result === 'string' ? reader.result : '';
+
+          const parsed = parseHoldingsFromCSV(text);
+
+          if (!parsed.length) {
+            throw new Error('Kunde inte tolka några innehav från CSV-filen. Kontrollera formatet.');
+          }
+
+          setHoldings(parsed);
+          toast({
+            title: 'Innehav importerade',
+            description: `${parsed.length} innehav har laddats in från din CSV-fil.`,
+          });
+        } catch (error) {
+          console.error('Failed to parse holdings CSV:', error);
+          toast({
+            title: 'Fel vid import',
+            description: error instanceof Error ? error.message : 'Kunde inte läsa CSV-filen. Försök igen.',
+            variant: 'destructive',
+          });
+        } finally {
+          setIsImportingHoldings(false);
+          resetInput();
+        }
+      };
+
+      reader.onerror = () => {
+        console.error('File reading error');
+        toast({
+          title: 'Fel vid import',
+          description: 'Kunde inte läsa CSV-filen. Försök igen.',
+          variant: 'destructive',
+        });
+        setIsImportingHoldings(false);
+        resetInput();
+      };
+
+      reader.readAsText(file);
+    },
+    [parseHoldingsFromCSV, toast]
+  );
+
+  const openHoldingsFileDialog = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
 
   const handleHoldingNameChange = (id: string, value: string) => {
     setHoldings(prev =>
@@ -1128,18 +1357,7 @@ const ChatPortfolioAdvisor = () => {
           true
         );
         setShowHoldingsInput(true);
-        setHoldings([
-          {
-            id: '1',
-            name: '',
-            symbol: '',
-            quantity: 0,
-            purchasePrice: 0,
-            nameManuallyEdited: false,
-            priceManuallyEdited: false,
-            currency: 'SEK'
-          }
-        ]);
+        setHoldings([createHolding()]);
       }, 1000);
 
       prepareQuestionForAnswer(null);
@@ -1866,6 +2084,9 @@ const ChatPortfolioAdvisor = () => {
                               <Check className="w-4 h-4 text-green-600" />
                               Fyll i dina innehav nedan. Symbol/ticker är valfritt men rekommenderat för bättre analys.
                             </p>
+                            <p className="text-xs text-muted-foreground">
+                              Du kan också importera en CSV-fil med kolumnerna namn, symbol, antal, köppris och valuta.
+                            </p>
                             {tickersLoading && (
                               <p className="text-xs text-muted-foreground">Hämtar tickerlista från Google Sheets...</p>
                             )}
@@ -1981,8 +2202,25 @@ const ChatPortfolioAdvisor = () => {
                               </div>
                             </div>
                           )}
-                          
+
                           <div className="flex gap-2 flex-wrap">
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept=".csv,text/csv"
+                              className="hidden"
+                              onChange={handleHoldingsFileUpload}
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={openHoldingsFileDialog}
+                              disabled={isImportingHoldings}
+                              className="flex items-center gap-1 text-xs sm:text-sm"
+                            >
+                              <Upload className="w-3 h-3" />
+                              {isImportingHoldings ? 'Importerar...' : 'Importera CSV'}
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
