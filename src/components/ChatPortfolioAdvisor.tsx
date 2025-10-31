@@ -1033,18 +1033,16 @@ const ChatPortfolioAdvisor = () => {
           }
         }
 
-        const purchasePriceCandidates = columnIndices.purchasePrice;
-        let purchasePrice = NaN;
-        let priceCurrencyHint: string | undefined;
-        for (const index of purchasePriceCandidates) {
+        const purchasePriceIndices = columnIndices.purchasePrice;
+        const priceCandidates: Array<{ value: number; hint?: string }> = [];
+        for (const index of purchasePriceIndices) {
           if (typeof index !== 'number') continue;
           const raw = parts[index] ?? '';
           const parsed = parseLocaleNumber(raw);
 
           if (Number.isFinite(parsed) && parsed > 0) {
-            purchasePrice = parsed;
-            priceCurrencyHint = headerCurrencyHints[index];
-            break;
+            const hint = headerCurrencyHints[index]?.toUpperCase();
+            priceCandidates.push({ value: parsed, hint });
           }
         }
 
@@ -1056,11 +1054,11 @@ const ChatPortfolioAdvisor = () => {
           }
         }
 
-        if (Number.isNaN(purchasePrice)) {
+        if (!priceCandidates.length) {
           const fallbackRaw = getValue('purchasePrice');
           const fallbackParsed = parseLocaleNumber(fallbackRaw);
           if (Number.isFinite(fallbackParsed) && fallbackParsed > 0) {
-            purchasePrice = fallbackParsed;
+            priceCandidates.push({ value: fallbackParsed });
           }
         }
 
@@ -1091,6 +1089,49 @@ const ChatPortfolioAdvisor = () => {
           return fallback;
         })();
         const currencyRaw = getValue('currency');
+        const currencyFromValue = currencyRaw
+          ? currencyRaw.replace(/[^a-zA-Z]/g, '').toUpperCase() || undefined
+          : undefined;
+        const inferredFromSymbol = inferCurrencyFromSymbol(symbolRaw);
+        const uniquePriceHints = Array.from(
+          new Set(priceCandidates.map(candidate => candidate.hint).filter(Boolean))
+        ) as string[];
+
+        let resolvedCurrency = currencyFromValue || inferredFromSymbol;
+        if (!resolvedCurrency && uniquePriceHints.length === 1) {
+          resolvedCurrency = uniquePriceHints[0];
+        }
+        if (!resolvedCurrency) {
+          resolvedCurrency = 'SEK';
+        }
+
+        const normalizedResolvedCurrency = resolvedCurrency.toUpperCase();
+
+        const selectPriceCandidate = () => {
+          if (!priceCandidates.length) {
+            return undefined;
+          }
+
+          const matchByHint = priceCandidates.find(
+            candidate =>
+              candidate.hint && candidate.hint.toUpperCase() === normalizedResolvedCurrency
+          );
+          if (matchByHint) {
+            return matchByHint;
+          }
+
+          if (currencyFromValue && currencyFromValue !== 'SEK') {
+            const hintlessCandidate = priceCandidates.find(candidate => !candidate.hint);
+            if (hintlessCandidate) {
+              return hintlessCandidate;
+            }
+          }
+
+          return priceCandidates[0];
+        };
+
+        const selectedPrice = selectPriceCandidate();
+        const purchasePrice = selectedPrice?.value ?? NaN;
 
         const hasValidQuantity = Number.isFinite(quantity) && quantity > 0;
         const hasValidPrice = Number.isFinite(purchasePrice) && purchasePrice > 0;
@@ -1100,19 +1141,6 @@ const ChatPortfolioAdvisor = () => {
           continue;
         }
 
-        const resolvedCurrency = (() => {
-          const currencyFromValue = currencyRaw
-            ? currencyRaw.replace(/[^a-zA-Z]/g, '').toUpperCase() || undefined
-            : undefined;
-          const inferredFromSymbol = inferCurrencyFromSymbol(symbolRaw);
-          return (
-            currencyFromValue ||
-            priceCurrencyHint ||
-            inferredFromSymbol ||
-            'SEK'
-          );
-        })();
-
         parsedHoldings.push(
           createHolding({
             name: nameRaw.trim() || symbolRaw.trim().toUpperCase(),
@@ -1121,7 +1149,7 @@ const ChatPortfolioAdvisor = () => {
             purchasePrice,
             nameManuallyEdited: true,
             priceManuallyEdited: true,
-            currency: resolvedCurrency
+            currency: normalizedResolvedCurrency
           })
         );
       }
