@@ -20,6 +20,8 @@ export interface ConversationData {
     symbol?: string;
     currency?: string;
     priceCurrency?: string;
+    currencyManuallyEdited?: boolean;
+    priceManuallyEdited?: boolean;
   }>;
   age?: number;
   experience?: string;
