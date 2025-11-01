@@ -2,6 +2,13 @@ import React, { useState, useRef, useEffect, useMemo, useId, useCallback } from 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
@@ -33,6 +40,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import useSheetTickers, { RawSheetTicker, SheetTicker, sanitizeSheetTickerList } from '@/hooks/useSheetTickers';
 import { mapEdgeFunctionErrorMessage } from '@/utils/mapEdgeFunctionError';
+import { convertCurrency } from '@/utils/currencyUtils';
 
 interface QuestionOption {
   value: string;
@@ -71,6 +79,8 @@ interface Holding {
   nameManuallyEdited: boolean;
   priceManuallyEdited: boolean;
   currency: string;
+  priceCurrency?: string;
+  currencyManuallyEdited: boolean;
 }
 
 
@@ -197,6 +207,10 @@ const ChatPortfolioAdvisor = () => {
   const rawTickerListId = useId();
   const tickerDatalistId = `advisor-sheet-tickers-${rawTickerListId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const [dynamicTickers, setDynamicTickers] = useState<SheetTicker[]>([]);
+  const manualCurrencyOptions = useMemo(
+    () => ['SEK', 'USD', 'EUR', 'GBP', 'NOK', 'DKK', 'CHF', 'JPY', 'CAD'],
+    []
+  );
   const [finnhubPriceCache, setFinnhubPriceCache] = useState<Record<string, { price: number; currency: string | null }>>({});
   const symbolLookupTimeouts = useRef<Map<string, number>>(new Map());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -830,17 +844,32 @@ const ChatPortfolioAdvisor = () => {
   };
 
   const createHolding = useCallback(
-    (overrides: Partial<Holding> = {}): Holding => ({
-      id: generateHoldingId(),
-      name: '',
-      symbol: '',
-      quantity: 0,
-      purchasePrice: 0,
-      nameManuallyEdited: false,
-      priceManuallyEdited: false,
-      currency: 'SEK',
-      ...overrides
-    }),
+    (overrides: Partial<Holding> = {}): Holding => {
+      const baseHolding: Holding = {
+        id: generateHoldingId(),
+        name: '',
+        symbol: '',
+        quantity: 0,
+        purchasePrice: 0,
+        nameManuallyEdited: false,
+        priceManuallyEdited: false,
+        currency: 'SEK',
+        priceCurrency: 'SEK',
+        currencyManuallyEdited: false,
+        ...overrides,
+      } as Holding;
+
+      const resolvedCurrency = overrides.currency ?? baseHolding.currency ?? 'SEK';
+      const resolvedPriceCurrency = overrides.priceCurrency ?? baseHolding.priceCurrency ?? resolvedCurrency;
+      const resolvedCurrencyManuallyEdited = overrides.currencyManuallyEdited ?? baseHolding.currencyManuallyEdited ?? false;
+
+      return {
+        ...baseHolding,
+        currency: resolvedCurrency,
+        priceCurrency: resolvedPriceCurrency,
+        currencyManuallyEdited: resolvedCurrencyManuallyEdited,
+      };
+    },
     [generateHoldingId]
   );
 
@@ -1033,18 +1062,16 @@ const ChatPortfolioAdvisor = () => {
           }
         }
 
-        const purchasePriceCandidates = columnIndices.purchasePrice;
-        let purchasePrice = NaN;
-        let priceCurrencyHint: string | undefined;
-        for (const index of purchasePriceCandidates) {
+        const purchasePriceIndices = columnIndices.purchasePrice;
+        const priceCandidates: Array<{ value: number; hint?: string }> = [];
+        for (const index of purchasePriceIndices) {
           if (typeof index !== 'number') continue;
           const raw = parts[index] ?? '';
           const parsed = parseLocaleNumber(raw);
 
           if (Number.isFinite(parsed) && parsed > 0) {
-            purchasePrice = parsed;
-            priceCurrencyHint = headerCurrencyHints[index];
-            break;
+            const hint = headerCurrencyHints[index]?.toUpperCase();
+            priceCandidates.push({ value: parsed, hint });
           }
         }
 
@@ -1056,11 +1083,11 @@ const ChatPortfolioAdvisor = () => {
           }
         }
 
-        if (Number.isNaN(purchasePrice)) {
+        if (!priceCandidates.length) {
           const fallbackRaw = getValue('purchasePrice');
           const fallbackParsed = parseLocaleNumber(fallbackRaw);
           if (Number.isFinite(fallbackParsed) && fallbackParsed > 0) {
-            purchasePrice = fallbackParsed;
+            priceCandidates.push({ value: fallbackParsed });
           }
         }
 
@@ -1091,6 +1118,62 @@ const ChatPortfolioAdvisor = () => {
           return fallback;
         })();
         const currencyRaw = getValue('currency');
+        const currencyFromValue = currencyRaw
+          ? currencyRaw.replace(/[^a-zA-Z]/g, '').toUpperCase() || undefined
+          : undefined;
+        const inferredFromSymbol = inferCurrencyFromSymbol(symbolRaw);
+        const uniquePriceHints = Array.from(
+          new Set(priceCandidates.map(candidate => candidate.hint).filter(Boolean))
+        ) as string[];
+
+        let resolvedCurrency = currencyFromValue || inferredFromSymbol;
+        if (!resolvedCurrency && uniquePriceHints.length === 1) {
+          resolvedCurrency = uniquePriceHints[0];
+        }
+        if (!resolvedCurrency) {
+          resolvedCurrency = 'SEK';
+        }
+
+        const normalizedResolvedCurrency = resolvedCurrency.toUpperCase();
+
+        const selectPriceCandidate = () => {
+          if (!priceCandidates.length) {
+            return undefined;
+          }
+
+          const matchByHint = priceCandidates.find(
+            candidate =>
+              candidate.hint && candidate.hint.toUpperCase() === normalizedResolvedCurrency
+          );
+          if (matchByHint) {
+            return matchByHint;
+          }
+
+          if (currencyFromValue && currencyFromValue !== 'SEK') {
+            const hintlessCandidate = priceCandidates.find(candidate => !candidate.hint);
+            if (hintlessCandidate) {
+              return hintlessCandidate;
+            }
+          }
+
+          return priceCandidates[0];
+        };
+
+        const selectedPrice = selectPriceCandidate();
+        const purchasePrice = selectedPrice?.value ?? NaN;
+        const purchaseCurrencyCandidate = (() => {
+          if (selectedPrice?.hint) {
+            return selectedPrice.hint.toUpperCase();
+          }
+          if (currencyFromValue) {
+            return currencyFromValue;
+          }
+          if (inferredFromSymbol) {
+            return inferredFromSymbol;
+          }
+          return normalizedResolvedCurrency;
+        })();
+        const normalizedPurchaseCurrency = purchaseCurrencyCandidate?.toUpperCase() ?? normalizedResolvedCurrency;
 
         const hasValidQuantity = Number.isFinite(quantity) && quantity > 0;
         const hasValidPrice = Number.isFinite(purchasePrice) && purchasePrice > 0;
@@ -1100,19 +1183,6 @@ const ChatPortfolioAdvisor = () => {
           continue;
         }
 
-        const resolvedCurrency = (() => {
-          const currencyFromValue = currencyRaw
-            ? currencyRaw.replace(/[^a-zA-Z]/g, '').toUpperCase() || undefined
-            : undefined;
-          const inferredFromSymbol = inferCurrencyFromSymbol(symbolRaw);
-          return (
-            currencyFromValue ||
-            priceCurrencyHint ||
-            inferredFromSymbol ||
-            'SEK'
-          );
-        })();
-
         parsedHoldings.push(
           createHolding({
             name: nameRaw.trim() || symbolRaw.trim().toUpperCase(),
@@ -1121,7 +1191,8 @@ const ChatPortfolioAdvisor = () => {
             purchasePrice,
             nameManuallyEdited: true,
             priceManuallyEdited: true,
-            currency: resolvedCurrency
+            currency: normalizedResolvedCurrency,
+            priceCurrency: normalizedPurchaseCurrency
           })
         );
       }
@@ -1225,8 +1296,8 @@ const ChatPortfolioAdvisor = () => {
         let updatedHolding: Holding = {
           ...holding,
           symbol: normalizedSymbol,
-          currency: resolvedTickerCurrency || (normalizedSymbol ? holding.currency : 'SEK'),
-          priceManuallyEdited: symbolChanged ? false : holding.priceManuallyEdited
+          priceManuallyEdited: symbolChanged ? false : holding.priceManuallyEdited,
+          currencyManuallyEdited: symbolChanged ? false : holding.currencyManuallyEdited,
         };
 
         if (ticker) {
@@ -1254,12 +1325,25 @@ const ChatPortfolioAdvisor = () => {
               };
             }
           }
+
+          if (
+            resolvedTickerCurrency &&
+            (!holding.currencyManuallyEdited || symbolChanged)
+          ) {
+            updatedHolding = {
+              ...updatedHolding,
+              currency: resolvedTickerCurrency,
+              priceCurrency: resolvedTickerCurrency,
+              currencyManuallyEdited: false,
+            };
+          }
         }
 
-        if (!ticker && normalizedSymbol.length === 0 && holding.currency !== 'SEK') {
+        if (!ticker && normalizedSymbol.length === 0 && !holding.currencyManuallyEdited) {
           updatedHolding = {
             ...updatedHolding,
-            currency: 'SEK'
+            currency: 'SEK',
+            priceCurrency: 'SEK'
           };
         }
 
@@ -1299,6 +1383,21 @@ const ChatPortfolioAdvisor = () => {
     );
   };
 
+  const handleHoldingCurrencyChange = (id: string, currency: string) => {
+    setHoldings(prev =>
+      prev.map(holding =>
+        holding.id === id
+          ? {
+              ...holding,
+              currency,
+              priceCurrency: currency,
+              currencyManuallyEdited: true,
+            }
+          : holding
+      )
+    );
+  };
+
   useEffect(() => {
     if (tickerLookup.size === 0) {
       return;
@@ -1330,8 +1429,13 @@ const ChatPortfolioAdvisor = () => {
           }
         }
 
-        if (resolvedCurrency && holding.currency !== resolvedCurrency) {
-          nextHolding = { ...nextHolding, currency: resolvedCurrency };
+        if (resolvedCurrency && holding.currency !== resolvedCurrency && !holding.currencyManuallyEdited) {
+          nextHolding = {
+            ...nextHolding,
+            currency: resolvedCurrency,
+            priceCurrency: resolvedCurrency,
+            currencyManuallyEdited: false,
+          };
           modified = true;
         }
 
@@ -1385,11 +1489,15 @@ const ChatPortfolioAdvisor = () => {
       const normalizedSymbol = holding.symbol?.trim().toUpperCase() || '';
       const ticker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) : undefined;
       const resolvedCurrency = ticker?.currency?.trim()?.toUpperCase() || holding.currency?.trim()?.toUpperCase() || 'SEK';
+      const resolvedPriceCurrency = ticker?.currency?.trim()?.toUpperCase()
+        || holding.priceCurrency?.trim()?.toUpperCase()
+        || resolvedCurrency;
 
       return {
         ...holding,
         symbol: normalizedSymbol,
-        currency: resolvedCurrency
+        currency: resolvedCurrency,
+        priceCurrency: resolvedPriceCurrency
       };
     });
 
@@ -1416,12 +1524,17 @@ const ChatPortfolioAdvisor = () => {
       quantity: h.quantity,
       purchasePrice: h.purchasePrice,
       symbol: h.symbol?.trim() ? h.symbol : undefined,
-      currency: h.currency
+      currency: h.currency,
+      priceCurrency: h.priceCurrency,
+      currencyManuallyEdited: h.currencyManuallyEdited,
+      priceManuallyEdited: h.priceManuallyEdited
     }));
 
     const holdingsText = conversationHoldings
       .map(h => {
-        const currencyLabel = h.currency?.trim()?.toUpperCase() || 'SEK';
+        const currencyLabel = h.priceCurrency?.trim()?.toUpperCase()
+          || h.currency?.trim()?.toUpperCase()
+          || 'SEK';
         const symbolText = h.symbol ? ` (${h.symbol})` : '';
         return `${h.name}${symbolText}: ${h.quantity} st à ${h.purchasePrice} ${currencyLabel}`;
       })
@@ -1627,31 +1740,107 @@ const ChatPortfolioAdvisor = () => {
         const normalizedSymbol = trimmedSymbol.length > 0 ? trimmedSymbol.toUpperCase() : null;
         const ticker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) : undefined;
 
-        const sheetPrice = ticker && typeof ticker.price === 'number' && Number.isFinite(ticker.price) && ticker.price > 0
-          ? roundToTwo(ticker.price)
+        const tickerPriceRaw = ticker && typeof ticker.price === 'number' && Number.isFinite(ticker.price) && ticker.price > 0
+          ? ticker.price
           : null;
-        const manualPrice = holding.purchasePrice > 0 ? roundToTwo(holding.purchasePrice) : null;
-        const resolvedPrice = sheetPrice ?? manualPrice;
-        const baseCurrency = ticker?.currency?.trim()?.toUpperCase() || holding.currency?.trim()?.toUpperCase() || 'SEK';
-        const priceCurrency = resolvedPrice !== null || manualPrice !== null ? baseCurrency : null;
-        const quantity = Number.isFinite(holding.quantity) && holding.quantity > 0 ? holding.quantity : 0;
+        const priceManuallyEdited = Boolean(holding.priceManuallyEdited);
+        const manualPriceRaw = priceManuallyEdited && holding.purchasePrice > 0 ? holding.purchasePrice : null;
 
-        const currentValue = quantity > 0 && resolvedPrice !== null
-          ? roundToTwo(resolvedPrice * quantity)
-          : quantity > 0 && manualPrice !== null
-            ? roundToTwo(manualPrice * quantity)
-            : null;
+        const tickerCurrency = ticker?.currency?.trim()?.toUpperCase() || null;
+        const priceCurrencyRaw = typeof holding.priceCurrency === 'string' && holding.priceCurrency.trim().length > 0
+          ? holding.priceCurrency.trim().toUpperCase()
+          : null;
+        const holdingCurrencyRaw = typeof holding.currency === 'string' && holding.currency.trim().length > 0
+          ? holding.currency.trim().toUpperCase()
+          : null;
+        const currencyManuallyEdited = Boolean(holding.currencyManuallyEdited);
+
+        const manualCurrencyPreference = currencyManuallyEdited
+          ? (priceCurrencyRaw || holdingCurrencyRaw || null)
+          : null;
+
+        const resolvedHoldingCurrency = (
+          manualCurrencyPreference ||
+          priceCurrencyRaw ||
+          holdingCurrencyRaw ||
+          tickerCurrency ||
+          'SEK'
+        ).toUpperCase();
+
+        const resolvePriceSource = () => {
+          if (priceManuallyEdited && manualPriceRaw !== null) {
+            return {
+              value: manualPriceRaw,
+              currency: priceCurrencyRaw || holdingCurrencyRaw || resolvedHoldingCurrency,
+            } as const;
+          }
+
+          if (tickerPriceRaw !== null) {
+            return {
+              value: tickerPriceRaw,
+              currency: tickerCurrency || resolvedHoldingCurrency,
+            } as const;
+          }
+
+          if (manualPriceRaw !== null) {
+            return {
+              value: manualPriceRaw,
+              currency: priceCurrencyRaw || holdingCurrencyRaw || resolvedHoldingCurrency,
+            } as const;
+          }
+
+          return {
+            value: null,
+            currency: resolvedHoldingCurrency,
+          } as const;
+        };
+
+        const priceSource = resolvePriceSource();
+
+        let normalizedPrice: number | null = null;
+        if (priceSource.value !== null) {
+          const converted =
+            priceSource.currency && priceSource.currency !== resolvedHoldingCurrency
+              ? convertCurrency(priceSource.value, priceSource.currency, resolvedHoldingCurrency)
+              : priceSource.value;
+          normalizedPrice = roundToTwo(converted);
+        }
+
+        let resolvedPurchasePrice: number | null = null;
+        let purchasePriceCurrency: string | null = null;
+
+        if (manualPriceRaw !== null) {
+          const manualCurrency = priceCurrencyRaw || holdingCurrencyRaw || resolvedHoldingCurrency;
+          const convertedManual =
+            manualCurrency && manualCurrency !== resolvedHoldingCurrency
+              ? convertCurrency(manualPriceRaw, manualCurrency, resolvedHoldingCurrency)
+              : manualPriceRaw;
+          resolvedPurchasePrice = roundToTwo(convertedManual);
+          purchasePriceCurrency = resolvedHoldingCurrency;
+        } else if (normalizedPrice !== null) {
+          resolvedPurchasePrice = normalizedPrice;
+          purchasePriceCurrency = resolvedHoldingCurrency;
+        }
+
+        const quantity = Number.isFinite(holding.quantity) && holding.quantity > 0 ? holding.quantity : 0;
+        const currentValue = quantity > 0 && normalizedPrice !== null
+          ? roundToTwo(normalizedPrice * quantity)
+          : null;
+
+        const priceCurrency = normalizedPrice !== null
+          ? resolvedHoldingCurrency
+          : purchasePriceCurrency || resolvedHoldingCurrency;
 
         return {
           user_id: user.id,
           name: holding.name,
           symbol: normalizedSymbol,
           quantity,
-          purchase_price: manualPrice,
-          current_price_per_unit: resolvedPrice,
+          purchase_price: resolvedPurchasePrice,
+          current_price_per_unit: normalizedPrice,
           price_currency: priceCurrency,
           current_value: currentValue,
-          currency: baseCurrency,
+          currency: resolvedHoldingCurrency,
           holding_type: 'stock', // Default to stock
           purchase_date: new Date().toISOString(),
         };
@@ -2238,7 +2427,7 @@ const ChatPortfolioAdvisor = () => {
                             {holdings.map(holding => (
                               <div
                                 key={holding.id}
-                                className="grid grid-cols-1 sm:grid-cols-5 gap-2 p-3 bg-background/50 rounded-lg border"
+                                className="grid grid-cols-1 sm:grid-cols-6 gap-2 p-3 bg-background/50 rounded-lg border"
                               >
                                 <Input
                                   placeholder="Företagsnamn *"
@@ -2265,7 +2454,7 @@ const ChatPortfolioAdvisor = () => {
                                 />
                                 <Input
                                   type="number"
-                                  placeholder={`Köppris (${holding.currency || 'SEK'}) *`}
+                                  placeholder={`Köppris (${holding.priceCurrency || holding.currency || 'SEK'}) *`}
                                   value={holding.purchasePrice || ''}
                                   onChange={(e) => handleHoldingPurchasePriceChange(holding.id, e.target.value)}
                                   className="text-xs sm:text-sm"
@@ -2273,6 +2462,21 @@ const ChatPortfolioAdvisor = () => {
                                   min="0"
                                   step="0.01"
                                 />
+                                <Select
+                                  value={(holding.priceCurrency || holding.currency || 'SEK').toUpperCase()}
+                                  onValueChange={(value) => handleHoldingCurrencyChange(holding.id, value)}
+                                >
+                                  <SelectTrigger className="h-9 text-xs sm:text-sm">
+                                    <SelectValue placeholder="Valuta" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {manualCurrencyOptions.map(option => (
+                                      <SelectItem key={`${holding.id}-${option}`} value={option}>
+                                        {option}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -2329,7 +2533,7 @@ const ChatPortfolioAdvisor = () => {
                                   .map(h => (
                                     <div key={h.id} className="text-xs text-green-700 flex items-center gap-1">
                                       <Check className="w-3 h-3" />
-                                      {h.name}{h.symbol && h.symbol.trim() ? ` (${h.symbol})` : ''}: {h.quantity} st à {h.purchasePrice} {(h.currency || 'SEK')}
+                                      {h.name}{h.symbol && h.symbol.trim() ? ` (${h.symbol})` : ''}: {h.quantity} st à {h.purchasePrice} {(h.priceCurrency || h.currency || 'SEK')}
                                     </div>
                                   ))
                                 }

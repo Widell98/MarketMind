@@ -320,9 +320,18 @@ export const usePortfolioPerformance = () => {
         const parsedPurchasePrice = parseNumeric(holding.purchase_price);
         const hasPurchasePrice = parsedPurchasePrice !== null && parsedPurchasePrice > 0 && quantity > 0;
         const purchasePrice = hasPurchasePrice ? parsedPurchasePrice : 0;
+        const normalizedPurchaseCurrency = (() => {
+          if (typeof holding.price_currency === 'string' && holding.price_currency.trim().length > 0) {
+            return holding.price_currency.trim().toUpperCase();
+          }
+          if (typeof holding.currency === 'string' && holding.currency.trim().length > 0) {
+            return holding.currency.trim().toUpperCase();
+          }
+          return priceCurrency || 'SEK';
+        })();
 
         const investedValue = hasPurchasePrice
-          ? convertToSEK(purchasePrice * quantity, holding.currency || priceCurrency || 'SEK')
+          ? convertToSEK(purchasePrice * quantity, normalizedPurchaseCurrency)
           : currentValue;
 
         // Find yesterday's value for this holding
@@ -330,7 +339,15 @@ export const usePortfolioPerformance = () => {
         const yesterdayRawValue = yesterdayHolding
           ? parseNumeric(yesterdayHolding.total_value) ?? currentValue
           : currentValue;
-        const yesterdayCurrency = yesterdayHolding?.currency || holding.currency || priceCurrency || 'SEK';
+        const yesterdayCurrency = yesterdayHolding?.currency
+          || (typeof holding.price_currency === 'string' && holding.price_currency.trim().length > 0
+            ? holding.price_currency.trim().toUpperCase()
+            : undefined)
+          || (typeof holding.currency === 'string' && holding.currency.trim().length > 0
+            ? holding.currency.trim().toUpperCase()
+            : undefined)
+          || priceCurrency
+          || 'SEK';
         const yesterdayValue = convertToSEK(yesterdayRawValue, yesterdayCurrency);
 
         const profit = hasPurchasePrice ? currentValue - investedValue : 0;

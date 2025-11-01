@@ -19,6 +19,9 @@ export interface ConversationData {
     purchasePrice: number;
     symbol?: string;
     currency?: string;
+    priceCurrency?: string;
+    currencyManuallyEdited?: boolean;
+    priceManuallyEdited?: boolean;
   }>;
   age?: number;
   experience?: string;
