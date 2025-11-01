@@ -1755,70 +1755,88 @@ const ChatPortfolioAdvisor = () => {
           : null;
         const currencyManuallyEdited = Boolean(holding.currencyManuallyEdited);
 
-        const manualCurrency = currencyManuallyEdited
-          ? priceCurrencyRaw || holdingCurrencyRaw || null
-          : priceCurrencyRaw;
-        const fallbackCurrency = holdingCurrencyRaw || priceCurrencyRaw || tickerCurrency || null;
-
-        const targetCurrency = currencyManuallyEdited
-          ? manualCurrency || fallbackCurrency || tickerCurrency || 'SEK'
-          : tickerCurrency || manualCurrency || fallbackCurrency || 'SEK';
-
-        let priceSourceCurrency: string | null = null;
-        if (tickerPriceRaw !== null && tickerCurrency) {
-          priceSourceCurrency = tickerCurrency;
-        } else if (manualPriceRaw !== null && manualCurrency) {
-          priceSourceCurrency = manualCurrency;
-        } else {
-          priceSourceCurrency = fallbackCurrency || targetCurrency;
-        }
-
-        let effectivePrice = tickerPriceRaw !== null ? tickerPriceRaw : manualPriceRaw;
-        if (
-          effectivePrice !== null &&
-          priceSourceCurrency &&
-          targetCurrency &&
-          priceSourceCurrency !== targetCurrency
-        ) {
-          effectivePrice = convertCurrency(effectivePrice, priceSourceCurrency, targetCurrency);
-        }
-        const normalizedPrice = effectivePrice !== null ? roundToTwo(effectivePrice) : null;
-
-        let resolvedPurchasePrice: number | null = manualPriceRaw;
-        let purchasePriceCurrency = manualPriceRaw !== null
-          ? (currencyManuallyEdited ? (manualCurrency || targetCurrency) : (manualCurrency || priceSourceCurrency || targetCurrency))
+        const manualCurrencyPreference = currencyManuallyEdited
+          ? (priceCurrencyRaw || holdingCurrencyRaw || null)
           : null;
 
-        if (
-          resolvedPurchasePrice !== null &&
-          purchasePriceCurrency &&
-          targetCurrency &&
-          purchasePriceCurrency !== targetCurrency
-        ) {
-          resolvedPurchasePrice = convertCurrency(resolvedPurchasePrice, purchasePriceCurrency, targetCurrency);
-          purchasePriceCurrency = targetCurrency;
+        const resolvedHoldingCurrency = (
+          manualCurrencyPreference ||
+          priceCurrencyRaw ||
+          holdingCurrencyRaw ||
+          tickerCurrency ||
+          'SEK'
+        ).toUpperCase();
+
+        const resolvePriceSource = () => {
+          if (priceManuallyEdited && manualPriceRaw !== null) {
+            return {
+              value: manualPriceRaw,
+              currency: priceCurrencyRaw || holdingCurrencyRaw || resolvedHoldingCurrency,
+            } as const;
+          }
+
+          if (tickerPriceRaw !== null) {
+            return {
+              value: tickerPriceRaw,
+              currency: tickerCurrency || resolvedHoldingCurrency,
+            } as const;
+          }
+
+          if (manualPriceRaw !== null) {
+            return {
+              value: manualPriceRaw,
+              currency: priceCurrencyRaw || holdingCurrencyRaw || resolvedHoldingCurrency,
+            } as const;
+          }
+
+          return {
+            value: null,
+            currency: resolvedHoldingCurrency,
+          } as const;
+        };
+
+        const priceSource = resolvePriceSource();
+
+        let normalizedPrice: number | null = null;
+        if (priceSource.value !== null) {
+          const converted =
+            priceSource.currency && priceSource.currency !== resolvedHoldingCurrency
+              ? convertCurrency(priceSource.value, priceSource.currency, resolvedHoldingCurrency)
+              : priceSource.value;
+          normalizedPrice = roundToTwo(converted);
         }
 
-        if (resolvedPurchasePrice === null) {
+        let resolvedPurchasePrice: number | null = null;
+        let purchasePriceCurrency: string | null = null;
+
+        if (manualPriceRaw !== null) {
+          const manualCurrency = priceCurrencyRaw || holdingCurrencyRaw || resolvedHoldingCurrency;
+          const convertedManual =
+            manualCurrency && manualCurrency !== resolvedHoldingCurrency
+              ? convertCurrency(manualPriceRaw, manualCurrency, resolvedHoldingCurrency)
+              : manualPriceRaw;
+          resolvedPurchasePrice = roundToTwo(convertedManual);
+          purchasePriceCurrency = resolvedHoldingCurrency;
+        } else if (normalizedPrice !== null) {
           resolvedPurchasePrice = normalizedPrice;
-          purchasePriceCurrency = normalizedPrice !== null ? targetCurrency : null;
+          purchasePriceCurrency = resolvedHoldingCurrency;
         }
-
-        const normalizedPurchasePrice = resolvedPurchasePrice !== null ? roundToTwo(resolvedPurchasePrice) : null;
-        const resolvedHoldingCurrency = targetCurrency || 'SEK';
-        const priceCurrency = normalizedPrice !== null ? (targetCurrency || purchasePriceCurrency || resolvedHoldingCurrency) : null;
 
         const quantity = Number.isFinite(holding.quantity) && holding.quantity > 0 ? holding.quantity : 0;
         const currentValue = quantity > 0 && normalizedPrice !== null
           ? roundToTwo(normalizedPrice * quantity)
           : null;
 
+        const priceCurrency = normalizedPrice !== null
+          ? resolvedHoldingCurrency
+          : purchasePriceCurrency || resolvedHoldingCurrency;
+
         return {
           user_id: user.id,
           name: holding.name,
           symbol: normalizedSymbol,
           quantity,
-          purchase_price: normalizedPurchasePrice,
+          purchase_price: resolvedPurchasePrice,
           current_price_per_unit: normalizedPrice,
           price_currency: priceCurrency,
           current_value: currentValue,
