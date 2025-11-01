@@ -13,6 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Brain,
   Send,
@@ -71,6 +72,7 @@ interface Holding {
   nameManuallyEdited: boolean;
   priceManuallyEdited: boolean;
   currency: string;
+  currencyManuallyEdited: boolean;
 }
 
 
@@ -167,6 +169,18 @@ const normalizeAdvisorPlan = (plan: any, fallbackText?: string): AdvisorPlan | n
     rawText: fallbackText,
   };
 };
+
+const supportedCurrencies = [
+  'SEK',
+  'USD',
+  'EUR',
+  'GBP',
+  'NOK',
+  'DKK',
+  'CHF',
+  'CAD',
+  'AUD'
+];
 
 const ChatPortfolioAdvisor = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -839,6 +853,7 @@ const ChatPortfolioAdvisor = () => {
       nameManuallyEdited: false,
       priceManuallyEdited: false,
       currency: 'SEK',
+      currencyManuallyEdited: false,
       ...overrides
     }),
     [generateHoldingId]
@@ -1100,18 +1115,17 @@ const ChatPortfolioAdvisor = () => {
           continue;
         }
 
-        const resolvedCurrency = (() => {
-          const currencyFromValue = currencyRaw
-            ? currencyRaw.replace(/[^a-zA-Z]/g, '').toUpperCase() || undefined
-            : undefined;
-          const inferredFromSymbol = inferCurrencyFromSymbol(symbolRaw);
-          return (
-            currencyFromValue ||
-            priceCurrencyHint ||
-            inferredFromSymbol ||
-            'SEK'
-          );
-        })();
+        const currencyFromValue = currencyRaw
+          ? currencyRaw.replace(/[^a-zA-Z]/g, '').toUpperCase() || undefined
+          : undefined;
+        const inferredFromSymbol = inferCurrencyFromSymbol(symbolRaw);
+        const resolvedCurrency = (
+          currencyFromValue ||
+          priceCurrencyHint ||
+          inferredFromSymbol ||
+          'SEK'
+        );
+        const currencyProvided = Boolean(currencyFromValue || priceCurrencyHint || inferredFromSymbol);
 
         parsedHoldings.push(
           createHolding({
@@ -1121,7 +1135,8 @@ const ChatPortfolioAdvisor = () => {
             purchasePrice,
             nameManuallyEdited: true,
             priceManuallyEdited: true,
-            currency: resolvedCurrency
+            currency: resolvedCurrency,
+            currencyManuallyEdited: currencyProvided
           })
         );
       }
@@ -1225,9 +1240,24 @@ const ChatPortfolioAdvisor = () => {
         let updatedHolding: Holding = {
           ...holding,
           symbol: normalizedSymbol,
-          currency: resolvedTickerCurrency || (normalizedSymbol ? holding.currency : 'SEK'),
           priceManuallyEdited: symbolChanged ? false : holding.priceManuallyEdited
         };
+
+        if (!holding.currencyManuallyEdited) {
+          if (resolvedTickerCurrency) {
+            updatedHolding = {
+              ...updatedHolding,
+              currency: resolvedTickerCurrency,
+              currencyManuallyEdited: false
+            };
+          } else if (!normalizedSymbol) {
+            updatedHolding = {
+              ...updatedHolding,
+              currency: 'SEK',
+              currencyManuallyEdited: false
+            };
+          }
+        }
 
         if (ticker) {
           if (!holding.nameManuallyEdited) {
@@ -1256,10 +1286,11 @@ const ChatPortfolioAdvisor = () => {
           }
         }
 
-        if (!ticker && normalizedSymbol.length === 0 && holding.currency !== 'SEK') {
+        if (!ticker && normalizedSymbol.length === 0 && !holding.currencyManuallyEdited && holding.currency !== 'SEK') {
           updatedHolding = {
             ...updatedHolding,
-            currency: 'SEK'
+            currency: 'SEK',
+            currencyManuallyEdited: false
           };
         }
 
@@ -1295,7 +1326,32 @@ const ChatPortfolioAdvisor = () => {
               priceManuallyEdited: rawValue.trim().length > 0
             }
           : holding
-      )
+        )
+    );
+  };
+
+  const handleHoldingCurrencyChange = (id: string, rawValue: string) => {
+    const normalized = rawValue.trim().toUpperCase();
+    setHoldings(prev =>
+      prev.map(holding => {
+        if (holding.id !== id) {
+          return holding;
+        }
+
+        if (!normalized || normalized === 'AUTO') {
+          return {
+            ...holding,
+            currency: 'SEK',
+            currencyManuallyEdited: false
+          };
+        }
+
+        return {
+          ...holding,
+          currency: normalized,
+          currencyManuallyEdited: true
+        };
+      })
     );
   };
 
@@ -1330,8 +1386,8 @@ const ChatPortfolioAdvisor = () => {
           }
         }
 
-        if (resolvedCurrency && holding.currency !== resolvedCurrency) {
-          nextHolding = { ...nextHolding, currency: resolvedCurrency };
+        if (!holding.currencyManuallyEdited && resolvedCurrency && holding.currency !== resolvedCurrency) {
+          nextHolding = { ...nextHolding, currency: resolvedCurrency, currencyManuallyEdited: false };
           modified = true;
         }
 
@@ -2238,7 +2294,7 @@ const ChatPortfolioAdvisor = () => {
                             {holdings.map(holding => (
                               <div
                                 key={holding.id}
-                                className="grid grid-cols-1 sm:grid-cols-5 gap-2 p-3 bg-background/50 rounded-lg border"
+                                className="grid grid-cols-1 sm:grid-cols-6 gap-2 p-3 bg-background/50 rounded-lg border"
                               >
                                 <Input
                                   placeholder="Företagsnamn *"
@@ -2273,6 +2329,22 @@ const ChatPortfolioAdvisor = () => {
                                   min="0"
                                   step="0.01"
                                 />
+                                <Select
+                                  value={holding.currencyManuallyEdited ? holding.currency : 'AUTO'}
+                                  onValueChange={(value) => handleHoldingCurrencyChange(holding.id, value)}
+                                >
+                                  <SelectTrigger className="text-xs sm:text-sm">
+                                    <SelectValue placeholder="Valuta" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="AUTO">Auto (ticker)</SelectItem>
+                                    {supportedCurrencies.map(currency => (
+                                      <SelectItem key={currency} value={currency}>
+                                        {currency}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                                 <Button
                                   variant="outline"
                                   size="sm"
