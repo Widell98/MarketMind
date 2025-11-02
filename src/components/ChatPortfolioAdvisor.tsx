@@ -1653,6 +1653,8 @@ const ChatPortfolioAdvisor = () => {
       [currentQuestion.key]: processedAnswer
     };
 
+    let shouldPauseForHoldings = false;
+
     if (currentQuestion.id === 'experienceLevel') {
       updatedData.isBeginnerInvestor = processedAnswer === 'beginner';
     }
@@ -1664,7 +1666,18 @@ const ChatPortfolioAdvisor = () => {
         setShowHoldingsInput(false);
         setHoldings([]);
       } else {
-        setShowHoldingsInput(false);
+        shouldPauseForHoldings = true;
+        setTimeout(() => {
+          addBotMessage(
+            'Toppen! Lägg till dina nuvarande innehav nedan – antingen manuellt eller genom att importera en CSV-fil – så analyserar jag dem åt dig.',
+            false,
+            undefined,
+            true
+          );
+        }, 600);
+        setShowHoldingsInput(true);
+        setHoldings(prev => (prev.length > 0 ? prev : [createHolding()]));
+        prepareQuestionForAnswer(null);
       }
     }
 
@@ -1691,19 +1704,35 @@ const ChatPortfolioAdvisor = () => {
     }
     setConversationData(updatedData);
 
+    if (shouldPauseForHoldings) {
+      return;
+    }
+
     if (currentQuestion.id === 'portfolioDirection') {
       if (!Array.isArray(answer) && answer === 'optimize_existing') {
+        const hasRegisteredHoldings = Array.isArray(updatedData.currentHoldings) && updatedData.currentHoldings.length > 0;
+
+        if (!hasRegisteredHoldings) {
+          setTimeout(() => {
+            addBotMessage(
+              'Perfekt! Lägg till eller importera dina aktuella innehav här nedanför så kan jag optimera portföljen åt dig.',
+              false,
+              undefined,
+              true
+            );
+            setShowHoldingsInput(true);
+            setHoldings(prev => (prev.length > 0 ? prev : [createHolding()]));
+          }, 800);
+          prepareQuestionForAnswer(null);
+          return;
+        }
+
         setTimeout(() => {
-          addBotMessage(
-            'Perfekt! Ange dina nuvarande innehav nedan så kan jag analysera din portfölj och ta fram förbättringsförslag.',
-            false,
-            undefined,
-            true
-          );
-          setShowHoldingsInput(true);
-          setHoldings(prev => (prev.length > 0 ? prev : [createHolding()]));
-        }, 1000);
-        prepareQuestionForAnswer(null);
+          addBotMessage('Toppen! Jag använder dina registrerade innehav för att analysera portföljen.');
+          setTimeout(() => {
+            moveToNextQuestion();
+          }, 1200);
+        }, 600);
         return;
       }
 
