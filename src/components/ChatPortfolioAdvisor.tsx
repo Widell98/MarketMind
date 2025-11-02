@@ -1009,6 +1009,41 @@ const ChatPortfolioAdvisor = () => {
       }
 
       const startIndex = hasHeaderRow ? 1 : 0;
+      const prioritizePurchasePriceIndices = (indices: number[]): number[] => {
+        if (!indices || indices.length === 0) {
+          return indices;
+        }
+
+        const gavMatches = new Set<number>();
+
+        indices.forEach(index => {
+          const header = headerParts[index];
+          if (typeof header === 'string' && /gav/iu.test(header)) {
+            gavMatches.add(index);
+          }
+        });
+
+        if (gavMatches.size === 0) {
+          return indices;
+        }
+
+        const prioritized: number[] = [];
+
+        gavMatches.forEach(index => {
+          if (!prioritized.includes(index)) {
+            prioritized.push(index);
+          }
+        });
+
+        indices.forEach(index => {
+          if (!gavMatches.has(index) && !prioritized.includes(index)) {
+            prioritized.push(index);
+          }
+        });
+
+        return prioritized;
+      };
+
       const parsedHoldings: Holding[] = [];
 
       for (let i = startIndex; i < lines.length; i++) {
@@ -1019,7 +1054,9 @@ const ChatPortfolioAdvisor = () => {
           .split(delimiter)
           .map(part => part.replace(/^"|"$/g, '').replace(/^\uFEFF/, '').trim());
         const getValue = (field: 'name' | 'symbol' | 'quantity' | 'purchasePrice' | 'currency') => {
-          const indices = columnIndices[field];
+          const rawIndices = columnIndices[field];
+          const indices =
+            field === 'purchasePrice' ? prioritizePurchasePriceIndices(rawIndices) : rawIndices;
           if (!indices || indices.length === 0) {
             return '';
           }
@@ -1048,7 +1085,7 @@ const ChatPortfolioAdvisor = () => {
           }
         }
 
-        const purchasePriceCandidates = columnIndices.purchasePrice;
+        const purchasePriceCandidates = prioritizePurchasePriceIndices(columnIndices.purchasePrice);
         let purchasePrice = NaN;
         let priceCurrencyHint: string | undefined;
         for (const index of purchasePriceCandidates) {
