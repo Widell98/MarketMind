@@ -13,6 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Brain,
   Send,
@@ -71,6 +72,7 @@ interface Holding {
   nameManuallyEdited: boolean;
   priceManuallyEdited: boolean;
   currency: string;
+  currencyManuallyEdited: boolean;
 }
 
 
@@ -167,6 +169,18 @@ const normalizeAdvisorPlan = (plan: any, fallbackText?: string): AdvisorPlan | n
     rawText: fallbackText,
   };
 };
+
+const supportedCurrencies = [
+  'SEK',
+  'USD',
+  'EUR',
+  'GBP',
+  'NOK',
+  'DKK',
+  'CHF',
+  'CAD',
+  'AUD'
+];
 
 const ChatPortfolioAdvisor = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -839,6 +853,7 @@ const ChatPortfolioAdvisor = () => {
       nameManuallyEdited: false,
       priceManuallyEdited: false,
       currency: 'SEK',
+      currencyManuallyEdited: false,
       ...overrides
     }),
     [generateHoldingId]
@@ -994,6 +1009,41 @@ const ChatPortfolioAdvisor = () => {
       }
 
       const startIndex = hasHeaderRow ? 1 : 0;
+      const prioritizePurchasePriceIndices = (indices: number[]): number[] => {
+        if (!indices || indices.length === 0) {
+          return indices;
+        }
+
+        const gavMatches = new Set<number>();
+
+        indices.forEach(index => {
+          const header = headerParts[index];
+          if (typeof header === 'string' && /gav/iu.test(header)) {
+            gavMatches.add(index);
+          }
+        });
+
+        if (gavMatches.size === 0) {
+          return indices;
+        }
+
+        const prioritized: number[] = [];
+
+        gavMatches.forEach(index => {
+          if (!prioritized.includes(index)) {
+            prioritized.push(index);
+          }
+        });
+
+        indices.forEach(index => {
+          if (!gavMatches.has(index) && !prioritized.includes(index)) {
+            prioritized.push(index);
+          }
+        });
+
+        return prioritized;
+      };
+
       const parsedHoldings: Holding[] = [];
 
       for (let i = startIndex; i < lines.length; i++) {
@@ -1004,7 +1054,9 @@ const ChatPortfolioAdvisor = () => {
           .split(delimiter)
           .map(part => part.replace(/^"|"$/g, '').replace(/^\uFEFF/, '').trim());
         const getValue = (field: 'name' | 'symbol' | 'quantity' | 'purchasePrice' | 'currency') => {
-          const indices = columnIndices[field];
+          const rawIndices = columnIndices[field];
+          const indices =
+            field === 'purchasePrice' ? prioritizePurchasePriceIndices(rawIndices) : rawIndices;
           if (!indices || indices.length === 0) {
             return '';
           }
@@ -1033,7 +1085,7 @@ const ChatPortfolioAdvisor = () => {
           }
         }
 
-        const purchasePriceCandidates = columnIndices.purchasePrice;
+        const purchasePriceCandidates = prioritizePurchasePriceIndices(columnIndices.purchasePrice);
         let purchasePrice = NaN;
         let priceCurrencyHint: string | undefined;
         for (const index of purchasePriceCandidates) {
@@ -1100,18 +1152,17 @@ const ChatPortfolioAdvisor = () => {
           continue;
         }
 
-        const resolvedCurrency = (() => {
-          const currencyFromValue = currencyRaw
-            ? currencyRaw.replace(/[^a-zA-Z]/g, '').toUpperCase() || undefined
-            : undefined;
-          const inferredFromSymbol = inferCurrencyFromSymbol(symbolRaw);
-          return (
-            currencyFromValue ||
-            priceCurrencyHint ||
-            inferredFromSymbol ||
-            'SEK'
-          );
-        })();
+        const currencyFromValue = currencyRaw
+          ? currencyRaw.replace(/[^a-zA-Z]/g, '').toUpperCase() || undefined
+          : undefined;
+        const inferredFromSymbol = inferCurrencyFromSymbol(symbolRaw);
+        const resolvedCurrency = (
+          currencyFromValue ||
+          priceCurrencyHint ||
+          inferredFromSymbol ||
+          'SEK'
+        );
+        const currencyProvided = Boolean(currencyFromValue || priceCurrencyHint || inferredFromSymbol);
 
         parsedHoldings.push(
           createHolding({
@@ -1121,7 +1172,8 @@ const ChatPortfolioAdvisor = () => {
             purchasePrice,
             nameManuallyEdited: true,
             priceManuallyEdited: true,
-            currency: resolvedCurrency
+            currency: resolvedCurrency,
+            currencyManuallyEdited: currencyProvided
           })
         );
       }
@@ -1225,9 +1277,24 @@ const ChatPortfolioAdvisor = () => {
         let updatedHolding: Holding = {
           ...holding,
           symbol: normalizedSymbol,
-          currency: resolvedTickerCurrency || (normalizedSymbol ? holding.currency : 'SEK'),
           priceManuallyEdited: symbolChanged ? false : holding.priceManuallyEdited
         };
+
+        if (!holding.currencyManuallyEdited) {
+          if (resolvedTickerCurrency) {
+            updatedHolding = {
+              ...updatedHolding,
+              currency: resolvedTickerCurrency,
+              currencyManuallyEdited: false
+            };
+          } else if (!normalizedSymbol) {
+            updatedHolding = {
+              ...updatedHolding,
+              currency: 'SEK',
+              currencyManuallyEdited: false
+            };
+          }
+        }
 
         if (ticker) {
           if (!holding.nameManuallyEdited) {
@@ -1256,10 +1323,11 @@ const ChatPortfolioAdvisor = () => {
           }
         }
 
-        if (!ticker && normalizedSymbol.length === 0 && holding.currency !== 'SEK') {
+        if (!ticker && normalizedSymbol.length === 0 && !holding.currencyManuallyEdited && holding.currency !== 'SEK') {
           updatedHolding = {
             ...updatedHolding,
-            currency: 'SEK'
+            currency: 'SEK',
+            currencyManuallyEdited: false
           };
         }
 
@@ -1295,7 +1363,36 @@ const ChatPortfolioAdvisor = () => {
               priceManuallyEdited: rawValue.trim().length > 0
             }
           : holding
-      )
+        )
+    );
+  };
+
+  const handleHoldingCurrencyChange = (id: string, rawValue: string) => {
+    const normalized = rawValue.trim().toUpperCase();
+    setHoldings(prev =>
+      prev.map(holding => {
+        if (holding.id !== id) {
+          return holding;
+        }
+
+        if (!normalized || normalized === 'AUTO') {
+          const symbol = holding.symbol?.trim().toUpperCase() || '';
+          const tickerCurrency = symbol ? tickerLookup.get(symbol)?.currency?.trim()?.toUpperCase() : undefined;
+          const fallbackCurrency = holding.currency?.trim()?.toUpperCase() || 'SEK';
+
+          return {
+            ...holding,
+            currency: tickerCurrency || fallbackCurrency,
+            currencyManuallyEdited: false
+          };
+        }
+
+        return {
+          ...holding,
+          currency: normalized,
+          currencyManuallyEdited: true
+        };
+      })
     );
   };
 
@@ -1330,8 +1427,8 @@ const ChatPortfolioAdvisor = () => {
           }
         }
 
-        if (resolvedCurrency && holding.currency !== resolvedCurrency) {
-          nextHolding = { ...nextHolding, currency: resolvedCurrency };
+        if (!holding.currencyManuallyEdited && resolvedCurrency && holding.currency !== resolvedCurrency) {
+          nextHolding = { ...nextHolding, currency: resolvedCurrency, currencyManuallyEdited: false };
           modified = true;
         }
 
@@ -2238,7 +2335,7 @@ const ChatPortfolioAdvisor = () => {
                             {holdings.map(holding => (
                               <div
                                 key={holding.id}
-                                className="grid grid-cols-1 sm:grid-cols-5 gap-2 p-3 bg-background/50 rounded-lg border"
+                                className="grid grid-cols-1 sm:grid-cols-6 gap-2 p-3 bg-background/50 rounded-lg border"
                               >
                                 <Input
                                   placeholder="Företagsnamn *"
@@ -2273,6 +2370,22 @@ const ChatPortfolioAdvisor = () => {
                                   min="0"
                                   step="0.01"
                                 />
+                                <Select
+                                  value={holding.currencyManuallyEdited ? holding.currency : 'AUTO'}
+                                  onValueChange={(value) => handleHoldingCurrencyChange(holding.id, value)}
+                                >
+                                  <SelectTrigger className="text-xs sm:text-sm">
+                                    <SelectValue placeholder="Valuta" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="AUTO">Auto (ticker)</SelectItem>
+                                    {supportedCurrencies.map(currency => (
+                                      <SelectItem key={currency} value={currency}>
+                                        {currency}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                                 <Button
                                   variant="outline"
                                   size="sm"
