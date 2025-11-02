@@ -1376,9 +1376,13 @@ const ChatPortfolioAdvisor = () => {
         }
 
         if (!normalized || normalized === 'AUTO') {
+          const symbol = holding.symbol?.trim().toUpperCase() || '';
+          const tickerCurrency = symbol ? tickerLookup.get(symbol)?.currency?.trim()?.toUpperCase() : undefined;
+          const fallbackCurrency = holding.currency?.trim()?.toUpperCase() || 'SEK';
+
           return {
             ...holding,
-            currency: 'SEK',
+            currency: tickerCurrency || fallbackCurrency,
             currencyManuallyEdited: false
           };
         }
