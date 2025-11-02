@@ -200,7 +200,7 @@ const ChatPortfolioAdvisor = () => {
   const [pendingQuestionId, setPendingQuestionId] = useState<string | null>(null);
   const isInitialized = useRef(false);
 
-  const { generatePortfolioFromConversation, loading } = useConversationalPortfolio();
+  const { generatePortfolioFromConversation, optimizeExistingPortfolio, loading } = useConversationalPortfolio();
   const { refetch } = usePortfolio();
   const { refetch: refetchHoldings } = useUserHoldings();
   const { toast } = useToast();
@@ -491,6 +491,12 @@ const ChatPortfolioAdvisor = () => {
     }
   }, [portfolioResult?.plan, portfolioResult?.aiResponse]);
 
+  const wantsOptimization =
+    conversationData.hasCurrentPortfolio === true && conversationData.portfolioStrategyPreference === 'optimize_existing';
+  const wantsFreshPlan = conversationData.hasCurrentPortfolio === true
+    ? conversationData.portfolioStrategyPreference === 'generate_new'
+    : true;
+
   const questions: Question[] = [
     {
       id: 'experienceLevel',
@@ -538,6 +544,46 @@ const ChatPortfolioAdvisor = () => {
       }
     },
     {
+      id: 'portfolioDirection',
+      question: 'Hur vill du att jag ska hjälpa dig med din befintliga portfölj?',
+      key: 'portfolioStrategyPreference',
+      hasOptions: true,
+      showIf: () => conversationData.hasCurrentPortfolio === true,
+      options: [
+        { value: 'optimize_existing', label: 'Analysera och optimera mina nuvarande innehav' },
+        { value: 'generate_new', label: 'Ta fram en helt ny portföljstrategi' }
+      ],
+      processAnswer: (answer: string | string[]) => {
+        const value = Array.isArray(answer) ? answer[0] ?? '' : answer;
+        return value === 'optimize_existing' ? 'optimize_existing' : 'generate_new';
+      }
+    },
+    {
+      id: 'optimizationFocus',
+      question: 'Vilka delar av din portfölj vill du optimera? (Du kan välja flera)',
+      key: 'existingOptimizationFocus',
+      hasOptions: true,
+      showIf: () => wantsOptimization,
+      multiSelect: true,
+      options: [
+        { value: 'risk_balance', label: 'Bättre riskbalans och diversifiering' },
+        { value: 'costs', label: 'Minska avgifter och kostnader' },
+        { value: 'performance', label: 'Öka avkastningen' },
+        { value: 'rebalancing', label: 'Skapa tydliga regler för rebalansering' },
+        { value: 'goal_alignment', label: 'Anpassa mot mina mål' },
+        { value: 'sustainability', label: 'Göra portföljen mer hållbar' }
+      ],
+      processAnswer: (answer: string | string[]) => {
+        const values = Array.isArray(answer)
+          ? answer
+          : answer
+              .split(',')
+              .map(item => item.trim())
+              .filter(item => item.length > 0);
+        return values.filter((item, index) => values.indexOf(item) === index);
+      }
+    },
+    {
       id: 'tradingFrequency',
       question: 'Hur ofta handlar du aktier eller andra tillgångar?',
       key: 'tradingFrequency',
@@ -567,7 +613,9 @@ const ChatPortfolioAdvisor = () => {
       question: 'Hur mycket är du beredd att börja investera med?',
       key: 'availableCapital',
       hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true,
+      showIf: () =>
+        conversationData.isBeginnerInvestor === true &&
+        (conversationData.hasCurrentPortfolio !== true || wantsFreshPlan),
       options: [
         { value: 'under_1000', label: 'Mindre än 1 000 kr' },
         { value: '1000_10000', label: '1 000 – 10 000 kr' },
@@ -580,7 +628,9 @@ const ChatPortfolioAdvisor = () => {
       question: 'Vad är ditt främsta mål med att börja investera?',
       key: 'investmentGoal',
       hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true,
+      showIf: () =>
+        conversationData.isBeginnerInvestor === true &&
+        (conversationData.hasCurrentPortfolio !== true || wantsFreshPlan),
       options: [
         { value: 'long_term_savings', label: 'Bygga ett långsiktigt sparande' },
         { value: 'learn_and_test', label: 'Lära mig mer och testa på' },
@@ -643,7 +693,9 @@ const ChatPortfolioAdvisor = () => {
       question: 'Hur ser du på risk?',
       key: 'riskTolerance',
       hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true,
+      showIf: () =>
+        conversationData.isBeginnerInvestor === true &&
+        (conversationData.hasCurrentPortfolio !== true || wantsFreshPlan),
       options: [
         { value: 'conservative', label: 'Vill undvika risk – hellre stabilt och tryggt' },
         { value: 'balanced', label: 'Kan ta viss risk för chans till högre avkastning' },
@@ -690,19 +742,28 @@ const ChatPortfolioAdvisor = () => {
       key: 'portfolioHelp',
       hasOptions: true,
       showIf: () => conversationData.isBeginnerInvestor === false,
-      options: [
-        { value: 'long_term_portfolio', label: 'Bygga en långsiktig portfölj' },
-        { value: 'analyze_holdings', label: 'Ge analyser på mina aktier' },
-        { value: 'find_new_investments', label: 'Hitta nya intressanta investeringar' },
-        { value: 'learn_more', label: 'Lära mig mer om investeringar' }
-      ]
+      options: wantsOptimization
+        ? [
+            { value: 'analyze_holdings', label: 'Identifiera styrkor och svagheter i min portfölj' },
+            { value: 'goal_alignment', label: 'Säkerställa att portföljen matchar mina mål' },
+            { value: 'risk_review', label: 'Bedöma risknivå och diversifiering' },
+            { value: 'find_new_investments', label: 'Föreslå kompletterande investeringar' }
+          ]
+        : [
+            { value: 'long_term_portfolio', label: 'Bygga en långsiktig portfölj' },
+            { value: 'analyze_holdings', label: 'Ge analyser på mina aktier' },
+            { value: 'find_new_investments', label: 'Hitta nya intressanta investeringar' },
+            { value: 'learn_more', label: 'Lära mig mer om investeringar' }
+          ]
     },
     {
       id: 'aiSupportBeginner',
       question: 'Vad vill du främst att AI:n ska hjälpa dig med?',
       key: 'portfolioHelp',
       hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true,
+      showIf: () =>
+        conversationData.isBeginnerInvestor === true &&
+        (conversationData.hasCurrentPortfolio !== true || wantsFreshPlan),
       options: [
         { value: 'step_by_step', label: 'Komma igång steg-för-steg' },
         { value: 'learn_basics', label: 'Lära mig grunderna om aktier & investmentbolag' },
@@ -1556,46 +1617,6 @@ const ChatPortfolioAdvisor = () => {
     const currentQuestion = getCurrentQuestion();
     if (!currentQuestion) return;
 
-    // Special handling for portfolio holdings
-    if (currentQuestion.id === 'hasPortfolio' && !Array.isArray(answer) && answer === 'yes') {
-      // Find the label for the answer
-      const option = currentQuestion.options?.find(opt => opt.value === answer);
-      const displayAnswer = option ? option.label : answer;
-      
-      addUserMessage(displayAnswer);
-      setWaitingForAnswer(false);
-      resetMultiSelectState();
-
-      // Process the answer
-      let processedAnswer: any = answer;
-      if (currentQuestion.processAnswer) {
-        processedAnswer = currentQuestion.processAnswer(answer);
-      }
-
-      // Update conversation data
-      const updatedData = {
-        ...conversationData,
-        [currentQuestion.key]: processedAnswer
-      };
-      setConversationData(updatedData);
-
-      // Show holdings input form
-      setTimeout(() => {
-        addBotMessage(
-          'Perfekt! Ange dina nuvarande innehav nedan så kan jag analysera din portfölj och ge bättre rekommendationer.',
-          false,
-          undefined,
-          true
-        );
-        setShowHoldingsInput(true);
-        setHoldings([createHolding()]);
-      }, 1000);
-
-      prepareQuestionForAnswer(null);
-
-      return;
-    }
-
     // Normal question handling
     // Find the label for the answer if it has options
     let displayAnswer: string;
@@ -1627,13 +1648,24 @@ const ChatPortfolioAdvisor = () => {
     }
 
     // Update conversation data
-    const updatedData = {
+    const updatedData: ConversationData = {
       ...conversationData,
       [currentQuestion.key]: processedAnswer
     };
 
     if (currentQuestion.id === 'experienceLevel') {
       updatedData.isBeginnerInvestor = processedAnswer === 'beginner';
+    }
+
+    if (currentQuestion.id === 'hasPortfolio') {
+      if (processedAnswer === false) {
+        updatedData.portfolioStrategyPreference = 'generate_new';
+        updatedData.currentHoldings = undefined;
+        setShowHoldingsInput(false);
+        setHoldings([]);
+      } else {
+        setShowHoldingsInput(false);
+      }
     }
 
     if (currentQuestion.key === 'monthlyAmount') {
@@ -1658,6 +1690,28 @@ const ChatPortfolioAdvisor = () => {
       }
     }
     setConversationData(updatedData);
+
+    if (currentQuestion.id === 'portfolioDirection') {
+      if (!Array.isArray(answer) && answer === 'optimize_existing') {
+        setTimeout(() => {
+          addBotMessage(
+            'Perfekt! Ange dina nuvarande innehav nedan så kan jag analysera din portfölj och ta fram förbättringsförslag.',
+            false,
+            undefined,
+            true
+          );
+          setShowHoldingsInput(true);
+          setHoldings(prev => (prev.length > 0 ? prev : [createHolding()]));
+        }, 1000);
+        prepareQuestionForAnswer(null);
+        return;
+      }
+
+      setShowHoldingsInput(false);
+      if (showHoldingsInput) {
+        setHoldings([]);
+      }
+    }
 
     // Move to next question
     setTimeout(() => {
@@ -2043,20 +2097,48 @@ const ChatPortfolioAdvisor = () => {
   };
 
   const completeConversation = async () => {
+    const isOptimizationFlow =
+      conversationData.hasCurrentPortfolio === true &&
+      conversationData.portfolioStrategyPreference === 'optimize_existing';
+
     setIsGenerating(true);
-    addBotMessage('Tack för alla svar! Jag skapar nu din personliga portföljstrategi...');
-    
+    addBotMessage(
+      isOptimizationFlow
+        ? 'Tack för all information! Jag analyserar nu din portfölj och tar fram konkreta förbättringsförslag...'
+        : 'Tack för alla svar! Jag skapar nu din personliga portföljstrategi...'
+    );
+
     // Save user holdings to database if they exist
     if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
       await saveUserHoldings(conversationData.currentHoldings);
     }
-    
+
+    if (isOptimizationFlow) {
+      const optimizationResult = await optimizeExistingPortfolio(conversationData);
+
+      if (optimizationResult) {
+        setPortfolioResult({
+          aiResponse: optimizationResult.aiResponse,
+          analysisType: 'optimization',
+          insights: optimizationResult.insights ?? null
+        });
+        setIsComplete(true);
+
+        setTimeout(() => {
+          addBotMessage('🔍 Din portföljanalys är klar! Här är mina rekommenderade förbättringar:');
+        }, 1000);
+      }
+
+      setIsGenerating(false);
+      return;
+    }
+
     const result = await generatePortfolioFromConversation(conversationData);
-    
+
     if (result) {
       setPortfolioResult(result);
       setIsComplete(true);
-      
+
       // Extract and save AI recommendations from the response
       if (result.aiResponse) {
         await saveAIRecommendationsAsHoldings(result.aiResponse);
@@ -2129,10 +2211,24 @@ const ChatPortfolioAdvisor = () => {
     }
 
     const plan = structuredResponse;
+    const isOptimization = portfolioResult?.analysisType === 'optimization';
+    const optimizationInsights = Array.isArray(portfolioResult?.insights)
+      ? (portfolioResult.insights as string[]).filter(Boolean)
+      : [];
 
-    if (!plan) {
+    if (isOptimization || !plan) {
       return (
         <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+          {isOptimization && optimizationInsights.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-foreground">Nyckelinsikter</h4>
+              <ul className="list-disc list-inside space-y-1 text-foreground">
+                {optimizationInsights.map((insight, index) => (
+                  <li key={`insight-${index}`}>{insight}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           {aiContent
             .split(/\n{2,}/)
             .map(paragraph => paragraph.trim())
