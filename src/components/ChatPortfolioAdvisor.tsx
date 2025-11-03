@@ -918,7 +918,9 @@ const ChatPortfolioAdvisor = () => {
       question: 'Hur mycket kapital har du ungefär investerat hittills?',
       key: 'portfolioSize',
       hasOptions: true,
-      showIf: () => conversationData.hasCurrentPortfolio === true,
+      showIf: () =>
+        conversationData.hasCurrentPortfolio !== true &&
+        conversationData.isBeginnerInvestor === false,
       options: [
         { value: 'under_10000', label: 'Under 10 000 kr' },
         { value: '10000_50000', label: '10 000 – 50 000 kr' },
