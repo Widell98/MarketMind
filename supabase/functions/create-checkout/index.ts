@@ -2,36 +2,44 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const logStep = (step: string, details?: any) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
-};
+import { buildCorsHeaders, getSafeRedirectBase } from "../_shared/cors.ts";
+import { createScopedLogger, generateRequestId } from "../_shared/logger.ts";
 
 serve(async (req) => {
+  const requestId = generateRequestId();
+  const { headers: corsHeaders, originAllowed, allowedOrigin } = buildCorsHeaders(req);
+  const logger = createScopedLogger("CREATE-CHECKOUT", requestId);
+
   if (req.method === "OPTIONS") {
+    if (!originAllowed) {
+      logger.warn("Rejected preflight due to disallowed origin");
+      return new Response("Origin not allowed", { status: 403, headers: corsHeaders });
+    }
+
     return new Response(null, { headers: corsHeaders });
   }
 
+  if (!originAllowed) {
+    logger.warn("Blocked request due to disallowed origin");
+    return new Response(JSON.stringify({ error: "Origin not allowed" }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
-    logStep("Function started");
+    logger.info("Function started");
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) {
-      logStep("ERROR: STRIPE_SECRET_KEY not found");
-      return new Response(JSON.stringify({ 
-        error: "Stripe är inte konfigurerat. Kontakta support." 
+      logger.error("Stripe secret key missing");
+      return new Response(JSON.stringify({
+        error: "Stripe är inte konfigurerat. Kontakta support."
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
       });
     }
-    logStep("Stripe secret key found");
 
     // Använd service role key för att autentisera användaren
     const supabaseClient = createClient(
@@ -42,9 +50,9 @@ serve(async (req) => {
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      logStep("ERROR: No authorization header");
-      return new Response(JSON.stringify({ 
-        error: "Du måste vara inloggad för att uppgradera" 
+      logger.warn("Missing authorization header");
+      return new Response(JSON.stringify({
+        error: "Du måste vara inloggad för att uppgradera"
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 401,
@@ -52,49 +60,48 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace("Bearer ", "");
-    logStep("Authenticating user with token");
-    
+    logger.debug("Authenticating user token");
+
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError || !userData.user?.email) {
-      logStep("User authentication failed", { error: userError?.message });
-      return new Response(JSON.stringify({ 
-        error: "Autentisering misslyckades. Logga in igen." 
+      logger.warn("User authentication failed", { reason: userError?.message ?? "missing_email" });
+      return new Response(JSON.stringify({
+        error: "Autentisering misslyckades. Logga in igen."
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 401,
       });
     }
-    
+
     const user = userData.user;
-    logStep("User authenticated", { userId: user.id, email: user.email });
 
     const { tier } = await req.json();
     if (!tier || !['premium', 'pro'].includes(tier)) {
-      logStep("Invalid tier", { tier });
-      return new Response(JSON.stringify({ 
-        error: "Ogiltig prenumerationsplan" 
+      logger.warn("Invalid tier received", { tier: tier ?? "missing" });
+      return new Response(JSON.stringify({
+        error: "Ogiltig prenumerationsplan"
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400,
       });
     }
 
-    logStep("Tier validated", { tier });
+    logger.info("Tier validated", { tier });
 
-    const stripe = new Stripe(stripeKey, { 
-      apiVersion: "2023-10-16" 
+    const stripe = new Stripe(stripeKey, {
+      apiVersion: "2023-10-16"
     });
 
-    logStep("Stripe initialized");
+    logger.debug("Stripe client initialized");
 
     // Kolla om kunden redan finns
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     let customerId;
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
-      logStep("Found existing customer", { customerId });
+      logger.info("Found existing Stripe customer", { customerId });
     } else {
-      logStep("No existing customer found, will create during checkout");
+      logger.info("No existing Stripe customer found; using email lookup");
     }
 
     const priceData = tier === 'premium' ? {
@@ -115,10 +122,10 @@ serve(async (req) => {
       recurring: { interval: "month" },
     };
 
-    logStep("Creating checkout session", { tier, priceData });
+    logger.info("Creating checkout session", { tier });
 
-    const origin = req.headers.get("origin") || "http://localhost:3000";
-    
+    const redirectBase = getSafeRedirectBase(allowedOrigin);
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -129,15 +136,15 @@ serve(async (req) => {
         },
       ],
       mode: "subscription",
-      success_url: `${origin}/portfolio-advisor?success=true`,
-      cancel_url: `${origin}/portfolio-advisor?cancelled=true`,
+      success_url: `${redirectBase}/portfolio-advisor?success=true`,
+      cancel_url: `${redirectBase}/portfolio-advisor?cancelled=true`,
       metadata: {
         user_id: user.id,
         tier: tier,
       },
     });
 
-    logStep("Checkout session created", { sessionId: session.id, url: session.url });
+    logger.info("Checkout session created", { sessionId: session.id });
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -145,9 +152,9 @@ serve(async (req) => {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR", { message: errorMessage });
-    return new Response(JSON.stringify({ 
-      error: "Kunde inte skapa checkout session. Försök igen senare." 
+    logger.error("Failed to create checkout session", { message: errorMessage });
+    return new Response(JSON.stringify({
+      error: "Kunde inte skapa checkout session. Försök igen senare."
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,

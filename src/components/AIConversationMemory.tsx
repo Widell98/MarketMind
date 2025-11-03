@@ -1,27 +1,24 @@
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 
-interface ConversationMemory {
+type AIMemoryRow = Database['public']['Tables']['user_ai_memory']['Row'];
+
+type ConversationMemory = {
   userId: string;
-  lastInteraction: Date;
-  preferences: {
-    favoriteTopics: string[];
-    communicationStyle: 'formal' | 'casual' | 'technical';
-    responseLength: 'brief' | 'detailed' | 'comprehensive';
-  };
-  context: {
-    currentGoals: string[];
-    recentQuestions: string[];
-    portfolioFocus: string[];
-    riskPreferences: string[];
-  };
-  insights: {
-    userExpertise: 'beginner' | 'intermediate' | 'advanced';
-    preferredAnalysisTypes: string[];
-    frequentlyAskedTopics: string[];
-  };
-}
+  lastInteraction: string | null;
+  favoriteTopics: string[];
+  communicationStyle: 'formal' | 'casual' | 'technical';
+  responseLength: 'brief' | 'detailed' | 'comprehensive';
+  currentGoals: string[];
+  recentQuestions: string[];
+  portfolioFocus: string[];
+  riskPreferences: string[];
+  expertiseLevel: 'beginner' | 'intermediate' | 'advanced';
+  preferredAnalysisTypes: string[];
+  frequentlyAskedTopics: string[];
+};
 
 interface ConversationMemoryContextType {
   memory: ConversationMemory | null;
@@ -33,107 +30,192 @@ interface ConversationMemoryContextType {
 
 const ConversationMemoryContext = createContext<ConversationMemoryContextType | undefined>(undefined);
 
+const parseStringArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+
+const createDefaultMemory = (userId: string): ConversationMemory => ({
+  userId,
+  lastInteraction: new Date().toISOString(),
+  favoriteTopics: [],
+  communicationStyle: 'casual',
+  responseLength: 'detailed',
+  currentGoals: [],
+  recentQuestions: [],
+  portfolioFocus: [],
+  riskPreferences: [],
+  expertiseLevel: 'beginner',
+  preferredAnalysisTypes: [],
+  frequentlyAskedTopics: [],
+});
+
+const mapRowToMemory = (row: AIMemoryRow): ConversationMemory => {
+  const riskMetadata =
+    row.risk_comfort_patterns && typeof row.risk_comfort_patterns === 'object' && !Array.isArray(row.risk_comfort_patterns)
+      ? (row.risk_comfort_patterns as Record<string, unknown>)
+      : {};
+
+  const recentQuestions = parseStringArray(riskMetadata.recent_questions);
+  const riskPreferences = parseStringArray(riskMetadata.risk_preferences);
+
+  return {
+    userId: row.user_id,
+    lastInteraction: row.last_interaction,
+    favoriteTopics: parseStringArray(row.favorite_sectors),
+    communicationStyle: (row.communication_style as ConversationMemory['communicationStyle']) ?? 'casual',
+    responseLength: (row.preferred_response_length as ConversationMemory['responseLength']) ?? 'detailed',
+    currentGoals: parseStringArray(row.current_goals),
+    recentQuestions,
+    portfolioFocus: parseStringArray(row.preferred_companies),
+    riskPreferences,
+    expertiseLevel: (row.expertise_level as ConversationMemory['expertiseLevel']) ?? 'beginner',
+    preferredAnalysisTypes: parseStringArray(row.preferred_interaction_times),
+    frequentlyAskedTopics: parseStringArray(row.frequently_asked_topics),
+  };
+};
+
+const mapMemoryToPayload = (value: ConversationMemory) => ({
+  user_id: value.userId,
+  last_interaction: value.lastInteraction ?? new Date().toISOString(),
+  favorite_sectors: value.favoriteTopics,
+  communication_style: value.communicationStyle,
+  preferred_response_length: value.responseLength,
+  current_goals: value.currentGoals,
+  preferred_companies: value.portfolioFocus,
+  expertise_level: value.expertiseLevel,
+  preferred_interaction_times: value.preferredAnalysisTypes,
+  frequently_asked_topics: value.frequentlyAskedTopics,
+  risk_comfort_patterns: {
+    recent_questions: value.recentQuestions,
+    risk_preferences: value.riskPreferences,
+  },
+});
+
 export const ConversationMemoryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const [memory, setMemory] = useState<ConversationMemory | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      // Load memory from localStorage or initialize new memory
-      const savedMemory = localStorage.getItem(`ai_memory_${user.id}`);
-      if (savedMemory) {
-        setMemory(JSON.parse(savedMemory));
-      } else {
-        const newMemory: ConversationMemory = {
-          userId: user.id,
-          lastInteraction: new Date(),
-          preferences: {
-            favoriteTopics: [],
-            communicationStyle: 'casual',
-            responseLength: 'detailed'
-          },
-          context: {
-            currentGoals: [],
-            recentQuestions: [],
-            portfolioFocus: [],
-            riskPreferences: []
-          },
-          insights: {
-            userExpertise: 'beginner',
-            preferredAnalysisTypes: [],
-            frequentlyAskedTopics: []
-          }
-        };
-        setMemory(newMemory);
+  const persistMemory = useCallback(
+    async (value: ConversationMemory) => {
+      if (!user) return;
+
+      try {
+        await supabase
+          .from('user_ai_memory')
+          .upsert(mapMemoryToPayload(value), { onConflict: 'user_id' });
+      } catch (error) {
+        console.warn('Failed to persist AI conversation memory', { message: (error as Error).message });
       }
-    }
-  }, [user]);
+    },
+    [user]
+  );
 
   useEffect(() => {
-    // Save memory to localStorage whenever it changes
-    if (memory && user) {
-      localStorage.setItem(`ai_memory_${user.id}`, JSON.stringify(memory));
-    }
-  }, [memory, user]);
+    let isMounted = true;
+
+    const loadMemory = async () => {
+      if (!user) {
+        if (isMounted) {
+          setMemory(null);
+        }
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('user_ai_memory')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (error) {
+        console.warn('Failed to load AI conversation memory', { message: error.message });
+        const fallback = createDefaultMemory(user.id);
+        setMemory(fallback);
+        void persistMemory(fallback);
+        return;
+      }
+
+      if (data) {
+        setMemory(mapRowToMemory(data));
+        return;
+      }
+
+      const initialMemory = createDefaultMemory(user.id);
+      setMemory(initialMemory);
+      void persistMemory(initialMemory);
+    };
+
+    loadMemory();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [persistMemory, user]);
 
   const updateMemory = (updates: Partial<ConversationMemory>) => {
-    if (memory) {
-      const updatedMemory = {
-        ...memory,
-        ...updates,
-        lastInteraction: new Date()
-      };
-      setMemory(updatedMemory);
+    if (!memory) {
+      return;
     }
+
+    const updatedMemory: ConversationMemory = {
+      ...memory,
+      ...updates,
+      lastInteraction: new Date().toISOString(),
+    };
+
+    setMemory(updatedMemory);
+    void persistMemory(updatedMemory);
   };
 
   const addRecentQuestion = (question: string) => {
-    if (memory) {
-      const updatedQuestions = [question, ...memory.context.recentQuestions].slice(0, 10);
-      updateMemory({
-        context: {
-          ...memory.context,
-          recentQuestions: updatedQuestions
-        }
-      });
+    if (!memory) {
+      return;
     }
+
+    const updatedQuestions = [question, ...memory.recentQuestions.filter(item => item !== question)].slice(0, 10);
+    updateMemory({
+      recentQuestions: updatedQuestions,
+    });
   };
 
   const addPreferredTopic = (topic: string) => {
-    if (memory) {
-      const currentTopics = memory.insights.frequentlyAskedTopics;
-      const topicExists = currentTopics.find(t => t === topic);
-      
-      if (!topicExists) {
-        const updatedTopics = [topic, ...currentTopics].slice(0, 5);
-        updateMemory({
-          insights: {
-            ...memory.insights,
-            frequentlyAskedTopics: updatedTopics
-          }
-        });
-      }
+    if (!memory) {
+      return;
     }
+
+    if (memory.frequentlyAskedTopics.includes(topic)) {
+      return;
+    }
+
+    const updatedTopics = [topic, ...memory.frequentlyAskedTopics].slice(0, 5);
+    updateMemory({
+      frequentlyAskedTopics: updatedTopics,
+    });
   };
 
   const getPersonalizedPrompt = (): string => {
     if (!memory) return '';
 
-    const { preferences, context, insights } = memory;
-    
     let prompt = `Baserat på våra tidigare konversationer:\n`;
-    
-    if (context.recentQuestions.length > 0) {
-      prompt += `Användaren har nyligen frågat om: ${context.recentQuestions.slice(0, 3).join(', ')}\n`;
+
+    if (memory.recentQuestions.length > 0) {
+      prompt += `Användaren har nyligen frågat om: ${memory.recentQuestions.slice(0, 3).join(', ')}\n`;
     }
-    
-    if (insights.frequentlyAskedTopics.length > 0) {
-      prompt += `Användaren är ofta intresserad av: ${insights.frequentlyAskedTopics.join(', ')}\n`;
+
+    if (memory.frequentlyAskedTopics.length > 0) {
+      prompt += `Användaren är ofta intresserad av: ${memory.frequentlyAskedTopics.join(', ')}\n`;
     }
-    
-    prompt += `Kommunikationsstil: ${preferences.communicationStyle}, Responslängd: ${preferences.responseLength}\n`;
-    prompt += `Expertis-nivå: ${insights.userExpertise}\n`;
-    
+
+    if (memory.preferredAnalysisTypes.length > 0) {
+      prompt += `Föredragna analysformat: ${memory.preferredAnalysisTypes.join(', ')}\n`;
+    }
+
+    prompt += `Kommunikationsstil: ${memory.communicationStyle}, Responslängd: ${memory.responseLength}\n`;
+    prompt += `Expertis-nivå: ${memory.expertiseLevel}\n`;
+
     return prompt;
   };
 
@@ -143,7 +225,7 @@ export const ConversationMemoryProvider: React.FC<{ children: React.ReactNode }>
       updateMemory,
       addRecentQuestion,
       addPreferredTopic,
-      getPersonalizedPrompt
+      getPersonalizedPrompt,
     }}>
       {children}
     </ConversationMemoryContext.Provider>

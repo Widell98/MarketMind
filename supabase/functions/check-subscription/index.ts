@@ -2,11 +2,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { buildCorsHeaders } from "../_shared/cors.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -14,8 +10,21 @@ const logStep = (step: string, details?: any) => {
 };
 
 serve(async (req) => {
+  const { headers: corsHeaders, originAllowed } = buildCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
+    if (!originAllowed) {
+      return new Response("Origin not allowed", { status: 403, headers: corsHeaders });
+    }
+
     return new Response(null, { headers: corsHeaders });
+  }
+
+  if (!originAllowed) {
+    return new Response(JSON.stringify({ error: "Origin not allowed" }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   const supabaseClient = createClient(
