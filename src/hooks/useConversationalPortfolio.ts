@@ -308,6 +308,45 @@ export const useConversationalPortfolio = () => {
     const formatBoolean = (value: boolean | undefined) =>
       typeof value === 'boolean' ? (value ? 'Ja' : 'Nej') : 'Ej angivet';
 
+    const normalizedHoldings = (conversationData.currentHoldings ?? [])
+      .map(holding => {
+        const quantity = typeof holding.quantity === 'number' ? holding.quantity : Number(holding.quantity);
+        const price = typeof holding.purchasePrice === 'number'
+          ? holding.purchasePrice
+          : Number(holding.purchasePrice);
+
+        if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(price) || price <= 0) {
+          return null;
+        }
+
+        const estimatedValue = quantity * price;
+        return {
+          name: holding.name,
+          symbol: holding.symbol,
+          quantity,
+          price,
+          estimatedValue,
+        };
+      })
+      .filter((item): item is {
+        name: string;
+        symbol?: string;
+        quantity: number;
+        price: number;
+        estimatedValue: number;
+      } => Boolean(item));
+
+    const totalEstimatedHoldingValue = normalizedHoldings.reduce((sum, holding) => sum + holding.estimatedValue, 0);
+
+    const holdingsWithPercentages = normalizedHoldings
+      .map(holding => ({
+        ...holding,
+        weight: totalEstimatedHoldingValue > 0
+          ? (holding.estimatedValue / totalEstimatedHoldingValue) * 100
+          : null,
+      }))
+      .sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0));
+
     const investmentGoalText = mapValue(conversationData.investmentGoal, {
       pension: 'Pensionssparande',
       wealth: 'Förmögenhetsuppbyggnad',
@@ -664,6 +703,7 @@ SPECIALINSTRUKTIONER (KOMPLETTERA MED NYA IDÉER):
 - Identifiera högst fyra kompletterande innehav som tydligt löser användarens mål.
 - Ange en föreslagen procentandel eller vikt för varje nytt innehav och motivera integrationen.
 - Beskriv hur nya idéer påverkar helheten och vilka befintliga positioner som eventuellt kan minskas för att ge plats.
+- För varje ny rekommendation, specificera vilken överviktad position som ska trimmas (t.ex. "Sälj 15% av Apple") och hur mycket kapital som flyttas för att finansiera köpet, särskilt om någon post utgör mer än 20% av portföljen.
 `;
       } else if (conversationData.optimizationPreference === 'rebalance') {
         prompt += `
@@ -680,6 +720,33 @@ SPECIALINSTRUKTIONER (REBALANSERING):
 NUVARANDE INNEHAV SOM SKA ANALYSERAS: ${conversationData.currentHoldings.map(h =>
           `${h.name} (${h.quantity} st à ${h.purchasePrice} ${h.currency?.trim()?.toUpperCase() || 'SEK'})`
         ).join(', ')}`;
+
+        if (holdingsWithPercentages.length > 0) {
+          const topHoldings = holdingsWithPercentages.slice(0, 6).map(h => {
+            const percentLabel = typeof h.weight === 'number'
+              ? `${h.weight.toFixed(1).replace('.', ',')}%`
+              : 'okänd vikt';
+            const symbolLabel = h.symbol ? ` (${h.symbol.toUpperCase()})` : '';
+            return `${h.name}${symbolLabel}: ${percentLabel}`;
+          });
+
+          if (topHoldings.length > 0) {
+            prompt += `
+- Uppskattad vikt per nyckelinnehav: ${topHoldings.join(', ')}`;
+          }
+
+          const concentrationAlerts = holdingsWithPercentages
+            .filter(h => typeof h.weight === 'number' && h.weight >= 20)
+            .map(h => {
+              const symbolLabel = h.symbol ? ` (${h.symbol.toUpperCase()})` : '';
+              return `${h.name}${symbolLabel} ~${h.weight!.toFixed(1).replace('.', ',')}%`;
+            });
+
+          if (concentrationAlerts.length > 0) {
+            prompt += `
+- Koncentrationsrisker som måste adresseras: ${concentrationAlerts.join(', ')}. Ange exakt hur mycket av dessa positioner som bör säljas eller trimmats för att frigöra kapital till förbättringar.`;
+          }
+        }
       }
 
     } else if (conversationData.isBeginnerInvestor === true) {
