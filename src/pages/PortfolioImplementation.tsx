@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import PortfolioOverview from '@/components/PortfolioOverview';
@@ -16,6 +16,9 @@ import { useCashHoldings } from '@/hooks/useCashHoldings';
 import { Button } from '@/components/ui/button';
 import { Brain, AlertCircle, User } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useAdvisorPlan } from '@/utils/advisorPlan';
 const PortfolioImplementation = () => {
   const {
     actualHoldings,
@@ -117,6 +120,22 @@ const PortfolioImplementation = () => {
     setShowOnboarding(true);
   };
 
+  const aiStrategyData = activePortfolio?.asset_allocation?.ai_strategy;
+  const aiStrategyRaw = activePortfolio?.asset_allocation?.ai_strategy_raw;
+  const structuredPlan = activePortfolio?.asset_allocation?.structured_plan;
+  const advisorPlan = useAdvisorPlan(structuredPlan, aiStrategyData, aiStrategyRaw);
+
+  const hasAdvisorPlanDetails = useMemo(() => {
+    if (!advisorPlan) return false;
+
+    return Boolean(
+      advisorPlan.action_summary
+      || advisorPlan.risk_alignment
+      || advisorPlan.next_steps.length > 0
+      || advisorPlan.recommended_assets.length > 0
+    );
+  }, [advisorPlan]);
+
   // Show loading while portfolio is loading
   if (loading || riskProfileLoading) {
     return <Layout>
@@ -194,6 +213,113 @@ const PortfolioImplementation = () => {
 
           {/* Portfolio Value Cards */}
           <PortfolioValueCards totalPortfolioValue={totalPortfolioValue} totalInvestedValue={investedValue} totalCashValue={totalCash} loading={loading} />
+
+          {/* Advisor Plan Summary */}
+          {advisorPlan && hasAdvisorPlanDetails && (
+            <Card className="relative overflow-hidden border border-border/50 bg-card/70 backdrop-blur-xl rounded-3xl shadow-xl">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary to-primary/80"></div>
+              <CardHeader className="space-y-6 sm:space-y-8">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
+                      <Brain className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-2xl font-semibold text-foreground">
+                        Optimeringsförslag &amp; åtgärder
+                      </CardTitle>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Sammanfattning av vad AI-rådgivaren rekommenderar för din nuvarande portfölj.
+                      </p>
+                    </div>
+                  </div>
+                  {advisorPlan.recommended_assets.length > 0 && (
+                    <Badge className="rounded-2xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-blue-700 dark:text-blue-200 border border-blue-200/30 dark:border-blue-800/30 px-4 py-2 text-sm font-medium">
+                      Inköpslista &amp; allokering
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-8 sm:space-y-10 pb-10">
+                {(advisorPlan.action_summary || advisorPlan.risk_alignment) && (
+                  <div className="p-6 rounded-3xl bg-gradient-to-br from-white/70 to-blue-50/20 dark:from-slate-800/70 dark:to-blue-900/20 border border-blue-200/30 dark:border-blue-800/40 shadow-inner backdrop-blur-sm">
+                    {advisorPlan.action_summary && (
+                      <p className="text-base leading-relaxed text-slate-800 dark:text-slate-200">
+                        {advisorPlan.action_summary}
+                      </p>
+                    )}
+                    {advisorPlan.risk_alignment && (
+                      <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
+                        {advisorPlan.risk_alignment}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {advisorPlan.next_steps.length > 0 && (
+                  <div className="p-6 rounded-3xl bg-gradient-to-br from-white/70 to-slate-100/20 dark:from-slate-800/70 dark:to-slate-900/20 border border-slate-200/30 dark:border-slate-700/40 shadow-inner backdrop-blur-sm">
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                      Föreslagna nästa steg
+                    </h3>
+                    <ol className="list-decimal pl-5 space-y-3 text-sm sm:text-base text-slate-700 dark:text-slate-300">
+                      {advisorPlan.next_steps.map((step, index) => (
+                        <li key={`${step}-${index}`} className="leading-relaxed">
+                          {step}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+
+                {advisorPlan.recommended_assets.length > 0 && (
+                  <div className="space-y-5">
+                    <div className="flex items-center justify-between gap-4">
+                      <h3 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100">
+                        Inköpslista &amp; allokering
+                      </h3>
+                      <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                        Summera till 100%
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {advisorPlan.recommended_assets.map((asset, index) => (
+                        <div
+                          key={`${asset.name}-${asset.ticker || index}`}
+                          className="h-full p-6 rounded-3xl border border-blue-200/30 dark:border-blue-800/30 bg-gradient-to-br from-white/60 to-blue-50/10 dark:from-slate-800/60 dark:to-blue-900/10 shadow-sm backdrop-blur-sm hover:shadow-lg transition-all duration-300"
+                        >
+                          <div className="flex items-start justify-between gap-4 mb-4">
+                            <div>
+                              <p className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100">
+                                {asset.name}
+                              </p>
+                              {asset.ticker && (
+                                <p className="text-xs sm:text-sm uppercase tracking-wide text-blue-600 dark:text-blue-300 mt-1">
+                                  {asset.ticker}
+                                </p>
+                              )}
+                            </div>
+                            <Badge className="rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1 text-xs sm:text-sm font-semibold">
+                              {asset.allocation_percent}%
+                            </Badge>
+                          </div>
+                          {asset.rationale && (
+                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+                              {asset.rationale}
+                            </p>
+                          )}
+                          {asset.risk_role && (
+                            <span className="inline-flex items-center text-[10px] sm:text-xs font-medium uppercase tracking-wide text-blue-700 dark:text-blue-300 bg-blue-500/10 dark:bg-blue-500/20 px-3 py-1 rounded-full">
+                              {asset.risk_role}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Risk Profile Required Alert */}
           {user && !riskProfile && <div className="bg-amber-50/70 dark:bg-amber-950/20 backdrop-blur-xl border border-amber-200/50 dark:border-amber-800/50 rounded-3xl p-8 shadow-xl">
