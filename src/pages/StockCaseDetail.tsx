@@ -320,14 +320,37 @@ const StockCaseDetail = () => {
     }
   }, [stockCase?.id]);
 
-  const navigationButtonBaseClasses = 'rounded-full border border-border/40 bg-background/70 text-muted-foreground shadow-sm backdrop-blur hover:bg-background/90 hover:text-foreground';
+  const navigationButtonBaseClasses = 'rounded-full border border-border/40 bg-background/70 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-background/90 hover:text-foreground';
+  const pageNavigationButtonClasses =
+    'h-16 w-16 sm:h-20 sm:w-20 translate-y-0 text-foreground shadow-[0_35px_90px_-40px_rgba(15,23,42,0.75)] backdrop-blur-xl transition-transform duration-200 ease-out hover:scale-[1.08] focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+  const navigationTooltipClassName = 'border border-border/60 bg-foreground text-background shadow-lg';
 
-  const CaseNavigationControls = () => {
+  const CaseNavigationControls = (
+    { layout = 'inline' }: { layout?: 'inline' | 'overlay' | 'page' } = {}
+  ) => {
     if (navigationError) {
       return null;
     }
 
     if (navigationLoading) {
+      if (layout === 'overlay') {
+        return (
+          <div className="pointer-events-none absolute inset-y-0 left-0 right-0 flex items-center justify-between px-3 sm:px-4">
+            <div className="h-10 w-10 sm:h-12 sm:w-12 animate-pulse rounded-full border border-border/30 bg-muted/40" />
+            <div className="h-10 w-10 sm:h-12 sm:w-12 animate-pulse rounded-full border border-border/30 bg-muted/40" />
+          </div>
+        );
+      }
+
+      if (layout === 'page') {
+        return (
+          <div className="pointer-events-none absolute inset-y-0 -left-[10vw] -right-[10vw] hidden items-center justify-between px-2 sm:px-6 lg:flex">
+            <div className="h-16 w-16 -translate-x-8 animate-pulse rounded-full border border-border/30 bg-muted/40 shadow-lg" />
+            <div className="h-16 w-16 translate-x-8 animate-pulse rounded-full border border-border/30 bg-muted/40 shadow-lg" />
+          </div>
+        );
+      }
+
       return (
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 animate-pulse rounded-full border border-border/30 bg-muted/40" />
@@ -338,6 +361,126 @@ const StockCaseDetail = () => {
 
     if (!previousCase && !nextCase) {
       return null;
+    }
+
+    if (layout === 'page') {
+      return (
+        <TooltipProvider delayDuration={150}>
+          <div className="pointer-events-none absolute inset-y-0 -left-[10vw] -right-[10vw] hidden items-center justify-between px-2 sm:px-6 lg:flex">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="pointer-events-auto group inline-flex items-center justify-center">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      '-translate-x-8 sm:-translate-x-16',
+                      'bg-background/90 hover:bg-background/95',
+                      navigationButtonBaseClasses,
+                      pageNavigationButtonClasses,
+                      'border-white/30 text-foreground'
+                    )}
+                    disabled={!previousCase}
+                    onClick={() => handleNavigateToNeighbor(previousCase?.id)}
+                  >
+                    <ChevronLeft className="h-8 w-8 sm:h-9 sm:w-9 transition-transform duration-200 group-hover:-translate-x-1" />
+                    <span className="sr-only">Föregående case</span>
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={12} className={navigationTooltipClassName}>
+                {previousCaseTitle ? `Föregående: ${previousCaseTitle}` : 'Föregående case'}
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="pointer-events-auto group inline-flex items-center justify-center">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      'translate-x-8 sm:translate-x-16',
+                      'bg-background/90 hover:bg-background/95',
+                      navigationButtonBaseClasses,
+                      pageNavigationButtonClasses,
+                      'border-white/30 text-foreground'
+                    )}
+                    disabled={!nextCase}
+                    onClick={() => handleNavigateToNeighbor(nextCase?.id)}
+                  >
+                    <ChevronRight className="h-8 w-8 sm:h-9 sm:w-9 transition-transform duration-200 group-hover:translate-x-1" />
+                    <span className="sr-only">Nästa case</span>
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="left" sideOffset={12} className={navigationTooltipClassName}>
+                {nextCaseTitle ? `Nästa: ${nextCaseTitle}` : 'Nästa case'}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
+      );
+    }
+
+    if (layout === 'overlay') {
+      return (
+        <TooltipProvider delayDuration={150}>
+          <div className="pointer-events-none absolute inset-y-0 left-0 right-0 flex items-center justify-between px-3 sm:px-4">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="pointer-events-auto inline-flex">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      'h-10 w-10 sm:h-12 sm:w-12 -translate-x-2 sm:-translate-x-4 text-foreground shadow-lg hover:-translate-x-3 sm:hover:-translate-x-5 hover:shadow-xl',
+                      'transition-transform duration-200',
+                      navigationButtonBaseClasses,
+                      'bg-background/90 hover:bg-background/95'
+                    )}
+                    disabled={!previousCase}
+                    onClick={() => handleNavigateToNeighbor(previousCase?.id)}
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                    <span className="sr-only">Föregående case</span>
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8} className={navigationTooltipClassName}>
+                {previousCaseTitle ? `Föregående: ${previousCaseTitle}` : 'Föregående case'}
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="pointer-events-auto inline-flex">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      'h-10 w-10 sm:h-12 sm:w-12 translate-x-2 sm:translate-x-4 text-foreground shadow-lg hover:translate-x-3 sm:hover:translate-x-5 hover:shadow-xl',
+                      'transition-transform duration-200',
+                      navigationButtonBaseClasses,
+                      'bg-background/90 hover:bg-background/95'
+                    )}
+                    disabled={!nextCase}
+                    onClick={() => handleNavigateToNeighbor(nextCase?.id)}
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                    <span className="sr-only">Nästa case</span>
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="left" sideOffset={8} className={navigationTooltipClassName}>
+                {nextCaseTitle ? `Nästa: ${nextCaseTitle}` : 'Nästa case'}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
+      );
     }
 
     return (
@@ -359,7 +502,7 @@ const StockCaseDetail = () => {
                 </Button>
               </span>
             </TooltipTrigger>
-            <TooltipContent sideOffset={6}>
+            <TooltipContent side="top" sideOffset={8} className={navigationTooltipClassName}>
               {previousCaseTitle ? `Föregående: ${previousCaseTitle}` : 'Föregående case'}
             </TooltipContent>
           </Tooltip>
@@ -379,7 +522,7 @@ const StockCaseDetail = () => {
                 </Button>
               </span>
             </TooltipTrigger>
-            <TooltipContent sideOffset={6}>
+            <TooltipContent side="top" sideOffset={8} className={navigationTooltipClassName}>
               {nextCaseTitle ? `Nästa: ${nextCaseTitle}` : 'Nästa case'}
             </TooltipContent>
           </Tooltip>
@@ -1208,8 +1351,10 @@ const StockCaseDetail = () => {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto space-y-12 px-4 sm:px-6 lg:px-8">
-        {/* Hero Section */}
+      <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <CaseNavigationControls layout="page" />
+        <div className="space-y-12">
+          {/* Hero Section */}
         {isAiGeneratedCase ? (
           <div className="relative overflow-hidden rounded-[36px] border border-border/30 bg-background/95 p-8 sm:p-12 shadow-[0_32px_80px_-60px_rgba(15,23,42,0.55)]">
             <div className="absolute inset-0 bg-gradient-to-br from-muted/15 via-transparent to-muted/5 dark:from-muted/20 dark:via-transparent dark:to-muted/10" />
@@ -1226,7 +1371,6 @@ const StockCaseDetail = () => {
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Tillbaka
                   </Button>
-                  <CaseNavigationControls />
                 </div>
 
                 {performanceBadge ? (
@@ -1340,7 +1484,6 @@ const StockCaseDetail = () => {
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Tillbaka
                   </Button>
-                  <CaseNavigationControls />
                 </div>
 
                 {performanceBadge ? (
@@ -1387,6 +1530,9 @@ const StockCaseDetail = () => {
 
         {/* Hero Content */}
         <div className="space-y-6">
+          <div className="flex justify-center lg:hidden">
+            <CaseNavigationControls />
+          </div>
           {/* Graph Section with Carousel */}
           {shouldShowHeroImage && (
             <div className="space-y-4">
@@ -1740,8 +1886,9 @@ const StockCaseDetail = () => {
           </CardContent>
         </Card>
       </div>
+    </div>
 
-      <Dialog open={isVersionDialogOpen} onOpenChange={setIsVersionDialogOpen}>
+    <Dialog open={isVersionDialogOpen} onOpenChange={setIsVersionDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Versionshistorik</DialogTitle>
