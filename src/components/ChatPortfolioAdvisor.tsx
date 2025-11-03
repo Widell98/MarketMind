@@ -959,6 +959,12 @@ const ChatPortfolioAdvisor = () => {
     return /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(normalized);
   };
 
+  const normalizeTickerSymbol = (value: string) =>
+    value
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, '-');
+
   const parseHoldingsFromCSV = useCallback(
     (text: string): Holding[] => {
       const sanitizedText = text.replace(/\uFEFF/g, '');
@@ -1204,7 +1210,7 @@ const ChatPortfolioAdvisor = () => {
         }
 
         const nameRaw = getValue('name');
-        const symbolRaw = (() => {
+        const rawSymbol = (() => {
           const indices = columnIndices.symbol;
           if (!indices || indices.length === 0) {
             return '';
@@ -1229,15 +1235,16 @@ const ChatPortfolioAdvisor = () => {
 
           return fallback;
         })();
+        const normalizedSymbol = normalizeTickerSymbol(rawSymbol);
         const hasValidQuantity = Number.isFinite(quantity) && quantity > 0;
         const hasValidPrice = Number.isFinite(purchasePrice) && purchasePrice > 0;
-        const hasNameOrSymbol = Boolean(nameRaw.trim() || symbolRaw.trim());
+        const hasNameOrSymbol = Boolean(nameRaw.trim() || normalizedSymbol);
 
         if (!hasValidQuantity || !hasValidPrice || !hasNameOrSymbol) {
           continue;
         }
 
-        const inferredFromSymbol = inferCurrencyFromSymbol(symbolRaw);
+        const inferredFromSymbol = inferCurrencyFromSymbol(normalizedSymbol);
         const resolvedCurrency = (
           currencyFromValue ||
           priceCurrencyHint ||
@@ -1248,8 +1255,8 @@ const ChatPortfolioAdvisor = () => {
 
         parsedHoldings.push(
           createHolding({
-            name: nameRaw.trim() || symbolRaw.trim().toUpperCase(),
-            symbol: symbolRaw.trim().toUpperCase(),
+            name: nameRaw.trim() || normalizedSymbol,
+            symbol: normalizedSymbol,
             quantity,
             purchasePrice,
             nameManuallyEdited: true,
@@ -1344,7 +1351,7 @@ const ChatPortfolioAdvisor = () => {
   };
 
   const handleHoldingSymbolChange = (id: string, rawValue: string) => {
-    const normalizedSymbol = rawValue.trim().toUpperCase();
+    const normalizedSymbol = normalizeTickerSymbol(rawValue);
 
     setHoldings(prev =>
       prev.map(holding => {
@@ -1458,7 +1465,7 @@ const ChatPortfolioAdvisor = () => {
         }
 
         if (!normalized || normalized === 'AUTO') {
-          const symbol = holding.symbol?.trim().toUpperCase() || '';
+          const symbol = holding.symbol ? normalizeTickerSymbol(holding.symbol) : '';
           const tickerCurrency = symbol ? tickerLookup.get(symbol)?.currency?.trim()?.toUpperCase() : undefined;
           const fallbackCurrency = holding.currency?.trim()?.toUpperCase() || 'SEK';
 
@@ -1487,7 +1494,7 @@ const ChatPortfolioAdvisor = () => {
       let hasChanges = false;
 
       const updatedHoldings = prev.map(holding => {
-        const symbol = holding.symbol?.trim().toUpperCase();
+        const symbol = holding.symbol ? normalizeTickerSymbol(holding.symbol) : '';
         if (!symbol) {
           return holding;
         }
@@ -1497,31 +1504,39 @@ const ChatPortfolioAdvisor = () => {
           return holding;
         }
 
-        let nextHolding = holding;
+        let nextHolding = symbol !== holding.symbol ? { ...holding, symbol } : holding;
         let modified = false;
         const resolvedCurrency = ticker.currency?.trim()?.toUpperCase();
 
+        if (nextHolding !== holding) {
+          modified = true;
+        }
+
         if (!holding.nameManuallyEdited) {
           const resolvedName = ticker.name?.trim() || symbol;
-          if (holding.name !== resolvedName) {
+          if (nextHolding.name !== resolvedName) {
             nextHolding = { ...nextHolding, name: resolvedName };
             modified = true;
           }
         }
 
-        if (!holding.currencyManuallyEdited && resolvedCurrency && holding.currency !== resolvedCurrency) {
+        if (
+          !nextHolding.currencyManuallyEdited &&
+          resolvedCurrency &&
+          nextHolding.currency !== resolvedCurrency
+        ) {
           nextHolding = { ...nextHolding, currency: resolvedCurrency, currencyManuallyEdited: false };
           modified = true;
         }
 
         if (
-          !holding.priceManuallyEdited &&
+          !nextHolding.priceManuallyEdited &&
           typeof ticker.price === 'number' &&
           Number.isFinite(ticker.price) &&
           ticker.price > 0
         ) {
           const normalizedPrice = parseFloat(ticker.price.toFixed(2));
-          if (holding.purchasePrice !== normalizedPrice) {
+          if (nextHolding.purchasePrice !== normalizedPrice) {
             nextHolding = { ...nextHolding, purchasePrice: normalizedPrice };
             modified = true;
           }
@@ -1561,7 +1576,7 @@ const ChatPortfolioAdvisor = () => {
   const submitHoldings = () => {
     // Normalize holdings with ticker data so currency/exchange aligns with the Google Sheet reference
     const normalizedHoldings = holdings.map(holding => {
-      const normalizedSymbol = holding.symbol?.trim().toUpperCase() || '';
+      const normalizedSymbol = holding.symbol ? normalizeTickerSymbol(holding.symbol) : '';
       const ticker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) : undefined;
       const resolvedCurrency = ticker?.currency?.trim()?.toUpperCase() || holding.currency?.trim()?.toUpperCase() || 'SEK';
 
