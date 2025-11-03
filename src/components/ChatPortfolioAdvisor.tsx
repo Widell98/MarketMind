@@ -24,6 +24,7 @@ import {
   Trash2,
   Check,
   Upload,
+  MessageSquare,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationalPortfolio, type ConversationData } from '@/hooks/useConversationalPortfolio';
@@ -429,6 +430,18 @@ const ChatPortfolioAdvisor = () => {
   const { refetch: refetchHoldings } = useUserHoldings();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const startAiChatSession = useCallback(
+    (sessionName: string, initialMessage: string) => {
+      navigate('/ai-chatt', {
+        state: {
+          createNewSession: true,
+          sessionName,
+          initialMessage,
+        },
+      });
+    },
+    [navigate]
+  );
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { tickers, isLoading: tickersLoading, error: tickersError } = useSheetTickers();
@@ -2688,6 +2701,105 @@ const ChatPortfolioAdvisor = () => {
       );
     }
 
+    const defaultNewPortfolioSteps = [
+      'Granska allokeringsförslagen och säkerställ att de matchar din riskprofil.',
+      'Öppna implementeringsfliken för att lägga till strategin i din portföljöversikt.',
+      'Planera dina första köp och sätt eventuella bevakningsnivåer.',
+    ];
+
+    const defaultOptimizationSteps = [
+      'Jämför de föreslagna förändringarna med dina nuvarande innehav.',
+      'Planera hur och när ombalanseringen ska genomföras i praktiken.',
+      'Följ upp resultatet efter genomförd justering tillsammans med AI-assistenten.',
+    ];
+
+    const displayNextSteps = plan.nextSteps.length > 0
+      ? plan.nextSteps
+      : (isOptimization ? defaultOptimizationSteps : defaultNewPortfolioSteps);
+
+    const summarizedSteps = displayNextSteps.slice(0, 3).join('; ');
+    const assetSummary = plan.assets
+      .filter(asset => asset.actionType || asset.allocationPercent)
+      .slice(0, 3)
+      .map(asset => {
+        const label = asset.ticker ? `${asset.name} (${asset.ticker})` : asset.name;
+        if (!asset.actionType) {
+          return label;
+        }
+
+        return `${label} – ${getActionLabel(asset.actionType)}`;
+      })
+      .join('; ');
+
+    const aiChatSuggestions = (() => {
+      const suggestions: Array<{ title: string; description: string; sessionName: string; message: string }> = [];
+
+      if (isOptimization) {
+        if (assetSummary) {
+          suggestions.push({
+            title: 'Planera ombalanseringen med AI',
+            description: 'Gå igenom hur du praktiskt genomför ändringarna och vilka order som ska läggas.',
+            sessionName: 'Portföljoptimering',
+            message: `Hej! Jag har fått optimeringsförslag för min portfölj och vill säkerställa genomförandet. Föreslagna ändringar: ${assetSummary}. Kan du hjälpa mig att prioritera och tidsätta affärerna?`,
+          });
+        }
+
+        if (conversationData.optimizationGoals && conversationData.optimizationGoals.length > 0) {
+          suggestions.push({
+            title: 'Fördjupa optimeringsmålen',
+            description: 'Diskutera hur målen kan uppfyllas och vilka risker som bör bevakas.',
+            sessionName: 'Optimeringsmål',
+            message: `Jag vill diskutera mina optimeringsmål (${conversationData.optimizationGoals.join(', ')}). Hur säkerställer jag att rekommendationerna stöttar dessa mål och vad bör jag följa upp på?`,
+          });
+        }
+
+        if (wantsComplementaryIdeas && complementaryIdeas.length > 0) {
+          const complementarySummary = complementaryIdeas
+            .slice(0, 3)
+            .map(idea => idea.symbol ? `${idea.name} (${idea.symbol})` : idea.name)
+            .join(', ');
+
+          suggestions.push({
+            title: 'Utvärdera kompletterande idéer',
+            description: 'Bedöm hur nya aktier passar in i portföljen innan du agerar.',
+            sessionName: 'Kompletterande investeringar',
+            message: `Jag fick även kompletterande idéer (${complementarySummary}). Kan vi diskutera hur de bör viktas och om de verkligen passar min strategi?`,
+          });
+        }
+
+        return suggestions;
+      }
+
+      if (plan.actionSummary) {
+        suggestions.push({
+          title: 'Stäm av portföljplanen',
+          description: 'Låt AI förklara varför planen passar dig och vilka risker som finns.',
+          sessionName: 'Portföljplan',
+          message: `Hej! Jag har fått en portföljplan. Sammanfattning: ${plan.actionSummary}. Kan du hjälpa mig att förstå strategin och vilka frågor jag bör ställa innan jag sätter igång?`,
+        });
+      }
+
+      if (summarizedSteps) {
+        suggestions.push({
+          title: 'Skapa en implementeringschecklista',
+          description: 'Be AI om en konkret lista att följa när du börjar investera.',
+          sessionName: 'Implementeringsplan',
+          message: `Jag behöver en detaljerad checklista för att genomföra dessa steg: ${summarizedSteps}. Hjälp mig att bryta ned dem i praktiska åtgärder med tidsordning.`,
+        });
+      }
+
+      if (assetSummary) {
+        suggestions.push({
+          title: 'Validera de föreslagna köpen',
+          description: 'Diskutera hur du kan komplettera eller justera enskilda innehav.',
+          sessionName: 'Val av investeringar',
+          message: `Planen föreslår följande nyckelinnehav: ${assetSummary}. Kan du hjälpa mig att resonera kring beloppen och om jag bör lägga till alternativa värdepapper?`,
+        });
+      }
+
+      return suggestions;
+    })();
+
     return (
       <div className="space-y-5 text-sm leading-relaxed text-foreground">
         {plan.actionSummary && (
@@ -2698,16 +2810,51 @@ const ChatPortfolioAdvisor = () => {
           <p className="text-muted-foreground">{plan.riskAlignment}</p>
         )}
 
-        {plan.nextSteps.length > 0 && (
+        {displayNextSteps.length > 0 && (
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Så går du vidare</h4>
             <ol className="mt-2 space-y-1 list-decimal list-inside">
-              {plan.nextSteps.map((step, index) => (
+              {displayNextSteps.map((step, index) => (
                 <li key={`step-${index}`} className="text-foreground">
                   {step}
                 </li>
               ))}
             </ol>
+          </div>
+        )}
+
+        {aiChatSuggestions.length > 0 && (
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 sm:p-4">
+            <div className="flex items-start gap-2">
+              <div className="mt-0.5 rounded-md bg-primary/20 p-1 text-primary">
+                <MessageSquare className="h-4 w-4" />
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-primary">Fortsätt dialogen med AI-assistenten</h4>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Starta en fokuserad chatt för att få stöd i nästa steg eller ställa följdfrågor om rekommendationerna.
+                  </p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {aiChatSuggestions.map((suggestion, index) => (
+                    <button
+                      key={`${suggestion.sessionName}-${index}`}
+                      type="button"
+                      onClick={() => startAiChatSession(suggestion.sessionName, suggestion.message)}
+                      className="group flex h-full flex-col items-start gap-1 rounded-lg border border-primary/30 bg-background/80 p-3 text-left transition hover:border-primary hover:bg-primary/10"
+                    >
+                      <span className="text-sm font-medium text-foreground group-hover:text-primary">
+                        {suggestion.title}
+                      </span>
+                      <span className="text-xs text-muted-foreground group-hover:text-primary/80">
+                        {suggestion.description}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
