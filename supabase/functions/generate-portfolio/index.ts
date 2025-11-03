@@ -21,15 +21,248 @@ const quotaExceededResponse = () =>
     message: 'Du har nått din dagliga gräns för OpenAI API-användning. Vänligen kontrollera din fakturering eller försök igen senare.'
   }, 429);
 
+const INVESTMENT_COMPANY_KEYWORDS = [
+  'investor',
+  'investment',
+  'industrivärden',
+  'industrivarden',
+  'latour',
+  'kinnevik',
+  'lundberg',
+  'svolder',
+  'bure',
+  'oresund',
+  'ratos',
+  'traction',
+  'börsnoterade investmentbolag',
+  'berkshire',
+  'brookfield'
+];
+
+const INDEX_KEYWORDS = [
+  'global',
+  'world',
+  'index',
+  'etf',
+  'ishares',
+  'xact',
+  'sp500',
+  's&p',
+  'msci',
+  'vanguard',
+  'lyxor',
+  'all world',
+  'core'
+];
+
+const DEFENSIVE_KEYWORDS = [
+  'hälsa',
+  'health',
+  'sjukvård',
+  'medic',
+  'pharma',
+  'biotech',
+  'försvar',
+  'defence',
+  'defense',
+  'säkerhet',
+  'dagligvaror',
+  'consumer staples',
+  'livsmedel',
+  'utility',
+  'utilities',
+  'vatten',
+  'vattenkraft'
+];
+
+const CASHFLOW_KEYWORDS = [
+  'bank',
+  'finans',
+  'financial',
+  'försäkring',
+  'lån',
+  'real estate',
+  'fastighet',
+  'property',
+  'reits',
+  'utdelning',
+  'dividend',
+  'inkomst',
+  'yield',
+  'energi',
+  'energy',
+  'kraft',
+  'infrastruktur',
+  'telekom',
+  'telecom',
+  'telecommunications'
+];
+
+const GROWTH_KEYWORDS = [
+  'tech',
+  'teknik',
+  'innovation',
+  'ai',
+  'cloud',
+  'software',
+  'spel',
+  'gaming',
+  'digital',
+  'småbolag',
+  'growth',
+  'förnybar',
+  'renewable',
+  'grön',
+  'clean energy',
+  'elbil',
+  'ev',
+  'cyklisk',
+  'cyclical',
+  'lyx',
+  'luxury'
+];
+
+const CASHFLOW_TICKERS = /SHB|SEB|NDA|SWED|AVANZ|CAST|SBB|BALD|FABG|KO|PEP|T|TEL2|TELIA|VNQ|XACTHYG|LUNE|EQNR|MAIN|O\b/;
+const DEFENSIVE_TICKERS = /AZN|NVO|JNJ|MRK|ABBV|BMY|AXFO|ICA|WMT|KO|PEP|NG/;
+const GROWTH_TICKERS = /NVDA|AAPL|MSFT|GOOGL|META|AMZN|TSLA|ADBE|CRM|SHOP|SNOW|EVO|SINCH|SPOT|SECT B/;
+
 function detectSector(name: string, symbol?: string) {
   const n = name.toLowerCase();
   const s = (symbol || '').toUpperCase();
-  if (n.includes('bank') || /SHB|SEB|NDA/.test(s)) return 'Bank';
-  if (n.includes('fastighet') || /CAST|SBB/.test(s)) return 'Fastighet';
-  if (n.includes('investor') || n.includes('investment')) return 'Investmentbolag';
-  if (n.includes('global') || n.includes('world') || n.includes('index')) return 'Indexfond';
-  if (n.includes('tech') || n.includes('teknik') || /NVDA|AAPL|MSFT|EVO/.test(s)) return 'Teknik';
+
+  if (INVESTMENT_COMPANY_KEYWORDS.some(keyword => n.includes(keyword))) {
+    return 'Investmentbolag';
+  }
+
+  if (INDEX_KEYWORDS.some(keyword => n.includes(keyword)) || /ETF|INDEX|MSCI/.test(s)) {
+    return 'Indexfond';
+  }
+
+  if (CASHFLOW_KEYWORDS.some(keyword => n.includes(keyword)) || CASHFLOW_TICKERS.test(s)) {
+    if (n.includes('fastighet') || /CAST|SBB|BALD|FABG/.test(s)) {
+      return 'Fastighet';
+    }
+    if (n.includes('bank') || /SHB|SEB|NDA|SWED|AVANZ/.test(s)) {
+      return 'Bank';
+    }
+    if (n.includes('tele') || /TEL2|TELIA|T\b/.test(s)) {
+      return 'Telekom';
+    }
+    if (n.includes('energi') || n.includes('energy') || /LUNE|EQNR|NESTE/.test(s)) {
+      return 'Energi';
+    }
+    return 'Kassaflöde';
+  }
+
+  if (DEFENSIVE_KEYWORDS.some(keyword => n.includes(keyword)) || DEFENSIVE_TICKERS.test(s)) {
+    if (n.includes('hälsa') || n.includes('health') || n.includes('pharma') || /AZN|NVO|BMY|MRK|ABBV/.test(s)) {
+      return 'Hälsovård';
+    }
+    if (n.includes('dagligvaror') || n.includes('consumer') || n.includes('mat') || /AXFO|ICA/.test(s)) {
+      return 'Dagligvaror';
+    }
+    if (n.includes('försvar') || n.includes('defence') || /SAAB/.test(s)) {
+      return 'Försvar';
+    }
+    return 'Defensiv';
+  }
+
+  if (GROWTH_KEYWORDS.some(keyword => n.includes(keyword)) || GROWTH_TICKERS.test(s)) {
+    if (n.includes('förnybar') || n.includes('renewable') || n.includes('grön') || /NIBE|ORSTED/.test(s)) {
+      return 'Förnybar energi';
+    }
+    if (n.includes('spel') || n.includes('gaming') || /EVO|EMBRAC|STORY|STILL/.test(s)) {
+      return 'Gaming & Underhållning';
+    }
+    return 'Teknik';
+  }
+
+  if (n.includes('industri') || /ATCO|VOLV|SAND|ABB|HEXAB|SKF/.test(s)) {
+    return 'Industri';
+  }
+
+  if (n.includes('konsument') || n.includes('consumer') || n.includes('retail') || /HM B|HMB|ADIDAS|LVMH/.test(s)) {
+    return 'Konsument';
+  }
+
   return 'Allmän';
+}
+
+const RISK_ROLE_CANONICAL: Record<string, string> = {
+  bas: 'Bas',
+  grund: 'Bas',
+  core: 'Bas',
+  trygg: 'Bas',
+  stabil: 'Skydd',
+  stabilitet: 'Skydd',
+  defensiv: 'Skydd',
+  skydd: 'Skydd',
+  säkring: 'Skydd',
+  kassaflöde: 'Kassaflöde',
+  income: 'Kassaflöde',
+  utdelning: 'Kassaflöde',
+  dividend: 'Kassaflöde',
+  tillväxt: 'Tillväxt',
+  growth: 'Tillväxt',
+  offensiv: 'Tillväxt',
+  komplettering: 'Komplettering',
+  satellite: 'Komplettering'
+};
+
+const isCanonicalRiskRole = (value: string | null | undefined) =>
+  value === 'Bas' || value === 'Tillväxt' || value === 'Skydd' || value === 'Kassaflöde' || value === 'Komplettering';
+
+function normalizeRiskRoleValue(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const normalized = trimmed.toLowerCase();
+  const mapped = RISK_ROLE_CANONICAL[normalized];
+  if (mapped) {
+    return mapped;
+  }
+  if (isCanonicalRiskRole(trimmed)) {
+    return trimmed;
+  }
+  return null;
+}
+
+function deriveRiskRoleFromSector(
+  sector: string | undefined,
+  name: string | undefined
+): string | null {
+  const sectorValue = (sector || '').toLowerCase();
+  const nameValue = (name || '').toLowerCase();
+
+  if (!sectorValue && !nameValue) {
+    return null;
+  }
+
+  const sectorMatchers = [sectorValue, nameValue].filter(Boolean) as string[];
+
+  const sectorHas = (regex: RegExp) => sectorMatchers.some(value => regex.test(value));
+
+  if (sectorHas(/investment|investmentbolag|indexfond|index|etf|global|världen|all world|core/)) {
+    return 'Bas';
+  }
+
+  if (sectorHas(/bank|finans|financial|försäkring|fastighet|property|reits|utdelning|dividend|yield|cashflow|kassaflöde|telekom|telecom|energi|energy|infrastruktur/)) {
+    return 'Kassaflöde';
+  }
+
+  if (sectorHas(/hälsa|health|sjukvård|medic|pharma|biotech|dagligvaror|consumer staples|defensiv|försvar|defence|säkerhet|utility|utilities|vatten|vattenkraft/)) {
+    return 'Skydd';
+  }
+
+  if (sectorHas(/tech|teknik|innovation|ai|cloud|software|spel|gaming|digital|småbolag|growth|förnybar|renewable|grön|clean energy|elbil|ev|cyklisk|cyclical|industri|konsument|luxury|lyx/)) {
+    return 'Tillväxt';
+  }
+
+  return null;
 }
 
 serve(async (req) => {
@@ -865,15 +1098,50 @@ function fallbackRiskAlignment(riskProfile: any): string {
   return 'Mixen av ledande investmentbolag och selektiva kvalitetsbolag ger en balanserad risk där både stabilitet och tillväxt vägs in.';
 }
 
-function determineRiskRole(stock: { sector?: string }, riskProfile: any): string {
-  const sector = (stock.sector || '').toLowerCase();
-  if (sector.includes('index') || sector.includes('fond')) return 'Bas';
-  if (sector.includes('investment')) return 'Stabilitet';
-  if (sector.includes('bank')) return 'Kassaflöde';
-  if (sector.includes('fastighet')) return 'Inkomst';
-  if (sector.includes('tek') || sector.includes('tech')) return 'Tillväxt';
-  const tolerance = (riskProfile?.risk_tolerance || 'moderate').toLowerCase();
-  return tolerance === 'aggressive' ? 'Tillväxt' : 'Komplettering';
+function determineRiskRole(
+  stock: { sector?: string; name?: string; symbol?: string; risk_role?: string; role?: string },
+  riskProfile: any
+): string {
+  const providedRole = normalizeRiskRoleValue(stock.risk_role || stock.role);
+  const detectedSector = stock.sector || (stock.name ? detectSector(stock.name, stock.symbol) : undefined);
+  const sectorRole = deriveRiskRoleFromSector(detectedSector, stock.name);
+
+  if (sectorRole && providedRole) {
+    if (sectorRole === providedRole) {
+      return sectorRole;
+    }
+
+    if (providedRole === 'Tillväxt' && sectorRole !== 'Tillväxt') {
+      return sectorRole;
+    }
+
+    if (providedRole === 'Bas' && sectorRole && sectorRole !== 'Bas' && sectorRole !== 'Komplettering') {
+      return sectorRole;
+    }
+
+    if (providedRole === 'Skydd' && sectorRole === 'Kassaflöde') {
+      return sectorRole;
+    }
+
+    return providedRole;
+  }
+
+  if (sectorRole) {
+    return sectorRole;
+  }
+
+  if (providedRole) {
+    return providedRole;
+  }
+
+  const tolerance = String(riskProfile?.risk_tolerance || 'balanced').toLowerCase();
+  if (/(konservativ|conservative|låg)/.test(tolerance)) {
+    return 'Skydd';
+  }
+  if (/(aggressiv|aggressive|hög|high|offensiv)/.test(tolerance)) {
+    return 'Tillväxt';
+  }
+  return 'Bas';
 }
 
 function buildSectorRationale(stock: { name: string; sector?: string }, riskProfile: any): string {
@@ -926,15 +1194,24 @@ function extractStructuredPlan(rawText: string, riskProfile: any): { plan: any |
         const ticker = asset.ticker || asset.symbol || asset.code || '';
         const allocation = parseAllocationPercent(asset.allocation_percent ?? asset.allocation ?? asset.weight);
         const rationale = asset.rationale || asset.reasoning || asset.analysis || '';
-        const riskRole = asset.risk_role || asset.role || '';
         const sector = asset.sector || detectSector(String(name), ticker ? String(ticker) : undefined);
+        const riskRole = determineRiskRole(
+          {
+            sector,
+            name: String(name).trim(),
+            symbol: ticker ? String(ticker).trim() : undefined,
+            risk_role: asset.risk_role,
+            role: asset.role
+          },
+          riskProfile
+        );
         return {
           planAsset: {
             name: String(name).trim(),
             ticker: ticker ? String(ticker).trim() : '',
             allocation_percent: allocation,
             rationale: rationale ? String(rationale).trim() : buildSectorRationale({ name: String(name).trim(), sector }, riskProfile),
-            risk_role: riskRole ? String(riskRole).trim() : determineRiskRole({ sector }, riskProfile)
+            risk_role: riskRole
           },
           stock: {
             name: String(name).trim(),
@@ -987,13 +1264,13 @@ function buildFallbackPlanFromText(rawText: string, riskProfile: any): { plan: a
     action_summary: fallbackActionSummary(riskProfile),
     risk_alignment: fallbackRiskAlignment(riskProfile),
     next_steps: buildDefaultNextSteps(riskProfile),
-    recommended_assets: fallbackStocks.map(stock => ({
-      name: stock.name,
-      ticker: stock.symbol || '',
-      allocation_percent: stock.allocation,
-      rationale: stock.reasoning || buildSectorRationale(stock, riskProfile),
-      risk_role: determineRiskRole(stock, riskProfile)
-    })),
+      recommended_assets: fallbackStocks.map(stock => ({
+        name: stock.name,
+        ticker: stock.symbol || '',
+        allocation_percent: stock.allocation,
+        rationale: stock.reasoning || buildSectorRationale(stock, riskProfile),
+        risk_role: determineRiskRole(stock, riskProfile)
+      })),
     disclaimer: 'Råden är utbildningsmaterial och ersätter inte personlig rådgivning. Investeringar innebär risk och värdet kan både öka och minska.'
   };
 

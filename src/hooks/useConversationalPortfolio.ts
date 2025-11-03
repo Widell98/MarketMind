@@ -69,6 +69,27 @@ export interface ConversationData {
   communicationStyle?: string;
   preferredResponseLength?: string;
   additionalNotes?: string;
+  currentPortfolioStrategy?: string;
+  optimizationGoals?: string[];
+  optimizationRiskFocus?: string;
+  optimizationDiversificationFocus?: string[];
+  optimizationPreference?: 'analyze_only' | 'improve_with_new_ideas' | 'rebalance';
+  optimizationTimeline?: string;
+}
+
+type PortfolioGenerationMode = 'new' | 'optimize';
+
+export interface StockRecommendation {
+  name: string;
+  symbol?: string;
+  sector?: string;
+  reasoning?: string;
+  allocation?: number;
+  isin?: string;
+  actionType?: string;
+  changePercent?: number;
+  notes?: string;
+  expectedPrice?: number;
 }
 
 export const useConversationalPortfolio = () => {
@@ -76,140 +97,182 @@ export const useConversationalPortfolio = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Enhanced stock recommendation extraction - completely dynamic
-  const extractStockRecommendations = (aiResponse: string) => {
-    const recommendations: Array<{
-      name: string;
-      symbol?: string;
-      sector?: string;
-      reasoning?: string;
-      allocation?: number;
-      isin?: string;
-    }> = [];
+  const coerceArray = (value: unknown): any[] => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'object') {
+      return Object.values(value);
+    }
+    return [];
+  };
 
+  // Enhanced stock recommendation extraction - completely dynamic
+  const extractStockRecommendations = (aiResponse: string): StockRecommendation[] => {
+    const recommendations: StockRecommendation[] = [];
+
+    const resolvePercent = (value: unknown): number | undefined => {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+      }
+      if (typeof value === 'string') {
+        const numeric = parseFloat(value.replace(/[^\\d.,-]/g, '').replace(',', '.'));
+        return Number.isFinite(numeric) ? numeric : undefined;
+      }
+      return undefined;
+    };
+
+    const pushUniqueRecommendation = (recommendation: StockRecommendation) => {
+      if (!recommendation.name) {
+        return;
+      }
+
+      const exists = recommendations.some(existing =>
+        existing.name.toLowerCase() === recommendation.name.toLowerCase() ||
+        (existing.symbol && recommendation.symbol && existing.symbol.toLowerCase() === recommendation.symbol.toLowerCase())
+      );
+
+      if (!exists) {
+        recommendations.push(recommendation);
+      }
+    };
 
     try {
       const parsed = JSON.parse(aiResponse);
       const recs = Array.isArray(parsed)
         ? parsed
         : parsed.recommendations || parsed.recommended_assets;
+
       if (Array.isArray(recs)) {
         recs.forEach((rec: any) => {
-          if (rec && rec.name) {
-            recommendations.push({
-              name: rec.name,
-              symbol: rec.symbol || rec.ticker,
-              sector: rec.sector,
-              reasoning: rec.reasoning || rec.rationale,
-              allocation: typeof rec.allocation_percent === 'string'
-                ? parseInt(rec.allocation_percent.replace(/[^\d]/g, ''))
-                : typeof rec.allocation_percent === 'number'
-                ? rec.allocation_percent
-                : typeof rec.allocation === 'string'
-                ? parseInt(rec.allocation.replace(/[^\d]/g, ''))
-                : rec.allocation,
-              isin: rec.isin
-            });
+          if (!rec || !rec.name) {
+            return;
           }
+
+          pushUniqueRecommendation({
+            name: String(rec.name).trim(),
+            symbol: rec.symbol || rec.ticker || undefined,
+            sector: rec.sector || rec.category,
+            reasoning: rec.reasoning || rec.rationale || rec.analysis || rec.comment || rec.notes,
+            allocation: resolvePercent(rec.allocation_percent) ?? resolvePercent(rec.allocation) ?? undefined,
+            isin: rec.isin,
+            actionType: typeof rec.action_type === 'string' ? rec.action_type : typeof rec.action === 'string' ? rec.action : undefined,
+            changePercent: resolvePercent(rec.change_percent) ?? resolvePercent(rec.weight_change_percent) ?? resolvePercent(rec.delta_percent),
+            notes: rec.notes || rec.comment || rec.detail,
+            expectedPrice: typeof rec.expected_price === 'number' ? rec.expected_price : undefined,
+          });
         });
+
         return recommendations.slice(0, 10);
       }
-    } catch (e) {
+    } catch (error) {
       console.warn('AI response not valid JSON, using regex fallback');
     }
 
-    // Enhanced patterns for parsing AI recommendations with numbered lists
     const patterns = [
-      // Pattern: 1. **Company Name (SYMBOL)**: Description... Allokering: XX%
       /(?:\d+\.\s*)?\*\*([^*\(\)]+?)\s*\(([A-Z\s-]+?)\)\*\*:\s*([^.]+(?:\.[^.]*)*?)(?:.*?Allokering:\s*(\d+)%)?/gi,
-      // Pattern: **Company Name (SYMBOL)**: Description (without explicit allocation)
       /(?:\d+\.\s*)?\*\*([^*\(\)]+?)\s*\(([A-Z\s-]+?)\)\*\*:\s*([^.]+(?:\.[^.]*)*?)/gi,
-      // Pattern: **Company Name**: Description (for funds without symbols)
       /(?:\d+\.\s*)?\*\*([^*\(\)]+?)\*\*:\s*([^.]+(?:\.[^.]*)*?)(?:.*?Allokering:\s*(\d+)%)?/gi,
-      // Pattern: Company Name (SYMBOL): Description (simple format)
       /(?:\d+\.\s*)?([A-ZÅÄÖ][a-zåäö\s&.-]+)\s*\(([A-Z\s-]+)\):\s*([^.\n]+)/g,
     ];
 
-    // Extract using enhanced patterns
     patterns.forEach((pattern, patternIndex) => {
       let match;
       const regex = new RegExp(pattern.source, pattern.flags);
-      
+
       while ((match = regex.exec(aiResponse)) !== null) {
         let name = '';
         let symbol = '';
         let reasoning = '';
-        let allocation = 10; // Default allocation
-        
+        let allocation = 10;
+
         if (patternIndex === 0) {
-          // Pattern: 1. **Company Name (SYMBOL)**: Description... Allokering: XX%
           [, name, symbol, reasoning] = match;
           const allocationMatch = match[4];
           allocation = allocationMatch ? parseInt(allocationMatch) : 12;
         } else if (patternIndex === 1) {
-          // Pattern: **Company Name (SYMBOL)**: Description (without explicit allocation)
           [, name, symbol, reasoning] = match;
-          allocation = 10; // Default for this pattern
+          allocation = 10;
         } else if (patternIndex === 2) {
-          // Pattern: **Company Name**: Description (for funds)
           [, name, reasoning] = match;
           const allocationMatch = match[3];
           allocation = allocationMatch ? parseInt(allocationMatch) : 15;
-          // No predefined symbol lookup - let AI provide it or leave empty
         } else if (patternIndex === 3) {
-          // Pattern: Company Name (SYMBOL): Description
           [, name, symbol, reasoning] = match;
         }
 
-        if (name && name.trim().length > 2) {
-          const cleanName = name.trim();
-          const cleanSymbol = symbol ? symbol.trim().replace(/\s+/g, '').replace(/^([A-Z]+)\s*([A-Z])$/, '$1-$2') : '';
-          
-          // Determine sector from AI reasoning or name context
-          let detectedSector = 'Allmän';
-          const reasoningLower = reasoning?.toLowerCase() || '';
-          const nameLower = cleanName.toLowerCase();
-          
-          // Simple sector detection based on keywords
-          if (reasoningLower.includes('teknologi') || reasoningLower.includes('tech') || nameLower.includes('gaming') || nameLower.includes('hexagon')) {
-            detectedSector = 'Teknologi';
-          } else if (reasoningLower.includes('fastighet') || reasoningLower.includes('real estate') || nameLower.includes('castellum') || nameLower.includes('sbb')) {
-            detectedSector = 'Fastighet';
-          } else if (reasoningLower.includes('bank') || nameLower.includes('bank') || nameLower.includes('swedbank') || nameLower.includes('handelsbanken')) {
-            detectedSector = 'Bank';
-          } else if (reasoningLower.includes('industri') || reasoningLower.includes('industrial') || nameLower.includes('volvo') || nameLower.includes('atlas copco')) {
-            detectedSector = 'Industri';
-          } else if (reasoningLower.includes('fond') || reasoningLower.includes('fund') || reasoningLower.includes('index') || nameLower.includes('fond')) {
-            detectedSector = 'Fond';
-          } else if (reasoningLower.includes('investmentbolag') || nameLower.includes('investor') || nameLower.includes('kinnevik')) {
-            detectedSector = 'Investmentbolag';
-          }
-
-          // Avoid duplicates
-          if (!recommendations.find(r => 
-            r.name.toLowerCase() === cleanName.toLowerCase() || 
-            (r.symbol && cleanSymbol && r.symbol.toLowerCase() === cleanSymbol.toLowerCase())
-          )) {
-            recommendations.push({
-              name: cleanName,
-              symbol: cleanSymbol || undefined,
-              sector: detectedSector,
-              reasoning: reasoning ? reasoning.trim() : 'AI-rekommenderad investering',
-              allocation: allocation || 10
-            });
-          }
+        if (!name || name.trim().length <= 2) {
+          continue;
         }
+
+        const cleanName = name.trim();
+        const cleanSymbol = symbol ? symbol.trim().replace(/\s+/g, '').replace(/^([A-Z]+)\s*([A-Z])$/, '$1-$2') : '';
+
+        let detectedSector = 'Allmän';
+        const reasoningLower = reasoning?.toLowerCase() || '';
+        const nameLower = cleanName.toLowerCase();
+
+        if (reasoningLower.includes('teknologi') || reasoningLower.includes('tech') || nameLower.includes('gaming') || nameLower.includes('hexagon')) {
+          detectedSector = 'Teknologi';
+        } else if (reasoningLower.includes('fastighet') || reasoningLower.includes('real estate') || nameLower.includes('castellum') || nameLower.includes('sbb')) {
+          detectedSector = 'Fastighet';
+        } else if (reasoningLower.includes('bank') || nameLower.includes('bank') || nameLower.includes('swedbank') || nameLower.includes('handelsbanken')) {
+          detectedSector = 'Bank';
+        } else if (reasoningLower.includes('industri') || reasoningLower.includes('industrial') || nameLower.includes('volvo') || nameLower.includes('atlas copco')) {
+          detectedSector = 'Industri';
+        } else if (reasoningLower.includes('fond') || reasoningLower.includes('fund') || reasoningLower.includes('index') || nameLower.includes('fond')) {
+          detectedSector = 'Fond';
+        } else if (reasoningLower.includes('investmentbolag') || nameLower.includes('investor') || nameLower.includes('kinnevik')) {
+          detectedSector = 'Investmentbolag';
+        }
+
+        pushUniqueRecommendation({
+          name: cleanName,
+          symbol: cleanSymbol || undefined,
+          sector: detectedSector,
+          reasoning: reasoning ? reasoning.trim() : 'AI-rekommenderad investering',
+          allocation: allocation || 10,
+        });
       }
     });
 
-    return recommendations.slice(0, 10); // Limit to 10 recommendations
+    const knownSwedishStocks = [
+      'Investor', 'Volvo', 'Ericsson', 'H&M', 'Spotify', 'Evolution Gaming',
+      'Elekta', 'Atlas Copco', 'Sandvik', 'SKF', 'Telia', 'Nordea',
+      'SEB', 'Handelsbanken', 'Swedbank', 'Kinnevik', 'ICA Gruppen',
+      'Getinge', 'Boliden', 'SSAB', 'Saab', 'Autoliv'
+    ];
+
+    knownSwedishStocks.forEach(stock => {
+      const regex = new RegExp(`\\b${stock}\\b`, 'gi');
+      if (!regex.test(aiResponse)) {
+        return;
+      }
+
+      pushUniqueRecommendation({
+        name: stock,
+        sector: getKnownStockSector(stock),
+      });
+    });
+
+    return recommendations.slice(0, 10);
   };
 
-  const buildEnhancedAIPrompt = (conversationData: ConversationData) => {
+  const buildEnhancedAIPrompt = (conversationData: ConversationData, mode: 'new' | 'optimize') => {
     const mapValue = (value: string | undefined, mapping: Record<string, string>) => {
       if (!value) return undefined;
       const normalized = value.toLowerCase();
       return mapping[normalized] ?? mapping[value] ?? value;
+    };
+
+    const mapArrayValues = (values: string[] | undefined, mapping: Record<string, string>) => {
+      if (!values || values.length === 0) return undefined;
+      const mapped = values
+        .map(value => {
+          const normalized = value.toLowerCase();
+          return mapping[normalized] ?? mapping[value] ?? value;
+        })
+        .filter(Boolean);
+      return mapped.length > 0 ? Array.from(new Set(mapped)) : undefined;
     };
 
     const resolveNumericString = (value?: string | number): string | null => {
@@ -244,6 +307,45 @@ export const useConversationalPortfolio = () => {
 
     const formatBoolean = (value: boolean | undefined) =>
       typeof value === 'boolean' ? (value ? 'Ja' : 'Nej') : 'Ej angivet';
+
+    const normalizedHoldings = (conversationData.currentHoldings ?? [])
+      .map(holding => {
+        const quantity = typeof holding.quantity === 'number' ? holding.quantity : Number(holding.quantity);
+        const price = typeof holding.purchasePrice === 'number'
+          ? holding.purchasePrice
+          : Number(holding.purchasePrice);
+
+        if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(price) || price <= 0) {
+          return null;
+        }
+
+        const estimatedValue = quantity * price;
+        return {
+          name: holding.name,
+          symbol: holding.symbol,
+          quantity,
+          price,
+          estimatedValue,
+        };
+      })
+      .filter((item): item is {
+        name: string;
+        symbol?: string;
+        quantity: number;
+        price: number;
+        estimatedValue: number;
+      } => Boolean(item));
+
+    const totalEstimatedHoldingValue = normalizedHoldings.reduce((sum, holding) => sum + holding.estimatedValue, 0);
+
+    const holdingsWithPercentages = normalizedHoldings
+      .map(holding => ({
+        ...holding,
+        weight: totalEstimatedHoldingValue > 0
+          ? (holding.estimatedValue / totalEstimatedHoldingValue) * 100
+          : null,
+      }))
+      .sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0));
 
     const investmentGoalText = mapValue(conversationData.investmentGoal, {
       pension: 'Pensionssparande',
@@ -360,6 +462,44 @@ export const useConversationalPortfolio = () => {
       commodities: 'Råvaror (t.ex. guld, olja)',
     }) ?? conversationData.preferredAssets;
 
+    const optimizationGoalsText = mapArrayValues(conversationData.optimizationGoals, {
+      risk_balance: 'Balansera risken bättre',
+      diversify: 'Öka diversifieringen',
+      reduce_fees: 'Sänka avgifter och kostnader',
+      add_growth: 'Öka tillväxtpotentialen',
+      income_focus: 'Förstärka utdelningsströmmen',
+      sustainability: 'Höja hållbarhetsprofilen',
+    });
+
+    const optimizationPreferenceText = mapValue(conversationData.optimizationPreference, {
+      analyze_only: 'Analysera och förbättra utan nya köp',
+      improve_with_new_ideas: 'Komplettera med nya idéer vid behov',
+      rebalance: 'Konkreta rebalanseringsförslag med köp/sälj',
+    });
+
+    const optimizationTimelineText = mapValue(conversationData.optimizationTimeline, {
+      immediate: 'Omedelbart',
+      short_term: 'Inom 3 månader',
+      medium_term: 'Under det kommande året',
+      long_term: 'Löpande över flera år',
+    }) ?? conversationData.optimizationTimeline;
+
+    const optimizationRiskFocusText = mapValue(conversationData.optimizationRiskFocus, {
+      drawdown: 'Stora kurssvängningar/drawdowns',
+      concentration: 'Hög koncentration i få innehav',
+      market: 'Marknadsrisk/känslighet',
+      currency: 'Valutarisk',
+      liquidity: 'Likviditetsrisk',
+    }) ?? conversationData.optimizationRiskFocus;
+
+    const optimizationDiversificationText = mapArrayValues(conversationData.optimizationDiversificationFocus, {
+      nordics: 'Nordiska marknaden',
+      global: 'Global exponering',
+      sectors: 'Flera sektorer',
+      small_caps: 'Småbolagstillväxt',
+      thematic: 'Tematiska/fonder',
+    });
+
     const tradingFrequencyText = mapValue(conversationData.tradingFrequency, {
       rarely: 'Sällan (några gånger per år)',
       monthly: 'Någon gång i månaden',
@@ -449,6 +589,38 @@ GRUNDLÄGGANDE PROFIL:
 - Mest intresserad av: ${preferredAssetsText}`;
     }
 
+    if (mode === 'optimize') {
+      if (conversationData.currentPortfolioStrategy) {
+        prompt += `
+- Nuvarande strategi: ${conversationData.currentPortfolioStrategy}`;
+      }
+
+      if (optimizationGoalsText && optimizationGoalsText.length > 0) {
+        prompt += `
+- Optimeringsmål: ${optimizationGoalsText.join(', ')}`;
+      }
+
+      if (optimizationPreferenceText) {
+        prompt += `
+- Önskat arbetssätt: ${optimizationPreferenceText}`;
+      }
+
+      if (optimizationTimelineText) {
+        prompt += `
+- Tidslinje för förändringar: ${optimizationTimelineText}`;
+      }
+
+      if (optimizationRiskFocusText) {
+        prompt += `
+- Största riskoro idag: ${optimizationRiskFocusText}`;
+      }
+
+      if (optimizationDiversificationText && optimizationDiversificationText.length > 0) {
+        prompt += `
+- Områden att diversifiera mot: ${optimizationDiversificationText.join(', ')}`;
+      }
+    }
+
     if (liquidCapitalText && liquidCapitalText !== 'Ej angivet') {
       prompt += `
 - Likvida medel: ${liquidCapitalText} SEK`;
@@ -494,7 +666,90 @@ GRUNDLÄGGANDE PROFIL:
 - Nuvarande portföljvärde: ${currentPortfolioValueText} SEK`;
     }
 
-    if (conversationData.isBeginnerInvestor === true) {
+    if (mode === 'optimize') {
+      prompt += `
+
+OPTIMERING AV BEFINTLIG PORTFÖLJ:
+1. Gör en djup analys av nuvarande innehav, allokering och riskprofil innan du föreslår förändringar.
+2. Koppla varje rekommendation direkt till användarens uttryckta optimeringsmål och tidslinje.
+3. Ge konkreta åtgärdsförslag för hur portföljen kan förbättras (t.ex. rebalansering, reducera avgifter, minska koncentrationsrisk).
+4. Identifiera styrkor/svagheter i befintliga innehav och föreslå tydliga förbättringar.
+5. Om användaren vill undvika nya investeringar, fokusera på omstrukturering av befintliga innehav snarare än att skapa en ny portfölj.
+6. Om användaren accepterar nya idéer, föreslå endast kompletterande innehav som adresserar deras mål och förklara exakt hur de integreras.
+7. Ge en prioriterad handlingsplan med tidsramar för genomförande.
+8. Kommentera riskhantering, diversifiering och eventuella skatteeffekter baserat på användarens svar.
+9. Använd samma numrerade format för rekommendationer men markera tydligt om det handlar om behålla, öka, minska eller nytt innehav.
+10. Avsluta med en sammanfattning av förväntad effekt av optimeringen.`;
+
+      prompt += `
+
+FORMATKRAV FÖR OPTIMERING:
+- Returnera ett JSON-objekt med fälten: action_summary, risk_alignment, next_steps (lista), recommended_assets (lista), complementary_assets (lista om nya idéer behövs), disclaimer.
+- Varje post i recommended_assets ska innehålla: name, ticker, allocation_percent eller target_weight, change_percent (om relevant), rationale, action_type (behåll/increase/reduce/sell/add/rebalance), samt valfria notes.
+- Markera åtgärder för befintliga innehav med action_type i {"hold","increase","reduce","sell","rebalance"} och använd change_percent för att beskriva viktjusteringar.
+- Placera endast nya eller kompletterande innehav i complementary_assets och sätt deras action_type till "add".
+`;
+
+      if (conversationData.optimizationPreference === 'analyze_only') {
+        prompt += `
+SPECIALINSTRUKTIONER (ANALYZERA UTAN NYA KÖP):
+- Föreslå inga nya tickers. action_type "add" ska inte förekomma.
+- Fokusera på att beskriva hur befintliga positioner kan justeras (behålla/öka/minska/sälja) och varför.
+- Lyft särskilt fram kostnader, riskreducering och överlapp som bör trimmas bort.
+`;
+      } else if (conversationData.optimizationPreference === 'improve_with_new_ideas') {
+        prompt += `
+SPECIALINSTRUKTIONER (KOMPLETTERA MED NYA IDÉER):
+- Identifiera högst fyra kompletterande innehav som tydligt löser användarens mål.
+- Ange en föreslagen procentandel eller vikt för varje nytt innehav och motivera integrationen.
+- Beskriv hur nya idéer påverkar helheten och vilka befintliga positioner som eventuellt kan minskas för att ge plats.
+- För varje ny rekommendation, specificera vilken överviktad position som ska trimmas (t.ex. "Sälj 15% av Apple") och hur mycket kapital som flyttas för att finansiera köpet, särskilt om någon post utgör mer än 20% av portföljen.
+`;
+      } else if (conversationData.optimizationPreference === 'rebalance') {
+        prompt += `
+SPECIALINSTRUKTIONER (REBALANSERING):
+- Ange konkreta viktförändringar och köp-/säljåtgärder för att nå målvikter.
+- Använd change_percent för att förtydliga hur mycket varje innehav ska ökas eller minskas och prioritera åtgärderna.
+- Introducera endast nya innehav om de behövs för att fylla identifierade luckor och markera dem då som action_type "add".
+`;
+      }
+
+      if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
+        prompt += `
+
+NUVARANDE INNEHAV SOM SKA ANALYSERAS: ${conversationData.currentHoldings.map(h =>
+          `${h.name} (${h.quantity} st à ${h.purchasePrice} ${h.currency?.trim()?.toUpperCase() || 'SEK'})`
+        ).join(', ')}`;
+
+        if (holdingsWithPercentages.length > 0) {
+          const topHoldings = holdingsWithPercentages.slice(0, 6).map(h => {
+            const percentLabel = typeof h.weight === 'number'
+              ? `${h.weight.toFixed(1).replace('.', ',')}%`
+              : 'okänd vikt';
+            const symbolLabel = h.symbol ? ` (${h.symbol.toUpperCase()})` : '';
+            return `${h.name}${symbolLabel}: ${percentLabel}`;
+          });
+
+          if (topHoldings.length > 0) {
+            prompt += `
+- Uppskattad vikt per nyckelinnehav: ${topHoldings.join(', ')}`;
+          }
+
+          const concentrationAlerts = holdingsWithPercentages
+            .filter(h => typeof h.weight === 'number' && h.weight >= 20)
+            .map(h => {
+              const symbolLabel = h.symbol ? ` (${h.symbol.toUpperCase()})` : '';
+              return `${h.name}${symbolLabel} ~${h.weight!.toFixed(1).replace('.', ',')}%`;
+            });
+
+          if (concentrationAlerts.length > 0) {
+            prompt += `
+- Koncentrationsrisker som måste adresseras: ${concentrationAlerts.join(', ')}. Ange exakt hur mycket av dessa positioner som bör säljas eller trimmats för att frigöra kapital till förbättringar.`;
+          }
+        }
+      }
+
+    } else if (conversationData.isBeginnerInvestor === true) {
       prompt += `
 
 NYBÖRJARE - UTFÖRLIG EKONOMISK PROFIL:`;
@@ -787,7 +1042,10 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
 
     return prompt;
   };
-  const generatePortfolioFromConversation = async (conversationData: ConversationData) => {
+  const generatePortfolioFromConversation = async (
+    conversationData: ConversationData,
+    options?: { mode?: PortfolioGenerationMode }
+  ) => {
     if (!user) {
       toast({
         title: "Error",
@@ -796,6 +1054,14 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       });
       return null;
     }
+
+    const requestedMode = options?.mode;
+    const mode: PortfolioGenerationMode =
+      requestedMode === 'new' || requestedMode === 'optimize'
+        ? requestedMode
+        : conversationData.hasCurrentPortfolio
+          ? 'optimize'
+          : 'new';
 
     const ensureString = (value: unknown): string | undefined =>
       typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
@@ -847,6 +1113,351 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         }
       }
       return undefined;
+    };
+
+    const parsePlanPercent = (value: unknown): number | undefined => {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+      }
+      if (typeof value === 'string') {
+        const numeric = parseFloat(value.replace(/[^\d.,-]/g, '').replace(',', '.'));
+        return Number.isFinite(numeric) ? numeric : undefined;
+      }
+      return undefined;
+    };
+
+    const normalizePlanActionType = (value: unknown): string | undefined => {
+      if (typeof value !== 'string') {
+        return undefined;
+      }
+
+      const normalized = value.trim().toLowerCase();
+      if (!normalized) {
+        return undefined;
+      }
+
+      if (/behåll|hold|keep/.test(normalized)) return 'hold';
+      if (/öka|increase|köp mer|buy/.test(normalized)) return 'increase';
+      if (/lägg till|add|nytt|introduc|komplettera|complement/.test(normalized)) return 'add';
+      if (/minska|reduce|trim|skala/.test(normalized)) return 'reduce';
+      if (/sälj|sell|exit|avyttra/.test(normalized)) return 'sell';
+      if (/rebal/.test(normalized)) return 'rebalance';
+      if (/övervaka|bevaka|monitor/.test(normalized)) return 'monitor';
+
+      return normalized;
+    };
+
+    const mapPlanAssetToRecommendation = (asset: any): StockRecommendation | null => {
+      if (!asset || !asset.name) {
+        return null;
+      }
+
+      const allocation =
+        parsePlanPercent(asset.allocation_percent) ??
+        parsePlanPercent(asset.allocation) ??
+        parsePlanPercent(asset.target_weight) ??
+        parsePlanPercent(asset.target_allocation_percent);
+
+      const changePercent =
+        parsePlanPercent(asset.change_percent) ??
+        parsePlanPercent(asset.weight_change_percent) ??
+        parsePlanPercent(asset.delta_percent) ??
+        parsePlanPercent(asset.adjustment_percent);
+
+      const actionType =
+        normalizePlanActionType(asset.action_type) ||
+        normalizePlanActionType(asset.action) ||
+        normalizePlanActionType(asset.recommendation_type) ||
+        normalizePlanActionType(asset.intent);
+
+      return {
+        name: String(asset.name).trim(),
+        symbol: asset.ticker || asset.symbol || undefined,
+        sector: asset.sector || asset.category,
+        reasoning: asset.rationale || asset.reasoning || asset.analysis || asset.comment || asset.notes,
+        allocation,
+        isin: asset.isin,
+        actionType,
+        changePercent,
+        notes: asset.notes || asset.comment || asset.detail,
+      };
+    };
+
+    const dedupeRecommendations = (items: StockRecommendation[]): StockRecommendation[] => {
+      const seen = new Set<string>();
+      return items.filter(item => {
+        const nameKey = item.name?.toLowerCase() ?? '';
+        const symbolKey = item.symbol?.toLowerCase() ?? '';
+        const compositeKey = `${nameKey}|${symbolKey}`;
+        if (seen.has(compositeKey)) {
+          return false;
+        }
+        seen.add(compositeKey);
+        return true;
+      });
+    };
+
+    const normalizeTradeOutputs = ({
+      stockRecommendations,
+      complementaryIdeas,
+      structuredPlan,
+      mode,
+    }: {
+      stockRecommendations: StockRecommendation[];
+      complementaryIdeas: StockRecommendation[];
+      structuredPlan: any;
+      mode: PortfolioGenerationMode;
+    }) => {
+      if (mode !== 'optimize') {
+        return { stockRecommendations, complementaryIdeas, structuredPlan };
+      }
+
+      const weightedHoldings = holdingsWithPercentages.filter(
+        holding => typeof holding.weight === 'number' && Number.isFinite(holding.weight)
+      );
+
+      if (weightedHoldings.length === 0) {
+        return { stockRecommendations, complementaryIdeas, structuredPlan };
+      }
+
+      const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+      const roundOneDecimal = (value: number): number => {
+        const rounded = Math.round(value * 10) / 10;
+        return Math.abs(rounded) < 0.05 ? 0 : rounded;
+      };
+      const toFiniteNumber = (value: unknown): number | undefined =>
+        typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
+      const normalizeKeyPart = (value?: string | null) => value?.trim().toLowerCase() ?? '';
+      const makeKey = (name?: string | null, symbol?: string | null) => {
+        const nameKey = normalizeKeyPart(name);
+        const symbolKey = normalizeKeyPart(symbol);
+        return `${nameKey}|${symbolKey}`;
+      };
+
+      const weightByKey = new Map<string, number>();
+      weightedHoldings.forEach(holding => {
+        const normalizedWeight = clamp(holding.weight!, 0, 100);
+        const nameKey = makeKey(holding.name, null);
+        if (nameKey !== '|') {
+          weightByKey.set(nameKey, normalizedWeight);
+        }
+
+        if (holding.symbol) {
+          const symbolKey = makeKey(null, holding.symbol);
+          if (symbolKey !== '|') {
+            weightByKey.set(symbolKey, normalizedWeight);
+          }
+          const compositeKey = makeKey(holding.name, holding.symbol);
+          if (compositeKey !== '|') {
+            weightByKey.set(compositeKey, normalizedWeight);
+          }
+        }
+      });
+
+      const resolveExistingWeight = (item: StockRecommendation): number | null => {
+        const symbolWeight = item.symbol ? weightByKey.get(makeKey(null, item.symbol)) : undefined;
+        if (typeof symbolWeight === 'number') {
+          return symbolWeight;
+        }
+
+        const compositeWeight = weightByKey.get(makeKey(item.name, item.symbol ?? null));
+        if (typeof compositeWeight === 'number') {
+          return compositeWeight;
+        }
+
+        const nameWeight = weightByKey.get(makeKey(item.name, null));
+        return typeof nameWeight === 'number' ? nameWeight : null;
+      };
+
+      type TradeEntry = {
+        key: string;
+        base: StockRecommendation;
+        action?: string;
+        existingWeight: number | null;
+        delta: number;
+        newAllocation: number | null;
+      };
+
+      const buildEntries = (items: StockRecommendation[]): TradeEntry[] => {
+        return items.map(item => {
+          const action = item.actionType ? item.actionType.toLowerCase() : undefined;
+          const existingWeight = resolveExistingWeight(item);
+          const baseWeight = existingWeight !== null ? clamp(existingWeight, 0, 100) : null;
+          const rawChange = toFiniteNumber(item.changePercent);
+          const rawAllocation = toFiniteNumber(item.allocation);
+
+          let delta = 0;
+          let targetAllocation: number | null = rawAllocation ?? null;
+
+          if (baseWeight !== null) {
+            if (action === 'reduce' || action === 'sell') {
+              const requestedDecrease = rawChange != null ? Math.abs(rawChange) : targetAllocation != null ? Math.max(0, baseWeight - targetAllocation) : 0;
+              const applied = Math.min(requestedDecrease, baseWeight);
+              delta = -applied;
+              targetAllocation = baseWeight + delta;
+            } else if (action === 'increase') {
+              const requestedIncrease = rawChange != null ? Math.abs(rawChange) : targetAllocation != null ? Math.max(0, targetAllocation - baseWeight) : 0;
+              const maxIncrease = Math.max(0, 100 - baseWeight);
+              const applied = Math.min(requestedIncrease, maxIncrease);
+              delta = applied;
+              targetAllocation = baseWeight + delta;
+            } else if (action === 'rebalance') {
+              if (targetAllocation != null) {
+                delta = targetAllocation - baseWeight;
+              } else if (rawChange != null) {
+                delta = rawChange;
+              }
+              delta = clamp(delta, -baseWeight, Math.max(0, 100 - baseWeight));
+              targetAllocation = baseWeight + delta;
+            } else if (targetAllocation != null || rawChange != null) {
+              const requested = targetAllocation != null ? targetAllocation - baseWeight : rawChange ?? 0;
+              delta = clamp(requested, -baseWeight, Math.max(0, 100 - baseWeight));
+              targetAllocation = baseWeight + delta;
+            } else {
+              targetAllocation = baseWeight;
+            }
+          } else {
+            if (action === 'add' || action === 'increase') {
+              const requested = rawChange != null ? Math.abs(rawChange) : rawAllocation != null ? Math.max(0, rawAllocation) : 0;
+              delta = Math.max(0, requested);
+              targetAllocation = delta;
+            } else if (rawAllocation != null) {
+              delta = rawAllocation;
+              targetAllocation = rawAllocation;
+            } else if (rawChange != null) {
+              delta = rawChange;
+              targetAllocation = rawChange;
+            } else {
+              targetAllocation = 0;
+              delta = 0;
+            }
+          }
+
+          if (!Number.isFinite(delta)) {
+            delta = 0;
+          }
+
+          if (targetAllocation != null && !Number.isFinite(targetAllocation)) {
+            targetAllocation = null;
+          }
+
+          return {
+            key: makeKey(item.name, item.symbol ?? null),
+            base: item,
+            action,
+            existingWeight: baseWeight,
+            delta,
+            newAllocation: targetAllocation,
+          };
+        });
+      };
+
+      const stockEntries = buildEntries(stockRecommendations);
+      const complementaryEntries = buildEntries(complementaryIdeas);
+      const allEntries = [...stockEntries, ...complementaryEntries];
+
+      const totalBuys = allEntries.reduce((sum, entry) => (entry.delta > 0 ? sum + entry.delta : sum), 0);
+      const totalSells = allEntries.reduce((sum, entry) => (entry.delta < 0 ? sum - entry.delta : sum), 0);
+      const currentTotalWeight = weightedHoldings.reduce((sum, holding) => sum + clamp(holding.weight!, 0, 100), 0);
+      const availableNewCapital = Math.max(0, Math.min(100, 100 - Math.min(currentTotalWeight, 100)));
+      const buyCapacity = totalSells + availableNewCapital;
+      const buyScale = buyCapacity <= 0 || totalBuys === 0 ? 0 : buyCapacity < totalBuys ? buyCapacity / totalBuys : 1;
+
+      allEntries.forEach(entry => {
+        if (entry.delta > 0) {
+          entry.delta = entry.delta * buyScale;
+        }
+
+        if (entry.existingWeight !== null) {
+          const baseWeight = entry.existingWeight;
+          const nextWeight = clamp(baseWeight + entry.delta, 0, 100);
+          entry.newAllocation = nextWeight;
+        } else {
+          entry.newAllocation = Math.max(0, entry.delta);
+        }
+      });
+
+      const mapEntryToRecommendation = (entry: TradeEntry): StockRecommendation => {
+        const normalizedAllocation = entry.newAllocation != null ? roundOneDecimal(entry.newAllocation) : undefined;
+        const normalizedChange = roundOneDecimal(entry.delta);
+
+        return {
+          ...entry.base,
+          allocation: typeof normalizedAllocation === 'number' ? normalizedAllocation : entry.base.allocation,
+          changePercent: normalizedChange,
+        };
+      };
+
+      const normalizedStock = stockEntries.map(mapEntryToRecommendation);
+      const normalizedComplementary = complementaryEntries.map(mapEntryToRecommendation);
+
+      const adjustments = new Map<string, { allocation?: number; change?: number }>();
+      [...stockEntries, ...complementaryEntries].forEach(entry => {
+        const normalizedAllocation = entry.newAllocation != null ? roundOneDecimal(entry.newAllocation) : undefined;
+        const normalizedChange = roundOneDecimal(entry.delta);
+        adjustments.set(entry.key, {
+          allocation: typeof normalizedAllocation === 'number' ? normalizedAllocation : undefined,
+          change: normalizedChange,
+        });
+      });
+
+      const updatePlan = (plan: any) => {
+        if (!plan || typeof plan !== 'object') {
+          return plan;
+        }
+
+        const clone: Record<string, any> = { ...plan };
+
+        const updateAssetsForKeys = (keys: string[]) => {
+          keys.forEach(key => {
+            if (Array.isArray(clone[key])) {
+              clone[key] = clone[key].map((asset: any) => {
+                if (!asset || !asset.name) {
+                  return asset;
+                }
+
+                const assetKey = makeKey(String(asset.name), (asset.ticker || asset.symbol || asset.code || null) as string | null);
+                const normalized = adjustments.get(assetKey);
+                if (!normalized) {
+                  return asset;
+                }
+
+                const updated = { ...asset };
+
+                if (typeof normalized.allocation === 'number') {
+                  updated.allocation_percent = normalized.allocation;
+                  updated.allocation = normalized.allocation;
+                  updated.target_weight = normalized.allocation;
+                  updated.weight = normalized.allocation;
+                }
+
+                if (typeof normalized.change === 'number') {
+                  updated.change_percent = normalized.change;
+                  updated.weight_change_percent = normalized.change;
+                  updated.delta_percent = normalized.change;
+                  updated.adjustment_percent = normalized.change;
+                }
+
+                return updated;
+              });
+            }
+          });
+        };
+
+        updateAssetsForKeys(['recommended_assets', 'recommendations']);
+        updateAssetsForKeys(['complementary_assets', 'complementaryIdeas', 'complementaryAssets']);
+
+        return clone;
+      };
+
+      const normalizedPlan = updatePlan(structuredPlan);
+
+      return {
+        stockRecommendations: normalizedStock,
+        complementaryIdeas: normalizedComplementary,
+        structuredPlan: normalizedPlan,
+      };
     };
 
     const extractNumericValue = (value: string | number | undefined): number | null => {
@@ -1126,6 +1737,10 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
 
       const existingProfileData = normalizeExistingProfile(latestRiskProfile);
       let mergedConversationData = mergeProfiles(existingProfileData, conversationData);
+
+      if (mode === 'optimize') {
+        mergedConversationData.hasCurrentPortfolio = true;
+      }
 
       if (!mergedConversationData.liquidCapital && mergedConversationData.availableCapital) {
         mergedConversationData.liquidCapital = mergedConversationData.availableCapital;
@@ -1453,7 +2068,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       const liquidCapitalValue = resolvedLiquidCapital !== null ? resolvedLiquidCapital : null;
       const targetAmountValue = resolvedTargetAmount !== null ? resolvedTargetAmount : null;
 
-      const enhancedPrompt = buildEnhancedAIPrompt(mergedConversationData);
+      const enhancedPrompt = buildEnhancedAIPrompt(mergedConversationData, mode);
 
       const riskProfileData = {
         age: mergedConversationData.age ?? existingProfileData.age ?? 25,
@@ -1512,7 +2127,8 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
           riskProfileId: riskProfile.id,
           userId: user.id,
           conversationData: mergedConversationData,
-          conversationPrompt: enhancedPrompt
+          conversationPrompt: enhancedPrompt,
+          mode
         }
       });
 
@@ -1525,46 +2141,130 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         });
         return null;
       }
+      let structuredPlan = aiResponse.plan;
 
-
-      const structuredPlan = aiResponse.plan;
+      if (typeof structuredPlan === 'string') {
+        try {
+          structuredPlan = JSON.parse(structuredPlan);
+        } catch (error) {
+          console.warn('Failed to parse structured plan string:', error);
+        }
+      }
 
       // Extract AI response from multiple possible fields for compatibility
-      const aiRecommendationText = structuredPlan
-        ? JSON.stringify(structuredPlan)
-        : aiResponse.aiRecommendations || aiResponse.aiResponse || aiResponse.response || '';
+      const aiRecommendationText = (() => {
+        if (structuredPlan) {
+          try {
+            return JSON.stringify(structuredPlan);
+          } catch (error) {
+            console.warn('Failed to stringify structured plan:', error);
+          }
+        }
+
+        const textCandidates = [aiResponse.aiRecommendations, aiResponse.aiResponse, aiResponse.response];
+        for (const candidate of textCandidates) {
+          if (typeof candidate === 'string' && candidate.trim().length > 0) {
+            return candidate;
+          }
+        }
+
+        return '';
+      })();
 
 
       // Extract stock recommendations from AI response or structured plan
       let stockRecommendations = extractStockRecommendations(aiRecommendationText);
+      let complementaryIdeas: StockRecommendation[] = [];
 
-      if (structuredPlan?.recommended_assets?.length) {
-        const mapped = structuredPlan.recommended_assets
-          .map((asset: any) => {
-            if (!asset?.name) return null;
-            const allocation = typeof asset.allocation_percent === 'number'
-              ? asset.allocation_percent
-              : typeof asset.allocation_percent === 'string'
-              ? parseInt(asset.allocation_percent.replace(/[^\d]/g, ''))
-              : typeof asset.allocation === 'number'
-              ? asset.allocation
-              : typeof asset.allocation === 'string'
-              ? parseInt(asset.allocation.replace(/[^\d]/g, ''))
-              : 0;
-            return {
-              name: asset.name,
-              symbol: asset.ticker || asset.symbol || undefined,
-              sector: asset.sector,
-              reasoning: asset.rationale || asset.reasoning,
-              allocation,
-              isin: asset.isin
-            };
-          })
-          .filter(Boolean);
+      const recommendedAssetCandidates =
+        structuredPlan && typeof structuredPlan === 'object'
+          ? coerceArray(
+              (structuredPlan as any).recommended_assets ??
+              (structuredPlan as any).recommendations ??
+              (structuredPlan as any).assets
+            )
+          : [];
+
+      if (recommendedAssetCandidates.length > 0) {
+        const mapped = recommendedAssetCandidates
+          .map(mapPlanAssetToRecommendation)
+          .filter((asset): asset is StockRecommendation => Boolean(asset));
 
         if (mapped.length > 0) {
-          stockRecommendations = mapped as typeof stockRecommendations;
+          stockRecommendations = mapped;
         }
+      }
+
+      const complementaryAssetCandidates =
+        structuredPlan && typeof structuredPlan === 'object'
+          ? coerceArray(
+              (structuredPlan as any).complementary_assets ??
+              (structuredPlan as any).complementaryIdeas ??
+              (structuredPlan as any).complementaryAssets
+            )
+          : [];
+
+      if (complementaryAssetCandidates.length > 0) {
+        const mappedComplementary = complementaryAssetCandidates
+          .map(mapPlanAssetToRecommendation)
+          .filter((asset): asset is StockRecommendation => Boolean(asset));
+
+        if (mappedComplementary.length > 0) {
+          complementaryIdeas = mappedComplementary;
+        }
+      }
+
+      stockRecommendations = dedupeRecommendations(stockRecommendations);
+      complementaryIdeas = dedupeRecommendations(complementaryIdeas);
+
+      const normalizedTrades = normalizeTradeOutputs({
+        stockRecommendations,
+        complementaryIdeas,
+        structuredPlan,
+        mode,
+      });
+
+      stockRecommendations = normalizedTrades.stockRecommendations;
+      complementaryIdeas = normalizedTrades.complementaryIdeas;
+      structuredPlan = normalizedTrades.structuredPlan;
+
+      if (mode === 'optimize') {
+        const isValidPreference = (
+          value: unknown
+        ): value is NonNullable<ConversationData['optimizationPreference']> =>
+          value === 'analyze_only' || value === 'improve_with_new_ideas' || value === 'rebalance';
+
+        const preference = isValidPreference(mergedConversationData.optimizationPreference)
+          ? mergedConversationData.optimizationPreference
+          : 'analyze_only';
+
+        mergedConversationData.optimizationPreference = preference;
+        const isAdd = (rec: StockRecommendation) => (rec.actionType || '').toLowerCase() === 'add';
+
+        if (preference === 'analyze_only') {
+          complementaryIdeas = [];
+          stockRecommendations = stockRecommendations.filter(rec => !isAdd(rec));
+        } else if (preference === 'improve_with_new_ideas') {
+          if (complementaryIdeas.length === 0) {
+            complementaryIdeas = stockRecommendations.filter(isAdd);
+          }
+          complementaryIdeas = complementaryIdeas.filter(isAdd);
+        } else if (preference === 'rebalance') {
+          if (complementaryIdeas.length === 0) {
+            complementaryIdeas = stockRecommendations.filter(isAdd);
+          } else {
+            complementaryIdeas = complementaryIdeas.filter(isAdd);
+          }
+
+          stockRecommendations = stockRecommendations.filter(rec => !isAdd(rec) || complementaryIdeas.every(idea => idea.name !== rec.name));
+        }
+
+        if (preference !== 'improve_with_new_ideas') {
+          stockRecommendations = stockRecommendations.filter(rec => !isAdd(rec));
+        }
+
+        stockRecommendations = dedupeRecommendations(stockRecommendations);
+        complementaryIdeas = dedupeRecommendations(complementaryIdeas);
       }
 
       if (stockRecommendations.length === 0) {
@@ -1573,7 +2273,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       }
 
       // Save stock recommendations to user_holdings table
-      if (stockRecommendations.length > 0) {
+      if (mode === 'new' && stockRecommendations.length > 0) {
         const holdingsToInsert = stockRecommendations.map(stock => ({
           user_id: user.id,
           holding_type: 'recommendation',
@@ -1614,6 +2314,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         ai_prompt_used: enhancedPrompt,
         structured_plan: structuredPlan,
         stock_recommendations: stockRecommendations,
+        complementary_ideas: complementaryIdeas,
         risk_profile_summary: {
           experience_level: investmentExperienceLevel,
           risk_comfort: riskComfortLevel,
@@ -1632,46 +2333,59 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       };
 
       // Create a portfolio in the database with the AI response and extracted recommendations
-      const portfolioData = {
-        user_id: user.id,
-        risk_profile_id: riskProfile.id,
-        portfolio_name: 'AI-Genererad Personlig Portfölj',
-        asset_allocation: assetAllocation,
-        recommended_stocks: stockRecommendations,
-        total_value: 0,
-        expected_return: expectedReturn,
-        risk_score: combinedRiskScore,
-        is_active: true
-      };
+      let portfolioRecord: any = null;
 
-      const { data: portfolio, error: portfolioError } = await supabase
-        .from('user_portfolios')
-        .insert(portfolioData)
-        .select()
-        .single();
+      if (mode === 'new') {
+        const portfolioData = {
+          user_id: user.id,
+          risk_profile_id: riskProfile.id,
+          portfolio_name: 'AI-Genererad Personlig Portfölj',
+          asset_allocation: assetAllocation,
+          recommended_stocks: stockRecommendations,
+          total_value: 0,
+          expected_return: expectedReturn,
+          risk_score: combinedRiskScore,
+          is_active: true
+        };
 
-      if (portfolioError) {
-        console.error('Error creating portfolio:', portfolioError);
+        const { data: portfolio, error: portfolioError } = await supabase
+          .from('user_portfolios')
+          .insert(portfolioData)
+          .select()
+          .single();
+
+        if (portfolioError) {
+          console.error('Error creating portfolio:', portfolioError);
+          toast({
+            title: "Error",
+            description: "Kunde inte spara portföljen",
+            variant: "destructive",
+          });
+          return null;
+        }
+
+        portfolioRecord = portfolio;
+
         toast({
-          title: "Error",
-          description: "Kunde inte spara portföljen",
-          variant: "destructive",
+          title: "Framgång!",
+          description: "Din personliga portföljstrategi har skapats med förbättrad riskanalys",
         });
-        return null;
+      } else {
+        toast({
+          title: "Analys klar!",
+          description: "Din befintliga portfölj har analyserats och optimeringsförslag har genererats.",
+        });
       }
-
-      toast({
-        title: "Framgång!",
-        description: "Din personliga portföljstrategi har skapats med förbättrad riskanalys",
-      });
 
       return {
         aiResponse: aiRecommendationText,
         plan: structuredPlan || null,
-        portfolio: aiResponse.portfolio || portfolio,
+        portfolio: aiResponse.portfolio || portfolioRecord,
         riskProfile,
         enhancedPrompt,
-        stockRecommendations
+        stockRecommendations,
+        complementaryIdeas,
+        mode
       };
 
     } catch (error: any) {
