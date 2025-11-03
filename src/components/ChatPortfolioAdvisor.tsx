@@ -1107,7 +1107,7 @@ const ChatPortfolioAdvisor = () => {
         let purchasePrice = NaN;
         let priceCurrencyHint: string | undefined;
 
-        const candidateValues: Array<{ value: number; hint?: string }> = [];
+        const candidateValues: Array<{ value: number; hint?: string; isGav: boolean }> = [];
 
         for (const index of purchasePriceCandidates) {
           if (typeof index !== 'number') continue;
@@ -1115,20 +1115,25 @@ const ChatPortfolioAdvisor = () => {
           const parsed = parseLocaleNumber(raw);
 
           if (Number.isFinite(parsed) && parsed > 0) {
+            const header = headerParts[index];
             candidateValues.push({
               value: parsed,
-              hint: headerCurrencyHints[index]
+              hint: headerCurrencyHints[index],
+              isGav: typeof header === 'string' ? /gav/iu.test(header) : false
             });
           }
         }
 
         if (candidateValues.length > 0) {
+          const gavCandidate = candidateValues.find(candidate => candidate.isGav);
           const exactCurrencyMatch = currencyFromValue
-            ? candidateValues.find(candidate => candidate.hint === currencyFromValue)
+            ? candidateValues.find(candidate => candidate.hint === currencyFromValue && candidate.isGav) ??
+              candidateValues.find(candidate => candidate.hint === currencyFromValue)
             : undefined;
 
-          const withoutHint = candidateValues.find(candidate => !candidate.hint);
-          const selectedCandidate = exactCurrencyMatch || withoutHint || candidateValues[0];
+          const withoutHint = candidateValues.find(candidate => !candidate.hint && candidate.isGav) ??
+            candidateValues.find(candidate => !candidate.hint);
+          const selectedCandidate = exactCurrencyMatch || gavCandidate || withoutHint || candidateValues[0];
 
           purchasePrice = selectedCandidate.value;
           priceCurrencyHint = selectedCandidate.hint;
