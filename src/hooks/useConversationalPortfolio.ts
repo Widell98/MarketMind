@@ -1197,6 +1197,269 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       });
     };
 
+    const normalizeTradeOutputs = ({
+      stockRecommendations,
+      complementaryIdeas,
+      structuredPlan,
+      mode,
+    }: {
+      stockRecommendations: StockRecommendation[];
+      complementaryIdeas: StockRecommendation[];
+      structuredPlan: any;
+      mode: PortfolioGenerationMode;
+    }) => {
+      if (mode !== 'optimize') {
+        return { stockRecommendations, complementaryIdeas, structuredPlan };
+      }
+
+      const weightedHoldings = holdingsWithPercentages.filter(
+        holding => typeof holding.weight === 'number' && Number.isFinite(holding.weight)
+      );
+
+      if (weightedHoldings.length === 0) {
+        return { stockRecommendations, complementaryIdeas, structuredPlan };
+      }
+
+      const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+      const roundOneDecimal = (value: number): number => {
+        const rounded = Math.round(value * 10) / 10;
+        return Math.abs(rounded) < 0.05 ? 0 : rounded;
+      };
+      const toFiniteNumber = (value: unknown): number | undefined =>
+        typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
+      const normalizeKeyPart = (value?: string | null) => value?.trim().toLowerCase() ?? '';
+      const makeKey = (name?: string | null, symbol?: string | null) => {
+        const nameKey = normalizeKeyPart(name);
+        const symbolKey = normalizeKeyPart(symbol);
+        return `${nameKey}|${symbolKey}`;
+      };
+
+      const weightByKey = new Map<string, number>();
+      weightedHoldings.forEach(holding => {
+        const normalizedWeight = clamp(holding.weight!, 0, 100);
+        const nameKey = makeKey(holding.name, null);
+        if (nameKey !== '|') {
+          weightByKey.set(nameKey, normalizedWeight);
+        }
+
+        if (holding.symbol) {
+          const symbolKey = makeKey(null, holding.symbol);
+          if (symbolKey !== '|') {
+            weightByKey.set(symbolKey, normalizedWeight);
+          }
+          const compositeKey = makeKey(holding.name, holding.symbol);
+          if (compositeKey !== '|') {
+            weightByKey.set(compositeKey, normalizedWeight);
+          }
+        }
+      });
+
+      const resolveExistingWeight = (item: StockRecommendation): number | null => {
+        const symbolWeight = item.symbol ? weightByKey.get(makeKey(null, item.symbol)) : undefined;
+        if (typeof symbolWeight === 'number') {
+          return symbolWeight;
+        }
+
+        const compositeWeight = weightByKey.get(makeKey(item.name, item.symbol ?? null));
+        if (typeof compositeWeight === 'number') {
+          return compositeWeight;
+        }
+
+        const nameWeight = weightByKey.get(makeKey(item.name, null));
+        return typeof nameWeight === 'number' ? nameWeight : null;
+      };
+
+      type TradeEntry = {
+        key: string;
+        base: StockRecommendation;
+        action?: string;
+        existingWeight: number | null;
+        delta: number;
+        newAllocation: number | null;
+      };
+
+      const buildEntries = (items: StockRecommendation[]): TradeEntry[] => {
+        return items.map(item => {
+          const action = item.actionType ? item.actionType.toLowerCase() : undefined;
+          const existingWeight = resolveExistingWeight(item);
+          const baseWeight = existingWeight !== null ? clamp(existingWeight, 0, 100) : null;
+          const rawChange = toFiniteNumber(item.changePercent);
+          const rawAllocation = toFiniteNumber(item.allocation);
+
+          let delta = 0;
+          let targetAllocation: number | null = rawAllocation ?? null;
+
+          if (baseWeight !== null) {
+            if (action === 'reduce' || action === 'sell') {
+              const requestedDecrease = rawChange != null ? Math.abs(rawChange) : targetAllocation != null ? Math.max(0, baseWeight - targetAllocation) : 0;
+              const applied = Math.min(requestedDecrease, baseWeight);
+              delta = -applied;
+              targetAllocation = baseWeight + delta;
+            } else if (action === 'increase') {
+              const requestedIncrease = rawChange != null ? Math.abs(rawChange) : targetAllocation != null ? Math.max(0, targetAllocation - baseWeight) : 0;
+              const maxIncrease = Math.max(0, 100 - baseWeight);
+              const applied = Math.min(requestedIncrease, maxIncrease);
+              delta = applied;
+              targetAllocation = baseWeight + delta;
+            } else if (action === 'rebalance') {
+              if (targetAllocation != null) {
+                delta = targetAllocation - baseWeight;
+              } else if (rawChange != null) {
+                delta = rawChange;
+              }
+              delta = clamp(delta, -baseWeight, Math.max(0, 100 - baseWeight));
+              targetAllocation = baseWeight + delta;
+            } else if (targetAllocation != null || rawChange != null) {
+              const requested = targetAllocation != null ? targetAllocation - baseWeight : rawChange ?? 0;
+              delta = clamp(requested, -baseWeight, Math.max(0, 100 - baseWeight));
+              targetAllocation = baseWeight + delta;
+            } else {
+              targetAllocation = baseWeight;
+            }
+          } else {
+            if (action === 'add' || action === 'increase') {
+              const requested = rawChange != null ? Math.abs(rawChange) : rawAllocation != null ? Math.max(0, rawAllocation) : 0;
+              delta = Math.max(0, requested);
+              targetAllocation = delta;
+            } else if (rawAllocation != null) {
+              delta = rawAllocation;
+              targetAllocation = rawAllocation;
+            } else if (rawChange != null) {
+              delta = rawChange;
+              targetAllocation = rawChange;
+            } else {
+              targetAllocation = 0;
+              delta = 0;
+            }
+          }
+
+          if (!Number.isFinite(delta)) {
+            delta = 0;
+          }
+
+          if (targetAllocation != null && !Number.isFinite(targetAllocation)) {
+            targetAllocation = null;
+          }
+
+          return {
+            key: makeKey(item.name, item.symbol ?? null),
+            base: item,
+            action,
+            existingWeight: baseWeight,
+            delta,
+            newAllocation: targetAllocation,
+          };
+        });
+      };
+
+      const stockEntries = buildEntries(stockRecommendations);
+      const complementaryEntries = buildEntries(complementaryIdeas);
+      const allEntries = [...stockEntries, ...complementaryEntries];
+
+      const totalBuys = allEntries.reduce((sum, entry) => (entry.delta > 0 ? sum + entry.delta : sum), 0);
+      const totalSells = allEntries.reduce((sum, entry) => (entry.delta < 0 ? sum - entry.delta : sum), 0);
+      const currentTotalWeight = weightedHoldings.reduce((sum, holding) => sum + clamp(holding.weight!, 0, 100), 0);
+      const availableNewCapital = Math.max(0, Math.min(100, 100 - Math.min(currentTotalWeight, 100)));
+      const buyCapacity = totalSells + availableNewCapital;
+      const buyScale = buyCapacity <= 0 || totalBuys === 0 ? 0 : buyCapacity < totalBuys ? buyCapacity / totalBuys : 1;
+
+      allEntries.forEach(entry => {
+        if (entry.delta > 0) {
+          entry.delta = entry.delta * buyScale;
+        }
+
+        if (entry.existingWeight !== null) {
+          const baseWeight = entry.existingWeight;
+          const nextWeight = clamp(baseWeight + entry.delta, 0, 100);
+          entry.newAllocation = nextWeight;
+        } else {
+          entry.newAllocation = Math.max(0, entry.delta);
+        }
+      });
+
+      const mapEntryToRecommendation = (entry: TradeEntry): StockRecommendation => {
+        const normalizedAllocation = entry.newAllocation != null ? roundOneDecimal(entry.newAllocation) : undefined;
+        const normalizedChange = roundOneDecimal(entry.delta);
+
+        return {
+          ...entry.base,
+          allocation: typeof normalizedAllocation === 'number' ? normalizedAllocation : entry.base.allocation,
+          changePercent: normalizedChange,
+        };
+      };
+
+      const normalizedStock = stockEntries.map(mapEntryToRecommendation);
+      const normalizedComplementary = complementaryEntries.map(mapEntryToRecommendation);
+
+      const adjustments = new Map<string, { allocation?: number; change?: number }>();
+      [...stockEntries, ...complementaryEntries].forEach(entry => {
+        const normalizedAllocation = entry.newAllocation != null ? roundOneDecimal(entry.newAllocation) : undefined;
+        const normalizedChange = roundOneDecimal(entry.delta);
+        adjustments.set(entry.key, {
+          allocation: typeof normalizedAllocation === 'number' ? normalizedAllocation : undefined,
+          change: normalizedChange,
+        });
+      });
+
+      const updatePlan = (plan: any) => {
+        if (!plan || typeof plan !== 'object') {
+          return plan;
+        }
+
+        const clone: Record<string, any> = { ...plan };
+
+        const updateAssetsForKeys = (keys: string[]) => {
+          keys.forEach(key => {
+            if (Array.isArray(clone[key])) {
+              clone[key] = clone[key].map((asset: any) => {
+                if (!asset || !asset.name) {
+                  return asset;
+                }
+
+                const assetKey = makeKey(String(asset.name), (asset.ticker || asset.symbol || asset.code || null) as string | null);
+                const normalized = adjustments.get(assetKey);
+                if (!normalized) {
+                  return asset;
+                }
+
+                const updated = { ...asset };
+
+                if (typeof normalized.allocation === 'number') {
+                  updated.allocation_percent = normalized.allocation;
+                  updated.allocation = normalized.allocation;
+                  updated.target_weight = normalized.allocation;
+                  updated.weight = normalized.allocation;
+                }
+
+                if (typeof normalized.change === 'number') {
+                  updated.change_percent = normalized.change;
+                  updated.weight_change_percent = normalized.change;
+                  updated.delta_percent = normalized.change;
+                  updated.adjustment_percent = normalized.change;
+                }
+
+                return updated;
+              });
+            }
+          });
+        };
+
+        updateAssetsForKeys(['recommended_assets', 'recommendations']);
+        updateAssetsForKeys(['complementary_assets', 'complementaryIdeas', 'complementaryAssets']);
+
+        return clone;
+      };
+
+      const normalizedPlan = updatePlan(structuredPlan);
+
+      return {
+        stockRecommendations: normalizedStock,
+        complementaryIdeas: normalizedComplementary,
+        structuredPlan: normalizedPlan,
+      };
+    };
+
     const extractNumericValue = (value: string | number | undefined): number | null => {
       if (typeof value === 'number' && Number.isFinite(value)) {
         return value;
@@ -1953,6 +2216,17 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
 
       stockRecommendations = dedupeRecommendations(stockRecommendations);
       complementaryIdeas = dedupeRecommendations(complementaryIdeas);
+
+      const normalizedTrades = normalizeTradeOutputs({
+        stockRecommendations,
+        complementaryIdeas,
+        structuredPlan,
+        mode,
+      });
+
+      stockRecommendations = normalizedTrades.stockRecommendations;
+      complementaryIdeas = normalizedTrades.complementaryIdeas;
+      structuredPlan = normalizedTrades.structuredPlan;
 
       if (mode === 'optimize') {
         const isValidPreference = (
