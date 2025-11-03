@@ -79,9 +79,12 @@ interface Holding {
 interface AdvisorPlanAsset {
   name: string;
   ticker?: string;
-  allocationPercent: number;
+  allocationPercent?: number;
+  changePercent?: number;
   rationale?: string;
   riskRole?: string;
+  actionType?: string;
+  notes?: string;
 }
 
 interface AdvisorPlan {
@@ -91,9 +94,23 @@ interface AdvisorPlan {
   assets: AdvisorPlanAsset[];
   disclaimer?: string;
   rawText?: string;
+  complementaryAssets?: AdvisorPlanAsset[];
 }
 
 type ConversationHolding = NonNullable<ConversationData['currentHoldings']>[number];
+
+interface StockRecommendation {
+  name: string;
+  symbol?: string;
+  sector?: string;
+  reasoning?: string;
+  allocation?: number;
+  isin?: string;
+  actionType?: string;
+  changePercent?: number;
+  notes?: string;
+  expectedPrice?: number;
+}
 
 interface PortfolioGenerationResult {
   aiResponse?: string;
@@ -101,7 +118,8 @@ interface PortfolioGenerationResult {
   portfolio?: any;
   riskProfile?: any;
   enhancedPrompt?: string;
-  stockRecommendations?: any[];
+  stockRecommendations?: StockRecommendation[];
+  complementaryIdeas?: StockRecommendation[];
   mode?: 'new' | 'optimize';
 }
 
@@ -110,36 +128,104 @@ const normalizeAdvisorPlan = (plan: any, fallbackText?: string): AdvisorPlan | n
     return null;
   }
 
+  const parsePercentValue = (value: unknown): number | undefined => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      const absolute = Math.abs(value);
+      if (absolute > 0 && absolute <= 1) {
+        return Math.round(value * 100);
+      }
+      return Math.round(value);
+    }
+
+    if (typeof value === 'string') {
+      const match = value.match(/-?\d+(?:[.,]\d+)?/);
+      if (match) {
+        const parsed = parseFloat(match[0].replace(',', '.'));
+        if (Number.isFinite(parsed)) {
+          return Math.round(parsed);
+        }
+      }
+    }
+
+    return undefined;
+  };
+
+  const normalizeActionType = (value: unknown): string | undefined => {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+
+    if (/behåll|behold|hold|keep/.test(normalized)) return 'hold';
+    if (/öka|increase|buy more|köp mer|addera mer/.test(normalized)) return 'increase';
+    if (/lägg till|add|nytt|introduc|komplettera|complement/.test(normalized)) return 'add';
+    if (/minska|reduce|trim|skala ned|dra ned/.test(normalized)) return 'reduce';
+    if (/sälj|sell|exit|avyttra/.test(normalized)) return 'sell';
+    if (/rebal/.test(normalized)) return 'rebalance';
+    if (/övervaka|bevaka|monitor/.test(normalized)) return 'monitor';
+
+    return normalized;
+  };
+
+  const mapAdvisorAsset = (asset: any): AdvisorPlanAsset | null => {
+    if (!asset || !asset.name) {
+      return null;
+    }
+
+    const allocation =
+      parsePercentValue(asset.allocation_percent) ??
+      parsePercentValue(asset.allocation) ??
+      parsePercentValue(asset.target_weight) ??
+      parsePercentValue(asset.target_allocation_percent);
+
+    const changePercent =
+      parsePercentValue(asset.change_percent) ??
+      parsePercentValue(asset.weight_change_percent) ??
+      parsePercentValue(asset.delta_percent) ??
+      parsePercentValue(asset.adjustment_percent);
+
+    const actionType =
+      normalizeActionType(asset.action_type) ||
+      normalizeActionType(asset.action) ||
+      normalizeActionType(asset.recommendation_type) ||
+      normalizeActionType(asset.intent);
+
+    return {
+      name: String(asset.name).trim(),
+      ticker: asset.ticker || asset.symbol || undefined,
+      allocationPercent: allocation,
+      changePercent: changePercent,
+      rationale: asset.rationale || asset.reasoning || asset.analysis || asset.comment || undefined,
+      riskRole: asset.risk_role || asset.role || undefined,
+      actionType,
+      notes: asset.notes || asset.note || undefined,
+    };
+  };
+
   const assetCandidates = Array.isArray(plan.recommended_assets)
     ? plan.recommended_assets
     : Array.isArray(plan.recommendations)
       ? plan.recommendations
-      : [];
+      : Array.isArray(plan.assets)
+        ? plan.assets
+        : [];
 
   const assets: AdvisorPlanAsset[] = assetCandidates
-    .map((asset: any) => {
-      if (!asset || !asset.name) {
-        return null;
-      }
+    .map(mapAdvisorAsset)
+    .filter((asset): asset is AdvisorPlanAsset => Boolean(asset));
 
-      const allocation = typeof asset.allocation_percent === 'number'
-        ? asset.allocation_percent
-        : typeof asset.allocation_percent === 'string'
-        ? parseInt(asset.allocation_percent.replace(/[^\d]/g, ''), 10)
-        : typeof asset.allocation === 'number'
-        ? asset.allocation
-        : typeof asset.allocation === 'string'
-        ? parseInt(asset.allocation.replace(/[^\d]/g, ''), 10)
-        : 0;
+  const complementaryCandidates = Array.isArray(plan.complementary_assets)
+    ? plan.complementary_assets
+    : Array.isArray(plan.complementaryIdeas)
+      ? plan.complementaryIdeas
+      : [];
 
-      return {
-        name: String(asset.name).trim(),
-        ticker: asset.ticker || asset.symbol || undefined,
-        allocationPercent: Number.isFinite(allocation) ? allocation : 0,
-        rationale: asset.rationale || asset.reasoning || asset.analysis || undefined,
-        riskRole: asset.risk_role || asset.role || undefined,
-      };
-    })
+  const complementaryAssets: AdvisorPlanAsset[] = complementaryCandidates
+    .map(mapAdvisorAsset)
     .filter((asset): asset is AdvisorPlanAsset => Boolean(asset));
 
   const toList = (value: any): string[] => {
@@ -175,9 +261,61 @@ const normalizeAdvisorPlan = (plan: any, fallbackText?: string): AdvisorPlan | n
     riskAlignment,
     nextSteps,
     assets,
+    complementaryAssets: complementaryAssets.length > 0 ? complementaryAssets : undefined,
     disclaimer: typeof plan.disclaimer === 'string' ? plan.disclaimer.trim() : undefined,
     rawText: fallbackText,
   };
+};
+
+const roundPercent = (value: number): number => {
+  const rounded = Math.round(value * 10) / 10;
+  return Math.abs(rounded) === 0 ? 0 : rounded;
+};
+
+const formatPercentValue = (value?: number | null): string | null => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return null;
+  }
+
+  const rounded = roundPercent(value);
+  return `${rounded}%`;
+};
+
+const formatSignedPercent = (value?: number | null): string | null => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return null;
+  }
+
+  const rounded = roundPercent(value);
+  const prefix = rounded > 0 ? '+' : rounded < 0 ? '−' : '';
+  return `${prefix}${Math.abs(rounded)}%`;
+};
+
+const getChangeBadgeClass = (value?: number | null): string => {
+  if (typeof value !== 'number' || Number.isNaN(value) || value === 0) {
+    return 'text-muted-foreground';
+  }
+
+  return value > 0 ? 'text-emerald-600' : 'text-rose-600';
+};
+
+const getActionLabel = (actionType?: string): string | null => {
+  if (!actionType) {
+    return null;
+  }
+
+  const normalized = actionType.toLowerCase();
+  const mapping: Record<string, string> = {
+    hold: 'Behåll positionen',
+    increase: 'Öka / förstärk',
+    add: 'Lägg till nytt innehav',
+    reduce: 'Minska exponeringen',
+    sell: 'Sälj / avyttra',
+    rebalance: 'Rebalansera',
+    monitor: 'Övervaka noggrant',
+  };
+
+  return mapping[normalized] ?? actionType;
 };
 
 const supportedCurrencies = [
@@ -2259,7 +2397,12 @@ const ChatPortfolioAdvisor = () => {
 
   const completeConversation = async () => {
     setIsGenerating(true);
-    addBotMessage('Tack för alla svar! Jag skapar nu din personliga portföljstrategi...');
+    const isOptimizationFlow = conversationData.hasCurrentPortfolio === true;
+    addBotMessage(
+      isOptimizationFlow
+        ? 'Tack för alla svar! Jag analyserar din befintliga portfölj och tar fram skräddarsydda förbättringsförslag...'
+        : 'Tack för alla svar! Jag skapar nu din personliga portföljstrategi...'
+    );
     
     // Save user holdings to database if they exist
     if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
@@ -2295,6 +2438,11 @@ const ChatPortfolioAdvisor = () => {
       setTimeout(() => {
         if (isOptimizationResult) {
           addBotMessage('🔍 Din portföljanalys är klar! Här är mina optimeringsförslag:');
+          if (Array.isArray(result.complementaryIdeas) && result.complementaryIdeas.length > 0) {
+            addBotMessage('✨ Du fick även kompletterande idéer som stärker din nuvarande strategi.');
+          } else if (conversationData.optimizationPreference === 'analyze_only') {
+            addBotMessage('🛠️ Fokusera på dessa åtgärder för att förfina det du redan äger – inga nya köp föreslås just nu.');
+          }
         } else {
           addBotMessage('🎉 Din personliga portföljstrategi är klar! Här är mina rekommendationer:');
         }
@@ -2358,6 +2506,59 @@ const ChatPortfolioAdvisor = () => {
     const plan = structuredResponse;
     const isOptimization = portfolioResult?.mode === 'optimize';
 
+    const wantsComplementaryIdeas = conversationData.optimizationPreference === 'improve_with_new_ideas';
+    const complementaryFromResult: StockRecommendation[] = Array.isArray(portfolioResult?.complementaryIdeas)
+      ? (portfolioResult?.complementaryIdeas as StockRecommendation[])
+      : [];
+
+    const complementaryFromPlan: AdvisorPlanAsset[] = Array.isArray(plan?.complementaryAssets)
+      ? (plan?.complementaryAssets as AdvisorPlanAsset[])
+      : [];
+
+    const complementaryFromPlanAsRecommendations: StockRecommendation[] = complementaryFromPlan.map(asset => ({
+      name: asset.name,
+      symbol: asset.ticker,
+      reasoning: asset.rationale ?? asset.notes,
+      allocation: asset.allocationPercent,
+      actionType: asset.actionType,
+    }));
+
+    const additionsFromPlan = Array.isArray(plan?.assets)
+      ? plan.assets
+          .filter(asset => asset.actionType === 'add')
+          .map(asset => ({
+            name: asset.name,
+            symbol: asset.ticker,
+            reasoning: asset.rationale ?? asset.notes,
+            allocation: asset.allocationPercent,
+            actionType: asset.actionType,
+          }))
+      : [];
+
+    const mergedComplementaryIdeas = [
+      ...complementaryFromResult,
+      ...complementaryFromPlanAsRecommendations,
+      ...additionsFromPlan,
+    ];
+
+    const complementaryIdeas: StockRecommendation[] = mergedComplementaryIdeas
+      .filter((idea, index, arr) =>
+        idea.name &&
+        index === arr.findIndex(other => other.name?.toLowerCase() === idea.name?.toLowerCase())
+      )
+      .filter(idea => {
+        if (!isOptimization) {
+          return false;
+        }
+
+        if (wantsComplementaryIdeas) {
+          return true;
+        }
+
+        const actionType = idea.actionType?.toLowerCase();
+        return actionType === 'add' || actionType === 'increase';
+      });
+
     if (!plan) {
       return (
         <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
@@ -2406,16 +2607,47 @@ const ChatPortfolioAdvisor = () => {
                   key={`${asset.name}-${asset.ticker ?? index}`}
                   className="rounded-lg border border-border/60 bg-background/70 p-3"
                 >
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <div>
-                      <span className="font-semibold text-foreground">{asset.name}</span>
-                      {asset.ticker && (
-                        <span className="ml-2 text-xs uppercase tracking-wide text-muted-foreground">
-                          {asset.ticker}
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <div className="flex flex-wrap items-baseline gap-2">
+                        <span className="font-semibold text-foreground truncate max-w-[220px] sm:max-w-[280px]">
+                          {asset.name}
                         </span>
+                        {asset.ticker && (
+                          <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {asset.ticker}
+                          </span>
+                        )}
+                      </div>
+                      {isOptimization && getActionLabel(asset.actionType) && (
+                        <Badge
+                          variant="outline"
+                          className="w-fit border-primary/40 bg-primary/10 text-primary text-[10px] uppercase tracking-wide"
+                        >
+                          Åtgärd: {getActionLabel(asset.actionType)}
+                        </Badge>
                       )}
                     </div>
-                    <span className="text-sm font-semibold text-primary">{asset.allocationPercent}%</span>
+
+                    <div className="flex flex-col items-end gap-1 text-right">
+                      {(() => {
+                        const changeDisplay = formatSignedPercent(asset.changePercent);
+                        if (!changeDisplay) return null;
+                        return (
+                          <span className={`text-xs font-medium ${getChangeBadgeClass(asset.changePercent)}`}>
+                            Förändring: {changeDisplay}
+                          </span>
+                        );
+                      })()}
+                      {(() => {
+                        if (isOptimization && (!asset.allocationPercent || asset.allocationPercent === 0)) {
+                          return null;
+                        }
+                        const allocationDisplay = formatPercentValue(asset.allocationPercent);
+                        if (!allocationDisplay) return null;
+                        return <span className="text-sm font-semibold text-primary">{allocationDisplay}</span>;
+                      })()}
+                    </div>
                   </div>
                   {asset.rationale && (
                     <p className="mt-2 text-sm text-muted-foreground">{asset.rationale}</p>
@@ -2424,6 +2656,46 @@ const ChatPortfolioAdvisor = () => {
                     <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
                       Roll i portföljen: {asset.riskRole}
                     </p>
+                  )}
+                  {asset.notes && (
+                    <p className="mt-1 text-xs text-muted-foreground">{asset.notes}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {isOptimization && complementaryIdeas.length > 0 && (
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Kompletterande idéer som passar din portfölj
+            </h4>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {complementaryIdeas.map((idea, idx) => (
+                <div
+                  key={`${idea.name}-${idea.symbol ?? idx}`}
+                  className="rounded-lg border border-dashed border-primary/30 bg-background/60 p-3"
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div>
+                      <p className="font-medium text-foreground">{idea.name}</p>
+                      {idea.symbol && (
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">{idea.symbol}</p>
+                      )}
+                    </div>
+                    {(() => {
+                      const allocationSuggestion = formatPercentValue(idea.allocation);
+                      if (!allocationSuggestion) return null;
+                      return (
+                        <span className="text-xs font-semibold text-primary">
+                          Förslag: {allocationSuggestion}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  {idea.reasoning && (
+                    <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{idea.reasoning}</p>
                   )}
                 </div>
               ))}
