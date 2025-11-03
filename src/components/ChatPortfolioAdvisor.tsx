@@ -123,10 +123,40 @@ interface PortfolioGenerationResult {
   mode?: 'new' | 'optimize';
 }
 
-const normalizeAdvisorPlan = (plan: any, fallbackText?: string): AdvisorPlan | null => {
+const normalizeAdvisorPlan = (rawPlan: any, fallbackText?: string): AdvisorPlan | null => {
+  let plan = rawPlan;
+
+  if (typeof plan === 'string') {
+    try {
+      plan = JSON.parse(plan);
+    } catch (error) {
+      console.warn('Unable to parse advisor plan text as JSON', error);
+      return null;
+    }
+  }
+
   if (!plan || typeof plan !== 'object') {
     return null;
   }
+
+  const toArray = (value: unknown): any[] => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'object') return Object.values(value);
+    return [];
+  };
+
+  const dedupeAssets = (assets: AdvisorPlanAsset[]): AdvisorPlanAsset[] => {
+    const seen = new Set<string>();
+    return assets.filter(asset => {
+      const key = `${asset.name.toLowerCase()}|${(asset.ticker ?? '').toLowerCase()}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+  };
 
   const parsePercentValue = (value: unknown): number | undefined => {
     if (typeof value === 'number' && Number.isFinite(value)) {
@@ -194,9 +224,21 @@ const normalizeAdvisorPlan = (plan: any, fallbackText?: string): AdvisorPlan | n
       normalizeActionType(asset.recommendation_type) ||
       normalizeActionType(asset.intent);
 
+    const name = String(asset.name).trim();
+    if (!name) {
+      return null;
+    }
+
+    const tickerValue =
+      typeof asset.ticker === 'string'
+        ? asset.ticker
+        : typeof asset.symbol === 'string'
+          ? asset.symbol
+          : undefined;
+
     return {
-      name: String(asset.name).trim(),
-      ticker: asset.ticker || asset.symbol || undefined,
+      name,
+      ticker: tickerValue?.trim() ? tickerValue.trim().toUpperCase() : undefined,
       allocationPercent: allocation,
       changePercent: changePercent,
       rationale: asset.rationale || asset.reasoning || asset.analysis || asset.comment || undefined,
@@ -206,27 +248,25 @@ const normalizeAdvisorPlan = (plan: any, fallbackText?: string): AdvisorPlan | n
     };
   };
 
-  const assetCandidates = Array.isArray(plan.recommended_assets)
-    ? plan.recommended_assets
-    : Array.isArray(plan.recommendations)
-      ? plan.recommendations
-      : Array.isArray(plan.assets)
-        ? plan.assets
-        : [];
+  const assetCandidates = toArray(plan.recommended_assets)
+    .concat(toArray(plan.recommendations))
+    .concat(toArray(plan.assets));
 
-  const assets: AdvisorPlanAsset[] = assetCandidates
-    .map(mapAdvisorAsset)
-    .filter((asset): asset is AdvisorPlanAsset => Boolean(asset));
+  const assets: AdvisorPlanAsset[] = dedupeAssets(
+    assetCandidates
+      .map(mapAdvisorAsset)
+      .filter((asset): asset is AdvisorPlanAsset => Boolean(asset))
+  );
 
-  const complementaryCandidates = Array.isArray(plan.complementary_assets)
-    ? plan.complementary_assets
-    : Array.isArray(plan.complementaryIdeas)
-      ? plan.complementaryIdeas
-      : [];
+  const complementaryCandidates = toArray(plan.complementary_assets)
+    .concat(toArray(plan.complementaryIdeas))
+    .concat(toArray(plan.complementaryAssets));
 
-  const complementaryAssets: AdvisorPlanAsset[] = complementaryCandidates
-    .map(mapAdvisorAsset)
-    .filter((asset): asset is AdvisorPlanAsset => Boolean(asset));
+  const complementaryAssets: AdvisorPlanAsset[] = dedupeAssets(
+    complementaryCandidates
+      .map(mapAdvisorAsset)
+      .filter((asset): asset is AdvisorPlanAsset => Boolean(asset))
+  );
 
   const toList = (value: any): string[] => {
     if (!value) return [];
@@ -237,6 +277,11 @@ const normalizeAdvisorPlan = (plan: any, fallbackText?: string): AdvisorPlan | n
       return value
         .split(/\n+/)
         .map(item => item.trim())
+        .filter(Boolean);
+    }
+    if (typeof value === 'object') {
+      return Object.values(value)
+        .map(item => (typeof item === 'string' ? item.trim() : ''))
         .filter(Boolean);
     }
     return [];
@@ -653,22 +698,41 @@ const ChatPortfolioAdvisor = () => {
   );
 
   const structuredResponse = useMemo(() => {
-    if (portfolioResult?.plan) {
-      return normalizeAdvisorPlan(portfolioResult.plan, portfolioResult.aiResponse);
-    }
-
-    if (!portfolioResult?.aiResponse) {
+    if (!portfolioResult) {
       return null;
     }
 
-    try {
-      const parsed = JSON.parse(portfolioResult.aiResponse);
-      return normalizeAdvisorPlan(parsed, portfolioResult.aiResponse);
-    } catch (error) {
-      console.warn('Kunde inte tolka AI-svaret som JSON:', error);
-      return null;
+    const aiText = (() => {
+      const raw = portfolioResult.aiResponse;
+      if (typeof raw === 'string') {
+        return raw;
+      }
+      if (raw && typeof raw === 'object') {
+        try {
+          return JSON.stringify(raw);
+        } catch {
+          return undefined;
+        }
+      }
+      return undefined;
+    })();
+
+    if (portfolioResult.plan !== undefined) {
+      const normalized = normalizeAdvisorPlan(portfolioResult.plan, aiText);
+      if (normalized) {
+        return normalized;
+      }
     }
-  }, [portfolioResult?.plan, portfolioResult?.aiResponse]);
+
+    if (aiText) {
+      const normalized = normalizeAdvisorPlan(aiText, aiText);
+      if (normalized) {
+        return normalized;
+      }
+    }
+
+    return null;
+  }, [portfolioResult]);
 
   const questions: Question[] = [
     {
@@ -2069,10 +2133,35 @@ const ChatPortfolioAdvisor = () => {
     if (!user || holdings.length === 0) return;
 
     try {
+      const sanitizedHoldings = holdings.filter(holding => {
+        const hasName = typeof holding.name === 'string' && holding.name.trim().length > 0;
+        const hasQuantity = typeof holding.quantity === 'number' && Number.isFinite(holding.quantity) && holding.quantity > 0;
+        const hasPrice = typeof holding.purchasePrice === 'number' && Number.isFinite(holding.purchasePrice) && holding.purchasePrice > 0;
+        return hasName && hasQuantity && hasPrice;
+      });
+
+      if (sanitizedHoldings.length === 0) {
+        return;
+      }
+
+      const uniqueHoldings = Array.from(
+        sanitizedHoldings.reduce((map, holding) => {
+          const key = `${holding.name.trim().toLowerCase()}|${(holding.symbol ?? '').trim().toLowerCase()}`;
+          if (!map.has(key)) {
+            map.set(key, holding);
+          }
+          return map;
+        }, new Map<string, ConversationHolding>()).values()
+      );
+
+      if (uniqueHoldings.length === 0) {
+        return;
+      }
+
       const roundToTwo = (value: number) => Math.round(value * 100) / 100;
 
       // Transform holdings to match the user_holdings table structure
-      const holdingsToInsert = holdings.map(holding => {
+      const holdingsToInsert = uniqueHoldings.map(holding => {
         const trimmedSymbol = typeof holding.symbol === 'string' ? holding.symbol.trim() : '';
         const normalizedSymbol = trimmedSymbol.length > 0 ? trimmedSymbol.toUpperCase() : null;
         const ticker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) : undefined;
@@ -2084,17 +2173,27 @@ const ChatPortfolioAdvisor = () => {
         const resolvedPrice = sheetPrice ?? manualPrice;
         const baseCurrency = ticker?.currency?.trim()?.toUpperCase() || holding.currency?.trim()?.toUpperCase() || 'SEK';
         const priceCurrency = resolvedPrice !== null || manualPrice !== null ? baseCurrency : null;
-        const quantity = Number.isFinite(holding.quantity) && holding.quantity > 0 ? holding.quantity : 0;
+        const quantity = Number.isFinite(holding.quantity) && holding.quantity > 0 ? roundToTwo(holding.quantity) : null;
 
-        const currentValue = quantity > 0 && resolvedPrice !== null
+        const currentValue = quantity && quantity > 0 && resolvedPrice !== null
           ? roundToTwo(resolvedPrice * quantity)
-          : quantity > 0 && manualPrice !== null
+          : quantity && quantity > 0 && manualPrice !== null
             ? roundToTwo(manualPrice * quantity)
             : null;
 
+        if (!quantity) {
+          return null;
+        }
+
+        const trimmedName = holding.name.trim();
+
+        if (!trimmedName) {
+          return null;
+        }
+
         return {
           user_id: user.id,
-          name: holding.name,
+          name: trimmedName,
           symbol: normalizedSymbol,
           quantity,
           purchase_price: manualPrice,
@@ -2105,7 +2204,23 @@ const ChatPortfolioAdvisor = () => {
           holding_type: 'stock', // Default to stock
           purchase_date: new Date().toISOString(),
         };
-      });
+      }).filter((item): item is {
+        user_id: string;
+        name: string;
+        symbol: string | null;
+        quantity: number;
+        purchase_price: number | null;
+        current_price_per_unit: number | null;
+        price_currency: string | null;
+        current_value: number | null;
+        currency: string;
+        holding_type: string;
+        purchase_date: string;
+      } => Boolean(item));
+
+      if (holdingsToInsert.length === 0) {
+        return;
+      }
 
       const { error } = await supabase
         .from('user_holdings')

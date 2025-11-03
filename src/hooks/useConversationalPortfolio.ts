@@ -97,6 +97,15 @@ export const useConversationalPortfolio = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  const coerceArray = (value: unknown): any[] => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'object') {
+      return Object.values(value);
+    }
+    return [];
+  };
+
   // Enhanced stock recommendation extraction - completely dynamic
   const extractStockRecommendations = (aiResponse: string): StockRecommendation[] => {
     const recommendations: StockRecommendation[] = [];
@@ -980,7 +989,12 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
     }
 
     const requestedMode = options?.mode;
-    const mode: PortfolioGenerationMode = requestedMode ?? (conversationData.hasCurrentPortfolio ? 'optimize' : 'new');
+    const mode: PortfolioGenerationMode =
+      requestedMode === 'new' || requestedMode === 'optimize'
+        ? requestedMode
+        : conversationData.hasCurrentPortfolio
+          ? 'optimize'
+          : 'new';
 
     const ensureString = (value: unknown): string | undefined =>
       typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
@@ -1797,22 +1811,52 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         });
         return null;
       }
+      let structuredPlan = aiResponse.plan;
 
-
-      const structuredPlan = aiResponse.plan;
+      if (typeof structuredPlan === 'string') {
+        try {
+          structuredPlan = JSON.parse(structuredPlan);
+        } catch (error) {
+          console.warn('Failed to parse structured plan string:', error);
+        }
+      }
 
       // Extract AI response from multiple possible fields for compatibility
-      const aiRecommendationText = structuredPlan
-        ? JSON.stringify(structuredPlan)
-        : aiResponse.aiRecommendations || aiResponse.aiResponse || aiResponse.response || '';
+      const aiRecommendationText = (() => {
+        if (structuredPlan) {
+          try {
+            return JSON.stringify(structuredPlan);
+          } catch (error) {
+            console.warn('Failed to stringify structured plan:', error);
+          }
+        }
+
+        const textCandidates = [aiResponse.aiRecommendations, aiResponse.aiResponse, aiResponse.response];
+        for (const candidate of textCandidates) {
+          if (typeof candidate === 'string' && candidate.trim().length > 0) {
+            return candidate;
+          }
+        }
+
+        return '';
+      })();
 
 
       // Extract stock recommendations from AI response or structured plan
       let stockRecommendations = extractStockRecommendations(aiRecommendationText);
       let complementaryIdeas: StockRecommendation[] = [];
 
-      if (structuredPlan?.recommended_assets?.length) {
-        const mapped = structuredPlan.recommended_assets
+      const recommendedAssetCandidates =
+        structuredPlan && typeof structuredPlan === 'object'
+          ? coerceArray(
+              (structuredPlan as any).recommended_assets ??
+              (structuredPlan as any).recommendations ??
+              (structuredPlan as any).assets
+            )
+          : [];
+
+      if (recommendedAssetCandidates.length > 0) {
+        const mapped = recommendedAssetCandidates
           .map(mapPlanAssetToRecommendation)
           .filter((asset): asset is StockRecommendation => Boolean(asset));
 
@@ -1821,8 +1865,17 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         }
       }
 
-      if (structuredPlan?.complementary_assets?.length) {
-        const mappedComplementary = structuredPlan.complementary_assets
+      const complementaryAssetCandidates =
+        structuredPlan && typeof structuredPlan === 'object'
+          ? coerceArray(
+              (structuredPlan as any).complementary_assets ??
+              (structuredPlan as any).complementaryIdeas ??
+              (structuredPlan as any).complementaryAssets
+            )
+          : [];
+
+      if (complementaryAssetCandidates.length > 0) {
+        const mappedComplementary = complementaryAssetCandidates
           .map(mapPlanAssetToRecommendation)
           .filter((asset): asset is StockRecommendation => Boolean(asset));
 
@@ -1835,7 +1888,16 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       complementaryIdeas = dedupeRecommendations(complementaryIdeas);
 
       if (mode === 'optimize') {
-        const preference = mergedConversationData.optimizationPreference;
+        const isValidPreference = (
+          value: unknown
+        ): value is NonNullable<ConversationData['optimizationPreference']> =>
+          value === 'analyze_only' || value === 'improve_with_new_ideas' || value === 'rebalance';
+
+        const preference = isValidPreference(mergedConversationData.optimizationPreference)
+          ? mergedConversationData.optimizationPreference
+          : 'analyze_only';
+
+        mergedConversationData.optimizationPreference = preference;
         const isAdd = (rec: StockRecommendation) => (rec.actionType || '').toLowerCase() === 'add';
 
         if (preference === 'analyze_only') {
