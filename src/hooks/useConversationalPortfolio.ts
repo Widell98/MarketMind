@@ -363,9 +363,9 @@ export const useConversationalPortfolio = () => {
     }) ?? 'Ej angivet';
 
     const timeHorizonText = mapValue(conversationData.timeHorizon, {
-      short: '1-3 år (kort sikt)',
-      medium: '3-7 år (medellång sikt)',
-      long: '7-15 år (lång sikt)',
+      short: '0–2 år (kort sikt)',
+      medium: '3–5 år (medellång sikt)',
+      long: '5+ år (lång sikt)',
       very_long: '15+ år (mycket lång sikt)',
       unknown: 'Vet inte än',
     }) ?? 'Ej angiven';

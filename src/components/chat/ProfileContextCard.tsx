@@ -103,8 +103,8 @@ const ProfileContextCard = ({ onUpdate }: ProfileContextCardProps) => {
     {
       key: 'investment_horizon',
       label: 'Tidshorisont',
-      value: riskProfile.investment_horizon === 'short' ? 'Kort (1-3 år)' : 
-             riskProfile.investment_horizon === 'medium' ? 'Medel (3-7 år)' : 'Lång (7+ år)',
+      value: riskProfile.investment_horizon === 'short' ? 'Kort (0–2 år)' :
+             riskProfile.investment_horizon === 'medium' ? 'Medel (3–5 år)' : 'Lång (5+ år)',
       icon: Calendar,
       color: 'bg-purple-50 text-purple-700 border-purple-200'
     },

@@ -198,9 +198,9 @@ const RiskAssessmentForm: React.FC<RiskAssessmentFormProps> = ({ onComplete }) =
                   <SelectValue placeholder="Select horizon" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="short">Short (1-3 years)</SelectItem>
-                  <SelectItem value="medium">Medium (3-7 years)</SelectItem>
-                  <SelectItem value="long">Long (7+ years)</SelectItem>
+                  <SelectItem value="short">Short (0-2 years)</SelectItem>
+                  <SelectItem value="medium">Medium (3-5 years)</SelectItem>
+                  <SelectItem value="long">Long (5+ years)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

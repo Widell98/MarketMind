@@ -489,7 +489,7 @@ serve(async (req) => {
 - Ålder: ${riskProfile.age || 'Ej angivet'} år
 - Erfarenhetsnivå: ${riskProfile.investment_experience === 'beginner' ? 'Nybörjare' : riskProfile.investment_experience === 'intermediate' ? 'Mellannivå' : 'Erfaren'}
 - Risktolerans: ${riskProfile.risk_tolerance === 'conservative' ? 'Konservativ' : riskProfile.risk_tolerance === 'moderate' ? 'Måttlig' : 'Aggressiv'}
-- Tidshorisont: ${riskProfile.investment_horizon === 'short' ? 'Kort (1-3 år)' : riskProfile.investment_horizon === 'medium' ? 'Medel (3-7 år)' : 'Lång (7+ år)'}
+- Tidshorisont: ${riskProfile.investment_horizon === 'short' ? 'Kort (0–2 år)' : riskProfile.investment_horizon === 'medium' ? 'Medel (3–5 år)' : 'Lång (5+ år)'}
 - Månatlig budget: ${riskProfile.monthly_investment_amount ? riskProfile.monthly_investment_amount.toLocaleString() + ' SEK' : 'Ej angivet'}
 - Riskkomfort: ${riskProfile.risk_comfort_level || 5}/10
 - Sektorintressen: ${riskProfile.sector_interests ? riskProfile.sector_interests.join(', ') : 'Allmänna'}`;
@@ -1052,9 +1052,9 @@ function describeRiskLevel(riskProfile: any): string {
 
 function describeHorizon(riskProfile: any): string {
   const horizon = (riskProfile?.investment_horizon || 'long').toLowerCase();
-  if (horizon === 'short') return 'kort (1–3 år)';
-  if (horizon === 'medium') return 'medellång (3–7 år)';
-  return 'lång (7+ år)';
+  if (horizon === 'short') return 'kort (0–2 år)';
+  if (horizon === 'medium') return 'medellång (3–5 år)';
+  return 'lång (5+ år)';
 }
 
 function formatCurrency(amount?: number | null): string | null {

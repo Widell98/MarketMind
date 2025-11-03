@@ -440,9 +440,9 @@ Din kompletta portfölj har sparats och du kan implementera rekommendationerna d
                   <SelectValue placeholder="Välj tidshorisont" defaultValue={riskProfile.investment_horizon} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="short">Kort (1-3 år)</SelectItem>
-                  <SelectItem value="medium">Medel (3-7 år)</SelectItem>
-                  <SelectItem value="long">Lång (7+ år)</SelectItem>
+                  <SelectItem value="short">Kort (0–2 år)</SelectItem>
+                  <SelectItem value="medium">Medel (3–5 år)</SelectItem>
+                  <SelectItem value="long">Lång (5+ år)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

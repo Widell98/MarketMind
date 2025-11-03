@@ -234,11 +234,11 @@ const UserInvestmentAnalysis = ({
   const getInvestmentHorizonLabel = (horizon: string) => {
     switch (horizon) {
       case 'short':
-        return 'Kort (1-3 år)';
+        return 'Kort (0–2 år)';
       case 'medium':
-        return 'Medel (3-7 år)';
+        return 'Medel (3–5 år)';
       case 'long':
-        return 'Lång (7+ år)';
+        return 'Lång (5+ år)';
       default:
         return horizon || 'Ej angiven';
     }
