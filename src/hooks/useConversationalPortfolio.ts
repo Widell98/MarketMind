@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { mapEdgeFunctionErrorMessage } from '@/utils/mapEdgeFunctionError';
 
 export interface ConversationData {
   isBeginnerInvestor?: boolean;
@@ -30,6 +31,8 @@ export interface ConversationData {
   portfolioSize?: string;
   rebalancingFrequency?: string;
   portfolioChangeFrequency?: string;
+  portfolioStrategyPreference?: 'generate_new' | 'optimize_existing';
+  existingOptimizationFocus?: string[];
   // Enhanced fields
   monthlyIncome?: string;
   annualIncome?: string;
@@ -418,6 +421,10 @@ export const useConversationalPortfolio = () => {
       ? 'Ej angivet'
       : `${monthlyInvestmentText} SEK`;
 
+    const strategyPreferenceText = conversationData.portfolioStrategyPreference === 'optimize_existing'
+      ? 'Optimera befintlig portfölj'
+      : 'Skapa ny portföljstrategi';
+
     let prompt = `Skapa en detaljerad och personlig portföljstrategi baserat på följande omfattande konsultation:
 
 GRUNDLÄGGANDE PROFIL:
@@ -427,7 +434,8 @@ GRUNDLÄGGANDE PROFIL:
 - Investeringsmål: ${investmentGoalText}
 - Tidshorisont: ${timeHorizonText}
 - Risktolerans: ${riskToleranceText}
-- Befintlig portfölj: ${formatBoolean(conversationData.hasCurrentPortfolio)}`;
+- Befintlig portfölj: ${formatBoolean(conversationData.hasCurrentPortfolio)}
+- Önskad rådgivning: ${strategyPreferenceText}`;
 
     if (annualIncomeText && annualIncomeText !== 'Ej angivet') {
       prompt += `
@@ -786,6 +794,77 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
 }`;
 
     return prompt;
+  };
+
+  const buildOptimizationPrompt = (conversationData: ConversationData) => {
+    const holdings = Array.isArray(conversationData.currentHoldings) ? conversationData.currentHoldings : [];
+    const focusAreas = Array.isArray(conversationData.existingOptimizationFocus)
+      ? conversationData.existingOptimizationFocus
+      : [];
+
+    const formattedHoldings = holdings.length > 0
+      ? holdings
+          .map(holding => {
+            const base = `${holding.name}${holding.symbol ? ` (${holding.symbol})` : ''}`;
+            const quantity = Number.isFinite(holding.quantity) ? `${holding.quantity} st` : '';
+            const price = Number.isFinite(holding.purchasePrice)
+              ? `${holding.purchasePrice} ${holding.currency?.toUpperCase() ?? 'SEK'}`
+              : '';
+            return [base, quantity, price].filter(Boolean).join(' – ');
+          })
+          .join('; ')
+      : 'Inga innehav registrerade';
+
+    const focusText = focusAreas.length > 0
+      ? focusAreas.map(area => {
+          switch (area) {
+            case 'risk_balance':
+              return 'Bättre riskbalans och diversifiering';
+            case 'costs':
+              return 'Minska avgifter och onödiga kostnader';
+            case 'performance':
+              return 'Höja långsiktig avkastning';
+            case 'rebalancing':
+              return 'Skapa tydliga rebalanseringsregler';
+            case 'goal_alignment':
+              return 'Säkerställa att portföljen matchar mina mål';
+            case 'sustainability':
+              return 'Göra portföljen mer hållbar';
+            default:
+              return area;
+          }
+        })
+      : ['Identifiera förbättringar som ger bäst effekt'];
+
+    const investmentGoal = conversationData.investmentGoal
+      ? `Övergripande mål: ${conversationData.investmentGoal}.`
+      : '';
+    const riskTolerance = conversationData.riskTolerance
+      ? `Risktolerans: ${conversationData.riskTolerance}.`
+      : '';
+    const monthlyInvestment = conversationData.monthlyAmount || conversationData.monthlyAmountNumeric;
+    const monthlyText = monthlyInvestment
+      ? `Planerad månatlig investering: ${monthlyInvestment}.`
+      : '';
+
+    const helpPreference = conversationData.portfolioHelp
+      ? `Användarens prioritering: ${conversationData.portfolioHelp}.`
+      : '';
+
+    return [
+      'Analysera och optimera min befintliga investeringsportfölj.',
+      'Ta hänsyn till mina mål, risktolerans och hur ofta jag vill uppdatera portföljen.',
+      investmentGoal,
+      riskTolerance,
+      monthlyText,
+      helpPreference,
+      `Mina nuvarande innehav: ${formattedHoldings}.`,
+      `Fokusera på följande förbättringsområden: ${focusText.join(', ')}.`,
+      'Identifiera styrkor och svagheter, föreslå rebalansering och nya kompletterande idéer om det behövs.',
+      'Sammanfatta åtgärderna i en tydlig plan och var specifik med hur jag bör agera.'
+    ]
+      .filter(Boolean)
+      .join(' ');
   };
   const generatePortfolioFromConversation = async (conversationData: ConversationData) => {
     if (!user) {
@@ -1687,8 +1766,94 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
     }
   };
 
+  const optimizeExistingPortfolio = async (conversationData: ConversationData) => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "Du måste vara inloggad för att optimera en portfölj",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    if (!conversationData.currentHoldings || conversationData.currentHoldings.length === 0) {
+      toast({
+        title: "Inga innehav",
+        description: "Lägg till dina nuvarande innehav innan du ber om en analys.",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    setLoading(true);
+
+    try {
+      const optimizationPrompt = buildOptimizationPrompt(conversationData);
+
+      const { data, error } = await supabase.functions.invoke('portfolio-ai-chat', {
+        body: {
+          message: optimizationPrompt,
+          userId: user.id,
+          analysisType: 'portfolio_optimization',
+          conversationData,
+          stream: false
+        }
+      });
+
+      if (error) {
+        console.error('Error generating optimization insights:', error);
+        toast({
+          title: "Error",
+          description: "Kunde inte analysera din portfölj just nu",
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      const normalizedResponse = typeof data === 'string'
+        ? data
+        : (data as any)?.response
+          || (data as any)?.aiResponse
+          || (data as any)?.analysis
+          || (data as any)?.message
+          || '';
+
+      if (!normalizedResponse || normalizedResponse.length === 0) {
+        toast({
+          title: "Varning",
+          description: "AI:n gav inget tydligt svar. Försök igen om en stund.",
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      const extractedInsights = Array.isArray((data as any)?.insights) ? (data as any).insights : undefined;
+
+      toast({
+        title: "Analys klar",
+        description: "Din portfölj har analyserats och konkreta förbättringsförslag finns redo.",
+      });
+
+      return {
+        aiResponse: normalizedResponse,
+        insights: extractedInsights,
+      };
+    } catch (error: any) {
+      console.error('Error optimizing portfolio:', error);
+      toast({
+        title: "Error",
+        description: mapEdgeFunctionErrorMessage(error.message || 'Ett oväntat fel uppstod'),
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     generatePortfolioFromConversation,
+    optimizeExistingPortfolio,
     loading
   };
 };
