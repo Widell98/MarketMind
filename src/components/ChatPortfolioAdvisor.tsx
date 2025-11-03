@@ -182,6 +182,37 @@ const supportedCurrencies = [
   'AUD'
 ];
 
+const matchCurrencyFromText = (text?: string | null): string | undefined => {
+  if (!text) {
+    return undefined;
+  }
+
+  const upper = text.toUpperCase();
+  const codeMatches = upper.match(/[A-Z]{3}/g);
+
+  if (codeMatches && codeMatches.length > 0) {
+    for (const code of codeMatches) {
+      if (supportedCurrencies.includes(code)) {
+        return code;
+      }
+    }
+
+    return undefined;
+  }
+
+  if (/SEK|KRON/iu.test(upper)) return 'SEK';
+  if (/USD|DOLLAR/iu.test(upper)) return 'USD';
+  if (/EUR|EURO/iu.test(upper)) return 'EUR';
+  if (/GBP|POUND/iu.test(upper)) return 'GBP';
+  if (/NOK/iu.test(upper)) return 'NOK';
+  if (/DKK/iu.test(upper)) return 'DKK';
+  if (/CHF/iu.test(upper)) return 'CHF';
+  if (/CAD/iu.test(upper)) return 'CAD';
+  if (/AUD/iu.test(upper)) return 'AUD';
+
+  return undefined;
+};
+
 const ChatPortfolioAdvisor = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState('');
@@ -909,23 +940,9 @@ const ChatPortfolioAdvisor = () => {
     return null;
   };
 
-  const extractCurrencyFromHeader = (header: string) => {
-    const upper = header.toUpperCase();
-
-    const explicitMatch = upper.match(/\b([A-Z]{3})\b/);
-    if (explicitMatch) {
-      return explicitMatch[1];
-    }
-
-    if (/SEK|KRON/iu.test(upper)) return 'SEK';
-    if (/USD|DOLLAR/iu.test(upper)) return 'USD';
-    if (/EUR|EURO/iu.test(upper)) return 'EUR';
-    if (/GBP|POUND/iu.test(upper)) return 'GBP';
-    if (/NOK/iu.test(upper)) return 'NOK';
-    if (/DKK/iu.test(upper)) return 'DKK';
-
-    return undefined;
-  };
+  const extractCurrencyFromHeader = (header: string) => matchCurrencyFromText(header);
+  const isExactGavHeader = (header: unknown): boolean =>
+    typeof header === 'string' && header.trim().toLowerCase() === 'gav';
 
   const inferCurrencyFromSymbol = (symbolRaw: string) => {
     const symbol = symbolRaw.trim().toUpperCase();
@@ -941,6 +958,12 @@ const ChatPortfolioAdvisor = () => {
     const normalized = value.trim().toUpperCase();
     return /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(normalized);
   };
+
+  const normalizeTickerSymbol = (value: string) =>
+    value
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, '-');
 
   const parseHoldingsFromCSV = useCallback(
     (text: string): Holding[] => {
@@ -1014,14 +1037,36 @@ const ChatPortfolioAdvisor = () => {
           return indices;
         }
 
+        const exactGavMatches = new Set<number>();
         const gavMatches = new Set<number>();
 
         indices.forEach(index => {
           const header = headerParts[index];
-          if (typeof header === 'string' && /gav/iu.test(header)) {
+          if (isExactGavHeader(header)) {
+            exactGavMatches.add(index);
+            gavMatches.add(index);
+          } else if (typeof header === 'string' && /gav/iu.test(header)) {
             gavMatches.add(index);
           }
         });
+
+        if (exactGavMatches.size > 0) {
+          const prioritized: number[] = [];
+
+          exactGavMatches.forEach(index => {
+            if (!prioritized.includes(index)) {
+              prioritized.push(index);
+            }
+          });
+
+          indices.forEach(index => {
+            if (!exactGavMatches.has(index) && !prioritized.includes(index)) {
+              prioritized.push(index);
+            }
+          });
+
+          return prioritized;
+        }
 
         if (gavMatches.size === 0) {
           return indices;
@@ -1085,19 +1130,67 @@ const ChatPortfolioAdvisor = () => {
           }
         }
 
+        const currencyRaw = getValue('currency');
+        const currencyFromValue = matchCurrencyFromText(currencyRaw);
+
         const purchasePriceCandidates = prioritizePurchasePriceIndices(columnIndices.purchasePrice);
         let purchasePrice = NaN;
         let priceCurrencyHint: string | undefined;
+
+        const candidateValues: Array<{
+          value: number;
+          hint?: string;
+          isGav: boolean;
+          isExactGav: boolean;
+        }> = [];
+
         for (const index of purchasePriceCandidates) {
           if (typeof index !== 'number') continue;
           const raw = parts[index] ?? '';
           const parsed = parseLocaleNumber(raw);
 
           if (Number.isFinite(parsed) && parsed > 0) {
-            purchasePrice = parsed;
-            priceCurrencyHint = headerCurrencyHints[index];
-            break;
+            const header = headerParts[index];
+            candidateValues.push({
+              value: parsed,
+              hint: headerCurrencyHints[index],
+              isGav: typeof header === 'string' ? /gav/iu.test(header) : false,
+              isExactGav: isExactGavHeader(header)
+            });
           }
+        }
+
+        if (candidateValues.length > 0) {
+          const findCandidate = (
+            predicate: (candidate: {
+              value: number;
+              hint?: string;
+              isGav: boolean;
+              isExactGav: boolean;
+            }) => boolean
+          ) => candidateValues.find(predicate);
+
+          const selectedCandidate =
+            (currencyFromValue
+              ? findCandidate(
+                  candidate => candidate.isExactGav && candidate.hint === currencyFromValue
+                )
+              : undefined) ??
+            findCandidate(candidate => candidate.isExactGav && !candidate.hint) ??
+            findCandidate(candidate => candidate.isExactGav) ??
+            (currencyFromValue
+              ? findCandidate(candidate => candidate.isGav && candidate.hint === currencyFromValue)
+              : undefined) ??
+            findCandidate(candidate => candidate.isGav && !candidate.hint) ??
+            findCandidate(candidate => candidate.isGav) ??
+            (currencyFromValue
+              ? findCandidate(candidate => candidate.hint === currencyFromValue)
+              : undefined) ??
+            findCandidate(candidate => !candidate.hint) ??
+            candidateValues[0];
+
+          purchasePrice = selectedCandidate.value;
+          priceCurrencyHint = selectedCandidate.hint;
         }
 
         if (Number.isNaN(quantity)) {
@@ -1117,7 +1210,7 @@ const ChatPortfolioAdvisor = () => {
         }
 
         const nameRaw = getValue('name');
-        const symbolRaw = (() => {
+        const rawSymbol = (() => {
           const indices = columnIndices.symbol;
           if (!indices || indices.length === 0) {
             return '';
@@ -1142,20 +1235,16 @@ const ChatPortfolioAdvisor = () => {
 
           return fallback;
         })();
-        const currencyRaw = getValue('currency');
-
+        const normalizedSymbol = normalizeTickerSymbol(rawSymbol);
         const hasValidQuantity = Number.isFinite(quantity) && quantity > 0;
         const hasValidPrice = Number.isFinite(purchasePrice) && purchasePrice > 0;
-        const hasNameOrSymbol = Boolean(nameRaw.trim() || symbolRaw.trim());
+        const hasNameOrSymbol = Boolean(nameRaw.trim() || normalizedSymbol);
 
         if (!hasValidQuantity || !hasValidPrice || !hasNameOrSymbol) {
           continue;
         }
 
-        const currencyFromValue = currencyRaw
-          ? currencyRaw.replace(/[^a-zA-Z]/g, '').toUpperCase() || undefined
-          : undefined;
-        const inferredFromSymbol = inferCurrencyFromSymbol(symbolRaw);
+        const inferredFromSymbol = inferCurrencyFromSymbol(normalizedSymbol);
         const resolvedCurrency = (
           currencyFromValue ||
           priceCurrencyHint ||
@@ -1166,8 +1255,8 @@ const ChatPortfolioAdvisor = () => {
 
         parsedHoldings.push(
           createHolding({
-            name: nameRaw.trim() || symbolRaw.trim().toUpperCase(),
-            symbol: symbolRaw.trim().toUpperCase(),
+            name: nameRaw.trim() || normalizedSymbol,
+            symbol: normalizedSymbol,
             quantity,
             purchasePrice,
             nameManuallyEdited: true,
@@ -1262,7 +1351,7 @@ const ChatPortfolioAdvisor = () => {
   };
 
   const handleHoldingSymbolChange = (id: string, rawValue: string) => {
-    const normalizedSymbol = rawValue.trim().toUpperCase();
+    const normalizedSymbol = normalizeTickerSymbol(rawValue);
 
     setHoldings(prev =>
       prev.map(holding => {
@@ -1376,7 +1465,7 @@ const ChatPortfolioAdvisor = () => {
         }
 
         if (!normalized || normalized === 'AUTO') {
-          const symbol = holding.symbol?.trim().toUpperCase() || '';
+          const symbol = holding.symbol ? normalizeTickerSymbol(holding.symbol) : '';
           const tickerCurrency = symbol ? tickerLookup.get(symbol)?.currency?.trim()?.toUpperCase() : undefined;
           const fallbackCurrency = holding.currency?.trim()?.toUpperCase() || 'SEK';
 
@@ -1405,7 +1494,7 @@ const ChatPortfolioAdvisor = () => {
       let hasChanges = false;
 
       const updatedHoldings = prev.map(holding => {
-        const symbol = holding.symbol?.trim().toUpperCase();
+        const symbol = holding.symbol ? normalizeTickerSymbol(holding.symbol) : '';
         if (!symbol) {
           return holding;
         }
@@ -1415,31 +1504,39 @@ const ChatPortfolioAdvisor = () => {
           return holding;
         }
 
-        let nextHolding = holding;
+        let nextHolding = symbol !== holding.symbol ? { ...holding, symbol } : holding;
         let modified = false;
         const resolvedCurrency = ticker.currency?.trim()?.toUpperCase();
 
+        if (nextHolding !== holding) {
+          modified = true;
+        }
+
         if (!holding.nameManuallyEdited) {
           const resolvedName = ticker.name?.trim() || symbol;
-          if (holding.name !== resolvedName) {
+          if (nextHolding.name !== resolvedName) {
             nextHolding = { ...nextHolding, name: resolvedName };
             modified = true;
           }
         }
 
-        if (!holding.currencyManuallyEdited && resolvedCurrency && holding.currency !== resolvedCurrency) {
+        if (
+          !nextHolding.currencyManuallyEdited &&
+          resolvedCurrency &&
+          nextHolding.currency !== resolvedCurrency
+        ) {
           nextHolding = { ...nextHolding, currency: resolvedCurrency, currencyManuallyEdited: false };
           modified = true;
         }
 
         if (
-          !holding.priceManuallyEdited &&
+          !nextHolding.priceManuallyEdited &&
           typeof ticker.price === 'number' &&
           Number.isFinite(ticker.price) &&
           ticker.price > 0
         ) {
           const normalizedPrice = parseFloat(ticker.price.toFixed(2));
-          if (holding.purchasePrice !== normalizedPrice) {
+          if (nextHolding.purchasePrice !== normalizedPrice) {
             nextHolding = { ...nextHolding, purchasePrice: normalizedPrice };
             modified = true;
           }
@@ -1479,7 +1576,7 @@ const ChatPortfolioAdvisor = () => {
   const submitHoldings = () => {
     // Normalize holdings with ticker data so currency/exchange aligns with the Google Sheet reference
     const normalizedHoldings = holdings.map(holding => {
-      const normalizedSymbol = holding.symbol?.trim().toUpperCase() || '';
+      const normalizedSymbol = holding.symbol ? normalizeTickerSymbol(holding.symbol) : '';
       const ticker = normalizedSymbol ? tickerLookup.get(normalizedSymbol) : undefined;
       const resolvedCurrency = ticker?.currency?.trim()?.toUpperCase() || holding.currency?.trim()?.toUpperCase() || 'SEK';
 
