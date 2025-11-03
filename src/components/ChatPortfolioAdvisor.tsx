@@ -197,7 +197,7 @@ const matchCurrencyFromText = (text?: string | null): string | undefined => {
       }
     }
 
-    return codeMatches[0];
+    return undefined;
   }
 
   if (/SEK|KRON/iu.test(upper)) return 'SEK';
