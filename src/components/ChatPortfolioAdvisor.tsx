@@ -182,6 +182,37 @@ const supportedCurrencies = [
   'AUD'
 ];
 
+const matchCurrencyFromText = (text?: string | null): string | undefined => {
+  if (!text) {
+    return undefined;
+  }
+
+  const upper = text.toUpperCase();
+  const codeMatches = upper.match(/[A-Z]{3}/g);
+
+  if (codeMatches && codeMatches.length > 0) {
+    for (const code of codeMatches) {
+      if (supportedCurrencies.includes(code)) {
+        return code;
+      }
+    }
+
+    return undefined;
+  }
+
+  if (/SEK|KRON/iu.test(upper)) return 'SEK';
+  if (/USD|DOLLAR/iu.test(upper)) return 'USD';
+  if (/EUR|EURO/iu.test(upper)) return 'EUR';
+  if (/GBP|POUND/iu.test(upper)) return 'GBP';
+  if (/NOK/iu.test(upper)) return 'NOK';
+  if (/DKK/iu.test(upper)) return 'DKK';
+  if (/CHF/iu.test(upper)) return 'CHF';
+  if (/CAD/iu.test(upper)) return 'CAD';
+  if (/AUD/iu.test(upper)) return 'AUD';
+
+  return undefined;
+};
+
 const ChatPortfolioAdvisor = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState('');
@@ -909,23 +940,7 @@ const ChatPortfolioAdvisor = () => {
     return null;
   };
 
-  const extractCurrencyFromHeader = (header: string) => {
-    const upper = header.toUpperCase();
-
-    const explicitMatch = upper.match(/\b([A-Z]{3})\b/);
-    if (explicitMatch) {
-      return explicitMatch[1];
-    }
-
-    if (/SEK|KRON/iu.test(upper)) return 'SEK';
-    if (/USD|DOLLAR/iu.test(upper)) return 'USD';
-    if (/EUR|EURO/iu.test(upper)) return 'EUR';
-    if (/GBP|POUND/iu.test(upper)) return 'GBP';
-    if (/NOK/iu.test(upper)) return 'NOK';
-    if (/DKK/iu.test(upper)) return 'DKK';
-
-    return undefined;
-  };
+  const extractCurrencyFromHeader = (header: string) => matchCurrencyFromText(header);
 
   const inferCurrencyFromSymbol = (symbolRaw: string) => {
     const symbol = symbolRaw.trim().toUpperCase();
@@ -1085,19 +1100,43 @@ const ChatPortfolioAdvisor = () => {
           }
         }
 
+        const currencyRaw = getValue('currency');
+        const currencyFromValue = matchCurrencyFromText(currencyRaw);
+
         const purchasePriceCandidates = prioritizePurchasePriceIndices(columnIndices.purchasePrice);
         let purchasePrice = NaN;
         let priceCurrencyHint: string | undefined;
+
+        const candidateValues: Array<{ value: number; hint?: string; isGav: boolean }> = [];
+
         for (const index of purchasePriceCandidates) {
           if (typeof index !== 'number') continue;
           const raw = parts[index] ?? '';
           const parsed = parseLocaleNumber(raw);
 
           if (Number.isFinite(parsed) && parsed > 0) {
-            purchasePrice = parsed;
-            priceCurrencyHint = headerCurrencyHints[index];
-            break;
+            const header = headerParts[index];
+            candidateValues.push({
+              value: parsed,
+              hint: headerCurrencyHints[index],
+              isGav: typeof header === 'string' ? /gav/iu.test(header) : false
+            });
           }
+        }
+
+        if (candidateValues.length > 0) {
+          const gavCandidate = candidateValues.find(candidate => candidate.isGav);
+          const exactCurrencyMatch = currencyFromValue
+            ? candidateValues.find(candidate => candidate.hint === currencyFromValue && candidate.isGav) ??
+              candidateValues.find(candidate => candidate.hint === currencyFromValue)
+            : undefined;
+
+          const withoutHint = candidateValues.find(candidate => !candidate.hint && candidate.isGav) ??
+            candidateValues.find(candidate => !candidate.hint);
+          const selectedCandidate = exactCurrencyMatch || gavCandidate || withoutHint || candidateValues[0];
+
+          purchasePrice = selectedCandidate.value;
+          priceCurrencyHint = selectedCandidate.hint;
         }
 
         if (Number.isNaN(quantity)) {
@@ -1142,8 +1181,6 @@ const ChatPortfolioAdvisor = () => {
 
           return fallback;
         })();
-        const currencyRaw = getValue('currency');
-
         const hasValidQuantity = Number.isFinite(quantity) && quantity > 0;
         const hasValidPrice = Number.isFinite(purchasePrice) && purchasePrice > 0;
         const hasNameOrSymbol = Boolean(nameRaw.trim() || symbolRaw.trim());
@@ -1152,9 +1189,6 @@ const ChatPortfolioAdvisor = () => {
           continue;
         }
 
-        const currencyFromValue = currencyRaw
-          ? currencyRaw.replace(/[^a-zA-Z]/g, '').toUpperCase() || undefined
-          : undefined;
         const inferredFromSymbol = inferCurrencyFromSymbol(symbolRaw);
         const resolvedCurrency = (
           currencyFromValue ||
