@@ -182,6 +182,40 @@ const supportedCurrencies = [
   'AUD'
 ];
 
+const formatHoldingsValueSummary = (
+  holdings: Array<{ quantity: number; purchasePrice: number; currency?: string }>
+): string | undefined => {
+  const totalsByCurrency = new Map<string, number>();
+
+  holdings.forEach(holding => {
+    const currency = holding.currency?.trim()?.toUpperCase() || 'SEK';
+    const totalValue = holding.quantity * holding.purchasePrice;
+
+    if (Number.isFinite(totalValue) && totalValue > 0) {
+      totalsByCurrency.set(currency, (totalsByCurrency.get(currency) ?? 0) + totalValue);
+    }
+  });
+
+  if (totalsByCurrency.size === 0) {
+    return undefined;
+  }
+
+  return Array.from(totalsByCurrency.entries())
+    .map(([currency, total]) => {
+      try {
+        return new Intl.NumberFormat('sv-SE', {
+          style: 'currency',
+          currency,
+          maximumFractionDigits: 0,
+          minimumFractionDigits: 0
+        }).format(total);
+      } catch (error) {
+        return `${Math.round(total).toLocaleString('sv-SE')} ${currency}`;
+      }
+    })
+    .join(', ');
+};
+
 const ChatPortfolioAdvisor = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState('');
@@ -600,7 +634,7 @@ const ChatPortfolioAdvisor = () => {
       question: 'Hur mycket kapital har du ungefär investerat hittills?',
       key: 'portfolioSize',
       hasOptions: true,
-      showIf: () => conversationData.hasCurrentPortfolio === true,
+      showIf: () => conversationData.hasCurrentPortfolio !== true,
       options: [
         { value: 'under_10000', label: 'Under 10 000 kr' },
         { value: '10000_50000', label: '10 000 – 50 000 kr' },
@@ -1577,6 +1611,8 @@ const ChatPortfolioAdvisor = () => {
       currency: h.currency
     }));
 
+    const portfolioValueSummary = formatHoldingsValueSummary(validHoldings);
+
     const holdingsText = conversationHoldings
       .map(h => {
         const currencyLabel = h.currency?.trim()?.toUpperCase() || 'SEK';
@@ -1588,10 +1624,15 @@ const ChatPortfolioAdvisor = () => {
     addUserMessage(`Mina nuvarande innehav: ${holdingsText}`);
 
     // Update conversation data
-    const updatedData = {
+    const updatedData: ConversationData = {
       ...conversationData,
       currentHoldings: conversationHoldings
     };
+
+    if (portfolioValueSummary) {
+      updatedData.portfolioSize = portfolioValueSummary;
+      updatedData.currentPortfolioValue = portfolioValueSummary;
+    }
     setConversationData(updatedData);
     
     setShowHoldingsInput(false);
