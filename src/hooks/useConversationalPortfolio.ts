@@ -69,7 +69,15 @@ export interface ConversationData {
   communicationStyle?: string;
   preferredResponseLength?: string;
   additionalNotes?: string;
+  currentPortfolioStrategy?: string;
+  optimizationGoals?: string[];
+  optimizationRiskFocus?: string;
+  optimizationDiversificationFocus?: string[];
+  optimizationPreference?: 'analyze_only' | 'improve_with_new_ideas' | 'rebalance';
+  optimizationTimeline?: string;
 }
+
+type PortfolioGenerationMode = 'new' | 'optimize';
 
 export const useConversationalPortfolio = () => {
   const [loading, setLoading] = useState(false);
@@ -205,11 +213,22 @@ export const useConversationalPortfolio = () => {
     return recommendations.slice(0, 10); // Limit to 10 recommendations
   };
 
-  const buildEnhancedAIPrompt = (conversationData: ConversationData) => {
+  const buildEnhancedAIPrompt = (conversationData: ConversationData, mode: 'new' | 'optimize') => {
     const mapValue = (value: string | undefined, mapping: Record<string, string>) => {
       if (!value) return undefined;
       const normalized = value.toLowerCase();
       return mapping[normalized] ?? mapping[value] ?? value;
+    };
+
+    const mapArrayValues = (values: string[] | undefined, mapping: Record<string, string>) => {
+      if (!values || values.length === 0) return undefined;
+      const mapped = values
+        .map(value => {
+          const normalized = value.toLowerCase();
+          return mapping[normalized] ?? mapping[value] ?? value;
+        })
+        .filter(Boolean);
+      return mapped.length > 0 ? Array.from(new Set(mapped)) : undefined;
     };
 
     const resolveNumericString = (value?: string | number): string | null => {
@@ -360,6 +379,44 @@ export const useConversationalPortfolio = () => {
       commodities: 'Råvaror (t.ex. guld, olja)',
     }) ?? conversationData.preferredAssets;
 
+    const optimizationGoalsText = mapArrayValues(conversationData.optimizationGoals, {
+      risk_balance: 'Balansera risken bättre',
+      diversify: 'Öka diversifieringen',
+      reduce_fees: 'Sänka avgifter och kostnader',
+      add_growth: 'Öka tillväxtpotentialen',
+      income_focus: 'Förstärka utdelningsströmmen',
+      sustainability: 'Höja hållbarhetsprofilen',
+    });
+
+    const optimizationPreferenceText = mapValue(conversationData.optimizationPreference, {
+      analyze_only: 'Analysera och förbättra utan nya köp',
+      improve_with_new_ideas: 'Komplettera med nya idéer vid behov',
+      rebalance: 'Konkreta rebalanseringsförslag med köp/sälj',
+    });
+
+    const optimizationTimelineText = mapValue(conversationData.optimizationTimeline, {
+      immediate: 'Omedelbart',
+      short_term: 'Inom 3 månader',
+      medium_term: 'Under det kommande året',
+      long_term: 'Löpande över flera år',
+    }) ?? conversationData.optimizationTimeline;
+
+    const optimizationRiskFocusText = mapValue(conversationData.optimizationRiskFocus, {
+      drawdown: 'Stora kurssvängningar/drawdowns',
+      concentration: 'Hög koncentration i få innehav',
+      market: 'Marknadsrisk/känslighet',
+      currency: 'Valutarisk',
+      liquidity: 'Likviditetsrisk',
+    }) ?? conversationData.optimizationRiskFocus;
+
+    const optimizationDiversificationText = mapArrayValues(conversationData.optimizationDiversificationFocus, {
+      nordics: 'Nordiska marknaden',
+      global: 'Global exponering',
+      sectors: 'Flera sektorer',
+      small_caps: 'Småbolagstillväxt',
+      thematic: 'Tematiska/fonder',
+    });
+
     const tradingFrequencyText = mapValue(conversationData.tradingFrequency, {
       rarely: 'Sällan (några gånger per år)',
       monthly: 'Någon gång i månaden',
@@ -449,6 +506,38 @@ GRUNDLÄGGANDE PROFIL:
 - Mest intresserad av: ${preferredAssetsText}`;
     }
 
+    if (mode === 'optimize') {
+      if (conversationData.currentPortfolioStrategy) {
+        prompt += `
+- Nuvarande strategi: ${conversationData.currentPortfolioStrategy}`;
+      }
+
+      if (optimizationGoalsText && optimizationGoalsText.length > 0) {
+        prompt += `
+- Optimeringsmål: ${optimizationGoalsText.join(', ')}`;
+      }
+
+      if (optimizationPreferenceText) {
+        prompt += `
+- Önskat arbetssätt: ${optimizationPreferenceText}`;
+      }
+
+      if (optimizationTimelineText) {
+        prompt += `
+- Tidslinje för förändringar: ${optimizationTimelineText}`;
+      }
+
+      if (optimizationRiskFocusText) {
+        prompt += `
+- Största riskoro idag: ${optimizationRiskFocusText}`;
+      }
+
+      if (optimizationDiversificationText && optimizationDiversificationText.length > 0) {
+        prompt += `
+- Områden att diversifiera mot: ${optimizationDiversificationText.join(', ')}`;
+      }
+    }
+
     if (liquidCapitalText && liquidCapitalText !== 'Ej angivet') {
       prompt += `
 - Likvida medel: ${liquidCapitalText} SEK`;
@@ -494,7 +583,30 @@ GRUNDLÄGGANDE PROFIL:
 - Nuvarande portföljvärde: ${currentPortfolioValueText} SEK`;
     }
 
-    if (conversationData.isBeginnerInvestor === true) {
+    if (mode === 'optimize') {
+      prompt += `
+
+OPTIMERING AV BEFINTLIG PORTFÖLJ:
+1. Gör en djup analys av nuvarande innehav, allokering och riskprofil innan du föreslår förändringar.
+2. Koppla varje rekommendation direkt till användarens uttryckta optimeringsmål och tidslinje.
+3. Ge konkreta åtgärdsförslag för hur portföljen kan förbättras (t.ex. rebalansering, reducera avgifter, minska koncentrationsrisk).
+4. Identifiera styrkor/svagheter i befintliga innehav och föreslå tydliga förbättringar.
+5. Om användaren vill undvika nya investeringar, fokusera på omstrukturering av befintliga innehav snarare än att skapa en ny portfölj.
+6. Om användaren accepterar nya idéer, föreslå endast kompletterande innehav som adresserar deras mål och förklara exakt hur de integreras.
+7. Ge en prioriterad handlingsplan med tidsramar för genomförande.
+8. Kommentera riskhantering, diversifiering och eventuella skatteeffekter baserat på användarens svar.
+9. Använd samma numrerade format för rekommendationer men markera tydligt om det handlar om behålla, öka, minska eller nytt innehav.
+10. Avsluta med en sammanfattning av förväntad effekt av optimeringen.`;
+
+      if (conversationData.currentHoldings && conversationData.currentHoldings.length > 0) {
+        prompt += `
+
+NUVARANDE INNEHAV SOM SKA ANALYSERAS: ${conversationData.currentHoldings.map(h =>
+          `${h.name} (${h.quantity} st à ${h.purchasePrice} ${h.currency?.trim()?.toUpperCase() || 'SEK'})`
+        ).join(', ')}`;
+      }
+
+    } else if (conversationData.isBeginnerInvestor === true) {
       prompt += `
 
 NYBÖRJARE - UTFÖRLIG EKONOMISK PROFIL:`;
@@ -787,7 +899,10 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
 
     return prompt;
   };
-  const generatePortfolioFromConversation = async (conversationData: ConversationData) => {
+  const generatePortfolioFromConversation = async (
+    conversationData: ConversationData,
+    options?: { mode?: PortfolioGenerationMode }
+  ) => {
     if (!user) {
       toast({
         title: "Error",
@@ -796,6 +911,9 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       });
       return null;
     }
+
+    const requestedMode = options?.mode;
+    const mode: PortfolioGenerationMode = requestedMode ?? (conversationData.hasCurrentPortfolio ? 'optimize' : 'new');
 
     const ensureString = (value: unknown): string | undefined =>
       typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
@@ -1127,6 +1245,10 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       const existingProfileData = normalizeExistingProfile(latestRiskProfile);
       let mergedConversationData = mergeProfiles(existingProfileData, conversationData);
 
+      if (mode === 'optimize') {
+        mergedConversationData.hasCurrentPortfolio = true;
+      }
+
       if (!mergedConversationData.liquidCapital && mergedConversationData.availableCapital) {
         mergedConversationData.liquidCapital = mergedConversationData.availableCapital;
       }
@@ -1453,7 +1575,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       const liquidCapitalValue = resolvedLiquidCapital !== null ? resolvedLiquidCapital : null;
       const targetAmountValue = resolvedTargetAmount !== null ? resolvedTargetAmount : null;
 
-      const enhancedPrompt = buildEnhancedAIPrompt(mergedConversationData);
+      const enhancedPrompt = buildEnhancedAIPrompt(mergedConversationData, mode);
 
       const riskProfileData = {
         age: mergedConversationData.age ?? existingProfileData.age ?? 25,
@@ -1512,7 +1634,8 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
           riskProfileId: riskProfile.id,
           userId: user.id,
           conversationData: mergedConversationData,
-          conversationPrompt: enhancedPrompt
+          conversationPrompt: enhancedPrompt,
+          mode
         }
       });
 
@@ -1573,7 +1696,7 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       }
 
       // Save stock recommendations to user_holdings table
-      if (stockRecommendations.length > 0) {
+      if (mode === 'new' && stockRecommendations.length > 0) {
         const holdingsToInsert = stockRecommendations.map(stock => ({
           user_id: user.id,
           holding_type: 'recommendation',
@@ -1632,46 +1755,58 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       };
 
       // Create a portfolio in the database with the AI response and extracted recommendations
-      const portfolioData = {
-        user_id: user.id,
-        risk_profile_id: riskProfile.id,
-        portfolio_name: 'AI-Genererad Personlig Portfölj',
-        asset_allocation: assetAllocation,
-        recommended_stocks: stockRecommendations,
-        total_value: 0,
-        expected_return: expectedReturn,
-        risk_score: combinedRiskScore,
-        is_active: true
-      };
+      let portfolioRecord: any = null;
 
-      const { data: portfolio, error: portfolioError } = await supabase
-        .from('user_portfolios')
-        .insert(portfolioData)
-        .select()
-        .single();
+      if (mode === 'new') {
+        const portfolioData = {
+          user_id: user.id,
+          risk_profile_id: riskProfile.id,
+          portfolio_name: 'AI-Genererad Personlig Portfölj',
+          asset_allocation: assetAllocation,
+          recommended_stocks: stockRecommendations,
+          total_value: 0,
+          expected_return: expectedReturn,
+          risk_score: combinedRiskScore,
+          is_active: true
+        };
 
-      if (portfolioError) {
-        console.error('Error creating portfolio:', portfolioError);
+        const { data: portfolio, error: portfolioError } = await supabase
+          .from('user_portfolios')
+          .insert(portfolioData)
+          .select()
+          .single();
+
+        if (portfolioError) {
+          console.error('Error creating portfolio:', portfolioError);
+          toast({
+            title: "Error",
+            description: "Kunde inte spara portföljen",
+            variant: "destructive",
+          });
+          return null;
+        }
+
+        portfolioRecord = portfolio;
+
         toast({
-          title: "Error",
-          description: "Kunde inte spara portföljen",
-          variant: "destructive",
+          title: "Framgång!",
+          description: "Din personliga portföljstrategi har skapats med förbättrad riskanalys",
         });
-        return null;
+      } else {
+        toast({
+          title: "Analys klar!",
+          description: "Din befintliga portfölj har analyserats och optimeringsförslag har genererats.",
+        });
       }
-
-      toast({
-        title: "Framgång!",
-        description: "Din personliga portföljstrategi har skapats med förbättrad riskanalys",
-      });
 
       return {
         aiResponse: aiRecommendationText,
         plan: structuredPlan || null,
-        portfolio: aiResponse.portfolio || portfolio,
+        portfolio: aiResponse.portfolio || portfolioRecord,
         riskProfile,
         enhancedPrompt,
-        stockRecommendations
+        stockRecommendations,
+        mode
       };
 
     } catch (error: any) {

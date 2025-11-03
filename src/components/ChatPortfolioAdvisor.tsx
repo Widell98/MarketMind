@@ -95,6 +95,16 @@ interface AdvisorPlan {
 
 type ConversationHolding = NonNullable<ConversationData['currentHoldings']>[number];
 
+interface PortfolioGenerationResult {
+  aiResponse?: string;
+  plan?: any;
+  portfolio?: any;
+  riskProfile?: any;
+  enhancedPrompt?: string;
+  stockRecommendations?: any[];
+  mode?: 'new' | 'optimize';
+}
+
 const normalizeAdvisorPlan = (plan: any, fallbackText?: string): AdvisorPlan | null => {
   if (!plan || typeof plan !== 'object') {
     return null;
@@ -219,7 +229,7 @@ const ChatPortfolioAdvisor = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [conversationData, setConversationData] = useState<ConversationData>({});
   const [isComplete, setIsComplete] = useState(false);
-  const [portfolioResult, setPortfolioResult] = useState<any>(null);
+  const [portfolioResult, setPortfolioResult] = useState<PortfolioGenerationResult | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [waitingForAnswer, setWaitingForAnswer] = useState(false);
   const [holdings, setHoldings] = useState<Holding[]>([]);
@@ -569,6 +579,114 @@ const ChatPortfolioAdvisor = () => {
       }
     },
     {
+      id: 'currentPortfolioStrategy',
+      question: 'Hur skulle du beskriva din nuvarande portföljstrategi?',
+      key: 'currentPortfolioStrategy',
+      hasOptions: true,
+      showIf: () => conversationData.hasCurrentPortfolio === true,
+      options: [
+        { value: 'passive_index', label: 'Passiv – indexfonder och bred exponering' },
+        { value: 'dividend_focus', label: 'Utdelningsfokus' },
+        { value: 'growth_focus', label: 'Tillväxt och innovation' },
+        { value: 'mixed', label: 'Blandad strategi' },
+        { value: 'unsure', label: 'Osäker / ingen tydlig strategi' }
+      ]
+    },
+    {
+      id: 'optimizationGoals',
+      question: 'Vad vill du främst förbättra i din nuvarande portfölj?',
+      key: 'optimizationGoals',
+      hasOptions: true,
+      showIf: () => conversationData.hasCurrentPortfolio === true,
+      multiSelect: true,
+      options: [
+        { value: 'risk_balance', label: 'Balansera risk och avkastning bättre' },
+        { value: 'diversify', label: 'Öka diversifieringen' },
+        { value: 'reduce_fees', label: 'Minska avgifter' },
+        { value: 'add_growth', label: 'Hitta nya tillväxtmöjligheter' },
+        { value: 'income_focus', label: 'Stärka utdelningsflödet' },
+        { value: 'sustainability', label: 'Öka hållbarhetsprofilen' }
+      ],
+      processAnswer: (answer: string | string[]) => {
+        const values = Array.isArray(answer)
+          ? answer
+          : answer
+              .split(',')
+              .map(item => item.trim())
+              .filter(item => item.length > 0);
+        return values.filter((item, index) => values.indexOf(item) === index);
+      }
+    },
+    {
+      id: 'optimizationRiskFocus',
+      question: 'Vilka risker oroar dig mest i portföljen idag?',
+      key: 'optimizationRiskFocus',
+      hasOptions: true,
+      showIf: () =>
+        conversationData.hasCurrentPortfolio === true &&
+        Array.isArray(conversationData.optimizationGoals) &&
+        conversationData.optimizationGoals.includes('risk_balance'),
+      options: [
+        { value: 'drawdown', label: 'Stora svängningar / drawdowns' },
+        { value: 'concentration', label: 'Hög koncentration i få innehav' },
+        { value: 'market', label: 'Känslighet mot marknadsrisk' },
+        { value: 'currency', label: 'Valutarisk' },
+        { value: 'liquidity', label: 'Likviditetsrisk' }
+      ]
+    },
+    {
+      id: 'optimizationDiversification',
+      question: 'Vilka områden vill du sprida risken mot?',
+      key: 'optimizationDiversificationFocus',
+      hasOptions: true,
+      multiSelect: true,
+      showIf: () =>
+        conversationData.hasCurrentPortfolio === true &&
+        Array.isArray(conversationData.optimizationGoals) &&
+        conversationData.optimizationGoals.includes('diversify'),
+      options: [
+        { value: 'nordics', label: 'Mer mot Norden' },
+        { value: 'global', label: 'Global exponering' },
+        { value: 'sectors', label: 'Fler olika sektorer' },
+        { value: 'small_caps', label: 'Småbolag och tillväxt' },
+        { value: 'thematic', label: 'Tematiska investeringar / fonder' }
+      ],
+      processAnswer: (answer: string | string[]) => {
+        const values = Array.isArray(answer)
+          ? answer
+          : answer
+              .split(',')
+              .map(item => item.trim())
+              .filter(item => item.length > 0);
+        return values.filter((item, index) => values.indexOf(item) === index);
+      }
+    },
+    {
+      id: 'optimizationPreference',
+      question: 'Hur vill du att jag ska arbeta med dina befintliga innehav?',
+      key: 'optimizationPreference',
+      hasOptions: true,
+      showIf: () => conversationData.hasCurrentPortfolio === true,
+      options: [
+        { value: 'analyze_only', label: 'Analysera och förbättra utan nya köp' },
+        { value: 'improve_with_new_ideas', label: 'Behåll kärnan men komplettera med nya idéer' },
+        { value: 'rebalance', label: 'Ge konkreta rebalanseringsförslag inklusive köp/sälj' }
+      ]
+    },
+    {
+      id: 'optimizationTimeline',
+      question: 'När vill du ha förändringar genomförda?',
+      key: 'optimizationTimeline',
+      hasOptions: true,
+      showIf: () => conversationData.hasCurrentPortfolio === true,
+      options: [
+        { value: 'immediate', label: 'Snarast möjligt' },
+        { value: 'short_term', label: 'Inom de kommande 3 månaderna' },
+        { value: 'medium_term', label: 'Under det kommande året' },
+        { value: 'long_term', label: 'Löpande över flera år' }
+      ]
+    },
+    {
       id: 'tradingFrequency',
       question: 'Hur ofta handlar du aktier eller andra tillgångar?',
       key: 'tradingFrequency',
@@ -598,7 +716,7 @@ const ChatPortfolioAdvisor = () => {
       question: 'Hur mycket är du beredd att börja investera med?',
       key: 'availableCapital',
       hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true,
+      showIf: () => conversationData.isBeginnerInvestor === true && conversationData.hasCurrentPortfolio !== true,
       options: [
         { value: 'under_1000', label: 'Mindre än 1 000 kr' },
         { value: '1000_10000', label: '1 000 – 10 000 kr' },
@@ -611,7 +729,7 @@ const ChatPortfolioAdvisor = () => {
       question: 'Vad är ditt främsta mål med att börja investera?',
       key: 'investmentGoal',
       hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true,
+      showIf: () => conversationData.isBeginnerInvestor === true && conversationData.hasCurrentPortfolio !== true,
       options: [
         { value: 'long_term_savings', label: 'Bygga ett långsiktigt sparande' },
         { value: 'learn_and_test', label: 'Lära mig mer och testa på' },
@@ -624,7 +742,7 @@ const ChatPortfolioAdvisor = () => {
       question: 'Vad är ditt främsta mål med investeringarna?',
       key: 'investmentGoal',
       hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false,
+      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio !== true,
       options: [
         { value: 'quick_return', label: 'Snabb avkastning / trading' },
         { value: 'long_term_growth', label: 'Bygga långsiktigt sparande' },
@@ -637,7 +755,7 @@ const ChatPortfolioAdvisor = () => {
       question: 'Hur lång tidshorisont har du för ditt sparande?',
       key: 'timeHorizon',
       hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === true,
+      showIf: () => conversationData.isBeginnerInvestor === true && conversationData.hasCurrentPortfolio !== true,
       options: [
         { value: 'short', label: 'Kortsiktigt (0–2 år)' },
         { value: 'medium', label: 'Medellång sikt (3–5 år)' },
@@ -650,7 +768,7 @@ const ChatPortfolioAdvisor = () => {
       question: 'Hur lång tidshorisont har du på ditt sparande?',
       key: 'timeHorizon',
       hasOptions: true,
-      showIf: () => conversationData.isBeginnerInvestor === false,
+      showIf: () => conversationData.isBeginnerInvestor === false && conversationData.hasCurrentPortfolio !== true,
       options: [
         { value: 'short', label: 'Kortsiktigt (0–2 år)' },
         { value: 'medium', label: 'Medellång sikt (3–5 år)' },
@@ -2149,25 +2267,37 @@ const ChatPortfolioAdvisor = () => {
     }
     
     const result = await generatePortfolioFromConversation(conversationData);
-    
+
     if (result) {
       setPortfolioResult(result);
       setIsComplete(true);
-      
+
+      const isOptimizationResult = result.mode === 'optimize';
+      const shouldPersistRecommendations = !isOptimizationResult;
+
       // Extract and save AI recommendations from the response
-      if (result.aiResponse) {
+      if (shouldPersistRecommendations && result.aiResponse) {
         await saveAIRecommendationsAsHoldings(result.aiResponse);
       }
-      
+
       // Also save portfolio recommended stocks if they exist
-      if (result.portfolio?.recommended_stocks && Array.isArray(result.portfolio.recommended_stocks) && result.portfolio.recommended_stocks.length > 0) {
+      if (
+        shouldPersistRecommendations &&
+        result.portfolio?.recommended_stocks &&
+        Array.isArray(result.portfolio.recommended_stocks) &&
+        result.portfolio.recommended_stocks.length > 0
+      ) {
         await saveRecommendedStocks(result.portfolio.recommended_stocks);
       }
-      
+
       await refetch();
-      
+
       setTimeout(() => {
-        addBotMessage('🎉 Din personliga portföljstrategi är klar! Här är mina rekommendationer:');
+        if (isOptimizationResult) {
+          addBotMessage('🔍 Din portföljanalys är klar! Här är mina optimeringsförslag:');
+        } else {
+          addBotMessage('🎉 Din personliga portföljstrategi är klar! Här är mina rekommendationer:');
+        }
       }, 1000);
     }
     setIsGenerating(false);
@@ -2226,6 +2356,7 @@ const ChatPortfolioAdvisor = () => {
     }
 
     const plan = structuredResponse;
+    const isOptimization = portfolioResult?.mode === 'optimize';
 
     if (!plan) {
       return (
@@ -2266,7 +2397,9 @@ const ChatPortfolioAdvisor = () => {
 
         {plan.assets.length > 0 && (
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Köpplan & allokering</h4>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {isOptimization ? 'Optimeringsförslag & åtgärder' : 'Köpplan & allokering'}
+            </h4>
             <div className="mt-2 space-y-2">
               {plan.assets.map((asset, index) => (
                 <div
@@ -2612,16 +2745,22 @@ const ChatPortfolioAdvisor = () => {
                     {renderAdvisorResponse()}
                   </div>
                   
-                  <div className="mt-4 pt-4 border-t border-primary/20">
-                    <Button 
-                      onClick={handleImplementStrategy}
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-                      disabled={loading}
-                    >
-                      <TrendingUp className="w-4 h-4 mr-2" />
-                      {loading ? "Implementerar..." : "Implementera Strategin"}
-                    </Button>
-                  </div>
+                  {portfolioResult?.mode === 'optimize' ? (
+                    <div className="mt-4 pt-4 border-t border-primary/20 text-sm text-muted-foreground">
+                      Använd rekommendationerna för att justera dina nuvarande innehav i din portföljöversikt.
+                    </div>
+                  ) : (
+                    <div className="mt-4 pt-4 border-t border-primary/20">
+                      <Button
+                        onClick={handleImplementStrategy}
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                        disabled={loading}
+                      >
+                        <TrendingUp className="w-4 h-4 mr-2" />
+                        {loading ? "Implementerar..." : "Implementera Strategin"}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
