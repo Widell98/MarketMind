@@ -25,6 +25,7 @@ import {
   Check,
   Upload,
   MessageSquare,
+  RefreshCcw,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useConversationalPortfolio, type ConversationData } from '@/hooks/useConversationalPortfolio';
@@ -35,6 +36,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserHoldings } from '@/hooks/useUserHoldings';
 import useSheetTickers, { RawSheetTicker, SheetTicker, sanitizeSheetTickerList } from '@/hooks/useSheetTickers';
 import { mapEdgeFunctionErrorMessage } from '@/utils/mapEdgeFunctionError';
+import StockReplacementDialog, {
+  type StockSearchOption,
+  type StockSelectionResult,
+} from '@/components/StockReplacementDialog';
 
 interface QuestionOption {
   value: string;
@@ -111,6 +116,8 @@ interface StockRecommendation {
   changePercent?: number;
   notes?: string;
   expectedPrice?: number;
+  expected_price?: number;
+  market?: string;
 }
 
 interface PortfolioGenerationResult {
@@ -123,6 +130,38 @@ interface PortfolioGenerationResult {
   complementaryIdeas?: StockRecommendation[];
   mode?: 'new' | 'optimize';
 }
+
+interface ReplacementTarget {
+  asset: AdvisorPlanAsset;
+  index: number;
+  recommendation?: StockRecommendation;
+}
+
+interface RecommendationUpdateContext {
+  index: number;
+  updatedRecommendedStocks?: StockRecommendation[];
+  updatedAssetAllocation?: any;
+  updatedPlanAssets?: AdvisorPlanAsset[];
+  updatedRiskProfileAllocation?: any;
+}
+
+const deepClone = <T,>(value: T): T => {
+  if (value == null) {
+    return value;
+  }
+
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch (error) {
+    console.warn('Failed to deep clone value', error);
+    return value;
+  }
+};
+
+const removeUndefined = <T extends Record<string, any>>(value: T): T => {
+  const entries = Object.entries(value).filter(([, entryValue]) => entryValue !== undefined);
+  return Object.fromEntries(entries) as T;
+};
 
 const normalizeAdvisorPlan = (rawPlan: any, fallbackText?: string): AdvisorPlan | null => {
   let plan = rawPlan;
@@ -414,6 +453,7 @@ const ChatPortfolioAdvisor = () => {
   const [conversationData, setConversationData] = useState<ConversationData>({});
   const [isComplete, setIsComplete] = useState(false);
   const [portfolioResult, setPortfolioResult] = useState<PortfolioGenerationResult | null>(null);
+  const [recommendedStocks, setRecommendedStocks] = useState<StockRecommendation[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [waitingForAnswer, setWaitingForAnswer] = useState(false);
   const [holdings, setHoldings] = useState<Holding[]>([]);
@@ -424,6 +464,7 @@ const ChatPortfolioAdvisor = () => {
   const [pendingMultiSelect, setPendingMultiSelect] = useState<string[]>([]);
   const [pendingQuestionId, setPendingQuestionId] = useState<string | null>(null);
   const isInitialized = useRef(false);
+  const hasInitializedRecommendations = useRef(false);
 
   const { generatePortfolioFromConversation, loading } = useConversationalPortfolio();
   const { refetch } = usePortfolio();
@@ -452,6 +493,8 @@ const ChatPortfolioAdvisor = () => {
   const symbolLookupTimeouts = useRef<Map<string, number>>(new Map());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isImportingHoldings, setIsImportingHoldings] = useState(false);
+  const [replacementTarget, setReplacementTarget] = useState<ReplacementTarget | null>(null);
+  const [isReplacementDialogOpen, setIsReplacementDialogOpen] = useState(false);
 
   const generateHoldingId = useCallback(() => {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -563,6 +606,20 @@ const ChatPortfolioAdvisor = () => {
         );
       }),
     [combinedTickers, priceFormatter]
+  );
+
+  const stockSelectorOptions = useMemo<StockSearchOption[]>(
+    () =>
+      combinedTickers.map(ticker => ({
+        symbol: ticker.symbol,
+        name: ticker.name ?? ticker.symbol,
+        currency: ticker.currency ?? null,
+        price: typeof ticker.price === 'number' ? ticker.price : null,
+        sector: null,
+        market: null,
+        source: ticker.source ?? null,
+      })),
+    [combinedTickers]
   );
 
   const lookupTickerData = useCallback(
@@ -747,6 +804,46 @@ const ChatPortfolioAdvisor = () => {
     return null;
   }, [portfolioResult]);
 
+  useEffect(() => {
+    if (!portfolioResult || hasInitializedRecommendations.current) {
+      return;
+    }
+
+    const portfolioRecommendations = Array.isArray(portfolioResult.portfolio?.recommended_stocks)
+      ? (portfolioResult.portfolio?.recommended_stocks as StockRecommendation[])
+      : [];
+
+    if (portfolioRecommendations.length > 0) {
+      setRecommendedStocks(portfolioRecommendations);
+      hasInitializedRecommendations.current = true;
+      return;
+    }
+
+    if (structuredResponse?.assets?.length) {
+      const fallbackRecommendations: StockRecommendation[] = structuredResponse.assets.map(asset => ({
+        name: asset.name,
+        symbol: asset.ticker,
+        allocation: asset.allocationPercent,
+        actionType: asset.actionType,
+        changePercent: asset.changePercent,
+        reasoning: asset.rationale ?? asset.notes,
+        notes: asset.notes,
+      }));
+
+      setRecommendedStocks(fallbackRecommendations);
+      hasInitializedRecommendations.current = true;
+    }
+  }, [portfolioResult, structuredResponse]);
+
+  const hasImportedHoldings = Array.isArray(conversationData.currentHoldings)
+    ? conversationData.currentHoldings.length > 0
+    : false;
+
+  const shouldCollectAvailableCapitalForNewInvestor =
+    conversationData.hasCurrentPortfolio !== true &&
+    conversationData.isBeginnerInvestor === false &&
+    !hasImportedHoldings;
+
   const questions: Question[] = [
     {
       id: 'experienceLevel',
@@ -915,8 +1012,10 @@ const ChatPortfolioAdvisor = () => {
     },
     {
       id: 'investedCapital',
-      question: 'Hur mycket kapital har du ungefär investerat hittills?',
-      key: 'portfolioSize',
+      question: shouldCollectAvailableCapitalForNewInvestor
+        ? 'Hur mycket kapital har du tillgängligt att investera just nu?'
+        : 'Hur mycket kapital har du ungefär investerat hittills?',
+      key: shouldCollectAvailableCapitalForNewInvestor ? 'availableCapital' : 'portfolioSize',
       hasOptions: true,
       showIf: () =>
         conversationData.hasCurrentPortfolio !== true &&
@@ -2292,8 +2391,101 @@ const ChatPortfolioAdvisor = () => {
     } catch (error) {
       console.error('Failed to save recommended stocks:', error);
       toast({
-        title: "Varning", 
+        title: "Varning",
         description: "Kunde inte spara AI-rekommendationerna som innehav",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateRecommendedStock = async (
+    previous: { symbol?: string | null; name?: string | null },
+    updated: StockRecommendation,
+    context: RecommendationUpdateContext
+  ) => {
+    if (!user) return;
+
+    try {
+      const updates: PromiseLike<any>[] = [];
+
+      if (previous.symbol || previous.name) {
+        let holdingsQuery = supabase
+          .from('user_holdings')
+          .update({
+            name: updated.name || updated.symbol || 'Rekommenderad aktie',
+            symbol: updated.symbol ?? null,
+            sector: updated.sector ?? null,
+            market: updated.market ?? null,
+            purchase_price: updated.expectedPrice ?? updated.expected_price ?? 0,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id)
+          .eq('holding_type', 'recommendation');
+
+        if (previous.symbol) {
+          holdingsQuery = holdingsQuery.eq('symbol', previous.symbol);
+        } else if (previous.name) {
+          holdingsQuery = holdingsQuery.eq('name', previous.name);
+        }
+
+        updates.push(holdingsQuery);
+      } else {
+        console.warn('Missing identifier for updating recommended stock');
+      }
+
+      const portfolioId = (portfolioResult?.portfolio as { id?: string } | null)?.id;
+
+      if (portfolioId && (context.updatedRecommendedStocks || context.updatedAssetAllocation || context.updatedPlanAssets)) {
+        const payload: Record<string, any> = {};
+
+        if (context.updatedRecommendedStocks) {
+          payload.recommended_stocks = context.updatedRecommendedStocks;
+        }
+
+        if (context.updatedAssetAllocation) {
+          payload.asset_allocation = context.updatedAssetAllocation;
+        }
+
+        if (Object.keys(payload).length > 0) {
+          updates.push(
+            supabase
+              .from('user_portfolios')
+              .update(payload)
+              .eq('id', portfolioId)
+              .eq('user_id', user.id)
+          );
+        }
+      }
+
+      const riskProfileId =
+        (portfolioResult?.portfolio as { risk_profile_id?: string } | null)?.risk_profile_id ??
+        (portfolioResult?.riskProfile as { id?: string } | null)?.id;
+
+      if (riskProfileId && context.updatedRiskProfileAllocation) {
+        updates.push(
+          supabase
+            .from('user_risk_profiles')
+            .update({
+              current_allocation: context.updatedRiskProfileAllocation,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', riskProfileId)
+            .eq('user_id', user.id)
+        );
+      }
+
+      if (updates.length > 0) {
+        const results = await Promise.all(updates);
+        const failed = results.find(result => 'error' in result && result.error);
+        if (failed && 'error' in failed && failed.error) {
+          throw failed.error;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update recommended stock:', error);
+      toast({
+        title: "Kunde inte uppdatera rekommendationen",
+        description: "Förändringen sparades inte i dina rekommenderade innehav.",
         variant: "destructive",
       });
     }
@@ -2527,6 +2719,8 @@ const ChatPortfolioAdvisor = () => {
 
   const completeConversation = async () => {
     setIsGenerating(true);
+    setRecommendedStocks([]);
+    hasInitializedRecommendations.current = false;
     const isOptimizationFlow = conversationData.hasCurrentPortfolio === true;
     addBotMessage(
       isOptimizationFlow
@@ -2627,6 +2821,257 @@ const ChatPortfolioAdvisor = () => {
     }
   };
 
+  const openReplacementDialog = (asset: AdvisorPlanAsset, index: number) => {
+    const currentRecommendation = recommendedStocks[index];
+    setReplacementTarget({ asset, index, recommendation: currentRecommendation });
+    setIsReplacementDialogOpen(true);
+  };
+
+  const handleConfirmReplacement = async (selection: StockSelectionResult) => {
+    if (!replacementTarget) {
+      return;
+    }
+
+    const { asset, index, recommendation } = replacementTarget;
+    const previousRecommendation: StockRecommendation = recommendation ?? {
+      name: asset.name,
+      symbol: asset.ticker,
+      allocation: asset.allocationPercent,
+      actionType: asset.actionType,
+      changePercent: asset.changePercent,
+      reasoning: asset.rationale ?? asset.notes,
+      notes: asset.notes,
+    };
+
+    const updatedRecommendation: StockRecommendation = {
+      ...previousRecommendation,
+      name: selection.name || selection.symbol,
+      symbol: selection.symbol,
+      sector: selection.sector ?? previousRecommendation.sector,
+      allocation: previousRecommendation.allocation ?? asset.allocationPercent,
+      actionType: previousRecommendation.actionType ?? asset.actionType,
+      changePercent: previousRecommendation.changePercent ?? asset.changePercent,
+      reasoning:
+        previousRecommendation.reasoning ??
+        previousRecommendation.notes ??
+        asset.rationale ??
+        asset.notes ??
+        `Ersätter ${previousRecommendation.name ?? asset.name}`,
+      notes: previousRecommendation.notes ?? asset.notes,
+      expectedPrice: selection.price ?? previousRecommendation.expectedPrice ?? previousRecommendation.expected_price,
+      expected_price: selection.price ?? previousRecommendation.expected_price ?? previousRecommendation.expectedPrice,
+      market: selection.market ?? previousRecommendation.market,
+    };
+
+    if (!updatedRecommendation.reasoning && selection.source) {
+      updatedRecommendation.reasoning = `Vald via källa ${selection.source}`;
+    }
+
+    const plan = structuredResponse;
+    const updatedPlanAssets = plan
+      ? plan.assets.map((existingAsset, assetIndex) => {
+          if (assetIndex !== index) {
+            return existingAsset;
+          }
+
+          return {
+            ...existingAsset,
+            name: updatedRecommendation.name ?? existingAsset.name,
+            ticker: updatedRecommendation.symbol ?? existingAsset.ticker,
+            rationale: updatedRecommendation.reasoning ?? existingAsset.rationale ?? updatedRecommendation.notes,
+            notes: existingAsset.notes ?? updatedRecommendation.notes ?? updatedRecommendation.reasoning ?? existingAsset.notes,
+          } as AdvisorPlanAsset;
+        })
+      : undefined;
+
+    const mapAssetToPlanEntry = (entry: AdvisorPlanAsset) =>
+      removeUndefined({
+        name: entry.name,
+        ticker: entry.ticker,
+        symbol: entry.ticker,
+        allocation_percent: entry.allocationPercent,
+        allocation: entry.allocationPercent,
+        weight: entry.allocationPercent,
+        rationale: entry.rationale ?? entry.notes ?? undefined,
+        notes: entry.notes ?? undefined,
+        risk_role: entry.riskRole ?? undefined,
+        change_percent: entry.changePercent ?? undefined,
+        action_type: entry.actionType ?? undefined,
+      });
+
+    const mapAssetToStructuredEntry = (entry: AdvisorPlanAsset) =>
+      removeUndefined({
+        ...entry,
+        ticker: entry.ticker,
+        symbol: entry.ticker,
+        allocation_percent: entry.allocationPercent,
+        allocation: entry.allocationPercent,
+        weight: entry.allocationPercent,
+        risk_role: entry.riskRole,
+        change_percent: entry.changePercent,
+        action_type: entry.actionType,
+      });
+
+    const updatedRecommendedStocks = (() => {
+      const existing = Array.isArray(portfolioResult?.portfolio?.recommended_stocks)
+        ? deepClone(portfolioResult?.portfolio?.recommended_stocks as StockRecommendation[])
+        : [];
+
+      if (index >= existing.length) {
+        existing.length = index + 1;
+      }
+
+      existing[index] = {
+        ...(existing[index] ?? {}),
+        ...updatedRecommendation,
+      } as StockRecommendation;
+
+      return existing;
+    })();
+
+    const updatedAssetAllocation = (() => {
+      const currentAllocation = portfolioResult?.portfolio?.asset_allocation;
+      if (!currentAllocation) {
+        return undefined;
+      }
+
+      const clonedAllocation = deepClone(currentAllocation);
+      if (!clonedAllocation) {
+        return undefined;
+      }
+
+      clonedAllocation.stock_recommendations = updatedRecommendedStocks;
+
+      if (Array.isArray(clonedAllocation.recommended_stocks)) {
+        const recommendationEntries = [...clonedAllocation.recommended_stocks];
+        if (index >= recommendationEntries.length) {
+          recommendationEntries.length = index + 1;
+        }
+        recommendationEntries[index] = removeUndefined({
+          ...(recommendationEntries[index] ?? {}),
+          ...updatedRecommendation,
+        });
+        clonedAllocation.recommended_stocks = recommendationEntries;
+      }
+
+      const structuredPlan = clonedAllocation.structured_plan;
+      if (structuredPlan && typeof structuredPlan === 'object') {
+        const planClone = { ...structuredPlan };
+
+        if (updatedPlanAssets) {
+          planClone.recommended_assets = updatedPlanAssets.map(mapAssetToPlanEntry);
+
+          if (Array.isArray(planClone.assets)) {
+            planClone.assets = updatedPlanAssets.map(mapAssetToStructuredEntry);
+          }
+        }
+
+        clonedAllocation.structured_plan = planClone;
+      }
+
+      return clonedAllocation;
+    })();
+
+    const riskProfileAllocation = (() => {
+      if (updatedAssetAllocation) {
+        return deepClone(updatedAssetAllocation);
+      }
+
+      const existingAllocation = deepClone(
+        (portfolioResult?.riskProfile as { current_allocation?: any } | null)?.current_allocation ??
+          (portfolioResult?.portfolio as { asset_allocation?: any } | null)?.asset_allocation ??
+          {}
+      );
+
+      if (!existingAllocation || typeof existingAllocation !== 'object') {
+        return null;
+      }
+
+      existingAllocation.stock_recommendations = updatedRecommendedStocks;
+      existingAllocation.recommended_stocks = updatedRecommendedStocks;
+
+      if (updatedPlanAssets) {
+        const planClone =
+          existingAllocation.structured_plan && typeof existingAllocation.structured_plan === 'object'
+            ? { ...existingAllocation.structured_plan }
+            : {};
+
+        planClone.recommended_assets = updatedPlanAssets.map(mapAssetToPlanEntry);
+
+        if (Array.isArray(planClone.assets)) {
+          planClone.assets = updatedPlanAssets.map(mapAssetToStructuredEntry);
+        } else if (updatedPlanAssets.length > 0) {
+          planClone.assets = updatedPlanAssets.map(mapAssetToStructuredEntry);
+        }
+
+        existingAllocation.structured_plan = planClone;
+      }
+
+      return existingAllocation;
+    })();
+
+    setRecommendedStocks(prev => {
+      const next = [...prev];
+      if (index >= next.length) {
+        next.length = index + 1;
+      }
+      next[index] = {
+        ...(next[index] ?? {}),
+        ...updatedRecommendation,
+      } as StockRecommendation;
+      return next;
+    });
+
+    setPortfolioResult(prev => {
+      if (!prev) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        plan: updatedPlanAssets
+          ? {
+              ...(typeof prev.plan === 'object' && prev.plan !== null ? prev.plan : {}),
+              assets: updatedPlanAssets,
+            }
+          : prev.plan,
+        portfolio: {
+          ...prev.portfolio,
+          recommended_stocks: updatedRecommendedStocks,
+          asset_allocation: updatedAssetAllocation ?? prev.portfolio?.asset_allocation,
+        },
+        riskProfile: prev.riskProfile
+          ? {
+              ...prev.riskProfile,
+              current_allocation: riskProfileAllocation ?? prev.riskProfile.current_allocation,
+            }
+          : prev.riskProfile,
+      };
+    });
+
+    toast({
+      title: "Rekommendation uppdaterad",
+      description: `${updatedRecommendation.name} ersätter ${previousRecommendation.name ?? asset.name}.`,
+    });
+
+    const previousIdentifier = {
+      symbol: recommendation?.symbol ?? asset.ticker ?? null,
+      name: recommendation?.name ?? asset.name,
+    };
+
+    setIsReplacementDialogOpen(false);
+    setReplacementTarget(null);
+
+    await updateRecommendedStock(previousIdentifier, updatedRecommendation, {
+      index,
+      updatedRecommendedStocks,
+      updatedAssetAllocation,
+      updatedPlanAssets,
+      updatedRiskProfileAllocation: riskProfileAllocation ?? undefined,
+    });
+    await Promise.all([refetchHoldings(), refetch()]);
+  };
+
   const renderAdvisorResponse = () => {
     const aiContent = portfolioResult?.aiResponse;
     if (!aiContent || typeof aiContent !== 'string') {
@@ -2720,7 +3165,22 @@ const ChatPortfolioAdvisor = () => {
       : (isOptimization ? defaultOptimizationSteps : defaultNewPortfolioSteps);
 
     const summarizedSteps = displayNextSteps.slice(0, 3).join('; ');
-    const assetSummary = plan.assets
+    const assetsToDisplay = plan.assets.map((asset, index) => {
+      const override = recommendedStocks[index];
+      if (!override) {
+        return asset;
+      }
+
+      return {
+        ...asset,
+        name: override.name ?? asset.name,
+        ticker: override.symbol ?? asset.ticker,
+        rationale: override.reasoning ?? asset.rationale ?? override.notes,
+        notes: asset.notes ?? override.notes ?? override.reasoning,
+      } as AdvisorPlanAsset;
+    });
+
+    const assetSummary = assetsToDisplay
       .filter(asset => asset.actionType || asset.allocationPercent)
       .slice(0, 3)
       .map(asset => {
@@ -2866,66 +3326,85 @@ const ChatPortfolioAdvisor = () => {
               {isOptimization ? 'Optimeringsförslag & åtgärder' : 'Köpplan & allokering'}
             </h4>
             <div className="mt-2 space-y-2">
-              {plan.assets.map((asset, index) => (
-                <div
-                  key={`${asset.name}-${asset.ticker ?? index}`}
-                  className="rounded-lg border border-border/60 bg-background/70 p-3"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="flex flex-col gap-1 min-w-0">
-                      <div className="flex flex-wrap items-baseline gap-2">
-                        <span className="font-semibold text-foreground truncate max-w-[220px] sm:max-w-[280px]">
-                          {asset.name}
-                        </span>
-                        {asset.ticker && (
-                          <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                            {asset.ticker}
+              {assetsToDisplay.map((displayAsset, index) => {
+                const originalAsset = plan.assets[index];
+                const actionLabel = getActionLabel(originalAsset?.actionType ?? displayAsset.actionType);
+
+                return (
+                  <div
+                    key={`${displayAsset.name}-${displayAsset.ticker ?? index}`}
+                    className="rounded-lg border border-border/60 bg-background/70 p-3"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <div className="flex flex-wrap items-baseline gap-2">
+                          <span className="font-semibold text-foreground truncate max-w-[220px] sm:max-w-[280px]">
+                            {displayAsset.name}
                           </span>
+                          {displayAsset.ticker && (
+                            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                              {displayAsset.ticker}
+                            </span>
+                          )}
+                        </div>
+                        {isOptimization && actionLabel && (
+                          <Badge
+                            variant="outline"
+                            className="w-fit border-primary/40 bg-primary/10 text-primary text-[10px] uppercase tracking-wide"
+                          >
+                            Åtgärd: {actionLabel}
+                          </Badge>
                         )}
                       </div>
-                      {isOptimization && getActionLabel(asset.actionType) && (
-                        <Badge
-                          variant="outline"
-                          className="w-fit border-primary/40 bg-primary/10 text-primary text-[10px] uppercase tracking-wide"
-                        >
-                          Åtgärd: {getActionLabel(asset.actionType)}
-                        </Badge>
-                      )}
-                    </div>
 
-                    <div className="flex flex-col items-end gap-1 text-right">
-                      {(() => {
-                        const changeDisplay = formatSignedPercent(asset.changePercent);
-                        if (!changeDisplay) return null;
-                        return (
-                          <span className={`text-xs font-medium ${getChangeBadgeClass(asset.changePercent)}`}>
-                            Förändring: {changeDisplay}
-                          </span>
-                        );
-                      })()}
-                      {(() => {
-                        if (isOptimization && (!asset.allocationPercent || asset.allocationPercent === 0)) {
-                          return null;
-                        }
-                        const allocationDisplay = formatPercentValue(asset.allocationPercent);
-                        if (!allocationDisplay) return null;
-                        return <span className="text-sm font-semibold text-primary">{allocationDisplay}</span>;
-                      })()}
+                      <div className="flex flex-col items-end gap-2 text-right sm:flex-row sm:items-start sm:gap-3">
+                        <div className="flex flex-col items-end gap-1 text-right">
+                          {(() => {
+                            const changeDisplay = formatSignedPercent(displayAsset.changePercent);
+                            if (!changeDisplay) return null;
+                            return (
+                              <span className={`text-xs font-medium ${getChangeBadgeClass(displayAsset.changePercent)}`}>
+                                Förändring: {changeDisplay}
+                              </span>
+                            );
+                          })()}
+                          {(() => {
+                            if (
+                              isOptimization &&
+                              (!displayAsset.allocationPercent || displayAsset.allocationPercent === 0)
+                            ) {
+                              return null;
+                            }
+                            const allocationDisplay = formatPercentValue(displayAsset.allocationPercent);
+                            if (!allocationDisplay) return null;
+                            return <span className="text-sm font-semibold text-primary">{allocationDisplay}</span>;
+                          })()}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-2 text-xs font-medium"
+                          onClick={() => openReplacementDialog(originalAsset, index)}
+                        >
+                          <RefreshCcw className="mr-1 h-3.5 w-3.5" /> Byt ut
+                        </Button>
+                      </div>
                     </div>
+                    {displayAsset.rationale && (
+                      <p className="mt-2 text-sm text-muted-foreground">{displayAsset.rationale}</p>
+                    )}
+                    {displayAsset.riskRole && (
+                      <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
+                        Roll i portföljen: {displayAsset.riskRole}
+                      </p>
+                    )}
+                    {displayAsset.notes && (
+                      <p className="mt-1 text-xs text-muted-foreground">{displayAsset.notes}</p>
+                    )}
                   </div>
-                  {asset.rationale && (
-                    <p className="mt-2 text-sm text-muted-foreground">{asset.rationale}</p>
-                  )}
-                  {asset.riskRole && (
-                    <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
-                      Roll i portföljen: {asset.riskRole}
-                    </p>
-                  )}
-                  {asset.notes && (
-                    <p className="mt-1 text-xs text-muted-foreground">{asset.notes}</p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -2977,7 +3456,8 @@ const ChatPortfolioAdvisor = () => {
   };
 
   return (
-    <div className="flex flex-col h-[75vh] lg:h-[80vh] xl:h-[85vh] bg-transparent overflow-hidden">
+    <>
+      <div className="flex flex-col h-[75vh] lg:h-[80vh] xl:h-[85vh] bg-transparent overflow-hidden">
       {/* Chat Header - matching AIChat style */}
       <div className="flex-shrink-0 p-3 sm:p-4 border-b bg-card/50 backdrop-blur-sm">
         <div className="flex items-center justify-between">
@@ -3342,7 +3822,27 @@ const ChatPortfolioAdvisor = () => {
           </form>
         </div>
       )}
-    </div>
+      </div>
+      <StockReplacementDialog
+        open={isReplacementDialogOpen}
+        onOpenChange={(open) => {
+          setIsReplacementDialogOpen(open);
+          if (!open) {
+            setReplacementTarget(null);
+          }
+        }}
+        currentStock={
+          replacementTarget
+            ? {
+                name: replacementTarget.recommendation?.name ?? replacementTarget.asset.name,
+                symbol: replacementTarget.recommendation?.symbol ?? replacementTarget.asset.ticker ?? undefined,
+              }
+            : undefined
+        }
+        suggestions={stockSelectorOptions}
+        onConfirm={handleConfirmReplacement}
+      />
+    </>
   );
 };
 
