@@ -137,6 +137,31 @@ interface ReplacementTarget {
   recommendation?: StockRecommendation;
 }
 
+interface RecommendationUpdateContext {
+  index: number;
+  updatedRecommendedStocks?: StockRecommendation[];
+  updatedAssetAllocation?: any;
+  updatedPlanAssets?: AdvisorPlanAsset[];
+}
+
+const deepClone = <T,>(value: T): T => {
+  if (value == null) {
+    return value;
+  }
+
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch (error) {
+    console.warn('Failed to deep clone value', error);
+    return value;
+  }
+};
+
+const removeUndefined = <T extends Record<string, any>>(value: T): T => {
+  const entries = Object.entries(value).filter(([, entryValue]) => entryValue !== undefined);
+  return Object.fromEntries(entries) as T;
+};
+
 const normalizeAdvisorPlan = (rawPlan: any, fallbackText?: string): AdvisorPlan | null => {
   let plan = rawPlan;
 
@@ -2363,37 +2388,69 @@ const ChatPortfolioAdvisor = () => {
 
   const updateRecommendedStock = async (
     previous: { symbol?: string | null; name?: string | null },
-    updated: StockRecommendation
+    updated: StockRecommendation,
+    context: RecommendationUpdateContext
   ) => {
     if (!user) return;
 
     try {
-      let query = supabase
-        .from('user_holdings')
-        .update({
-          name: updated.name || updated.symbol || 'Rekommenderad aktie',
-          symbol: updated.symbol ?? null,
-          sector: updated.sector ?? null,
-          market: updated.market ?? null,
-          purchase_price: updated.expectedPrice ?? updated.expected_price ?? 0,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user.id)
-        .eq('holding_type', 'recommendation');
+      const updates: PromiseLike<any>[] = [];
 
-      if (previous.symbol) {
-        query = query.eq('symbol', previous.symbol);
-      } else if (previous.name) {
-        query = query.eq('name', previous.name);
+      if (previous.symbol || previous.name) {
+        let holdingsQuery = supabase
+          .from('user_holdings')
+          .update({
+            name: updated.name || updated.symbol || 'Rekommenderad aktie',
+            symbol: updated.symbol ?? null,
+            sector: updated.sector ?? null,
+            market: updated.market ?? null,
+            purchase_price: updated.expectedPrice ?? updated.expected_price ?? 0,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id)
+          .eq('holding_type', 'recommendation');
+
+        if (previous.symbol) {
+          holdingsQuery = holdingsQuery.eq('symbol', previous.symbol);
+        } else if (previous.name) {
+          holdingsQuery = holdingsQuery.eq('name', previous.name);
+        }
+
+        updates.push(holdingsQuery);
       } else {
         console.warn('Missing identifier for updating recommended stock');
-        return;
       }
 
-      const { error } = await query;
+      const portfolioId = (portfolioResult?.portfolio as { id?: string } | null)?.id;
 
-      if (error) {
-        throw error;
+      if (portfolioId && (context.updatedRecommendedStocks || context.updatedAssetAllocation || context.updatedPlanAssets)) {
+        const payload: Record<string, any> = {};
+
+        if (context.updatedRecommendedStocks) {
+          payload.recommended_stocks = context.updatedRecommendedStocks;
+        }
+
+        if (context.updatedAssetAllocation) {
+          payload.asset_allocation = context.updatedAssetAllocation;
+        }
+
+        if (Object.keys(payload).length > 0) {
+          updates.push(
+            supabase
+              .from('user_portfolios')
+              .update(payload)
+              .eq('id', portfolioId)
+              .eq('user_id', user.id)
+          );
+        }
+      }
+
+      if (updates.length > 0) {
+        const results = await Promise.all(updates);
+        const failed = results.find(result => 'error' in result && result.error);
+        if (failed && 'error' in failed && failed.error) {
+          throw failed.error;
+        }
       }
     } catch (error) {
       console.error('Failed to update recommended stock:', error);
@@ -2781,6 +2838,110 @@ const ChatPortfolioAdvisor = () => {
       updatedRecommendation.reasoning = `Vald via källa ${selection.source}`;
     }
 
+    const plan = structuredResponse;
+    const updatedPlanAssets = plan
+      ? plan.assets.map((existingAsset, assetIndex) => {
+          if (assetIndex !== index) {
+            return existingAsset;
+          }
+
+          return {
+            ...existingAsset,
+            name: updatedRecommendation.name ?? existingAsset.name,
+            ticker: updatedRecommendation.symbol ?? existingAsset.ticker,
+            rationale: updatedRecommendation.reasoning ?? existingAsset.rationale ?? updatedRecommendation.notes,
+            notes: existingAsset.notes ?? updatedRecommendation.notes ?? updatedRecommendation.reasoning ?? existingAsset.notes,
+          } as AdvisorPlanAsset;
+        })
+      : undefined;
+
+    const updatedRecommendedStocks = (() => {
+      const existing = Array.isArray(portfolioResult?.portfolio?.recommended_stocks)
+        ? deepClone(portfolioResult?.portfolio?.recommended_stocks as StockRecommendation[])
+        : [];
+
+      if (index >= existing.length) {
+        existing.length = index + 1;
+      }
+
+      existing[index] = {
+        ...(existing[index] ?? {}),
+        ...updatedRecommendation,
+      } as StockRecommendation;
+
+      return existing;
+    })();
+
+    const updatedAssetAllocation = (() => {
+      const currentAllocation = portfolioResult?.portfolio?.asset_allocation;
+      if (!currentAllocation) {
+        return undefined;
+      }
+
+      const clonedAllocation = deepClone(currentAllocation);
+      if (!clonedAllocation) {
+        return undefined;
+      }
+
+      clonedAllocation.stock_recommendations = updatedRecommendedStocks;
+
+      if (Array.isArray(clonedAllocation.recommended_stocks)) {
+        const recommendationEntries = [...clonedAllocation.recommended_stocks];
+        if (index >= recommendationEntries.length) {
+          recommendationEntries.length = index + 1;
+        }
+        recommendationEntries[index] = removeUndefined({
+          ...(recommendationEntries[index] ?? {}),
+          ...updatedRecommendation,
+        });
+        clonedAllocation.recommended_stocks = recommendationEntries;
+      }
+
+      const structuredPlan = clonedAllocation.structured_plan;
+      if (structuredPlan && typeof structuredPlan === 'object') {
+        const planClone = { ...structuredPlan };
+
+        if (updatedPlanAssets) {
+          const normalizedToPlanEntry = (entry: AdvisorPlanAsset) =>
+            removeUndefined({
+              name: entry.name,
+              ticker: entry.ticker,
+              symbol: entry.ticker,
+              allocation_percent: entry.allocationPercent,
+              allocation: entry.allocationPercent,
+              weight: entry.allocationPercent,
+              rationale: entry.rationale ?? entry.notes ?? undefined,
+              notes: entry.notes ?? undefined,
+              risk_role: entry.riskRole ?? undefined,
+              change_percent: entry.changePercent ?? undefined,
+              action_type: entry.actionType ?? undefined,
+            });
+
+          planClone.recommended_assets = updatedPlanAssets.map(normalizedToPlanEntry);
+
+          if (Array.isArray(planClone.assets)) {
+            planClone.assets = updatedPlanAssets.map(entry =>
+              removeUndefined({
+                ...entry,
+                ticker: entry.ticker,
+                symbol: entry.ticker,
+                allocation_percent: entry.allocationPercent,
+                allocation: entry.allocationPercent,
+                weight: entry.allocationPercent,
+                risk_role: entry.riskRole,
+                change_percent: entry.changePercent,
+                action_type: entry.actionType,
+              })
+            );
+          }
+        }
+
+        clonedAllocation.structured_plan = planClone;
+      }
+
+      return clonedAllocation;
+    })();
+
     setRecommendedStocks(prev => {
       const next = [...prev];
       if (index >= next.length) {
@@ -2798,24 +2959,18 @@ const ChatPortfolioAdvisor = () => {
         return prev;
       }
 
-      const existingRecommendations = Array.isArray(prev.portfolio?.recommended_stocks)
-        ? [...((prev.portfolio?.recommended_stocks as StockRecommendation[]) ?? [])]
-        : [];
-
-      if (index >= existingRecommendations.length) {
-        existingRecommendations.length = index + 1;
-      }
-
-      existingRecommendations[index] = {
-        ...(existingRecommendations[index] ?? {}),
-        ...updatedRecommendation,
-      } as StockRecommendation;
-
       return {
         ...prev,
+        plan: updatedPlanAssets
+          ? {
+              ...(typeof prev.plan === 'object' && prev.plan !== null ? prev.plan : {}),
+              assets: updatedPlanAssets,
+            }
+          : prev.plan,
         portfolio: {
           ...prev.portfolio,
-          recommended_stocks: existingRecommendations,
+          recommended_stocks: updatedRecommendedStocks,
+          asset_allocation: updatedAssetAllocation ?? prev.portfolio?.asset_allocation,
         },
       };
     });
@@ -2833,7 +2988,12 @@ const ChatPortfolioAdvisor = () => {
     setIsReplacementDialogOpen(false);
     setReplacementTarget(null);
 
-    await updateRecommendedStock(previousIdentifier, updatedRecommendation);
+    await updateRecommendedStock(previousIdentifier, updatedRecommendation, {
+      index,
+      updatedRecommendedStocks,
+      updatedAssetAllocation,
+      updatedPlanAssets,
+    });
     await Promise.all([refetchHoldings(), refetch()]);
   };
 
