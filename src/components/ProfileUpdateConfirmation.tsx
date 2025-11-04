@@ -41,9 +41,9 @@ const ProfileUpdateConfirmation: React.FC<ProfileUpdateConfirmationProps> = ({
   };
 
   const investmentHorizonLabels: Record<string, string> = {
-    short: 'Kort (1-3 år)',
-    medium: 'Medel (3-7 år)',
-    long: 'Lång (7+ år)'
+    short: 'Kort (0–2 år)',
+    medium: 'Medel (3–5 år)',
+    long: 'Lång (5+ år)'
   };
 
   const formatValue = (key: string, value: any) => {
