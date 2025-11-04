@@ -257,6 +257,58 @@ export const useConversationalPortfolio = () => {
     return recommendations.slice(0, 10);
   };
 
+  type WeightedHolding = {
+    name: string;
+    symbol?: string;
+    quantity: number;
+    price: number;
+    estimatedValue: number;
+    weight: number | null;
+  };
+
+  const computeHoldingsWithPercentages = (
+    holdings: ConversationData['currentHoldings'] | undefined
+  ): WeightedHolding[] => {
+    const normalizedHoldings = (holdings ?? [])
+      .map(holding => {
+        const quantity = typeof holding.quantity === 'number' ? holding.quantity : Number(holding.quantity);
+        const price = typeof holding.purchasePrice === 'number'
+          ? holding.purchasePrice
+          : Number(holding.purchasePrice);
+
+        if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(price) || price <= 0) {
+          return null;
+        }
+
+        const estimatedValue = quantity * price;
+        return {
+          name: holding.name,
+          symbol: holding.symbol,
+          quantity,
+          price,
+          estimatedValue,
+        };
+      })
+      .filter((item): item is {
+        name: string;
+        symbol?: string;
+        quantity: number;
+        price: number;
+        estimatedValue: number;
+      } => Boolean(item));
+
+    const totalEstimatedHoldingValue = normalizedHoldings.reduce((sum, holding) => sum + holding.estimatedValue, 0);
+
+    return normalizedHoldings
+      .map(holding => ({
+        ...holding,
+        weight: totalEstimatedHoldingValue > 0
+          ? (holding.estimatedValue / totalEstimatedHoldingValue) * 100
+          : null,
+      }))
+      .sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0));
+  };
+
   const buildEnhancedAIPrompt = (conversationData: ConversationData, mode: 'new' | 'optimize') => {
     const mapValue = (value: string | undefined, mapping: Record<string, string>) => {
       if (!value) return undefined;
@@ -308,44 +360,7 @@ export const useConversationalPortfolio = () => {
     const formatBoolean = (value: boolean | undefined) =>
       typeof value === 'boolean' ? (value ? 'Ja' : 'Nej') : 'Ej angivet';
 
-    const normalizedHoldings = (conversationData.currentHoldings ?? [])
-      .map(holding => {
-        const quantity = typeof holding.quantity === 'number' ? holding.quantity : Number(holding.quantity);
-        const price = typeof holding.purchasePrice === 'number'
-          ? holding.purchasePrice
-          : Number(holding.purchasePrice);
-
-        if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(price) || price <= 0) {
-          return null;
-        }
-
-        const estimatedValue = quantity * price;
-        return {
-          name: holding.name,
-          symbol: holding.symbol,
-          quantity,
-          price,
-          estimatedValue,
-        };
-      })
-      .filter((item): item is {
-        name: string;
-        symbol?: string;
-        quantity: number;
-        price: number;
-        estimatedValue: number;
-      } => Boolean(item));
-
-    const totalEstimatedHoldingValue = normalizedHoldings.reduce((sum, holding) => sum + holding.estimatedValue, 0);
-
-    const holdingsWithPercentages = normalizedHoldings
-      .map(holding => ({
-        ...holding,
-        weight: totalEstimatedHoldingValue > 0
-          ? (holding.estimatedValue / totalEstimatedHoldingValue) * 100
-          : null,
-      }))
-      .sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0));
+    const holdingsWithPercentages = computeHoldingsWithPercentages(conversationData.currentHoldings);
 
     const investmentGoalText = mapValue(conversationData.investmentGoal, {
       pension: 'Pensionssparande',
@@ -1062,6 +1077,8 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         : conversationData.hasCurrentPortfolio
           ? 'optimize'
           : 'new';
+
+    const holdingsWithPercentages = computeHoldingsWithPercentages(conversationData.currentHoldings);
 
     const ensureString = (value: unknown): string | undefined =>
       typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
