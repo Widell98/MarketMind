@@ -2959,10 +2959,37 @@ const ChatPortfolioAdvisor = () => {
         const planClone = { ...structuredPlan };
 
         if (updatedPlanAssets) {
-          planClone.recommended_assets = updatedPlanAssets.map(mapAssetToPlanEntry);
+          const normalizedToPlanEntry = (entry: AdvisorPlanAsset) =>
+            removeUndefined({
+              name: entry.name,
+              ticker: entry.ticker,
+              symbol: entry.ticker,
+              allocation_percent: entry.allocationPercent,
+              allocation: entry.allocationPercent,
+              weight: entry.allocationPercent,
+              rationale: entry.rationale ?? entry.notes ?? undefined,
+              notes: entry.notes ?? undefined,
+              risk_role: entry.riskRole ?? undefined,
+              change_percent: entry.changePercent ?? undefined,
+              action_type: entry.actionType ?? undefined,
+            });
+
+          planClone.recommended_assets = updatedPlanAssets.map(normalizedToPlanEntry);
 
           if (Array.isArray(planClone.assets)) {
-            planClone.assets = updatedPlanAssets.map(mapAssetToStructuredEntry);
+            planClone.assets = updatedPlanAssets.map(entry =>
+              removeUndefined({
+                ...entry,
+                ticker: entry.ticker,
+                symbol: entry.ticker,
+                allocation_percent: entry.allocationPercent,
+                allocation: entry.allocationPercent,
+                weight: entry.allocationPercent,
+                risk_role: entry.riskRole,
+                change_percent: entry.changePercent,
+                action_type: entry.actionType,
+              })
+            );
           }
         }
 
