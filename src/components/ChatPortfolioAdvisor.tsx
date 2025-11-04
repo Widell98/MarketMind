@@ -142,6 +142,7 @@ interface RecommendationUpdateContext {
   updatedRecommendedStocks?: StockRecommendation[];
   updatedAssetAllocation?: any;
   updatedPlanAssets?: AdvisorPlanAsset[];
+  updatedRiskProfileAllocation?: any;
 }
 
 const deepClone = <T,>(value: T): T => {
@@ -2456,6 +2457,23 @@ const ChatPortfolioAdvisor = () => {
         }
       }
 
+      const riskProfileId =
+        (portfolioResult?.portfolio as { risk_profile_id?: string } | null)?.risk_profile_id ??
+        (portfolioResult?.riskProfile as { id?: string } | null)?.id;
+
+      if (riskProfileId && context.updatedRiskProfileAllocation) {
+        updates.push(
+          supabase
+            .from('user_risk_profiles')
+            .update({
+              current_allocation: context.updatedRiskProfileAllocation,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', riskProfileId)
+            .eq('user_id', user.id)
+        );
+      }
+
       if (updates.length > 0) {
         const results = await Promise.all(updates);
         const failed = results.find(result => 'error' in result && result.error);
@@ -2866,6 +2884,34 @@ const ChatPortfolioAdvisor = () => {
         })
       : undefined;
 
+    const mapAssetToPlanEntry = (entry: AdvisorPlanAsset) =>
+      removeUndefined({
+        name: entry.name,
+        ticker: entry.ticker,
+        symbol: entry.ticker,
+        allocation_percent: entry.allocationPercent,
+        allocation: entry.allocationPercent,
+        weight: entry.allocationPercent,
+        rationale: entry.rationale ?? entry.notes ?? undefined,
+        notes: entry.notes ?? undefined,
+        risk_role: entry.riskRole ?? undefined,
+        change_percent: entry.changePercent ?? undefined,
+        action_type: entry.actionType ?? undefined,
+      });
+
+    const mapAssetToStructuredEntry = (entry: AdvisorPlanAsset) =>
+      removeUndefined({
+        ...entry,
+        ticker: entry.ticker,
+        symbol: entry.ticker,
+        allocation_percent: entry.allocationPercent,
+        allocation: entry.allocationPercent,
+        weight: entry.allocationPercent,
+        risk_role: entry.riskRole,
+        change_percent: entry.changePercent,
+        action_type: entry.actionType,
+      });
+
     const updatedRecommendedStocks = (() => {
       const existing = Array.isArray(portfolioResult?.portfolio?.recommended_stocks)
         ? deepClone(portfolioResult?.portfolio?.recommended_stocks as StockRecommendation[])
@@ -2953,6 +2999,44 @@ const ChatPortfolioAdvisor = () => {
       return clonedAllocation;
     })();
 
+    const riskProfileAllocation = (() => {
+      if (updatedAssetAllocation) {
+        return deepClone(updatedAssetAllocation);
+      }
+
+      const existingAllocation = deepClone(
+        (portfolioResult?.riskProfile as { current_allocation?: any } | null)?.current_allocation ??
+          (portfolioResult?.portfolio as { asset_allocation?: any } | null)?.asset_allocation ??
+          {}
+      );
+
+      if (!existingAllocation || typeof existingAllocation !== 'object') {
+        return null;
+      }
+
+      existingAllocation.stock_recommendations = updatedRecommendedStocks;
+      existingAllocation.recommended_stocks = updatedRecommendedStocks;
+
+      if (updatedPlanAssets) {
+        const planClone =
+          existingAllocation.structured_plan && typeof existingAllocation.structured_plan === 'object'
+            ? { ...existingAllocation.structured_plan }
+            : {};
+
+        planClone.recommended_assets = updatedPlanAssets.map(mapAssetToPlanEntry);
+
+        if (Array.isArray(planClone.assets)) {
+          planClone.assets = updatedPlanAssets.map(mapAssetToStructuredEntry);
+        } else if (updatedPlanAssets.length > 0) {
+          planClone.assets = updatedPlanAssets.map(mapAssetToStructuredEntry);
+        }
+
+        existingAllocation.structured_plan = planClone;
+      }
+
+      return existingAllocation;
+    })();
+
     setRecommendedStocks(prev => {
       const next = [...prev];
       if (index >= next.length) {
@@ -2983,6 +3067,12 @@ const ChatPortfolioAdvisor = () => {
           recommended_stocks: updatedRecommendedStocks,
           asset_allocation: updatedAssetAllocation ?? prev.portfolio?.asset_allocation,
         },
+        riskProfile: prev.riskProfile
+          ? {
+              ...prev.riskProfile,
+              current_allocation: riskProfileAllocation ?? prev.riskProfile.current_allocation,
+            }
+          : prev.riskProfile,
       };
     });
 
@@ -3004,6 +3094,7 @@ const ChatPortfolioAdvisor = () => {
       updatedRecommendedStocks,
       updatedAssetAllocation,
       updatedPlanAssets,
+      updatedRiskProfileAllocation: riskProfileAllocation ?? undefined,
     });
     await Promise.all([refetchHoldings(), refetch()]);
   };
