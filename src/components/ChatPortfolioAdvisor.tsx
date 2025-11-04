@@ -834,6 +834,15 @@ const ChatPortfolioAdvisor = () => {
     }
   }, [portfolioResult, structuredResponse]);
 
+  const hasImportedHoldings = Array.isArray(conversationData.currentHoldings)
+    ? conversationData.currentHoldings.length > 0
+    : false;
+
+  const shouldCollectAvailableCapitalForNewInvestor =
+    conversationData.hasCurrentPortfolio !== true &&
+    conversationData.isBeginnerInvestor === false &&
+    !hasImportedHoldings;
+
   const questions: Question[] = [
     {
       id: 'experienceLevel',
@@ -1002,8 +1011,10 @@ const ChatPortfolioAdvisor = () => {
     },
     {
       id: 'investedCapital',
-      question: 'Hur mycket kapital har du ungefär investerat hittills?',
-      key: 'portfolioSize',
+      question: shouldCollectAvailableCapitalForNewInvestor
+        ? 'Hur mycket kapital har du tillgängligt att investera just nu?'
+        : 'Hur mycket kapital har du ungefär investerat hittills?',
+      key: shouldCollectAvailableCapitalForNewInvestor ? 'availableCapital' : 'portfolioSize',
       hasOptions: true,
       showIf: () =>
         conversationData.hasCurrentPortfolio !== true &&
