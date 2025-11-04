@@ -1916,18 +1916,45 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         return trimmed;
       };
 
-      const aggregatedSectorSources = [
-        ...(Array.isArray(mergedConversationData.sectors) ? mergedConversationData.sectors : []),
-        ...(Array.isArray(mergedConversationData.interests) ? mergedConversationData.interests : []),
-        ...(Array.isArray(mergedConversationData.sectorExposure) ? mergedConversationData.sectorExposure : []),
-        ...(Array.isArray(existingProfileData.sectors) ? existingProfileData.sectors : []),
-      ];
+      const explicitConversationSectors =
+        ensureStringArray(conversationData.sectorInterests)
+          ?? ensureStringArray(conversationData.sectors)
+          ?? [];
 
-      const sanitizedInterestSources = aggregatedSectorSources
+      const normalizedConversationSectors = explicitConversationSectors
         .map(normalizeSectorLabel)
         .filter((label): label is string => Boolean(label));
 
-      const interestSignalText = sanitizedInterestSources.join(' ').toLowerCase();
+      const fallbackSectorSources: string[] = [];
+
+      if (normalizedConversationSectors.length === 0) {
+        const mergedSectors = ensureStringArray(mergedConversationData.sectors);
+        if (mergedSectors) {
+          fallbackSectorSources.push(...mergedSectors);
+        }
+
+        if (Array.isArray(existingProfileData.sectors)) {
+          fallbackSectorSources.push(...existingProfileData.sectors);
+        }
+      }
+
+      if (Array.isArray(mergedConversationData.interests)) {
+        fallbackSectorSources.push(...mergedConversationData.interests);
+      }
+
+      if (Array.isArray(mergedConversationData.sectorExposure)) {
+        fallbackSectorSources.push(...mergedConversationData.sectorExposure);
+      }
+
+      const sanitizedFallbackSources = fallbackSectorSources
+        .map(normalizeSectorLabel)
+        .filter((label): label is string => Boolean(label));
+
+      const aggregatedSectorSignals = Array.from(
+        new Set([...normalizedConversationSectors, ...sanitizedFallbackSources])
+      );
+
+      const interestSignalText = aggregatedSectorSignals.join(' ').toLowerCase();
 
       const resolvedPreferredAsset = (() => {
         const directPreferred = typeof mergedConversationData.preferredAssets === 'string' && mergedConversationData.preferredAssets.trim()
@@ -1964,64 +1991,80 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
       mergedConversationData.preferredAssets = resolvedPreferredAsset;
 
       const derivedSectorSignals: string[] = [];
+      const registerDerivedSignal = (label: string) => {
+        if (!label) return;
+        if (!derivedSectorSignals.includes(label)) {
+          derivedSectorSignals.push(label);
+        }
+      };
 
-      if (resolvedPreferredAsset === 'crypto') {
-        derivedSectorSignals.push('Kryptovalutor');
-      } else if (resolvedPreferredAsset === 'investment_companies') {
-        derivedSectorSignals.push('Investmentbolag');
-      } else if (resolvedPreferredAsset === 'commodities') {
-        derivedSectorSignals.push('Råvaror');
-      } else if (resolvedPreferredAsset === 'stocks') {
-        derivedSectorSignals.push('Aktier & Tillväxt');
+      if (normalizedConversationSectors.length === 0) {
+        if (resolvedPreferredAsset === 'crypto') {
+          registerDerivedSignal('Kryptovalutor');
+        } else if (resolvedPreferredAsset === 'investment_companies') {
+          registerDerivedSignal('Investmentbolag');
+        } else if (resolvedPreferredAsset === 'commodities') {
+          registerDerivedSignal('Råvaror');
+        } else if (resolvedPreferredAsset === 'stocks') {
+          registerDerivedSignal('Aktier & Tillväxt');
+        }
+
+        if (mergedConversationData.sustainabilityPreference && mergedConversationData.sustainabilityPreference !== 'not_priority') {
+          registerDerivedSignal('Hållbarhet & Miljö');
+        }
+
+        switch (mergedConversationData.geographicPreference) {
+          case 'sweden_only':
+            registerDerivedSignal('Svenska marknaden');
+            break;
+          case 'europe':
+            registerDerivedSignal('Europa & Industri');
+            break;
+          case 'usa':
+            registerDerivedSignal('USA & Tech');
+            break;
+          case 'global':
+            registerDerivedSignal('Global diversifiering');
+            break;
+          default:
+            break;
+        }
+
+        if (interestSignalText.includes('energi')) {
+          registerDerivedSignal('Energi');
+        }
+        if (interestSignalText.includes('bank') || interestSignalText.includes('finans')) {
+          registerDerivedSignal('Bank & Finans');
+        }
+        if (interestSignalText.includes('fastighet')) {
+          registerDerivedSignal('Fastigheter');
+        }
+        if (interestSignalText.includes('industri')) {
+          registerDerivedSignal('Industri & Verkstad');
+        }
+        if (interestSignalText.includes('hälsa') || interestSignalText.includes('life science')) {
+          registerDerivedSignal('Hälsa & Life Science');
+        }
+        if (interestSignalText.includes('konsument') || interestSignalText.includes('handel')) {
+          registerDerivedSignal('Konsument & Handel');
+        }
       }
 
-      if (mergedConversationData.sustainabilityPreference && mergedConversationData.sustainabilityPreference !== 'not_priority') {
-        derivedSectorSignals.push('Hållbarhet & Miljö');
-      }
+      let sectorInterestsForProfile: string[];
 
-      switch (mergedConversationData.geographicPreference) {
-        case 'sweden_only':
-          derivedSectorSignals.push('Svenska marknaden');
-          break;
-        case 'europe':
-          derivedSectorSignals.push('Europa & Industri');
-          break;
-        case 'usa':
-          derivedSectorSignals.push('USA & Tech');
-          break;
-        case 'global':
-          derivedSectorSignals.push('Global diversifiering');
-          break;
-        default:
-          break;
-      }
+      if (normalizedConversationSectors.length > 0) {
+        sectorInterestsForProfile = Array.from(new Set(normalizedConversationSectors));
+      } else {
+        const combinedSignals = Array.from(new Set([
+          ...aggregatedSectorSignals,
+          ...derivedSectorSignals
+        ].map(label => label.trim()).filter(Boolean)));
 
-      if (interestSignalText.includes('energi')) {
-        derivedSectorSignals.push('Energi');
-      }
-      if (interestSignalText.includes('bank') || interestSignalText.includes('finans')) {
-        derivedSectorSignals.push('Bank & Finans');
-      }
-      if (interestSignalText.includes('fastighet')) {
-        derivedSectorSignals.push('Fastigheter');
-      }
-      if (interestSignalText.includes('industri')) {
-        derivedSectorSignals.push('Industri & Verkstad');
-      }
-      if (interestSignalText.includes('hälsa') || interestSignalText.includes('life science')) {
-        derivedSectorSignals.push('Hälsa & Life Science');
-      }
-      if (interestSignalText.includes('konsument') || interestSignalText.includes('handel')) {
-        derivedSectorSignals.push('Konsument & Handel');
-      }
+        if (combinedSignals.length === 0) {
+          combinedSignals.push('Bred diversifiering');
+        }
 
-      const sectorInterestsForProfile = Array.from(new Set([
-        ...sanitizedInterestSources,
-        ...derivedSectorSignals
-      ].map(label => label.trim()).filter(Boolean)));
-
-      if (sectorInterestsForProfile.length === 0) {
-        sectorInterestsForProfile.push('Bred diversifiering');
+        sectorInterestsForProfile = combinedSignals;
       }
 
       mergedConversationData.sectors = sectorInterestsForProfile;
