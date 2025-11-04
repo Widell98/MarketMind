@@ -14,7 +14,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const CASE_COUNT = 3;
+const CASE_COUNT = 1;
 const SHEET_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRJZtyoepzQZSQw-LXTp0vmnpPVMqluTiPZJkPp61g5KsfEp08CA6LZ7CNoTfIgYe-E7lvCZ_ToMuF4/pub?gid=2130484499&single=true&output=csv";
 
@@ -769,8 +769,8 @@ serve(async (req) => {
       throw new Error('Failed to create AI generation run record');
     }
 
-    const sectors = ['Technology', 'Healthcare', 'Finance', 'Energy', 'Consumer Goods', 'Real Estate'];
-    const investmentStyles = ['Growth', 'Value', 'Dividend', 'ESG'];
+    const sectors = ['Technology'];
+    const investmentStyles = ['Growth', 'Value', 'Dividend'];
 
     const { data: existingCaseRows, error: existingCasesError } = await supabaseClient
       .from('stock_cases')
@@ -856,20 +856,51 @@ serve(async (req) => {
         break;
       }
 
-      const sector = sectors[Math.floor(Math.random() * sectors.length)];
-      const style = investmentStyles[Math.floor(Math.random() * investmentStyles.length)];
+const sector = sectors[Math.floor(Math.random() * sectors.length)];
+const style = investmentStyles[Math.floor(Math.random() * investmentStyles.length)];
 
-      const selectedTickerInfo = availableTickers[Math.floor(Math.random() * availableTickers.length)];
-      const selectedTicker = normalizeTickerKey(selectedTickerInfo.symbol);
-      const selectedName = selectedTickerInfo.name?.trim() || selectedTicker;
-      const sheetPrice = typeof selectedTickerInfo.price === 'number' && Number.isFinite(selectedTickerInfo.price)
-        ? Number(selectedTickerInfo.price.toFixed(2))
-        : null;
-      const sheetCurrency = typeof selectedTickerInfo.currency === 'string' && selectedTickerInfo.currency.trim().length > 0
-        ? selectedTickerInfo.currency.trim().toUpperCase()
-        : null;
+// Sortera tickers efter Market Cap (störst först)
+const sortedTickers = Array.from(
+  new Map(
+    eligibleTickers
+      .map((t) => {
+        const mc = t.marketCap ? Number(String(t.marketCap).replace(/[^0-9]/g, '')) : 0;
+        return { ...t, marketCapValue: mc };
+      })
+      // Sortera högst till lägst Market Cap
+      .sort((a, b) => b.marketCapValue - a.marketCapValue)
+      // Filtrera bort dubbletter baserat på företagsnamn (t.ex. Investor A/B)
+      .filter((t, idx, self) => {
+        if (!t.name) return true;
+        const baseName = t.name.split(' ')[0];
+        return self.findIndex(x => x.name?.split(' ')[0] === baseName) === idx;
+      })
+      // Lägg i Map för att ta bort identiska symboler
+      .map((t) => [t.symbol, t])
+  ).values()
+);
 
-      usedTickerSymbols.add(selectedTicker);
+// Begränsa till topp 50 största bolagen
+const topTickers = sortedTickers.slice(0, 50);
+
+// Välj nästa ticker i listan (eller fallback till första om listan tar slut)
+const selectedTickerInfo = topTickers[Math.floor(Math.random() * topTickers.length)];
+
+// Hämta metadata för valt bolag
+const selectedTicker = normalizeTickerKey(selectedTickerInfo.symbol);
+const selectedName = selectedTickerInfo.name?.trim() || selectedTicker;
+const sheetPrice =
+  typeof selectedTickerInfo.price === 'number' && Number.isFinite(selectedTickerInfo.price)
+    ? Number(selectedTickerInfo.price.toFixed(2))
+    : null;
+const sheetCurrency =
+  typeof selectedTickerInfo.currency === 'string' && selectedTickerInfo.currency.trim().length > 0
+    ? selectedTickerInfo.currency.trim().toUpperCase()
+    : null;
+
+// Markera tickern som använd
+usedTickerSymbols.add(selectedTicker);
+
 
       const prompt = `
 Du är en professionell finansanalytiker som skriver inspirerande men faktabaserade aktiepitchar för svenska investerare.
