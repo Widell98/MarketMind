@@ -604,6 +604,11 @@ GRUNDLÄGGANDE PROFIL:
 - Mest intresserad av: ${preferredAssetsText}`;
     }
 
+    if (conversationData.sectors && conversationData.sectors.length > 0) {
+      prompt += `
+- Favoritbranscher: ${conversationData.sectors.join(', ')}`;
+    }
+
     if (mode === 'optimize') {
       if (conversationData.currentPortfolioStrategy) {
         prompt += `
@@ -1638,6 +1643,41 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         }
       }
 
+      const portfolioHelpFocus = ensureString(profile.portfolio_help_focus);
+      if (portfolioHelpFocus) {
+        normalized.portfolioHelp = portfolioHelpFocus;
+      }
+
+      const currentPortfolioStrategy = ensureString(profile.current_portfolio_strategy);
+      if (currentPortfolioStrategy) {
+        normalized.currentPortfolioStrategy = currentPortfolioStrategy;
+      }
+
+      const optimizationGoals = ensureStringArray(profile.optimization_goals);
+      if (optimizationGoals) {
+        normalized.optimizationGoals = optimizationGoals;
+      }
+
+      const optimizationRiskFocus = ensureString(profile.optimization_risk_focus);
+      if (optimizationRiskFocus) {
+        normalized.optimizationRiskFocus = optimizationRiskFocus;
+      }
+
+      const optimizationDiversification = ensureStringArray(profile.optimization_diversification_focus);
+      if (optimizationDiversification) {
+        normalized.optimizationDiversificationFocus = optimizationDiversification;
+      }
+
+      const optimizationPreference = ensureString(profile.optimization_preference);
+      if (optimizationPreference) {
+        normalized.optimizationPreference = optimizationPreference;
+      }
+
+      const optimizationTimeline = ensureString(profile.optimization_timeline);
+      if (optimizationTimeline) {
+        normalized.optimizationTimeline = optimizationTimeline;
+      }
+
       const holdings = ensureHoldingsArray(profile.current_holdings);
       if (holdings) {
         normalized.currentHoldings = holdings;
@@ -2087,6 +2127,36 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
 
       const enhancedPrompt = buildEnhancedAIPrompt(mergedConversationData, mode);
 
+      const normalizedOptimizationGoals = ensureStringArray(mergedConversationData.optimizationGoals) ?? [];
+      if (normalizedOptimizationGoals.length > 0) {
+        mergedConversationData.optimizationGoals = normalizedOptimizationGoals;
+      }
+
+      const normalizedOptimizationDiversification =
+        ensureStringArray(mergedConversationData.optimizationDiversificationFocus) ?? [];
+      if (normalizedOptimizationDiversification.length > 0) {
+        mergedConversationData.optimizationDiversificationFocus = normalizedOptimizationDiversification;
+      }
+
+      const normalizedPreferredAssets = ensureStringArray(
+        Array.isArray(mergedConversationData.preferredAssets)
+          ? mergedConversationData.preferredAssets
+          : mergedConversationData.preferredAssets
+            ? [mergedConversationData.preferredAssets]
+            : undefined
+      ) ?? [];
+
+      const normalizedPortfolioHelp = ensureString(mergedConversationData.portfolioHelp) ?? null;
+      if (normalizedPortfolioHelp) {
+        mergedConversationData.portfolioHelp = normalizedPortfolioHelp;
+      }
+
+      const normalizedCurrentStrategy = ensureString(mergedConversationData.currentPortfolioStrategy) ?? null;
+
+      const normalizedOptimizationPreference = ensureString(mergedConversationData.optimizationPreference) ?? null;
+      const normalizedOptimizationTimeline = ensureString(mergedConversationData.optimizationTimeline) ?? null;
+      const normalizedOptimizationRiskFocus = ensureString(mergedConversationData.optimizationRiskFocus) ?? null;
+
       const riskProfileData = {
         age: mergedConversationData.age ?? existingProfileData.age ?? 25,
         monthly_investment_amount: monthlyInvestmentAmount,
@@ -2117,6 +2187,14 @@ SVARSKRAV: Svara ENDAST med giltig JSON i följande format:
         preferred_stock_count: preferredStockCount,
         annual_income: annualIncomeValue,
         current_portfolio_value: currentPortfolioValue,
+        portfolio_help_focus: normalizedPortfolioHelp,
+        current_portfolio_strategy: normalizedCurrentStrategy,
+        optimization_goals: normalizedOptimizationGoals,
+        optimization_risk_focus: normalizedOptimizationRiskFocus,
+        optimization_diversification_focus: normalizedOptimizationDiversification,
+        optimization_preference: normalizedOptimizationPreference,
+        optimization_timeline: normalizedOptimizationTimeline,
+        preferred_assets: normalizedPreferredAssets,
         user_id: user.id
       };
 

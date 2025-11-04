@@ -26,14 +26,24 @@ export interface RiskProfile {
   
   // Portföljpreferenser
   preferred_stock_count: number | null;
-  
+  preferred_assets: string[] | null;
+
   // Riskprofil och psykologi
   risk_tolerance: 'conservative' | 'moderate' | 'aggressive' | null;
   risk_comfort_level: number | null;
   panic_selling_history: boolean | null;
   control_importance: number | null;
   market_crash_reaction: string | null;
-  
+
+  // Optimerings- och rådgivningspreferenser
+  portfolio_help_focus: string | null;
+  current_portfolio_strategy: string | null;
+  optimization_goals: string[] | null;
+  optimization_risk_focus: string | null;
+  optimization_diversification_focus: string[] | null;
+  optimization_preference: string | null;
+  optimization_timeline: string | null;
+
   // Investeringsstil
   portfolio_change_frequency: string | null;
   activity_preference: string | null;
@@ -127,6 +137,9 @@ export const useRiskProfile = () => {
           sector_interests: jsonToStringArray(data.sector_interests),
           investment_purpose: jsonToStringArray(data.investment_purpose),
           current_holdings: jsonToArray(data.current_holdings),
+          preferred_assets: jsonToStringArray(data.preferred_assets),
+          optimization_goals: jsonToStringArray(data.optimization_goals),
+          optimization_diversification_focus: jsonToStringArray(data.optimization_diversification_focus),
           investment_horizon: data.investment_horizon as RiskProfile['investment_horizon'],
           investment_goal: data.investment_goal as RiskProfile['investment_goal'],
           risk_tolerance: data.risk_tolerance as RiskProfile['risk_tolerance'],
