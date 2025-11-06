@@ -194,64 +194,6 @@ const buildPersonalizationPrompt = ({
   return sections.length > 0 ? sections.join('\n') : '';
 };
 
-const REALTIME_KEYWORDS = [
-  'kväll',
-  'kvällen',
-  'kvällens',
-  'ikväll',
-  'igår',
-  'imorgon',
-  'idag',
-  'i dag',
-  'senaste',
-  'just nu',
-  'aktuella',
-  'uppdaterad',
-  'uppdaterade',
-  'nyligen',
-  'latest',
-  'current',
-  'today',
-  'recent',
-  'rapport',
-  'earnings',
-  'resultat',
-  'news',
-  'rapporten',
-  'report',
-  'pris nu',
-  'price now',
-  'price today'
-];
-
-const RELATIVE_TIME_PHRASES = [
-  'senaste veckan',
-  'denna vecka',
-  'förra veckan',
-  'denna månad',
-  'förra månaden',
-  'denna måndag',
-  'i år',
-  'detta år',
-  'senaste dagarna',
-  'på sistone',
-  'nyss',
-  'nyligen',
-  'för en stund sedan',
-  'senaste kvartalet',
-  'q1', 'q2', 'q3', 'q4',
-  'yesterday',
-  'tomorrow',
-  'tonight',
-];
-
-const DATE_DETECTION_PATTERNS: RegExp[] = [
-  /\b\d{1,2}\s*(?:jan|feb|mar|apr|maj|jun|jul|aug|sep|okt|nov|dec)\w*/i,
-  /\b\d{4}-\d{2}-\d{2}\b/,
-  /\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/,
-  /\b(?:måndag|tisdag|onsdag|torsdag|fredag|lördag|söndag)\b/i,
-];
-
 const TRUSTED_TAVILY_DOMAINS = [
   'di.se',
   'affarsvarlden.se',
@@ -852,27 +794,48 @@ type RealTimeAssessment = {
   usedLLM: boolean;
 };
 
-const containsRealTimeKeyword = (message: string): boolean => {
-  const normalized = message.toLowerCase();
-  return REALTIME_KEYWORDS.some(keyword => normalized.includes(keyword));
+type RealTimeDecisionInput = {
+  message: string;
+  userIntent?: IntentType;
+  recentMessages?: string[];
+  openAIApiKey: string;
 };
 
-const containsRelativeTimeReference = (message: string): boolean => {
-  const normalized = message.toLowerCase();
-  return RELATIVE_TIME_PHRASES.some(phrase => normalized.includes(phrase));
+type RealTimeDecision = {
+  decision: boolean;
+  rationale?: string;
+  usedModel: boolean;
 };
 
-const containsExplicitDateReference = (message: string): boolean => {
-  return DATE_DETECTION_PATTERNS.some(pattern => pattern.test(message));
-};
-
-const shouldInvokeRealtimeLLM = (message: string): boolean => {
-  const tokenEstimate = message.trim().split(/\s+/).length;
-  return tokenEstimate > 4 && message.length > 20;
-};
-
-const askLLMIfRealtimeNeeded = async (message: string, openAIApiKey: string): Promise<boolean> => {
+const askLLMIfRealtimeNeeded = async ({
+  message,
+  userIntent,
+  recentMessages,
+  openAIApiKey,
+}: RealTimeDecisionInput): Promise<RealTimeDecision> => {
   try {
+    const contextLines: string[] = [];
+
+    if (userIntent) {
+      contextLines.push(`Identifierad intent: ${userIntent}.`);
+    }
+
+    if (recentMessages && recentMessages.length > 0) {
+      const recentSnippet = recentMessages
+        .map((entry, index) => `${index + 1}. ${entry}`)
+        .join('\n');
+      contextLines.push(`Tidigare relaterade användarmeddelanden:\n${recentSnippet}`);
+    }
+
+    const userPromptSections = [
+      'Bedöm om den nuvarande frågan kräver realtidsdata (t.ex. intradagspriser, färska nyheter, pressreleaser).',
+      'Realtidsdata behövs när användaren ber om utveckling "just nu", "idag" eller efterfrågar omedelbara marknadshändelser.',
+      'Om frågan handlar om historik, utbildning eller långsiktiga strategier behövs ingen realtidssökning.',
+      contextLines.join('\n\n'),
+      `Nuvarande användarmeddelande:\n"""${message}"""`,
+      'Svara strikt med JSON-format: {"realtime": "yes" eller "no", "reason": "kort motivering på svenska"}.',
+    ].filter(Boolean);
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -882,15 +845,15 @@ const askLLMIfRealtimeNeeded = async (message: string, openAIApiKey: string): Pr
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         temperature: 0,
-        max_tokens: 5,
+        max_tokens: 60,
         messages: [
           {
             role: 'system',
-            content: 'Behöver frågan färsk realtidsinformation? Svara endast med "ja" eller "nej".',
+            content: 'Du avgör om en investeringsfråga behöver realtidsdata. Var konservativ med ja-svar och motivera kort på svenska.',
           },
           {
             role: 'user',
-            content: message,
+            content: userPromptSections.join('\n\n'),
           },
         ],
       }),
@@ -898,51 +861,60 @@ const askLLMIfRealtimeNeeded = async (message: string, openAIApiKey: string): Pr
 
     if (!response.ok) {
       console.warn('Realtime LLM check failed with status', response.status);
-      return false;
+      return { decision: false, usedModel: false };
     }
 
     const data = await response.json();
-    const text = data?.choices?.[0]?.message?.content?.toLowerCase?.() ?? '';
-    return text.includes('ja') || text.includes('yes');
+    const text = data?.choices?.[0]?.message?.content?.trim();
+
+    if (!text) {
+      return { decision: false, usedModel: true };
+    }
+
+    try {
+      const parsed = JSON.parse(text);
+      const decisionText = String(parsed?.realtime ?? '').toLowerCase();
+      const decision = decisionText === 'yes' || decisionText === 'ja';
+      const rationale = typeof parsed?.reason === 'string' ? parsed.reason.trim() : undefined;
+      return { decision, rationale, usedModel: true };
+    } catch (jsonError) {
+      console.warn('Failed to parse realtime LLM response as JSON:', jsonError, 'Raw response:', text);
+      const normalized = text.toLowerCase();
+      const decision = normalized.includes('ja') || normalized.includes('yes');
+      return { decision, rationale: text, usedModel: true };
+    }
   } catch (error) {
     console.warn('Realtime LLM check encountered an error:', error);
-    return false;
+    return { decision: false, usedModel: false };
   }
 };
 
-const determineRealTimeSearchNeed = async (
-  message: string,
-  openAIApiKey: string,
-): Promise<RealTimeAssessment> => {
+const determineRealTimeSearchNeed = async ({
+  message,
+  userIntent,
+  recentMessages,
+  openAIApiKey,
+}: RealTimeDecisionInput): Promise<RealTimeAssessment> => {
   const signals: string[] = [];
-  let needsRealtime = false;
-  let usedLLM = false;
 
-  if (containsRealTimeKeyword(message)) {
-    signals.push('keyword');
-    needsRealtime = true;
+  const { decision, rationale, usedModel } = await askLLMIfRealtimeNeeded({
+    message,
+    userIntent,
+    recentMessages,
+    openAIApiKey,
+  });
+
+  if (rationale) {
+    signals.push(`llm:${rationale}`);
+  } else {
+    signals.push(decision ? 'llm:yes' : 'llm:no');
   }
 
-  if (containsRelativeTimeReference(message)) {
-    signals.push('relative-time');
-    needsRealtime = true;
-  }
-
-  if (containsExplicitDateReference(message)) {
-    signals.push('explicit-date');
-    needsRealtime = true;
-  }
-
-  if (!needsRealtime && shouldInvokeRealtimeLLM(message)) {
-    usedLLM = true;
-    const llmDecision = await askLLMIfRealtimeNeeded(message, openAIApiKey);
-    if (llmDecision) {
-      signals.push('llm');
-      needsRealtime = true;
-    }
-  }
-
-  return { needsRealtime, signals, usedLLM };
+  return {
+    needsRealtime: decision,
+    signals,
+    usedLLM: usedModel,
+  };
 };
 
 type TavilySearchResult = {
@@ -1292,13 +1264,20 @@ serve(async (req) => {
     
     const { message, userId, portfolioId, chatHistory = [], analysisType, sessionId, insightType, timeframe, conversationData, stream } = requestBody;
 
-    console.log('Portfolio AI Chat function called with:', { 
-      message: message?.substring(0, 50) + '...', 
-      userId, 
-      portfolioId, 
+    console.log('Portfolio AI Chat function called with:', {
+      message: message?.substring(0, 50) + '...',
+      userId,
+      portfolioId,
       sessionId,
-      analysisType 
+      analysisType
     });
+
+    const recentUserMessages = Array.isArray(chatHistory)
+      ? chatHistory
+        .filter((entry: { role?: string; content?: string }) => entry?.role === 'user' && typeof entry?.content === 'string')
+        .map(entry => entry.content as string)
+        .slice(-3)
+      : [];
 
     if (!message || !userId) {
       console.error('Missing required fields:', { message: !!message, userId: !!userId });
@@ -1930,19 +1909,6 @@ serve(async (req) => {
     // Fetch Tavily context when the user mentions stocks or requests real-time insights
     let tavilyContext: TavilyContextPayload = { formattedContext: '', sources: [] };
 
-    const realTimeAssessment = await determineRealTimeSearchNeed(message, openAIApiKey);
-    const hasRealTimeTrigger = realTimeAssessment.needsRealtime;
-    if (realTimeAssessment.signals.length > 0) {
-      console.log('Real-time assessment signals:', realTimeAssessment.signals.join(', '), 'LLM used:', realTimeAssessment.usedLLM);
-    }
-
-    const isSimplePersonalAdviceRequest = (
-      isPersonalAdviceRequest || isPortfolioOptimizationRequest
-    ) &&
-      !isStockMentionRequest &&
-      !hasRealTimeTrigger &&
-      detectedTickers.length === 0;
-
     const userHasPortfolio = Array.isArray(holdings) &&
       holdings.some((holding: HoldingRecord) => holding?.holding_type !== 'recommendation');
 
@@ -2013,6 +1979,24 @@ serve(async (req) => {
 
     const userIntent = await detectIntent(message);
     console.log('Detected user intent:', userIntent);
+
+    const realTimeAssessment = await determineRealTimeSearchNeed({
+      message,
+      userIntent,
+      recentMessages: recentUserMessages,
+      openAIApiKey,
+    });
+    const hasRealTimeTrigger = realTimeAssessment.needsRealtime;
+    if (realTimeAssessment.signals.length > 0) {
+      console.log('Real-time assessment signals:', realTimeAssessment.signals.join(', '), 'LLM used:', realTimeAssessment.usedLLM);
+    }
+
+    const isSimplePersonalAdviceRequest = (
+      isPersonalAdviceRequest || isPortfolioOptimizationRequest
+    ) &&
+      !isStockMentionRequest &&
+      !hasRealTimeTrigger &&
+      detectedTickers.length === 0;
 
     const entityAwareQuery = buildEntityAwareQuery({
       message,
