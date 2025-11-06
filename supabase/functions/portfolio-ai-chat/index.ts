@@ -15,6 +15,15 @@ type IntentType =
   | 'news_update'
   | 'general_advice';
 
+type MessageDifficulty = 'simple' | 'moderate' | 'complex';
+
+type MessageAnalysis = {
+  intent: IntentType | null;
+  difficulty: MessageDifficulty | null;
+  confidence: number | null;
+  entities: string[];
+};
+
 type BasePromptOptions = {
   shouldOfferFollowUp: boolean;
   expertiseLevel?: 'beginner' | 'intermediate' | 'advanced' | null;
@@ -629,6 +638,116 @@ const classifyIntentWithLLM = async (
   }
 
   return null;
+};
+
+const parseLLMJsonContent = (content: string): any | null => {
+  if (!content || typeof content !== 'string') {
+    return null;
+  }
+
+  const trimmed = content
+    .trim()
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```$/i, '')
+    .trim();
+
+  try {
+    return JSON.parse(trimmed);
+  } catch (_error) {
+    return null;
+  }
+};
+
+const analyzeMessageWithLLM = async (
+  message: string,
+  openAIApiKey: string,
+): Promise<MessageAnalysis | null> => {
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${openAIApiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        temperature: 0,
+        max_tokens: 150,
+        messages: [
+          {
+            role: 'system',
+            content: [
+              'You analyze Swedish or English investor questions.',
+              'Respond strictly with JSON containing: intent, difficulty, confidence, entities.',
+              'intent must be one of stock_analysis, news_update, general_news, market_analysis, portfolio_optimization, buy_sell_decisions, general_advice.',
+              'difficulty must be one of simple, moderate, complex.',
+              'confidence should be a number between 0 and 1.',
+              'entities should list relevant tickers or company names (strings).',
+              'If unsure, return null for uncertain fields and lower confidence.',
+            ].join(' '),
+          },
+          {
+            role: 'user',
+            content: message,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('LLM analysis failed with status', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data?.choices?.[0]?.message?.content ?? '';
+    const parsed = parseLLMJsonContent(content);
+
+    if (!parsed || typeof parsed !== 'object') {
+      console.warn('LLM analysis returned non-JSON payload');
+      return null;
+    }
+
+    const rawIntent = typeof parsed.intent === 'string' ? parsed.intent.trim().toLowerCase() : null;
+    const normalizedIntent = rawIntent && (INTENT_PROMPTS as Record<string, string>)[rawIntent]
+      ? rawIntent as IntentType
+      : null;
+
+    const rawDifficulty = typeof parsed.difficulty === 'string' ? parsed.difficulty.trim().toLowerCase() : null;
+    const normalizedDifficulty = rawDifficulty && ['simple', 'moderate', 'complex'].includes(rawDifficulty)
+      ? rawDifficulty as MessageDifficulty
+      : null;
+
+    let confidence: number | null = null;
+    if (typeof parsed.confidence === 'number') {
+      confidence = Number.isFinite(parsed.confidence)
+        ? Math.max(0, Math.min(1, parsed.confidence))
+        : null;
+    } else if (typeof parsed.confidence === 'string') {
+      const parsedNumber = Number.parseFloat(parsed.confidence);
+      if (!Number.isNaN(parsedNumber)) {
+        confidence = Math.max(0, Math.min(1, parsedNumber));
+      }
+    }
+
+    const entities = Array.isArray(parsed.entities)
+      ? parsed.entities
+          .map((entity: unknown) => typeof entity === 'string' ? entity.trim() : null)
+          .filter((entity): entity is string => Boolean(entity))
+          .slice(0, 10)
+      : [];
+
+    return {
+      intent: normalizedIntent,
+      difficulty: normalizedDifficulty,
+      confidence,
+      entities,
+    };
+  } catch (error) {
+    console.warn('LLM message analysis error:', error);
+    return null;
+  }
 };
 
 const extractEntityCandidates = (
@@ -1416,6 +1535,11 @@ serve(async (req) => {
       console.error('Unexpected error when loading Google Sheets tickers:', error);
     }
 
+    const messageAnalysis = await analyzeMessageWithLLM(message, openAIApiKey);
+    if (messageAnalysis) {
+      console.log('LLM message analysis result:', messageAnalysis);
+    }
+
     // ENHANCED INTENT DETECTION FOR PROFILE UPDATES
     const detectProfileUpdates = (message: string) => {
       const updates: any = {};
@@ -1628,7 +1752,16 @@ serve(async (req) => {
     const companyIntentPattern = /(?:analysera|analys av|vad tycker du om|hur ser du på|berätta om|utvärdera|bedöm|värdera|opinion om|kursmål|värdering av|fundamentalanalys|teknisk analys|information om|företagsinfo|köpvärd|sälj|köpa|sälja|investera)/i;
     const hasCompanyIntent = companyIntentPattern.test(message);
 
-    const hasStockContext = hasInvestmentContext || hasCompanyIntent;
+    const analyzerIntent = messageAnalysis?.intent ?? null;
+    const analyzerConfidence = typeof messageAnalysis?.confidence === 'number'
+      ? messageAnalysis?.confidence
+      : null;
+    const analyzerDifficulty = messageAnalysis?.difficulty ?? null;
+    const analyzerEntities = Array.isArray(messageAnalysis?.entities)
+      ? (messageAnalysis?.entities as string[]).filter(entity => typeof entity === 'string' && entity.trim().length > 0)
+      : [];
+
+    const hasStockContext = hasInvestmentContext || hasCompanyIntent || analyzerIntent === 'stock_analysis';
 
     // Check if this is a stock exchange request
     const isExchangeRequest = /(?:byt|ändra|ersätt|ta bort|sälja|köpa|mer av|mindre av)/i.test(message) &&
@@ -1897,7 +2030,16 @@ serve(async (req) => {
       return targetedContext;
     };
 
-    const detectedTickers = extractTickerSymbols(message);
+    const detectedTickersFromText = extractTickerSymbols(message);
+    const analyzerTickerCandidates = analyzerEntities
+      .map(entity => entity.toUpperCase())
+      .filter(entity => /^[A-Z0-9]{1,6}$/.test(entity));
+
+    const detectedTickers = Array.from(new Set([
+      ...detectedTickersFromText,
+      ...analyzerTickerCandidates,
+    ]));
+
     const primaryDetectedTicker = detectedTickers.length > 0 ? detectedTickers[0] : null;
 
     const hasTickerSymbolMention = (() => {
@@ -1916,12 +2058,15 @@ serve(async (req) => {
         return false;
       }
       return regex.test(message);
-    }) || hasTickerSymbolMention;
+    }) || hasTickerSymbolMention || (analyzerIntent === 'stock_analysis' && analyzerEntities.length > 0);
 
     const lowerCaseMessage = message.toLowerCase();
     const isFinancialDataRequest = FINANCIAL_DATA_KEYWORDS.some(keyword => lowerCaseMessage.includes(keyword));
 
-    const isStockMentionRequest = stockMentionsInMessage || isStockAnalysisRequest || (isFinancialDataRequest && detectedTickers.length > 0);
+    const isStockMentionRequest = stockMentionsInMessage
+      || isStockAnalysisRequest
+      || (isFinancialDataRequest && detectedTickers.length > 0)
+      || (analyzerIntent === 'stock_analysis' && (analyzerConfidence ?? 0) >= 0.5);
      
     // Check if user wants personal investment advice/recommendations
     const isPersonalAdviceRequest = /(?:rekommendation|förslag|vad ska jag|bör jag|passar mig|min portfölj|mina intressen|för mig|personlig|skräddarsy|baserat på|investera|köpa|sälja|portföljanalys|investeringsstrategi)/i.test(message);
@@ -1937,7 +2082,9 @@ serve(async (req) => {
     }
 
     const isSimplePersonalAdviceRequest = (
-      isPersonalAdviceRequest || isPortfolioOptimizationRequest
+      isPersonalAdviceRequest
+      || isPortfolioOptimizationRequest
+      || (analyzerIntent === 'general_advice' && analyzerDifficulty === 'simple')
     ) &&
       !isStockMentionRequest &&
       !hasRealTimeTrigger &&
@@ -1949,6 +2096,10 @@ serve(async (req) => {
     // ENHANCED INTENT ROUTING SYSTEM
     const detectIntent = async (message: string): Promise<IntentType> => {
       const msg = message.toLowerCase();
+
+      if (analyzerIntent && (analyzerConfidence ?? 0) >= 0.6) {
+        return analyzerIntent;
+      }
 
       const newsUpdateKeywords = [
         'kväll',
@@ -2003,6 +2154,10 @@ serve(async (req) => {
         return embeddingIntent;
       }
 
+      if (analyzerIntent) {
+        return analyzerIntent;
+      }
+
       const llmIntent = await classifyIntentWithLLM(message, openAIApiKey);
       if (llmIntent) {
         return llmIntent;
@@ -2014,10 +2169,28 @@ serve(async (req) => {
     const userIntent = await detectIntent(message);
     console.log('Detected user intent:', userIntent);
 
+    const analyzerEntityNames = analyzerEntities
+      .map(entity => entity.trim())
+      .filter(entity => entity.length > 0 && entity.length < 80);
+
+    const combinedCompanyNames = Array.from(new Set([
+      ...sheetTickerNames,
+      ...analyzerEntityNames,
+    ]));
+
+    const analysisMeta = {
+      intent: userIntent,
+      analyzerIntent,
+      difficulty: analyzerDifficulty,
+      confidence: analyzerConfidence ?? null,
+      entities: analyzerEntities,
+      detectedTickers,
+    };
+
     const entityAwareQuery = buildEntityAwareQuery({
       message,
       tickers: detectedTickers,
-      companyNames: sheetTickerNames,
+      companyNames: combinedCompanyNames,
       hasRealTimeTrigger,
       userIntent,
     });
@@ -2103,11 +2276,17 @@ serve(async (req) => {
       aiResponse: string,
       existingMemory: any,
       detectedIntent: IntentType,
+      analysis: MessageAnalysis | null,
     ) => {
       try {
         const normalizedMessage = userMessage.toLowerCase();
         const interests: string[] = [];
         const companies: string[] = [];
+        const difficulty = analysis?.difficulty ?? null;
+        const analysisIntent = analysis?.intent ?? null;
+        const analysisEntities = Array.isArray(analysis?.entities)
+          ? analysis.entities.filter(entity => typeof entity === 'string' && entity.trim().length > 0)
+          : [];
 
         const techKeywords = ['teknik', 'ai', 'mjukvara', 'innovation', 'digitalisering'];
         const healthKeywords = ['hälsa', 'medicin', 'bioteknik', 'läkemedel', 'vård'];
@@ -2129,17 +2308,34 @@ serve(async (req) => {
           companies.push(...matches.map(item => item.trim()).filter(Boolean).slice(0, 5));
         }
 
+        if (analysisEntities.length > 0) {
+          companies.push(...analysisEntities.slice(0, 5));
+        }
+
         const wantsConcise = /(håll.*kort|kortfattat|kort svar|snabb sammanfattning|bara det viktigaste)/i.test(userMessage);
         const wantsDetailed = /(mer detaljer|djupare analys|kan du utveckla|förklara mer|utförligt)/i.test(userMessage);
 
-        let preferredResponseLength: 'concise' | 'detailed' | string = existingMemory?.preferred_response_length || (userMessage.length > 120 ? 'detailed' : 'concise');
+        const difficultyLengthPreference: 'concise' | 'balanced' | 'detailed' | null = (() => {
+          if (difficulty === 'simple') return 'concise';
+          if (difficulty === 'complex') return 'detailed';
+          if (difficulty === 'moderate') return 'balanced';
+          return null;
+        })();
+
+        let preferredResponseLength: 'concise' | 'balanced' | 'detailed' | string = difficultyLengthPreference
+          || existingMemory?.preferred_response_length
+          || (userMessage.length > 120 ? 'detailed' : 'concise');
         if (wantsConcise) {
           preferredResponseLength = 'concise';
         } else if (wantsDetailed) {
           preferredResponseLength = 'detailed';
         }
 
-        let communicationStyle: 'concise' | 'detailed' | string = existingMemory?.communication_style || (userMessage.length > 60 ? 'detailed' : 'concise');
+        let communicationStyle: 'concise' | 'detailed' | string = (() => {
+          if (difficulty === 'simple') return 'concise';
+          if (difficulty === 'complex') return 'detailed';
+          return existingMemory?.communication_style || (userMessage.length > 60 ? 'detailed' : 'concise');
+        })();
         if (wantsConcise) {
           communicationStyle = 'concise';
         } else if (wantsDetailed) {
@@ -2174,7 +2370,37 @@ serve(async (req) => {
           expertiseLevel = expertiseLevel === 'beginner' ? 'intermediate' : 'advanced';
         }
 
-        const followUpPreference = wantsConcise ? 'skip' : existingMemory?.follow_up_preference ?? 'auto';
+        const inferredFollowUpPreference = difficulty === 'simple'
+          ? 'skip'
+          : difficulty === 'complex'
+            ? 'force'
+            : 'auto';
+
+        const followUpPreference = wantsConcise
+          ? 'skip'
+          : existingMemory?.follow_up_preference ?? inferredFollowUpPreference;
+
+        const existingRiskComfort = (existingMemory?.risk_comfort_patterns && typeof existingMemory.risk_comfort_patterns === 'object')
+          ? existingMemory.risk_comfort_patterns
+          : {};
+
+        const updatedRiskComfortPatterns = {
+          ...existingRiskComfort,
+          last_detected_difficulty: difficulty ?? existingRiskComfort?.last_detected_difficulty ?? null,
+          last_intent_confidence: analysis?.confidence ?? existingRiskComfort?.last_intent_confidence ?? null,
+        };
+
+        const intentTopicMap: Partial<Record<IntentType, string>> = {
+          stock_analysis: 'aktieanalys',
+          portfolio_optimization: 'portföljoptimering',
+          buy_sell_decisions: 'köp/sälj-beslut',
+          market_analysis: 'marknadsanalys',
+          general_news: 'marknadsnyheter',
+          news_update: 'portföljnyheter',
+          general_advice: 'allmän rådgivning',
+        };
+
+        const inferredTopic = analysisIntent ? intentTopicMap[analysisIntent] : null;
 
         const memoryData = {
           user_id: userId,
@@ -2185,13 +2411,15 @@ serve(async (req) => {
           frequently_asked_topics: [
             ...(existingMemory?.frequently_asked_topics || []),
             ...(isStockAnalysisRequest ? ['aktieanalys'] : []),
-            ...(isPortfolioOptimizationRequest ? ['portföljoptimering'] : [])
+            ...(isPortfolioOptimizationRequest ? ['portföljoptimering'] : []),
+            ...(inferredTopic ? [inferredTopic] : []),
           ].slice(0, 6),
           favorite_sectors: updatedFavoriteSectors,
           favorite_companies: updatedFavoriteCompanies,
           current_goals: Array.from(detectedGoals).slice(0, 6),
           follow_up_preference: followUpPreference,
           last_detected_intent: detectedIntent,
+          risk_comfort_patterns: updatedRiskComfortPatterns,
           updated_at: new Date().toISOString()
         };
 
@@ -2232,7 +2460,15 @@ serve(async (req) => {
       ? riskProfile.investment_experience as 'beginner' | 'intermediate' | 'advanced'
       : null;
 
-    let preferredLength = normalizePreference(aiMemory?.preferred_response_length);
+    const mapDifficultyToLength = (difficulty: MessageDifficulty): 'concise' | 'balanced' | 'detailed' => {
+      if (difficulty === 'simple') return 'concise';
+      if (difficulty === 'complex') return 'detailed';
+      return 'balanced';
+    };
+
+    const lengthFromDifficulty = analyzerDifficulty ? mapDifficultyToLength(analyzerDifficulty) : null;
+
+    let preferredLength = lengthFromDifficulty ?? normalizePreference(aiMemory?.preferred_response_length);
     if (!preferredLength) {
       if (message.length < 120) {
         preferredLength = 'concise';
@@ -2244,7 +2480,19 @@ serve(async (req) => {
     }
 
     const followUpPreference = typeof aiMemory?.follow_up_preference === 'string' ? aiMemory.follow_up_preference : 'auto';
-    let shouldOfferFollowUp = followUpPreference !== 'skip' && aiMemory?.communication_style !== 'concise';
+    let shouldOfferFollowUp: boolean;
+    if (followUpPreference === 'force') {
+      shouldOfferFollowUp = true;
+    } else if (followUpPreference === 'skip') {
+      shouldOfferFollowUp = false;
+    } else if (analyzerDifficulty === 'complex') {
+      shouldOfferFollowUp = true;
+    } else if (analyzerDifficulty === 'simple') {
+      shouldOfferFollowUp = false;
+    } else {
+      shouldOfferFollowUp = aiMemory?.communication_style !== 'concise';
+    }
+
     if (['general_news'].includes(userIntent) && followUpPreference !== 'force') {
       shouldOfferFollowUp = false;
     }
@@ -2518,7 +2766,12 @@ VIKTIGT:
       model,
       timestamp: new Date().toISOString(),
       hasMarketData,
-      isPremium
+      isPremium,
+      intent: userIntent,
+      analyzerIntent,
+      analyzerDifficulty,
+      analyzerConfidence: analyzerConfidence ?? null,
+      analyzerEntityCount: analyzerEntities.length,
     };
 
     console.log('TELEMETRY START:', telemetryData);
@@ -2536,7 +2789,8 @@ VIKTIGT:
             context_data: {
               analysisType,
               requestId,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
+              analysis: analysisMeta,
             }
           });
         console.log('User message saved to database');
@@ -2572,7 +2826,7 @@ VIKTIGT:
       const aiMessage = nonStreamData.choices?.[0]?.message?.content || '';
 
       // Update AI memory and optionally save to chat history
-      await updateAIMemory(supabase, userId, message, aiMessage, aiMemory, userIntent);
+      await updateAIMemory(supabase, userId, message, aiMessage, aiMemory, userIntent, messageAnalysis);
       if (sessionId && aiMessage) {
         await supabase
           .from('portfolio_chat_history')
@@ -2588,7 +2842,8 @@ VIKTIGT:
               hasMarketData,
               profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
               requiresConfirmation: profileChangeDetection.requiresConfirmation,
-              confidence: 0.8
+              confidence: 0.8,
+              analysis: analysisMeta,
             }
           });
       }
@@ -2599,7 +2854,8 @@ VIKTIGT:
         JSON.stringify({
           response: aiMessage,
           requiresConfirmation: profileChangeDetection.requiresConfirmation,
-          profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null
+          profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+          analysis: analysisMeta,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -2651,7 +2907,7 @@ VIKTIGT:
                 const data = line.slice(6);
                 if (data === '[DONE]') {
                   // Update AI memory
-                  await updateAIMemory(supabase, userId, message, aiMessage, aiMemory, userIntent);
+                  await updateAIMemory(supabase, userId, message, aiMessage, aiMemory, userIntent, messageAnalysis);
                   
                   // Send final telemetry
                   console.log('TELEMETRY COMPLETE:', { 
@@ -2669,16 +2925,17 @@ VIKTIGT:
                         chat_session_id: sessionId,
                         message: aiMessage,
                         message_type: 'assistant',
-                        context_data: {
-                          analysisType,
-                          model,
-                          requestId,
-                          hasMarketData,
-                          profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
-                          requiresConfirmation: profileChangeDetection.requiresConfirmation,
-                          confidence: 0.8
-                        }
-                      });
+                      context_data: {
+                        analysisType,
+                        model,
+                        requestId,
+                        hasMarketData,
+                        profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
+                        requiresConfirmation: profileChangeDetection.requiresConfirmation,
+                        confidence: 0.8,
+                        analysis: analysisMeta,
+                      }
+                    });
                   }
                   
                   controller.close();
@@ -2692,10 +2949,11 @@ VIKTIGT:
                     aiMessage += content;
                     
                     // Stream content to client
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                       content,
                       profileUpdates: profileChangeDetection.requiresConfirmation ? profileChangeDetection.updates : null,
-                      requiresConfirmation: profileChangeDetection.requiresConfirmation
+                      requiresConfirmation: profileChangeDetection.requiresConfirmation,
+                      analysis: analysisMeta,
                     })}\n\n`));
                   }
                 } catch (e) {
