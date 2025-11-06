@@ -1060,6 +1060,18 @@ serve(async (req) => {
     const isPremium = subscriber?.subscribed || false;
     console.log('User premium status:', isPremium);
 
+    const requestedModel = typeof requestBody?.model === 'string'
+      ? requestBody.model.trim()
+      : '';
+    const model = requestedModel.length > 0 ? requestedModel : 'gpt-5';
+
+    console.log('Selected model:', model, 'for request type:', {
+      isStockAnalysisRequest,
+      isPortfolioOptimizationRequest,
+      messageLength: message.length,
+      historyLength: Array.isArray(chatHistory) ? chatHistory.length : 0,
+    });
+
     const investmentContextPattern = /(aktie|aktier|börs|portfölj|fond|investera|bolag|innehav|kurs|marknad|stock|share|equity)/i;
     const hasInvestmentContext = investmentContextPattern.test(message);
 
